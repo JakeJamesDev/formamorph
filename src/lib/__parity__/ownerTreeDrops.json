@@ -1110,7 +1110,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -1128,7 +1128,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -1146,7 +1146,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -1182,7 +1182,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -1218,7 +1218,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -1254,7 +1254,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -1295,19 +1295,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -1315,12 +1317,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -1346,7 +1356,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -1366,7 +1376,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -1386,7 +1396,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -1407,7 +1417,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -1432,7 +1442,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -1457,7 +1467,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -1472,12 +1482,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -1492,7 +1502,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -1507,12 +1517,26 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -1525,6 +1549,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -1537,25 +1601,25 @@
         "groups": [],
         "stats": [
           {
-            "description": "How aware the wood's hunters are of the player. Rises as time passes and when the player is loud, fast, or bleeding; falls when they hide, wade, or hold still.",
+            "description": "How aware the wood's hunters are of the player. Raise it when the player is loud, fast or bleeding. Lower it when they hide, wade or hold still.",
             "descriptors": [
               {
-                "description": "Unnoticed. The wood's sounds are ordinary; nothing tracks the player.",
+                "description": "Unnoticed. The wood's sounds are ordinary, and nothing tracks the player.",
                 "id": "attention_unnoticed",
                 "threshold": 20
               },
               {
-                "description": "Watched. Something has the player's scent — distant splashes and snapped twigs shadow their pace.",
+                "description": "Watched. Something has the player's scent. Distant splashes and snapped twigs keep pace with them.",
                 "id": "attention_watched",
                 "threshold": 45
               },
               {
-                "description": "Stalked. A hunter is close: moths scatter, frogs go silent, something moves in the fog.",
+                "description": "Stalked. A hunter is close. The moths scatter, the frogs go silent, and something moves in the fog.",
                 "id": "attention_stalked",
                 "threshold": 75
               },
               {
-                "description": "Hunted. A predator is upon the player — an encounter begins now.",
+                "description": "Hunted. A hunter is upon the player, and an encounter begins now.",
                 "id": "attention_hunted",
                 "threshold": 100
               }
@@ -1567,7 +1631,7 @@
             "min": 0,
             "name": "Predator Attention",
             "order": 0,
-            "regen": 2,
+            "regen": 0,
             "starting": 10,
             "type": "number",
             "value": 10
@@ -1581,7 +1645,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -1617,7 +1681,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -1653,7 +1717,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -1689,7 +1753,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -1725,7 +1789,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -1743,7 +1807,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -1766,19 +1830,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -1786,12 +1852,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -1817,7 +1891,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -1837,7 +1911,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -1857,7 +1931,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -1878,7 +1952,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -1903,7 +1977,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -1928,7 +2002,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -1943,12 +2017,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -1963,7 +2037,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -1978,12 +2052,26 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -1996,6 +2084,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -2008,25 +2136,25 @@
         "groups": [],
         "stats": [
           {
-            "description": "How aware the wood's hunters are of the player. Rises as time passes and when the player is loud, fast, or bleeding; falls when they hide, wade, or hold still.",
+            "description": "How aware the wood's hunters are of the player. Raise it when the player is loud, fast or bleeding. Lower it when they hide, wade or hold still.",
             "descriptors": [
               {
-                "description": "Unnoticed. The wood's sounds are ordinary; nothing tracks the player.",
+                "description": "Unnoticed. The wood's sounds are ordinary, and nothing tracks the player.",
                 "id": "attention_unnoticed",
                 "threshold": 20
               },
               {
-                "description": "Watched. Something has the player's scent — distant splashes and snapped twigs shadow their pace.",
+                "description": "Watched. Something has the player's scent. Distant splashes and snapped twigs keep pace with them.",
                 "id": "attention_watched",
                 "threshold": 45
               },
               {
-                "description": "Stalked. A hunter is close: moths scatter, frogs go silent, something moves in the fog.",
+                "description": "Stalked. A hunter is close. The moths scatter, the frogs go silent, and something moves in the fog.",
                 "id": "attention_stalked",
                 "threshold": 75
               },
               {
-                "description": "Hunted. A predator is upon the player — an encounter begins now.",
+                "description": "Hunted. A hunter is upon the player, and an encounter begins now.",
                 "id": "attention_hunted",
                 "threshold": 100
               }
@@ -2038,7 +2166,7 @@
             "min": 0,
             "name": "Predator Attention",
             "order": 0,
-            "regen": 2,
+            "regen": 0,
             "starting": 10,
             "type": "number",
             "value": 10
@@ -2078,7 +2206,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -2114,7 +2242,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -2150,7 +2278,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -2186,7 +2314,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -2222,7 +2350,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -2240,7 +2368,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -2263,19 +2391,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -2283,12 +2413,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -2314,7 +2452,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -2334,7 +2472,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -2354,7 +2492,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -2375,7 +2513,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -2400,7 +2538,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -2425,7 +2563,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -2440,12 +2578,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -2460,7 +2598,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -2475,12 +2613,26 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -2493,6 +2645,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -2513,25 +2705,25 @@
         ],
         "stats": [
           {
-            "description": "How aware the wood's hunters are of the player. Rises as time passes and when the player is loud, fast, or bleeding; falls when they hide, wade, or hold still.",
+            "description": "How aware the wood's hunters are of the player. Raise it when the player is loud, fast or bleeding. Lower it when they hide, wade or hold still.",
             "descriptors": [
               {
-                "description": "Unnoticed. The wood's sounds are ordinary; nothing tracks the player.",
+                "description": "Unnoticed. The wood's sounds are ordinary, and nothing tracks the player.",
                 "id": "attention_unnoticed",
                 "threshold": 20
               },
               {
-                "description": "Watched. Something has the player's scent — distant splashes and snapped twigs shadow their pace.",
+                "description": "Watched. Something has the player's scent. Distant splashes and snapped twigs keep pace with them.",
                 "id": "attention_watched",
                 "threshold": 45
               },
               {
-                "description": "Stalked. A hunter is close: moths scatter, frogs go silent, something moves in the fog.",
+                "description": "Stalked. A hunter is close. The moths scatter, the frogs go silent, and something moves in the fog.",
                 "id": "attention_stalked",
                 "threshold": 75
               },
               {
-                "description": "Hunted. A predator is upon the player — an encounter begins now.",
+                "description": "Hunted. A hunter is upon the player, and an encounter begins now.",
                 "id": "attention_hunted",
                 "threshold": 100
               }
@@ -2543,7 +2735,7 @@
             "min": 0,
             "name": "Predator Attention",
             "order": 0,
-            "regen": 2,
+            "regen": 0,
             "starting": 10,
             "type": "number",
             "value": 10
@@ -2901,7 +3093,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -2937,7 +3129,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -2973,7 +3165,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -3009,7 +3201,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -3058,7 +3250,7 @@
               "value": 5
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -3076,7 +3268,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -3099,19 +3291,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -3119,12 +3313,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -3150,7 +3352,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -3170,7 +3372,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -3190,7 +3392,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -3211,7 +3413,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -3236,7 +3438,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -3261,7 +3463,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -3276,12 +3478,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -3296,7 +3498,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -3311,12 +3513,26 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -3329,6 +3545,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -3349,25 +3605,25 @@
         ],
         "stats": [
           {
-            "description": "How aware the wood's hunters are of the player. Rises as time passes and when the player is loud, fast, or bleeding; falls when they hide, wade, or hold still.",
+            "description": "How aware the wood's hunters are of the player. Raise it when the player is loud, fast or bleeding. Lower it when they hide, wade or hold still.",
             "descriptors": [
               {
-                "description": "Unnoticed. The wood's sounds are ordinary; nothing tracks the player.",
+                "description": "Unnoticed. The wood's sounds are ordinary, and nothing tracks the player.",
                 "id": "attention_unnoticed",
                 "threshold": 20
               },
               {
-                "description": "Watched. Something has the player's scent — distant splashes and snapped twigs shadow their pace.",
+                "description": "Watched. Something has the player's scent. Distant splashes and snapped twigs keep pace with them.",
                 "id": "attention_watched",
                 "threshold": 45
               },
               {
-                "description": "Stalked. A hunter is close: moths scatter, frogs go silent, something moves in the fog.",
+                "description": "Stalked. A hunter is close. The moths scatter, the frogs go silent, and something moves in the fog.",
                 "id": "attention_stalked",
                 "threshold": 75
               },
               {
-                "description": "Hunted. A predator is upon the player — an encounter begins now.",
+                "description": "Hunted. A hunter is upon the player, and an encounter begins now.",
                 "id": "attention_hunted",
                 "threshold": 100
               }
@@ -3379,7 +3635,7 @@
             "min": 0,
             "name": "Predator Attention",
             "order": 0,
-            "regen": 2,
+            "regen": 0,
             "starting": 10,
             "type": "number",
             "value": 10
@@ -3406,7 +3662,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -3455,7 +3711,7 @@
               "value": 5
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -3491,7 +3747,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -3527,7 +3783,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -3576,7 +3832,7 @@
               "value": 5
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -3594,7 +3850,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -3617,19 +3873,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -3637,12 +3895,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -3668,7 +3934,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -3688,7 +3954,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -3708,7 +3974,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -3729,7 +3995,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -3754,7 +4020,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -3779,7 +4045,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -3794,12 +4060,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -3814,7 +4080,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -3829,12 +4095,26 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -3847,6 +4127,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -3859,25 +4179,25 @@
         "groups": [],
         "stats": [
           {
-            "description": "How aware the wood's hunters are of the player. Rises as time passes and when the player is loud, fast, or bleeding; falls when they hide, wade, or hold still.",
+            "description": "How aware the wood's hunters are of the player. Raise it when the player is loud, fast or bleeding. Lower it when they hide, wade or hold still.",
             "descriptors": [
               {
-                "description": "Unnoticed. The wood's sounds are ordinary; nothing tracks the player.",
+                "description": "Unnoticed. The wood's sounds are ordinary, and nothing tracks the player.",
                 "id": "attention_unnoticed",
                 "threshold": 20
               },
               {
-                "description": "Watched. Something has the player's scent — distant splashes and snapped twigs shadow their pace.",
+                "description": "Watched. Something has the player's scent. Distant splashes and snapped twigs keep pace with them.",
                 "id": "attention_watched",
                 "threshold": 45
               },
               {
-                "description": "Stalked. A hunter is close: moths scatter, frogs go silent, something moves in the fog.",
+                "description": "Stalked. A hunter is close. The moths scatter, the frogs go silent, and something moves in the fog.",
                 "id": "attention_stalked",
                 "threshold": 75
               },
               {
-                "description": "Hunted. A predator is upon the player — an encounter begins now.",
+                "description": "Hunted. A hunter is upon the player, and an encounter begins now.",
                 "id": "attention_hunted",
                 "threshold": 100
               }
@@ -3889,7 +4209,7 @@
             "min": 0,
             "name": "Predator Attention",
             "order": 0,
-            "regen": 2,
+            "regen": 0,
             "starting": 10,
             "type": "number",
             "value": 10
@@ -3916,7 +4236,7 @@
               "value": 5
             },
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -3952,7 +4272,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -3988,7 +4308,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -4024,7 +4344,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -4073,7 +4393,7 @@
               "value": 5
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -4091,7 +4411,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -4114,19 +4434,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -4134,12 +4456,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -4165,7 +4495,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -4185,7 +4515,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -4205,7 +4535,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -4226,7 +4556,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -4251,7 +4581,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -4276,7 +4606,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -4291,12 +4621,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -4311,7 +4641,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -4326,12 +4656,26 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -4344,6 +4688,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -4356,25 +4740,25 @@
         "groups": [],
         "stats": [
           {
-            "description": "How aware the wood's hunters are of the player. Rises as time passes and when the player is loud, fast, or bleeding; falls when they hide, wade, or hold still.",
+            "description": "How aware the wood's hunters are of the player. Raise it when the player is loud, fast or bleeding. Lower it when they hide, wade or hold still.",
             "descriptors": [
               {
-                "description": "Unnoticed. The wood's sounds are ordinary; nothing tracks the player.",
+                "description": "Unnoticed. The wood's sounds are ordinary, and nothing tracks the player.",
                 "id": "attention_unnoticed",
                 "threshold": 20
               },
               {
-                "description": "Watched. Something has the player's scent — distant splashes and snapped twigs shadow their pace.",
+                "description": "Watched. Something has the player's scent. Distant splashes and snapped twigs keep pace with them.",
                 "id": "attention_watched",
                 "threshold": 45
               },
               {
-                "description": "Stalked. A hunter is close: moths scatter, frogs go silent, something moves in the fog.",
+                "description": "Stalked. A hunter is close. The moths scatter, the frogs go silent, and something moves in the fog.",
                 "id": "attention_stalked",
                 "threshold": 75
               },
               {
-                "description": "Hunted. A predator is upon the player — an encounter begins now.",
+                "description": "Hunted. A hunter is upon the player, and an encounter begins now.",
                 "id": "attention_hunted",
                 "threshold": 100
               }
@@ -4386,7 +4770,7 @@
             "min": 0,
             "name": "Predator Attention",
             "order": 0,
-            "regen": 2,
+            "regen": 0,
             "starting": 10,
             "type": "number",
             "value": 10
@@ -6218,7 +6602,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -6252,7 +6636,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -6286,7 +6670,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -6320,7 +6704,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -6354,7 +6738,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -6372,7 +6756,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -6393,19 +6777,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 1,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 2,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -6413,12 +6799,20 @@
               "name": "Instincts",
               "order": 0,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -6444,7 +6838,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -6464,7 +6858,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -6484,7 +6878,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -6505,7 +6899,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -6530,7 +6924,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -6555,7 +6949,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -6570,12 +6964,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -6590,7 +6984,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -6605,13 +6999,27 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "groupId": null,
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -6624,6 +7032,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -6636,7 +7084,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -6670,7 +7118,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -6704,7 +7152,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -6738,7 +7186,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -6772,7 +7220,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -6790,7 +7238,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -6811,19 +7259,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -6831,12 +7281,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -6862,7 +7320,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -6882,7 +7340,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -6902,7 +7360,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -6923,7 +7381,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -6948,7 +7406,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -6973,7 +7431,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -6988,12 +7446,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -7008,7 +7466,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -7023,13 +7481,27 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "groupId": null,
               "id": "move_quietly",
               "name": "Move Quietly",
-              "order": 3,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "order": 4,
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -7042,6 +7514,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -7054,7 +7566,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -7088,7 +7600,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -7122,7 +7634,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -7156,7 +7668,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -7190,7 +7702,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -7208,7 +7720,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -7229,19 +7741,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -7249,12 +7763,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -7280,7 +7802,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -7300,7 +7822,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -7320,7 +7842,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -7341,7 +7863,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -7366,7 +7888,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -7391,7 +7913,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -7406,12 +7928,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -7426,7 +7948,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -7439,6 +7961,46 @@
                   "value": -1
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -7448,13 +8010,27 @@
         "groups": [],
         "traits": [
           {
-            "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+            "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
             "groupId": null,
             "id": "move_quietly",
             "name": "Move Quietly",
             "order": 0,
-            "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+            "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
             "playerToggle": true,
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "stress",
+                    "kind": "stat",
+                    "name": "Stress",
+                    "operator": "<",
+                    "unit": "percent",
+                    "value": 75
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "attention",
@@ -7477,7 +8053,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -7511,7 +8087,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -7545,7 +8121,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -7579,7 +8155,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -7613,7 +8189,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -7631,7 +8207,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -7652,19 +8228,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -7672,12 +8250,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -7703,7 +8289,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -7723,7 +8309,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -7743,7 +8329,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -7764,7 +8350,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -7789,7 +8375,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -7814,7 +8400,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -7829,12 +8415,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -7849,7 +8435,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -7862,6 +8448,46 @@
                   "value": -1
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -7879,13 +8505,27 @@
         ],
         "traits": [
           {
-            "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+            "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
             "groupId": null,
             "id": "move_quietly",
             "name": "Move Quietly",
             "order": 0,
-            "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+            "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
             "playerToggle": true,
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "stress",
+                    "kind": "stat",
+                    "name": "Stress",
+                    "operator": "<",
+                    "unit": "percent",
+                    "value": 75
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "attention",
@@ -7908,7 +8548,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -7942,7 +8582,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -7976,7 +8616,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -8010,7 +8650,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -8044,7 +8684,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -8062,7 +8702,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -8083,19 +8723,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 1,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 2,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -8103,12 +8745,20 @@
               "name": "Instincts",
               "order": 3,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 4,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -8134,7 +8784,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -8154,7 +8804,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -8174,7 +8824,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -8195,7 +8845,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -8220,7 +8870,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -8245,7 +8895,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -8260,12 +8910,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -8280,7 +8930,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -8295,13 +8945,27 @@
               ]
             },
             {
-              "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+              "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
               "groupId": null,
               "id": "move_quietly",
               "name": "Move Quietly",
               "order": 0,
-              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+              "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
               "playerToggle": true,
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "stress",
+                      "kind": "stat",
+                      "name": "Stress",
+                      "operator": "<",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
               "statChanges": [
                 {
                   "statId": "attention",
@@ -8314,6 +8978,46 @@
                   "value": -2
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -8337,7 +9041,7 @@
           "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
           "stats": [
             {
-              "description": "Represents the player's physical well-being and ability to sustain damage",
+              "description": "How much harm the player's body can take. Lower it for falls, bites and poison. Raise it when a mushroom's effects mend the player.",
               "descriptors": [
                 {
                   "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
@@ -8371,7 +9075,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's energy and ability to perform physical actions",
+              "description": "The player's energy for running, climbing and wading. Lower it for hard effort. Raise it when the player rests or eats a mushroom that restores it.",
               "descriptors": [
                 {
                   "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -8405,7 +9109,7 @@
               "value": 100
             },
             {
-              "description": "Represents the player's mental and emotional strain",
+              "description": "The player's fear and strain. Raise it for darkness, close calls and hallucinations. Lower it for calm, warmth and small victories.",
               "descriptors": [
                 {
                   "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily.",
@@ -8439,7 +9143,7 @@
               "value": 0
             },
             {
-              "description": "Represents the player's need for food; falls steadily as time passes",
+              "description": "How fed the player is. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function.",
@@ -8473,7 +9177,7 @@
               "value": 90
             },
             {
-              "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+              "description": "Poison in the player's body. Eating moves it by that food's effects.",
               "descriptors": [
                 {
                   "description": "Clear. No poison worth naming; senses steady.",
@@ -8491,7 +9195,7 @@
                   "threshold": 75
                 },
                 {
-                  "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted.",
+                  "description": "Overwhelmed. The wood melts and rearranges, and nothing the player sees or hears can be trusted.",
                   "id": "toxin_overwhelmed",
                   "threshold": 100
                 }
@@ -8512,19 +9216,21 @@
               "aiDescription": "The player's physical constitution:",
               "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Constitution",
               "order": 0,
               "parentId": null,
-              "playerDescription": "What your body brings to a bad week. Pick one."
+              "playerDescription": "What your body brings to a bad week."
             },
             {
               "aiDescription": "The player's temperament under pressure:",
               "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "maxPicks": 1,
+              "minPicks": 1,
               "name": "Temperament",
               "order": 1,
               "parentId": null,
-              "playerDescription": "How your mind meets the dark. Pick one."
+              "playerDescription": "How your mind meets the dark."
             },
             {
               "aiDescription": "The player's learned instincts:",
@@ -8532,12 +9238,20 @@
               "name": "Instincts",
               "order": 2,
               "parentId": null,
-              "playerDescription": "Instincts worth having in a place like this. Take any."
+              "playerDescription": "Instincts worth having in a place like this."
+            },
+            {
+              "aiDescription": "The Veilwood's hold on the player:",
+              "id": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "name": "Curse",
+              "order": 3,
+              "parentId": null,
+              "playerDescription": "What the wood does to you. You don't pick these."
             }
           ],
           "traits": [
             {
-              "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+              "aiDescription": "The player is remarkably resilient. They withstand more damage and recover from wounds faster than most.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "iron_constitution",
               "isDefault": true,
@@ -8574,7 +9288,7 @@
               "id": "endurance_athlete",
               "name": "Endurance Athlete",
               "order": 1,
-              "playerDescription": "Built for the long haul — but the engine wants fuel.",
+              "playerDescription": "Built for the long haul, but the engine wants fuel.",
               "statChanges": [
                 {
                   "statId": "stamina",
@@ -8594,7 +9308,7 @@
               ]
             },
             {
-              "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+              "aiDescription": "The player is adapted to harsh conditions. They need less food than most and shake off poisons faster.",
               "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
               "id": "survivalist",
               "name": "Survivalist",
@@ -8614,7 +9328,7 @@
               ]
             },
             {
-              "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+              "aiDescription": "The player stays calm under pressure. Fear passes through them and drains away quickly.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "zen_master",
               "isDefault": true,
@@ -8635,7 +9349,7 @@
               ]
             },
             {
-              "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+              "aiDescription": "The player thrives on danger. They have deeper energy reserves and recover faster, but their nerves never fully settle.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "adrenaline_junkie",
               "name": "Adrenaline Junkie",
@@ -8660,7 +9374,7 @@
               ]
             },
             {
-              "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+              "aiDescription": "Eating soothes the player. Their fear fades fast, but their appetite runs ahead of their supplies.",
               "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
               "id": "stress_eater",
               "name": "Stress Eater",
@@ -8685,7 +9399,7 @@
               "id": "iron_stomach",
               "name": "Iron Stomach",
               "order": 0,
-              "playerDescription": "A gut that argues with poison — and usually wins.",
+              "playerDescription": "A gut that argues with poison, and usually wins.",
               "statChanges": [
                 {
                   "statId": "toxin",
@@ -8700,12 +9414,12 @@
               ]
             },
             {
-              "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+              "aiDescription": "The player can eat large amounts when food is there and draws more from every meal.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "hearty_appetite",
               "name": "Hearty Appetite",
               "order": 1,
-              "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+              "playerDescription": "You can eat big when the chance comes, and it carries you farther.",
               "statChanges": [
                 {
                   "statId": "satiety",
@@ -8720,7 +9434,7 @@
               ]
             },
             {
-              "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+              "aiDescription": "The player notices what others miss: a wrong color on a cap, a too-still shadow, a hunter's sign before the hunter. They walk into danger far less often.",
               "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
               "id": "keen_eye",
               "name": "Keen Eye",
@@ -8733,6 +9447,46 @@
                   "value": -1
                 }
               ]
+            },
+            {
+              "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veils_hold",
+              "mode": "alwaysOn",
+              "name": "The Veil's Hold",
+              "order": 0,
+              "playerDescription": "Every path but east bends back toward the heart of the wood, and the hunters learn a little more of you each turn.",
+              "statChanges": [
+                {
+                  "statId": "attention",
+                  "type": "regen",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "aiDescription": "The player is badly poisoned and hallucinates. Each turn, weave one false sight or sound into the real wood, built from what the scene already holds, with nothing to mark it as false. The real hunters and the real way east are still among them.",
+              "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
+              "id": "veil_sight",
+              "mode": "alwaysOn",
+              "name": "Veil Sight",
+              "order": 1,
+              "playerDescription": "The poison shows you things that aren't there. It passes when Toxin falls below 75%.",
+              "requires": [
+                {
+                  "all": [
+                    {
+                      "id": "toxin",
+                      "kind": "stat",
+                      "name": "Toxin",
+                      "operator": ">=",
+                      "unit": "percent",
+                      "value": 75
+                    }
+                  ]
+                }
+              ],
+              "statChanges": []
             }
           ]
         }
@@ -8750,13 +9504,27 @@
         ],
         "traits": [
           {
-            "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+            "aiDescription": "The player moves slowly and carefully, testing each step, breathing shallow and touching nothing. They are very hard to hear or track, but they cover ground slowly, and the strain tires them.",
             "groupId": "parity-blueprints",
             "id": "move_quietly",
             "name": "Move Quietly",
             "order": 0,
-            "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+            "playerDescription": "Slow, tested steps and shallow breathing. Hard to track, and tiring.",
             "playerToggle": true,
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "stress",
+                    "kind": "stat",
+                    "name": "Stress",
+                    "operator": "<",
+                    "unit": "percent",
+                    "value": 75
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "attention",

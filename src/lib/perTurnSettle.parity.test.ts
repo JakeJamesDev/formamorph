@@ -37,11 +37,18 @@ const movedTo = (state: TraitRuntimeState, share: number): TraitRuntimeState => 
   entityStats: Object.fromEntries(Object.entries(state.entityStats ?? {}).map(([id, stats]) => [id, at(stats, share)])),
 });
 
+const hasStatConditions = (world: World): boolean =>
+  [...world.traits, ...world.entities.flatMap((e) => e.traits ?? [])]
+    .flatMap((t) => t.requires ?? []).flatMap((row) => row.all).some((c) => c.kind === 'stat');
+// A world with stat Conditions moves its traits with its stats by design; its own world test covers those gates.
+const statFree = worlds.filter(([, world]) => !hasStatConditions(world));
+
 describe('the per-turn settle on worlds with no stat Conditions', () => {
-  it.each(worlds)('leaves %s on the same active set on every commit', (_file, world) => {
-    const conditions = [...world.traits, ...world.entities.flatMap((e) => e.traits ?? [])]
-      .flatMap((t) => t.requires ?? []).flatMap((row) => row.all);
-    expect(conditions.filter((c) => c.kind === 'stat')).toEqual([]);
+  it('still has worlds to check', () => {
+    expect(statFree.length).toBeGreaterThan(0);
+  });
+
+  it.each(statFree)('leaves %s on the same active set on every commit', (_file, world) => {
     const { state, tw } = started(world);
     for (const share of [0, 1, 0.5, 0.2]) {
       const commit = movedTo(state, share);

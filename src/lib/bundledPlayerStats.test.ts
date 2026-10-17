@@ -103,6 +103,7 @@ const LOOSE_ROWS = [
   ['valentines', 'Student Council President', 'Pursuit'],
   ['veilwood', 'Keen Eye', 'Predator Attention'],
   ['veilwood', 'Move Quietly', 'Predator Attention'],
+  ['veilwood', "The Veil's Hold", 'Predator Attention'],
 ] as const;
 
 describe.each(LOOSE_ROWS)('the %s world: %s', (id, traitName, statName) => {
