@@ -10,7 +10,7 @@ import {
 } from '@/lib/reasoningEffort';
 import { extraParamsOf } from '@/lib/extraParams';
 import {
-  reasoningDialectBody, reasoningDialectBudgetFloor, reasoningDialectBudgetFromStrength,
+  reasoningDialectBody, reasoningDialectBudgetFloor,
   reasoningDialectOffWhenDisengaged, type ReasoningBodyFields,
 } from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
@@ -245,8 +245,7 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const reasons = !reasoningRuledOut(target.reasoning);
   const takesBudget = target.reasoning.budget === true && reasons;
   const answerCap = capFor(snapshot, call, target);
-  // A dialect whose budget is the strength's room scales from no base.
-  const base = reasoningDialectBudgetFromStrength(target.reasoning.dialect) ? undefined : target.maxTokens;
+  const base = target.maxTokens;
   const floor = takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0;
   // With no base, a budget target's budget is the strength's room.
   const budgetRoom = takesBudget && effort !== 'none' && base === undefined ? thinkingRoomFor(effort, floor) : null;
