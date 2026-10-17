@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A script's clock advance now shows in the prompts the turn builds after it.** A Tool the planner calls now changes the place, time and stats that turn's narration reads. The turn still charges its time, regen and starvation once.
     - **The drone world now ships lock_target, a World Tool that marks the enemy the AI locks onto.** For the rest of that reply, the target shows in bold with a reticle. The Tools page and the Scripts Guide now explain World Tools.
     - **Staged planning now reads the changes a Tool made earlier in the turn.** A Tool the director or a character pass calls changes the place, time and stats that the later planning passes read.
+    - **Try It in the Tool editor now becomes a tab when the editor is narrow.** It keeps your values and last result when you switch tabs. It returns to its column when the editor widens.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 

@@ -1,17 +1,21 @@
-import { Braces, Cog, FileText } from 'lucide-react';
+import { Braces, CirclePlay, Cog, FileText } from 'lucide-react';
 import type { Tool, ToolHandler } from '@/types';
 import type { PanelTab } from '@/components/ui/panel-tabs';
 import { RECALL_LIMIT } from '@/lib/tools/toolRecall';
 import type { KeptHandlers } from '@/lib/tools/toolDraft';
 
-/** Edit mode's tabs, in order. */
+/** Edit mode's tabs, in order. Try It is a tab only while the editor is too narrow for its column. */
 export const TOOL_EDIT_TABS = [
   { value: 'definition', label: 'Definition', icon: FileText },
   { value: 'parameters', label: 'Parameters', icon: Braces },
   { value: 'handler', label: 'Handler', icon: Cog },
+  { value: 'tryIt', label: 'Try It', icon: CirclePlay },
 ] as const satisfies readonly PanelTab[];
 
 export type ToolEditTab = (typeof TOOL_EDIT_TABS)[number]['value'];
+
+/** The tabs that hold the Tool's fields. */
+export type ToolFormTab = Exclude<ToolEditTab, 'tryIt'>;
 
 /** Where the Tools tab is: the selected Tool, the draft open in edit mode and its tab. Held by the caller so
  *  a full-screen toggle, which remounts the tab, keeps it. */

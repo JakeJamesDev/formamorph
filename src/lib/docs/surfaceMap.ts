@@ -133,6 +133,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'settingsToolEdit.definition': { page: 'Tools', anchor: 'definition' },
   'settingsToolEdit.parameters': { page: 'Tools', anchor: 'parameters' },
   'settingsToolEdit.handler': { page: 'Tools', anchor: 'handler' },
+  'settingsToolEdit.tryIt': { page: 'Tools', anchor: 'try-it' },
 
   community: community('opening-community-creations'),
   // One table row per tab says what it holds.
