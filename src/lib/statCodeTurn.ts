@@ -101,8 +101,10 @@ export interface StatCodeTurn {
   discovered?: readonly SandboxPlace[];
   /** World Tool calls that run ahead of every script of the timing, in this order (Q4). Absent ⇒ none. */
   triggers?: readonly ScriptTrigger[];
-  /** Runs `triggers` alone, as an On Call Tool does. */
+  /** Runs `triggers` and `replayed` alone, as an On Call Tool does. */
   triggersOnly?: boolean;
+  /** Saved World Tool writes laid on ahead of `triggers`, in this order, with no script run (Q41). */
+  replayed?: readonly ReplayedTrigger[];
 }
 
 /** One World Tool call a run fires: the Tool's name, its script, and the call's arguments. */
@@ -110,6 +112,20 @@ export interface ScriptTrigger {
   name: string;
   code: string;
   args: Readonly<Record<string, unknown>>;
+}
+
+/** What a World Tool call's script wrote to stats, pins and traits, in the shape a save keeps. Its scene
+ *  writes are left out: a stat re-roll keeps the turn's location, clock and cast. */
+export interface SavedScriptWrites {
+  stats?: { owner: OwnerId; writes: TargetWrite[] }[];
+  placeholders?: PlaceholderWrite[];
+  traits?: StatTraitWrites;
+}
+
+/** A World Tool call replayed from its saved writes: the Tool's name, for the switch log, and the writes. */
+export interface ReplayedTrigger {
+  name: string;
+  writes: SavedScriptWrites;
 }
 
 /** What the run's first trigger answered: its return value as text, or why it failed. */
@@ -151,6 +167,8 @@ export interface StatCodeTurnResult {
   worldWrites?: WorldWrites;
   /** Present on a run with triggers. */
   reply?: TriggerReply;
+  /** What the run's first trigger wrote, when it ran clean. */
+  triggerWrites?: SavedScriptWrites;
 }
 
 const mergedWorldWrites = (writers: readonly (WorldWrites | undefined)[]): WorldWrites | undefined =>
@@ -301,6 +319,20 @@ function targetWrites(stat: PlayerStat | null, result: StatCodeResult, ownerId: 
   return out;
 }
 
+/** `writes` as a save keeps them; empty fields are left out. */
+function savedWrites({ stats, placeholders, traits }: ScriptWrites): SavedScriptWrites {
+  return {
+    ...(stats.size ? { stats: [...stats].map(([owner, writes]) => ({ owner, writes: [...writes] })) } : {}),
+    ...(placeholders.length ? { placeholders: [...placeholders] } : {}),
+    ...(traits ? { traits } : {}),
+  };
+}
+
+/** Saved writes as a run lays them on. */
+const scriptWritesOf = ({ stats = [], placeholders = [], traits }: SavedScriptWrites): ScriptWrites => ({
+  stats: new Map(stats.map(({ owner, writes }) => [owner, writes])), placeholders, ...(traits ? { traits } : {}),
+});
+
 /** Each target scope's writes, each target stat's merged field by field in run order, the later script
  *  winning a field. */
 function statWritesByOwner(writers: readonly (ScriptWrites | undefined)[]): Map<OwnerId, Map<string, SettledWrite>> {
@@ -360,7 +392,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const result = await runScripts(turn);
   if (turn.timing === 'output') return result;
   const switched = await withSwitchRuns(turn, result);
-  return result.reply ? { ...switched, reply: result.reply } : switched;
+  const { reply, triggerWrites } = result;
+  return reply ? { ...switched, reply, ...(triggerWrites ? { triggerWrites } : {}) } : switched;
 }
 
 /** `result` with the switch runs fired by the switches it made over `turn`, as one result over `turn`. */
@@ -567,10 +600,13 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const ownerRuns = [...entityRuns.flatMap((run) => [...ahead.get(run.owner.id) ?? [], run]), ...waiting];
   const runs: OwnerRun[] = [globalRun, ...ownerRuns];
   if (turn.triggersOnly) for (const run of runs) run.units = [];
-  const triggers = (turn.triggers ?? []).map(({ name, code, args }) => ({
-    unit: { stat: null, script: { id: `tool:${name}`, name, timing, code }, args } satisfies ScriptUnit, run: globalRun,
-  }));
-  const anyCoded = triggers.length > 0 || runs.some((run) => run.units.length);
+  /** A World Tool call's unit on the global run. */
+  const toolUnit = (name: string, code: string, rest: Pick<ScriptUnit, 'args' | 'writes'>): { unit: ScriptUnit; run: OwnerRun } => ({
+    unit: { stat: null, script: { id: `tool:${name}`, name, timing, code }, ...rest }, run: globalRun,
+  });
+  const triggers = (turn.triggers ?? []).map(({ name, code, args }) => toolUnit(name, code, { args }));
+  const replayed = (turn.replayed ?? []).map(({ name, writes }) => toolUnit(name, '', { writes: scriptWritesOf(writes) }));
+  const anyCoded = replayed.length > 0 || triggers.length > 0 || runs.some((run) => run.units.length);
   const gateStatsAt = (mainStats: PlayerStat[], ownerStats: EntityStatValues): GateStats => {
     const live = gateStatsOf({ ...before, stats: mainStats, entityStats: ownerStats }, world);
     return { global: live.global, owners: { ...turn.gateStats?.owners, ...live.owners } };
@@ -615,14 +651,17 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const selfTraitOf = (trait: Trait, owner: CodeEntity | undefined): SandboxTrait | undefined =>
     (owner ? owner.traits : traits).find((entry) => entry.id === trait.id);
   const switchedTrait = timing === 'switch' && turn.switched ? switchedTraitEntry(turn.switched, traits, inPlay, switchWorld, placeholderDefs) : undefined;
-  // Run order: the triggers, then ordered scripts, then owner order and stat order, so the later write wins.
+  // Run order: the replayed writes, the triggers, then ordered scripts, then owner order and stat order, so the
+  // later write wins.
   const ordered: { unit: ScriptUnit; run: OwnerRun }[] = [
-    ...triggers, ...inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script })))),
+    ...replayed, ...triggers, ...inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script })))),
   ];
   // The sentence a During AI Output run hands from one script to the next.
   let sentence = timing === 'output' ? turn.narration?.sentence : undefined;
   let reply: TriggerReply | undefined;
   const runUnit = async ({ unit, run }: (typeof ordered)[number]) => {
+    // A replayed unit holds its saved writes already and runs no script.
+    if (unit.writes) return;
     const { stat, trait, script, args } = unit;
     const owner = ownerEntries.get(run);
     const selfTrait = trait && selfTraitOf(trait, owner);
@@ -654,7 +693,11 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const inOrder = ordered.map(({ unit, run }) => ({ ...unit, owner: ownerEntries.get(run) }));
   const pinWrites = pinWritesInRunOrder(inOrder.map(({ writes }) => writes?.placeholders ?? []));
   const worldWrites = mergedWorldWrites(inOrder.map(({ writes }) => writes?.world));
-  const withWorld = { ...(worldWrites ? { worldWrites } : {}), ...(reply ? { reply } : {}) };
+  const firstWrites = triggers[0]?.unit.writes;
+  const withWorld = {
+    ...(worldWrites ? { worldWrites } : {}), ...(reply ? { reply } : {}),
+    ...(firstWrites ? { triggerWrites: savedWrites(firstWrites) } : {}),
+  };
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
   const byOwner = statWritesByOwner(inOrder.map(({ writes }) => writes));

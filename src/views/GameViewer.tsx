@@ -122,7 +122,7 @@ import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene"
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
-import { openWorldToolTurn, type WorldToolTurn } from "../lib/tools/worldToolTurn";
+import { openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from "../lib/tools/worldToolTurn";
 import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
@@ -296,6 +296,15 @@ interface OpeningSession {
 const newOpeningSession = (): OpeningSession => ({
   drawn: null, shown: [], cue: null, startLocationId: null,
 });
+
+/** `history` with `patch` laid over its latest assistant turn; unchanged when the tail is no assistant turn. */
+const withLatestTurnPatched = (history: readonly ChatMessage[], patch: Partial<AITurnResult>): ChatMessage[] => {
+  const updated = [...history];
+  const i = updated.length - 1;
+  const cur = i >= 0 && updated[i].role === "assistant" ? parseTurnContent(updated[i].content) : null;
+  if (cur) updated[i] = { role: "assistant", content: JSON.stringify({ ...cur, ...patch }) };
+  return updated;
+};
 
 /** Page one as stored. */
 const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
@@ -1506,13 +1515,7 @@ const GameViewer = ({
 
   // Replace one slice of the latest assistant turn's JSON, preserving every other field.
   const patchLatestTurn = (patch: Partial<AITurnResult>) => {
-    setFullMessageHistory((history) => {
-      const updated = [...history];
-      const i = updated.length - 1;
-      const cur = i >= 0 && updated[i].role === "assistant" ? parseTurnContent(updated[i].content) : null;
-      if (cur) updated[i] = { role: "assistant", content: JSON.stringify({ ...cur, ...patch }) };
-      return updated;
-    });
+    setFullMessageHistory((history) => withLatestTurnPatched(history, patch));
   };
 
   // Shared busy/abort wrapper for a partial re-generate (one aux request against the existing narration).
@@ -1598,7 +1601,7 @@ const GameViewer = ({
       if (tellTurn) setScriptTells((now) => withoutTimings(now, tellTurn, REROLLED_TIMINGS));
       // Page one of a fresh game restores the pre-start state, so the start scripts run again first.
       // A stat re-roll keeps the turn's location, clock and cast, so the replay's world writes drop.
-      const { written } = await runBeforeAI(
+      let { written } = await runBeforeAI(
         preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
         page === 1 && newPlaythroughRef.current,
       );
@@ -1606,6 +1609,14 @@ const GameViewer = ({
       // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
       let committed = false;
       try {
+        if (signal.aborted) return;
+        // The turn's Tool effects replay (Q39): its On Call writes land as saved, with no script run (Q41), and
+        // its After calls fire again with the batch.
+        const { onCallWrites, afterTriggers } = replayedToolEffects(worldTools, prev.toolCalls ?? []);
+        const onCalled = onCallWrites.length ? prepareTurnStartCode(written ?? preTurn) : null;
+        if (onCalled) {
+          written = onCalled.finish(await runStatCodeTurn({ ...onCalled.turn, replayed: onCallWrites, triggersOnly: true })).written ?? written;
+        }
         if (signal.aborted) return;
         const base = written ?? preTurn;
         const snapshot = statRequestFor(enabledStats(
@@ -1624,7 +1635,7 @@ const GameViewer = ({
           deltaHours: turnHours,
           elapsedHours: gameTime,
           calendar,
-        }, base, base.globalStats);
+        }, base, base.globalStats, afterTriggers);
         applyRegenTick(turnHours, base.globalStats);
         patchLatestTurn({ stat_changes: statChanges });
         committed = true;
@@ -2908,6 +2919,7 @@ const GameViewer = ({
         codeWrites: beforeWorldWrites,
         heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
         diaryNames: Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
+        toolCalls: worldToolTurn.calls(),
       };
       const commit = computeTurnCommit({ result, plan, context: commitContext });
       if (!commit) return;
@@ -3260,7 +3272,7 @@ const GameViewer = ({
       base: TurnCodeState | null = null,
       // The pre-turn stats the regen tick's starvation check reads.
       thresholdStats?: readonly PlayerStat[],
-      // The turn's armed After the AI World Tool calls; a re-roll passes none (Q-B ruling).
+      // The turn's armed After the AI World Tool calls; a re-roll passes the saved ones (Q39).
       triggers: readonly ScriptTrigger[] = [],
     ) => {
       const baseStats = base?.globalStats ?? rawGlobalStatsRef.current;
@@ -3370,10 +3382,15 @@ const GameViewer = ({
       setIsGameStarted(true);
       // The turn is kept, so the before box's writes are kept with it.
       beforeBoxUndoRef.current = null;
+      // Its Tool calls are kept too, so a re-roll replays the On Call writes the kept text was written with (Q43).
+      const toolCalls = worldToolTurnRef.current?.calls() ?? [];
+      const keepCalls = (history: readonly ChatMessage[]) => (toolCalls.length ? withLatestTurnPatched(history, { toolCalls }) : [...history]);
+      if (toolCalls.length) setFullMessageHistory(keepCalls);
       // Event-handler context: saveCurrentGameState reads the latest committed state, and the kept
       // narration already landed during streaming — so a synchronous snapshot here is fresh. Index it by
       // its own history length to keep gameStates aligned (same rule as the normal post-turn save).
-      const snapshot = { ...saveCurrentGameState(), isGameStarted: true };
+      const saved = saveCurrentGameState();
+      const snapshot = { ...saved, isGameStarted: true, ...(saved.fullMessageHistory ? { fullMessageHistory: keepCalls(saved.fullMessageHistory) } : {}) };
       const pageIndex = snapshotPageIndex(snapshot.fullMessageHistory?.length ?? 0, messagesPerPage);
       setGameStates((prev) => placeSnapshot(prev, pageIndex, snapshot));
     } else {
