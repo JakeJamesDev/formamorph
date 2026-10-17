@@ -133,6 +133,18 @@ export interface WorldWrites {
   minutes?: number;
   /** Once per name, in first-call order; a call with a description fills in one without. */
   discover?: DiscoverWrite[];
+  /** Every `memory.add` line, in call order. */
+  memory?: string[];
+  /** Every `memory.pin` line, in call order. */
+  pins?: string[];
+  /** Every `diary` line, in call order. */
+  diary?: DiaryWrite[];
+}
+
+/** One `diary` call: the entity's id, or its name when it has none, and the line. */
+export interface DiaryWrite {
+  entity: string;
+  line: string;
 }
 
 /** The `narration` a During AI Output run reads. Its presence marks the run's timing. */
@@ -1121,16 +1133,18 @@ export interface StatCodeRunOptions {
   prompts?: ScriptPromptHost;
   /** What `location` reads and what `location.move` can name. Absent, the run knows none. */
   places?: SandboxPlaces;
+  /** The entities play discovered, which `diary` can name beside `entities`. */
+  discovered?: readonly SandboxPlace[];
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
 const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
-/** The prelude of `location`, `discover` and the hook `clock.advance` calls. An unknown location is listed as well
- *  as thrown, so a script that catches the throw still fails. */
-const worldPrelude = ({ locations, location }: SandboxPlaces): string => [
-  `const [location, discover, ${ADVANCE_CLOCK}, ${WORLD_WRITES}] = ((places, lock, note) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], unknown: [] };`,
+/** The prelude of `location`, `discover`, `memory`, `diary` and the hook `clock.advance` calls. An unknown location or
+ *  entity is listed as well as thrown, so a script that catches the throw still fails. `cast` is who `diary` can name. */
+const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[]): string => [
+  `const [location, discover, memory, diary, ${ADVANCE_CLOCK}, ${WORLD_WRITES}] = ((places, cast, lock, note) => {`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], unknown: [] };`,
   `  const find = (kind, list, target) => {`,
   `    const hit = typeof target === 'string' ? list.find((place) => place.id === target) || list.find((place) => place.name === target) : undefined;`,
   `    if (hit) return hit.id;`,
@@ -1158,24 +1172,45 @@ const worldPrelude = ({ locations, location }: SandboxPlaces): string => [
   `    writes.minutes += minutes;`,
   `    writes.advanced = true;`,
   `  };`,
-  `  return [location, Object.freeze(discover), advance, writes];`,
-  `})(${JSON.stringify({ locations, location })}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
+  `  const line = (call, value) => {`,
+  `    if (!text(value)) throw new TypeError(call + ' needs a line as text');`,
+  `    return text(value);`,
+  `  };`,
+  `  const diary = (target, value) => {`,
+  `    const entity = find('entity', cast, target);`,
+  `    writes.diary.push({ entity, line: line('diary', value) });`,
+  `  };`,
+  `  const memory = Object.freeze(lock({`,
+  `    add: (value) => { writes.memory.push(line('memory.add', value)); },`,
+  `    pin: (value) => { writes.pins.push(line('memory.pin', value)); },`,
+  `  }, ['add', 'pin'], 'memory.', note));`,
+  `  return [location, Object.freeze(discover), memory, Object.freeze(diary), advance, writes];`,
+  `})(${JSON.stringify({ locations, location })}, ${JSON.stringify(cast)}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
 ].join('\n');
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
+
+/** The entities of `entities` that `diary` can name: every one but the persona, by id, else by name. */
+const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity): SandboxPlace[] => entities
+  .filter((entity) => entity !== persona && !(persona.id && entity.id === persona.id) && hasEntityKey(entity.name))
+  .map((entity) => ({ id: entity.id || entity.name, name: entity.name }));
 
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
 function readWorldWrites(dump: string): { writes?: WorldWrites } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, unknown } = parsed as {
-    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; unknown: string[];
+  const { location, minutes, advanced, discover, memory, pins, diary, unknown } = parsed as {
+    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[];
+    diary: DiaryWrite[]; unknown: string[];
   };
   if (unknown.length) return { error: unknown[0] };
   const writes: WorldWrites = {
     ...(location === null ? {} : { location }),
     ...(advanced ? { minutes } : {}),
     ...(discover.length ? { discover } : {}),
+    ...(memory.length ? { memory } : {}),
+    ...(pins.length ? { pins } : {}),
+    ...(diary.length ? { diary } : {}),
   };
   return Object.keys(writes).length ? { writes } : {};
 }
@@ -1247,7 +1282,7 @@ export const executeStatCode = async (
   currentStat: Stat | null,
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
-    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES,
+    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [],
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1332,7 +1367,7 @@ export const executeStatCode = async (
       `const self = ${!currentStat ? selfTraitSource : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
-      worldPrelude(places),
+      worldPrelude(places, [...diaryCast(entities, persona), ...discovered]),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,

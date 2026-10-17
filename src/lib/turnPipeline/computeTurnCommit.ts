@@ -57,6 +57,8 @@ export interface TurnCommitContext {
   codeWrites?: WorldWrites;
   /** Names a code discovery leaves alone: every entity's, and the ones the player deleted. Absent ⇒ none. */
   heldNames?: readonly string[];
+  /** Entity id → the name its diary entries go under, for the code's `diary` lines. */
+  diaryNames?: Readonly<Record<string, string>>;
 }
 
 export interface TurnCommitInput {
@@ -206,7 +208,8 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
 /**
  * `commit` with `writes` laid over the code writes it already holds. A code write beats the pass for its
  * field: a move drops the suggest offer, an advance replaces the turn's duration, and a described discovery
- * replaces the pass's record of that name. The same commit when `writes` is absent.
+ * replaces the pass's record of that name. Memory and diary lines join the turn beside the passes. The same
+ * commit when `writes` is absent.
  */
 export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefined, context: TurnCommitContext): TurnCommit {
   if (!writes) return commit;
@@ -239,6 +242,17 @@ export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefin
     ];
   }
   if (entities !== turn.entities) turn = { ...turn, entities };
+
+  // Memory and diary lines go in their own fields, so the digest and diary passes still run for the turn (Q37).
+  if (codeWrites?.memory) turn = { ...turn, codeMemory: codeWrites.memory };
+  if (codeWrites?.diary) {
+    const codeDiaries: Record<string, string[]> = {};
+    for (const { entity, line } of codeWrites.diary) {
+      const name = context.diaryNames?.[entity] ?? entity;
+      codeDiaries[name] = [...codeDiaries[name] ?? [], line];
+    }
+    turn = { ...turn, codeDiaries };
+  }
 
   return { ...commit, turn, discoveries, suggestedLocation, codeMove, turnHours, clock, codeWrites };
 }

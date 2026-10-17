@@ -41,6 +41,15 @@ describe('the on-demand script check', () => {
     expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
   });
 
+  it('runs memory and diary writes for an entity of the world clean, and fails a diary for one it lacks', async () => {
+    const world = (code: string): RuleWorld => ({
+      ...base([]), entities: [{ id: 'tor', name: 'Tor', description: '' } as Entity], scripts: [{ id: 'w', timing: 'after', code }],
+    });
+    expect(await checkScripts(world('memory.add("The gate fell."); memory.pin("Tor lied."); diary("Tor", "I lied.");'))).toEqual([]);
+    const [found] = await checkScripts(world('diary("Mira", "Hello.");'));
+    expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
+  });
+
   it('runs every script the static rules read, and names each by the same row', async () => {
     const fails: Script[] = [{ id: 'f', timing: 'after', code: 'throw new Error("x");' }];
     const ash: Entity = {

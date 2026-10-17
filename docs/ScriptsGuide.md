@@ -232,6 +232,8 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `location` | `id`, `name`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
+| `memory` | `add()`, `pin()` | — | `memory.pin(<text>)` |
+| `diary` | — | — | `diary("<Entity>", <text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
@@ -844,10 +846,37 @@ if (stats.Energy.value <= 0) location.move("Camp");
 - **A name that an entity already has does nothing.**
 - **The entity goes away when the turn does.** A regenerate or a stopped turn drops it.
 
+### Memory
+<!-- keywords: remember, add memory, pin memory, recall, story so far, long-term memory, note -->
+
+`memory` adds to the story's memory. Each call takes one line of text.
+
+- **`memory.add(<text>)`** adds a line to this turn's memory, after the AI's summary of the turn. The AI still writes its summary. Recall finds both on later turns when they fit. The line isn't sent with every request.
+- **`memory.pin(<text>)`** adds a memory that is sent with every request, as one you write in the Memory Manager is. It shows there under **Custom**, where the player can edit or delete it.
+- **Both go away when the turn does.** A regenerate or a stopped turn drops them.
+
+```js
+// The vault opened, so the story keeps the fact for good.
+if (stats.Keys.value >= 3) memory.pin("The vault under the chapel is open.");
+```
+
+### Diary
+<!-- keywords: character diary, journal, entity memory, what they remember, first person -->
+
+`diary("<Entity>", <text>)` adds a line to an entity's diary for this turn, by name or id, after the AI's entry. The AI still writes its entry. A diary line reads in the entity's own voice.
+
+- **Any entity in play is a target**, from your world or discovered during play.
+- **A name the game has no entity for stops the script with an error.** The persona has no diary, so its name stops the script too.
+- **The line goes away when the turn does.** A regenerate or a stopped turn drops it.
+
+```js
+if (traits.Betrayed.enabled) diary("Mira", "I trusted them, and they sold me out.");
+```
+
 ### Code Beats the AI
 <!-- keywords: who wins, ai overrides, script vs ai, precedence location clock -->
 
-A script's move, advance or discovery wins over the AI's answer for the same turn. With no script write, the AI's answer stands as before. Like every script write, each one belongs to its turn: a regenerate or a stopped turn drops it. A stat re-roll keeps the turn's place, time and cast.
+A script's move, advance or discovery wins over the AI's answer for the same turn. Memory and diary lines are the exception: they join the AI's summary and diary entries instead. With no script write, the AI's answer stands as before. Like every script write, each one belongs to its turn: a regenerate or a stopped turn drops it. A stat re-roll keeps the turn's place, time, cast, memories and diary lines.
 
 ### Examples
 <!-- keywords: sample scripts, cookbook, survival needs, decay over time, combat math, rng, randomness same number, soft cap, copy paste ideas -->

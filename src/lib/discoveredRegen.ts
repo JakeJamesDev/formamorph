@@ -1,5 +1,5 @@
 import type { ChatMessage } from '@/types';
-import { parseTurnContent } from '@/lib/turnDigest';
+import { parseTurnContent, turnMemory } from '@/lib/turnDigest';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { vectorKey, cosineSimilarity } from '@/lib/memoryRelevance';
 
@@ -74,7 +74,7 @@ export function collectAppearances(
     if (!parsed?.turnId || parsed.turnId === excludeTurnId) continue;
     if (!parsed.narration?.trim() || !parsed.entities?.length) continue;
     if (!parsed.entities.some((n) => sameCharacterName(n, name))) continue;
-    out.push({ turnId: parsed.turnId, narration: parsed.narration.trim(), summary: parsed.summary?.trim() || undefined });
+    out.push({ turnId: parsed.turnId, narration: parsed.narration.trim(), summary: turnMemory(parsed)?.trim() || undefined });
   }
   return out;
 }

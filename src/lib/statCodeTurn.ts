@@ -97,6 +97,8 @@ export interface StatCodeTurn {
   prompts?: ScriptPromptHost;
   /** The world's locations, authored names and all, and where the turn stands. Absent, code names none. */
   places?: SandboxPlaces;
+  /** The entities play discovered, which `diary` can name. Absent ⇒ none. */
+  discovered?: readonly SandboxPlace[];
 }
 
 /** One entity owner's part of a turn, in the same terms as the turn owner's. */
@@ -580,6 +582,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   };
   const ownerEntries = new Map(runs.map((run) => [run, ownerEntryOf(run)]));
   const places = turn.places && codePlaces(turn.places, placeholderDefs);
+  const discovered = turn.discovered && codePlaces({ locations: turn.discovered, location: null }, placeholderDefs).locations;
   const dictionaries = sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners);
   /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
   const whoRan = ({ stat, trait, script }: ScriptUnit) => (stat ? `Stat ${stat.name}`
@@ -598,7 +601,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const selfTrait = trait && selfTraitOf(trait, owner);
     const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
       clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
-      owner, dictionaries, prompts: turn.prompts, places,
+      owner, dictionaries, prompts: turn.prompts, places, discovered,
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }),
     });

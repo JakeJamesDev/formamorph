@@ -1,7 +1,7 @@
 import type { ChatMessage, DictionaryEntry } from '@/types';
 import { tilePieces, type AnatomyPiece, type AnatomyRun } from './requestAnatomy';
 import type { MemoryNote } from './memoryOverrides';
-import { parseTurnContent } from './turnDigest';
+import { parseTurnContent, turnMemory } from './turnDigest';
 import { getActivatedDictionary, parseKeywords } from './dictionaryUtils';
 import { estimateTokens } from './memoryUtils';
 import { containsWord } from './locationMatch';
@@ -235,7 +235,7 @@ export function parseTurns(history: ChatMessage[]): BandTurn[] {
       turnId: parsed.turnId,
       userMsg,
       gameText: parsed.narration ?? '',
-      summary: parsed.summary,
+      summary: turnMemory(parsed),
       entities: parsed.entities,
       importance: parsed.importance,
       timeDelta: parsed.timeDelta,
