@@ -21,6 +21,7 @@ Spec: R1, R2, R4, R6, Q1–Q4, Q12, Q13; stories 6, 7, 9–16, 36, 37, 41, 43.
 - [ ] An armed trigger runs before a world After Script, and a later write by the Script wins a shared field
 - [ ] Regenerate and cancel drop triggers and On Call writes; nothing armed survives into the next turn
 - [ ] A user Tool rejects a timing; its script still cannot write
+- [ ] Importing a world with a malformed or duplicate-name World Tool drops it and shows a toast with the count and reason (Q34)
 - [ ] Changelog fragment written
 - [ ] Four gates green
 

@@ -56,6 +56,8 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q31 | A stat re-roll drops the replay's location, clock and discover writes. The turn keeps the place, time and cast it committed: a re-roll redoes stats, not the scene (ticket 03 ruling) |
 | Q32 | `discover` skips a name the player deleted, in both forms, as the pass does (ticket 03 ruling, from Q29) |
 | Q33 | An output or After the AI `clock.advance` that makes the turn longer than the hours regen already ticked ticks regen and starvation for the extra hours. A shorter one moves only the clock; the regen already ticked stays. A Before the AI advance has no gap. Making regen wait for the After batch is out of scope (user ruling, ticket 03) |
+| Q34 | An imported world drops a malformed or duplicate-name World Tool and the import continues; a toast says how many Tools were dropped and why. Ticket 05 builds the toast (user ruling, ticket 01 edge) |
+| Q35 | On the Tools tab read view, Offered To and Max Calls write as they change, one history Step each, as in Settings; Q21's draft applies to the Tool editor (ticket 01 ruling, from Q21) |
 
 ## User Stories
 
