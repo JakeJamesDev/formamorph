@@ -40,13 +40,18 @@ export function memberRenameKey(member: SyntaxNode, object: SyntaxNode, code: st
     return { name, keyFrom: property.from, keyTo: property.to, quote: null, ...span };
   }
   const literal = member.getChild('String');
-  if (!literal || literal.to - literal.from < 2) return null;
+  const text = literal && stringText(literal, code);
+  return literal && text ? { name: text.name, keyFrom: literal.from, keyTo: literal.to, quote: text.quote, ...span } : null;
+}
+
+/** A plain string literal's name and quote, or null for one an escape hides: only a run could evaluate that, so the
+ *  step cannot be proven to be this one. */
+function stringText(literal: SyntaxNode, code: string): { name: string; quote: string } | null {
+  if (literal.to - literal.from < 2) return null;
   const quote = code[literal.from];
   if (code[literal.to - 1] !== quote || (quote !== '"' && quote !== "'")) return null;
   const name = code.slice(literal.from + 1, literal.to - 1);
-  // An escape has to be evaluated to name the key, so the step cannot be proven to be this one.
-  if (name.includes('\\')) return null;
-  return { name, keyFrom: literal.from, keyTo: literal.to, quote, ...span };
+  return name.includes('\\') ? null : { name, quote };
 }
 
 /** Whether this member expression is the object of another, and so already covered by that longer chain. */
@@ -90,6 +95,35 @@ export function codeRenameChains(code: string, root: ChainRoot): CodeRenameKey[]
     if (cursor.type.name !== 'MemberExpression' || isInnerMember(cursor.node)) continue;
     const chain = chainAt(cursor.node, code, root);
     if (chain?.length) found.push(chain);
+  } while (cursor.next());
+  return found;
+}
+
+/** The place `location.move("<name>")` names when `literal` is its first argument, as a key to rewrite. */
+export function locationMoveKey(literal: SyntaxNode, code: string): CodeRenameKey | null {
+  const args = literal.parent;
+  const call = args?.name === 'ArgList' ? args.parent : null;
+  const callee = call?.name === 'CallExpression' ? call.firstChild : null;
+  const object = callee?.name === 'MemberExpression' ? callee.firstChild : null;
+  const method = callee?.getChild('PropertyName');
+  if (!args || object?.name !== 'VariableName' || code.slice(object.from, object.to) !== 'location') return null;
+  // The first argument follows the `(`. Nodes are made per read, so the match is by place.
+  if (!method || code.slice(method.from, method.to) !== 'move' || args.firstChild?.nextSibling?.from !== literal.from) return null;
+  const text = stringText(literal, code);
+  return text && { name: text.name, keyFrom: literal.from, keyTo: literal.to, quote: text.quote, optional: false, objectTo: literal.from, memberTo: literal.to };
+}
+
+/** Every place named by a `location.move("<name>")` call in `code`, in source order. A computed name is no key, and
+ *  where the author declares a `location` of their own none of its calls is the sandbox's. */
+export function locationMoveKeys(code: string): CodeRenameKey[] {
+  if (!code.includes('location')) return [];
+  const found: CodeRenameKey[] = [];
+  const cursor = javascriptLanguage.parser.parse(code).cursor();
+  do {
+    if (cursor.type.name === 'VariableDefinition' && code.slice(cursor.from, cursor.to) === 'location') return [];
+    if (cursor.type.name !== 'String') continue;
+    const key = locationMoveKey(cursor.node, code);
+    if (key) found.push(key);
   } while (cursor.next());
   return found;
 }

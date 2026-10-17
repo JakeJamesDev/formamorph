@@ -8,7 +8,7 @@ import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSur
 import { canBePlayer } from '@/lib/owners';
 import type { DocTarget } from '@/lib/docs/docsLinks';
 import type {
-  CodeDictionaryRecord, CodeEntityRecord, CodeItemScope, CodeOwnersRecord, CodeOwnerRecord, CodePlaceholderOwner,
+  CodeDictionaryRecord, CodeEntityRecord, CodeItemScope, CodeLocationRecord, CodeOwnersRecord, CodeOwnerRecord, CodePlaceholderOwner,
   CodePlaceholderRecord, CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
 } from '@/lib/codeWorldLookup';
 import { placeholderKindNoun, placeholderWeight } from '@/lib/placeholders';
@@ -25,7 +25,7 @@ export type DeclarationKind = 'const' | 'let' | 'var' | 'function' | 'class' | '
 /** What a card names: a sandbox global, a member of one, an entry of one of the world's maps, a name the
  *  code declares, or a template slot. */
 export type CodeCardKind =
-  | 'global' | 'property' | 'method' | 'stat' | 'trait' | 'placeholder' | 'entity' | 'dictionary'
+  | 'global' | 'property' | 'method' | 'stat' | 'trait' | 'placeholder' | 'entity' | 'dictionary' | 'location'
   | DeclarationKind | 'slot';
 
 /** The card's first line: what the name is, the path it reads as, and its type. A declared name has no type. */
@@ -54,7 +54,8 @@ export type CodeCardItem =
   | { kind: 'trait'; traitId: string; entityId?: string }
   | { kind: 'placeholder'; placeholderId: string }
   | { kind: 'entity'; entityId: string }
-  | { kind: 'dictionary'; dictionaryId: string };
+  | { kind: 'dictionary'; dictionaryId: string }
+  | { kind: 'location'; locationId: string };
 /** One Allowed Values line. A weight of 0 never draws, so the card fades it. */
 export interface CodeCardValue {
   text: string;
@@ -292,6 +293,15 @@ function dictionaryDetails({ dictionary, placeholders }: CodeDictionaryRecord): 
   };
 }
 
+function locationDetails({ location, present }: CodeLocationRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+  const description = location.playerDescription;
+  return {
+    ...(description ? { description } : {}),
+    rows: [...(location.isStarting ? [{ label: 'Starting', value: 'Yes' }] : []), { label: 'Present', value: listText(present) }],
+    item: { kind: 'location', locationId: location.id },
+  };
+}
+
 const LIBRARY_PERSONA_NOTE = 'Under a library persona, reach the Custom Persona through entities[...]';
 
 /** `self`, `owner` and `persona` as the lookup's world holds them, laid over their surface card. */
@@ -439,6 +449,11 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
       const card = world('dictionary', keyPath('dictionaries', name.key), 'Dictionary');
       const record = options.lookup?.dictionary(name.key);
       return record ? { ...card, ...dictionaryDetails(record) } : card;
+    }
+    case 'location': {
+      const card = world('location', name.key, 'Location');
+      const record = options.lookup?.location(name.key);
+      return record ? { ...card, ...locationDetails(record) } : card;
     }
     case 'declared': {
       const line = code.slice(0, name.at).split('\n').length;

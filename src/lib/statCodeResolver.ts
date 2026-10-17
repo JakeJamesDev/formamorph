@@ -6,6 +6,7 @@
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { surfaceHasGlobal, type CodeSurface } from '@/lib/codeSurface';
+import { locationMoveKey } from '@/lib/codeRenameChains';
 import { isPlaceholderEntryMember } from '@/lib/statCodePaths';
 import { DELTA_MEMBERS } from '@/lib/statCodeSurface';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
@@ -62,6 +63,8 @@ export type ResolvedCodeName = { key: string; from: number; to: number } & (
   | { kind: 'placeholder'; owner: PlaceholderOwner; path: readonly string[] }
   | { kind: 'entity' }
   | { kind: 'dictionary' }
+  /** The place a `location.move("<name>")` call names. */
+  | { kind: 'location' }
   | { kind: 'declared'; at: number }
   | { kind: 'slot' }
 );
@@ -325,7 +328,10 @@ export function codeResolver(
         return member && ref ? stepName(member, ref) : null;
       }
       default: {
-        // A string names something only as a bracket key; `x === "Health"` names nothing.
+        // The one string that names something outside a bracket key is the place `location.move` takes.
+        const move = declaredAt().has('location') ? null : locationMoveKey(node, code);
+        if (move) return { kind: 'location', key: move.name, from: node.from, to: node.to };
+        // A string names something otherwise only as a bracket key; `x === "Health"` names nothing.
         const member = keyOwner(node);
         const ref = member ? memberKey(member, code) : null;
         return member && ref ? stepName(member, ref) : null;

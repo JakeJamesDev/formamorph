@@ -574,13 +574,15 @@ const WorldEditorInner = ({
       case 'placeholder': return navigateToBenchItem('placeholders', item.placeholderId);
       case 'entity': return navigateToBenchItem('entities', item.entityId);
       case 'dictionary': return navigateToBenchItem('dictionary', item.dictionaryId);
+      case 'location': return navigateToBenchItem('locations', item.locationId);
     }
   }, [navigateToBenchItem]);
   // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
-  const goToCodeUse = useCallback(({ entityId, rowId, trait, world, timing, scriptId, line }: CodeUse) => {
-    requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), timing, scriptId, line });
-    // A world script's one place is its row on the Scripts tab.
+  const goToCodeUse = useCallback(({ entityId, rowId, trait, world, tool, timing, scriptId, line }: CodeUse) => {
+    requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), ...(tool && { tool }), timing, scriptId, line });
+    // A world script's one place is its row on the Scripts tab, and a World Tool's is its row on the Tools tab.
     if (world) return navigateToBenchItem('scripts', scriptEntryKey({ kind: 'world' }, scriptId));
+    if (tool) return navigateToBenchItem('tools', rowId);
     const tab = trait ? 'traits' : 'stats';
     if (!entityId) return navigateToBenchItem(tab, rowId);
     if (trait) setEntityTraitId(rowId);

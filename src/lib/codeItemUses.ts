@@ -11,8 +11,10 @@ import { cardWorldNames, statBoxAnalysisOptions } from './statCodeBoxOptions';
 import { parseCode, resolveCodeName } from './statCodeResolver';
 import { scriptSurface, STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
 import {
-  statCodeBoxes, traitCodeBoxes, worldScriptBoxes, type CodeOwners, type StatCodeBox, type TraitCodeBox,
+  statCodeBoxes, traitCodeBoxes, worldScriptBoxes, worldToolBoxes, type CodeOwners, type StatCodeBox, type TraitCodeBox,
 } from './statCodeTargets';
+import { worldToolSurface } from './tools/worldToolSurface';
+import { toolTimingOf } from './tools/worldTools';
 
 /** An item other than a stat. */
 export type OtherUseItem = Exclude<CodeCardItem, { kind: 'stat' }>;
@@ -26,6 +28,7 @@ function matcherOf(item: OtherUseItem, world: CodeCardWorld): (found: CodeCardIt
     case 'trait': return (found) => found.kind === 'trait' && found.traitId === item.traitId;
     case 'entity': return (found) => found.kind === 'entity' && found.entityId === item.entityId;
     case 'dictionary': return (found) => found.kind === 'dictionary' && found.dictionaryId === item.dictionaryId;
+    case 'location': return (found) => found.kind === 'location' && found.locationId === item.locationId;
     case 'placeholder': {
       const copies = new Set(world.placeholders.filter((p) => p.blueprintId === item.placeholderId).map((p) => p.id));
       return (found) => found.kind === 'placeholder' && (found.placeholderId === item.placeholderId || copies.has(found.placeholderId));
@@ -101,5 +104,13 @@ export function itemUses(
     });
     return boxUses(owners, box, matchingOffsets(box.code, options, matches));
   });
-  return [...worldBoxUses, ...statBoxUses, ...traitBoxUses];
+  // A World Tool's box reads as its editor reads it: no `self` or owner, and `args` from its parameters.
+  const toolBoxUses = worldToolBoxes(world).flatMap((box) => {
+    const options = statBoxAnalysisOptions(names, {
+      selfName: '', surface: worldToolSurface(box.tool.params, toolTimingOf(box.tool)),
+      lookup: lookupOf({ owner: null, timing: box.timing, self: traitBoxSelf('', '') }),
+    });
+    return boxUses(owners, box, matchingOffsets(box.code, options, matches));
+  });
+  return [...worldBoxUses, ...statBoxUses, ...traitBoxUses, ...toolBoxUses];
 }

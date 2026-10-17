@@ -6,6 +6,7 @@ import type { PlaceholderOwners } from './placeholderHomes';
 import { statCodeOwners } from './statCodeTargets';
 import type { Dictionary, Entity, Placeholder, Stat, StatGroup, Trait } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { scriptWorldTool } from '@/test/worldToolFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -121,6 +122,17 @@ describe('Find All Uses for other kinds', () => {
     const uses = statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, at).uses({ kind: 'trait', traitId: 'brave' });
     expect(uses.filter((use) => use.world)).toEqual([
       { entityId: null, rowId: 'weather', world: true, timing: 'start', scriptId: 'weather', name: 'World', line: 2, noOwners: false },
+    ]);
+  });
+
+  it('lists a World Tool’s uses at the Tool’s line, reading its script with args and no self', () => {
+    const at: CodeCardWorld = {
+      ...world, worldTools: [scriptWorldTool('travel-id', 'travel', 'const where = args.place;\nif (traits.Brave.enabled) memory.add("Bold.");', 'after')],
+    };
+    const owners = statCodeOwners({ ...at, placeholders });
+    const uses = statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, at).uses({ kind: 'trait', traitId: 'brave' });
+    expect(uses.filter((use) => use.tool)).toEqual([
+      { entityId: null, rowId: 'travel-id', tool: true, timing: 'after', scriptId: 'travel-id', name: 'travel', line: 2, noOwners: false },
     ]);
   });
 });

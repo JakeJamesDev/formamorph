@@ -1,6 +1,18 @@
 /** A world's own Tools (`World.tools`): reading them off an untrusted world and naming the Tool one replaces. */
-import type { Tool } from '@/types';
+import type { ScriptTiming, Tool, ToolScriptTiming } from '@/types';
 import { catalogToolNamed, isRecord, parseTool, sameToolName } from './toolValidation';
+
+/** The script timing a Script World Tool runs on: On Call is the Before the AI box's turn state (Q40). */
+export const SCRIPT_TIMING_OF_TOOL = { call: 'before', output: 'output', after: 'after' } as const satisfies Record<ToolScriptTiming, ScriptTiming>;
+
+/** The timing of a Tool's handler: a Script's own, else On Call, which a Lookup and a Template share. */
+export const toolTimingOf = ({ handler }: Pick<Tool, 'handler'>): ToolScriptTiming => (handler.kind === 'script' ? handler.timing ?? 'call' : 'call');
+
+/** `tools` with each Script Tool that `codeById` names holding its new code; every other field and Tool stays. */
+export const withToolCode = (tools: readonly Tool[], codeById: Readonly<Record<string, string>>): Tool[] =>
+  tools.map((tool) => (tool.handler.kind === 'script' && tool.id in codeById
+    ? { ...tool, handler: { ...tool.handler, code: codeById[tool.id] } }
+    : tool));
 
 /** A World Tool that `readWorldTools` dropped: its name when it has one, and why. */
 export interface DroppedWorldTool {

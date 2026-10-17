@@ -4,6 +4,7 @@ import { statUses } from './codeStatUses';
 import type { CodeUse } from './codeUses';
 import { statCodeOwners, type StatRouteWorld } from './statCodeTargets';
 import { boxScripts } from '@/test/scriptFixtures';
+import { scriptWorldTool } from '@/test/worldToolFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', value: 0, min: 0, max: 100, ...extra } as Stat);
@@ -96,5 +97,25 @@ describe('statUses', () => {
     expect(uses).toEqual([
       { entityId: null, rowId: 'weather', world: true, timing: 'after', scriptId: 'weather', name: 'World', line: 2, noOwners: false },
     ]);
+  });
+
+  it('lists a World Tool’s uses by its id and name, at the line, under the timing its script runs in', () => {
+    const worldTools = [
+      scriptWorldTool('travel-id', 'travel', 'const where = args.place;\nstats.Alert.value = 2;', 'after'),
+      scriptWorldTool('filter-id', 'filter', 'stats.Alert.value = 1;', 'output'),
+      scriptWorldTool('roll-id', 'roll', 'return stats.Alert.value;', 'call'),
+      scriptWorldTool('other-id', 'other', 'return stats.Health.value;', 'after'),
+    ];
+    const uses = statUses(statCodeOwners(world), { statId: 'alert' }, { traits: [], traitGroups: [], worldTools });
+    expect(uses).toEqual([
+      { entityId: null, rowId: 'travel-id', tool: true, timing: 'after', scriptId: 'travel-id', name: 'travel', line: 2, noOwners: false },
+      { entityId: null, rowId: 'filter-id', tool: true, timing: 'output', scriptId: 'filter-id', name: 'filter', line: 1, noOwners: false },
+      { entityId: null, rowId: 'roll-id', tool: true, timing: 'before', scriptId: 'roll-id', name: 'roll', line: 1, noOwners: false },
+    ]);
+  });
+
+  it('reads no code from a World Tool that is a lookup or a template', () => {
+    const lookup = { ...scriptWorldTool('l', 'look', ''), handler: { kind: 'template' as const, body: 'stats.Alert.value' } };
+    expect(statUses(statCodeOwners(world), { statId: 'alert' }, { traits: [], traitGroups: [], worldTools: [lookup] })).toEqual([]);
   });
 });

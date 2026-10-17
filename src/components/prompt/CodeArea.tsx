@@ -85,7 +85,8 @@ interface CodeAreaProps {
   traits?: readonly CodeTraitPlace[];
   /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
-  /** The Variable menu's tree where the surface has no stat maps, built on each open. Absent there, no menu. */
+  /** The Variable menu's tree where the surface has no stat maps, built on each open. Absent there, no menu. With stat
+   *  maps, these groups come before the stat tree's. */
   variables?: () => readonly VariableNode[];
   /** What cards ask the world, bound to this box. Absent, cards show no World Details. */
   lookup?: CodeWorldLookup;
@@ -301,7 +302,11 @@ export function CodeArea(props: CodeAreaProps) {
   const variableTree = useCallback(() => {
     const { slots: template, statNames, owner, placeholders, traits, entities, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
-    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface));
+    // A box that gives a menu beside stat maps, such as a World Tool's arguments, lists it first.
+    return [
+      ...variables?.() ?? [],
+      ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
+    ];
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;

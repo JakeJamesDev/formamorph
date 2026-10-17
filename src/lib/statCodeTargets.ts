@@ -7,12 +7,13 @@
  * Every authored entity counts as in the game, and `persona` may be any entity that can be played (Q11).
  */
 
-import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink, Trait, TraitGroup } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink, Tool, Trait, TraitGroup } from '@/types';
 import { canBePlayer } from './owners';
 import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
 import { filledCodeBoxes } from './statCodeTiming';
-import { filledScripts, type ScriptHome } from './scripts';
+import { filledScripts, hasCode, type ScriptHome } from './scripts';
+import { SCRIPT_TIMING_OF_TOOL, toolTimingOf } from './tools/worldTools';
 import { effectiveLinkTrait, linkTraitState } from './blueprints';
 import { blueprintItemIds, isDescendantGroup } from './traitTree';
 import {
@@ -196,6 +197,39 @@ export const isWorldScriptBox = (box: { home: { kind: string } }): box is WorldS
 /** The world's filled scripts, in stored order. `pick` widens the walk. */
 export function worldScriptBoxes(world: WorldScriptsSource, pick: ScriptPick = filledScripts): WorldScriptBox[] {
   return pick({ scripts: world.worldScripts }).map((script) => ({ home: { kind: 'world' }, ...script, owner: null, runs: [] }));
+}
+
+/** Where a World Tool's script is authored: the Tool on the Tools tab. */
+export type WorldToolHome = { kind: 'tool'; toolId: string };
+
+/** One Script World Tool that holds code. It runs with `self` and `owner` empty, as a world script does, and reads
+ *  `args` too. Its `id` is the Tool's, and its timing the script timing the Tool runs on. */
+export interface WorldToolBox extends Script {
+  home: WorldToolHome;
+  /** The Tool as the Tools tab holds it. */
+  tool: Tool;
+  owner: null;
+  runs: TraitRun[];
+}
+
+/** What a walk of World Tools reads from a world. */
+export interface WorldToolsSource {
+  worldTools?: readonly Tool[];
+}
+
+/** Whether a box is a World Tool's. */
+export const isWorldToolBox = (box: { home: { kind: string } }): box is WorldToolBox => box.home.kind === 'tool';
+
+/** The world's Script Tools that hold code, in Tools-tab order. A Lookup or Template Tool holds none. */
+export function worldToolBoxes(world: WorldToolsSource): WorldToolBox[] {
+  return (world.worldTools ?? []).flatMap((tool): WorldToolBox[] => {
+    const { handler } = tool;
+    if (handler.kind !== 'script' || !hasCode(handler)) return [];
+    return [{
+      home: { kind: 'tool', toolId: tool.id }, id: tool.id, name: tool.name, timing: SCRIPT_TIMING_OF_TOOL[toolTimingOf(tool)],
+      code: handler.code, tool, owner: null, runs: [],
+    }];
+  });
 }
 
 /**

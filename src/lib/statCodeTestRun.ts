@@ -22,6 +22,7 @@ import { sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { activeStatEnabled } from '@/lib/traitEffects';
 import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
+import type { ToolArgs } from '@/lib/tools/toolRunner';
 import { startingGateStatsOf } from '@/lib/gateStats';
 import type { ScriptTiming, Stat, Trait, World } from '@/types';
 import { randomUUID } from '@/lib/uuid';
@@ -137,6 +138,8 @@ export interface TestCodeReport {
   dropped: string[];
   /** The sentence a During AI Output run left. */
   sentence?: string;
+  /** What a run given `args` returned, as text; null when it returned nothing. Absent on a run with no `args`. */
+  reply?: string | null;
 }
 
 /** How a run reads a world still being built. */
@@ -156,6 +159,8 @@ export interface TestRunOptions {
   sentence?: string;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
   prompts?: ScriptPromptHost;
+  /** A World Tool's call arguments. Given, `args` exists and the report carries the script's `reply`. */
+  args?: ToolArgs;
 }
 
 /** The range and value an assumed stat runs with. */
@@ -287,7 +292,7 @@ export async function runTestCode(
   code: string, timing: ScriptTiming, stat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
   { codeNamedStats, placeholders, traits, traitPlaces, entities, entityStats, places = NO_PLACES }:
     Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'traitPlaces' | 'entities' | 'entityStats' | 'places'>,
-  { pendingPersona: pending = false, missing, owner, selfTrait, sentence, prompts }: TestRunOptions = {},
+  { pendingPersona: pending = false, missing, owner, selfTrait, sentence, prompts, args }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
   // A pending run's empty persona holds the playable entities' traits and placeholders, so a write to one is kept.
@@ -341,8 +346,9 @@ export async function runTestCode(
       ...(personaNode && { persona: personaOfPlayables(entities, personaNode, entityStats) }),
       ...(ownerEntry && { owner: ownerEntry }),
       ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
-      ...(switchedTrait && { switchedTrait }), ...(prompts && { prompts }),
-      places,
+      ...(switchedTrait && { switchedTrait }), ...(prompts && { prompts }), ...(args && { args }),
+      // The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46).
+      places, openCast: true,
     },
   );
   const assumedField = missing ? { assumed } : {};
@@ -382,6 +388,7 @@ export async function runTestCode(
     ...droppedLine('acquired is read-only.', outcome.acquiredWrites),
     ...droppedLine('Unknown entity names.', outcome.unknownEntities?.filter(keep.entity)),
     ...droppedLine('Read-only fields.', outcome.readOnlyWrites),
+    ...(outcome.maybeDiary ?? []).map((name) => `Diary target “${name}” may be discovered in play.`),
     ...(outcome.entities ?? []).flatMap((row) => {
       const { entity, unknownTraits, acquiredWrites } = row;
       const at = (names: string[]) => names.map((name) => `${traitWritesPath(row)}.${name}`);
@@ -406,5 +413,6 @@ export async function runTestCode(
     ...assumedField,
     dropped,
     ...(outcome.sentence !== undefined && { sentence: outcome.sentence }),
+    ...(args && { reply: outcome.reply ?? null }),
   };
 }
