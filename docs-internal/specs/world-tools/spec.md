@@ -42,6 +42,16 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q17 | The game shows the existing Tool-call indicator, with the Tool's name, when the AI calls a World Tool |
 | Q18 | One bundled world ships an example World Tool: a During AI Output filter. The world is picked in its ticket |
 | Q19 | Test seams: `runTurn` with a fake AI Stream as the primary seam, plus the script run and `computeTurnCommit` |
+| Q20 | A name match removes the catalog or user Tool from every request in that world, whatever each one's `offeredTo`. One name is one Tool per world (ticket 01 ruling, from Q7) |
+| Q21 | The Tools tab mirrors Settings: a read view with Edit and Delete; Edit opens the existing Tool editor as a draft with Cancel and **Save Tool**. Only a valid Tool reaches the world. A Save and a Delete are each one history Step (ticket 01 ruling, from Q5) |
+| Q22 | Two World Tools in one world can't share a name: an error, as a taken name is. Taking a catalog or user Tool's name is a warning (ticket 01 ruling, from Q7) |
+| Q23 | Out of ticket 01: a per-Tool Enabled switch in the tab, Tool pack import and export, and copying from the player's own Tools (ticket 01 ruling, from Q6) |
+| Q24 | One Tool-call indicator for every Tool: the line names the round's Tools, joined ("Calling roll…"), catalog included. It stays behind Show Silent Requests, as today; a World Tool gets the same cue, not a louder one (ticket 01 ruling, from Q17) |
+| Q25 | Q9 already holds for output Scripts: the output run resets on the restarted index 0, and a rewrite pending at the retract never surfaces. Ticket 02 makes the restart an explicit retract hook with a generation counter, so a step that finishes after the retract is discarded, as the seam ticket 06 builds on, and adds end-to-end tests through the transport. Q9's "never reaches the screen" covers pending rewrites and the final text and save; a sentence already shown before the retract stays shown, then retracted, as raw text is today (ticket 02 ruling) |
+| Q26 | Calls: `location.move(nameOrId)` with read-only `location.name` and `location.id`; `clock.advance(minutes)` on the existing `clock` object; a top-level `discover(nameOrId)`. Ticket 04's calls follow the same style (ticket 03 ruling) |
+| Q27 | Clock advances in a turn add up, and the sum replaces the turn's duration: the time pass result, or Time Per Turn with the pass off (Q13, Q15). Scripts in one run read the clock as the run started. Negative or non-finite minutes throw (ticket 03 ruling) |
+| Q28 | Any world location is a valid move; there is no path check. A Before the AI move lands before routing, so narration is written at the new place and the up-front location pass result drops. An output or After the AI move lands at commit and drops that turn's route and suggest result. Later code write wins within the turn (ticket 03 ruling) |
+| Q29 | `discover(X)` adds authored entity X to the turn's location roster as a visitor record, which rolls back with the turn; a no-op when X is already there. Authored entities have no "met" state, and the discover pass only creates invented names, so the code record wins only on a name match (user ruling, ticket 03) |
 
 ## User Stories
 
