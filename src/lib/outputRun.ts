@@ -1,4 +1,5 @@
 import type { PlayerStat } from '@/types';
+import type { NarrationListener } from './aiRequest/narrationStream';
 import type { SentenceRewrite } from './aiRequest/narrationRewrite';
 import { filledScriptsAt } from './scripts';
 import {
@@ -13,6 +14,8 @@ import {
 export interface OutputRun {
   /** Rewrites one sentence. Calls must not overlap, which the sentence rewrite's queue guarantees. */
   rewrite: SentenceRewrite;
+  /** Hears the Narration Stream: a retract drops every write so far, a run still in progress included (Q9). */
+  listener: NarrationListener;
   /** What every sentence so far wrote, as one run's result over the turn's starting state. Null before the
    *  first sentence ran. */
   result: () => StatCodeTurnResult | null;
@@ -38,16 +41,22 @@ export function openOutputRun(turn: StatCodeTurn, released: () => number = () =>
   if (!hasOutputScripts(turn)) return null;
   let now = turn;
   const steps: StatCodeTurnResult[] = [];
+  // Bumped on a retract, so a sentence run that was in progress then leaves no write.
+  let round = 0;
+
+  const listener: NarrationListener = (event) => {
+    if (event.type !== 'retract') return;
+    round += 1;
+    now = turn;
+    steps.length = 0;
+  };
 
   const rewrite: SentenceRewrite = async (sentence, { index, full, earlier }) => {
-    // A reply starts at sentence 0, so a retract that restarts it leaves none of the first attempt's writes.
-    if (index === 0) {
-      now = turn;
-      steps.length = 0;
-    }
+    const mine = round;
     const shown = Math.min(released(), earlier.length);
     const narration = { sentence, full, index, sent: earlier.slice(0, shown), buffered: earlier.slice(shown) };
     const step = await runStatCodeTurn({ ...now, timing: 'output', narration });
+    if (mine !== round) return sentence;
     steps.push(step);
     now = afterRun(now, step);
     return step.sentence ?? sentence;
@@ -59,5 +68,5 @@ export function openOutputRun(turn: StatCodeTurn, released: () => number = () =>
     return ran && withSwitchRuns(turn, ran);
   };
 
-  return { rewrite, result, landing };
+  return { rewrite, listener, result, landing };
 }

@@ -3486,7 +3486,7 @@ const GameViewer = ({
     // Opt-in streaming read-aloud needs a loaded model.
     if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudListener);
     const rewriting = output && rewriteSentences(output.rewrite, ...listeners);
-    const toScreen = fanOut([liveReasoningSink(), narrationStream(...(rewriting ? [rewriting.listener] : listeners))]);
+    const toScreen = fanOut([liveReasoningSink(), narrationStream(...(output && rewriting ? [output.listener, rewriting.listener] : listeners))]);
     // Unmount aborts the turn, and its canceled event must not reach the screen. The turn stops waiting on the scripts.
     return {
       sink: (event) => { if (mounted.current) toScreen(event); else rewriting?.abandon(); },
