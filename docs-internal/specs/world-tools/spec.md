@@ -76,6 +76,8 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q51 | On a re-roll, a trait switch in an On Call call's saved writes fires the switched trait's When a Trait Switches scripts again, as every other re-rolled switch does. Q41 freezes only the On Call script, whose return value the AI read; switch scripts re-roll like the Before the AI box's (ticket 09 ruling) |
 | Q52 | The Narration system prompt is assembled before the Planning request, so Q44 did not reach it as ticket 05 landed. Ticket 10 rebuilds the Narration system prompt and chip values at the narration stage when any Planning-stage On Call write landed (stats, traits, clock, location, discover), closing Q38, Q44 and Q45 together. The recap's now-line and memory stamps are built inside the trimmed history, so the rebuild re-renders that history with the shown time and code view, keeping the memories the first trim picked and recording recall once. The first trim also reads the shown time, which covers a Before the AI advance. A turn with no such write keeps today's prompt, so the prefix cache is unchanged (ticket 10 ruling, from Q44) |
 | Q53 | A mid-turn advance moves the time that prompts, Tool calls and later scripts read. The visible clock panel moves at commit, as today, with no extra undo path (ticket 10 ruling, from Q45) |
+| Q54 | The example `lock_target` Tool ships with its probed wording. It never fires on a melee attack such as ramming (0/6 on MeroMero 31B); a body-attack wording did worse (5/18). The gap is recorded in ticket 08 (user ruling) |
+| Q55 | Staged planning passes built after a director Tool call read the pre-call context, which breaks Q38. Ticket 11 fixes it (user ruling, ticket 10 edge) |
 
 ## User Stories
 
