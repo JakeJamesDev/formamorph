@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.3.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.0** — the latest released version.
+> ✅ **3.0.0 – 3.3.1 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.3.1 — Released 2026-10-16</strong> — Scripts with five timings on stats, traits and the world — scripts that ask the player questions and rewrite narration — refreshed bundled worlds — Extra Parameters per endpoint — Native Reasoning Thinking Room — a long tail of fixes (click to expand)</summary>
 
 ### Major Changes
 
@@ -27,21 +32,20 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Scripts:**
     - **Stats, traits and the world now hold Scripts: code boxes with a timing, replacing a stat's two code tabs.** Add Script adds a box; its dropdown picks Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. A trait's scripts run only while it is active. Old code loads as scripts.
     - **The World Editor's Scripts tab lists every script by timing in run order and edits it in place.** Drag a script within its timing to set the order. Add Script there makes a world script that belongs to no stat or trait. A link jumps to the script's owner.
-    - **The Scripts tab now describes a timing when you select it, and the Scripts help splits into four tabs.** A timing's panel says when it runs and what it is for. The help tabs are Overview, Timings, Variables and Stat Writes.
+    - **Selecting a timing on the Scripts tab describes it, and the Scripts help has four tabs.** A timing's panel says when it runs and what it is for. The help tabs are Overview, Timings, Variables and Stat Writes.
     - **A script with the When a Trait Switches timing runs when a trait turns on or off in play.** A trait's own script sees its switches, its switch-off included. A stat or world script runs on every switch and reads `trait`, with `enabled` as the new state. Setup picks and loading a save fire nothing.
-    - **A setting, Strip Links And Images, sends past narration without markdown links and images.** It's under Settings → Display → Narration in Advanced mode, and on by default. A link becomes its text and an image goes. It covers the last story, memory summaries, diary entries and recall results.
     - **A script with the At Game Start timing runs once before a new game's opening.** Its writes shape the opening prompt. Loading a save never runs it, and a regenerated page one on a save skips it.
     - **A During AI Output script rewrites each narration sentence as it completes.** Assign `narration.sentence` or return a string, and read `narration.sent` and `narration.buffered` for the sentences around it. The reveal, read-aloud, save and next request carry the rewrite.
-    - **A script can now ask the player a question with `player.ask`, `player.confirm` or `player.askText`.** The script waits for the answer with no `await`. Closing the prompt fails that script and drops its writes. `player.tell` and `player.toast` show the player a message. During AI Output refuses every `player` call.
-    - **Test Code, the Test Bench and the help window's script test now run every script timing and show its prompts.** A During AI Output box takes a Sample Sentence and shows the rewrite. A prompt and each finding name the script by its name, or owner and timing. The help test runs on a stat, a trait or the world.
-    - **Script prompts now show as a line under the narration, in play and in the editor.** Pick a pill, the dropdown or the text field, then OK where shown. Cancel or Escape closes it. A `player.tell` stays with its turn, survives save and load, and never reaches the AI.
-    - **The help window, Scripts Guide and hover cards now explain each script timing, `narration`, `player` and `trait`.** The Stat Code Guide is now the Scripts Guide, and searching "stat code" finds it. The Variable menu lists each name for its timing, and the editor no longer flags them. A world script's `self` card reads empty.
-    - **The Test Bench and stat moves now check trait and world scripts, not only stat scripts.** The bench flags unknown stat names and reading delta before the AI. A Blueprint trait's `owner` lookups use each entity that links it. Moving a stat stops when any script reads it.
-    - **When a Trait Switches scripts now keep your own trait switches and read the new cast after a persona change.** A trait you switch while a script waits on a prompt keeps your setting. After a persona change, `persona` and `entities` show the new cast; the left persona's traits switch off. A library persona's scripts wait for it to load.
+    - **A script can ask the player a question with `player.ask`, `player.confirm` or `player.askText`.** The script waits for the answer with no `await`. Closing the prompt fails that script and drops its writes. `player.tell` and `player.toast` show the player a message. During AI Output refuses every `player` call.
+    - **Script prompts show as a line under the narration, in play and in the editor.** Pick a pill, the dropdown or the text field, then OK where shown. Cancel or Escape closes it. A `player.tell` stays with its turn, survives save and load, and never reaches the AI.
+    - **A trait you switch during a script prompt keeps your setting, and scripts read a changed persona's cast.** After a persona change, `persona` and `entities` show the new cast; the left persona's traits switch off. A library persona's scripts wait for it to load.
+    - **Test Code, the Test Bench and the help's script test run every script timing on stats, traits and the world.** A During AI Output box shows a Sample Sentence's rewrite. Tests show script prompts, and findings name the script. The bench flags unknown stat names and reading delta before the AI. Moving a stat stops when any script reads it.
+    - **The help window, Scripts Guide and hover cards now explain each script timing, `narration`, `player` and `trait`.** The Stat Code Guide is now the Scripts Guide, and searching "stat code" finds it. The Variable menu lists each name for its timing. A world script's `self` card reads empty.
     - **The help window writes scripts for every timing, and Insert adds them to the open stat, trait or world.** On a trait's or the world's Scripts tab, every question is a code question, and the code test runs there. Naming a timing also counts. A block's tag, such as `start`, picks the timing.
   - **Image Generation:**
     - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.
+  - **A setting, Strip Links And Images, sends past narration without markdown links and images.** It's under Settings → Display → Narration in Advanced mode, and on by default. A link becomes its text and an image goes. It covers the last story, memory summaries, diary entries and recall results.
   - **Buttons and menu items that send an AI request now show which endpoint gets it.** **Send** and the World Editor's generate buttons show it in their tooltip. **Re-generate Narration**, **Re-generate Stats**, **Re-generate Choices** and **Write Scene Tags** show it as a second line in the More and right-click menus.
   - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** A field the app sets for a request wins. You can't set `model`, `messages`, `stream`, `tools`, `tool_choice`, `response_format`, `n` or `stop`. If the text has an error, requests go out without it.
   - **A prompt's Native Reasoning now shows its Thinking Room beside the strength, such as "Low · 1,024 tok".** The readout updates when you change the strength. With Max Output off, it replaces the Reasoning Budget slider and its note.
@@ -57,12 +61,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Native Reasoning:**
     - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed Thinking Room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.
     - **With Max Output off, models that take a thinking budget now get the strength's Thinking Room as that budget.** Before, no budget went out, so the model could think without a limit.
     - **On a llama.cpp server, a looping thought now stops at the Thinking Room and the model writes its answer.** Switching Native Reasoning off now stops thinking for every llama.cpp model.
     - **A thought that uses its whole Thinking Room now says so in the error.** Error Details list the room and its strength beside `max_tokens`.
+  - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **World music or ambient sound your browser can't play now stays silent instead of showing an error.** This covers a new game, a loaded save and a move to a new location.
   - **The world library now opens when one stored world can't be read.** An unreadable world stopped the library's one-time update, with the error "Cannot read properties of null", on every launch. The update now skips that world.
   - **Duplicating a location from the filtered list now gives the copy its own Unique chip rolls.** The copy no longer shares the source's values, the same as in the tree.
@@ -82,6 +86,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Editing narration now updates the turn's entities and the Entities tab, and discovers new ones.** A name that only appears in dialogue no longer counts as present. A new name you write in becomes an entity.
 - **🛠️ Developer tooling**
   - **Tests run on half the hardware threads, and the ticket test gate retries a `findBy` or `waitFor` that gave up.** One fork per thread ran the 5-second tests at 4.6 s idle, so a peer's load timed them out. The retry alone still fails on a real miss.
+
+</details>
 
 ---
 
