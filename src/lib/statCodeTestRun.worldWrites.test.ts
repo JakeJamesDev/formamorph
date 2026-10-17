@@ -43,9 +43,33 @@ describe('runTestCode world writes', () => {
     expect(report.writes).toEqual(['memory.add: Tor lied.', 'memory.pin: The bridge is out.', 'diary: Tor: I lied.']);
   });
 
-  it('fails on a diary for an entity the world does not have', async () => {
-    const report = await run('diary("Stranger", "Hello.");');
-    expect(report.error).toMatch(/Stranger/);
+  // The editor has no discovered cast, so play may know a name the authored world lacks (Q46).
+  it('warns on a diary for a name the authored world lacks, and does not fail', async () => {
+    const report = await run('diary("Stranger", "Hello."); diary("Tor", "I lied.");', { ...world, entities: [{ id: 'e-tor', name: 'Tor' }] });
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual(['diary: Tor: I lied.']);
+    expect(report.dropped).toEqual(['Diary target “Stranger” may be discovered in play.']);
+  });
+
+  it('names a missing diary target once however often it is called', async () => {
+    const report = await run('diary("Stranger", "One."); diary("Stranger", "Two.");');
+    expect(report.dropped).toEqual(['Diary target “Stranger” may be discovered in play.']);
+  });
+
+  it('still fails a diary call that has no line', async () => {
+    const report = await run('diary("Stranger", "");');
+    expect(report.error).toMatch(/needs a line/);
+  });
+
+  it('hands a World Tool run its arguments and reports the value it returned', async () => {
+    const report = await runTestCode('return "Hello " + args.who;', 'before', null, statCodeNames(world), { args: { who: 'Tor' } });
+    expect(report.error).toBeNull();
+    expect(report.reply).toBe('Hello Tor');
+  });
+
+  it('reports no reply for a run given no arguments', async () => {
+    const report = await run('memory.add("Noted.");');
+    expect(report.reply).toBeUndefined();
   });
 
   it('fails on a location the world does not have, and lists no writes', async () => {

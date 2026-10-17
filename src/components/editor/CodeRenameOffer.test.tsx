@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Entity, Placeholder, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, Tool, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { statCodeName } from '@/lib/statCodeNames';
 import type { RenamedStat } from '@/lib/statCodeRename';
@@ -10,15 +10,16 @@ import { statLinkState } from '@/lib/statLinks';
 import { useCodeRenameOffer, useRenameField } from '@/lib/useCodeRename';
 import { CodeRenameProvider } from './CodeRenameOffer';
 import { boxScripts, codeAt, overriddenCodeAt } from '@/test/scriptFixtures';
+import { scriptWorldTool } from '@/test/worldToolFixtures';
 
 const stat = (id: string, name: string, code: string): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, scripts: boxScripts({ after: code }) } as unknown as Stat);
 
 const store: {
   stats: Stat[]; statGroups: StatGroup[]; traits: Trait[]; traitGroups: TraitGroup[]; entities: Entity[]; placeholders: Placeholder[];
-  worldScripts: Script[]; rerender: () => void;
+  worldScripts: Script[]; worldTools: Tool[]; rerender: () => void;
 } = {
-  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], worldScripts: [], rerender: () => {},
+  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], worldScripts: [], worldTools: [], rerender: () => {},
 };
 
 vi.mock('@/contexts/GameDataContext', () => ({
@@ -29,6 +30,11 @@ vi.mock('@/contexts/GameDataContext', () => ({
     traitGroups: store.traitGroups,
     entities: store.entities,
     worldScripts: store.worldScripts,
+    worldTools: store.worldTools,
+    setWorldTools: (next: Tool[]) => {
+      store.worldTools = next;
+      store.rerender();
+    },
     setWorldScripts: (next: Script[]) => {
       store.worldScripts = next;
       store.rerender();
@@ -50,7 +56,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
 
 /** A name field reduced to what the offer reads: a value, and the commit handlers the real fields wire. */
 const NameField = ({ root, initial, otherNames, chips, renamed }: {
-  root: 'stats' | 'placeholders' | 'traits';
+  root: 'stats' | 'placeholders' | 'traits' | 'locations';
   initial: string;
   otherNames: string[];
   /** Read the value as a code name, the way the stat and trait panels do. */
@@ -118,6 +124,7 @@ beforeEach(() => {
   store.traitGroups = [];
   store.entities = [];
   store.worldScripts = [];
+  store.worldTools = [];
   store.stats = [
     stat('a', 'Health', 'return stats.Health.value * 2;'),
     stat('b', 'Stamina', `return stats['Health'].max - 1;`),
@@ -212,6 +219,47 @@ describe('the rename offer', () => {
     expect(store.worldScripts).toEqual([
       { id: 'weather', timing: 'after', code: 'stats.Gust.value = 3;' }, { id: 'calm', timing: 'before', code: 'return 0;' },
     ]);
+  });
+
+  it('rewrites a World Tool that alone names the renamed stat, keeping its other fields', async () => {
+    store.stats = [stat('gale', 'Gale', '')];
+    store.worldTools = [
+      scriptWorldTool('storm-id', 'storm', 'stats.Gale.value = 3;', 'output'),
+      scriptWorldTool('calm-id', 'calm', 'return 0;', 'call'),
+    ];
+    render(<Harness root="stats" initial="Gale" otherNames={[]} renamed={{ id: 'gale' }} />);
+    const user = await renameTo('Gust');
+
+    expect(screen.getByText(/The code of 1 World Tool names the stat “Gale” 1 time\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.worldTools).toEqual([
+      scriptWorldTool('storm-id', 'storm', 'stats.Gust.value = 3;', 'output'),
+      scriptWorldTool('calm-id', 'calm', 'return 0;', 'call'),
+    ]);
+  });
+
+  it('names stats, traits, world scripts and World Tools together when all of them name it', async () => {
+    store.stats = [stat('gale', 'Gale', 'return stats.Gale.value;')];
+    store.worldScripts = [{ id: 'weather', timing: 'after', code: 'stats.Gale.value = 3;' }];
+    store.worldTools = [scriptWorldTool('storm-id', 'storm', 'stats.Gale.value = 4;'), scriptWorldTool('gust-id', 'gust', 'stats.Gale.max = 4;')];
+    render(<Harness root="stats" initial="Gale" otherNames={[]} renamed={{ id: 'gale' }} />);
+    await renameTo('Gust');
+
+    expect(screen.getByText(/The code of 1 stat and 1 world script and 2 World Tools names the stat “Gale” 4 times\./)).toBeInTheDocument();
+  });
+
+  it('carries a location rename into the literal of location.move in a world script, a World Tool and a stat', async () => {
+    store.stats = [stat('gale', 'Gale', 'location.move("Inn");')];
+    store.worldScripts = [{ id: 'w1', timing: 'after', code: 'location.move("Inn"); location.move(where);' }];
+    store.worldTools = [scriptWorldTool('storm-id', 'storm', "location.move('Inn');")];
+    render(<Harness root="locations" initial="Inn" otherNames={[]} />);
+    const user = await renameTo('Harbor Steps');
+
+    expect(screen.getByText(/The code of 1 stat and 1 world script and 1 World Tool names the location “Inn” 3 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.worldScripts[0].code).toBe('location.move("Harbor Steps"); location.move(where);');
+    expect(store.worldTools).toEqual([scriptWorldTool('storm-id', 'storm', "location.move('Harbor Steps');")]);
+    expect(codeOf('gale')).toBe('location.move("Harbor Steps");');
   });
 
   it('carries a trait rename into world scripts', async () => {

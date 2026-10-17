@@ -11,6 +11,7 @@ import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/stat
 import { setStatLinkScripts, withStatLinks } from '@/lib/statLinks';
 import { traitOwnerMaps } from '@/lib/statCodeTraits';
 import { scriptsOf, withScriptCode } from '@/lib/scripts';
+import { withToolCode } from '@/lib/tools/worldTools';
 import type { Stat, StatLink, Trait, TraitLink } from '@/types';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
 
@@ -24,7 +25,7 @@ import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from 
  */
 
 /** The noun each map's entries go by, for the question the dialog asks. */
-const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait' };
+const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait', locations: 'location' };
 
 /** What the dialog calls the thing that was renamed. An owner of placeholders is reached through the
  *  `placeholders` map but is an entity or a dictionary. "Placeholder" would name the wrong row. */
@@ -33,16 +34,18 @@ const renamedNoun = (plan: CodeRenamePlan) =>
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
-/** Whose code the plan rewrites: its stats, its traits, then the world's scripts, each counted where there are any. */
+/** Whose code the plan rewrites: its stats, its traits, the world's scripts, then its World Tools, each counted where there are any. */
 function codeOwnersText(plan: CodeRenamePlan): string {
   const traits = plan.edits.filter(({ home }) => isTraitHome(home)).length;
   const stats = plan.edits.filter(({ home }) => isStatHome(home)).length;
   const world = plan.edits.find(({ home }) => home.kind === 'world');
   const scripts = world ? Object.keys(world.scripts).length : 0;
+  const tools = plan.edits.filter(({ home }) => home.kind === 'tool').length;
   return [
     ...(stats ? [`${stats} ${plural(stats, 'stat', 'stats')}`] : []),
     ...(traits ? [`${traits} ${plural(traits, 'trait', 'traits')}`] : []),
     ...(scripts ? [`${scripts} world ${plural(scripts, 'script', 'scripts')}`] : []),
+    ...(tools ? [`${tools} World ${plural(tools, 'Tool', 'Tools')}`] : []),
   ].join(' and ');
 }
 
@@ -72,10 +75,12 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     [world?.placeholders, world?.placeholderOwners],
   );
   const worldScripts = useMemo(() => world?.worldScripts ?? [], [world?.worldScripts]);
+  const worldTools = useMemo(() => world?.worldTools ?? [], [world?.worldTools]);
   const updateStat = world?.updateStat;
   const updateTrait = world?.updateTrait;
   const editEntity = world?.editEntity;
   const setWorldScripts = world?.setWorldScripts;
+  const setWorldTools = world?.setWorldTools;
   // A queue, because one Replace All can rename several things at once. Requests are held rather than
   // plans: each answer rewrites code the next request has to read, so a plan is built only once its
   // request reaches the front.
@@ -87,12 +92,12 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
       const maps = traitId === undefined ? undefined
         : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
       const plan = planCodeRename({
-        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, traitOwnerMaps: maps,
+        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, traitOwnerMaps: maps,
       });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts]);
+  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.
@@ -105,8 +110,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   }, [pending, queue.length]);
 
   // Held in a ref so the callback the name fields take never changes identity.
-  const latest = useRef({ stats, traits, worldScripts, updateStat, updateTrait, editEntity, setWorldScripts });
-  latest.current = { stats, traits, worldScripts, updateStat, updateTrait, editEntity, setWorldScripts };
+  const latest = useRef({ stats, traits, worldScripts, worldTools, updateStat, updateTrait, editEntity, setWorldScripts, setWorldTools });
+  latest.current = { stats, traits, worldScripts, worldTools, updateStat, updateTrait, editEntity, setWorldScripts, setWorldTools };
 
   const offer = useCallback<OfferCodeRename>((request) => {
     setQueue((waiting) => [...waiting, request]);
@@ -131,8 +136,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const apply = () => {
     if (!plan) return;
     const {
-      stats: worldStats, traits: worldTraits, worldScripts: ownScripts, updateStat: write, updateTrait: writeTrait, editEntity: edit,
-      setWorldScripts: writeWorldScripts,
+      stats: worldStats, traits: worldTraits, worldScripts: ownScripts, worldTools: ownTools, updateStat: write, updateTrait: writeTrait,
+      editEntity: edit, setWorldScripts: writeWorldScripts, setWorldTools: writeWorldTools,
     } = latest.current;
     const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
     const traitById = new Map(worldTraits.map((trait) => [trait.id, trait]));
@@ -144,6 +149,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     for (const { home, scripts } of plan.edits) {
       if (home.kind === 'world') {
         writeWorldScripts?.(withScriptCode(ownScripts, scripts));
+      } else if (home.kind === 'tool') {
+        writeWorldTools?.(withToolCode(ownTools, scripts));
       } else if (home.kind === 'trait') {
         const trait = traitById.get(home.traitId);
         if (trait && writeTrait) writeTrait(rewritten(trait, scripts));

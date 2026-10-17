@@ -17,7 +17,7 @@ import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
 import type { StatOwner, TraitOwner } from './statCodeResolver';
-import { overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource } from './statCodeTargets';
+import { overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource, type WorldToolsSource } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, gateTrees } from './traitGates';
 
@@ -90,6 +90,12 @@ export interface CodeDictionaryRecord {
   placeholders: readonly string[];
 }
 
+export interface CodeLocationRecord {
+  location: GameLocation;
+  /** The entities placed at the location, by code name. */
+  present: readonly string[];
+}
+
 /** What `owner` holds in the box. */
 export type CodeOwnerRecord =
   | { kind: 'empty' }
@@ -114,6 +120,8 @@ export interface CodeWorldLookup {
   ownedPlaceholder(reached: readonly CodePlaceholderOwner[]): CodePlaceholderRecord | CodeOwnersRecord | null;
   entity(key: string): CodeEntityRecord | null;
   dictionary(key: string): CodeDictionaryRecord | null;
+  /** The location `location.move` reaches by `key`, its code name or id. */
+  location(key: string): CodeLocationRecord | null;
   /** The entities the player can play. */
   persona(): readonly string[];
   /** Every box and line whose code reaches the item. */
@@ -137,7 +145,7 @@ export const traitBoxSelf = (id: string, name: string): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 0, regen: 0, descriptors: [] });
 
 /** The authored world a stat code box's cards read. */
-export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource {
+export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource, WorldToolsSource {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
@@ -172,6 +180,7 @@ export function lazyLookup(make: () => CodeWorldLookup): CodeWorldLookup {
     ownedPlaceholder: (reached) => at().ownedPlaceholder(reached),
     entity: (key) => at().entity(key),
     dictionary: (key) => at().dictionary(key),
+    location: (key) => at().location(key),
     persona: () => at().persona(),
     uses: (item) => at().uses(item),
   };
@@ -262,6 +271,14 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
       const id = books.findLast((book) => book.name === key)?.id;
       const dictionary = world.dictionaries?.find((book) => book.id === id);
       return dictionary ? { dictionary, placeholders: placeholderNames(dictionary.id) } : null;
+    },
+    /** The id wins over a name, as `location.move` finds it; the first location wins a shared name. */
+    location(key: string): CodeLocationRecord | null {
+      const places = world.locations ?? [];
+      const location = places.find((place) => place.id === key) ?? places.find((place) => owners.codeName(place.name) === key);
+      if (!location) return null;
+      const present = world.entities.filter((entity) => entity.locations?.includes(location.id)).map((entity) => owners.codeName(entity.name));
+      return { location, present };
     },
   };
 }
@@ -417,6 +434,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
       return target ? entityRecord(target) : null;
     },
     dictionary: (key) => cards()?.dictionary(key) ?? null,
+    location: (key) => cards()?.location(key) ?? null,
     persona: () => owners.playable.map(entityName),
     uses: (item) => {
       if (item.kind === 'stat') return statUses(owners, item, world);

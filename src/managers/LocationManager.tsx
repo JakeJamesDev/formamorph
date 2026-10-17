@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
+import { useRenameField } from '@/lib/useCodeRename';
+import { statCodeName } from '@/lib/statCodeNames';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
 import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
@@ -51,6 +53,14 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = world;
   const { draft: editingLocation, setField: handleChange, apply } = useEditingDraft(location, updateLocation);
   const { advanced } = useEditorMode();
+  // `location.move` names a place by its code name, so the rename offer compares the names the way code reads them.
+  const rename = useRenameField({
+    root: 'locations',
+    value: editingLocation.name ?? '',
+    siblings: world.locations,
+    ownId: location.id,
+    codeNameOf: (name) => statCodeName(name, placeholders),
+  });
   const pins = editingLocation?.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
 
@@ -88,6 +98,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
               onChange={(v) => handleChange('name', v)}
               placeholders={placeholders}
               ariaLabel="Name"
+              onFocus={rename.onFocus}
+              onBlur={rename.onBlur}
+              onSubmit={rename.onSubmit}
             />
           </div>
           {/* Bottom-aligned and as tall as the field, so the checkbox sits on the name's last line when a

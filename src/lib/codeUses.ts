@@ -2,7 +2,9 @@
  * The row Find All Uses lists, one per box and line, for a stat or any other item a card names.
  */
 
-import { isWorldScriptBox, type CodeOwners, type StatCodeBox, type TraitCodeBox, type WorldScriptBox } from './statCodeTargets';
+import {
+  isWorldScriptBox, isWorldToolBox, type CodeOwners, type StatCodeBox, type TraitCodeBox, type WorldScriptBox, type WorldToolBox,
+} from './statCodeTargets';
 import { linkRowId } from './traitTree';
 import type { ScriptTiming } from '@/types';
 
@@ -16,10 +18,12 @@ export interface CodeUse {
   trait?: true;
   /** On a world script, which the Scripts tab shows; `rowId` is then the script's id. */
   world?: true;
+  /** On a World Tool's script, which the Tools tab shows; `rowId` and `scriptId` are then the Tool's id. */
+  tool?: true;
   timing: ScriptTiming;
   /** The script the box edits. */
   scriptId: string;
-  /** The box's stat or trait, by code name; the world's name for a world script. */
+  /** The box's stat or trait, by code name; the world's name for a world script; the Tool's name for a World Tool. */
   name: string;
   /** The entity an own or Link box sits on, by code name. */
   entity?: string;
@@ -54,8 +58,13 @@ export function rowIdOf(box: StatCodeBox | TraitCodeBox): string {
 }
 
 /** One row per line of `box` that holds one of `offsets`, in line order. */
-export function boxUses(owners: CodeOwners, box: StatCodeBox | TraitCodeBox | WorldScriptBox, offsets: readonly number[]): CodeUse[] {
+export function boxUses(owners: CodeOwners, box: StatCodeBox | TraitCodeBox | WorldScriptBox | WorldToolBox, offsets: readonly number[]): CodeUse[] {
   const lines = [...new Set(offsets.map((at) => lineAt(box.code, at)))].sort((a, b) => a - b);
+  if (isWorldToolBox(box)) {
+    return lines.map((line) => ({
+      entityId: null, rowId: box.id, tool: true as const, timing: box.timing, scriptId: box.id, name: box.tool.name, line, noOwners: false,
+    }));
+  }
   if (isWorldScriptBox(box)) {
     return lines.map((line) => ({
       entityId: null, rowId: box.id, world: true as const, timing: box.timing, scriptId: box.id, name: WORLD_SCRIPT_OWNER, line, noOwners: false,

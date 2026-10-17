@@ -104,6 +104,8 @@ export interface StatCodeResult {
   sentence?: string;
   /** What the code did to the location, the clock and the discovered cast. Absent when it did none of it. */
   worldWrites?: WorldWrites;
+  /** The `diary` names an `openCast` run found outside its cast, once each. */
+  maybeDiary?: string[];
   /** A World Tool run's return value as text: a string as is, any other value as JSON, null for nothing. */
   reply?: string | null;
 }
@@ -1139,6 +1141,9 @@ export interface StatCodeRunOptions {
   discovered?: readonly SandboxPlace[];
   /** A World Tool run's call arguments, frozen. Absent on a Script, where `args` does not exist. */
   args?: Readonly<Record<string, unknown>>;
+  /** The editor's run, which has no discovered cast: a `diary` name the cast lacks is listed in `maybeDiary`, not
+   *  thrown (Q46). Play leaves it off, so an unknown name fails. */
+  openCast?: boolean;
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
@@ -1146,9 +1151,9 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
 /** The prelude of `location`, `discover`, `memory`, `diary` and the hook `clock.advance` calls. An unknown location or
  *  entity is listed as well as thrown, so a script that catches the throw still fails. `cast` is who `diary` can name. */
-const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[]): string => [
-  `const [location, discover, memory, diary, ${ADVANCE_CLOCK}, ${WORLD_WRITES}] = ((places, cast, lock, note) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], unknown: [] };`,
+const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean): string => [
+  `const [location, discover, memory, diary, ${ADVANCE_CLOCK}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], unknown: [], maybe: [] };`,
   `  const find = (kind, list, target) => {`,
   `    const hit = typeof target === 'string' ? list.find((place) => place.id === target) || list.find((place) => place.name === target) : undefined;`,
   `    if (hit) return hit.id;`,
@@ -1181,6 +1186,12 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    return text(value);`,
   `  };`,
   `  const diary = (target, value) => {`,
+  `    const listed = typeof target === 'string' && cast.some((place) => place.id === target || place.name === target);`,
+  `    if (open && !listed && text(target)) {`,
+  `      line('diary', value);`,
+  `      if (!writes.maybe.includes(text(target))) writes.maybe.push(text(target));`,
+  `      return;`,
+  `    }`,
   `    const entity = find('entity', cast, target);`,
   `    writes.diary.push({ entity, line: line('diary', value) });`,
   `  };`,
@@ -1189,7 +1200,7 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    pin: (value) => { writes.pins.push(line('memory.pin', value)); },`,
   `  }, ['add', 'pin'], 'memory.', note));`,
   `  return [location, Object.freeze(discover), memory, Object.freeze(diary), advance, writes];`,
-  `})(${JSON.stringify({ locations, location })}, ${JSON.stringify(cast)}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
+  `})(${JSON.stringify({ locations, location })}, ${JSON.stringify(cast)}, ${openCast}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
 ].join('\n');
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
@@ -1200,12 +1211,12 @@ const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity): 
   .map((entity) => ({ id: entity.id || entity.name, name: entity.name }));
 
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
-function readWorldWrites(dump: string): { writes?: WorldWrites } | { error: string } {
+function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, diary, unknown } = parsed as {
+  const { location, minutes, advanced, discover, memory, pins, diary, unknown, maybe } = parsed as {
     location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[];
-    diary: DiaryWrite[]; unknown: string[];
+    diary: DiaryWrite[]; unknown: string[]; maybe: string[];
   };
   if (unknown.length) return { error: unknown[0] };
   const writes: WorldWrites = {
@@ -1216,7 +1227,10 @@ function readWorldWrites(dump: string): { writes?: WorldWrites } | { error: stri
     ...(pins.length ? { pins } : {}),
     ...(diary.length ? { diary } : {}),
   };
-  return Object.keys(writes).length ? { writes } : {};
+  return {
+    ...(Object.keys(writes).length ? { writes } : {}),
+    ...(maybe.length ? { maybeDiary: maybe } : {}),
+  };
 }
 
 /** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
@@ -1286,7 +1300,7 @@ export const executeStatCode = async (
   currentStat: Stat | null,
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
-    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
+    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args, openCast = false,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1371,7 +1385,7 @@ export const executeStatCode = async (
       `const self = ${!currentStat ? selfTraitSource : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
-      worldPrelude(places, [...diaryCast(entities, persona), ...discovered]),
+      worldPrelude(places, [...diaryCast(entities, persona), ...discovered], openCast),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
@@ -1535,6 +1549,7 @@ export const executeStatCode = async (
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
         ...(sentence === undefined ? {} : { sentence }),
         ...(worldWrites.writes ? { worldWrites: worldWrites.writes } : {}),
+        ...(worldWrites.maybeDiary ? { maybeDiary: worldWrites.maybeDiary } : {}),
         ...(args ? { reply: replyOf() } : {}),
       });
       if (!currentStat || returnsSentence) return settled(null);

@@ -51,8 +51,14 @@ const howlLink = {
 const WORLD: World = benchEditorWorld({
   // Gale is used by this world script alone.
   scripts: [{ id: 'weather', timing: 'after', code: '// gusts\nstats.Gale.value = 3;' }],
+  // Tide is used by this World Tool alone.
+  tools: [{
+    id: 't-surf', name: 'surf', description: 'Rides the tide.', params: [], emptyResult: '{}', offeredTo: ['narration'],
+    handler: { kind: 'script', timing: 'after', code: '// ride\nstats.Tide.value = 2;' },
+  }],
   stats: [
     stat('s3', 'Gale'),
+    stat('s4', 'Tide'),
     stat('s1', 'Warmth', 'return stats.Chill.value;'),
     { ...stat('s2', 'Chill'), scripts: [...boxScripts({ before: '', after: '' }), { id: 'chill-2', name: 'Second', timing: 'after', code: 'return 2;' }] },
     howl,
@@ -169,6 +175,28 @@ describe('a Find All Uses row', () => {
     expect(boxAt(AFTER)?.lookup?.uses({ kind: 'stat', statId: 's3' })).toEqual([
       { entityId: null, rowId: 'weather', world: true, timing: 'after', scriptId: 'weather', name: 'World', line: 2, noOwners: false },
     ]);
+  });
+
+  it('lists a stat a World Tool alone uses, as the Tool’s row', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
+    fireEvent.click(screen.getByText('Warmth'));
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Scripts' }));
+    expect(boxAt(AFTER)?.lookup?.uses({ kind: 'stat', statId: 's4' })).toEqual([
+      { entityId: null, rowId: 't-surf', tool: true, timing: 'after', scriptId: 't-surf', name: 'surf', line: 2, noOwners: false },
+    ]);
+  });
+
+  it('opens a World Tool on the Tools tab, in its script, and hands the box the line', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    goFromWarmth({ entityId: null, rowId: 't-surf', tool: true, timing: 'after', scriptId: 't-surf', name: 'surf', line: 2, noOwners: false });
+
+    expect(sectionTab(/^Tools/)).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(boxes.get('Script')?.revealLine).toBe(2));
+    expect(boxes.get('Script')?.value).toBe('// ride\nstats.Tide.value = 2;');
+    expect(screen.getByText('Edit surf')).toBeInTheDocument();
+    act(() => boxes.get('Script')!.onLineRevealed!());
+    await waitFor(() => expect(boxes.get('Script')?.revealLine).toBeUndefined());
   });
 
   it('opens a world script on the Scripts tab and hands its box the line', async () => {

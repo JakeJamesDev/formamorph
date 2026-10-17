@@ -941,6 +941,25 @@ describe('CodeArea', () => {
       expect(owned()).toBe('args.name');
     });
 
+    it('lists a menu given beside stat maps first, with the stat tree after it', async () => {
+      const user = userEvent.setup();
+      const variables = () => [{
+        kind: 'group' as const, label: 'Arguments',
+        children: [{ kind: 'field' as const, label: 'name', detail: 'string', info: 'Who.', insert: 'args.name' }],
+      }];
+      render(<Harness names={worldNames()} surface={scriptSurface(WORLD_SCRIPT_SURFACE, 'after')} extra={{ variables }} />);
+      await user.click(await editor());
+
+      await user.click(screen.getByLabelText('Variable'));
+      const rows = screen.getAllByRole('button').map((button) => button.textContent ?? '');
+      expect(rows.findIndex((text) => text.startsWith('Arguments'))).toBeGreaterThanOrEqual(0);
+      expect(rows.findIndex((text) => text.startsWith('Arguments'))).toBeLessThan(rows.findIndex((text) => text.startsWith('Clock')));
+      expect(screen.queryByRole('button', { name: 'This Stat' })).toBeNull();
+      await user.click(screen.getByText('Arguments'));
+      await user.click(screen.getByText('name'));
+      expect(owned()).toBe('args.name');
+    });
+
     it('shows no Variable menu when the surface gives no tree', async () => {
       render(<Harness surface={SCRIPT} />);
       await editor();

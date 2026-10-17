@@ -1,15 +1,19 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Hint, Meta } from '@/components/ui/typography';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { AvailabilityFields } from '@/components/modals/ToolsTab';
-import { ToolEditor } from '@/components/modals/ToolEditor';
+import { ToolEditor, type WorldToolCode } from '@/components/modals/ToolEditor';
 import { ToolTryIt, type TryItWorld } from '@/components/modals/ToolTryIt';
 import { toolSummary, type ToolEditTab } from '@/components/modals/toolsView';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { statBoxLookups, traitBoxSelf } from '@/lib/codeWorldLookup';
+import { useCodeUseReveal } from '@/lib/codeUseReveal';
+import { useScriptWorldNames } from '@/lib/useScriptWorldNames';
 import { blankTool, finishDraft, type KeptHandlers } from '@/lib/tools/toolDraft';
+import { tryWorldToolScript } from '@/lib/tools/worldToolTry';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { reorderTools, worldToolClash, type WorldToolClash } from '@/lib/tools/worldTools';
 import { randomUUID } from '@/lib/uuid';
@@ -62,14 +66,32 @@ export function useWorldToolsAdapter({ selectedId, onSelect, snapshot }: {
   /** The world as the editor holds it, for Try It and the Variable menu. */
   snapshot: () => ToolSnapshot;
 }): ListEditorAdapter {
-  const { worldTools, setWorldTools } = useGameData();
+  const gameData = useGameData();
+  const { worldTools, setWorldTools } = gameData;
   const { userTools } = useSettings();
   const [draft, setDraft] = useState<ToolDraft | null>(null);
-  const world = useMemo<TryItWorld>(() => ({ snapshot, open: true }), [snapshot]);
+  // Try It and the script box read the world's names as the Scripts tab's boxes do, unsaved edits included.
+  const { names } = useScriptWorldNames();
+  const lookups = useMemo(() => statBoxLookups(gameData), [gameData]);
+  const world = useMemo<TryItWorld>(() => ({
+    snapshot, open: true, runScript: (tool, argsText, options) => tryWorldToolScript(tool, argsText, names, options),
+  }), [snapshot, names]);
+  const worldCode = useMemo<WorldToolCode>(() => ({
+    names, lookup: (timing) => lookups({ owner: null, timing, self: traitBoxSelf('', '') }),
+  }), [names, lookups]);
   const byId = useMemo(() => new Map(worldTools.map((tool) => [tool.id, tool])), [worldTools]);
   const clashFor = useCallback((tool: Tool) => clashNote(worldToolClash(tool, userTools)), [userTools]);
   // A draft belongs to the row it opened on; another selection leaves it.
   const openDraft = draft && draft.tool.id === selectedId ? draft : null;
+  // A Find All Uses row bound for the selected Tool opens its script, the only place the code reads.
+  const reveal = useCodeUseReveal(selectedId ?? '', null, 'tool');
+  useEffect(() => {
+    const tool = reveal && byId.get(reveal.rowId);
+    if (!tool) return;
+    setDraft((now) => (now?.tool.id === tool.id
+      ? { ...now, editTab: 'handler' }
+      : { tool: structuredClone(tool), editTab: 'handler', kept: {}, saved: true }));
+  }, [reveal, byId]);
 
   const write = (tool: Tool) => setWorldTools(byId.has(tool.id)
     ? worldTools.map((t) => (t.id === tool.id ? tool : t))
@@ -100,6 +122,7 @@ export function useWorldToolsAdapter({ selectedId, onSelect, snapshot }: {
           userTools={worldTools}
           home="world"
           nameNote={clashFor(tool)}
+          worldCode={worldCode}
           editing={saved}
           world={world}
           fullscreen={false}

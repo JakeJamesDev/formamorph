@@ -1,6 +1,6 @@
 import { useCallback, useId, useMemo, type ReactNode } from 'react';
 import { Info, Plus, Trash2 } from 'lucide-react';
-import type { Tool, ToolHandler, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming } from '@/types';
+import type { ScriptTiming, Tool, ToolHandler, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,12 @@ import {
 import { infoWithAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { buildToolVariableTree, type ToolVariableNames } from '@/lib/tools/toolVariableTree';
+import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
+import { SCRIPT_TIMING_OF_TOOL, toolTimingOf } from '@/lib/tools/worldTools';
+import { statBoxAnalysisOptions, type StatCodeNames } from '@/lib/statCodeBoxOptions';
+import { useCodeCardNavigation } from '@/lib/codeCardNavigation';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
+import { settleCodeUseReveal, useCodeUseReveal } from '@/lib/codeUseReveal';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
 import type { ValueLookup } from '@/lib/promptValues';
 import { armsTrigger, type ToolNameProblem } from '@/lib/tools/toolValidation';
@@ -56,6 +62,13 @@ const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
 };
 
 const HANDLER_PROBLEM: Record<HandlerProblem, string> = { lookupParam: 'Pick the parameter to search by' };
+
+/** What a World Tool's script reads its names from, as a Script's box does: the open world's names and its cards. */
+export interface WorldToolCode {
+  names: StatCodeNames;
+  /** A box's card lookup for the script timing it runs on. */
+  lookup?: (timing: ScriptTiming) => CodeWorldLookup;
+}
 
 /** The footer's fix for each parameter problem, by the parameter's 1-based position. */
 const PARAM_FIX: Record<ParamProblem, (position: number) => string> = {
@@ -312,8 +325,10 @@ function TriggerFields({ handler, onChange }: { handler: ToolScriptHandler; onCh
   );
 }
 
-function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names, home }: TabProps & {
+function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names, home, worldCode }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[]; home: ToolHome;
+  /** The open world's script names. Absent, a World Tool's script completes against its surface alone. */
+  worldCode?: WorldToolCode;
   /** The open world's names, which the script's Variable menu lists. Null with only the sample world. */
   names: ToolVariableNames | null;
   /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
@@ -327,6 +342,18 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
   const surface = useMemo(() => toolScriptSurface(params, placeholderNames), [params, placeholderNames]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
   const variables = useCallback(() => buildToolVariableTree(params, names), [params, names]);
+  // A World Tool's script runs on the Scripts' sandbox, so its box reads that surface with `args` beside it.
+  const scriptTiming = toolTimingOf(draft);
+  const worldAnalysis = useMemo(() => {
+    const worldSurface = worldToolSurface(params, scriptTiming);
+    if (!worldCode) return { surface: worldSurface };
+    return statBoxAnalysisOptions(worldCode.names, {
+      selfName: '', surface: worldSurface, lookup: worldCode.lookup?.(SCRIPT_TIMING_OF_TOOL[scriptTiming]),
+    });
+  }, [params, scriptTiming, worldCode]);
+  const argsMenu = useCallback(() => worldToolArgsNodes(params), [params]);
+  const navigation = useCodeCardNavigation();
+  const reveal = useCodeUseReveal(draft.id, null, 'tool');
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
   const kind = HANDLER_KINDS.find((k) => k.value === handler.kind) ?? HANDLER_KINDS[0];
   return (
@@ -401,7 +428,23 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
         />
       )}
       {handler.kind === 'script' && home === 'world' && <TriggerFields handler={handler} onChange={setHandler} />}
-      {handler.kind === 'script' && (
+      {handler.kind === 'script' && home === 'world' && (
+        <CodeArea
+          label="Script" ariaLabel="Script" rows={10} surface={worldAnalysis.surface} variables={argsMenu}
+          statNames={'statNames' in worldAnalysis ? worldAnalysis.statNames : undefined}
+          placeholders={'placeholders' in worldAnalysis ? worldAnalysis.placeholders : undefined}
+          entities={'entities' in worldAnalysis ? worldAnalysis.entities : undefined}
+          traits={worldCode?.names.traitPlaces}
+          owner={null}
+          lookup={'lookup' in worldAnalysis ? worldAnalysis.lookup : undefined}
+          navigation={navigation}
+          revealLine={reveal?.line}
+          onLineRevealed={() => { if (reveal) settleCodeUseReveal(reveal); }}
+          info={<ScriptReference globals={worldAnalysis.surface.globals} />}
+          value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
+        />
+      )}
+      {handler.kind === 'script' && home !== 'world' && (
         <CodeArea
           label="Script" ariaLabel="Script" rows={10} surface={surface} variables={variables}
           info={<ScriptReference globals={surface.globals} />}
@@ -440,7 +483,7 @@ function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
  */
 export function ToolEditor({
   draft, onDraftChange, keptHandlers, editTab, onEditTabChange, userTools, reservedNames = [], editing, world, fullscreen, fullscreenButton,
-  onCancel, onSave, home = 'user', nameNote,
+  onCancel, onSave, home = 'user', nameNote, worldCode,
 }: {
   draft: Tool;
   /** Takes the new kept handlers too when a handler type switch changed them. */
@@ -453,6 +496,8 @@ export function ToolEditor({
   home?: ToolHome;
   /** Shown under a valid name, such as the Tool a World Tool replaces. */
   nameNote?: string | null;
+  /** The open world's names for a World Tool's script. */
+  worldCode?: WorldToolCode;
   /** The caller's fixed function names, which the name check refuses as built-in. */
   reservedNames?: readonly string[];
   /** True when the draft edits a saved Tool, false for a new one. */
@@ -500,7 +545,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} home={home} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} home={home} worldCode={worldCode} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>

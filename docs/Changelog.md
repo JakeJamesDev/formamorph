@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can now add a memory line, a pinned memory or a diary line for the turn.** Call `memory.add`, `memory.pin` or `diary`. Lines join the AI's summary and diary, a pin is sent with every request, and a regenerate drops all three.
     - **A World Tool's script can now run when the AI calls it, or after the AI, and change the game.** An On Call Tool returns its script's value. An After the AI Tool sends its Reply, and its script runs with the After the AI scripts. A regenerate drops the changes.
     - **A During AI Output World Tool now rewrites every narration sentence after the AI calls it.** Called Tools run in Tools-tab order, before the world's output scripts. The rewrite is what the screen, the save and read-aloud get.
+    - **You can now test a World Tool in the editor, and renames and Find All Uses cover its script.** Try It lists the reply and each staged write, and applies none. Renaming a location also updates its `location.move` calls. Test Code warns on a diary name the world lacks.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 
