@@ -52,12 +52,11 @@ describe('promptReasoningFieldProps', () => {
     expect(props?.budget).toBeNull();
   });
 
-  // The strength sizes a llama.cpp budget, so a slider there would move nothing.
-  it('draws no budget slider for a llama.cpp target, which still takes a budget', () => {
+  it('draws the budget slider for a llama.cpp target with Max Output, whatever its template reads', () => {
     for (const levels of [['none'], ['none', 'low', 'medium', 'high']] as const) {
-      const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'llamacpp', budget: true, levels: [...levels] } }));
-      expect(props).not.toBeNull();
-      expect(props?.budget).toBeNull();
+      const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'llamacpp', budget: true, levels: [...levels] }, maxTokens: 4096, budgetPct: 75 }));
+      expect(props?.budget).toMatchObject({ value: 75, tokens: 3072 });
+      expect(props?.room).toBeNull();
     }
   });
 
@@ -131,11 +130,12 @@ describe('promptReasoningFieldProps', () => {
     expect(props?.room).toEqual({ tokens: 4096, strength: 'high' });
   });
 
-  it('reads the room of a llama.cpp target, which has no slider', () => {
+  it('reads the room of a llama.cpp target with Max Output off, in place of the slider', () => {
     const props = promptReasoningFieldProps(input({
-      reasoning: { dialect: 'llamacpp', budget: true, levels: ['none', 'low'] }, setting: { enabled: true, level: 'low' },
+      reasoning: { dialect: 'llamacpp', budget: true, levels: ['none', 'low'] }, setting: { enabled: true, level: 'low' }, maxTokens: undefined,
     }));
     expect(props?.room).toEqual({ tokens: 1024, strength: 'low' });
+    expect(props?.budget).toBeNull();
   });
 
   it('reads no room where the target has no level and no budget to show it beside', () => {

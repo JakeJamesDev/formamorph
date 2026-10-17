@@ -242,7 +242,7 @@ A field shows only while its feature can send it.
 | **Max Output** | Caps the answer length of this prompt. Off shows **Auto** and the shipped cap. It does not cap reasoning. | **Planning**, **Director**, **Character**, **Storyboard**, **Choices**, **Discover Entity**, **Summaries**, **Milestone Select**, **Diary**, **Scene Tags** |
 | **Verbatim Turns** | Sets how many recent turns go word for word. Older turns go as summaries. | **Narration**, **Planning**, **Choices**, **Stat Updates**, **Location Change**, **Summaries**, while **Memory Summaries** is on |
 | **Native Reasoning** | Sets whether this prompt reasons, and how hard. Clear the checkbox and the prompt does no reasoning. **Global** follows **Native Reasoning** in Settings → **Output**. **Model Default** sends no hint. Where no **Reasoning Budget** slider shows, a readout gives the prompt's Thinking Room, such as "Low · 1,024 tok". | Endpoints whose model reasons. Not on **Narration** with **Thinking** set to **Inline**. |
-| **Reasoning Budget** | Sets the reasoning tokens as a percent of the endpoint's **Max Output Tokens**. The answer keeps its full length. | Endpoints that take a token budget, such as the desktop engine. Not on llama.cpp, where the strength sets the budget. |
+| **Reasoning Budget** | Sets the reasoning tokens as a percent of the endpoint's **Max Output Tokens**. The answer keeps its full length. | Endpoints that take a token budget, such as the desktop engine and llama.cpp |
 | **Custom Temperature** | Sets this prompt's temperature. Off shows the value the prompt sends now. | Every prompt |
 | **Custom Repetition Penalty** | Sets this prompt's repetition penalty. Off shows the value the prompt sends now. | Every prompt |
 

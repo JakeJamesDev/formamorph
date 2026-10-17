@@ -50,13 +50,14 @@ Settled in the grill on 2026-10-14. Research: `docs-internal/notes/multi-endpoin
 9. **Q9 Inline narration.** Narration's own strength sizes its room. Global follows the endpoint's level.
 10. **Q10 Budget targets.** The budget slider (a percent of Max Output) works as now when Max Output is set. With Max Output off, the Thinking Room is the budget.
 11. **Q11 Readout.** A target with no budget slider shows the room beside the strength dropdown.
-12. **Q12 llama.cpp UI.** llama.cpp has no budget slider. The strength sizes its room, and the server enforces it.
+12. **Q12 llama.cpp UI.** Superseded by Q19. llama.cpp has no budget slider. The strength sizes its room, and the server enforces it.
 13. **Q13 Slider with Max Output off.** On a budget target with Max Output off, the readout replaces the slider and its "no base" note.
 14. **Q14 Old llama.cpp builds.** A build that ignores `reasoning_budget_tokens` falls back to the `max_tokens` cut. Nothing tells the player; the debug log records it.
 15. **Q15 Full ladder.** Minimal 128, Extra High 8,192, Max 16,384, exactly as LiteLLM.
 16. **Q16 llama.cpp levels (user, via ticket 03).** `/props` answers `levels: ['none']` on a template without effort support, since llama.cpp takes `none` on every template. The record is then not ruled out, so Q5's off and the room go out before any reply proves reasoning. The switch shows on those templates, with Model Default as the only strength. Known cost: a llama.cpp model that never thinks also gets the room in its `max_tokens` and context reserve.
 17. **Q17 llama.cpp off everywhere (user, via ticket 03).** When reasoning is engaged nowhere, a llama.cpp target still sends `reasoning_effort: "none"`, not `reasoning_budget_tokens: 0`. Other dialects and plain endpoints keep today's bodies. Ticket 06.
 18. **Q18 No new probe (user, via ticket 06).** Q17 applies where the record already names the llama.cpp dialect (cached, or resolved because a Tool was offered). With reasoning engaged nowhere the capability probe stays skipped, so a never-probed llama.cpp endpoint sends nothing, as today.
+19. **Q19 llama.cpp slider (user, 2026-10-16, after a player report).** Supersedes Q12. llama.cpp takes the Reasoning Budget slider like every budget target: a percent of Max Output, and the strength's Thinking Room with Max Output off (Q10, Q13). The server still ends the thought at the budget. Evidence: on a template without effort support, Q16 left Model Default as the only strength, so the player could not raise a room their model outgrew.
 
 ## User Stories
 

@@ -888,8 +888,7 @@ describe('dialects — one spelling per row', () => {
     ['moonshot-k2', {}],
     // Thinking is Novita's default, so an on request says nothing.
     ['novita', {}],
-    // llama.cpp's budget is High's Thinking Room, whatever the percent says.
-    ['llamacpp', { reasoning_budget_tokens: 4096, reasoning_effort: 'high' }],
+    ['llamacpp', { reasoning_budget_tokens: 500, reasoning_effort: 'high' }],
   ] as const)('spells a 50%% budget at High the %s way', (dialect, expected) => {
     expect(speaks(speaking(dialect))).toEqual(expected);
   });
@@ -1045,7 +1044,7 @@ describe('dialects — one spelling per row', () => {
    * The records a llama.cpp server's `/props` writes: a template that reads `reasoning_effort` lists the safe
    * levels, and one that does not lists `none` alone. Nothing says whether the model thinks.
    */
-  describe('llamacpp — the server ends the thought at the Thinking Room', () => {
+  describe('llamacpp — the server ends the thought at the budget', () => {
     const llamaCpp = (levels: readonly ReasoningEffortField[], over: Partial<AiEndpointTarget> = {}) => external({
       url: 'http://127.0.0.1:8080/v1/chat/completions',
       model: 'qwen3.gguf',
@@ -1061,28 +1060,31 @@ describe('dialects — one spelling per row', () => {
     const engaged = (target: AiEndpointTarget, over: Partial<AiSettingsSnapshot> = {}) =>
       snapshot(target, { reasoningEngaged: true, ...over });
 
-    it('sends Director at its shipped Low the 1,024-token room as its budget, on top of the Answer Cap', () => {
+    it('sends Director its shipped 75% of Max Output as its budget, on top of the Answer Cap', () => {
       const spec = buildAiRequestSpec(engaged(plainTemplate()), director);
-      expect(reasoningSlice(spec.body)).toEqual({ reasoning_budget_tokens: 1024 });
-      expect(spec.body.max_tokens).toBe(800 + 1024);
-      expect(outputCaps(engaged(plainTemplate()), director)).toEqual({ answerCap: 800, reserve: 800 + 1024 });
+      expect(reasoningSlice(spec.body)).toEqual({ reasoning_budget_tokens: 600 });
+      expect(spec.body.max_tokens).toBe(800 + 600);
+      expect(outputCaps(engaged(plainTemplate()), director)).toEqual({ answerCap: 800, reserve: 800 + 600 });
     });
 
-    it('sizes the budget by strength alone, whatever Max Output and the budget percent say', () => {
-      const at = (maxTokens: number | undefined) => buildRequestBody(
-        engaged(plainTemplate({ maxTokens }), { promptReasoningBudget: { director: 200 } }),
+    it('scales the budget from Max Output by the percent, whatever the strength says', () => {
+      const at = (strength: ReasoningEffortField) => buildRequestBody(
+        engaged(plainTemplate({ maxTokens: 4096 }), { promptReasoning: { director: strength }, promptReasoningBudget: { director: 200 } }),
         call({ requestType: 'director', maxTokensOverride: 300 }),
       );
-      for (const maxTokens of [800, 4000, undefined]) {
-        expect(at(maxTokens)).toMatchObject({ reasoning_budget_tokens: 1024, max_tokens: 300 + 1024 });
+      for (const strength of ['minimal', 'low', 'high'] as const) {
+        expect(at(strength)).toMatchObject({ reasoning_budget_tokens: 8192, max_tokens: 300 + 8192 });
       }
     });
 
     it.each([
       ['minimal', 128], ['low', 1024], ['medium', 2048], ['high', 4096], ['xhigh', 8192], ['max', 16384], ['auto', 2048],
-    ] as const)('sends %s its Thinking Room as the budget', (strength, room) => {
-      const body = buildRequestBody(engaged(plainTemplate(), { promptReasoning: { director: strength } }), director);
-      expect(body).toMatchObject({ reasoning_budget_tokens: room, max_tokens: 800 + room });
+    ] as const)('sends %s its Thinking Room as the budget with Max Output off', (strength, room) => {
+      const body = buildRequestBody(
+        engaged(plainTemplate({ maxTokens: undefined }), { promptReasoning: { director: strength } }),
+        call({ requestType: 'director', maxTokensOverride: 300 }),
+      );
+      expect(body).toMatchObject({ reasoning_budget_tokens: room, max_tokens: 300 + room });
     });
 
     it('sends a switched-off prompt the none literal and no budget on a template without effort support', () => {
@@ -1094,13 +1096,17 @@ describe('dialects — one spelling per row', () => {
     it('sends a level only where the template reads reasoning_effort', () => {
       const low = { promptReasoning: { director: 'low' as const } };
       expect(reasoningSlice(buildRequestBody(engaged(effortTemplate(), low), director)))
-        .toEqual({ reasoning_budget_tokens: 1024, reasoning_effort: 'low' });
+        .toEqual({ reasoning_budget_tokens: 600, reasoning_effort: 'low' });
       expect(reasoningSlice(buildRequestBody(engaged(plainTemplate(), low), director)))
-        .toEqual({ reasoning_budget_tokens: 1024 });
+        .toEqual({ reasoning_budget_tokens: 600 });
     });
 
-    it('carries the room its budget sends on the spec, so a cut names it', () => {
-      expect(buildAiRequestSpec(engaged(plainTemplate()), director)).toMatchObject({ thinkingRoom: { tokens: 1024, strength: 'low' } });
+    it('carries the room its budget sends on the spec with Max Output off, and none with it', () => {
+      const at = (maxTokens: number | undefined) => buildAiRequestSpec(
+        engaged(plainTemplate({ maxTokens })), call({ requestType: 'director', maxTokensOverride: 300 }),
+      );
+      expect(at(undefined)).toMatchObject({ thinkingRoom: { tokens: 1024, strength: 'low' } });
+      expect(at(800)).not.toHaveProperty('thinkingRoom');
     });
 
     it.each([

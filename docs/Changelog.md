@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **On a llama.cpp server, a prompt's Reasoning Budget slider now sets how long it thinks.** The budget is a percent of Max Output, as on other servers. Before, a model whose template had no strengths was stuck at Model Default's room.
+
 ---
 
 <details>

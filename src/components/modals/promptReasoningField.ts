@@ -3,7 +3,7 @@ import {
   reasoningAwaitingProof, reasoningBudget, resolveReasoningSetting, resolveRequestReasoning, thinkingRoomFor,
   type PromptReasoningSetting, type ReasoningCapability, type ReasoningSetting, type ThinkingRoom,
 } from '@/lib/reasoningEffort';
-import { reasoningDialectBudgetFromStrength, reasoningDialectBudgetFloor, reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
+import { reasoningDialectBudgetFloor, reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
 import type { AIRequestType } from '@/types';
 
 /** The label, line and ⓘ of a reasoning field. */
@@ -70,9 +70,7 @@ export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omi
     effort: 'auto', kind, budgets: { [kind]: budgetPct }, base: target.maxTokens, answerCap: undefined,
     floor: reasoningDialectBudgetFloor(capability.dialect),
   }).budget ?? undefined;
-  // A dialect whose budget is the strength's room has nothing for the slider to size.
-  const slider = capability.budget === true && reasoningDialectTakesBudget(capability.dialect)
-    && !reasoningDialectBudgetFromStrength(capability.dialect);
+  const slider = capability.budget === true && reasoningDialectTakesBudget(capability.dialect);
   const level = reasoningLevelControl(capability);
   const scalable = target.maxTokens !== undefined;
   // The request's own fold, read as if the switch were on, so a row that is off shows its remembered room.
