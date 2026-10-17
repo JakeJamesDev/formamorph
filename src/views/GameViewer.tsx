@@ -2570,6 +2570,8 @@ const GameViewer = ({
       // An On Call write since the narration's context values were built, which later prompts must read (Q52).
       let narrationBuilt = false;
       let ctxStale = false;
+      // The same, for the staged planning passes still to come (Q55).
+      let planCtxStale = false;
       let relevanceScores: Map<string, number> | null = null;
       let historyPicks: HistoryPicks | undefined;
 
@@ -2780,7 +2782,7 @@ const GameViewer = ({
             const clock = advancedClock(gameTime, turnWorldWrites);
             turnClockRef.current = clock ?? null;
             codeView = turnCodeView(onCallStateRef.current ?? turnBeforeBoxRef.current, clock);
-            if (narrationBuilt) ctxStale = true;
+            if (narrationBuilt) ctxStale = planCtxStale = true;
           },
         };
       });
@@ -2790,6 +2792,13 @@ const GameViewer = ({
         snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries, toolMemorySource())),
       );
       let executeTool = turnToolExecutor();
+
+      /** The context values for the staged passes after a planning answer: fresh only when an On Call write landed. */
+      const takeStagedCtx = (): Partial<TurnMaterial> => {
+        if (!planCtxStale) return {};
+        planCtxStale = false;
+        return { ctx: contextValues(turnLocation, codeView) };
+      };
 
       const advance: TurnAdvance = async (event, material) => {
         if (event.at === "written") {
@@ -2872,7 +2881,7 @@ const GameViewer = ({
             // With nobody in the cast there is nothing to reconcile: the storyboard skips itself, and the
             // plan is the director's staging alone.
             if (npcCast.length === 0) {
-              return { directorScene: scene, npcCastSize: 0, turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }) };
+              return { ...takeStagedCtx(), directorScene: scene, npcCastSize: 0, turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }) };
             }
             // The scene's cast, whose text resolved with each owner: the character pass sends it as is.
             const castScene = liveScene(turnLocation, codeView);
@@ -2882,6 +2891,7 @@ const GameViewer = ({
               limitActiveCharacters ? activeCharacterLimit : Infinity,
             );
             return {
+              ...takeStagedCtx(),
               directorScene: scene,
               npcCastSize: npcCast.length,
               overflow,
@@ -2900,6 +2910,7 @@ const GameViewer = ({
           case "character":
             // Intents keep cast order, which the storyboard message relies on.
             return {
+              ...takeStagedCtx(),
               intents: event.outcomes.flatMap((outcome) =>
                 outcome.subject && outcome.raw ? [{ name: outcome.subject.name, text: outcome.raw }] : [],
               ),
