@@ -70,6 +70,7 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q45 | A Before the AI or On Call `clock.advance` shows in prompts built after it in the same turn; the commit adds only the rest of the duration, never double counting. Ticket 10 builds it; ticket 05 lands with turn-start time in prompts, as every clock write reads today (user ruling) |
 | Q46 | The editor has no discovered cast, so in Test Code and Try It a `diary` target the authored world lacks is a warning line, not a script failure (Q30: no false errors). Play still fails an unknown name (Q14). Ticket 07 builds it (ticket 04 edge) |
 | Q47 | A world with a During AI Output World Tool reveals like a world with an output Script (Scripts Q21): the output run opens when narration starts and the crawl holds to whole sentences on every turn, armed or not. Only while the Tool would be offered: the global Tools switch on and the endpoint tool-capable (ticket 06 ruling, from Scripts Q21) |
+| Q48 | Ticket 08's "help topic" means new routed how-to sections in the Tools doc for the Tools tab (timing, Reply, Stack Calls, a Tool that changes the story) and a fix to its "a Tool only reads" line, plus a World Tools section in the Scripts guide. No tab-level help topic entry. The example is `lock_target(name)` in the drone scripts showcase world: During AI Output, Stack Calls off, marks the locked target in later sentences (ticket 08 ruling) |
 
 ## User Stories
 
