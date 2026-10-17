@@ -29,6 +29,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The drone world now ships lock_target, a World Tool that marks the enemy the AI locks onto.** For the rest of that reply, the target shows in bold with a reticle. The Tools page and the Scripts Guide now explain World Tools.
     - **Staged planning now reads the changes a Tool made earlier in the turn.** A Tool the director or a character pass calls changes the place, time and stats that the later planning passes read.
     - **Try It in the Tool editor now becomes a tab when the editor is narrow.** It keeps your values and last result when you switch tabs. It returns to its column when the editor widens.
+  - **Code Templates:**
+    - **A code template can now run in several timings, and each script box lists the templates for its own timing.** At Game Start, During AI Output and When a Trait Switches no longer show the After the AI set. When you save a template, pick each timing under **Runs**. Older template packs still import.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 
@@ -36,6 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **On a llama.cpp server, a prompt's Reasoning Budget slider now sets how long it thinks.** The budget is a percent of Max Output, as on other servers. Before, a model whose template had no strengths was stuck at Model Default's room.
+  - **Test Code now reads the clock as play does in every timing but After the AI.** At Game Start, During AI Output and When a Trait Switches read a zero `clock.deltaHours`. Before, Test Code ran them as a one-hour turn and could show a change that play never makes.
 
 ---
 

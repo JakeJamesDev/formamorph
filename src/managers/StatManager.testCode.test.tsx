@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
-import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
+import type { CodeTemplate } from '@/lib/statCodeTemplates';
 import type { CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { encodePlaceholderToken } from '@/lib/placeholders';
@@ -76,7 +76,7 @@ vi.mock('@/components/prompt/CodeArea', () => ({
 }));
 
 /** The author's saved templates, as the template menu lists them. */
-const userTemplates = vi.hoisted((): StatCodeTemplate[] => []);
+const userTemplates = vi.hoisted((): CodeTemplate[] => []);
 vi.mock('@/services/StatTemplateStorageService', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/services/StatTemplateStorageService')>(),
   listUserTemplates: async () => [...userTemplates],
@@ -698,7 +698,7 @@ describe('a box tests itself', () => {
   it('inserts a saved template on the current routes', async () => {
     const user = userEvent.setup();
     userTemplates.push({
-      id: 'saved-drain', name: 'Saved Drain', description: '', timing: 'after',
+      id: 'saved-drain', name: 'Saved Drain', description: '', kind: 'script', timings: ['after'],
       code: 'return self.value - deltaHours + (currentStatId ? 0 : 1);',
     });
     renderCodePanel(stats[0]);
@@ -709,6 +709,16 @@ describe('a box tests itself', () => {
 
     await waitFor(() => expect(fieldOf('After the AI'))
       .toHaveValue('return self.value - clock.deltaHours + (self.id ? 0 : 1);'));
+  });
+
+  it('offers an At Game Start box the templates of its own timing', async () => {
+    const user = userEvent.setup();
+    renderCodePanel({ ...stats[0], scripts: [{ id: 'start', timing: 'start', code: '' }] });
+
+    await user.click(screen.getByRole('button', { name: /^Templates .* · At Game Start$/ }));
+    expect(await screen.findByRole('button', { name: 'Weighted Blend' })).toBeInTheDocument();
+    // Its clock has no hours behind it, so a drift template is not offered.
+    expect(screen.queryByRole('button', { name: 'Hourly Change' })).toBeNull();
   });
 
   it('offers no run on an empty box', async () => {

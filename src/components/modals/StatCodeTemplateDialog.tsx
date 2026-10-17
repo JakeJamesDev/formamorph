@@ -34,12 +34,17 @@ import {
   isNameSlotType,
   ownerStatAnswer,
   PERSONA_TRAIT_OWNER,
-  templatesForTiming,
+  templatesFor,
+  templateTimingLabels,
+  TEMPLATE_TIMING_LABEL,
+  TEMPLATE_TIMINGS,
+  withTimings,
+  type CodeTemplate,
   type NameSlotType,
-  type StatCodeTemplate,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
-import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE, STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
@@ -53,25 +58,34 @@ import {
   parseTemplatePack,
   saveUserTemplate,
 } from '@/services/StatTemplateStorageService';
-import type { Stat } from '@/types';
+import type { ScriptTiming, Stat } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 
 /** A new template starts in the box the author opened the menu from, which is where they were about to
- *  paste it. The Runs field is right there to move it. */
-const blankTemplate = (timing: StatCodeTiming): StatCodeTemplate => ({
+ *  paste it. The Runs field is right there to add more. */
+const blankTemplate = (timing: ScriptTiming): CodeTemplate => ({
   id: '',
+  kind: 'script',
   name: '',
   description: '',
   code: 'return {{amount:number=1}};',
-  timing,
+  timings: [timing],
 });
 
+/** Whether a draft has a name, code and a timing to run in. */
+const canSave = (draft: CodeTemplate): boolean => !!draft.name.trim() && !!draft.code.trim() && draft.timings.length > 0;
+
+/** The Runs field's options for a kind's templates. */
+const timingOptions = (template: CodeTemplate): { value: string; label: string }[] => (template.kind === 'script'
+  ? TEMPLATE_TIMINGS.script.map((value) => ({ value, label: TEMPLATE_TIMING_LABEL.script[value] }))
+  : TEMPLATE_TIMINGS.worldTool.map((value) => ({ value, label: TEMPLATE_TIMING_LABEL.worldTool[value] })));
+
 export interface StatTemplateRepository {
-  list: () => Promise<StatCodeTemplate[]>;
-  save: (template: StatCodeTemplate) => Promise<StatCodeTemplate>;
+  list: () => Promise<CodeTemplate[]>;
+  save: (template: CodeTemplate) => Promise<CodeTemplate>;
   remove: (id: string) => Promise<void>;
-  import: (templates: StatCodeTemplate[]) => Promise<number>;
+  import: (templates: CodeTemplate[]) => Promise<number>;
 }
 
 export interface StatTemplateFileTransfer {
@@ -314,9 +328,9 @@ export function StatCodeTemplateDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The box this menu fills. It lists only the templates written for that box, and a template saved here
-   *  starts out belonging to it. */
-  timing: StatCodeTiming;
+  /** The box this menu fills. It lists the stat templates that run in that box, and a template saved here
+   *  starts out running in it. */
+  timing: ScriptTiming;
   /** The world's stats, under their code names: what a slot fills in has to be what the run reaches. */
   stats: Stat[];
   /** The kind of owner the box's code runs under. Its stat slots list `ownerStats` beside `stats`, and its
@@ -338,16 +352,18 @@ export function StatCodeTemplateDialog({
   repository?: StatTemplateRepository;
   fileTransfer?: StatTemplateFileTransfer;
 }) {
-  const [userTemplates, setUserTemplates] = useState<StatCodeTemplate[]>([]);
-  const builtIns = useMemo(() => templatesForTiming(BUILT_IN_TEMPLATES, timing), [timing]);
-  const [selectedId, setSelectedId] = useState<string>(builtIns[0].id);
+  const [userTemplates, setUserTemplates] = useState<CodeTemplate[]>([]);
+  const builtIns = useMemo(() => templatesFor(BUILT_IN_TEMPLATES, 'script', timing), [timing]);
+  const firstBuiltIn = builtIns[0]?.id ?? '';
+  const [selectedId, setSelectedId] = useState<string>(firstBuiltIn);
   const [values, setValues] = useState<Record<string, string>>({});
-  const [draft, setDraft] = useState<StatCodeTemplate | null>(null);
+  const [draft, setDraft] = useState<CodeTemplate | null>(null);
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
-  const [confirmDelete, setConfirmDelete] = useState<StatCodeTemplate | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<CodeTemplate | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const runsId = useId();
 
   const refresh = useCallback(async () => {
     try {
@@ -358,13 +374,13 @@ export function StatCodeTemplateDialog({
   }, [repository]);
 
   useResetOnOpen(open, () => {
-    setSelectedId(builtIns[0].id);
+    setSelectedId(firstBuiltIn);
     setDraft(null);
     void refresh();
   });
 
   const sortedUser = useMemo(
-    () => templatesForTiming(userTemplates, timing).sort((a, b) => a.name.localeCompare(b.name)),
+    () => templatesFor(userTemplates, 'script', timing).sort((a, b) => a.name.localeCompare(b.name)),
     [userTemplates, timing],
   );
   const all = useMemo(() => [...builtIns, ...sortedUser], [builtIns, sortedUser]);
@@ -403,13 +419,13 @@ export function StatCodeTemplateDialog({
     onOpenChange(false);
   };
 
-  const openDraft = (template: StatCodeTemplate) => {
+  const openDraft = (template: CodeTemplate) => {
     setDraft(template);
     setDraftValues(defaultSlotValues(parseTemplateSlots(template.code).slots));
   };
 
   const saveDraft = async () => {
-    if (!draft?.name.trim() || !draft.code.trim()) return;
+    if (!draft || !canSave(draft)) return;
     try {
       const saved = await repository.save({ ...draft, name: draft.name.trim() });
       await refresh();
@@ -421,12 +437,12 @@ export function StatCodeTemplateDialog({
     }
   };
 
-  const remove = async (template: StatCodeTemplate) => {
+  const remove = async (template: CodeTemplate) => {
     setConfirmDelete(null);
     try {
       await repository.remove(template.id);
       await refresh();
-      setSelectedId(builtIns[0].id);
+      setSelectedId(firstBuiltIn);
     } catch (error) {
       toastError(error, { headline: `Couldn’t delete: ${(error as Error).message}` });
     }
@@ -468,7 +484,7 @@ export function StatCodeTemplateDialog({
     fileRef.current?.click();
   };
 
-  const templateButton = (template: StatCodeTemplate) => (
+  const templateButton = (template: CodeTemplate) => (
     <CompactSelectionRow
       key={template.id}
       selected={template.id === selected?.id}
@@ -508,18 +524,13 @@ export function StatCodeTemplateDialog({
                 <span className="text-label">Description</span>
                 <Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
               </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-label">Runs</span>
-                <Select
-                  value={draft.timing}
-                  onValueChange={(value) => setDraft({ ...draft, timing: value as StatCodeTiming })}
-                >
-                  <SelectTrigger aria-label="Runs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STAT_CODE_TIMINGS.map(t => <SelectItem key={t} value={t}>{TIMING_LABEL[t]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </label>
+              <div className="flex flex-col gap-1">
+                <span id={runsId} className="text-label">Runs</span>
+                <MultiSelect
+                  aria-labelledby={runsId} options={timingOptions(draft)} placeholder="No Timings" modalPopover
+                  defaultValue={draft.timings} onValueChange={(picked) => setDraft((current) => current && withTimings(current, picked))}
+                />
+              </div>
               {/* Preview is the creation interface the template will present, so the author edits the code
                   and reads what it asks for in the same place — side by side once full screen allows. */}
               <CodeArea
@@ -545,7 +556,7 @@ export function StatCodeTemplateDialog({
 
             <DialogFooter className="flex-row justify-end">
               <Button variant="outline" onClick={() => setDraft(null)}>Cancel</Button>
-              <Button disabled={!draft.name.trim() || !draft.code.trim()} onClick={() => void saveDraft()}>
+              <Button disabled={!canSave(draft)} onClick={() => void saveDraft()}>
                 Save Template
               </Button>
             </DialogFooter>
@@ -564,10 +575,10 @@ export function StatCodeTemplateDialog({
               ) : (
                 <ScrollArea className="h-full rounded-md border">
                   <div className="p-2 flex flex-col gap-1">
-                    <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>
+                    {builtIns.length > 0 && <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>}
                     {builtIns.map(templateButton)}
 
-                    <div className="flex items-center justify-between gap-1 px-1 pt-3">
+                    <div className={cn('flex items-center justify-between gap-1 px-1', builtIns.length > 0 ? 'pt-3' : 'pt-1')}>
                       <p className="text-meta text-muted-foreground">My Templates</p>
                       <span className="flex items-center">
                         <Tip tip="Import templates">
@@ -605,11 +616,14 @@ export function StatCodeTemplateDialog({
               )}
 
               <div className="flex flex-col gap-3 min-w-0 overflow-y-auto">
+                {!selected && (
+                  <p className="text-meta text-muted-foreground">No templates run {TIMING_LABEL[timing]} yet</p>
+                )}
                 {selected && (
                   <>
                     <div>
                       <p className="text-label font-medium">{selected.name}</p>
-                      <Meta className="block text-muted-foreground">Runs {TIMING_LABEL[selected.timing]}</Meta>
+                      <Meta className="block text-muted-foreground">Runs {templateTimingLabels(selected).join(', ')}</Meta>
                       <p className="text-helper text-muted-foreground">{selected.description}</p>
                     </div>
                     <TemplateForm code={selected.code} names={slotNames} values={values} onChange={setValues} />
@@ -640,7 +654,7 @@ export function StatCodeTemplateDialog({
                   </Button>
                 </>
               ))}
-              <Button disabled={blocked} onClick={() => (hasExistingCode ? setConfirmReplace(true) : doInsert())}>
+              <Button disabled={blocked || !selected} onClick={() => (hasExistingCode ? setConfirmReplace(true) : doInsert())}>
                 Insert Code
               </Button>
             </DialogFooter>

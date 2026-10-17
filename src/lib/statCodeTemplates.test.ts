@@ -17,14 +17,17 @@ import {
   PERSONA_TRAIT_OWNER,
   BUILT_IN_TEMPLATES,
   DAYPART_OPTIONS,
-  timingOf,
-  templatesForTiming,
-  type StatCodeTemplate,
+  readTemplate,
+  templatesFor,
+  templateTimingLabels,
+  type CodeTemplate,
   type TemplateSlot,
 } from './statCodeTemplates';
+import { readsTurnStart } from './statCodeTiming';
+import { SCRIPT_TIMINGS } from './scripts';
 import { executeStatCode, type SandboxEntity, type SandboxTrait } from './statCodeExecutor';
 import { phMap, phWrite } from '@/test/sandboxPlaceholders';
-import type { Stat } from '@/types';
+import type { ScriptTiming, Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
   id: '1',
@@ -322,9 +325,9 @@ describe('built-in templates', () => {
         const picked = pickFor(slot);
         if (picked !== undefined) values[slot.name] = picked;
       }
-      // The clock its own box hands it: a measured turn after the AI, and the opening turn's zero hours
-      // before, which is the reading the before box gives on the turn its templates are written for.
-      const clock = template.timing === 'before'
+      // The clock its first timing hands it: the opening turn's zero hours where the turn start is read, which
+      // is the turn those templates are written for, and a measured turn after the AI.
+      const clock = template.kind === 'script' && readsTurnStart(template.timings[0])
         ? { deltaHours: 0, elapsedHours: 0 }
         : { deltaHours: 2, elapsedHours: 12 };
       const result = await executeStatCode(fillTemplate(template.code, values), world, self, {
@@ -463,7 +466,7 @@ describe('built-in templates', () => {
     });
 
     it('is in the After the AI menu', () => {
-      expect(templatesForTiming(BUILT_IN_TEMPLATES, 'after')).toContain(template);
+      expect(templatesFor(BUILT_IN_TEMPLATES, 'script', 'after')).toContain(template);
     });
   });
 
@@ -559,36 +562,62 @@ describe('built-in templates', () => {
   });
 });
 
-describe('which box a template belongs to', () => {
-  it('splits the built-ins so neither menu offers the other box’s templates', () => {
-    const before = templatesForTiming(BUILT_IN_TEMPLATES, 'before').map(t => t.id);
-    const after = templatesForTiming(BUILT_IN_TEMPLATES, 'after').map(t => t.id);
+describe('which menus a template shows in', () => {
+  const menu = (timing: ScriptTiming) => templatesFor(BUILT_IN_TEMPLATES, 'script', timing).map(t => t.name);
 
-    // The three setup shapes: a value the first narration reads, a pin it reads, a trait it reads.
-    expect(before).toEqual([
-      'builtin-placeholder-follows-stat', 'builtin-trait-by-threshold', 'builtin-opening-value',
-    ]);
-    expect(after).not.toHaveLength(0);
-    expect(before.filter(id => after.includes(id))).toEqual([]);
-    expect([...before, ...after]).toHaveLength(BUILT_IN_TEMPLATES.length);
+  it('keeps the clock-delta templates out of every menu but After the AI', () => {
+    for (const timing of ['before', 'start', 'output', 'switch'] as const) {
+      expect(menu(timing), timing).not.toContain('Hourly Change');
+      expect(menu(timing), timing).not.toContain('Regen Toward Target');
+    }
+    expect(menu('after')).toEqual(expect.arrayContaining(['Hourly Change', 'Regen Toward Target']));
   });
 
-  // Three readings are dead in the before box: `deltaHours` is 0 because the turn has consumed no time,
-  // `delta` is zeros because nothing has moved, and `previous` is the stat itself. A template built on any
-  // of them would run and quietly do nothing, so it belongs in the after menu. The rest of the clock still
-  // reads: `elapsedHours` at turn start is what tells the opening turn from every later one.
-  it('offers no before template that is built on a reading the before box zeroes', () => {
-    const deadInTheBeforeBox = /deltaHours|delta[.]|previous/;
-    for (const template of templatesForTiming(BUILT_IN_TEMPLATES, 'before')) {
-      expect(template.code, template.name).not.toMatch(deadInTheBeforeBox);
+  it('lists one formula in each menu it works in', () => {
+    for (const timing of ['before', 'after', 'start', 'switch'] as const) expect(menu(timing), timing).toContain('Weighted Blend');
+    expect(menu('output')).not.toContain('Weighted Blend');
+  });
+
+  // `deltaHours` is 0, `delta` is zeros and `previous` is the stat itself in every timing that reads the turn
+  // start, so a template built on any of them runs there and quietly does nothing.
+  it('offers no template built on a reading its timing zeroes', () => {
+    const deadAtTurnStart = /deltaHours|delta[.]|previous/;
+    for (const timing of SCRIPT_TIMINGS.filter(readsTurnStart)) {
+      for (const template of templatesFor(BUILT_IN_TEMPLATES, 'script', timing)) {
+        expect(template.code, `${template.name} at ${timing}`).not.toMatch(deadAtTurnStart);
+      }
     }
   });
 
-  it('reads a template with no timing as an after-the-AI one', () => {
-    expect(timingOf({})).toBe('after');
-    expect(timingOf({ timing: 'before' })).toBe('before');
-    const untimed = { id: 'x', name: 'x', description: '', code: '' } as StatCodeTemplate;
-    expect(templatesForTiming([untimed], 'after')).toEqual([untimed]);
-    expect(templatesForTiming([untimed], 'before')).toEqual([]);
+  it('never lists a template in a menu of the other kind', () => {
+    const tool: CodeTemplate = { id: 't', kind: 'worldTool', name: 'Tool', description: '', code: '', timings: ['after'] };
+    const stat: CodeTemplate = { id: 's', kind: 'script', name: 'Stat', description: '', code: '', timings: ['after'] };
+    expect(templatesFor([tool, stat], 'script', 'after')).toEqual([stat]);
+    expect(templatesFor([tool, stat], 'worldTool', 'after')).toEqual([tool]);
+  });
+
+  it('names every timing a template runs in', () => {
+    const blend = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-weighted-blend')!;
+    expect(templateTimingLabels(blend)).toEqual(['Before the AI', 'After the AI', 'At Game Start', 'When a Trait Switches']);
+  });
+});
+
+describe('readTemplate', () => {
+  it('reads its own output back unchanged', () => {
+    for (const entry of [{ name: 'a', code: 'x', timing: 'before' }, { name: 'b', code: 'y', kind: 'worldTool', timings: ['after', 'call'] }]) {
+      const once = readTemplate(entry);
+      expect(once).not.toBeNull();
+      expect(readTemplate(once)).toEqual(once);
+    }
+  });
+
+  it('puts the picked timings in the kind’s order', () => {
+    expect(readTemplate({ name: 'a', code: 'x', kind: 'worldTool', timings: ['after', 'call'] })?.timings).toEqual(['call', 'after']);
+  });
+
+  it('is no template without a name or code', () => {
+    expect(readTemplate({ code: 'x' })).toBeNull();
+    expect(readTemplate({ name: 'x' })).toBeNull();
+    expect(readTemplate(null)).toBeNull();
   });
 });

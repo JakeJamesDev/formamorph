@@ -21,9 +21,21 @@ A trait has its own **Scripts** tab. It runs its scripts only while the trait is
 
 1. Open the stat's **Scripts** tab.
 2. Select **Templates** beside the box's **Test Code** button.
-3. Pick a template. Each box lists only the templates written for its timing.
+3. Pick a template. Each box lists the templates that work at its timing. The detail under the name lists every timing the template runs in.
 4. Fill in the inputs the template asks for.
 5. Edit the inserted code as you like.
+
+| Timing | Built-in templates in its menu |
+|---|---|
+| ⏮️ **Before the AI** | The formulas, **Timer**, **Random Per-Turn Roll**, **Placeholder by Range**, **Trait by Threshold**, **Opening Turn Value** |
+| ⏭️ **After the AI** | The formulas, **Timer**, **Random Per-Turn Roll**, **Hourly Change**, **Regen Toward Target**, **Dice Roll With Consequences**, **Placeholder by Range**, **Trait by Threshold** |
+| 🎬 **At Game Start** | The formulas, **Placeholder by Range**, **Trait by Threshold** |
+| 🔀 **When a Trait Switches** | The formulas |
+| 💬 **During AI Output** | None yet |
+
+The formulas are **Weighted Blend**, **Inverse of Another Stat**, **Threshold Flag**, **Daypart Modifier**, **Bound From Another Stat**, **Bonus From Persona Trait** and **Penalty From Entity Trait**. **Hourly Change** and **Regen Toward Target** read `clock.deltaHours`, which is `0` in every timing but **After the AI**.
+
+To save your own template, select **New Template** or **Duplicate**. Pick each timing it works in under **Runs**. The template shows in the menu of each of those timings.
 
 ## How to Insert a Name from Your World
 <!-- keywords: reference an entity's trait, trait of an entity, find a name, pick a name, insert a path, menu, variable button, drill down, dictionary placeholder, persona trait, stat value, don't type names, copy the right spelling -->
@@ -1095,8 +1107,8 @@ return baseRate * activityMultiplier * sizeFactor;
 - The code runs in a sandboxed environment with limited JavaScript features
 - Code writes `value`, `min`, `max` and `regen` only. Every other field of a stat entry is read-only on every route
 - A write to an entity that isn't in the game, to an unknown stat, or to a stat a trait switched off is ignored and reported
-- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before the AI runs as the opening turn, where `clock.deltaHours` and `clock.elapsedHours` are both `0`; every other timing runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
-- Each box's **Templates** menu lists only the templates written for that box
+- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. After the AI runs as a one-hour turn on day one. Every other timing runs as the opening turn, where `clock.deltaHours` and `clock.elapsedHours` are both `0`. It shows a trait switch and never applies it to the world
+- Each box's **Templates** menu lists only the templates that work at that box's timing
 
 ### A Note on Accumulating Stats
 

@@ -8,7 +8,7 @@
 
 import { cachedConnection, promisifyRequest } from '@/lib/idb';
 import { randomUUID } from '@/lib/uuid';
-import { isBuiltInTemplate, timingOf, type StatCodeTemplate } from '@/lib/statCodeTemplates';
+import { isBuiltInTemplate, readTemplate, type CodeTemplate } from '@/lib/statCodeTemplates';
 import { APP_VERSION } from '@/lib/version';
 
 const DB_NAME = 'statTemplatesDB';
@@ -23,29 +23,29 @@ const STORE_NAME = 'templates';
 export interface StatTemplatePack {
   formamorphTemplates: number;
   appVersion: string;
-  templates: StatCodeTemplate[];
+  templates: CodeTemplate[];
 }
 
-export const TEMPLATE_PACK_VERSION = 1;
+/** Version 2 writes `kind` and `timings`. Import also reads version 1, whose entries carry one `timing`. */
+export const TEMPLATE_PACK_VERSION = 2;
 
 const connect = cachedConnection(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]);
 
-/** Every saved template, newest edits last as stored (the UI sorts by name). A row with no timing reads
- *  back as an after-the-AI one. */
-export async function listUserTemplates(): Promise<StatCodeTemplate[]> {
+/** Every saved template, newest edits last as stored (the UI sorts by name). A version 1 row reads back in the
+ *  version 2 shape; a row that is no template is left out. */
+export async function listUserTemplates(): Promise<CodeTemplate[]> {
   const db = await connect();
   const store = db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME);
-  const stored = await promisifyRequest<StatCodeTemplate[]>(store.getAll());
-  return stored.map((template) => ({ ...template, timing: timingOf(template) }));
+  const stored = await promisifyRequest<unknown[]>(store.getAll());
+  return stored.map(readTemplate).filter((template): template is CodeTemplate => template !== null);
 }
 
 /** Insert or update one template. A blank id means "new", and a built-in id is refused so a duplicated
  *  built-in can never shadow the bundled one it was copied from. */
-export async function saveUserTemplate(template: StatCodeTemplate): Promise<StatCodeTemplate> {
-  const stored: StatCodeTemplate = {
+export async function saveUserTemplate(template: CodeTemplate): Promise<CodeTemplate> {
+  const stored: CodeTemplate = {
     ...template,
     id: template.id && !isBuiltInTemplate(template.id) ? template.id : randomUUID(),
-    timing: timingOf(template),
   };
   const db = await connect();
   const store = db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME);
@@ -60,13 +60,13 @@ export async function deleteUserTemplate(id: string): Promise<void> {
 }
 
 /** Wrap templates in the shareable pack shape. */
-export function buildTemplatePack(templates: StatCodeTemplate[]): StatTemplatePack {
+export function buildTemplatePack(templates: CodeTemplate[]): StatTemplatePack {
   return { formamorphTemplates: TEMPLATE_PACK_VERSION, appVersion: APP_VERSION, templates };
 }
 
 /** Read a pack file's contents into templates, rejecting anything that isn't one. Entries are re-checked
  *  field by field because the file is user-supplied and may have been hand-edited. */
-export function parseTemplatePack(json: string): StatCodeTemplate[] {
+export function parseTemplatePack(json: string): CodeTemplate[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -79,19 +79,14 @@ export function parseTemplatePack(json: string): StatCodeTemplate[] {
     throw new Error('That file isn’t a Formamorph template pack.');
   }
 
-  const templates = pack.templates.filter((entry): entry is StatCodeTemplate =>
-    !!entry && typeof entry === 'object'
-    && typeof (entry as StatCodeTemplate).name === 'string'
-    && typeof (entry as StatCodeTemplate).code === 'string');
+  const templates = (pack.templates as unknown[]).map(readTemplate)
+    .filter((entry): entry is CodeTemplate => entry !== null);
 
   if (templates.length === 0) throw new Error('That pack contains no templates.');
 
   return templates.map(entry => ({
+    ...entry,
     id: entry.id && !isBuiltInTemplate(entry.id) ? entry.id : randomUUID(),
-    name: entry.name,
-    description: typeof entry.description === 'string' ? entry.description : '',
-    code: entry.code,
-    timing: timingOf(entry),
   }));
 }
 
@@ -100,7 +95,7 @@ export function parseTemplatePack(json: string): StatCodeTemplate[] {
  * is re-issued rather than overwriting it, so importing a pack never silently replaces the author's own
  * work; an identical re-import is a no-op.
  */
-export async function importTemplates(incoming: StatCodeTemplate[]): Promise<number> {
+export async function importTemplates(incoming: CodeTemplate[]): Promise<number> {
   const existing = await listUserTemplates();
   const byId = new Map(existing.map(template => [template.id, template]));
   let added = 0;

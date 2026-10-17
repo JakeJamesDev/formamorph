@@ -20,6 +20,16 @@ const names = statCodeNames(world);
 beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
 afterEach(() => vi.restoreAllMocks());
 
+describe('the clock Test Code hands each timing', () => {
+  // Play gives every timing but After the AI the turn's start, with no hours behind it on the opening turn.
+  it.each([
+    ['before', 0], ['start', 0], ['output', 0], ['switch', 0], ['after', 1],
+  ] as const)('reads %s with a delta of %i hours', async (timing, hours) => {
+    const report = await runTestCode('stats.Health.value = clock.deltaHours + clock.elapsedHours;', timing, null, names, { sentence: 'A bell rings.' });
+    expect(report.writes).toEqual([`stats.Health.value = ${hours * 2}`]);
+  });
+});
+
 describe('Test Code on a During AI Output script', () => {
   it('rewrites the sample sentence and reports it, with the stubs read from it', async () => {
     const code = 'narration.sentence = narration.sentence.replace("door", "gate") + ` ${narration.index}/${narration.sent.length}/${narration.buffered.length}/${narration.full.length}`;';

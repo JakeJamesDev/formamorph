@@ -7,19 +7,26 @@ import {
   buildTemplatePack,
   parseTemplatePack,
   importTemplates,
-  TEMPLATE_PACK_VERSION,
 } from './StatTemplateStorageService';
-import { BUILT_IN_TEMPLATES, type StatCodeTemplate } from '@/lib/statCodeTemplates';
+import { BUILT_IN_TEMPLATES, type CodeTemplate } from '@/lib/statCodeTemplates';
+import { cachedConnection, promisifyRequest } from '@/lib/idb';
 import { APP_VERSION } from '@/lib/version';
 
-const template = (over: Partial<StatCodeTemplate> = {}): StatCodeTemplate => ({
+const template = (over: Partial<Omit<Extract<CodeTemplate, { kind: 'script' }>, 'kind'>> = {}): CodeTemplate => ({
   id: '',
+  kind: 'script',
   name: 'Mine',
   description: 'A local template',
   code: 'return {{n:number=1}};',
-  timing: 'after',
+  timings: ['after'],
   ...over,
 });
+
+/** Writes `row` into the library's store as is, as an older app left it. */
+async function storeRaw(row: object): Promise<void> {
+  const db = await cachedConnection('statTemplatesDB', 1, [{ name: 'templates', keyPath: 'id' }])();
+  await promisifyRequest(db.transaction(['templates'], 'readwrite').objectStore('templates').put(row));
+}
 
 describe('StatTemplateStorageService', () => {
   it('retries the open on the next call after the first open fails', async () => {
@@ -56,19 +63,28 @@ describe('StatTemplateStorageService', () => {
     expect((await listUserTemplates()).some(t => t.id === saved.id)).toBe(false);
   });
 
-  it('keeps a template in the box it was saved for', async () => {
-    const saved = await saveUserTemplate(template({ name: 'Setup', timing: 'before' }));
-    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timing).toBe('before');
+  it('keeps every timing a template was saved with', async () => {
+    const saved = await saveUserTemplate(template({ name: 'Setup', timings: ['before', 'start'] }));
+    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timings).toEqual(['before', 'start']);
     await deleteUserTemplate(saved.id);
   });
 
-  // Every template saved before the boxes split ran where the after box runs, so that is where it stays.
-  it('reads a template stored without a timing as an after-the-AI one', async () => {
-    const { timing: _dropped, ...noTiming } = template({ name: 'Older' });
-    const saved = await saveUserTemplate(noTiming as StatCodeTemplate);
-    expect(saved.timing).toBe('after');
-    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timing).toBe('after');
-    await deleteUserTemplate(saved.id);
+  // A version 1 row holds one `timing`, or none from before the boxes split; any but `before` ran in the after box.
+  it.each([
+    ['before', ['before']],
+    ['after', ['after']],
+    ['output', ['after']],
+    [undefined, ['after']],
+  ] as const)('reads a stored version 1 row with timing %s as a stat script', async (timing, timings) => {
+    const id = `v1-${timing}`;
+    await storeRaw({ id, name: 'Older', description: 'd', code: 'return 1;', ...(timing && { timing }) });
+    const expected = { id, kind: 'script', name: 'Older', description: 'd', code: 'return 1;', timings };
+    const listed = (await listUserTemplates()).find(t => t.id === id);
+    expect(listed).toEqual(expected);
+    // A second read, and a save of what came back, give the same template.
+    await saveUserTemplate(listed!);
+    expect((await listUserTemplates()).find(t => t.id === id)).toEqual(expected);
+    await deleteUserTemplate(id);
   });
 
   it('re-issues a built-in id so a duplicate can’t shadow the bundled template', async () => {
@@ -77,17 +93,52 @@ describe('StatTemplateStorageService', () => {
     await deleteUserTemplate(saved.id);
   });
 
-  it('round-trips a pack through build and parse', () => {
-    const pack = buildTemplatePack([template({ id: 'abc' })]);
-    expect(pack.formamorphTemplates).toBe(TEMPLATE_PACK_VERSION);
+  it('round-trips a version 2 pack through export and import', async () => {
+    for (const existing of await listUserTemplates()) await deleteUserTemplate(existing.id);
+    const mixed: CodeTemplate[] = [
+      template({ id: 'abc', timings: ['before', 'after', 'switch'] }),
+      { id: 'tool', kind: 'worldTool', name: 'Roll', description: '', code: 'return 1;', timings: ['call', 'after'] },
+    ];
+    const pack = buildTemplatePack(mixed);
+    expect(pack.formamorphTemplates).toBe(2);
     // The build that wrote the file, beside the shape number import checks — the two answer different
     // questions, and a bare `1` in the file reads as the app's version to anyone opening it.
     expect(pack.appVersion).toBe(APP_VERSION);
-    const parsed = parseTemplatePack(JSON.stringify(pack));
-    expect(parsed).toEqual([template({ id: 'abc' })]);
-    // A pack hand-edited down to the fields that existed before the boxes split still imports.
-    const older = { formamorphTemplates: 1, appVersion: 'x', templates: [{ id: 'legacy', name: 'Old', code: 'return 1;' }] };
-    expect(parseTemplatePack(JSON.stringify(older))[0].timing).toBe('after');
+    const file = JSON.stringify(pack);
+    // Version 2 writes the list and never the one timing.
+    expect(JSON.parse(file).templates.every((entry: object) => !('timing' in entry))).toBe(true);
+    expect(await importTemplates(parseTemplatePack(file))).toBe(2);
+    expect(await listUserTemplates()).toEqual(expect.arrayContaining(mixed));
+    for (const existing of await listUserTemplates()) await deleteUserTemplate(existing.id);
+  });
+
+  it('imports a version 1 pack as stat scripts', () => {
+    const older = {
+      formamorphTemplates: 1, appVersion: 'x', templates: [
+        { id: 'a', name: 'Setup', description: '', code: 'return 1;', timing: 'before' },
+        { id: 'b', name: 'Drain', description: '', code: 'return 2;', timing: 'after' },
+        { id: 'c', name: 'Oldest', code: 'return 3;' },
+      ],
+    };
+    expect(parseTemplatePack(JSON.stringify(older)).map(({ id, kind, timings }) => ({ id, kind, timings }))).toEqual([
+      { id: 'a', kind: 'script', timings: ['before'] },
+      { id: 'b', kind: 'script', timings: ['after'] },
+      { id: 'c', kind: 'script', timings: ['after'] },
+    ]);
+  });
+
+  it('drops a hand-edited version 2 entry with an unknown kind or no timing of its kind', () => {
+    const pack = {
+      formamorphTemplates: 2, appVersion: 'x', templates: [
+        { id: 'k', kind: 'trait', name: 'K', code: 'return 1;', timings: ['after'] },
+        { id: 'e', kind: 'script', name: 'E', code: 'return 1;', timings: [] },
+        { id: 'w', kind: 'worldTool', name: 'W', code: 'return 1;', timings: ['before'] },
+        { id: 'ok', kind: 'script', name: 'Ok', code: 'return 1;', timings: ['switch', 'call', 'before'] },
+      ],
+    };
+    expect(parseTemplatePack(JSON.stringify(pack))).toEqual([
+      { id: 'ok', kind: 'script', name: 'Ok', description: '', code: 'return 1;', timings: ['before', 'switch'] },
+    ]);
   });
 
   it('rejects malformed pack files', () => {

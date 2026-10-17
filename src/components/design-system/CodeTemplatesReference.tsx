@@ -8,7 +8,7 @@ import {
 import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import { Button } from '@/components/ui/button';
 import { Hint, Meta } from '@/components/ui/typography';
-import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
+import type { CodeTemplate } from '@/lib/statCodeTemplates';
 import { buildTemplatePack } from '@/services/StatTemplateStorageService';
 import { entityTraitNames, worldTraitPlaces } from '@/lib/statCodeTraits';
 import type { Entity, EntityGroup, Stat, Trait, TraitGroup } from '@/types';
@@ -49,11 +49,11 @@ const SAMPLE_STATS: Stat[] = [
   },
 ];
 
-const LONG_TEMPLATE: StatCodeTemplate = {
+const LONG_TEMPLATE: CodeTemplate = {
   id: 'showcase-long-template',
   name: 'Long Observatory Schedule With Recovery Conditions',
   description: 'This controlled personal template has enough detail and parameters to demonstrate selection, wrapping, and vertical overflow without reading the real template library.',
-  timing: 'after',
+  kind: 'script', timings: ['after'],
   code: `const source = stats[{{source:stat}}].value;
 const floor = {{floor:number=10}};
 const ceiling = {{ceiling:number=90}};
@@ -62,11 +62,11 @@ const nightPenalty = clock.daypart === {{quietPeriod:daypart=night}} ? {{penalty
 return Math.min(ceiling, Math.max(floor, source + recovery * clock.deltaHours - nightPenalty));`,
 };
 
-const TRAIT_TEMPLATE: StatCodeTemplate = {
+const TRAIT_TEMPLATE: CodeTemplate = {
   id: 'showcase-trait-template',
   name: 'Trait Bonus',
   description: 'Follow another stat, with a bonus while a world trait is on.',
-  timing: 'after',
+  kind: 'script', timings: ['after'],
   code: 'return stats[{{base:stat}}].value + (traits[{{trait:trait}}].enabled ? {{bonus:number=5}} : 0);',
 };
 
@@ -94,11 +94,11 @@ const SAMPLE_WORLD = { traits: SAMPLE_TRAITS, traitGroups: SAMPLE_TRAIT_GROUPS, 
 const SAMPLE_TRAIT_PLACES = worldTraitPlaces(SAMPLE_WORLD, []);
 const SAMPLE_CODE_ENTITIES = entityTraitNames(SAMPLE_WORLD, []);
 
-const IMPORT_TEMPLATE: StatCodeTemplate = {
+const IMPORT_TEMPLATE: CodeTemplate = {
   id: 'showcase-import-template',
   name: 'Imported Local Demonstration',
   description: 'This template comes from controlled showcase text.',
-  timing: 'after',
+  kind: 'script', timings: ['after'],
   code: 'return {{amount:number=3}};',
 };
 
@@ -106,7 +106,7 @@ export function CodeTemplatesReference() {
   const [open, setOpen] = useState(false);
   const [insertedCode, setInsertedCode] = useState('');
   const [lastAction, setLastAction] = useState('Select “Open Code Templates”.');
-  const templates = useRef<StatCodeTemplate[]>([{ ...LONG_TEMPLATE }, { ...TRAIT_TEMPLATE }]);
+  const templates = useRef<CodeTemplate[]>([{ ...LONG_TEMPLATE }, { ...TRAIT_TEMPLATE }]);
   const nextId = useRef(1);
 
   const repository = useMemo<StatTemplateRepository>(() => ({

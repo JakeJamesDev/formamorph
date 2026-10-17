@@ -7,8 +7,8 @@ import { entityTraitNames, worldTraitPlaces } from '@/lib/statCodeTraits';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { worldPlaceholderPlaces } from '@/lib/statCodePlaceholderPlaces';
 import { StatCodeTemplateDialog } from './StatCodeTemplateDialog';
-import type { StatCodeTiming } from '@/lib/statCodeTiming';
-import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
+import type { ScriptTiming } from '@/types';
+import type { CodeTemplate } from '@/lib/statCodeTemplates';
 
 /** What a template asks for is a form the author writes by typing slots into code, and the form has to
  *  agree with the code it generates underneath — that agreement is what these cover. */
@@ -78,7 +78,7 @@ const placeholderOwners = new Map([['secret', { kind: 'entity' as const, id: 'e1
 
 type DialogProps = React.ComponentProps<typeof StatCodeTemplateDialog>;
 
-const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities, extra: Partial<DialogProps> = {}) => render(
+const open = (timing: ScriptTiming = 'after', cast: Entity[] = entities, extra: Partial<DialogProps> = {}) => render(
   <StatCodeTemplateDialog
     open
     onOpenChange={vi.fn()}
@@ -99,17 +99,18 @@ const rows = async () => (await screen.findAllByRole('option')).map((option) => 
 // The highlighter splits the code into token spans, so read the whole generated block.
 const generated = () => document.querySelector('pre')?.textContent ?? '';
 
-const localTemplate: StatCodeTemplate = {
+const localTemplate: CodeTemplate = {
   id: 'local-template',
   name: 'Local Demonstration',
   description: 'A controlled template.',
   code: 'return {{amount:number=2}};',
-  timing: 'after',
+  kind: 'script',
+  timings: ['after'],
 };
 
 /** Start a new template and replace its code with `code`. */
 async function authoring(
-  user: ReturnType<typeof userEvent.setup>, code: string, timing: StatCodeTiming = 'after', cast?: Entity[], extra?: Partial<DialogProps>,
+  user: ReturnType<typeof userEvent.setup>, code: string, timing: ScriptTiming = 'after', cast?: Entity[], extra?: Partial<DialogProps>,
 ) {
   open(timing, cast, extra);
   await user.click(await screen.findByRole('button', { name: /New Template/i }));
@@ -413,7 +414,7 @@ describe('personal template boundaries', () => {
     const user = userEvent.setup();
     const repository = {
       list: vi.fn(async () => [localTemplate]),
-      save: vi.fn(async (template: StatCodeTemplate) => ({ ...template, id: template.id || 'saved-copy' })),
+      save: vi.fn(async (template: CodeTemplate) => ({ ...template, id: template.id || 'saved-copy' })),
       remove: vi.fn(async () => {}),
       import: vi.fn(async () => 1),
     };
@@ -477,11 +478,30 @@ describe('which templates a box offers', () => {
     expect(screen.queryByRole('button', { name: 'Hourly Change' })).toBeNull();
   });
 
-  it('leaves the before menu’s templates out of the after menu', async () => {
+  it('leaves a template that runs only before the AI out of the after menu', async () => {
     open('after');
     expect(await screen.findByRole('button', { name: 'Hourly Change' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Opening Turn Value' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Trait by Threshold' })).toBeNull();
+  });
+
+  // Start, Output and Switch read a zero clock delta, so a drift template does nothing there.
+  it.each(['start', 'output', 'switch'] as const)('lists no clock-delta template in the %s menu', async (timing) => {
+    open(timing);
+    expect(await screen.findByRole('button', { name: /New Template/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hourly Change' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regen Toward Target' })).toBeNull();
+  });
+
+  it.each(['before', 'after', 'start', 'switch'] as const)('lists Weighted Blend in the %s menu', async (timing) => {
+    open(timing);
+    expect(await screen.findByRole('button', { name: 'Weighted Blend' })).toBeInTheDocument();
+  });
+
+  it('says so when no template runs in the box, and inserts nothing', async () => {
+    open('output');
+    expect(await screen.findByText('No templates run During AI Output yet')).toBeInTheDocument();
+    expect(screen.queryByText('Built-In')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Insert Code' })).toBeDisabled();
   });
 
   it('fills only the selected template with primary and leaves the others a neutral hover', async () => {
@@ -497,20 +517,23 @@ describe('which templates a box offers', () => {
     expect(other).not.toHaveClass('bg-primary');
   });
 
-  it('names the box the selected template runs in', async () => {
+  it('names every box the selected template runs in', async () => {
     const user = userEvent.setup();
     open('after');
     await user.click(await screen.findByRole('button', { name: 'Hourly Change' }));
     expect(screen.getByText('Runs After the AI')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Weighted Blend' }));
+    expect(screen.getByText('Runs Before the AI, After the AI, At Game Start, When a Trait Switches')).toBeInTheDocument();
   });
 
   it('shows only the author’s templates for this box', async () => {
     const repository = {
-      list: vi.fn(async () => [
+      list: vi.fn(async (): Promise<CodeTemplate[]> => [
         localTemplate,
-        { ...localTemplate, id: 'setup-template', name: 'Setup Demonstration', timing: 'before' as const },
+        { ...localTemplate, id: 'setup-template', name: 'Setup Demonstration', timings: ['before'] },
+        { id: 'tool', kind: 'worldTool', name: 'Tool Demonstration', description: '', code: 'return 1;', timings: ['after'] },
       ]),
-      save: vi.fn(async (template: StatCodeTemplate) => template),
+      save: vi.fn(async (template: CodeTemplate) => template),
       remove: vi.fn(async () => {}),
       import: vi.fn(async () => 0),
     };
@@ -529,12 +552,13 @@ describe('which templates a box offers', () => {
 
     expect(await screen.findByText('Setup Demonstration')).toBeInTheDocument();
     expect(screen.queryByText('Local Demonstration')).toBeNull();
+    expect(screen.queryByText('Tool Demonstration')).toBeNull();
   });
 
-  // A template written while the before box was open belongs to that box, with the field there to move it.
+  // A template written while the before box was open runs in that box, with the field there to add more.
   it('starts a new template in the box its menu was opened from', async () => {
     const user = userEvent.setup();
-    const save = vi.fn(async (template: StatCodeTemplate) => ({ ...template, id: 'saved' }));
+    const save = vi.fn(async (template: CodeTemplate) => ({ ...template, id: 'saved' }));
     render(
       <StatCodeTemplateDialog
         open
@@ -554,6 +578,48 @@ describe('which templates a box offers', () => {
     const name = await screen.findByLabelText('Name');
     await user.type(name, 'Mine');
     await user.click(screen.getByRole('button', { name: 'Save Template' }));
-    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ timing: 'before' })));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ kind: 'script', timings: ['before'] })));
+  });
+
+  it('lists a template saved with two timings in both menus, and in no other', async () => {
+    const user = userEvent.setup();
+    const library: CodeTemplate[] = [];
+    const repository = {
+      list: vi.fn(async () => [...library]),
+      save: vi.fn(async (template: CodeTemplate) => { library.push({ ...template, id: 'two' }); return library[0]; }),
+      remove: vi.fn(async () => {}),
+      import: vi.fn(async () => 0),
+    };
+    const { unmount } = open('before', entities, { repository });
+    await user.click(await screen.findByRole('button', { name: /New Template/i }));
+    await user.type(await screen.findByLabelText('Name'), 'Twice');
+    await user.click(screen.getByRole('combobox', { name: 'Runs' }));
+    await user.click(await screen.findByRole('option', { name: /At Game Start/ }));
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Save Template' }));
+    await waitFor(() => expect(library).toEqual([expect.objectContaining({ name: 'Twice', timings: ['before', 'start'] })]));
+    unmount();
+
+    for (const timing of ['before', 'start'] as const) {
+      const shown = open(timing, entities, { repository });
+      expect(await screen.findByRole('button', { name: 'Twice' }), timing).toBeInTheDocument();
+      shown.unmount();
+    }
+    // A control that runs after the AI shows the library has loaded into that menu.
+    library.push({ ...localTemplate, id: 'control', name: 'Control', timings: ['after'] });
+    open('after', entities, { repository });
+    expect(await screen.findByRole('button', { name: 'Control' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Twice' })).toBeNull();
+  });
+
+  it('blocks Save with no timing picked', async () => {
+    const user = userEvent.setup();
+    open('after');
+    await user.click(await screen.findByRole('button', { name: /New Template/i }));
+    await user.type(await screen.findByLabelText('Name'), 'Nowhere');
+    await user.click(screen.getByRole('combobox', { name: 'Runs' }));
+    await user.click(await screen.findByRole('option', { name: /After the AI/ }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Save Template' })).toBeDisabled();
   });
 });

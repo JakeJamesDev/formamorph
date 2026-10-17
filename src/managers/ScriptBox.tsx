@@ -16,7 +16,6 @@ import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDial
 import { CodeArea } from "@/components/prompt/CodeArea";
 import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
 import { useCodeCardNavigation } from "@/lib/codeCardNavigation";
-import { statCodeTimingOf } from "@/lib/statCodeTiming";
 import { settleCodeUseReveal, type CodeUseReveal } from "@/lib/codeUseReveal";
 import type { HistoryFieldAttribute } from "@/lib/historyField";
 import type { Script, ScriptTiming, Stat } from "@/types";
@@ -207,7 +206,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
         <StatCodeTemplateDialog
           open={templatesOpen}
           onOpenChange={setTemplatesOpen}
-          timing={statCodeTimingOf(timing)}
+          timing={timing}
           stats={worldStats}
           owner={owner?.kind}
           ownerStats={ownerStats}
