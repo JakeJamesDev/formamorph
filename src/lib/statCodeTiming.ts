@@ -1,10 +1,10 @@
 /**
- * A stat's scripts as the readers see them, and the two timings the templates and the test clock know. Its own
+ * A stat's scripts as the readers see them, and which timings read the turn's start. Its own
  * module because the editor, the template library, the Test Bench and the help text all name a box, and none of
  * them should pull the turn runner — and the QuickJS engine behind it — in to do it.
  */
 
-import type { Script, ScriptTiming } from '@/types';
+import type { Script } from '@/types';
 import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from './scripts';
 
 /** The two timings a stat's Code tab shows a box for. */
@@ -19,9 +19,6 @@ export const readsTurnStart = (timing: RunTiming): boolean => timing !== 'after'
 
 /** Both boxes in the order the turn runs them. */
 export const STAT_CODE_TIMINGS = ['before', 'after'] as const satisfies readonly StatCodeTiming[];
-
-/** The template menu and test clock a script's timing reads: every timing but Before the AI reads After the AI's. */
-export const statCodeTimingOf = (timing: ScriptTiming): StatCodeTiming => (timing === 'before' ? 'before' : 'after');
 
 /** What each box is called wherever an author reads it: the editor caption, the template menu, the help,
  *  the Test Bench findings. */

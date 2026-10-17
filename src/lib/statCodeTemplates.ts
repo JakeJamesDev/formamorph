@@ -11,7 +11,8 @@
  * persona's traits unless the template declares an `entity` slot named `persona`.
  */
 
-import type { StatCodeTiming } from './statCodeTiming';
+import type { ScriptTiming, ToolScriptTiming } from '@/types';
+import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from './scripts';
 
 export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'number', 'daypart', 'choice', 'text'] as const;
 export type SlotType = (typeof SLOT_TYPES)[number];
@@ -40,25 +41,74 @@ export interface TemplateSlot {
 /** The `trait(…)` owner that lists the persona's traits. */
 export const PERSONA_TRAIT_OWNER = 'persona';
 
-export interface StatCodeTemplate {
+/** The surface a template is written for: a stat script box, or a World Tool's Script box. */
+export type TemplateKind = 'script' | 'worldTool';
+
+/** The timings each kind's boxes run at, in the order its picker lists them. */
+export const TEMPLATE_TIMINGS = {
+  script: SCRIPT_TIMINGS,
+  worldTool: ['call', 'output', 'after'],
+} as const satisfies { script: readonly ScriptTiming[]; worldTool: readonly ToolScriptTiming[] };
+
+/** Each kind's timing names wherever an author reads them. */
+export const TEMPLATE_TIMING_LABEL: { script: Record<ScriptTiming, string>; worldTool: Record<ToolScriptTiming, string> } = {
+  script: SCRIPT_TIMING_LABEL,
+  worldTool: { call: 'On Call', output: 'During AI Output', after: 'After the AI' },
+};
+
+/** The names of every timing a template runs in. */
+export const templateTimingLabels = (template: CodeTemplate): string[] => (template.kind === 'script'
+  ? template.timings.map((timing) => TEMPLATE_TIMING_LABEL.script[timing])
+  : template.timings.map((timing) => TEMPLATE_TIMING_LABEL.worldTool[timing]));
+
+/** `template` running in the picked timings of its kind, in its kind's order. Anything else picked drops. */
+export const withTimings = (template: CodeTemplate, picked: readonly unknown[]): CodeTemplate => (template.kind === 'script'
+  ? { ...template, timings: TEMPLATE_TIMINGS.script.filter((timing) => picked.includes(timing)) }
+  : { ...template, timings: TEMPLATE_TIMINGS.worldTool.filter((timing) => picked.includes(timing)) });
+
+/** The timing type of one kind's boxes. */
+export type TemplateTiming<K extends TemplateKind> = K extends 'script' ? ScriptTiming : ToolScriptTiming;
+
+interface TemplateFields {
   id: string;
   name: string;
   description: string;
   code: string;
-  /** Which box the template is written for. Each box's menu lists only its own, so a template that reads
-   *  the AI's ask is never offered where the ask has not happened. */
-  timing: StatCodeTiming;
 }
 
-/** A stored or imported template's timing. No timing means the after box. */
-export const timingOf = (template: Partial<Pick<StatCodeTemplate, 'timing'>>): StatCodeTiming =>
-  template.timing === 'before' ? 'before' : 'after';
+/** A code template. `timings` lists every box it works in and is never empty. */
+export type CodeTemplate =
+  | TemplateFields & { kind: 'script'; timings: ScriptTiming[] }
+  | TemplateFields & { kind: 'worldTool'; timings: ToolScriptTiming[] };
 
-/** The templates one box's menu offers, in their given order. */
-export const templatesForTiming = (
-  templates: readonly StatCodeTemplate[],
-  timing: StatCodeTiming,
-): StatCodeTemplate[] => templates.filter((template) => timingOf(template) === timing);
+/** The templates of `kind` whose timings hold `timing`, in their given order: one box's menu. */
+export const templatesFor = <K extends TemplateKind>(
+  templates: readonly CodeTemplate[],
+  kind: K,
+  timing: TemplateTiming<K>,
+): CodeTemplate[] => templates.filter((template) =>
+  template.kind === kind && (template.timings as readonly string[]).includes(timing));
+
+/**
+ * A stored or imported entry as a template, or null when it is none. An entry with no `kind` is the version 1
+ * shape: a stat script with `['before']`, or `['after']` for any other timing. Timings outside the kind's set
+ * drop, and an entry left with none is null. Idempotent.
+ */
+export function readTemplate(entry: unknown): CodeTemplate | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const row = entry as Record<string, unknown>;
+  if (typeof row.name !== 'string' || typeof row.code !== 'string') return null;
+  const fields: TemplateFields = {
+    id: typeof row.id === 'string' ? row.id : '',
+    name: row.name,
+    description: typeof row.description === 'string' ? row.description : '',
+    code: row.code,
+  };
+  if (row.kind === undefined) return { ...fields, kind: 'script', timings: [row.timing === 'before' ? 'before' : 'after'] };
+  if (row.kind !== 'script' && row.kind !== 'worldTool') return null;
+  const template = withTimings({ ...fields, kind: row.kind, timings: [] }, Array.isArray(row.timings) ? row.timings : []);
+  return template.timings.length ? template : null;
+}
 
 /** A template's slots plus anything malformed in its source, so a bad template shows an error instead of
  *  silently dropping a control. */
@@ -251,21 +301,19 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
 }
 
 /**
- * The bundled templates, both boxes' menus in one list. Eight value formulas rather than a longer literal
- * list: a signed rate covers decay and growth, a comparison slot covers both threshold directions, a
- * direction slot covers counting up and down, and "regen toward target" with the target set to the stat's
- * max is the soft-capped regen. Those eight, Bound From Another Stat, the two trait readers and Dice Roll
- * With Consequences run after the AI, so the after menu holds the twelve of them.
- *
- * The before menu holds the three setup shapes instead: pin a placeholder, switch a trait, and set an
- * opening value. Each is a write the AI should read on the same turn, which is the box's whole point.
+ * The bundled templates, every menu's in one list. Eight value formulas rather than a longer literal list: a
+ * signed rate covers decay and growth, a comparison slot covers both threshold directions, a direction slot
+ * covers counting up and down, and "regen toward target" with the target set to the stat's max is the
+ * soft-capped regen. A template that reads `clock.deltaHours` lists After the AI alone, since every other
+ * timing reads a zero delta.
  *
  * Each reads its own bounds from the stat it belongs to instead of assuming 0–100.
  */
-export const BUILT_IN_TEMPLATES: readonly StatCodeTemplate[] = [
+export const BUILT_IN_TEMPLATES: readonly CodeTemplate[] = [
   {
     id: 'builtin-weighted-blend',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Weighted Blend',
     description: 'Combine two other stats. A weight of 0.5 is a plain average; 1 is all of the first stat.',
     code: `const a = stats[{{firstStat:stat}}].value;
@@ -275,7 +323,8 @@ return a * weight + b * (1 - weight);`,
   },
   {
     id: 'builtin-inverse',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Inverse of Another Stat',
     description: "Invert another stat across this stat's range. High Rest reads as low Fatigue.",
     code: `const source = stats[{{source:stat}}];
@@ -283,7 +332,8 @@ return source.max - source.value;`,
   },
   {
     id: 'builtin-threshold-flag',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Threshold Flag',
     description: 'Set this stat to Max when another stat passes a threshold, and to Min when it does not.',
     code: `const source = stats[{{source:stat}}].value;
@@ -291,7 +341,8 @@ return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max
   },
   {
     id: 'builtin-per-turn-change',
-    timing: 'after',
+    kind: 'script',
+    timings: ['after'],
     name: 'Hourly Change',
     description: 'Change by a fixed amount per story hour. A negative rate decreases (hunger, fuel). A positive rate increases. Stacks with Regen, so set one or the other.',
     code: `const ratePerHour = {{ratePerHour:number=-5}};
@@ -299,7 +350,8 @@ return self.value + ratePerHour * clock.deltaHours;`,
   },
   {
     id: 'builtin-timer',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after'],
     name: 'Timer',
     description: 'Move across this stat’s range over a set number of story hours, up or down.',
     code: `const totalHours = {{totalHours:number=24}};
@@ -309,7 +361,8 @@ return self.min + (self.max - self.min) * progress;`,
   },
   {
     id: 'builtin-daypart-modifier',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Daypart Modifier',
     description: 'Follow another stat, with a bonus that only applies during one part of the day.',
     code: `const base = stats[{{base:stat}}].value;
@@ -317,7 +370,8 @@ return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 
   },
   {
     id: 'builtin-random-roll',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after'],
     name: 'Random Per-Turn Roll',
     description: 'A fresh random value each turn, spread across this stat’s range.',
     code: `// clock.elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
@@ -326,7 +380,8 @@ return self.min + (self.max - self.min) * (roll / 100);`,
   },
   {
     id: 'builtin-regen-toward-target',
-    timing: 'after',
+    kind: 'script',
+    timings: ['after'],
     name: 'Regen Toward Target',
     description: 'Move toward a target value from either side. The step shrinks near the target. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
     code: `const value = self.value;
@@ -336,7 +391,8 @@ return value + (target - value) * rate * clock.deltaHours;`,
   },
   {
     id: 'builtin-bound-from-stat',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Bound From Another Stat',
     description: 'Set this stat’s Min, Max, or Regen from another stat times a factor. The value keeps its normal changes.',
     code: `const source = stats[{{source:stat}}].value;
@@ -344,7 +400,8 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
   },
   {
     id: 'builtin-persona-trait-bonus',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Bonus From Persona Trait',
     description: 'Follow another stat, with a bonus while the played persona has a trait on. A persona with no such trait gets no bonus.',
     code: `const base = stats[{{base:stat}}].value;
@@ -353,7 +410,8 @@ return base + (active ? {{bonus:number=10}} : 0);`,
   },
   {
     id: 'builtin-entity-trait-penalty',
-    timing: 'after',
+    kind: 'script',
+    timings: ['before', 'after', 'start', 'switch'],
     name: 'Penalty From Entity Trait',
     description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in the game adds no penalty.',
     code: `const base = stats[{{base:stat}}].value;
@@ -362,7 +420,8 @@ return base - (active ? {{penalty:number=10}} : 0);`,
   },
   {
     id: 'builtin-dice-roll-consequences',
-    timing: 'after',
+    kind: 'script',
+    timings: ['after'],
     name: 'Dice Roll With Consequences',
     description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20.',
     // Writes to one stat field apply in stat order. The last write wins.
@@ -377,7 +436,8 @@ return roll;`,
   },
   {
     id: 'builtin-placeholder-follows-stat',
-    timing: 'before',
+    kind: 'script',
+    timings: ['before', 'after', 'start'],
     name: 'Placeholder by Range',
     description: "Map this stat's range onto the placeholder's values. Min pins the first value. Max pins the last.",
     code: `const target = placeholders[{{placeholder:placeholder}}];
@@ -387,14 +447,16 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
   },
   {
     id: 'builtin-trait-by-threshold',
-    timing: 'before',
+    kind: 'script',
+    timings: ['before', 'after', 'start'],
     name: 'Trait by Threshold',
     description: 'Switch a trait on while this stat is past a threshold, and off when it returns. Code can switch a trait the player cannot toggle.',
     code: `traits[{{trait:trait}}].enabled = self.value {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}};`,
   },
   {
     id: 'builtin-opening-value',
-    timing: 'before',
+    kind: 'script',
+    timings: ['before'],
     name: 'Opening Turn Value',
     description: 'Set a value on the opening turn only. Later turns do not run it. Use it for a value the first narration must read.',
     // The before box reads the clock at turn start, so the opening turn is the one with no hours behind

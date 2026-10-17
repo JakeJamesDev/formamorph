@@ -17,7 +17,7 @@ import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { blueprintItemIds } from '@/lib/traitTree';
 import { sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
-import { statCodeTimingOf, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { readsTurnStart } from '@/lib/statCodeTiming';
 import { sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { activeStatEnabled } from '@/lib/traitEffects';
 import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
@@ -30,12 +30,11 @@ import { randomUUID } from '@/lib/uuid';
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
 
-/** The clock each box reads under Test Code: the turn start the before box gets, a one-hour turn for the
- *  after box. Zero elapsed puts the before run on the opening turn, which its templates are written for. */
-const TEST_CLOCK: Record<StatCodeTiming, { deltaHours: number; elapsedHours: number }> = {
-  before: { deltaHours: 0, elapsedHours: 0 },
-  after: { deltaHours: 1, elapsedHours: 1 },
-};
+/** The clock a timing reads under Test Code: the opening turn's start for a timing that reads the turn start,
+ *  as play gives it, and a one-hour turn for After the AI. */
+const testClock = (timing: ScriptTiming) => (readsTurnStart(timing)
+  ? { deltaHours: 0, elapsedHours: 0 }
+  : { deltaHours: 1, elapsedHours: 1 });
 
 /** The parts of an authored world a stat's code reaches. */
 export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>
@@ -337,7 +336,7 @@ export async function runTestCode(
     // code name have to be real.
     code, stats, stat as Stat | null,
     {
-      clock: TEST_CLOCK[statCodeTimingOf(timing)],
+      clock: testClock(timing),
       ...(traitSelf && { selfTrait: traitSelf }), placeholders: placeholderEntries.top, traits: traitEntries,
       // No trait is on, so a stat is off only as authored; a write to it is dropped as it is in a turn.
       enabled: activeStatEnabled(stats, []),
