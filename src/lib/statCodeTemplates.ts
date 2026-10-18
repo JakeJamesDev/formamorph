@@ -568,7 +568,7 @@ return trait.enabled ? self.max : self.min;`,
     name: 'Replace a Word',
     description: 'Replace one word with another in each narration sentence. The match uses the exact spelling and case.',
     // The word sits in a template literal in the generated code, so an apostrophe or quote in it is safe.
-    code: `return narration.sentence.split(\`{{word:text=door}}\`).join(\`{{replacement:text=gate}}\`);`,
+    code: `return narration.sentence.split(\`{{word:text=door}}\`).join(\`{{replacement:text=[redacted]}}\`);`,
   },
   {
     id: 'builtin-count-word',
