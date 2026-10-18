@@ -350,7 +350,7 @@ describe('built-in templates', () => {
       const values = { ...defaultSlotValues(slots) };
       for (const slot of slots) {
         if (isNameSlotType(slot.type)) {
-          values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed', entity: 'Mira', param: 'amount' }[slot.type];
+          values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed', entity: 'Mira', location: 'Inn', param: 'amount' }[slot.type];
         }
       }
       expect(validateSlotValues(slots, values), template.name).toEqual({});

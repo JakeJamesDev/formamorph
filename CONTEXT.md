@@ -49,7 +49,7 @@ The part of a Tool that runs when the AI calls it: a Lookup (searches world data
 _Avoid_: resolver, source
 
 **Template**:
-Starter code with slots that a script box's **Templates** menu fills in and inserts as plain code, with no link back. Each has a kind (Script for a stat's script boxes, World Tool for a World Tool's Script box) and a list of the timings it runs in; a box lists the templates of its kind and timing. Built-ins ship read-only; the author's own live in one local library and one pack file for both kinds. A `param` slot, World Tool only, picks one of the Tool's Parameters. Not the Template Tool Handler, which returns chip text.
+Starter code with slots that a script box's **Templates** menu fills in and inserts as plain code, with no link back. Each has a kind (Script for a stat's script boxes, World Script for a world script's box, World Tool for a World Tool's Script box) and a list of the timings it runs in; a box lists the templates of its kind and timing. Built-ins ship read-only; the author's own live in one local library and one pack file for every kind. A `param` slot, World Tool only, picks one of the Tool's Parameters. A `location` slot picks one of the world's locations. Not the Template Tool Handler, which returns chip text.
 _Avoid_: snippet, preset, recipe, example
 
 **Formaquestion**:

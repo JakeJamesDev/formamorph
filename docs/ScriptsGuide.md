@@ -48,6 +48,7 @@ In your own template, a stat or trait input can list the names of one entity. Pu
 | `{{t:trait(who)}}` | The traits of the entity picked in `who` |
 | `{{s:stat(persona)}}` | Each persona entity's stats. Write it as `persona.stats[{{s:stat(persona)}}]` |
 | `{{t:trait(persona)}}` | Each persona entity's traits |
+| `{{place:location}}` | The world's locations. Write it as `location.move({{place:location}})` |
 
 When you pick another entity, the stat and trait inputs that list its names clear.
 
@@ -139,6 +140,27 @@ See [World Tools](#world-tools) for what each timing does.
 At **On Call**, a template's return value is the reply the AI gets. At the other timings, the AI gets the Tool's **Reply**, and the return value does nothing.
 
 World Tool templates share the library and the pack file with stat templates, but each menu lists only its own kind. A stat's **Templates** menu never lists a World Tool template. Save your own with **New Template** or **Duplicate** in a World Tool's menu. In your own template, `{{name:param(number)=amount}}` is a parameter input. The type is `string`, `number` or `boolean`. The input lists the Tool's Parameters of that type, plus a **New** row named `amount`. A slot with no type adds a text Parameter. A slot with no `=amount` part names the new Parameter after the slot.
+
+## How to Insert a World Script Template
+<!-- keywords: world script template, world script example, starter world script code, opening location, advance time while a trait is on, leave when a stat runs out, placeholder by daypart, memory when a trait turns on, diary line when a trait turns on, entity stat follows a global stat, location input -->
+<!-- route: worldEditor.scripts -->
+
+1. Open the world's **Scripts** tab and add a world script, or open one that exists.
+2. Select **Templates** beside the box's **Test Code** button. The menu lists the world script templates for the box's timing.
+3. Fill in the inputs. A **location** input lists the world's locations and inserts the one you pick as a quoted name.
+4. Select **Insert Code**, then edit the code as you like.
+
+A world script has no stat or trait of its own, so its templates never read `self` and never return a value.
+
+| Timing | Built-in templates in its menu |
+|---|---|
+| ⏮️ **Before the AI** | **Advance Time While a Trait Is On**, **Placeholder by Daypart**, **Entity Stat Follows a Global Stat** |
+| ⏭️ **After the AI** | **Advance Time While a Trait Is On**, **Leave When a Stat Runs Out**, **Entity Stat Follows a Global Stat** |
+| 🎬 **At Game Start** | **Opening Location**, **Placeholder by Daypart** |
+| 🔀 **When a Trait Switches** | **Memory When a Trait Turns On**, **Diary Line When a Trait Turns On** |
+| 💬 **During AI Output** | **Replace a Word** |
+
+World script templates share the library and the pack file with the other templates, but each menu lists only its own kind. A stat's or World Tool's **Templates** menu never lists a world script template. A trait's **Scripts** tab has no **Templates** button. Save your own with **New Template** or **Duplicate** in a world script's menu.
 
 ## How to Review Every Script in One Place
 <!-- keywords: scripts tab, all scripts, list of scripts, run order, order of scripts, drag script, reorder scripts, which script runs first, world script, add a world script, find a script, scripts by timing -->
