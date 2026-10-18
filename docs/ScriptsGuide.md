@@ -110,10 +110,10 @@ See [World Tools](#world-tools) for what each timing does.
 <!-- keywords: world tool template, tool script example, starter tool code, args template, parameter slot, report a stat, roll dice, pass time, pin a memory, highlight a name -->
 <!-- route: worldEditor.tools -->
 
-1. Add the Tool's **Parameters** first. A template reads the AI's values from them.
-2. On the **Handler** tab, pick **Script** and a **Timing**.
-3. Select **Templates** under the **Script** box. The menu lists the World Tool templates for that timing. When you change the timing, the menu changes too.
-4. Fill in the inputs. A **parameter** input picks one of the Tool's Parameters, and the code reads it from `args`. With no Parameters, the input asks you to add one, and you can't select **Insert Code**.
+1. On the **Handler** tab, pick **Script** and a **Timing**.
+2. Select **Templates** under the **Script** box. The menu lists the World Tool templates for that timing. When you change the timing, the menu changes too.
+3. Fill in the inputs. A **parameter** input lists the Tool's Parameters of the type the template needs. The code reads the one you pick from `args`.
+4. To add a new Parameter, pick the **New** row in a parameter input. **Insert Code** adds that Parameter to the Tool, so a Tool with no Parameters works too.
 5. Select **Insert Code**, then edit the code as you like.
 
 | Timing | Built-in templates in its menu |
@@ -124,7 +124,7 @@ See [World Tools](#world-tools) for what each timing does.
 
 At **On Call**, a template's return value is the reply the AI gets. At the other timings, the AI gets the Tool's **Reply**, and the return value does nothing.
 
-World Tool templates share the library and the pack file with stat templates, but each menu lists only its own kind. A stat's **Templates** menu never lists a World Tool template. Save your own with **New Template** or **Duplicate** in a World Tool's menu. In your own template, `{{name:param}}` is a parameter input.
+World Tool templates share the library and the pack file with stat templates, but each menu lists only its own kind. A stat's **Templates** menu never lists a World Tool template. Save your own with **New Template** or **Duplicate** in a World Tool's menu. In your own template, `{{name:param(number)=amount}}` is a parameter input. The type is `string`, `number` or `boolean`. The input lists the Tool's Parameters of that type, plus a **New** row named `amount`. A slot with no type adds a text Parameter. A slot with no `=amount` part names the new Parameter after the slot.
 
 ## How to Review Every Script in One Place
 <!-- keywords: scripts tab, all scripts, list of scripts, run order, order of scripts, drag script, reorder scripts, which script runs first, world script, add a world script, find a script, scripts by timing -->

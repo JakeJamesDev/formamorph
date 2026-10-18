@@ -16,7 +16,7 @@ vi.mock('@/components/prompt/CodeArea', () => ({
 }));
 
 const stats = [{ id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10 }] as unknown as Stat[];
-const param = (name: string): ToolParam => ({ name, type: 'number', description: '', required: true, options: [] });
+const param = (name: string, type: ToolParam['type'] = 'number'): ToolParam => ({ name, type, description: '', required: true, options: [] });
 
 /** A library held in memory, with the dialog's real pack parsing in front of it. */
 const memoryRepository = (library: CodeTemplate[] = []): StatTemplateRepository & { library: CodeTemplate[] } => ({
@@ -82,27 +82,41 @@ describe('a World Tool box’s menu', () => {
 });
 
 describe('the Parameter slot', () => {
-  it('lists the Tool’s Parameters and fills the picked name, quoted', async () => {
+  it('lists the Tool’s Parameters of the slot’s type, then a row for a new one, and fills the picked name', async () => {
     const user = userEvent.setup();
     const onInsert = vi.fn();
-    openTool('call', [param('amount'), param('bonus'), param('')], { onInsert });
+    openTool('call', [param('bonus'), param('note', 'string'), param('')], { onInsert });
     await user.click(await screen.findByRole('button', { name: 'Change a Stat' }));
     await user.click(screen.getByRole('combobox', { name: 'Amount' }));
-    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['amount', 'bonus']);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['bonus', 'amountNew']);
     await user.click(screen.getByRole('option', { name: 'bonus' }));
     await user.click(screen.getByRole('combobox', { name: 'Stat' }));
     await user.click(await screen.findByRole('option', { name: 'Warmth' }));
 
     await waitFor(() => expect(generated()).toContain('args["bonus"]'));
     await user.click(screen.getByRole('button', { name: 'Insert Code' }));
-    expect(onInsert).toHaveBeenCalledWith(expect.stringContaining('Number(args["bonus"])'));
+    // An existing Parameter adds nothing to the Tool.
+    expect(onInsert).toHaveBeenCalledWith(expect.stringContaining('Number(args["bonus"])'), []);
   });
 
-  it('says to add a Parameter and blocks Insert when the Tool has none', async () => {
+  it('leaves Insert open on a Tool with no Parameters and hands back the Parameter it names', async () => {
     const user = userEvent.setup();
-    openTool('call', [param('')]);
+    const onInsert = vi.fn();
+    openTool('call', [param('')], { onInsert });
     await user.click(await screen.findByRole('button', { name: 'Roll Dice' }));
-    expect(await screen.findByText('Add a parameter on the Parameters tab')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Insert Code' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+    expect(onInsert).toHaveBeenCalledWith(
+      expect.stringContaining('Number(args["sides"])'),
+      [{ name: 'sides', type: 'number', description: '', required: true, options: [] }],
+    );
+  });
+
+  it('flags a default name that a Parameter of another type holds, and blocks Insert', async () => {
+    const user = userEvent.setup();
+    openTool('call', [param('sides', 'string')]);
+    await user.click(await screen.findByRole('button', { name: 'Roll Dice' }));
+    expect(await screen.findByText('“sides” is a Text Parameter')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Insert Code' })).toBeDisabled();
   });
 

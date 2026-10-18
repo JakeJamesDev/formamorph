@@ -11,7 +11,7 @@
  * persona's traits unless the template declares an `entity` slot named `persona`.
  */
 
-import type { ScriptTiming, ToolScriptTiming } from '@/types';
+import type { ScriptTiming, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
 import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from './scripts';
 import { WORLD_TOOL_TEMPLATES } from './worldToolTemplates';
 
@@ -28,9 +28,15 @@ export const isNameSlotType = (type: SlotType): type is NameSlotType =>
 /** The six dayparts a `daypart` slot offers — the set `gameClock.daypart()` emits. */
 export const DAYPART_OPTIONS = ['night', 'dawn', 'morning', 'midday', 'afternoon', 'evening'] as const;
 
+/** The Parameter types a `param` slot can create. A list needs options, which a slot can't give. */
+export const SLOT_PARAM_TYPES = ['string', 'number', 'boolean'] as const satisfies readonly ToolParamType[];
+export type SlotParamType = (typeof SLOT_PARAM_TYPES)[number];
+
 export interface TemplateSlot {
   name: string;
   type: SlotType;
+  /** The type of Parameter a `param` slot picks or creates. Always set for a `param` slot. */
+  paramType?: SlotParamType;
   /** Prefills the form control. Absent when the template declared no `=default`. */
   defaultValue?: string;
   /** The `choice(a|b|…)` options, in declaration order. Only ever set for `choice` slots. */
@@ -133,6 +139,7 @@ export function findSlotRanges(code: string): { from: number; to: number; name: 
 }
 
 const isSlotType = (value: string): value is SlotType => (SLOT_TYPES as readonly string[]).includes(value);
+const isSlotParamType = (value: string): value is SlotParamType => (SLOT_PARAM_TYPES as readonly string[]).includes(value);
 
 /**
  * Read a template's slot declarations in source order. A repeated name collapses to the single control
@@ -173,7 +180,12 @@ export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTem
 
     const slot: TemplateSlot = { name, type };
     if (rawDefault !== undefined && rawDefault !== '') slot.defaultValue = rawDefault;
-    if (type === 'trait' && options?.length === 1) slot.owner = options[0];
+    if (type === 'param') {
+      const paramType = options?.[0];
+      const known = paramType === undefined || isSlotParamType(paramType);
+      if (!known) errors.push(`Slot "${name}" has unknown Parameter type "${paramType}" — treating it as text.`);
+      slot.paramType = known && paramType ? paramType : 'string';
+    } else if (type === 'trait' && options?.length === 1) slot.owner = options[0];
     else if (options && options.length > 0) slot.options = options;
 
     byName.set(name, slot);
@@ -201,9 +213,37 @@ export function humanizeSlotName(name: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+/** The name a Parameter slot gives the Parameter it creates: the declared name, else the slot's own. */
+export const newParamName = (slot: TemplateSlot): string => slot.defaultValue ?? slot.name;
+
 /** Where a slot starts before anyone has answered it: what it declared, or its type's own first option. */
-const slotStartingPoint = (slot: TemplateSlot): string => slot.defaultValue
-  ?? (slot.type === 'daypart' ? DAYPART_OPTIONS[0] : slot.type === 'choice' ? (slot.options?.[0] ?? '') : '');
+function slotStartingPoint(slot: TemplateSlot): string {
+  if (slot.type === 'param') return newParamName(slot);
+  if (slot.defaultValue !== undefined) return slot.defaultValue;
+  if (slot.type === 'daypart') return DAYPART_OPTIONS[0];
+  return slot.type === 'choice' ? (slot.options?.[0] ?? '') : '';
+}
+
+/**
+ * The Parameters a filled template reads that the Tool doesn't have yet: one per missing name, in slot
+ * order, each with the slot's type. A name the Tool already holds adds nothing, whatever its type.
+ */
+export function missingParams(
+  slots: readonly TemplateSlot[],
+  values: Record<string, string>,
+  have: readonly Pick<ToolParam, 'name' | 'type'>[],
+): ToolParam[] {
+  const names = new Set(have.map((param) => param.name));
+  const created: ToolParam[] = [];
+  for (const slot of slots) {
+    if (slot.type !== 'param') continue;
+    const name = resolveSlotValue(slot, values);
+    if (!name || names.has(name)) continue;
+    names.add(name);
+    created.push({ name, type: slot.paramType ?? 'string', description: '', required: true, options: [] });
+  }
+  return created;
+}
 
 /**
  * What a slot stands for given the answers so far. Blank and unanswered are the same thing: a template
