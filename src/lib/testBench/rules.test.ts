@@ -2715,6 +2715,35 @@ describe('trait gate rules', () => {
         expect(ids(found)).toEqual([['l-smite']]);
         expect(only(w(link()), rule)).toEqual([]);
       });
+
+      describe('a Blueprint trait gated on a Blueprint stat', () => {
+        const rule = 'trait-requirement-unresolved';
+        const fury = stat({ id: 'fury', name: 'Fury', groupId: 'heat' });
+        const smite = trait({ id: 'smite', name: 'Smite', groupId: 'blueprints', requires: [{ all: [atLeast('fury', 100, { name: 'Fury', unit: 'percent' })] }] });
+        const traitLink = (id: string): TraitLink => ({ id, originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null });
+        const statLink = { id: 'l-heat', originalId: 'heat', kind: 'group' as const, originalName: 'Heat', groupId: null };
+        const w = (entities: Entity[]) => gates([smite], {
+          stats: [fury],
+          statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' }, { id: 'heat', name: 'Heat', parentId: 'sbp' }],
+          traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+          entities: [resident, ...entities],
+        });
+
+        it('judges the Condition through each link, not against global scope', () => {
+          expect(only(w([bree({ statLinks: [statLink], traitLinks: [traitLink('b-smite')] })]), rule)).toEqual([]);
+        });
+
+        it('names a linking entity that lacks the stat, on its link', () => {
+          const cole: Entity = { ...resident, id: 'cole', name: 'Cole', traitLinks: [traitLink('c-smite')] };
+          const found = only(w([bree({ statLinks: [statLink], traitLinks: [traitLink('b-smite')] }), cole]), rule);
+          expect(found.map((f) => f.message)).toEqual(['“Smite” on “Cole” requires “Fury >= 100%”, which names a stat its owner doesn’t have']);
+          expect(ids(found)).toEqual([['c-smite']]);
+        });
+
+        it('reports the original when no entity links it', () => {
+          expect(ids(only(w([]), rule))).toEqual([['smite']]);
+        });
+      });
     });
 
     describe('percent on a zero-span stat', () => {

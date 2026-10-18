@@ -64,7 +64,7 @@ import { startingGateStats } from '@/lib/gateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import { offeredWorldTraits, statRows, statRowSide, type StatRow } from '@/lib/traitTree';
+import { blueprintItemIds, offeredWorldTraits, statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
@@ -2200,6 +2200,10 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const originals = new Map(editor.global.traits.map((t) => [t.id, t]));
   const inOriginal = (gate: HeldGate, req: TraitRequirement) =>
     conditionsOf(originals.get(gate.trait.id)?.requires).some((o) => sameRequirement(o, req));
+  // A Blueprint original is never in play, so its same-owner stat Conditions are judged on each linked copy.
+  const blueprinted = blueprintItemIds({ traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] });
+  const linkedIds = new Set(held.flatMap((g) => (g.link ? [g.trait.id] : [])));
+  const perLink = (traitId: string, req: TraitRequirement) => req.kind === 'stat' && !req.owner && blueprinted.has(traitId);
 
   const requirementTexts = new Map<string, string>();
   const unresolved: DeadCondition[] = [];
@@ -2215,7 +2219,10 @@ const gateReportOf = (world: RuleWorld): GateReport => {
       if (req.kind === 'stat' && statsRead(gate, req).some((s) => s.inert)) return;
       if (gate.link) {
         if (gate.link.overrides?.[gate.trait.id]?.requires) openLinks.add(pairKey(gate.link.id, gate.trait.id));
-        if (inOriginal(gate, req)) return;
+        if (perLink(gate.trait.id, req)) openTraits.add(gate.trait.id);
+        else if (inOriginal(gate, req)) return;
+      } else if (perLink(gate.trait.id, req) && linkedIds.has(gate.trait.id)) {
+        return;
       } else {
         openTraits.add(gate.trait.id);
       }
