@@ -721,6 +721,31 @@ describe('a box tests itself', () => {
     expect(screen.queryByRole('button', { name: 'Hourly Change' })).toBeNull();
   });
 
+  it('lists an entity stat’s own traits under Owner in a trait slot, and inserts them through `owner.traits`', async () => {
+    const user = userEvent.setup();
+    const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub], updateStat, ownerId: 'e2' }} />);
+
+    await user.click(screen.getByRole('button', { name: templatesButton('After the AI') }));
+    await user.click(await screen.findByRole('button', { name: 'Trait by Threshold' }));
+    await user.click(screen.getByRole('combobox', { name: 'Trait' }));
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['LoyalOwner', 'BraveWorld', 'Night OwlWorld', 'Beast FuryWorld']);
+    await user.click(screen.getByRole('option', { name: /^Loyal/ }));
+    await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+
+    await waitFor(() => expect(fieldOf('After the AI')).toHaveValue('owner.traits["Loyal"].enabled = self.value >= 50;'));
+  });
+
+  it('lists the world’s traits alone in a global stat’s trait slot', async () => {
+    const user = userEvent.setup();
+    renderCodePanel(stats[0]);
+
+    await user.click(screen.getByRole('button', { name: templatesButton('After the AI') }));
+    await user.click(await screen.findByRole('button', { name: 'Trait by Threshold' }));
+    await user.click(screen.getByRole('combobox', { name: 'Trait' }));
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['BraveWorld', 'Night OwlWorld', 'Beast FuryWorld']);
+  });
+
   it('offers no run on an empty box', async () => {
     renderCodePanel({ ...stats[0], scripts: boxScripts({ before: '   ', after: 'return 1;' }) });
 

@@ -10,11 +10,11 @@ import {
   resolveSlotValue,
   validateSlotValues,
   fillTemplate,
-  ownerStatAnswer,
-  statAnswer,
+  ownerAnswer,
+  slotAnswer,
   isBuiltInTemplate,
   isNameSlotType,
-  PERSONA_TRAIT_OWNER,
+  PERSONA_SLOT_OWNER,
   BUILT_IN_TEMPLATES,
   DAYPART_OPTIONS,
   readTemplate,
@@ -92,6 +92,19 @@ describe('parseTemplateSlots', () => {
     expect(loose.slots.find((slot) => slot.name === 'b')).toEqual({ name: 'b', type: 'trait' });
     // A list was never a tie, so a saved template that wrote one still parses clean.
     expect(parseTemplateSlots('{{t:trait(a|b)}}')).toEqual({ slots: [{ name: 't', type: 'trait', options: ['a', 'b'] }], errors: [] });
+  });
+
+  it('ties a stat slot to the persona or to an entity slot the same way, in every kind', () => {
+    for (const kind of ['script', 'worldTool'] as const) {
+      const { slots, errors } = parseTemplateSlots('{{who:entity}} {{a:stat(who)}} {{b:stat(persona)}} {{c:stat(nobody)}}', kind);
+      expect(errors).toEqual([]);
+      expect(slots).toEqual([
+        { name: 'who', type: 'entity' },
+        { name: 'a', type: 'stat', owner: 'who' },
+        { name: 'b', type: 'stat', owner: 'persona' },
+        { name: 'c', type: 'stat' },
+      ]);
+    }
   });
 });
 
@@ -249,8 +262,31 @@ describe('fillTemplate', () => {
     expect(fillTemplate('{{n:number}}', { n: 'abc' })).toBe('0');
   });
 
+  describe('a trait slot picked from the owner’s traits', () => {
+    const owner = ownerAnswer('Scarred');
+
+    it('reroutes the `traits` it indexes through to `owner.traits`, and leaves a world pick on `traits`', () => {
+      expect(fillTemplate('traits[{{t:trait}}].enabled', { t: owner })).toBe('owner.traits["Scarred"].enabled');
+      expect(fillTemplate('traits?.[{{t:trait}}]', { t: owner })).toBe('owner.traits?.["Scarred"]');
+      expect(fillTemplate('{{t:trait}}; persona.traits[{{t}}]', { t: owner })).toBe('"Scarred"; persona.traits["Scarred"]');
+      expect(fillTemplate('traits[{{t:trait}}].enabled', { t: 'Scarred' })).toBe('traits["Scarred"].enabled');
+    });
+
+    it('runs through the sandbox as the owner’s trait', async () => {
+      const rage = makeStat({ id: 'r', name: 'Rage', value: 9 });
+      // The world holds a Scarred that is off, so only the owner's route reads on.
+      const code = 'return traits[{{t:trait}}].enabled ? 1 : 2;';
+      const options = {
+        traits: [{ name: 'Scarred', enabled: false, acquired: false }],
+        owner: { name: 'Bram', id: 'bram', traits: [{ name: 'Scarred', enabled: true, acquired: true }], stats: { stats: [rage] } },
+      };
+      expect(await executeStatCode(fillTemplate(code, { t: owner }), [], rage, options)).toMatchObject({ value: 1, error: null });
+      expect(await executeStatCode(fillTemplate(code, { t: 'Scarred' }), [], rage, options)).toMatchObject({ value: 2, error: null });
+    });
+  });
+
   describe('a stat slot picked from the owner’s stats', () => {
-    const owner = ownerStatAnswer('Rage');
+    const owner = ownerAnswer('Rage');
 
     it('reroutes the `stats` it indexes through to `owner.stats`', () => {
       expect(fillTemplate('const a = stats[{{s:stat}}].value;', { s: owner })).toBe('const a = owner.stats["Rage"].value;');
@@ -273,12 +309,12 @@ describe('fillTemplate', () => {
     });
 
     it('escapes a quote in the name', () => {
-      expect(fillTemplate('stats[{{s:stat}}]', { s: ownerStatAnswer('Ka"os') })).toBe('owner.stats["Ka\\"os"]');
+      expect(fillTemplate('stats[{{s:stat}}]', { s: ownerAnswer('Ka"os') })).toBe('owner.stats["Ka\\"os"]');
     });
 
     it('splits an answer into its route and name', () => {
-      expect(statAnswer(owner)).toEqual({ route: 'owner', name: 'Rage' });
-      expect(statAnswer('Rage')).toEqual({ route: 'world', name: 'Rage' });
+      expect(slotAnswer(owner)).toEqual({ route: 'owner', name: 'Rage' });
+      expect(slotAnswer('Rage')).toEqual({ route: 'world', name: 'Rage' });
     });
 
     it('reads as filled, and runs through the sandbox as the owner’s stat', async () => {
@@ -346,7 +382,7 @@ describe('built-in templates', () => {
     switch (slot.type) {
       case 'stat': return slot.name === 'secondStat' || slot.name === 'bonusStat' ? 'Strength' : 'Health';
       case 'placeholder': return placeholders[0].name;
-      case 'trait': return slot.owner === PERSONA_TRAIT_OWNER ? scarred.name : slot.owner ? wounded.name : traits[0].name;
+      case 'trait': return slot.owner === PERSONA_SLOT_OWNER ? scarred.name : slot.owner ? wounded.name : traits[0].name;
       case 'entity': return mira.name;
       default: return undefined;
     }
