@@ -226,6 +226,8 @@ export interface TurnToolCall {
 /** An authenticated account as returned by the auth server; extra server fields pass through the index signature. */
 export interface AuthUser {
   username: string;
+  /** When a timed suspension ends, as a server timestamp; null or absent for none. */
+  suspendedUntil?: string | null;
   [key: string]: unknown;
 }
 

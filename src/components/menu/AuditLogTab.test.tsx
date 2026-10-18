@@ -286,6 +286,37 @@ describe('what each entry reads as', () => {
     })).toBe('The quarantine ran out on the world “Sedge Landing” by trouble, and it was deleted');
   });
 
+  it('blames nobody for a suspension that ended on its own', () => {
+    const ended = entry({
+      action: 'suspension_expired',
+      actor: { id: null, username: null, wasAdmin: false },
+    });
+
+    expect(auditActorName(ended)).toBeNull();
+    expect(describeAuditEntry(ended)).toBe('The suspension of trouble ended');
+    expect(AUDIT_ACTION_LABELS.suspension_expired).toBe('Suspension expired');
+    expect(AUDIT_ACTION_STYLES.suspension_expired).toBeTruthy();
+    expect(AUDIT_ACTION_OPTIONS.map((option) => option.value)).toContain('suspension_expired');
+  });
+
+  it('reads a suspension that ended on its own in the list, with no actor badge', async () => {
+    stubLog([entry({ action: 'suspension_expired', actor: { id: null, username: null, wasAdmin: false } })]);
+
+    render(<AuditLogTab active />);
+
+    expect(await screen.findByText('The suspension of trouble ended')).toBeTruthy();
+    expect(screen.getByText('Suspension expired')).toBeTruthy();
+  });
+
+  it('shows the end a suspension was given', async () => {
+    stubLog([entry({ action: 'user_suspended', snippet: 'until 2026-11-01' })]);
+
+    render(<AuditLogTab active />);
+    await findEntryLine();
+
+    expect(screen.getByText('until 2026-11-01')).toBeTruthy();
+  });
+
   it('reads a reset of everyone as one event, not one per account', () => {
     expect(line({ action: 'terms_reset_all', targetUser: null, target: null }))
       .toBe('root-admin asked everyone to accept the terms again');
