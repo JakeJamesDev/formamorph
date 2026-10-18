@@ -23,7 +23,7 @@ import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
-import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withoutEntityCodeBounds } from '../lib/entityStats';
+import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, shiftEntityStat, withoutEntityCodeBounds } from '../lib/entityStats';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -732,6 +732,20 @@ function useProvideGameplay() {
       : prev));
   }, [currentPage]);
 
+  // The same for an entity's stat. The baseline moves with it, so the edit is not counted as the turn's change.
+  const commitManualEntityStatEdit = useCallback((ownerId: string, statId: string, value: number) => {
+    const current = entityStats[ownerId]?.find((s) => s.id === statId);
+    if (!current) return;
+    const change = value - current.value;
+    const next = shiftEntityStat(entityStats, ownerId, statId, change);
+    setEntityStats(next);
+    setEntityStatBaseline((prev) => shiftEntityStat(prev, ownerId, statId, change));
+    const idx = currentPage - 1;
+    setGameStates((prev) => (idx >= 0 && idx < prev.length
+      ? placeSnapshot(prev, idx, { ...prev[idx], entityStats: next })
+      : prev));
+  }, [currentPage, entityStats]);
+
   const value = {
     characterData,
     setCharacterData,
@@ -762,6 +776,7 @@ function useProvideGameplay() {
     globalStats,
     setGlobalStats,
     commitManualStatEdit,
+    commitManualEntityStatEdit,
     globalTraits,
     setGlobalTraits,
     disabledTraitIds,

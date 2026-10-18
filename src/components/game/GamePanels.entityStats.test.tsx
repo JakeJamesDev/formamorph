@@ -337,3 +337,53 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
     expect(within(marked).getByText('70 / 100')).toBeInTheDocument();
   });
 });
+
+describe('RightPanel — editing entity and persona stats', () => {
+  const mira = { id: 'mira', name: 'Mira', persona: true, image: PICTURE };
+  /** A world whose only visible stats belong to entities: Vigor is hidden. */
+  const ownersOnly = {
+    world: { entities: [bram, odette, wick, mira] } as never, turns, stats: [statFixture('Vigor', 50, { hidden: true })],
+    seed: (g: Gameplay) => {
+      g.resetEntityStats({ ...values, mira: [statFixture('Calm', 5)] });
+      g.setVisibleEntities(now);
+      g.setPersonaRef({ source: 'world', entityId: 'mira' });
+      g.setSelectedEntityId('bram');
+    },
+  };
+  const valueOf = (stats: EntityStatValues | undefined, owner: string, id: string) => stats?.[owner]?.find((s) => s.id === id)?.value;
+
+  it('turns an entity row into a field in edit mode and commits it live and to the turn snapshot', () => {
+    const view = renderRightPanel({}, ownersOnly);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '55' } });
+
+    const g = view.gameplay();
+    expect(valueOf(g.entityStats, 'bram', 'trust')).toBe(55);
+    expect(valueOf(g.gameStates[g.currentPage - 1].entityStats, 'bram', 'trust')).toBe(55);
+  });
+
+  it("edits the persona's stats in the player's part", () => {
+    const view = renderRightPanel({}, ownersOnly);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    fireEvent.change(within(screen.getByRole('region', { name: 'Mira stats' })).getByRole('spinbutton', { name: 'Calm' }), { target: { value: '8' } });
+    expect(valueOf(view.gameplay().entityStats, 'mira', 'calm')).toBe(8);
+  });
+
+  it("does not count a manual edit as the turn's change", () => {
+    const view = renderRightPanel({}, ownersOnly);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '55' } });
+    expect(view.gameplay().viewEntityStatChanges).toEqual({});
+  });
+
+  it('offers no field on a past turn', () => {
+    const view = renderRightPanel({}, ownersOnly);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    act(() => {
+      const g = view.gameplay();
+      g.setUserPage(1);
+      g.setDisplayedMessages(g.fullMessageHistory.slice(0, 2));
+    });
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+  });
+});

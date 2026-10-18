@@ -41,6 +41,13 @@ export function backfillEntityStats(saved: EntityStatValues | undefined, entitie
   return out ?? base;
 }
 
+/** `values` with `ownerId`'s stat `statId` moved by `change`; the same map when the owner lacks that stat. */
+export function shiftEntityStat(values: EntityStatValues, ownerId: string, statId: string, change: number): EntityStatValues {
+  const rows = values[ownerId];
+  if (!rows?.some((s) => s.id === statId)) return values;
+  return { ...values, [ownerId]: rows.map((s) => (s.id === statId ? { ...s, value: s.value + change } : s)) };
+}
+
 /** `values` after one regen tick over `hours` for each of `owners`; the same map when none runs. */
 export function withEntityRegen(values: EntityStatValues, owners: readonly StatOwner[], hours: number): EntityStatValues {
   if (!owners.length) return values;
