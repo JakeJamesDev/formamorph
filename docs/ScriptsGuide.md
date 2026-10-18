@@ -33,9 +33,11 @@ A trait has its own **Scripts** tab. It runs its scripts only while the trait is
 | 🔀 **When a Trait Switches** | The formulas, **Change When a Trait Switches**, **Mirror a Trait** |
 | 💬 **During AI Output** | **Replace a Word**, **Count a Word**, **Bold a Word Past a Threshold** |
 
-The formulas are **Weighted Blend**, **Inverse of Another Stat**, **Threshold Flag**, **Daypart Modifier**, **Bound From Another Stat**, **Bonus From Persona Trait** and **Penalty From Entity Trait**. **Hourly Change** and **Regen Toward Target** read `clock.deltaHours`, which is `0` in every timing but **After the AI**.
+The formulas are **Weighted Blend**, **Inverse of Another Stat**, **Threshold Flag**, **Daypart Modifier**, **Bound From Another Stat**, **Bonus From Persona Trait** and **Penalty From Entity Trait**.
 
-In an entity's stat, a stat or trait input lists the entity's own stats or traits first, under **Owner**, then the global ones. An **Owner** pick inserts `owner.stats` or `owner.traits`. A Blueprint stat's trait input lists the global traits only.
+**Hourly Change** and **Regen Toward Target** read `clock.deltaHours`, which is `0` in every timing but **After the AI**.
+
+In an entity's stat, a stat or trait input lists the entity's own names first, under **Owner**. The global names follow. An **Owner** pick inserts `owner.stats` or `owner.traits`. A Blueprint stat's trait input lists the global traits only.
 
 To save your own template, select **New Template** or **Duplicate**. Pick each timing it works in under **Runs**. The template shows in the menu of each of those timings.
 
@@ -127,7 +129,7 @@ See [World Tools](#world-tools) for what each timing does.
 
 1. On the **Handler** tab, pick **Script** and a **Timing**.
 2. Select **Templates** under the **Script** box. The menu lists the World Tool templates for that timing. When you change the timing, the menu changes too.
-3. Fill in the inputs. A **parameter** input lists the Tool's Parameters of the type the template needs. The code reads the one you pick from `args`.
+3. Fill in the inputs. A parameter input lists the Tool's Parameters of the type the template needs. The code reads the one you pick from `args`.
 4. To add a new Parameter, pick the **New** row in a parameter input. **Insert Code** adds that Parameter to the Tool, so a Tool with no Parameters works too.
 5. Select **Insert Code**, then edit the code as you like.
 
@@ -139,7 +141,9 @@ See [World Tools](#world-tools) for what each timing does.
 
 At **On Call**, a template's return value is the reply the AI gets. At the other timings, the AI gets the Tool's **Reply**, and the return value does nothing.
 
-World Tool templates share the library and the pack file with stat templates, but each menu lists only its own kind. A stat's **Templates** menu never lists a World Tool template. Save your own with **New Template** or **Duplicate** in a World Tool's menu. In your own template, `{{name:param(number)=amount}}` is a parameter input. The type is `string`, `number` or `boolean`. The input lists the Tool's Parameters of that type, plus a **New** row named `amount`. A slot with no type adds a text Parameter. A slot with no `=amount` part names the new Parameter after the slot.
+World Tool templates share the library and the pack file with stat templates, but each menu lists only its own kind. A stat's **Templates** menu never lists a World Tool template. Save your own with **New Template** or **Duplicate** in a World Tool's menu.
+
+In your own template, `{{name:param(number)=amount}}` is a parameter input. The type is `string`, `number` or `boolean`. The input lists the Tool's Parameters of that type, plus a **New** row named `amount`. A slot with no type adds a text Parameter. A slot with no `=amount` part names the new Parameter after the slot.
 
 ## How to Insert a World Script Template
 <!-- keywords: world script template, world script example, starter world script code, opening location, advance time while a trait is on, leave when a stat runs out, placeholder by daypart, memory when a trait turns on, diary line when a trait turns on, entity stat follows a global stat, location input -->
@@ -147,7 +151,7 @@ World Tool templates share the library and the pack file with stat templates, bu
 
 1. Open the world's **Scripts** tab and add a world script, or open one that exists.
 2. Select **Templates** beside the box's **Test Code** button. The menu lists the world script templates for the box's timing.
-3. Fill in the inputs. A **location** input lists the world's locations and inserts the one you pick as a quoted name.
+3. Fill in the inputs. A location input lists the world's locations and inserts the one you pick as a quoted name.
 4. Select **Insert Code**, then edit the code as you like.
 
 A world script has no stat or trait of its own, so its templates never read `self` and never return a value.

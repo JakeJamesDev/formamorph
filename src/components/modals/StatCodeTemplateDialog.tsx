@@ -64,7 +64,7 @@ import {
 } from '@/services/StatTemplateStorageService';
 import type { ScriptTiming, Stat, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { namedParams } from '@/lib/tools/toolDraft';
 import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
 
@@ -665,12 +665,12 @@ export function StatCodeTemplateDialog({
                   <TemplateForm code={draft.code} kind={kind} names={slotNames} values={draftValues} onChange={setDraftValues} />
                 )}
               />
-              <p className="text-meta text-muted-foreground">
-                A slot is <code>{'{{name:type=default}}'}</code>. {kind === 'worldTool'
+              <Hint>
+                Write a slot as <code>{'{{name:type=default}}'}</code>. {kind === 'worldTool'
                   ? 'Stat, placeholder, trait, entity, location, daypart and parameter'
-                  : 'Stat, placeholder, trait, entity, location and daypart'} slots become quoted strings; number, choice and text
-                are pasted as written, so quote them yourself when you need a string.
-              </p>
+                  : 'Stat, placeholder, trait, entity, location and daypart'} slots insert a quoted string. Number, choice
+                and text slots insert as written, so add the quotes when you need a string.
+              </Hint>
             </div>
 
             <DialogFooter className="flex-row justify-end">
@@ -694,7 +694,7 @@ export function StatCodeTemplateDialog({
               ) : (
                 <ScrollArea className="h-full rounded-md border">
                   <div className="p-2 flex flex-col gap-1">
-                    {builtIns.length > 0 && <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>}
+                    {builtIns.length > 0 && <Meta className="block text-muted-foreground px-1 pt-1">Built-In</Meta>}
                     {builtIns.map(templateButton)}
 
                     <div className={cn('flex items-center justify-between gap-1 px-1', builtIns.length > 0 ? 'pt-3' : 'pt-1')}>
@@ -736,7 +736,7 @@ export function StatCodeTemplateDialog({
 
               <div className="flex flex-col gap-3 min-w-0 overflow-y-auto">
                 {!selected && (
-                  <p className="text-meta text-muted-foreground">No templates run {timingLabel} yet</p>
+                  <Meta className="block text-muted-foreground">No templates run {timingLabel} yet</Meta>
                 )}
                 {selected && (
                   <>

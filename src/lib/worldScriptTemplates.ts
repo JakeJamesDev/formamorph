@@ -10,7 +10,7 @@ export const WORLD_SCRIPT_TEMPLATES: readonly CodeTemplate[] = [
     kind: 'worldScript',
     timings: ['start'],
     name: 'Opening Location',
-    description: 'Move the opening turn to a location of your choice.',
+    description: 'Move the opening turn to a location.',
     code: 'location.move({{place:location}});',
   },
   {

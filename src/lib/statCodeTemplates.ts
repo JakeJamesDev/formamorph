@@ -539,7 +539,7 @@ return low + Math.floor(Math.random() * (high - low + 1));`,
     kind: 'script',
     timings: ['start'],
     name: 'Start From Persona Trait',
-    description: 'Start this stat at one value when the played persona has a trait on, and at another when it does not.',
+    description: 'Start this stat at one value when the played persona has a trait on, and at another when it doesn’t.',
     code: `const active = persona.traits[{{trait:trait(persona)}}].enabled;
 return active ? {{withTrait:number=75}} : {{withoutTrait:number=25}};`,
   },
