@@ -21,7 +21,7 @@ return name + " is " + stat.value + ", from " + stat.min + " to " + stat.max + "
     kind: 'worldTool',
     timings: ['call'],
     name: 'Roll Dice',
-    description: 'Roll a die with the sides the AI sent, and return the roll. Without a usable number, the die has the default sides.',
+    description: 'Roll a die with the sides the AI sent, and return the roll. When the AI sends no usable number, the die uses the default sides.',
     code: `const sent = Math.floor(Number(args[{{sides:param(number)=sides}}]));
 const sides = sent >= 2 ? sent : {{defaultSides:number=20}};
 const roll = Math.floor(Math.random() * sides) + 1;
@@ -74,7 +74,7 @@ return name ? name + " joins the scene." : "No one to add.";`,
     kind: 'worldTool',
     timings: ['call', 'after'],
     name: 'Pin a Memory',
-    description: 'Pin the line the AI sent as a memory, sent with every request.',
+    description: 'Pin the line the AI sent as a memory. A pinned memory goes with every request.',
     code: `const line = String(args[{{line:param(string)=line}}] ?? "").trim();
 if (line) memory.pin(line);
 return line ? "Pinned." : "Nothing to pin.";`,
@@ -93,7 +93,7 @@ if (line) diary({{entity:entity}}, line);`,
     kind: 'worldTool',
     timings: ['output'],
     name: 'Highlight a Name',
-    description: 'Bold the name the AI sent in each later sentence of the turn. A sentence that already bolds it stays as it is.',
+    description: 'Bold the name the AI sent in each later sentence of the turn. A sentence that already bolds it stays as written.',
     code: `const name = String(args[{{name:param(string)=name}}] ?? "").trim();
 // A name the AI already bolded stays as it is.
 if (name && !narration.sentence.includes("**" + name + "**")) {
