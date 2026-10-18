@@ -36,6 +36,11 @@ Settled with the user on 2026-10-17 in the grill.
 | Q11 | The template editor's Timing field is the existing multi-select, limited to the kind's timings |
 | Q12 | The spec drafts the built-in sets below. The user reviews them before the build |
 | Q13 | Try It stays mounted while its tab is hidden, so its inputs and result stay |
+| S1 | Test Code uses the turn-start clock for every timing that reads the turn start. Settled in the spec session for ticket 02 |
+| Q14 | A Parameter slot declares its type. Insert creates the Parameter on the Tool when the Tool has none of that name. Settled 2026-10-17 after tickets 01–04 |
+| Q15 | World scripts get a Templates button with their own built-in set |
+| Q16 | Fix the verified picker gaps: (A) entity and persona stat slots, (B) Owner trait rows in an entity stat's box, (C) the owner-route spec's Blueprint line. The Blueprint Variable menu itself is correct |
+| Q17 | The follow-ups are tickets 05 onward in this spec |
 
 ## User Stories
 
@@ -107,11 +112,11 @@ Settled with the user on 2026-10-17 in the grill.
 ### Menus
 
 - The menu filter takes a kind and a timing and returns the templates whose `timings` include it. It replaces the two-way filter.
-- A stat script box passes its own timing, not the Before/After fold. The fold stays for the test clock.
+- A stat script box passes its own timing, not the Before/After fold. The Test Code clock keys on whether the timing reads the turn start, so Start, Output and Switch test with zero delta, as play runs them (S1). The fold has no readers left and goes.
 - The World Tool Script box gets a Templates button. It passes `worldTool` and the Tool's current timing.
 - The dialog's editor shows the existing multi-select for timings, with only the kind's timings, and defaults to the box it opened from (Q11). The kind is fixed by the box that opened the dialog.
 - A template's detail lists every timing it runs in.
-- Templates stay on stat scripts only. Trait and world scripts get no Templates button, as today.
+- Templates show on stat scripts, World Tool scripts and world scripts (Q15). Trait scripts get no Templates button.
 
 ### New slot type: Parameter
 
@@ -157,6 +162,29 @@ Each line: name: what it does. Timings in brackets.
 
 On Call templates return a short reply. Code follows the house style for built-ins: each reads its bounds from the stat it writes, and no example values a small model can copy appear in the descriptions.
 
+### Follow-ups (Q14–Q17)
+
+**Parameter slot creates its Parameter (Q14).** The slot is `{{name:param(<type>)=<default name>}}`, with a Parameter type the Tool editor knows. The picker lists the Tool's Parameters of that type, plus a row that creates one named after the default. Insert adds every missing Parameter to the draft with that name and type, then fills the code. A plain `{{name:param}}` keeps working and creates a text Parameter. The World Tool built-ins move to the typed form. With no Parameters, the slot no longer blocks Insert.
+
+**World script templates (Q15).** A world script's box gets the Templates button. The template kind gains `worldScript`, with Script timings. Its set reads no `self` and returns nothing. A new `location` name slot picks one of the world's locations. Draft set, for review:
+
+- **Opening Location** [Start]: moves the opening turn to a location.
+- **Advance Time While a Trait Is On** [Before, After]: advances the clock while a trait is on.
+- **Leave When a Stat Runs Out** [After]: moves to a location when a stat reaches its Min.
+- **Placeholder by Daypart** [Before, Start]: pins a placeholder value during one part of the day.
+- **Memory When a Trait Turns On** [Switch]: pins a memory line when a named trait turns on.
+- **Diary Line When a Trait Turns On** [Switch]: adds a line to an entity's diary when a named trait turns on.
+- **Replace a Word** [Output]: replaces one word with another in each sentence.
+- **Entity Stat Follows a Global Stat** [Before, After]: sets an entity's stat to a global stat's value. Needs slot A.
+
+**Entity and persona stat slots (Q16 A).** `stat(<entitySlot>)` lists the stats of the entity picked in that slot, as `trait(<entitySlot>)` does. `stat(persona)` lists each persona entity's stats. They fill `entities[<entity>].stats[<stat>]` and `persona.stats[<stat>]`. A tied stat slot clears when its entity slot changes. They work in every kind.
+
+**Owner trait rows (Q16 B).** In an entity stat's box, an untied `trait` slot lists that entity's traits first, under an Owner trail, then the world's. An Owner pick fills through `owner.traits`, the way an Owner stat pick fills through `owner.stats`. A Blueprint stat's box gets no Owner trait rows: the stat Blueprints group holds stats only, and listing every bearer's traits is the union the owner-route ruling forbids.
+
+**Owner-route spec line (Q16 C).** That spec's ticket 04 ruling says a Blueprint box's Owner group lists "stats, and its traits and placeholders". Blueprints of each kind sit in their own system group, so the line changes to stats only, which is what the code does.
+
+The `worldScript` kind and the `location` slot add values to the v2 pack shape. They do not change its version, since Q9 sets no older-app goal.
+
 ### Docs and glossary
 
 - The Scripts guide's template section names the timings each menu shows and documents the World Tools Templates menu and the Parameter slot.
@@ -174,8 +202,8 @@ On Call templates return a short reply. Code follows the house style for built-i
 
 ## Out of Scope
 
-- Templates for Settings Tools, trait scripts and world scripts.
-- A template that also creates the Tool's Parameters.
+- Templates for Settings Tools and trait scripts.
+- Owner trait rows in a Blueprint stat's box (Q16 B).
 - Compatibility for older apps that read v2 packs.
 - Moving existing template ids or renaming existing built-ins.
 
