@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.2** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The Test Bench no longer flags a Blueprint trait whose requirement reads a Blueprint stat its entities hold.** It checks each entity that links the trait, and names one that lacks the stat.
+
 ---
 
 <details>
