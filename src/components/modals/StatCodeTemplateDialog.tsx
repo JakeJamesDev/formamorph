@@ -45,7 +45,7 @@ import {
 } from '@/lib/statCodeTemplates';
 import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE, TIMING_LABEL } from '@/lib/statCodeTiming';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { scriptSurface, STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
@@ -405,6 +405,9 @@ export function StatCodeTemplateDialog({
     [stats],
   );
   const parsed = useMemo(() => parseTemplateSlots(selected?.code ?? ''), [selected?.code]);
+  // The editor's surface adds the names of the draft's first timing. A stable object keeps the editor from resetting.
+  const draftTiming = draft?.kind === 'script' ? draft.timings[0] : undefined;
+  const draftSurface = useMemo(() => (draftTiming ? scriptSurface(STAT_CODE_SURFACE, draftTiming) : STAT_CODE_SURFACE), [draftTiming]);
 
   // Each newly selected template starts from its own declared defaults rather than inheriting the last
   // template's answers, which would silently carry a stat name into a slot that never asked for it.
@@ -538,7 +541,7 @@ export function StatCodeTemplateDialog({
                 onChange={(code) => setDraft({ ...draft, code })}
                 label="Code"
                 ariaLabel="Template code"
-                surface={STAT_CODE_SURFACE}
+                surface={draftSurface}
                 statNames={statNames}
                 owner={treeOwner}
                 slots

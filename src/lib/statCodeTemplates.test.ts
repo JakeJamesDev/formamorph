@@ -25,6 +25,7 @@ import {
 } from './statCodeTemplates';
 import { readsTurnStart } from './statCodeTiming';
 import { SCRIPT_TIMINGS } from './scripts';
+import { SAMPLE_SENTENCE, sampleNarration } from './scriptTestSamples';
 import { executeStatCode, type SandboxEntity, type SandboxTrait } from './statCodeExecutor';
 import { phMap, phWrite } from '@/test/sandboxPlaceholders';
 import type { ScriptTiming, Stat } from '@/types';
@@ -330,15 +331,43 @@ describe('built-in templates', () => {
       const clock = template.kind === 'script' && readsTurnStart(template.timings[0])
         ? { deltaHours: 0, elapsedHours: 0 }
         : { deltaHours: 2, elapsedHours: 12 };
+      const timing = template.kind === 'script' ? template.timings[0] : undefined;
       const result = await executeStatCode(fillTemplate(template.code, values), world, self, {
         ...castOptions, clock,
+        ...(timing === 'output' && { narration: sampleNarration(SAMPLE_SENTENCE) }),
+        ...(timing === 'switch' && { switchedTrait: { ...traits[0], owner: '' } }),
       });
       expect(result.error, template.name).toBeNull();
-      // A template writes a value, a bound, a placeholder, or a trait; one that does nothing is broken.
-      const wrote = result.value !== null || !!result.bounds || !!result.placeholders?.length || !!result.traits?.length;
+      // A template writes a value, a bound, a placeholder, a trait or a sentence; one that does nothing is broken.
+      const wrote = result.value !== null || !!result.bounds || !!result.placeholders?.length || !!result.traits?.length
+        || (result.sentence !== undefined && result.sentence !== SAMPLE_SENTENCE);
       expect(wrote, template.name).toBe(true);
     });
   }
+
+  describe('the start and output templates', () => {
+    const build = (id: string, values: Record<string, string>) => {
+      const template = BUILT_IN_TEMPLATES.find(t => t.id === id)!;
+      return fillTemplate(template.code, values);
+    };
+
+    it('starts a stat inside its range even when a limit is outside it or the limits are swapped', async () => {
+      const code = build('builtin-random-starting-value', { low: '900', high: '-50' });
+      for (let run = 0; run < 20; run++) {
+        const { value, error } = await executeStatCode(code, world, self, { clock: { deltaHours: 0, elapsedHours: 0 } });
+        expect(error).toBeNull();
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(200);
+      }
+    });
+
+    it('replaces a word that holds an apostrophe', async () => {
+      const code = build('builtin-replace-word', { word: "o'clock", replacement: 'hour' });
+      const { sentence, error } = await executeStatCode(code, world, self, { narration: sampleNarration("It is ten o'clock.") });
+      expect(error).toBeNull();
+      expect(sentence).toBe('It is ten hour.');
+    });
+  });
 
   // The three write templates prove themselves by what the host reads back, not by a returned number:
   // a bound on `self`, a pin on a placeholder, and a switch on a trait.
@@ -585,6 +614,20 @@ describe('which menus a template shows in', () => {
     for (const timing of SCRIPT_TIMINGS.filter(readsTurnStart)) {
       for (const template of templatesFor(BUILT_IN_TEMPLATES, 'script', timing)) {
         expect(template.code, `${template.name} at ${timing}`).not.toMatch(deadAtTurnStart);
+      }
+    }
+  });
+
+  it('shows each new template only in its own timing’s menu', () => {
+    const own = {
+      start: ['Random Starting Value', 'Start From Persona Trait'],
+      switch: ['Change When a Trait Switches', 'Mirror a Trait'],
+      output: ['Replace a Word', 'Count a Word', 'Bold a Word Past a Threshold'],
+    } as const;
+    for (const [timing, names] of Object.entries(own) as [ScriptTiming, readonly string[]][]) {
+      expect(menu(timing), timing).toEqual(expect.arrayContaining([...names]));
+      for (const other of SCRIPT_TIMINGS.filter(t => t !== timing)) {
+        for (const name of names) expect(menu(other), `${name} in ${other}`).not.toContain(name);
       }
     }
   });
