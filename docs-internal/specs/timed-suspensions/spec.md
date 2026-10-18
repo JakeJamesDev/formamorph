@@ -40,7 +40,7 @@ The **Suspend** button in Admin Panel → Users is a toggle. A suspended account
 
 ## Implementation Decisions
 
-- **Dialog.** A suspension dialog modeled on the quarantine dialog, reusing its day-option list and default from the shared quarantine module, or a shared duration module both import. A **Length** select holds the day options and an **Until Lifted** option. Copy follows the Writing Guide and goes through the copy sweep.
+- **Dialog.** A suspension dialog modeled on the quarantine dialog, reusing its day-option list and default from the shared quarantine module, or a shared duration module both import. A **Length** select holds the day options and an **Until Lifted** option. Copy follows the Writing Guide and goes through the copy sweep. The **Length** select offers the shared presets (3, 7, 14, and 30 days) plus **Until Lifted**; the 1–90 range is the server bound, not the picker list.
 - **Request.** Confirming sends `{ status: 'suspended', days }`, with `days: null` for Until Lifted. Activate sends `{ status: 'normal' }` unchanged.
 - **Row state.** The row takes `status` and `suspendedUntil` from the response's user, not from the request, so the table shows the stored end.
 - **Table (Q7).** The Status column renders the existing status pill and, for a suspended account with an end, a short "until <date>" line in the viewer's locale.
