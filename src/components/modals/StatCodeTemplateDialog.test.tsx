@@ -76,7 +76,7 @@ const placeholders: Placeholder[] = [
 ];
 const placeholderOwners = new Map([['secret', { kind: 'entity' as const, id: 'e1', name: 'Mira' }]]);
 
-type DialogProps = React.ComponentProps<typeof StatCodeTemplateDialog>;
+type DialogProps = Extract<React.ComponentProps<typeof StatCodeTemplateDialog>, { kind?: 'script' }>;
 
 const open = (timing: ScriptTiming = 'after', cast: Entity[] = entities, extra: Partial<DialogProps> = {}) => render(
   <StatCodeTemplateDialog

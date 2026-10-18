@@ -41,9 +41,10 @@ import {
   withTimings,
   type CodeTemplate,
   type NameSlotType,
+  type TemplateKind,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
-import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE } from '@/lib/statCodeTiming';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { scriptSurface, STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
@@ -58,20 +59,30 @@ import {
   parseTemplatePack,
   saveUserTemplate,
 } from '@/services/StatTemplateStorageService';
-import type { ScriptTiming, Stat } from '@/types';
+import type { ScriptTiming, Stat, ToolParam, ToolScriptTiming } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
+import { namedParams } from '@/lib/tools/toolDraft';
+import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
+
+/** The box a menu fills: a stat script's timing, or a World Tool's timing and Parameters. */
+type TemplateBox =
+  | { kind: 'script'; timing: ScriptTiming }
+  | { kind: 'worldTool'; timing: ToolScriptTiming; params: readonly ToolParam[] };
+
+/** The templates that `box`'s menu lists. */
+const menuOf = (templates: readonly CodeTemplate[], box: TemplateBox): CodeTemplate[] => (box.kind === 'script'
+  ? templatesFor(templates, 'script', box.timing)
+  : templatesFor(templates, 'worldTool', box.timing));
 
 /** A new template starts in the box the author opened the menu from, which is where they were about to
  *  paste it. The Runs field is right there to add more. */
-const blankTemplate = (timing: ScriptTiming): CodeTemplate => ({
-  id: '',
-  kind: 'script',
-  name: '',
-  description: '',
-  code: 'return {{amount:number=1}};',
-  timings: [timing],
-});
+const blankTemplate = (box: TemplateBox): CodeTemplate => (box.kind === 'script'
+  ? { id: '', kind: 'script', name: '', description: '', code: 'return {{amount:number=1}};', timings: [box.timing] }
+  : { id: '', kind: 'worldTool', name: '', description: '', code: 'return String(args[{{parameter:param}}]);', timings: [box.timing] });
+
+/** What a parameter slot says when the Tool has no Parameters to pick. */
+const NO_PARAMS_PROBLEM = 'Add a parameter on the Parameters tab';
 
 /** Whether a draft has a name, code and a timing to run in. */
 const canSave = (draft: CodeTemplate): boolean => !!draft.name.trim() && !!draft.code.trim() && draft.timings.length > 0;
@@ -111,7 +122,17 @@ interface SlotNames {
   /** The world's own traits, which `traits` keys. */
   trait: readonly CodeTraitPlace[];
   entities: readonly CodeEntityNames[];
+  /** The Tool's named Parameters, which `args` keys. Empty outside a World Tool's box. */
+  param: readonly string[];
 }
+
+/** Every slot whose value can't be used, keyed by slot name. A parameter slot with no Parameters to pick says so. */
+const slotProblems = (slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames): Record<string, string> => ({
+  ...validateSlotValues([...slots], values),
+  ...(names.param.length === 0
+    ? Object.fromEntries(slots.filter((slot) => slot.type === 'param').map((slot) => [slot.name, NO_PARAMS_PROBLEM]))
+    : {}),
+});
 
 type SlotRow = BreadcrumbPickerRow<string>;
 
@@ -121,6 +142,7 @@ const PROMPTS: Record<NameSlotType, { pick: string; search: string }> = {
   placeholder: { pick: 'Pick a placeholder…', search: 'Search placeholders' },
   trait: { pick: 'Pick a trait…', search: 'Search traits' },
   entity: { pick: 'Pick an entity…', search: 'Search entities' },
+  param: { pick: 'Pick a parameter…', search: 'Search parameters' },
 };
 
 const OWNER_CRUMB: readonly string[] = ['Owner'];
@@ -187,6 +209,8 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
         key: trait.id, value: trait.name, name: trait.name, breadcrumb: trait.path.length > 0 ? trait.path : WORLD_BREADCRUMB,
       }));
     }
+    case 'param':
+      return plainRows(names.param);
     case 'daypart':
       return plainRows(DAYPART_OPTIONS);
     default:
@@ -261,14 +285,15 @@ function SlotField({ slot, value, problem, options, onChange }: {
 
 /** The fill-in form and the code it generates. Shared by the picker and the template editor's Preview tab,
  *  so an author writing a template sees the exact interface theirs will present. */
-function TemplateForm({ code, names, values, onChange }: {
+function TemplateForm({ code, kind, names, values, onChange }: {
   code: string;
+  kind: TemplateKind;
   names: SlotNames;
   values: Record<string, string>;
   onChange: (update: (values: Record<string, string>) => Record<string, string>) => void;
 }) {
-  const parsed = useMemo(() => parseTemplateSlots(code), [code]);
-  const problems = validateSlotValues(parsed.slots, values);
+  const parsed = useMemo(() => parseTemplateSlots(code, kind), [code, kind]);
+  const problems = slotProblems(parsed.slots, values, names);
 
   return (
     <div className="flex flex-col gap-3 min-w-0">
@@ -305,15 +330,30 @@ function TemplateForm({ code, names, values, onChange }: {
   );
 }
 
+/** The box a dialog fills: a stat script's by default, or a World Tool's with its Parameters. */
+type BoxProps =
+  | {
+    kind?: 'script';
+    /** The box this menu fills. It lists the templates that run in that box, and a template saved here
+     *  starts out running in it. */
+    timing: ScriptTiming;
+    params?: undefined;
+  }
+  | {
+    kind: 'worldTool';
+    timing: ToolScriptTiming;
+    /** The Tool's Parameters, which a parameter slot picks from. */
+    params: readonly ToolParam[];
+  };
+
 /**
- * Browse, fill in and manage stat-code templates. Inserting generates plain JavaScript into the stat's
- * code field — the finished stat keeps no link to the template it came from, so the author is free to
- * edit the result by hand afterwards.
+ * Browse, fill in and manage code templates for a stat script or a World Tool script. Inserting generates
+ * plain JavaScript into the box — the finished script keeps no link to the template it came from, so the
+ * author is free to edit the result by hand afterwards.
  */
 export function StatCodeTemplateDialog({
   open,
   onOpenChange,
-  timing,
   stats,
   owner,
   ownerStats = NO_STATS,
@@ -325,12 +365,10 @@ export function StatCodeTemplateDialog({
   entities = [],
   repository = productionRepository,
   fileTransfer,
-}: {
+  ...boxProps
+}: BoxProps & {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The box this menu fills. It lists the stat templates that run in that box, and a template saved here
-   *  starts out running in it. */
-  timing: ScriptTiming;
   /** The world's stats, under their code names: what a slot fills in has to be what the run reaches. */
   stats: Stat[];
   /** The kind of owner the box's code runs under. Its stat slots list `ownerStats` beside `stats`, and its
@@ -352,8 +390,14 @@ export function StatCodeTemplateDialog({
   repository?: StatTemplateRepository;
   fileTransfer?: StatTemplateFileTransfer;
 }) {
+  const { kind: boxKind, timing, params } = boxProps;
+  const box = useMemo<TemplateBox>(() => (boxKind === 'worldTool'
+    ? { kind: 'worldTool', timing, params }
+    : { kind: 'script', timing }), [boxKind, timing, params]);
+  const { kind } = box;
+  const timingLabel = box.kind === 'script' ? TEMPLATE_TIMING_LABEL.script[box.timing] : TEMPLATE_TIMING_LABEL.worldTool[box.timing];
   const [userTemplates, setUserTemplates] = useState<CodeTemplate[]>([]);
-  const builtIns = useMemo(() => templatesFor(BUILT_IN_TEMPLATES, 'script', timing), [timing]);
+  const builtIns = useMemo(() => menuOf(BUILT_IN_TEMPLATES, box), [box]);
   const firstBuiltIn = builtIns[0]?.id ?? '';
   const [selectedId, setSelectedId] = useState<string>(firstBuiltIn);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -380,8 +424,8 @@ export function StatCodeTemplateDialog({
   });
 
   const sortedUser = useMemo(
-    () => templatesFor(userTemplates, 'script', timing).sort((a, b) => a.name.localeCompare(b.name)),
-    [userTemplates, timing],
+    () => menuOf(userTemplates, box).sort((a, b) => a.name.localeCompare(b.name)),
+    [userTemplates, box],
   );
   const all = useMemo(() => [...builtIns, ...sortedUser], [builtIns, sortedUser]);
   const selected = all.find(template => template.id === selectedId) ?? all[0];
@@ -391,7 +435,8 @@ export function StatCodeTemplateDialog({
     placeholder: placeholderPlaces,
     trait: traitPlaces,
     entities,
-  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, entities]);
+    param: params ? namedParams(params).map((param) => param.name) : [],
+  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, entities, params]);
   // The template editor has no world, so its Owner group types over each name.
   const treeOwner = useMemo<VariableTreeOwner | null>(() => {
     if (!owner) return null;
@@ -404,16 +449,24 @@ export function StatCodeTemplateDialog({
     () => stats.map(stat => stat.name).filter((name): name is string => !!name),
     [stats],
   );
-  const parsed = useMemo(() => parseTemplateSlots(selected?.code ?? ''), [selected?.code]);
-  // The editor's surface adds the names of the draft's first timing. A stable object keeps the editor from resetting.
-  const draftTiming = draft?.kind === 'script' ? draft.timings[0] : undefined;
-  const draftSurface = useMemo(() => (draftTiming ? scriptSurface(STAT_CODE_SURFACE, draftTiming) : STAT_CODE_SURFACE), [draftTiming]);
+  const parsed = useMemo(() => parseTemplateSlots(selected?.code ?? '', kind), [selected?.code, kind]);
+  // The editor's surface adds the names of the draft's first timing; a World Tool draft's adds `args` from the
+  // Tool's Parameters. A stable object keeps the editor from resetting.
+  const scriptTiming = draft?.kind === 'script' ? draft.timings[0] : undefined;
+  const toolTiming = draft?.kind === 'worldTool' ? draft.timings[0] : undefined;
+  const draftSurface = useMemo(() => {
+    if (box.kind === 'worldTool') return worldToolSurface(box.params, toolTiming ?? box.timing);
+    return scriptTiming ? scriptSurface(STAT_CODE_SURFACE, scriptTiming) : STAT_CODE_SURFACE;
+  }, [box, scriptTiming, toolTiming]);
+  const argsMenu = useMemo(
+    () => (box.kind === 'worldTool' ? () => worldToolArgsNodes(box.params) : null), [box],
+  );
 
   // Each newly selected template starts from its own declared defaults rather than inheriting the last
   // template's answers, which would silently carry a stat name into a slot that never asked for it.
   useEffect(() => { setValues(defaultSlotValues(parsed.slots)); }, [parsed.slots]);
 
-  const problems = validateSlotValues(parsed.slots, values);
+  const problems = slotProblems(parsed.slots, values, slotNames);
   const blocked = Object.keys(problems).length > 0 || parsed.errors.length > 0;
 
   const doInsert = () => {
@@ -424,7 +477,7 @@ export function StatCodeTemplateDialog({
 
   const openDraft = (template: CodeTemplate) => {
     setDraft(template);
-    setDraftValues(defaultSlotValues(parseTemplateSlots(template.code).slots));
+    setDraftValues(defaultSlotValues(parseTemplateSlots(template.code, template.kind).slots));
   };
 
   const saveDraft = async () => {
@@ -544,16 +597,18 @@ export function StatCodeTemplateDialog({
                 surface={draftSurface}
                 statNames={statNames}
                 owner={treeOwner}
+                {...(argsMenu && { variables: argsMenu })}
                 slots
                 className="flex-1"
                 preview={(
-                  <TemplateForm code={draft.code} names={slotNames} values={draftValues} onChange={setDraftValues} />
+                  <TemplateForm code={draft.code} kind={kind} names={slotNames} values={draftValues} onChange={setDraftValues} />
                 )}
               />
               <p className="text-meta text-muted-foreground">
-                A slot is <code>{'{{name:type=default}}'}</code>. Stat, placeholder, trait and daypart
-                slots become quoted strings; number, choice and text are pasted as written, so quote them
-                yourself when you need a string.
+                A slot is <code>{'{{name:type=default}}'}</code>. {kind === 'worldTool'
+                  ? 'Stat, placeholder, trait, daypart and parameter'
+                  : 'Stat, placeholder, trait and daypart'} slots become quoted strings; number, choice and text
+                are pasted as written, so quote them yourself when you need a string.
               </p>
             </div>
 
@@ -609,7 +664,7 @@ export function StatCodeTemplateDialog({
 
                     <button
                       type="button"
-                      onClick={() => openDraft(blankTemplate(timing))}
+                      onClick={() => openDraft(blankTemplate(box))}
                       className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <Plus className="h-4 w-4" />New Template
@@ -620,7 +675,7 @@ export function StatCodeTemplateDialog({
 
               <div className="flex flex-col gap-3 min-w-0 overflow-y-auto">
                 {!selected && (
-                  <p className="text-meta text-muted-foreground">No templates run {TIMING_LABEL[timing]} yet</p>
+                  <p className="text-meta text-muted-foreground">No templates run {timingLabel} yet</p>
                 )}
                 {selected && (
                   <>
@@ -629,7 +684,7 @@ export function StatCodeTemplateDialog({
                       <Meta className="block text-muted-foreground">Runs {templateTimingLabels(selected).join(', ')}</Meta>
                       <p className="text-helper text-muted-foreground">{selected.description}</p>
                     </div>
-                    <TemplateForm code={selected.code} names={slotNames} values={values} onChange={setValues} />
+                    <TemplateForm code={selected.code} kind={kind} names={slotNames} values={values} onChange={setValues} />
                   </>
                 )}
               </div>
@@ -639,7 +694,7 @@ export function StatCodeTemplateDialog({
                 form runs. */}
             <DialogFooter className="flex-row flex-wrap justify-end gap-2">
               {isMobile && (
-                <Button variant="outline" size="sm" onClick={() => openDraft(blankTemplate(timing))}>
+                <Button variant="outline" size="sm" onClick={() => openDraft(blankTemplate(box))}>
                   <Plus className="h-4 w-4 mr-1" />New
                 </Button>
               )}
@@ -668,7 +723,7 @@ export function StatCodeTemplateDialog({
           open={!!confirmDelete}
           onOpenChange={(o) => !o && setConfirmDelete(null)}
           title="Delete Template"
-          description={`Delete “${confirmDelete?.name}” from your library? Stats already using code from it are unaffected.`}
+          description={`Delete “${confirmDelete?.name}” from your library? Code you already inserted from it stays as it is.`}
           onConfirm={() => confirmDelete && void remove(confirmDelete)}
         />
 

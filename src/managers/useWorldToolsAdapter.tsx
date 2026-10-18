@@ -71,14 +71,14 @@ export function useWorldToolsAdapter({ selectedId, onSelect, snapshot }: {
   const { userTools } = useSettings();
   const [draft, setDraft] = useState<ToolDraft | null>(null);
   // Try It and the script box read the world's names as the Scripts tab's boxes do, unsaved edits included.
-  const { names } = useScriptWorldNames();
+  const { names, placeholderPlaces } = useScriptWorldNames();
   const lookups = useMemo(() => statBoxLookups(gameData), [gameData]);
   const world = useMemo<TryItWorld>(() => ({
     snapshot, open: true, runScript: (tool, argsText, options) => tryWorldToolScript(tool, argsText, names, options),
   }), [snapshot, names]);
   const worldCode = useMemo<WorldToolCode>(() => ({
-    names, lookup: (timing) => lookups({ owner: null, timing, self: traitBoxSelf('', '') }),
-  }), [names, lookups]);
+    names, placeholderPlaces, lookup: (timing) => lookups({ owner: null, timing, self: traitBoxSelf('', '') }),
+  }), [names, placeholderPlaces, lookups]);
   const byId = useMemo(() => new Map(worldTools.map((tool) => [tool.id, tool])), [worldTools]);
   const clashFor = useCallback((tool: Tool) => clashNote(worldToolClash(tool, userTools)), [userTools]);
   // A draft belongs to the row it opened on; another selection leaves it.
