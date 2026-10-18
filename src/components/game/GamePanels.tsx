@@ -1215,8 +1215,6 @@ export const MiddlePanel = ({
 
 /** The (None) item's value: Radix Select has no empty item value. */
 const NO_ENTITY = '__none';
-/** An entity row is read-only, so its value never commits. */
-const noCommit = () => {};
 const NO_STAT_GROUPS: StatGroup[] = [];
 const NO_AUTHORED_STATS: Stat[] = [];
 const entityItems = (options: StatPanelOption[]) =>
@@ -1257,6 +1255,7 @@ export const RightPanel = ({
     traitsView,
     setTraitsView,
     commitManualStatEdit,
+    commitManualEntityStatEdit,
     viewTraits: savedTraits,
     viewDisabledTraitIds,
     viewOwnedTraits,
@@ -1370,8 +1369,7 @@ export const RightPanel = ({
     gameData?.statGroups ?? NO_STAT_GROUPS, gameData?.stats ?? NO_AUTHORED_STATS, visibleStats, ({ stat }) => stat.id,
   );
 
-  /** One owner's read-only stat rows, under its own groups. Keyed by owner, so a pick starts every row's band
-   *  flash fresh. */
+  /** One owner's stat rows, under its own groups. Keyed by owner, so a pick starts every row's band flash fresh. */
   const ownerStatRows = (owner: StatPanelOwner) => (
     <StatGroupSections
       key={owner.entity.id}
@@ -1386,9 +1384,9 @@ export const RightPanel = ({
           page={currentPage}
           isViewingPast={isViewingPast}
           snap={snapStats}
-          editable={false}
+          editable={isEditMode && !isViewingPast}
           reserveDescriptorLine={owner.rows.some((row) => (row.descriptors?.length ?? 0) > 0)}
-          onCommitValue={noCommit}
+          onCommitValue={(value) => commitManualEntityStatEdit(owner.entity.id, stat.id, value)}
         />
       )}
     />
