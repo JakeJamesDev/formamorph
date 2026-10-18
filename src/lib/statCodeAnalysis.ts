@@ -108,6 +108,9 @@ export interface CodeTraitPlace {
 
 /** One entity as the editor reads it: its code name and the code names of its trait set, owned or linked. */
 export interface CodeEntityNames extends CodeOwnerName {
+  /** Its type and pronouns as code reads them. Absent ⇒ empty. */
+  type?: string;
+  pronouns?: string;
   traits: readonly CodeTraitPlace[];
   /** The code names of its own stats, in authored order. Absent ⇒ none. */
   stats?: readonly string[];
