@@ -295,7 +295,8 @@ describe('what each entry reads as', () => {
     expect(auditActorName(ended)).toBeNull();
     expect(describeAuditEntry(ended)).toBe('The suspension of trouble ended');
     expect(AUDIT_ACTION_LABELS.suspension_expired).toBe('Suspension expired');
-    expect(AUDIT_ACTION_STYLES.suspension_expired).toBeTruthy();
+    // A lift by the server must not read as a staff reinstatement.
+    expect(AUDIT_ACTION_STYLES.suspension_expired).not.toBe(AUDIT_ACTION_STYLES.user_unsuspended);
     expect(AUDIT_ACTION_OPTIONS.map((option) => option.value)).toContain('suspension_expired');
   });
 

@@ -36,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A world script's box now has a Templates button with eight starter templates.** They set the opening location, advance time, pin memories and diary lines, and replace words. Save, export and import your own beside the others. A new location input picks one of the world's locations.
   - **Timed Suspensions:**
     - **In the Admin Panel's Users tab, Suspend asks for a length and the table shows when each suspension ends.** Pick 3 to 30 days or **Until Lifted**. **Suspend** also works on a suspended account.
+    - **A suspended account's profile now shows its end date, and the Audit Log shows suspensions that end on their own.** Filter the log by **Suspension expired**. Each Suspended entry shows the end that staff chose.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 
