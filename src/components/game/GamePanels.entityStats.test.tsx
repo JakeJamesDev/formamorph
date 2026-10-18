@@ -6,6 +6,7 @@ import { defaultSystemPrompt } from './GamePrompts';
 import { renderInGame, renderRightPanel, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { EntityStatValues, SceneEntity } from '@/types';
 import { NO_DELTAS } from '@/lib/useStatDeltas';
+import { regenerateState } from '@/lib/turnHistory';
 import EntityStorageService from '@/services/EntityStorageService';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -374,6 +375,64 @@ describe('RightPanel — editing entity and persona stats', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
     fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '55' } });
     expect(view.gameplay().viewEntityStatChanges).toEqual({});
+  });
+
+  it("keeps the turn's own change through several edits that land before a render", () => {
+    // The turn moved Trust 40 → 45, then two slider moves arrive on one stale closure.
+    const view = renderRightPanel({}, {
+      ...ownersOnly,
+      seed: (g) => { ownersOnly.seed(g); g.setEntityStats({ ...values, bram: [statFixture('Trust', 45)], mira: [statFixture('Calm', 5)] }); },
+    });
+    act(() => {
+      const g = view.gameplay();
+      g.commitManualEntityStatEdit('bram', 'trust', 60);
+      g.commitManualEntityStatEdit('bram', 'trust', 70);
+    });
+    const g = view.gameplay();
+    expect(valueOf(g.entityStats, 'bram', 'trust')).toBe(70);
+    expect(g.viewEntityStatChanges).toEqual({ bram: { trust: 5 } });
+    expect(valueOf(g.gameStates[g.currentPage - 1].entityStats, 'bram', 'trust')).toBe(70);
+  });
+
+  it('edits a picked entity that is not in the scene', async () => {
+    const view = renderRightPanel({}, ownersOnly);
+    await choose('Odette');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Stock' }), { target: { value: '20' } });
+    expect(valueOf(view.gameplay().entityStats, 'odette', 'stock')).toBe(20);
+  });
+
+  it("edits a library persona's stats and the Custom Persona entity's", async () => {
+    const shade = { id: 'l-shade', name: 'Shade', persona: true, stats: [statFixture('Trust', 30)] };
+    await EntityStorageService.storeEntity({ id: shade.id, name: shade.name, data: shade });
+    onTestFinished(() => EntityStorageService.deleteEntity(shade.id));
+    const custom = { id: 'w-you', name: 'Wanderer', customPersona: true };
+    const view = renderRightPanel({}, {
+      world: { entities: [bram, custom] } as never, turns, stats: [statFixture('Vigor', 50, { hidden: true })],
+      seed: (g) => {
+        g.resetEntityStats({ 'w-you': [statFixture('Trust', 70)] });
+        g.setPersonaRef({ source: 'library', entityId: shade.id });
+      },
+    });
+    await waitFor(() => expect(screen.getAllByTestId('persona-stats')).toHaveLength(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    const [library, marked] = screen.getAllByTestId('persona-stats');
+    fireEvent.change(within(library).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '35' } });
+    fireEvent.change(within(marked).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '75' } });
+
+    const g = view.gameplay();
+    expect(valueOf(g.entityStats, 'l-shade', 'trust')).toBe(35);
+    expect(valueOf(g.entityStats, 'w-you', 'trust')).toBe(75);
+  });
+
+  it("is what a re-generate of the next turn starts from", () => {
+    const view = renderRightPanel({}, ownersOnly);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '55' } });
+
+    const g = view.gameplay();
+    const preTurn = regenerateState(g.gameStates, null, g.currentPage + 1);
+    expect(valueOf(preTurn?.entityStats, 'bram', 'trust')).toBe(55);
   });
 
   it('offers no field on a past turn', () => {

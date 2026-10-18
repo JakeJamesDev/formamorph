@@ -23,7 +23,7 @@ import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
-import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, shiftEntityStat, withoutEntityCodeBounds } from '../lib/entityStats';
+import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -733,18 +733,16 @@ function useProvideGameplay() {
   }, [currentPage]);
 
   // The same for an entity's stat. The baseline moves with it, so the edit is not counted as the turn's change.
+  // Every write is absolute, so a burst of slider moves between renders lands on the last value without drift.
   const commitManualEntityStatEdit = useCallback((ownerId: string, statId: string, value: number) => {
-    const current = entityStats[ownerId]?.find((s) => s.id === statId);
-    if (!current) return;
-    const change = value - current.value;
-    const next = shiftEntityStat(entityStats, ownerId, statId, change);
-    setEntityStats(next);
-    setEntityStatBaseline((prev) => shiftEntityStat(prev, ownerId, statId, change));
+    const turnChange = entityStatChanges[ownerId]?.[statId] ?? 0;
+    setEntityStats((prev) => withEntityStatValue(prev, ownerId, statId, value));
+    setEntityStatBaseline((prev) => withEntityStatValue(prev, ownerId, statId, value - turnChange));
     const idx = currentPage - 1;
-    setGameStates((prev) => (idx >= 0 && idx < prev.length
-      ? placeSnapshot(prev, idx, { ...prev[idx], entityStats: next })
+    setGameStates((prev) => (idx >= 0 && idx < prev.length && prev[idx].entityStats
+      ? placeSnapshot(prev, idx, { ...prev[idx], entityStats: withEntityStatValue(prev[idx].entityStats, ownerId, statId, value) })
       : prev));
-  }, [currentPage, entityStats]);
+  }, [currentPage, entityStatChanges]);
 
   const value = {
     characterData,
