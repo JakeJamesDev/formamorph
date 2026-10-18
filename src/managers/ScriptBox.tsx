@@ -45,7 +45,7 @@ export interface ScriptBoxContext {
 export type ScriptSelf = { kind: 'stat'; stat: Partial<Stat> & Pick<Stat, 'id'> } | { kind: 'trait'; id: string } | { kind: 'world' };
 
 /**
- * One script's code box: the editor, the Templates menu on a stat, its own Test Code button, and the report
+ * One script's code box: the editor, the Templates menu on a stat or world script, its own Test Code button, and the report
  * that run left. Each box holds its own report, so editing one leaves another's standing.
  *
  * A run here is handed no turn, so `previous` reads as the stat itself and every `delta` reads zero, which
@@ -86,6 +86,8 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const { timing, code: value } = script;
   const isStat = self.kind === 'stat';
   const isOutput = timing === 'output';
+  // Stat and world scripts have a Templates menu; a trait's has none.
+  const hasTemplates = self.kind !== 'trait';
   const { selfName, names, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup } = context;
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // An entity stat's own traits, which a template's trait slot lists under Owner. A Blueprint's owners vary, so none.
@@ -207,21 +209,21 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
         />
       </div>
 
-      {self.kind === 'stat' && (
+      {hasTemplates && (
         <StatCodeTemplateDialog
           open={templatesOpen}
           onOpenChange={setTemplatesOpen}
           timing={timing}
           stats={worldStats}
-          owner={owner?.kind}
-          ownerStats={ownerStats}
-          currentStatId={self.stat.id}
           hasExistingCode={!!value.trim()}
           onInsert={(code) => write(migrateStatCodeRoutes(code, names.placeholders))}
           placeholderPlaces={placeholderPlaces}
           traitPlaces={traitPlaces}
-          ownerTraits={ownerTraits}
           entities={entities}
+          locations={names.places?.locations}
+          {...(self.kind === 'stat'
+            ? { owner: owner?.kind, ownerStats, currentStatId: self.stat.id, ownerTraits }
+            : { kind: 'worldScript' as const })}
         />
       )}
 
@@ -248,7 +250,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
           >
             {testing ? "Testing..." : "Test Code"}
           </Button>
-          {isStat && (
+          {hasTemplates && (
             <Button variant="outline" onClick={() => setTemplatesOpen(true)} aria-label={`Templates ${label}`}>
               <SquareFunction className="h-4 w-4 mr-1" />
               Templates

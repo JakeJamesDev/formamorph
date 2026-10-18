@@ -1,11 +1,11 @@
 /**
- * Templates for stat scripts and World Tool scripts: a bundled read-only set plus whatever the author
+ * Templates for stat scripts, world scripts and World Tool scripts: a bundled read-only set plus whatever the author
  * saves locally. A template is ordinary sandbox code carrying inline slots, and filling a slot form
  * generates plain editable JS into the code field — nothing links the finished script back to its template.
  *
  * Slot syntax is `{{name:type=default}}`; `type` and `=default` are both optional, and repeating a name
  * reuses the first occurrence's declaration. Substitution is textual, so a template controls its own
- * quoting: a `stat`, `placeholder`, `trait`, `entity`, `param` or `daypart` slot emits a quoted string, while
+ * quoting: a `stat`, `placeholder`, `trait`, `entity`, `location`, `param` or `daypart` slot emits a quoted string, while
  * `number`, `choice` and `text` emit their value as typed (which is what lets a choice supply a comparison
  * operator). `trait(slot)` and `stat(slot)` list the traits or stats of the entity that `entity` slot picked, and
  * `trait(persona)` and `stat(persona)` list the persona's, unless the template declares an `entity` slot named `persona`.
@@ -13,13 +13,14 @@
 
 import type { ScriptTiming, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
 import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from './scripts';
+import { WORLD_SCRIPT_TEMPLATES } from './worldScriptTemplates';
 import { WORLD_TOOL_TEMPLATES } from './worldToolTemplates';
 
-export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'param', 'number', 'daypart', 'choice', 'text'] as const;
+export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'location', 'param', 'number', 'daypart', 'choice', 'text'] as const;
 export type SlotType = (typeof SLOT_TYPES)[number];
 
 /** The slot types filled from a list of names: the world's own, or a Tool's Parameters. Each renders as a quoted string. */
-export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'param'] as const satisfies readonly SlotType[];
+export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'location', 'param'] as const satisfies readonly SlotType[];
 export type NameSlotType = (typeof NAME_SLOT_TYPES)[number];
 
 export const isNameSlotType = (type: SlotType): type is NameSlotType =>
@@ -48,33 +49,40 @@ export interface TemplateSlot {
 /** The `trait(…)` or `stat(…)` owner that lists the persona's traits or stats. */
 export const PERSONA_SLOT_OWNER = 'persona';
 
-/** The surface a template is written for: a stat script box, or a World Tool's Script box. */
-export type TemplateKind = 'script' | 'worldTool';
+/** The surface a template is written for: a stat script box, a world script box, or a World Tool's Script box. */
+export type TemplateKind = 'script' | 'worldScript' | 'worldTool';
 
 /** The timings each kind's boxes run at, in the order its picker lists them. */
 export const TEMPLATE_TIMINGS = {
   script: SCRIPT_TIMINGS,
+  worldScript: SCRIPT_TIMINGS,
   worldTool: ['call', 'output', 'after'],
-} as const satisfies { script: readonly ScriptTiming[]; worldTool: readonly ToolScriptTiming[] };
+} as const satisfies { script: readonly ScriptTiming[]; worldScript: readonly ScriptTiming[]; worldTool: readonly ToolScriptTiming[] };
 
 /** Each kind's timing names wherever an author reads them. */
-export const TEMPLATE_TIMING_LABEL: { script: Record<ScriptTiming, string>; worldTool: Record<ToolScriptTiming, string> } = {
+export const TEMPLATE_TIMING_LABEL: {
+  script: Record<ScriptTiming, string>; worldScript: Record<ScriptTiming, string>; worldTool: Record<ToolScriptTiming, string>;
+} = {
   script: SCRIPT_TIMING_LABEL,
+  worldScript: SCRIPT_TIMING_LABEL,
   worldTool: { call: 'On Call', output: 'During AI Output', after: 'After the AI' },
 };
 
 /** The names of every timing a template runs in. */
-export const templateTimingLabels = (template: CodeTemplate): string[] => (template.kind === 'script'
-  ? template.timings.map((timing) => TEMPLATE_TIMING_LABEL.script[timing])
-  : template.timings.map((timing) => TEMPLATE_TIMING_LABEL.worldTool[timing]));
+export const templateTimingLabels = (template: CodeTemplate): string[] => {
+  const labels: Record<string, string> = TEMPLATE_TIMING_LABEL[template.kind];
+  return template.timings.map((timing) => labels[timing]);
+};
 
 /** `template` running in the picked timings of its kind, in its kind's order. Anything else picked drops. */
-export const withTimings = (template: CodeTemplate, picked: readonly unknown[]): CodeTemplate => (template.kind === 'script'
-  ? { ...template, timings: TEMPLATE_TIMINGS.script.filter((timing) => picked.includes(timing)) }
-  : { ...template, timings: TEMPLATE_TIMINGS.worldTool.filter((timing) => picked.includes(timing)) });
+export const withTimings = (template: CodeTemplate, picked: readonly unknown[]): CodeTemplate => {
+  const timings = TEMPLATE_TIMINGS[template.kind].filter((timing) => picked.includes(timing));
+  // The kind's own list holds only that kind's timings, which the union can't express.
+  return { ...template, timings } as CodeTemplate;
+};
 
 /** The timing type of one kind's boxes. */
-export type TemplateTiming<K extends TemplateKind> = K extends 'script' ? ScriptTiming : ToolScriptTiming;
+export type TemplateTiming<K extends TemplateKind> = K extends 'worldTool' ? ToolScriptTiming : ScriptTiming;
 
 interface TemplateFields {
   id: string;
@@ -86,6 +94,7 @@ interface TemplateFields {
 /** A code template. `timings` lists every box it works in and is never empty. */
 export type CodeTemplate =
   | TemplateFields & { kind: 'script'; timings: ScriptTiming[] }
+  | TemplateFields & { kind: 'worldScript'; timings: ScriptTiming[] }
   | TemplateFields & { kind: 'worldTool'; timings: ToolScriptTiming[] };
 
 /** The templates of `kind` whose timings hold `timing`, in their given order: one box's menu. */
@@ -112,7 +121,7 @@ export function readTemplate(entry: unknown): CodeTemplate | null {
     code: row.code,
   };
   if (row.kind === undefined) return { ...fields, kind: 'script', timings: [row.timing === 'before' ? 'before' : 'after'] };
-  if (row.kind !== 'script' && row.kind !== 'worldTool') return null;
+  if (row.kind !== 'script' && row.kind !== 'worldScript' && row.kind !== 'worldTool') return null;
   const template = withTimings({ ...fields, kind: row.kind, timings: [] }, Array.isArray(row.timings) ? row.timings : []);
   return template.timings.length ? template : null;
 }
@@ -144,7 +153,7 @@ const isSlotParamType = (value: string): value is SlotParamType => (SLOT_PARAM_T
 /**
  * Read a template's slot declarations in source order. A repeated name collapses to the single control
  * that fills every occurrence; only its first declaration counts, and a later one that contradicts it is
- * reported rather than applied. A `param` slot in a `script` template is reported and reads as text.
+ * reported rather than applied. A `param` slot outside a World Tool template is reported and reads as text.
  */
 export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTemplate {
   const slots: TemplateSlot[] = [];
@@ -154,7 +163,7 @@ export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTem
   for (const match of (code || '').matchAll(SLOT_PATTERN)) {
     const [, name, rawType, rawOptions, rawDefault] = match;
     const existing = byName.get(name);
-    const stray = kind === 'script' && rawType === 'param';
+    const stray = kind !== undefined && kind !== 'worldTool' && rawType === 'param';
 
     if (existing) {
       if (rawType && !stray && rawType !== existing.type) {
@@ -353,11 +362,12 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * soft-capped regen. A template that reads `clock.deltaHours` lists After the AI alone, since every other
  * timing reads a zero delta.
  *
- * Each reads its own bounds from the stat it belongs to instead of assuming 0–100. The World Tool set leads,
- * from its own file.
+ * Each reads its own bounds from the stat it belongs to instead of assuming 0–100. The World Tool and world
+ * script sets lead, from their own files.
  */
 export const BUILT_IN_TEMPLATES: readonly CodeTemplate[] = [
   ...WORLD_TOOL_TEMPLATES,
+  ...WORLD_SCRIPT_TEMPLATES,
   {
     id: 'builtin-weighted-blend',
     kind: 'script',

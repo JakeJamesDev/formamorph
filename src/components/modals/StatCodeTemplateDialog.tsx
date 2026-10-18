@@ -48,9 +48,10 @@ import {
 } from '@/lib/statCodeTemplates';
 import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE } from '@/lib/statCodeTiming';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { scriptSurface, STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { SCRIPT_SURFACES, scriptSurface } from '@/lib/statCodeSurface';
 import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
+import type { SandboxPlace } from '@/lib/statCodeExecutor';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import {
@@ -67,21 +68,26 @@ import { Meta } from '@/components/ui/typography';
 import { namedParams } from '@/lib/tools/toolDraft';
 import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
 
-/** The box a menu fills: a stat script's timing, or a World Tool's timing and Parameters. */
+/** The box a menu fills: a stat or world script's timing, or a World Tool's timing and Parameters. */
 type TemplateBox =
-  | { kind: 'script'; timing: ScriptTiming }
+  | { kind: 'script' | 'worldScript'; timing: ScriptTiming }
   | { kind: 'worldTool'; timing: ToolScriptTiming; params: readonly ToolParam[] };
 
 /** The templates that `box`'s menu lists. */
-const menuOf = (templates: readonly CodeTemplate[], box: TemplateBox): CodeTemplate[] => (box.kind === 'script'
-  ? templatesFor(templates, 'script', box.timing)
-  : templatesFor(templates, 'worldTool', box.timing));
+const menuOf = (templates: readonly CodeTemplate[], box: TemplateBox): CodeTemplate[] => (box.kind === 'worldTool'
+  ? templatesFor(templates, 'worldTool', box.timing)
+  : templatesFor(templates, box.kind, box.timing));
 
 /** A new template starts in the box the author opened the menu from, which is where they were about to
  *  paste it. The Runs field is right there to add more. */
-const blankTemplate = (box: TemplateBox): CodeTemplate => (box.kind === 'script'
-  ? { id: '', kind: 'script', name: '', description: '', code: 'return {{amount:number=1}};', timings: [box.timing] }
-  : { id: '', kind: 'worldTool', name: '', description: '', code: 'return String(args[{{parameter:param}}]);', timings: [box.timing] });
+const blankTemplate = (box: TemplateBox): CodeTemplate => {
+  const fields = { id: '', name: '', description: '' };
+  switch (box.kind) {
+    case 'script': return { ...fields, kind: 'script', code: 'return {{amount:number=1}};', timings: [box.timing] };
+    case 'worldScript': return { ...fields, kind: 'worldScript', code: 'stats[{{stat:stat}}].value += {{amount:number=1}};', timings: [box.timing] };
+    case 'worldTool': return { ...fields, kind: 'worldTool', code: 'return String(args[{{parameter:param}}]);', timings: [box.timing] };
+  }
+};
 
 /** A Parameter type as the Parameters tab names it. */
 const PARAM_TYPE_LABEL: Record<ToolParamType, string> = { string: 'Text', number: 'Number', boolean: 'True/False', enum: 'One of a List' };
@@ -93,9 +99,10 @@ const NEW_PARAM_CRUMB: readonly string[] = ['New'];
 const canSave = (draft: CodeTemplate): boolean => !!draft.name.trim() && !!draft.code.trim() && draft.timings.length > 0;
 
 /** The Runs field's options for a kind's templates. */
-const timingOptions = (template: CodeTemplate): { value: string; label: string }[] => (template.kind === 'script'
-  ? TEMPLATE_TIMINGS.script.map((value) => ({ value, label: TEMPLATE_TIMING_LABEL.script[value] }))
-  : TEMPLATE_TIMINGS.worldTool.map((value) => ({ value, label: TEMPLATE_TIMING_LABEL.worldTool[value] })));
+const timingOptions = (template: CodeTemplate): { value: string; label: string }[] => {
+  const labels: Record<string, string> = TEMPLATE_TIMING_LABEL[template.kind];
+  return TEMPLATE_TIMINGS[template.kind].map((value) => ({ value, label: labels[value] }));
+};
 
 export interface StatTemplateRepository {
   list: () => Promise<CodeTemplate[]>;
@@ -129,6 +136,8 @@ interface SlotNames {
   /** The owning entity's traits, which `owner.traits` keys. Absent outside an entity stat's box. */
   ownerTrait?: readonly CodeTraitPlace[];
   entities: readonly CodeEntityNames[];
+  /** The world's locations under their code names, which `location.move` names. */
+  location: readonly SandboxPlace[];
   /** The Tool's named Parameters, which `args` keys. Empty outside a World Tool's box. */
   param: readonly ToolParam[];
 }
@@ -154,11 +163,13 @@ const PROMPTS: Record<NameSlotType, { pick: string; search: string }> = {
   placeholder: { pick: 'Pick a placeholder…', search: 'Search placeholders' },
   trait: { pick: 'Pick a trait…', search: 'Search traits' },
   entity: { pick: 'Pick an entity…', search: 'Search entities' },
+  location: { pick: 'Pick a location…', search: 'Search locations' },
   param: { pick: 'Pick a parameter…', search: 'Search parameters' },
 };
 
 const OWNER_CRUMB: readonly string[] = ['Owner'];
 const NO_STATS: readonly Stat[] = [];
+const NO_PLACES: readonly SandboxPlace[] = [];
 
 /** Each name once, in first-seen order, as rows with no breadcrumb. */
 const plainRows = (names: readonly string[] | null): SlotRow[] =>
@@ -228,6 +239,8 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
       return names.placeholder.map((place) => ({ key: place.id, value: place.name, name: place.name, breadcrumb: place.path }));
     case 'entity':
       return entityRows(names.entities);
+    case 'location':
+      return names.location.map((place) => ({ key: place.id, value: place.name, name: place.name }));
     case 'trait': {
       if (tied !== undefined) return tied ? traitRows(tied, []) : [];
       if (slot.owner === PERSONA_SLOT_OWNER) return personaTraitRows(names.entities);
@@ -368,10 +381,10 @@ function TemplateForm({ code, kind, names, values, onChange }: {
   );
 }
 
-/** The box a dialog fills: a stat script's by default, or a World Tool's with its Parameters. */
+/** The box a dialog fills: a stat script's by default, a world script's, or a World Tool's with its Parameters. */
 type BoxProps =
   | {
-    kind?: 'script';
+    kind?: 'script' | 'worldScript';
     /** The box this menu fills. It lists the templates that run in that box, and a template saved here
      *  starts out running in it. */
     timing: ScriptTiming;
@@ -402,6 +415,7 @@ export function StatCodeTemplateDialog({
   traitPlaces = [],
   ownerTraits,
   entities = [],
+  locations = NO_PLACES,
   repository = productionRepository,
   fileTransfer,
   ...boxProps
@@ -427,6 +441,8 @@ export function StatCodeTemplateDialog({
   ownerTraits?: readonly CodeTraitPlace[];
   /** What an entity slot and a tied trait slot offer. */
   entities?: readonly CodeEntityNames[];
+  /** What a location slot offers, under code names. */
+  locations?: readonly SandboxPlace[];
   /** Gets the filled code, and the Parameters the Tool lacks that its Parameter slots name. The caller adds them. */
   onInsert: (code: string, createdParams: ToolParam[]) => void;
   repository?: StatTemplateRepository;
@@ -435,9 +451,9 @@ export function StatCodeTemplateDialog({
   const { kind: boxKind, timing, params } = boxProps;
   const box = useMemo<TemplateBox>(() => (boxKind === 'worldTool'
     ? { kind: 'worldTool', timing, params }
-    : { kind: 'script', timing }), [boxKind, timing, params]);
+    : { kind: boxKind ?? 'script', timing }), [boxKind, timing, params]);
   const { kind } = box;
-  const timingLabel = box.kind === 'script' ? TEMPLATE_TIMING_LABEL.script[box.timing] : TEMPLATE_TIMING_LABEL.worldTool[box.timing];
+  const timingLabel = box.kind === 'worldTool' ? TEMPLATE_TIMING_LABEL.worldTool[box.timing] : TEMPLATE_TIMING_LABEL[box.kind][box.timing];
   const [userTemplates, setUserTemplates] = useState<CodeTemplate[]>([]);
   const builtIns = useMemo(() => menuOf(BUILT_IN_TEMPLATES, box), [box]);
   const firstBuiltIn = builtIns[0]?.id ?? '';
@@ -478,8 +494,9 @@ export function StatCodeTemplateDialog({
     trait: traitPlaces,
     ...(ownerTraits && { ownerTrait: ownerTraits }),
     entities,
+    location: locations,
     param: params ? namedParams(params) : [],
-  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, ownerTraits, entities, params]);
+  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, ownerTraits, entities, locations, params]);
   // The template editor has no world, so its Owner group types over each name.
   const treeOwner = useMemo<VariableTreeOwner | null>(() => {
     if (!owner) return null;
@@ -495,11 +512,12 @@ export function StatCodeTemplateDialog({
   const parsed = useMemo(() => parseTemplateSlots(selected?.code ?? '', kind), [selected?.code, kind]);
   // The editor's surface adds the names of the draft's first timing; a World Tool draft's adds `args` from the
   // Tool's Parameters. A stable object keeps the editor from resetting.
-  const scriptTiming = draft?.kind === 'script' ? draft.timings[0] : undefined;
+  const scriptTiming = draft && draft.kind !== 'worldTool' ? draft.timings[0] : undefined;
   const toolTiming = draft?.kind === 'worldTool' ? draft.timings[0] : undefined;
   const draftSurface = useMemo(() => {
     if (box.kind === 'worldTool') return worldToolSurface(box.params, toolTiming ?? box.timing);
-    return scriptTiming ? scriptSurface(STAT_CODE_SURFACE, scriptTiming) : STAT_CODE_SURFACE;
+    const surface = SCRIPT_SURFACES[box.kind === 'worldScript' ? 'world' : 'stat'];
+    return scriptTiming ? scriptSurface(surface, scriptTiming) : surface;
   }, [box, scriptTiming, toolTiming]);
   const argsMenu = useMemo(
     () => (box.kind === 'worldTool' ? () => worldToolArgsNodes(box.params) : null), [box],
@@ -649,8 +667,8 @@ export function StatCodeTemplateDialog({
               />
               <p className="text-meta text-muted-foreground">
                 A slot is <code>{'{{name:type=default}}'}</code>. {kind === 'worldTool'
-                  ? 'Stat, placeholder, trait, daypart and parameter'
-                  : 'Stat, placeholder, trait and daypart'} slots become quoted strings; number, choice and text
+                  ? 'Stat, placeholder, trait, entity, location, daypart and parameter'
+                  : 'Stat, placeholder, trait, entity, location and daypart'} slots become quoted strings; number, choice and text
                 are pasted as written, so quote them yourself when you need a string.
               </p>
             </div>

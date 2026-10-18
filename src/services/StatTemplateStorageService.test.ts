@@ -98,6 +98,7 @@ describe('StatTemplateStorageService', () => {
     const mixed: CodeTemplate[] = [
       template({ id: 'abc', timings: ['before', 'after', 'switch'] }),
       { id: 'tool', kind: 'worldTool', name: 'Roll', description: '', code: 'return 1;', timings: ['call', 'after'] },
+      { id: 'world', kind: 'worldScript', name: 'Start', description: '', code: 'location.move("Inn");', timings: ['start', 'switch'] },
     ];
     const pack = buildTemplatePack(mixed);
     expect(pack.formamorphTemplates).toBe(2);
@@ -107,7 +108,7 @@ describe('StatTemplateStorageService', () => {
     const file = JSON.stringify(pack);
     // Version 2 writes the list and never the one timing.
     expect(JSON.parse(file).templates.every((entry: object) => !('timing' in entry))).toBe(true);
-    expect(await importTemplates(parseTemplatePack(file))).toBe(2);
+    expect(await importTemplates(parseTemplatePack(file))).toBe(3);
     expect(await listUserTemplates()).toEqual(expect.arrayContaining(mixed));
     for (const existing of await listUserTemplates()) await deleteUserTemplate(existing.id);
   });

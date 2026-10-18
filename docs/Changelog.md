@@ -35,6 +35,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A World Tool's Script box now has a Templates button that lists starter code for the Tool's timing.** A parameter slot picks one of the Tool's Parameters. Save, export and import your own World Tool templates beside your stat templates.
     - **A World Tool template now adds the Parameter it reads, so a Tool with no Parameters can use any template.** Pick the New row in a parameter input.
     - **Code templates can now pick an entity's or persona's stats, and an entity stat's trait inputs list its own traits.** In your own templates, `{{s:stat(who)}}` lists the stats of the entity picked in `who`, and `{{s:stat(persona)}}` lists persona stats. Owner traits show first, under **Owner**.
+    - **A world script's box now has a Templates button with eight starter templates.** They move the opening location, advance time, pin memories and diary lines, and more. Save, export and import your own beside the others. A new location input picks one of the world's locations.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 
