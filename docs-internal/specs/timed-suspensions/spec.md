@@ -35,7 +35,7 @@ The **Suspend** button in Admin Panel → Users is a toggle. A suspended account
 18. As a staff member, I want to filter the audit log by that action, so that I can list every suspension that ended on its own.
 19. As a staff member, I want each Suspended entry's detail to show the chosen end, so that I can see the length in the history.
 20. As a suspended user, I want a refused action to tell me when my suspension ends, so that I know how long to wait.
-21. As a suspended user, I want the account settings note to name the end date, so that I see it where the app already explains my state.
+21. As a suspended user, I want the Account Suspended banner in my profile to name the end date, so that I see it where the app already explains my state.
 22. As a staff member, I want an out-of-range error from the server shown as is, so that I see what went wrong.
 
 ## Implementation Decisions
@@ -47,7 +47,7 @@ The **Suspend** button in Admin Panel → Users is a toggle. A suspended account
 - **Re-suspend (Q4).** The Suspend action shows for every account the viewer may moderate, suspended ones included. On a suspended account the dialog states that the new length replaces the current end.
 - **Message template (Q3).** The post-suspend message prompt fills the end date into the subject-free body when there is one. With no end, the template is unchanged.
 - **Audit presentation (Q6).** `suspension_expired` gets a label, a pill style, a filter option, and a detail line that names no actor. `user_suspended` details show the server's end snippet.
-- **Suspended user (Q3).** The account settings note reads the signed-in account's `suspended_until` and names the end date when there is one. Refusal toasts already show the server's `error` text, which now carries the date; no client change there beyond verifying it.
+- **Suspended user (Q3).** The Account Suspended banner in the profile header reads the signed-in account's `suspended_until` and names the end date when there is one. The email and password notes stay unchanged, so the date shows once per screen (ruling to ticket 02, 2026-10-17). Refusal toasts already show the server's `error` text, which now carries the date; no client change there beyond verifying it.
 - **Types.** The admin user record and the signed-in account record gain `suspended_until: string | null`. This is an API read shape, not a world or save export shape.
 - **Dev route.** The new dialog gets a `devRoutes.ts` entry.
 - **Changelog.** One Minor → Added entry for staff, written as a fragment.
@@ -57,7 +57,7 @@ The **Suspend** button in Admin Panel → Users is a toggle. A suspended account
 - Tests drive the rendered UI with mocked fetch and assert on what the user sees and what the request carries. No test reaches into component state.
 - **ManageUsersTab.** Suspend opens the dialog with 7 days preselected; confirming sends `days: 7`; Until Lifted sends `days: null`; cancel sends nothing; the row shows the response's end date; a no-end suspension shows no date; Suspend is present on a suspended row; Activate clears the date; the message prompt body names the date only when there is one.
 - **Audit log.** `suspension_expired` renders its label and filter option; a `user_suspended` detail shows the end snippet.
-- **Account settings.** The suspended note names the end date when present and keeps today's text when absent.
+- **Profile banner.** The Account Suspended banner names the end date when present and keeps today's text when absent.
 - Prior art: `ManageUsersTab.test.tsx`, `AuditLogTab.test.tsx`, `RemoteWorldCard.quarantine.test.tsx` for the quarantine dialog flow.
 
 ## Out of Scope
