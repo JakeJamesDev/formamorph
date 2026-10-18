@@ -22,7 +22,7 @@ return name + " is " + stat.value + ", from " + stat.min + " to " + stat.max + "
     timings: ['call'],
     name: 'Roll Dice',
     description: 'Roll a die with the sides the AI sent, and return the roll. Without a usable number, the die has the default sides.',
-    code: `const sent = Math.floor(Number(args[{{sides:param}}]));
+    code: `const sent = Math.floor(Number(args[{{sides:param(number)=sides}}]));
 const sides = sent >= 2 ? sent : {{defaultSides:number=20}};
 const roll = Math.floor(Math.random() * sides) + 1;
 return "Rolled " + roll + " on a d" + sides + ".";`,
@@ -35,7 +35,7 @@ return "Rolled " + roll + " on a d" + sides + ".";`,
     description: 'Add the amount the AI sent to a stat, inside the stat’s range. A negative amount subtracts.',
     code: `const name = {{stat:stat}};
 const stat = stats[name];
-const amount = Number(args[{{amount:param}}]) || 0;
+const amount = Number(args[{{amount:param(number)=amount}}]) || 0;
 stat.value = Math.min(stat.max, Math.max(stat.min, stat.value + amount));
 return name + " is now " + stat.value + ".";`,
   },
@@ -45,7 +45,7 @@ return name + " is now " + stat.value + ".";`,
     timings: ['call', 'after'],
     name: 'Move to Location',
     description: 'Move the turn to the location the AI named. A name the world doesn’t hold fails the call.',
-    code: `const place = String(args[{{place:param}}] ?? "").trim();
+    code: `const place = String(args[{{place:param(string)=place}}] ?? "").trim();
 if (place) location.move(place);
 return place ? "Moved to " + place + "." : "No place to move to.";`,
   },
@@ -55,7 +55,7 @@ return place ? "Moved to " + place + "." : "No place to move to.";`,
     timings: ['call', 'after'],
     name: 'Pass Time',
     description: 'Advance the story clock by the minutes the AI sent.',
-    code: `const minutes = Math.max(0, Math.round(Number(args[{{minutes:param}}]) || 0));
+    code: `const minutes = Math.max(0, Math.round(Number(args[{{minutes:param(number)=minutes}}]) || 0));
 if (minutes > 0) clock.advance(minutes);
 return minutes + " minutes pass.";`,
   },
@@ -65,7 +65,7 @@ return minutes + " minutes pass.";`,
     timings: ['call', 'after'],
     name: 'Discover an Entity',
     description: 'Add the entity the AI named to the turn’s cast. The AI then describes them.',
-    code: `const name = String(args[{{name:param}}] ?? "").trim();
+    code: `const name = String(args[{{name:param(string)=name}}] ?? "").trim();
 if (name) discover(name);
 return name ? name + " joins the scene." : "No one to add.";`,
   },
@@ -75,7 +75,7 @@ return name ? name + " joins the scene." : "No one to add.";`,
     timings: ['call', 'after'],
     name: 'Pin a Memory',
     description: 'Pin the line the AI sent as a memory, sent with every request.',
-    code: `const line = String(args[{{line:param}}] ?? "").trim();
+    code: `const line = String(args[{{line:param(string)=line}}] ?? "").trim();
 if (line) memory.pin(line);
 return line ? "Pinned." : "Nothing to pin.";`,
   },
@@ -85,7 +85,7 @@ return line ? "Pinned." : "Nothing to pin.";`,
     timings: ['after'],
     name: 'Add a Diary Line',
     description: 'Add the line the AI sent to an entity’s diary, after the AI’s own entry.',
-    code: `const line = String(args[{{line:param}}] ?? "").trim();
+    code: `const line = String(args[{{line:param(string)=line}}] ?? "").trim();
 if (line) diary({{entity:entity}}, line);`,
   },
   {
@@ -94,7 +94,7 @@ if (line) diary({{entity:entity}}, line);`,
     timings: ['output'],
     name: 'Highlight a Name',
     description: 'Bold the name the AI sent in each later sentence of the turn. A sentence that already bolds it stays as it is.',
-    code: `const name = String(args[{{name:param}}] ?? "").trim();
+    code: `const name = String(args[{{name:param(string)=name}}] ?? "").trim();
 // A name the AI already bolded stays as it is.
 if (name && !narration.sentence.includes("**" + name + "**")) {
   narration.sentence = narration.sentence.split(name).join("**" + name + "**");
@@ -106,7 +106,7 @@ if (name && !narration.sentence.includes("**" + name + "**")) {
     timings: ['output'],
     name: 'Replace a Word',
     description: 'Replace the word the AI sent with your own word in each later sentence of the turn.',
-    code: `const word = String(args[{{word:param}}] ?? "").trim();
+    code: `const word = String(args[{{word:param(string)=word}}] ?? "").trim();
 if (word) narration.sentence = narration.sentence.split(word).join("{{replacement:text=[redacted]}}");`,
   },
 ];

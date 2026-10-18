@@ -18,6 +18,7 @@ import {
   BUILT_IN_TEMPLATES,
   DAYPART_OPTIONS,
   readTemplate,
+  missingParams,
   templatesFor,
   templateTimingLabels,
   type CodeTemplate,
@@ -91,6 +92,37 @@ describe('parseTemplateSlots', () => {
     expect(loose.slots.find((slot) => slot.name === 'b')).toEqual({ name: 'b', type: 'trait' });
     // A list was never a tie, so a saved template that wrote one still parses clean.
     expect(parseTemplateSlots('{{t:trait(a|b)}}')).toEqual({ slots: [{ name: 't', type: 'trait', options: ['a', 'b'] }], errors: [] });
+  });
+});
+
+describe('a typed parameter slot', () => {
+  it('reads its Parameter type and the default name, and takes a plain slot as text named after itself', () => {
+    const { slots, errors } = parseTemplateSlots('{{sides:param(number)=die}} {{flag:param(boolean)}} {{line:param}}', 'worldTool');
+    expect(errors).toEqual([]);
+    expect(slots).toEqual([
+      { name: 'sides', type: 'param', paramType: 'number', defaultValue: 'die' },
+      { name: 'flag', type: 'param', paramType: 'boolean' },
+      { name: 'line', type: 'param', paramType: 'string' },
+    ]);
+    expect(defaultSlotValues(slots)).toEqual({ sides: 'die', flag: 'flag', line: 'line' });
+  });
+
+  it('reports a type the Tool editor cannot create and reads it as text', () => {
+    for (const type of ['colour', 'enum']) {
+      const { slots, errors } = parseTemplateSlots(`{{a:param(${type})}}`, 'worldTool');
+      expect(errors).toEqual([`Slot "a" has unknown Parameter type "${type}" — treating it as text.`]);
+      expect(slots[0]).toMatchObject({ paramType: 'string' });
+    }
+  });
+
+  it('lists the Parameters a fill leaves missing, once each, with the slot’s type', () => {
+    const { slots } = parseTemplateSlots('{{a:param(number)=amount}} {{b:param=line}} {{c:param(number)=have}} {{d:param(number)=amount}}', 'worldTool');
+    const have = [{ name: 'have', type: 'number' as const }, { name: 'unrelated', type: 'string' as const }];
+    expect(missingParams(slots, defaultSlotValues(slots), have)).toEqual([
+      { name: 'amount', type: 'number', description: '', required: true, options: [] },
+      { name: 'line', type: 'string', description: '', required: true, options: [] },
+    ]);
+    expect(missingParams(slots, { ...defaultSlotValues(slots), a: 'have' }, have).map((param) => param.name)).toEqual(['line', 'amount']);
   });
 });
 

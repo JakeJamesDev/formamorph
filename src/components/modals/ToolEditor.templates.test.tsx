@@ -55,6 +55,34 @@ describe('a World Tool’s Templates menu', () => {
     expect(next.handler).toMatchObject({ kind: 'script', timing: 'output' });
   });
 
+  it('adds the Parameter a template names to the Tool in the same change as the code', async () => {
+    const user = userEvent.setup();
+    const onDraftChange = vi.fn();
+    render(editor({ ...tool('call'), params: [] }, onDraftChange));
+    await user.click(screen.getByRole('button', { name: 'Templates' }));
+    await user.click(await screen.findByRole('button', { name: 'Roll Dice' }));
+    await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+
+    await waitFor(() => expect(onDraftChange).toHaveBeenCalledTimes(1));
+    const [next] = onDraftChange.mock.lastCall as [Tool];
+    expect(next.params).toEqual([{ name: 'sides', type: 'number', description: '', required: true, options: [] }]);
+    expect(next.handler.kind === 'script' && next.handler.code).toContain('args["sides"]');
+  });
+
+  it('replaces a blank Parameter row with the Parameter a template adds', async () => {
+    const user = userEvent.setup();
+    const onDraftChange = vi.fn();
+    const blank = { name: '', type: 'string' as const, description: '', required: true, options: [] };
+    render(editor({ ...tool('call'), params: [blank] }, onDraftChange));
+    await user.click(screen.getByRole('button', { name: 'Templates' }));
+    await user.click(await screen.findByRole('button', { name: 'Roll Dice' }));
+    await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+
+    await waitFor(() => expect(onDraftChange).toHaveBeenCalled());
+    const [next] = onDraftChange.mock.lastCall as [Tool];
+    expect(next.params.map((p) => p.name)).toEqual(['sides']);
+  });
+
   it('gives a Settings Tool’s script no Templates button', () => {
     render(editor({ ...tool('call', 'return 1;'), handler: { kind: 'script', code: 'return 1;' } }, vi.fn(), 'user'));
     expect(screen.queryByRole('button', { name: 'Templates' })).toBeNull();

@@ -28,6 +28,8 @@ import {
   fillTemplate,
   humanizeSlotName,
   isBuiltInTemplate,
+  missingParams,
+  newParamName,
   parseTemplateSlots,
   resolveSlotValue,
   validateSlotValues,
@@ -59,7 +61,7 @@ import {
   parseTemplatePack,
   saveUserTemplate,
 } from '@/services/StatTemplateStorageService';
-import type { ScriptTiming, Stat, ToolParam, ToolScriptTiming } from '@/types';
+import type { ScriptTiming, Stat, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { namedParams } from '@/lib/tools/toolDraft';
@@ -81,8 +83,11 @@ const blankTemplate = (box: TemplateBox): CodeTemplate => (box.kind === 'script'
   ? { id: '', kind: 'script', name: '', description: '', code: 'return {{amount:number=1}};', timings: [box.timing] }
   : { id: '', kind: 'worldTool', name: '', description: '', code: 'return String(args[{{parameter:param}}]);', timings: [box.timing] });
 
-/** What a parameter slot says when the Tool has no Parameters to pick. */
-const NO_PARAMS_PROBLEM = 'Add a parameter on the Parameters tab';
+/** A Parameter type as the Parameters tab names it. */
+const PARAM_TYPE_LABEL: Record<ToolParamType, string> = { string: 'Text', number: 'Number', boolean: 'True/False', enum: 'One of a List' };
+
+/** The breadcrumb of the row that makes a new Parameter. */
+const NEW_PARAM_CRUMB: readonly string[] = ['New'];
 
 /** Whether a draft has a name, code and a timing to run in. */
 const canSave = (draft: CodeTemplate): boolean => !!draft.name.trim() && !!draft.code.trim() && draft.timings.length > 0;
@@ -123,15 +128,20 @@ interface SlotNames {
   trait: readonly CodeTraitPlace[];
   entities: readonly CodeEntityNames[];
   /** The Tool's named Parameters, which `args` keys. Empty outside a World Tool's box. */
-  param: readonly string[];
+  param: readonly ToolParam[];
 }
 
-/** Every slot whose value can't be used, keyed by slot name. A parameter slot with no Parameters to pick says so. */
+/** Every slot whose value can't be used, keyed by slot name. A parameter slot whose name is taken by a
+ *  Parameter of another type says so, since Insert would not create it. */
 const slotProblems = (slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames): Record<string, string> => ({
   ...validateSlotValues([...slots], values),
-  ...(names.param.length === 0
-    ? Object.fromEntries(slots.filter((slot) => slot.type === 'param').map((slot) => [slot.name, NO_PARAMS_PROBLEM]))
-    : {}),
+  ...Object.fromEntries(slots.flatMap((slot): [string, string][] => {
+    if (slot.type !== 'param') return [];
+    const taken = names.param.find((param) => param.name === resolveSlotValue(slot, values));
+    return taken && taken.type !== slot.paramType
+      ? [[slot.name, `“${taken.name}” is a ${PARAM_TYPE_LABEL[taken.type]} Parameter`]]
+      : [];
+  })),
 });
 
 type SlotRow = BreadcrumbPickerRow<string>;
@@ -209,8 +219,15 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
         key: trait.id, value: trait.name, name: trait.name, breadcrumb: trait.path.length > 0 ? trait.path : WORLD_BREADCRUMB,
       }));
     }
-    case 'param':
-      return plainRows(names.param);
+    case 'param': {
+      // The Tool's Parameters of the slot's type, then a row that makes the one the template names.
+      const own = names.param.filter((param) => param.type === slot.paramType).map((param) => param.name);
+      const fresh = newParamName(slot);
+      const create = names.param.some((param) => param.name === fresh)
+        ? []
+        : [{ key: `new:${fresh}`, value: fresh, name: fresh, breadcrumb: NEW_PARAM_CRUMB }];
+      return [...plainRows(own), ...create];
+    }
     case 'daypart':
       return plainRows(DAYPART_OPTIONS);
     default:
@@ -386,7 +403,8 @@ export function StatCodeTemplateDialog({
   traitPlaces?: readonly CodeTraitPlace[];
   /** What an entity slot and a tied trait slot offer. */
   entities?: readonly CodeEntityNames[];
-  onInsert: (code: string) => void;
+  /** Gets the filled code, and the Parameters the Tool lacks that its Parameter slots name. The caller adds them. */
+  onInsert: (code: string, createdParams: ToolParam[]) => void;
   repository?: StatTemplateRepository;
   fileTransfer?: StatTemplateFileTransfer;
 }) {
@@ -435,7 +453,7 @@ export function StatCodeTemplateDialog({
     placeholder: placeholderPlaces,
     trait: traitPlaces,
     entities,
-    param: params ? namedParams(params).map((param) => param.name) : [],
+    param: params ? namedParams(params) : [],
   }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, entities, params]);
   // The template editor has no world, so its Owner group types over each name.
   const treeOwner = useMemo<VariableTreeOwner | null>(() => {
@@ -470,7 +488,7 @@ export function StatCodeTemplateDialog({
   const blocked = Object.keys(problems).length > 0 || parsed.errors.length > 0;
 
   const doInsert = () => {
-    onInsert(fillTemplate(selected?.code ?? '', values));
+    onInsert(fillTemplate(selected?.code ?? '', values), missingParams(parsed.slots, values, slotNames.param));
     setConfirmReplace(false);
     onOpenChange(false);
   };

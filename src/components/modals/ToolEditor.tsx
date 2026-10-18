@@ -339,7 +339,7 @@ function WorldToolTemplates({ params, timing, worldCode, hasExistingCode, onInse
   timing: ToolScriptTiming;
   worldCode?: WorldToolCode;
   hasExistingCode: boolean;
-  onInsert: (code: string) => void;
+  onInsert: (code: string, createdParams: ToolParam[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const names = worldCode?.names;
@@ -351,7 +351,7 @@ function WorldToolTemplates({ params, timing, worldCode, hasExistingCode, onInse
       <StatCodeTemplateDialog
         open={open} onOpenChange={setOpen} kind="worldTool" timing={timing} params={params}
         stats={names?.codeNamedStats ?? NO_STATS} hasExistingCode={hasExistingCode}
-        onInsert={(code) => onInsert(names ? migrateStatCodeRoutes(code, names.placeholders) : code)}
+        onInsert={(code, created) => onInsert(names ? migrateStatCodeRoutes(code, names.placeholders) : code, created)}
         placeholderPlaces={worldCode?.placeholderPlaces} traitPlaces={names?.traitPlaces} entities={names?.entities}
       />
     </div>
@@ -480,7 +480,12 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
       {handler.kind === 'script' && home === 'world' && (
         <WorldToolTemplates
           params={params} timing={scriptTiming} worldCode={worldCode} hasExistingCode={!!handler.code.trim()}
-          onInsert={(code) => setHandler({ ...handler, code })}
+          // A new Parameter replaces the blank rows, which would otherwise block Save as unnamed.
+          onInsert={(code, created) => onChange({
+            ...draft,
+            params: created.length ? [...draft.params.filter((p) => p.name.trim() || p.description), ...created] : draft.params,
+            handler: { ...handler, code },
+          })}
         />
       )}
       {handler.kind === 'script' && home !== 'world' && (

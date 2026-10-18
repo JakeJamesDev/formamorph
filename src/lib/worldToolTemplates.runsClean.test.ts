@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Tool, ToolParam, ToolScriptTiming } from '@/types';
 import {
-  BUILT_IN_TEMPLATES, defaultSlotValues, fillTemplate, parseTemplateSlots, type CodeTemplate, type TemplateSlot,
+  BUILT_IN_TEMPLATES, defaultSlotValues, fillTemplate, missingParams, parseTemplateSlots, type CodeTemplate, type TemplateSlot,
 } from './statCodeTemplates';
 import { statCodeNames, type StatCodeWorld } from './statCodeTestRun';
 import { tryWorldToolScript } from './tools/worldToolTry';
@@ -24,20 +24,22 @@ const SENT: Record<string, string | number> = {
 };
 const SENTENCE = 'Tor shuts the gate.';
 
-/** A name slot filled the way an author picks from this world; a param slot names a Parameter after itself. */
+/** A name slot filled the way an author picks from this world; a param slot keeps the Parameter it would create. */
 const pick = (slot: TemplateSlot): string | undefined => {
   switch (slot.type) {
     case 'stat': return 'Health';
     case 'entity': return 'Tor';
-    case 'param': return slot.name;
     default: return undefined;
   }
 };
 
-const paramFor = (name: string): ToolParam => {
-  if (!(name in SENT)) throw new Error(`No sample argument for the "${name}" Parameter`);
-  return { name, type: typeof SENT[name] === 'number' ? 'number' : 'string', description: '', required: true, options: [] };
-};
+/** The Parameters Insert creates on a Tool with none, each with a sample argument and `required` as asked. */
+const createdParams = (slots: TemplateSlot[], values: Record<string, string>, required: boolean): ToolParam[] =>
+  missingParams(slots, values, []).map((param) => {
+    if (!(param.name in SENT)) throw new Error(`No sample argument for the "${param.name}" Parameter`);
+    expect(param.type, param.name).toBe(typeof SENT[param.name] === 'number' ? 'number' : 'string');
+    return { ...param, required };
+  });
 
 beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
 afterEach(() => vi.restoreAllMocks());
@@ -48,7 +50,7 @@ const toolOf = (template: CodeTemplate, timing: ToolScriptTiming, required: bool
   expect(errors).toEqual([]);
   const values = defaultSlotValues(slots);
   for (const slot of slots) values[slot.name] = pick(slot) ?? values[slot.name];
-  const params = slots.filter((slot) => slot.type === 'param').map((slot) => ({ ...paramFor(slot.name), required }));
+  const params = createdParams(slots, values, required);
   const tool: Tool = {
     id: 't', name: 'try', description: '', params, emptyResult: '{}', offeredTo: [],
     handler: { kind: 'script', code: fillTemplate(template.code, values), timing },
