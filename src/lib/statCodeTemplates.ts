@@ -1,11 +1,11 @@
 /**
- * Templates for a stat's Dynamic Value Calculation code: a bundled read-only set plus whatever the author
+ * Templates for stat scripts and World Tool scripts: a bundled read-only set plus whatever the author
  * saves locally. A template is ordinary sandbox code carrying inline slots, and filling a slot form
- * generates plain editable JS into the code field — nothing links the finished stat back to its template.
+ * generates plain editable JS into the code field — nothing links the finished script back to its template.
  *
  * Slot syntax is `{{name:type=default}}`; `type` and `=default` are both optional, and repeating a name
  * reuses the first occurrence's declaration. Substitution is textual, so a template controls its own
- * quoting: a `stat`, `placeholder`, `trait`, `entity` or `daypart` slot emits a quoted string, while
+ * quoting: a `stat`, `placeholder`, `trait`, `entity`, `param` or `daypart` slot emits a quoted string, while
  * `number`, `choice` and `text` emit their value as typed (which is what lets a choice supply a comparison
  * operator). `trait(slot)` lists the traits of the entity that `entity` slot picked, and `trait(persona)` lists the
  * persona's traits unless the template declares an `entity` slot named `persona`.
@@ -13,12 +13,13 @@
 
 import type { ScriptTiming, ToolScriptTiming } from '@/types';
 import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from './scripts';
+import { WORLD_TOOL_TEMPLATES } from './worldToolTemplates';
 
-export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'number', 'daypart', 'choice', 'text'] as const;
+export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'param', 'number', 'daypart', 'choice', 'text'] as const;
 export type SlotType = (typeof SLOT_TYPES)[number];
 
-/** The slot types filled from a list of the world's own names. Each renders as a quoted string. */
-export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity'] as const satisfies readonly SlotType[];
+/** The slot types filled from a list of names: the world's own, or a Tool's Parameters. Each renders as a quoted string. */
+export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'param'] as const satisfies readonly SlotType[];
 export type NameSlotType = (typeof NAME_SLOT_TYPES)[number];
 
 export const isNameSlotType = (type: SlotType): type is NameSlotType =>
@@ -136,9 +137,9 @@ const isSlotType = (value: string): value is SlotType => (SLOT_TYPES as readonly
 /**
  * Read a template's slot declarations in source order. A repeated name collapses to the single control
  * that fills every occurrence; only its first declaration counts, and a later one that contradicts it is
- * reported rather than applied.
+ * reported rather than applied. A `param` slot in a `script` template is reported and reads as text.
  */
-export function parseTemplateSlots(code: string): ParsedTemplate {
+export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTemplate {
   const slots: TemplateSlot[] = [];
   const byName = new Map<string, TemplateSlot>();
   const errors: string[] = [];
@@ -146,17 +147,20 @@ export function parseTemplateSlots(code: string): ParsedTemplate {
   for (const match of (code || '').matchAll(SLOT_PATTERN)) {
     const [, name, rawType, rawOptions, rawDefault] = match;
     const existing = byName.get(name);
+    const stray = kind === 'script' && rawType === 'param';
 
     if (existing) {
-      if (rawType && rawType !== existing.type) {
+      if (rawType && !stray && rawType !== existing.type) {
         errors.push(`Slot "${name}" is declared as both ${existing.type} and ${rawType}.`);
       }
       continue;
     }
 
-    const type: SlotType = rawType ? (isSlotType(rawType) ? rawType : 'text') : 'text';
+    const type: SlotType = rawType && isSlotType(rawType) && !stray ? rawType : 'text';
     if (rawType && !isSlotType(rawType)) {
       errors.push(`Slot "${name}" has unknown type "${rawType}" — treating it as text.`);
+    } else if (stray) {
+      errors.push(`Slot "${name}" is a parameter slot, which only World Tool templates take — treating it as text.`);
     }
 
     const options = rawOptions === undefined
@@ -307,9 +311,11 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * soft-capped regen. A template that reads `clock.deltaHours` lists After the AI alone, since every other
  * timing reads a zero delta.
  *
- * Each reads its own bounds from the stat it belongs to instead of assuming 0–100.
+ * Each reads its own bounds from the stat it belongs to instead of assuming 0–100. The World Tool set leads,
+ * from its own file.
  */
 export const BUILT_IN_TEMPLATES: readonly CodeTemplate[] = [
+  ...WORLD_TOOL_TEMPLATES,
   {
     id: 'builtin-weighted-blend',
     kind: 'script',

@@ -48,6 +48,10 @@ _Avoid_: help Tool, custom Tool, assistant Tool
 The part of a Tool that runs when the AI calls it: a Lookup (searches world data), a Template (returns chip text), or a Script (sandboxed code that reads the world and the current scene).
 _Avoid_: resolver, source
 
+**Template**:
+Starter code with slots that a script box's **Templates** menu fills in and inserts as plain code, with no link back. Each has a kind (Script for a stat's script boxes, World Tool for a World Tool's Script box) and a list of the timings it runs in; a box lists the templates of its kind and timing. Built-ins ship read-only; the author's own live in one local library and one pack file for both kinds. A `param` slot, World Tool only, picks one of the Tool's Parameters. Not the Template Tool Handler, which returns chip text.
+_Avoid_: snippet, preset, recipe, example
+
 **Formaquestion**:
 The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts on the open world's authored data (ADR-0011).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)

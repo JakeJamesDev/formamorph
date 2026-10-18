@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { codeDiagnostics, statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
+import { worldToolSurface } from './tools/worldToolSurface';
 import { placeholderEntryFields, scriptSurface, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
 import { phValues } from '@/test/placeholderValues';
 import { encodePlaceholderToken } from './placeholders';
@@ -148,9 +149,11 @@ return scale(total) + min + max;`)).toEqual([]);
   it('leaves template slots alone instead of covering a template in errors', () => {
     // Each template reads against the names its own timings add, as the template editor does.
     for (const template of BUILT_IN_TEMPLATES) {
-      if (template.kind !== 'script') continue;
-      for (const timing of template.timings) {
-        const surface = scriptSurface(STAT_CODE_SURFACE, timing);
+      // A World Tool template reads its Tool's surface instead.
+      const surfaces = template.kind === 'script'
+        ? template.timings.map((timing) => [timing, scriptSurface(STAT_CODE_SURFACE, timing)] as const)
+        : template.timings.map((timing) => [timing, worldToolSurface([], timing)] as const);
+      for (const [timing, surface] of surfaces) {
         expect(codeDiagnostics(template.code, { slots: true, surface }), `${template.name} at ${timing}`).toEqual([]);
       }
     }

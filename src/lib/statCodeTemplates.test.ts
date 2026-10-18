@@ -276,12 +276,14 @@ describe('built-in templates', () => {
 
   it('declare only slots whose defaults survive validation', () => {
     for (const template of BUILT_IN_TEMPLATES) {
-      const { slots, errors } = parseTemplateSlots(template.code);
+      const { slots, errors } = parseTemplateSlots(template.code, template.kind);
       expect(errors, template.name).toEqual([]);
       // A name slot has no sensible shipped default (world-specific), so fill it here the way the form will.
       const values = { ...defaultSlotValues(slots) };
       for (const slot of slots) {
-        if (isNameSlotType(slot.type)) values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed', entity: 'Mira' }[slot.type];
+        if (isNameSlotType(slot.type)) {
+          values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed', entity: 'Mira', param: 'amount' }[slot.type];
+        }
       }
       expect(validateSlotValues(slots, values), template.name).toEqual({});
     }
@@ -318,7 +320,8 @@ describe('built-in templates', () => {
     }
   };
 
-  for (const template of BUILT_IN_TEMPLATES) {
+  // World Tool templates run through Try It's runner in worldToolTemplates.runsClean.test.ts.
+  for (const template of BUILT_IN_TEMPLATES.filter((t) => t.kind === 'script')) {
     it(`runs in the sandbox: ${template.name}`, async () => {
       const { slots } = parseTemplateSlots(template.code);
       const values = { ...defaultSlotValues(slots) };

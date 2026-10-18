@@ -32,6 +32,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Code Templates:**
     - **A code template can now run in several timings, and each script box lists the templates for its own timing.** At Game Start, During AI Output and When a Trait Switches no longer show the After the AI set. When you save a template, pick each timing under **Runs**. Older template packs still import.
     - **Seven new code templates fit At Game Start, When a Trait Switches and During AI Output.** They set a random or trait-based starting value, react to a trait switch, and replace, count or bold a word in narration.
+    - **A World Tool's Script box now has a Templates button that lists starter code for the Tool's timing.** A parameter slot picks one of the Tool's Parameters. Save, export and import your own World Tool templates beside your stat templates.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 

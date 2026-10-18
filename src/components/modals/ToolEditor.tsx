@@ -1,6 +1,9 @@
-import { useCallback, useId, useMemo, type ReactNode } from 'react';
-import { Info, Plus, Trash2 } from 'lucide-react';
-import type { ScriptTiming, Tool, ToolHandler, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming } from '@/types';
+import { useCallback, useId, useMemo, useState, type ReactNode } from 'react';
+import { Info, Plus, SquareFunction, Trash2 } from 'lucide-react';
+import type { ScriptTiming, Stat, Tool, ToolHandler, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming } from '@/types';
+import { StatCodeTemplateDialog } from './StatCodeTemplateDialog';
+import { migrateStatCodeRoutes } from '@/lib/statCodeRoutes';
+import type { CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -69,6 +72,8 @@ export interface WorldToolCode {
   names: StatCodeNames;
   /** A box's card lookup for the script timing it runs on. */
   lookup?: (timing: ScriptTiming) => CodeWorldLookup;
+  /** What a template's placeholder slot picks from. */
+  placeholderPlaces?: readonly CodeTraitPlace[];
 }
 
 /** The footer's fix for each parameter problem, by the parameter's 1-based position. */
@@ -326,6 +331,33 @@ function TriggerFields({ handler, onChange }: { handler: ToolScriptHandler; onCh
   );
 }
 
+const NO_STATS: Stat[] = [];
+
+/** The Script box's Templates button and menu: the World Tool templates for the Tool's timing. */
+function WorldToolTemplates({ params, timing, worldCode, hasExistingCode, onInsert }: {
+  params: readonly ToolParam[];
+  timing: ToolScriptTiming;
+  worldCode?: WorldToolCode;
+  hasExistingCode: boolean;
+  onInsert: (code: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const names = worldCode?.names;
+  return (
+    <div>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <SquareFunction className="h-4 w-4 mr-1" />Templates
+      </Button>
+      <StatCodeTemplateDialog
+        open={open} onOpenChange={setOpen} kind="worldTool" timing={timing} params={params}
+        stats={names?.codeNamedStats ?? NO_STATS} hasExistingCode={hasExistingCode}
+        onInsert={(code) => onInsert(names ? migrateStatCodeRoutes(code, names.placeholders) : code)}
+        placeholderPlaces={worldCode?.placeholderPlaces} traitPlaces={names?.traitPlaces} entities={names?.entities}
+      />
+    </div>
+  );
+}
+
 function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names, home, worldCode }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[]; home: ToolHome;
   /** The open world's script names. Absent, a World Tool's script completes against its surface alone. */
@@ -443,6 +475,12 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
           onLineRevealed={() => { if (reveal) settleCodeUseReveal(reveal); }}
           info={<ScriptReference globals={worldAnalysis.surface.globals} />}
           value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
+        />
+      )}
+      {handler.kind === 'script' && home === 'world' && (
+        <WorldToolTemplates
+          params={params} timing={scriptTiming} worldCode={worldCode} hasExistingCode={!!handler.code.trim()}
+          onInsert={(code) => setHandler({ ...handler, code })}
         />
       )}
       {handler.kind === 'script' && home !== 'world' && (
