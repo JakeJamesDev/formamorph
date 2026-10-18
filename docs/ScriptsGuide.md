@@ -29,9 +29,9 @@ A trait has its own **Scripts** tab. It runs its scripts only while the trait is
 |---|---|
 | ⏮️ **Before the AI** | The formulas, **Timer**, **Random Per-Turn Roll**, **Placeholder by Range**, **Trait by Threshold**, **Opening Turn Value** |
 | ⏭️ **After the AI** | The formulas, **Timer**, **Random Per-Turn Roll**, **Hourly Change**, **Regen Toward Target**, **Dice Roll With Consequences**, **Placeholder by Range**, **Trait by Threshold** |
-| 🎬 **At Game Start** | The formulas, **Placeholder by Range**, **Trait by Threshold** |
-| 🔀 **When a Trait Switches** | The formulas |
-| 💬 **During AI Output** | None yet |
+| 🎬 **At Game Start** | The formulas, **Placeholder by Range**, **Trait by Threshold**, **Random Starting Value**, **Start From Persona Trait** |
+| 🔀 **When a Trait Switches** | The formulas, **Change When a Trait Switches**, **Mirror a Trait** |
+| 💬 **During AI Output** | **Replace a Word**, **Count a Word**, **Bold a Word Past a Threshold** |
 
 The formulas are **Weighted Blend**, **Inverse of Another Stat**, **Threshold Flag**, **Daypart Modifier**, **Bound From Another Stat**, **Bonus From Persona Trait** and **Penalty From Entity Trait**. **Hourly Change** and **Regen Toward Target** read `clock.deltaHours`, which is `0` in every timing but **After the AI**.
 

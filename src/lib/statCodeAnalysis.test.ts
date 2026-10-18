@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
+import { codeDiagnostics, statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
-import { placeholderEntryFields, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
+import { placeholderEntryFields, scriptSurface, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
 import { phValues } from '@/test/placeholderValues';
 import { encodePlaceholderToken } from './placeholders';
 import type { Placeholder } from '@/types';
@@ -146,8 +146,13 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('leaves template slots alone instead of covering a template in errors', () => {
+    // Each template reads against the names its own timings add, as the template editor does.
     for (const template of BUILT_IN_TEMPLATES) {
-      expect(statCodeDiagnostics(template.code, { slots: true }), template.name).toEqual([]);
+      if (template.kind !== 'script') continue;
+      for (const timing of template.timings) {
+        const surface = scriptSurface(STAT_CODE_SURFACE, timing);
+        expect(codeDiagnostics(template.code, { slots: true, surface }), `${template.name} at ${timing}`).toEqual([]);
+      }
     }
   });
 

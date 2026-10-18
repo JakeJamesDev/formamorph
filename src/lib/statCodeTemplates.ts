@@ -464,6 +464,73 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
     code: `if (clock.elapsedHours > 0) return;
 return {{openingValue:number=50}};`,
   },
+  {
+    id: 'builtin-random-starting-value',
+    kind: 'script',
+    timings: ['start'],
+    name: 'Random Starting Value',
+    description: 'Start this stat at a random whole number between two limits. Both limits stay inside this stat’s range.',
+    // Both limits clamp to the stat's own bounds and sort, so no slot value starts the stat out of range.
+    code: `const [low, high] = [{{low:number=20}}, {{high:number=80}}]
+  .map((limit) => Math.min(self.max, Math.max(self.min, limit)))
+  .sort((a, b) => a - b);
+return low + Math.floor(Math.random() * (high - low + 1));`,
+  },
+  {
+    id: 'builtin-start-from-persona-trait',
+    kind: 'script',
+    timings: ['start'],
+    name: 'Start From Persona Trait',
+    description: 'Start this stat at one value when the played persona has a trait on, and at another when it does not.',
+    code: `const active = persona.traits[{{trait:trait(persona)}}].enabled;
+return active ? {{withTrait:number=75}} : {{withoutTrait:number=25}};`,
+  },
+  {
+    id: 'builtin-change-on-trait-switch',
+    kind: 'script',
+    timings: ['switch'],
+    name: 'Change When a Trait Switches',
+    description: 'Add a signed amount to this stat when a trait turns on. A negative amount subtracts. A switch-off changes nothing.',
+    code: `if (trait.name !== {{trait:trait}} || !trait.enabled) return;
+return self.value + {{amount:number=10}};`,
+  },
+  {
+    id: 'builtin-mirror-trait',
+    kind: 'script',
+    timings: ['switch'],
+    name: 'Mirror a Trait',
+    description: 'Set this stat to Max when a trait turns on, and to Min when it turns off.',
+    code: `if (trait.name !== {{trait:trait}}) return;
+return trait.enabled ? self.max : self.min;`,
+  },
+  {
+    id: 'builtin-replace-word',
+    kind: 'script',
+    timings: ['output'],
+    name: 'Replace a Word',
+    description: 'Replace one word with another in each narration sentence. The match uses the exact spelling and case.',
+    // The word sits in a template literal in the generated code, so an apostrophe or quote in it is safe.
+    code: `return narration.sentence.split(\`{{word:text=door}}\`).join(\`{{replacement:text=gate}}\`);`,
+  },
+  {
+    id: 'builtin-count-word',
+    kind: 'script',
+    timings: ['output'],
+    name: 'Count a Word',
+    description: 'Add an amount to this stat for each narration sentence that contains a word. The sentence stays as written.',
+    // Output code that returns anything replaces the sentence, so this one writes the stat and returns nothing.
+    code: `if (!narration.sentence.includes(\`{{word:text=door}}\`)) return;
+self.value += {{amount:number=1}};`,
+  },
+  {
+    id: 'builtin-bold-word-past-threshold',
+    kind: 'script',
+    timings: ['output'],
+    name: 'Bold a Word Past a Threshold',
+    description: 'Bold a word in the narration while this stat is past a threshold. Below it, the sentence stays as written.',
+    code: `if (!(self.value {{comparison:choice(>=|<=)=>=}} {{threshold:number=25}})) return;
+return narration.sentence.split(\`{{word:text=door}}\`).join(\`**{{word}}**\`);`,
+  },
 ];
 
 /** Whether a template is one of the bundled, read-only ones. */

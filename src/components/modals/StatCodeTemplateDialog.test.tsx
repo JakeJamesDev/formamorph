@@ -497,11 +497,21 @@ describe('which templates a box offers', () => {
     expect(await screen.findByRole('button', { name: 'Weighted Blend' })).toBeInTheDocument();
   });
 
-  it('says so when no template runs in the box, and inserts nothing', async () => {
+  it.each([
+    ['start', ['Random Starting Value', 'Start From Persona Trait']],
+    ['switch', ['Change When a Trait Switches', 'Mirror a Trait']],
+    ['output', ['Replace a Word', 'Count a Word', 'Bold a Word Past a Threshold']],
+  ] as const)('lists the %s-only templates in their own menu and no value formula in the output menu', async (timing, names) => {
+    open(timing);
+    for (const name of names) expect(await screen.findByRole('button', { name })).toBeInTheDocument();
+    if (timing === 'output') expect(screen.queryByRole('button', { name: 'Weighted Blend' })).toBeNull();
+  });
+
+  it('keeps a start-only template out of the output menu', async () => {
     open('output');
-    expect(await screen.findByText('No templates run During AI Output yet')).toBeInTheDocument();
-    expect(screen.queryByText('Built-In')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Insert Code' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Replace a Word' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Random Starting Value' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mirror a Trait' })).toBeNull();
   });
 
   it('fills only the selected template with primary and leaves the others a neutral hover', async () => {

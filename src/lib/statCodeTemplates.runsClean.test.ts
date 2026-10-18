@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_TEMPLATES, defaultSlotValues, fillTemplate, parseTemplateSlots, type TemplateSlot } from './statCodeTemplates';
 import { runTestCode, statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { SAMPLE_SENTENCE } from './scriptTestSamples';
 import type { Stat } from '@/types';
 
 const stat = (id: string, name: string, value: number, max = 100): Stat =>
@@ -31,6 +32,13 @@ const pick = (slot: TemplateSlot): string | undefined => {
   }
 };
 
+const MAX_RUNS = 5;
+
+/** Something moved: a value, a write, or a rewritten sentence. */
+const changedBy = (report: Awaited<ReturnType<typeof runTestCode>>): boolean =>
+  (report.value !== null && report.value !== subject.value) || report.writes.length > 0
+  || (report.sentence !== undefined && report.sentence !== SAMPLE_SENTENCE);
+
 beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
 afterEach(() => vi.restoreAllMocks());
 
@@ -44,10 +52,14 @@ describe.each(BUILT_IN_TEMPLATES.flatMap((template) =>
       const { slots } = parseTemplateSlots(template.code);
       const values = defaultSlotValues(slots);
       for (const slot of slots) values[slot.name] = pick(slot) ?? values[slot.name];
-      const report = await runTestCode(fillTemplate(template.code, values), timing, subject, names);
+      const code = fillTemplate(template.code, values);
+      // A random template may land on the stat's current value, so it gets a few runs. A fixed one repeats its result.
+      let report = await runTestCode(code, timing, subject, names, { sentence: SAMPLE_SENTENCE });
+      for (let run = 1; run < MAX_RUNS && !changedBy(report); run++) {
+        report = await runTestCode(code, timing, subject, names, { sentence: SAMPLE_SENTENCE });
+      }
       expect(report.error).toBeNull();
-      const changed = (report.value !== null && report.value !== subject.value) || report.writes.length > 0;
-      expect(changed, JSON.stringify(report)).toBe(true);
+      expect(changedBy(report), JSON.stringify(report)).toBe(true);
     });
   },
 );

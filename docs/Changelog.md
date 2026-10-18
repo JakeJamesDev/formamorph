@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Try It in the Tool editor now becomes a tab when the editor is narrow.** It keeps your values and last result when you switch tabs. It returns to its column when the editor widens.
   - **Code Templates:**
     - **A code template can now run in several timings, and each script box lists the templates for its own timing.** At Game Start, During AI Output and When a Trait Switches no longer show the After the AI set. When you save a template, pick each timing under **Runs**. Older template packs still import.
+    - **Seven new code templates fit At Game Start, When a Trait Switches and During AI Output.** They set a random or trait-based starting value, react to a trait switch, and replace, count or bold a word in narration.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 
