@@ -81,7 +81,7 @@ A **World Tool** is a Tool that a world holds. It exports with the world, and ev
 | 🎚️ Switched by | **Tools** in Settings → **Output** only | That switch and the prompt preset |
 | 🌍 Offered in | That world only | Every world |
 
-A World Tool named like a built-in Tool or one of your Tools replaces it in that world, for every prompt. The **Tools** tab names the Tool it replaces. Two Tools in one world can't share a name. Drag a Tool in the list to change its place.
+A World Tool named like a built-in Tool or one of your Tools replaces it in that world, for every prompt. The **Tools** tab names the Tool it replaces. Two Tools in one world can't share a name. The list is the run order: Tools that fire at the same timing run top to bottom, before the world's scripts of that timing. Drag a Tool to change the order.
 
 ## How to Make a Tool That Changes the Story
 <!-- keywords: world tool script, trigger, arm, timing, on call, during ai output, after the ai, reply, stack calls, ai decides, narration filter, move location, pass time, change stats from a tool, ai calls my script -->
@@ -92,7 +92,7 @@ A World Tool named like a built-in Tool or one of your Tools replaces it in that
 3. On the **Handler** tab, pick **Script** in **Handler Type**.
 4. Pick a **Timing**. **On Call** runs the script at once and sends its return value to the AI. **During AI Output** runs it on each later narration sentence of the turn. **After the AI** runs it with the world's After the AI scripts.
 5. For **During AI Output** or **After the AI**, type a **Reply**: the text the AI gets back. Blank sends "Done."
-6. Select **Stack Calls** when each call should run. Leave it clear when a later call replaces the earlier one.
+6. Select **Stack Calls** to run the script once for each call. Leave it clear to let a later call replace the earlier one.
 7. Write the script and select **Save Tool**.
 
 A World Tool works only on a text endpoint that supports Tools. On other endpoints the world plays without it, so write the world to work without its Tools. See [Endpoints Without Tool Support](#endpoints-without-tool-support).

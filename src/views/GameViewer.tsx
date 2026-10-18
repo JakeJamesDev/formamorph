@@ -40,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Meta } from "@/components/ui/typography";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
 import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
@@ -4628,9 +4629,9 @@ const GameViewer = ({
     if (toolStatus && showSilentRequests) {
       return (
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-meta text-muted-foreground whitespace-nowrap truncate min-w-0 max-w-[60%]">
+          <Meta className="whitespace-nowrap truncate min-w-0 max-w-[60%]">
             {toolStatus}
-          </span>
+          </Meta>
           <div className="flex-grow">
             <IndeterminateProgress />
           </div>

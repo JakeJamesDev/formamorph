@@ -282,9 +282,9 @@ function ScriptReference({ globals }: { globals: readonly SurfaceEntry[] }) {
 }
 
 const TIMING_CHOICES: { value: ToolScriptTiming; label: string; help: string }[] = [
-  { value: 'call', label: 'On Call', help: 'Runs your code when the AI calls and returns its value' },
+  { value: 'call', label: 'On Call', help: 'Runs your code when the AI calls, and sends the AI its return value' },
   { value: 'output', label: 'During AI Output', help: 'Runs your code on each later narration sentence this turn' },
-  { value: 'after', label: 'After the AI', help: 'Runs your code just before the world’s After the AI scripts' },
+  { value: 'after', label: 'After the AI', help: 'Runs your code right before the world’s After the AI scripts' },
 ];
 
 /** A World Tool's Script timing, and the Reply and Stack Calls of a timing that arms a trigger. */
@@ -323,7 +323,7 @@ function TriggerFields({ handler, onChange }: { handler: ToolScriptHandler; onCh
               />
               Stack Calls
             </label>
-            <Hint id={`${id}-stack-help`}>Runs your code once per call, not just for the last call</Hint>
+            <Hint id={`${id}-stack-help`}>Runs your code once for each call in the turn, in call order</Hint>
           </div>
         </>
       )}
