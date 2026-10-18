@@ -41,7 +41,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
 export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   user_suspended: 'bg-destructive/10 text-destructive',
   user_unsuspended: 'bg-success/10 text-success',
-  suspension_expired: 'bg-success/10 text-success',
+  // The server lifted it, not staff, so it reads apart from Reinstated.
+  suspension_expired: 'bg-muted text-muted-foreground',
   terms_reset_user: 'bg-warning/10 text-warning',
   terms_reset_all: 'bg-warning/10 text-warning',
   privacy_reset_user: 'bg-warning/10 text-warning',
