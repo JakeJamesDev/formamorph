@@ -1,6 +1,7 @@
 # Spec: Timed suspensions (client)
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-17. Tickets 01–02 done; last landing cd6621ffb, review fix 35d5603ee. Gates green on 2026-10-17.
 Spec session: timed-suspensions — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/timed-suspensions/spec.md`. It lands first.
