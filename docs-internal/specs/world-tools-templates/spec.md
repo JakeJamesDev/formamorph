@@ -1,6 +1,7 @@
 # Spec: World Tools Templates
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-17. Tickets 01–07 landed; the last landing is f6269a31f. Closed without gates.
 Spec session: world-tools-templates — spec
 
 ## Problem Statement
