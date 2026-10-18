@@ -42,13 +42,13 @@ The **Suspend** button in Admin Panel → Users is a toggle. A suspended account
 
 - **Dialog.** A suspension dialog modeled on the quarantine dialog, reusing its day-option list and default from the shared quarantine module, or a shared duration module both import. A **Length** select holds the day options and an **Until Lifted** option. Copy follows the Writing Guide and goes through the copy sweep.
 - **Request.** Confirming sends `{ status: 'suspended', days }`, with `days: null` for Until Lifted. Activate sends `{ status: 'normal' }` unchanged.
-- **Row state.** The row takes `status` and `suspended_until` from the response's user, not from the request, so the table shows the stored end.
+- **Row state.** The row takes `status` and `suspendedUntil` from the response's user, not from the request, so the table shows the stored end.
 - **Table (Q7).** The Status column renders the existing status pill and, for a suspended account with an end, a short "until <date>" line in the viewer's locale.
 - **Re-suspend (Q4).** The Suspend action shows for every account the viewer may moderate, suspended ones included. On a suspended account the dialog states that the new length replaces the current end.
 - **Message template (Q3).** The post-suspend message prompt fills the end date into the subject-free body when there is one. With no end, the template is unchanged.
 - **Audit presentation (Q6).** `suspension_expired` gets a label, a pill style, a filter option, and a detail line that names no actor. `user_suspended` details show the server's end snippet.
-- **Suspended user (Q3).** The Account Suspended banner in the profile header reads the signed-in account's `suspended_until` and names the end date when there is one. The email and password notes stay unchanged, so the date shows once per screen (ruling to ticket 02, 2026-10-17). Refusal toasts already show the server's `error` text, which now carries the date; no client change there beyond verifying it.
-- **Types.** The admin user record and the signed-in account record gain `suspended_until: string | null`. This is an API read shape, not a world or save export shape.
+- **Suspended user (Q3).** The Account Suspended banner in the profile header reads the signed-in account's `suspendedUntil` and names the end date when there is one. The email and password notes stay unchanged, so the date shows once per screen (ruling to ticket 02, 2026-10-17). Refusal toasts already show the server's `error` text, which now carries the date; no client change there beyond verifying it.
+- **Types.** The admin user record and the signed-in account record gain `suspendedUntil: string | null`. This is an API read shape, not a world or save export shape.
 - **Dev route.** The new dialog gets a `devRoutes.ts` entry.
 - **Changelog.** One Minor → Added entry for staff, written as a fragment.
 
