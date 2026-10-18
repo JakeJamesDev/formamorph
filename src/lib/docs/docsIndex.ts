@@ -204,6 +204,8 @@ function searchWords(text: string, filler: ReadonlySet<string>): string[] {
 
 /** How much a query term in the section's own heading outweighs one body hit. */
 const HEADING_WEIGHT = 4;
+/** How much a section whose heading and keyword lines hold every query word outweighs one that needs its body. */
+const FULL_HEADING_WEIGHT = 2;
 /** How much a query term in a heading above the section counts. */
 const TRAIL_WEIGHT = 1;
 /** How much a section of the favored page outweighs a match of the same strength on another page. */
@@ -416,7 +418,9 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
         for (const stem of named) if (!terms.has(stem)) terms.set(stem, exactTerm(stem));
         let score = 0;
         let matched = 0;
+        let titled = 0;
         for (const { stems, weight, idf } of terms.values()) {
+          if (stems.some((term) => r.heading.has(term))) titled++;
           // An expanded word counts once, at its best match in this section.
           let best = 0;
           for (const term of stems) {
@@ -431,7 +435,8 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
         // A section that matches more of the query's words ranks above one that repeats a single word.
         // A hub ranks below a specific section of the same strength, unless the query holds its heading as a phrase.
         const asksHub = r.ownHeading.trim() !== '' && asked.includes(r.ownHeading);
-        const weight = (r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) * (r.hub && !asksHub ? HUB_WEIGHT : 1);
+        const weight = (r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) * (r.hub && !asksHub ? HUB_WEIGHT : 1)
+          * (titled === terms.size ? FULL_HEADING_WEIGHT : 1);
         return { section: r.section, score: score * (matched / terms.size) ** 2 * weight };
       });
       const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);

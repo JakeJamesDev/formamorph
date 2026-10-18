@@ -103,11 +103,11 @@ describe('entityTraitNames', () => {
 
   it('lists each entity’s traits, owned or linked, and marks the ones a persona choice can play', () => {
     expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities }, [])).toEqual([
-      { id: 'mira', name: 'Mira', persona: true, folder: [], tabPosition: 0, traits: [
+      { id: 'mira', name: 'Mira', type: '', pronouns: '', persona: true, folder: [], tabPosition: 0, traits: [
         { id: 'scarred', name: 'Scarred', path: [], tabPosition: 0 }, { id: 'cursed', name: 'Cursed', path: [], tabPosition: 1 },
       ] },
-      { id: 'ash', name: 'Ash', persona: false, traits: [{ id: 'loyal', name: 'Loyal', path: [], tabPosition: 0 }], folder: [], tabPosition: 1 },
-      { id: 'wanderer', name: 'Wanderer', persona: true, traits: [{ id: 'marked', name: 'Marked', path: [], tabPosition: 0 }], folder: [], tabPosition: 2 },
+      { id: 'ash', name: 'Ash', type: '', pronouns: '', persona: false, traits: [{ id: 'loyal', name: 'Loyal', path: [], tabPosition: 0 }], folder: [], tabPosition: 1 },
+      { id: 'wanderer', name: 'Wanderer', type: '', pronouns: '', persona: true, traits: [{ id: 'marked', name: 'Marked', path: [], tabPosition: 0 }], folder: [], tabPosition: 2 },
     ]);
   });
 

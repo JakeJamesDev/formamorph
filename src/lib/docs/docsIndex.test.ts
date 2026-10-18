@@ -246,6 +246,17 @@ describe('Docs Index keyword line', () => {
     expect(first('[a](Keyword) [b](Heading) [c](Body)')).toEqual(['Keyword', 'Heading', 'Body']);
   });
 
+  it('ranks a section whose heading and keyword lines hold every query word above one that needs its body', () => {
+    const data = '# P\n\n## Where Data Lives\n<!-- keywords: save folder -->\n\n'
+      + 'The folder beside the app. A folder per world. Copy the folder. The models folder. Any folder. That folder.\n\n'
+      + 'Make a backup.\n';
+    // As across the real guide, "make" is common and sections run about as long as Data's.
+    const body = 'Make a copy of the tile, then keep it in a safe place on the device for later use and review.';
+    const common = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`C${i}`, `# C${i}\n\n## Part\n\n${body}\n`]));
+    const index = createDocsIndex({ pages: { Library: page('How to Make a Group', KEYWORDS), Data: data, ...common } });
+    expect(index.search('make a folder').slice(0, 2).map((s) => s.page)).toEqual(['Library', 'Data']);
+  });
+
   it('keeps the keyword line out of the section text', () => {
     const index = createDocsIndex({ pages: { Library: page('How to Make a Group', KEYWORDS) } });
     expect(index.get(['Library#how-to-make-a-group'])[0]?.markdown).toBe('## How to Make a Group\nPress **Go** to start.');

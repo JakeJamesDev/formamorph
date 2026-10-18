@@ -96,6 +96,20 @@ describe('runTestCode trait gates', () => {
   });
 });
 
+describe('runTestCode entity fields', () => {
+  const castWorld: StatCodeWorld = {
+    ...world,
+    entities: [{ id: 'mira', name: 'Mira', type: 'Guide', pronouns: 'she/her' }, { id: 'rook', name: 'Rook' }],
+  };
+  it.each([
+    ['pronouns', "entities.Mira.pronouns === 'she/her'"],
+    ['type', "entities.Mira.type === 'Guide'"],
+    ['an unset pronouns', "entities.Rook.pronouns === ''"],
+  ])('reads an entity’s authored %s', async (_, check) => {
+    expect((await runTestCode(`return ${check} ? 1 : 0;`, 'after', health, statCodeNames(castWorld))).value).toBe(1);
+  });
+});
+
 // A city world: the world's Destruction and a switched-off Dusk, the Creature's own Fury and Stamina and a
 // switched-off Idle, Wren's Nerve (Wren can be played), and a Blueprint group of Fear and Calm.
 const stat = (id: string, name: string, value: number, max = 100, extra: Partial<Stat> = {}): Stat =>

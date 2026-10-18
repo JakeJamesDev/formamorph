@@ -147,9 +147,9 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').selfName).toBe('Warmth');
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
     expect(optionsOf('Before the AI').entities).toEqual([
-      { id: 'e1', name: 'Mira', persona: true, traits: [{ id: 't4', name: 'Scarred', path: [], tabPosition: 0 }], folder: [], tabPosition: 0 },
+      { id: 'e1', name: 'Mira', type: '', pronouns: '', persona: true, traits: [{ id: 't4', name: 'Scarred', path: [], tabPosition: 0 }], folder: [], tabPosition: 0 },
       {
-        id: 'e2', name: 'Ash', persona: false, traits: [{ id: 't5', name: 'Loyal', path: [], tabPosition: 0 }], stats: ['Stock'],
+        id: 'e2', name: 'Ash', type: '', pronouns: '', persona: false, traits: [{ id: 't5', name: 'Loyal', path: [], tabPosition: 0 }], stats: ['Stock'],
         folder: [], tabPosition: 1,
       },
     ]);
@@ -457,8 +457,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('entities.Ash.traits.Loyal switched on'));
     expect(executeStatCode.mock.calls[0][3].entities).toEqual([
-      { id: 'e1', name: 'Mira', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
-      { id: 'e2', name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }], stats: { stats: [ashStock], enabled: { a1: false } } },
+      { id: 'e1', name: 'Mira', type: '', pronouns: '', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
+      { id: 'e2', name: 'Ash', type: '', pronouns: '', traits: [{ name: 'Loyal', enabled: false, acquired: false }], stats: { stats: [ashStock], enabled: { a1: false } } },
     ]);
   });
 

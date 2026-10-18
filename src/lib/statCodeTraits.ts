@@ -192,6 +192,8 @@ export function entityTraitNames(
       id: entity.id,
       persona: canBePlayer(entity),
       name: statCodeName(entity.name, named),
+      type: statCodeName(entity.type, named),
+      pronouns: statCodeName(entity.pronouns, named),
       traits: traitPlaces(ownerById.get(entity.id), entity, world.traits, named),
       ...(entity.stats?.length ? { stats: entity.stats.map((stat) => statCodeName(stat.name, named)) } : {}),
       ...tab.get(entity.id),
@@ -221,8 +223,8 @@ export const worldTraitPlaces = (
  *  owner node. No persona plays. */
 export const unplayedEntities = (
   entities: readonly CodeEntityNames[], owners: ReadonlyMap<string, SandboxPlaceholderNode>,
-): SandboxEntity[] => entities.map(({ id, name, traits }) => ({
-  id, name, traits: traits.map((trait) => ({ name: trait.name, enabled: false, acquired: false })), placeholders: owners.get(id),
+): SandboxEntity[] => entities.map(({ id, name, type, pronouns, traits }) => ({
+  id, name, type, pronouns, traits: traits.map((trait) => ({ name: trait.name, enabled: false, acquired: false })), placeholders: owners.get(id),
 }));
 
 /** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */

@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.3.1 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.1** — the latest released version.
+> ✅ **3.0.0 – 3.3.2 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.3.2 — Released 2026-10-18</strong> — World Tools that run scripts and change the game — scripts that move the location, advance the clock and write memories — code templates for every timing — timed suspensions — a llama.cpp Reasoning Budget fix (click to expand)</summary>
 
 ### Minor Changes
 
@@ -21,17 +26,17 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Worlds can now hold Tools, which every playthrough of the world offers to the AI.** Add them in the World Editor's new Tools tab, in Advanced mode. A World Tool replaces a same-name Tool in its world. The Tool status line now names the Tools the AI calls.
     - **Scripts can now move the location, advance the story clock and discover a new entity.** Call `location.move`, `clock.advance` or `discover` from any script. Each write replaces the AI's answer for that turn and drops with a regenerate. Test Code lists them.
     - **Scripts can now add a memory line, a pinned memory or a diary line for the turn.** Call `memory.add`, `memory.pin` or `diary`. Lines join the AI's summary and diary, a pin is sent with every request, and a regenerate drops all three.
-    - **A World Tool's script can now run when the AI calls it, or after the AI, and change the game.** An On Call Tool returns its script's value. An After the AI Tool sends its Reply, and its script runs with the After the AI scripts. A regenerate drops the changes.
-    - **A During AI Output World Tool now rewrites every narration sentence after the AI calls it.** Called Tools run in Tools-tab order, before the world's output scripts. The rewrite is what the screen, the save and read-aloud get.
-    - **You can now test a World Tool in the editor, and renames and Find All Uses cover its script.** Try It lists the reply and each staged write, and applies none. Renaming a location also updates its `location.move` calls. Test Code warns on a diary name the world lacks.
-    - **A stat re-roll now keeps the changes a World Tool made during the turn.** An After the AI Tool runs again with the AI's call. An On Call Tool's changes come back as they were, so a random result still matches the story.
-    - **A script's clock advance now shows in the prompts the turn builds after it.** A Tool the planner, the director or a character pass calls now changes the place, time and stats that later passes and the narration read. The turn still charges its time, regen and starvation once.
-    - **The drone world now ships lock_target, a World Tool that marks the enemy the AI locks onto.** For the rest of that reply, the target shows in bold with a reticle. The Tools page and the Scripts Guide now explain World Tools.
-    - **Try It in the Tool editor now becomes a tab when the editor is narrow.** It keeps your values and last result when you switch tabs. It returns to its column when the editor widens.
+    - **A World Tool's script can run when the AI calls it, or after the AI, and change the game.** An On Call Tool returns its script's value. An After the AI Tool sends its Reply, and its script runs with the After the AI scripts. A regenerate drops the changes.
+    - **A During AI Output World Tool rewrites every narration sentence after the AI calls it.** Called Tools run in Tools-tab order, before the world's output scripts. The rewrite is what the screen, the save and read-aloud get.
+    - **You can test a World Tool in the editor, and renames and Find All Uses cover its script.** Try It lists the reply and each staged write, and applies none. Renaming a location also updates its `location.move` calls. Test Code warns on a diary name the world lacks.
+    - **A stat re-roll keeps the changes a World Tool made during the turn.** An After the AI Tool runs again with the AI's call. An On Call Tool's changes come back as they were, so a random result still matches the story.
+    - **A script's clock advance shows in the prompts the turn builds after it.** A Tool the planner, the director or a character pass calls changes the place, time and stats that later passes and the narration read. The turn charges its time, regen and starvation once.
+    - **The drone world ships lock_target, a World Tool that marks the enemy the AI locks onto.** For the rest of that reply, the target shows in bold with a reticle. The Tools page and the Scripts Guide explain World Tools.
+    - **Try It in the Tool editor becomes a tab when the editor is narrow.** It keeps your values and last result when you switch tabs. It returns to its column when the editor widens.
   - **Code Templates:**
     - **A code template can now run in several timings, and each script box lists the templates for its own timing.** At Game Start, During AI Output and When a Trait Switches no longer show the After the AI set. When you save a template, pick each timing under **Runs**. Older template packs still import.
     - **Seven new code templates fit At Game Start, When a Trait Switches and During AI Output.** They set a random or trait-based starting value, react to a trait switch, and replace, count or bold a word in narration.
-    - **A World Tool's Script box now has a Templates button that lists starter code for the Tool's timing.** A parameter input picks one of the Tool's Parameters, or its **New** row adds the Parameter the template reads. Save, export and import your own World Tool templates beside your stat templates.
+    - **A World Tool's Script box has a Templates button that lists starter code for the Tool's timing.** A parameter input picks one of the Tool's Parameters, or its **New** row adds the Parameter the template reads. Save, export and import your own World Tool templates beside your stat templates.
     - **Code templates can now pick an entity's or persona's stats, and an entity stat's trait inputs list its own traits.** In your own templates, `{{s:stat(who)}}` lists the stats of the entity picked in `who`, and `{{s:stat(persona)}}` lists persona stats. Owner traits show first, under **Owner**.
     - **A world script's box now has a Templates button with eight starter templates.** They set the opening location, advance time, pin memories and diary lines, and replace words. Save, export and import your own beside the others. A new location input picks one of the world's locations.
   - **Timed Suspensions:**
@@ -45,6 +50,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **On a llama.cpp server, a prompt's Reasoning Budget slider now sets how long it thinks.** The budget is a percent of Max Output, as on other servers. Before, a model whose template had no strengths was stuck at Model Default's room.
   - **Test Code now reads the clock as play does in every timing but After the AI.** At Game Start, During AI Output and When a Trait Switches read a zero `clock.deltaHours`. Test Code ran them as a one-hour turn, so it could show a change that play never makes.
+  - **Test Code now reads an entity's `type` and `pronouns` as authored.** A script that read them in Test Code got empty text. Play read them correctly.
+
+</details>
 
 ---
 
