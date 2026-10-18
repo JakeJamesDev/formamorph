@@ -9,6 +9,7 @@ import { FeedbackDialog } from '@/components/menu/FeedbackDialog';
 import { FeedbackEditDialog } from '@/components/menu/FeedbackEditDialog';
 import { PodiumDialog } from '@/components/menu/PodiumDialog';
 import { SentMessagesDialog } from '@/components/menu/SentMessagesDialog';
+import { SuspendDialog } from '@/components/menu/SuspendDialog';
 import { ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { RootCrashScreen } from '@/components/RootCrashScreen';
 import { RevealAnimationDialog } from '@/components/RevealAnimationDemo';
@@ -47,6 +48,7 @@ export default function DevPaneRoutes() {
     case 'eventForm': return <EventFormDialog open onOpenChange={clearRouteOnClose} />;
     case 'podium': return <PodiumDialog open onOpenChange={clearRouteOnClose} contest={devContestSamples()[1]} />;
     case 'sentMessages': return <SentMessagesDialog open onOpenChange={clearRouteOnClose} username="Sample Player" />;
+    case 'suspend': return <SuspendDialog open onOpenChange={clearRouteOnClose} username="Sample Player" alreadySuspended={false} onConfirm={ignore} />;
     case 'feedbackForm': {
       const { title, body } = devFeedbackThread();
       return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialTitle={title} initialBody={body} />;

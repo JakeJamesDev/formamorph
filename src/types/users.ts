@@ -207,6 +207,17 @@ export interface LikeGiven {
   likedAt: string;
 }
 
+/** An account as the admin Users table and the status route report it. An API read shape. */
+export interface AdminUser {
+  id: string;
+  username: string;
+  status: string | null;
+  accountType: string;
+  /** When a timed suspension ends, as a server timestamp. Null for a suspension with no end, and for any
+   *  account that is not suspended. */
+  suspendedUntil: string | null;
+}
+
 /** One recorded moment behind a link: what an account did, when, and from which browser family. */
 export interface LinkedMoment {
   /** `signup`, `login`, `like`, `publish`, `comment` or `follow`. */

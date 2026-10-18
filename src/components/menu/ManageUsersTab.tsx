@@ -23,15 +23,11 @@ import MessageService from "@/services/MessageService";
 import UserService from "@/services/UserService";
 import { useUserProfile } from "@/contexts/userProfileStore";
 import { type WorldRecord } from "@/components/WorldDetails";
-import type { LinkedAccount, SentMessage } from "@/types";
+import type { AdminUser, LinkedAccount, SentMessage } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
-
-/** Prefill offered after a suspension, so the user learns why without the admin retyping it. */
-const SUSPENSION_TEMPLATE = {
-  subject: 'Your account has been suspended',
-  body: 'Your account has been suspended.\n\n**Reason:** ',
-} as const;
+import { SuspendDialog } from "@/components/menu/SuspendDialog";
+import { suspensionEndLabel, suspensionTemplate } from "@/lib/suspension";
 
 /** Prefill offered after clearing somebody's picture, so they learn why rather than just finding it gone. */
 const AVATAR_REMOVAL_TEMPLATE = {
@@ -100,6 +96,9 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [composerPrefill, setComposerPrefill] = useState<{ subject: string; body: string } | null>(null);
   // Offered after a suspension lands; declining leaves the suspension in place either way.
   const [suspendedUser, setSuspendedUser] = useState<WorldRecord | null>(null);
+  // The row whose length is being chosen, and whether the request that follows is still running.
+  const [pendingSuspend, setPendingSuspend] = useState<WorldRecord | null>(null);
+  const [suspendBusy, setSuspendBusy] = useState(false);
   // The sent list serves both entry points: unfiltered, or narrowed to one user via `historyUser`.
   const [showSentMessages, setShowSentMessages] = useState(false);
   const [historyUser, setHistoryUser] = useState<{ id: string; username: string } | null>(null);
@@ -213,8 +212,17 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
     }
   };
 
-  // Handle user status change
-  const handleUserStatusChange = async (userId: string, newStatus: string) => {
+  /**
+   * Activate or suspend one account.
+   *
+   * @param days - For a suspension, the length in days, or null for no end. Ignored when activating.
+   * @returns Whether the server accepted the change
+   */
+  const handleUserStatusChange = async (
+    userId: string,
+    newStatus: string,
+    days: number | null = null
+  ): Promise<boolean> => {
     try {
       // Call API to update user status - use the same endpoint for both actions
       const endpoint = `${WorldStorageService.API_URL}/users/${userId}/status`;
@@ -225,18 +233,25 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${AuthService.token}`
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(newStatus === 'suspended' ? { status: newStatus, days } : { status: newStatus })
       });
 
       if (!response.ok) {
         throw await responseError(response, `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
       }
 
+      const body = await response.json().catch(() => null) as { user?: Partial<AdminUser> } | null;
+      if (!mountedRef.current) return true;
+
+      // The row takes status and end from the answer, not the request; no user falls back to the request.
+      const status = body?.user?.status ?? newStatus;
+      const suspendedUntil = body?.user?.suspendedUntil ?? null;
+
       // Update the user in the list. Matched through `userIdOf`, not `user._id` alone: this endpoint
       // returns `id`, so an `_id`-only comparison never matched and the row's buttons kept showing the
       // old status until a search refetched the table.
       setUsers(prev => prev.map(user =>
-        userIdOf(user) === userId ? { ...user, status: newStatus } : user
+        userIdOf(user) === userId ? { ...user, status, suspendedUntil } : user
       ));
 
       toast.success(`User ${newStatus === "normal" ? "activated" : "suspended"} successfully`);
@@ -245,12 +260,26 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       // learns why. Declining leaves them suspended and simply unexplained.
       if (newStatus === "suspended") {
         const suspended = users.find((user) => userIdOf(user) === userId);
-        if (suspended) setSuspendedUser(suspended);
+        if (suspended) setSuspendedUser({ ...suspended, status, suspendedUntil });
       }
+      return true;
     } catch (error) {
       console.error('Error updating user status:', error);
-      toastError(error, `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
+      if (mountedRef.current) toastError(error, `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
+      return false;
     }
+  };
+
+  /** Suspend the row the dialog is open on, closing the dialog once the server accepts. */
+  const confirmSuspend = async (days: number | null) => {
+    if (!pendingSuspend) return;
+
+    setSuspendBusy(true);
+    const accepted = await handleUserStatusChange(userIdOf(pendingSuspend), 'suspended', days);
+    if (!mountedRef.current) return;
+
+    setSuspendBusy(false);
+    if (accepted) setPendingSuspend(null);
   };
 
   // Fetch users when the dialog opens, the page changes, or a search is triggered. Driving the search
@@ -530,6 +559,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                     const userId = user._id || user.id;
 
                     const linked = linkedFor.get(userId);
+                    const endLabel = suspensionEndLabel(user.suspendedUntil);
                     // The open state when it belongs to this row, so the panel reads its loading flag
                     // from something already narrowed rather than re-testing the id.
                     const expanded = openLinked?.id === userId ? openLinked : null;
@@ -595,6 +625,10 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap">
                           <StatusPill status={user.status as string | null | undefined} />
+                          {/* A suspension with no end shows no date. */}
+                          {user.status === 'suspended' && endLabel && (
+                            <div className="text-helper text-muted-foreground">until {endLabel}</div>
+                          )}
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap">
                           <span className={`text-label ${ANSWER_LABELS[privacyResponseOf(user)].className}`}>
@@ -701,12 +735,13 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               </Button>
                             )}
 
-                            {user.status !== "suspended" && mayModerate(user) && (
+                            {/* Also on a suspended row, to set a new end. */}
+                            {mayModerate(user) && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="text-destructive hover:text-destructive/80"
-                                onClick={() => handleUserStatusChange(userId, "suspended")}
+                                onClick={() => setPendingSuspend(user)}
                               >
                                 Suspend
                               </Button>
@@ -842,6 +877,15 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       onCancel={() => setPendingTermsReset(null)}
     />
 
+    <SuspendDialog
+      open={pendingSuspend !== null}
+      onOpenChange={(isOpen) => { if (!isOpen && !suspendBusy) setPendingSuspend(null); }}
+      username={pendingSuspend ? usernameOf(pendingSuspend) : ''}
+      alreadySuspended={pendingSuspend?.status === 'suspended'}
+      onConfirm={confirmSuspend}
+      busy={suspendBusy}
+    />
+
     <ConfirmDialog
       open={suspendedUser !== null}
       onOpenChange={(isOpen) => { if (!isOpen) setSuspendedUser(null); }}
@@ -849,7 +893,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       description={`${suspendedUser?.username} has been suspended. Send them a message explaining why?`}
       onConfirm={() => {
         if (suspendedUser) {
-          setComposerPrefill({ ...SUSPENSION_TEMPLATE });
+          setComposerPrefill(suspensionTemplate(suspendedUser.suspendedUntil));
           setComposerTarget({
             broadcast: false,
             recipients: [{ id: userIdOf(suspendedUser), username: usernameOf(suspendedUser) }],
