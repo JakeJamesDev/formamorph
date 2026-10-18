@@ -1,6 +1,6 @@
 # 02: Suspension end in the log and settings
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Server dependency: FormamorphServer `docs-internal/specs/timed-suspensions/issues/02-suspension-sweep.md` must land first.
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

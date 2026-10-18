@@ -5,6 +5,7 @@ import { ROLE_LABELS, type Role } from '@/lib/roles';
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   user_suspended: 'Suspended',
   user_unsuspended: 'Reinstated',
+  suspension_expired: 'Suspension expired',
   terms_reset_user: 'Terms reset',
   terms_reset_all: 'Terms reset (everyone)',
   privacy_reset_user: 'Privacy policy reset',
@@ -40,6 +41,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
 export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   user_suspended: 'bg-destructive/10 text-destructive',
   user_unsuspended: 'bg-success/10 text-success',
+  suspension_expired: 'bg-success/10 text-success',
   terms_reset_user: 'bg-warning/10 text-warning',
   terms_reset_all: 'bg-warning/10 text-warning',
   privacy_reset_user: 'bg-warning/10 text-warning',
@@ -104,7 +106,7 @@ const KIND_NOUNS: Record<string, string> = {
 };
 
 /** The actions the clock does: a deadline passing, and the sweeper erasing an account. */
-const ACTORLESS_ACTIONS: ReadonlySet<AuditAction> = new Set(['quarantine_expired', 'account_deleted']);
+const ACTORLESS_ACTIONS: ReadonlySet<AuditAction> = new Set(['quarantine_expired', 'suspension_expired', 'account_deleted']);
 
 /**
  * Who the line names as having done it, or null when nobody chose it — a deadline passing has no actor.
@@ -136,6 +138,9 @@ export function auditPredicate(entry: AuditEntry): string {
   switch (entry.action) {
     case 'user_suspended':
       return `suspended ${target || 'an account'}`;
+    // The clock ended it, so nobody is named.
+    case 'suspension_expired':
+      return `The suspension of ${target || 'an account'} ended`;
     case 'user_unsuspended':
       return `reinstated ${target || 'an account'}`;
     case 'terms_reset_user':

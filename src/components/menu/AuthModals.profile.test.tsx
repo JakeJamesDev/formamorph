@@ -9,6 +9,7 @@ import PolicyService from '@/services/PolicyService';
 import AuthService from '@/services/AuthService';
 import type { PolicyState } from '@/types';
 import type { WorldRecord } from '@/components/WorldDetails';
+import { formatServerDate } from '@/lib/serverDate';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -284,6 +285,32 @@ describe('the password popup', () => {
 
     expect(screen.getByText(/Your password can’t be changed while your account is suspended/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Update Password' }).hasAttribute('disabled')).toBe(true);
+  });
+});
+
+describe('the suspension banner', () => {
+  it('names the end date when the suspension has one', async () => {
+    renderProfile({ currentUser: user({ status: 'suspended', suspendedUntil: '2026-11-01T00:00:00.000Z' }) });
+
+    expect(await screen.findByText('Account Suspended')).toBeTruthy();
+    expect(screen.getByText(`Ends ${formatServerDate('2026-11-01T00:00:00.000Z')}. Check your messages for details.`)).toBeTruthy();
+  });
+
+  it('keeps the plain text when the suspension has no end', async () => {
+    renderProfile({ currentUser: user({ status: 'suspended', suspendedUntil: null }) });
+
+    await screen.findByText('Account Suspended');
+
+    expect(screen.getByText('Check your messages for details.')).toBeTruthy();
+    expect(screen.queryByText(/Ends /)).toBeNull();
+  });
+
+  it('shows no end on an account that is not suspended', async () => {
+    renderProfile({ currentUser: user({ status: 'normal', suspendedUntil: '2026-11-01T00:00:00.000Z' }) });
+    await screen.findByRole('tab', { name: 'Messages' });
+
+    expect(screen.queryByText('Account Suspended')).toBeNull();
+    expect(screen.queryByText(/Ends /)).toBeNull();
   });
 });
 
