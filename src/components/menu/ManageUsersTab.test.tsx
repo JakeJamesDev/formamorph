@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ManageUsersTab } from './ManageUsersTab';
 import MessageService from '@/services/MessageService';
@@ -58,10 +59,30 @@ const userRow = (over: Record<string, unknown> = {}) => ({
 /** Every `/api/users` URL the component asked for, so a test can assert what it sent. */
 let userQueries: string[] = [];
 
+/** The JSON body of every status PUT, and the `user` the server answers each with (none by default). */
+let putBodies: Record<string, unknown>[] = [];
+let putUser: Record<string, unknown> | undefined;
+/** Holds the next PUT's answer until called, so a test can look at the screen while the request runs. */
+let releasePut: (() => void) | null = null;
+let holdPut = false;
+/** Makes the next PUTs answer with a 400 and the server's own words. */
+let putError: string | null = null;
+
+/** Answers the notice prompt that follows a suspension, so the table behind it can be read. */
+const declineNotice = async () => {
+  fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+};
+
 const stubFetch = (rows: Record<string, unknown>[]) =>
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PUT') {
-      return { ok: true, json: async () => ({ success: true }) } as unknown as Response;
+      putBodies.push(JSON.parse(String(init.body)));
+      if (holdPut) await new Promise<void>((resolve) => { releasePut = resolve; });
+      if (putError) {
+        return { ok: false, status: 400, json: async () => ({ success: false, error: putError }) } as unknown as Response;
+      }
+      return { ok: true, json: async () => ({ success: true, user: putUser }) } as unknown as Response;
     }
     if (url.includes('/users')) userQueries.push(url);
     return {
@@ -85,6 +106,11 @@ beforeEach(() => {
   dialogProps.history = null;
   dialogProps.composer = null;
   userQueries = [];
+  putBodies = [];
+  putUser = undefined;
+  releasePut = null;
+  holdPut = false;
+  putError = null;
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -106,22 +132,22 @@ describe('status changes update the row in place', () => {
     expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy();
   });
 
-  /** Suspending raises the notice prompt, and Radix `aria-hidden`s the table behind it — so the prompt
-   *  has to be answered before the row underneath can be queried by role at all. */
-  const declineNotice = async () => {
-    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+  /** Opens the length dialog from a row and confirms it as it stands. */
+  const suspendWithDefaults = async (rowIndex = 0) => {
+    fireEvent.click(screen.getAllByRole('button', { name: 'Suspend' })[rowIndex]);
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Suspend' }));
   };
 
-  it('swaps Suspend for Activate without a refetch', async () => {
+  it('keeps Suspend on a row after it is suspended, and adds Activate', async () => {
     stubFetch([userRow({ status: 'normal' })]);
 
     render(<ManageUsersTab active />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Suspend' }));
+    await screen.findByText('someone');
+    await suspendWithDefaults();
     await declineNotice();
 
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull());
-    expect(screen.getByRole('button', { name: 'Activate' })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Activate' })).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy();
   });
 
   it('changes only the row acted on', async () => {
@@ -134,18 +160,19 @@ describe('status changes update the row in place', () => {
     await screen.findByText('alice');
 
     // Suspend alice; bob must be untouched.
-    fireEvent.click(screen.getAllByRole('button', { name: 'Suspend' })[0]);
+    await suspendWithDefaults(0);
     await declineNotice();
 
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Suspend' })).toHaveLength(1));
-    expect(screen.getAllByRole('button', { name: 'Activate' })).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Activate' })).toHaveLength(1));
+    expect(columnText('Status')).toEqual(['suspended', 'normal']);
   });
 
   it('offers a suspension notice for the row that was suspended', async () => {
     stubFetch([userRow({ username: 'alice', status: 'normal' })]);
 
     render(<ManageUsersTab active />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Suspend' }));
+    await screen.findByText('alice');
+    await suspendWithDefaults();
 
     expect(await screen.findByText(/alice has been suspended/)).toBeTruthy();
   });
@@ -158,6 +185,188 @@ describe('status changes update the row in place', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy());
     expect(screen.queryByText(/has been suspended\?/)).toBeNull();
+  });
+});
+
+describe('timed suspensions', () => {
+  const END = '2026-11-03T12:00:00.000Z';
+  const endLabel = () => new Date(END).toLocaleDateString(undefined, { dateStyle: 'medium' });
+
+  const openDialog = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Suspend' }));
+    return within(await screen.findByRole('dialog'));
+  };
+
+  it('keeps the dialog open and the row unchanged when the server refuses', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+    putError = 'Days must be between 1 and 90';
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+
+    await waitFor(() => expect(putBodies).toHaveLength(1));
+    // Open for another try, with the buttons live again.
+    await waitFor(() => expect((dialog.getByRole('button', { name: 'Suspend' }) as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('opens on 7 days and sends days: 7 on confirm', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+
+    expect(dialog.getByRole('combobox', { name: 'Length' }).textContent).toContain('7 days');
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+
+    await waitFor(() => expect(putBodies).toEqual([{ status: 'suspended', days: 7 }]));
+  });
+
+  it('sends the chosen number of days', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    await userEvent.click(dialog.getByRole('combobox', { name: 'Length' }));
+    await userEvent.click(await screen.findByRole('option', { name: '30 days' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+
+    await waitFor(() => expect(putBodies).toEqual([{ status: 'suspended', days: 30 }]));
+  });
+
+  it('sends days: null for Until Lifted', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    await userEvent.click(dialog.getByRole('combobox', { name: 'Length' }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Until Lifted' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+
+    await waitFor(() => expect(putBodies).toEqual([{ status: 'suspended', days: null }]));
+  });
+
+  it('sends nothing when the dialog is canceled', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    fireEvent.click(dialog.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(putBodies).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy();
+  });
+
+  it('disables the buttons while the request runs, so a second click sends nothing', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+    holdPut = true;
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+
+    const busy = await dialog.findByRole('button', { name: 'Suspending…' });
+    expect((busy as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(busy);
+    expect(putBodies).toHaveLength(1);
+
+    await act(async () => { releasePut?.(); });
+  });
+
+  it('shows the end the server stored next to the status', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+    putUser = { id: 'u1', status: 'suspended', suspendedUntil: END };
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+    await declineNotice();
+
+    expect(await screen.findByText(`until ${endLabel()}`)).toBeTruthy();
+    expect(columnText('Status')[0]).toMatch(/^suspended/);
+  });
+
+  it('shows no date for a suspension with no end', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+    putUser = { id: 'u1', status: 'suspended', suspendedUntil: null };
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+    await declineNotice();
+
+    await waitFor(() => expect(columnText('Status')).toEqual(['suspended']));
+    expect(screen.queryByText(/^until /)).toBeNull();
+  });
+
+  it('reads the end from the list on load', async () => {
+    stubFetch([userRow({ status: 'suspended', suspendedUntil: END })]);
+
+    render(<ManageUsersTab active />);
+
+    expect(await screen.findByText(`until ${endLabel()}`)).toBeTruthy();
+  });
+
+  it('offers Suspend on a suspended row, and says the new length replaces the end', async () => {
+    stubFetch([userRow({ status: 'suspended', suspendedUntil: END })]);
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+
+    expect(dialog.getByText(/replaces the current end/)).toBeTruthy();
+  });
+
+  it('does not mention a current end on an account that is not suspended', async () => {
+    stubFetch([userRow({ status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    const dialog = await openDialog();
+
+    expect(dialog.queryByText(/replaces the current end/)).toBeNull();
+  });
+
+  it('clears the date from the row on Activate', async () => {
+    stubFetch([userRow({ status: 'suspended', suspendedUntil: END })]);
+    putUser = { id: 'u1', status: 'normal', suspendedUntil: null };
+
+    render(<ManageUsersTab active />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Activate' }));
+
+    await waitFor(() => expect(columnText('Status')).toEqual(['normal']));
+    expect(putBodies).toEqual([{ status: 'normal' }]);
+  });
+
+  describe('the notice prefill', () => {
+    const suspendAndAccept = async () => {
+      const dialog = await openDialog();
+      fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+      await waitFor(() => expect(dialogProps.composer).not.toBeNull());
+    };
+
+    it('names the end date when there is one', async () => {
+      stubFetch([userRow({ status: 'normal' })]);
+      putUser = { id: 'u1', status: 'suspended', suspendedUntil: END };
+
+      render(<ManageUsersTab active />);
+      await suspendAndAccept();
+
+      expect(dialogProps.composer?.initialBody).toBe(
+        `Your account has been suspended until **${endLabel()}**.\n\n**Reason:** `);
+    });
+
+    it('leaves the date out for a suspension with no end', async () => {
+      stubFetch([userRow({ status: 'normal' })]);
+      putUser = { id: 'u1', status: 'suspended', suspendedUntil: null };
+
+      render(<ManageUsersTab active />);
+      await suspendAndAccept();
+
+      expect(dialogProps.composer?.initialBody).toBe('Your account has been suspended.\n\n**Reason:** ');
+    });
   });
 });
 

@@ -34,6 +34,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A World Tool's Script box now has a Templates button that lists starter code for the Tool's timing.** A parameter input picks one of the Tool's Parameters, or its **New** row adds the Parameter the template reads. Save, export and import your own World Tool templates beside your stat templates.
     - **Code templates can now pick an entity's or persona's stats, and an entity stat's trait inputs list its own traits.** In your own templates, `{{s:stat(who)}}` lists the stats of the entity picked in `who`, and `{{s:stat(persona)}}` lists persona stats. Owner traits show first, under **Owner**.
     - **A world script's box now has a Templates button with eight starter templates.** They set the opening location, advance time, pin memories and diary lines, and replace words. Save, export and import your own beside the others. A new location input picks one of the world's locations.
+  - **Timed Suspensions:**
+    - **In the Admin Panel's Users tab, Suspend asks for a length and the table shows when each suspension ends.** Pick 3 to 30 days or **Until Lifted**. **Suspend** also works on a suspended account.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 
