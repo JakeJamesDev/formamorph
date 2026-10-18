@@ -144,8 +144,8 @@ export function useWorldToolsAdapter({ selectedId, onSelect, snapshot }: {
       <div className="space-y-2">
         <span className="font-medium">Tools</span>
         <Hint>
-          Lists the Tools the AI can call in every playthrough of this world. A Tool named like a built-in Tool or one
-          of your Tools replaces it here. Drag a Tool to change its place.
+          Lists the Tools the AI can call in this world, in the order they run. Drag a Tool to change when it runs
+          among the Tools of its timing.
         </Hint>
       </div>
     );

@@ -173,7 +173,7 @@ World script templates share the library and the pack file with the other templa
 1. In the World Editor, select **Advanced** in the mode switch and open the **Scripts** tab in the **Logic** group.
 2. Read the tree. It has one group for each timing, and each script is a row, in the order the scripts run.
 3. Select a row to edit its script in the same box its owner shows. **Open** followed by the owner's name jumps to the owner's **Scripts** tab. A world script has no owner to open.
-4. Drag a row to change its place in its timing. A drop sets the **order** of the scripts in that timing. A drag to another timing is refused. Change a script's timing in its **Timing** menu.
+4. Drag a row to change when it runs in its timing. A drop sets the **order** of the scripts in that timing. A drag to another timing is refused. Change a script's timing in its **Timing** menu.
 5. Select **Add Script** and pick a timing. The new script belongs to the world. The text typed in the search box becomes its name.
 
 ## How to Debug Scripts
@@ -317,7 +317,7 @@ The script reads and writes everything a world script does: stats, traits, place
 
 - **`args` holds one member for each parameter the AI sent.** An optional parameter the AI left out is missing. `args` is read-only.
 - **A call lasts one turn.** Nothing armed carries into the next turn or the save.
-- **Stack Calls decides repeat calls.** Clear, a later call in the turn replaces the earlier one. Selected, every call runs once, in call order.
+- **Stack Calls decides repeat calls.** With it clear, a later call in the turn replaces the earlier one. With it selected, every call runs once, in call order.
 - **Called Tools run first in their timing**, in the **Tools** tab's order, then the world's scripts of that timing. A During AI Output Tool passes its sentence on to the next one, then to the scripts.
 - **A Planning call covers the narration.** A During AI Output Tool that the AI calls from the Planning prompt rewrites that turn's whole narration.
 - **Errors follow the script rules.** A During AI Output Tool that throws passes its sentence unchanged. On Call and After the AI drop the script's writes, as a failed script does. An On Call error goes back to the AI as the Tool's answer.

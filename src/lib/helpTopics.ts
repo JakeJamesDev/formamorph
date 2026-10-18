@@ -52,7 +52,7 @@ const SCRIPTS_TOPIC: HelpTopic = {
       label: 'Overview',
       body: `A script is one box of JavaScript with a timing. It belongs to a stat, a trait, or the world. A returned number replaces the stat's value. A script with no return can still set \`self\`, write another stat, pin a placeholder, or switch a trait. Leave a script empty and the manual value stands.
 
-**Whose script it is.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`. A world script has an empty \`self\`. The world's **Scripts** tab lists every script by timing, in run order. Drag a script to change its place in its timing.
+**Whose script it is.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`. A world script has an empty \`self\`. The world's **Scripts** tab lists every script by timing, in run order. Drag a script to change when it runs in its timing.
 
 **Test Code** under each box runs that box alone. It runs the code, and the editor underlines are static analysis only. A script that throws or times out changes nothing. **Templates** inserts common code shapes for the box's timing.`,
     },

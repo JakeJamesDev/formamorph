@@ -143,7 +143,7 @@ export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
           )}
           {!!outcome.writes?.length && (
             <>
-              <Hint>Writes the script staged</Hint>
+              <Hint>The writes the script staged. Try It doesn’t apply them.</Hint>
               <ul className="text-label font-mono break-words">
                 {outcome.writes.map((write) => <li key={write}>{write}</li>)}
               </ul>
