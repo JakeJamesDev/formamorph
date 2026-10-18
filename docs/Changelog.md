@@ -19,6 +19,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **The Test Bench no longer flags a Blueprint trait whose requirement reads a Blueprint stat its entities hold.** It checks each entity that links the trait, and names one that lacks the stat.
   - **Edit Stats in the Stats panel now edits every visible stat, entity and persona stats included.** Before, the button did nothing in a world whose only visible stats belong to entities. An edit is not shown as the turn's change.
+- **⚙️ Backend**
+  - **The built-in engine updates to node-llama-cpp 3.22.2 with llama.cpp v0.7.0.** The update brings two llama.cpp releases of Vulkan fixes, including a fix for device start-up.
 
 ---
 
