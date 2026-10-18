@@ -85,3 +85,23 @@ describe.each(worldToolCases)(
     });
   },
 );
+
+describe('a template with an entity slot and a stat slot tied to it', () => {
+  const stat = (id: string, name: string, value: number) =>
+    ({ id, name, type: 'number' as const, description: '', min: 0, max: 20, value, regen: 0, descriptors: [] });
+  const cast = statCodeNames({ ...world, entities: [{ id: 'e-tor', name: 'Tor', stats: [stat('t-grit', 'Grit', 4)] }, { id: 'e-ula', name: 'Ula', stats: [stat('u-grit', 'Grit', 9)] }] });
+  const code = 'entities[{{who:entity}}].stats[{{s:stat(who)}}].value += 2;';
+
+  it('writes the picked entity’s stat in Try It', async () => {
+    const { slots } = parseTemplateSlots(code, 'worldTool');
+    const tool: Tool = {
+      id: 't', name: 'try', description: '', params: [], emptyResult: '{}', offeredTo: [],
+      handler: { kind: 'script', code: fillTemplate(code, { ...defaultSlotValues(slots), who: 'Ula', s: 'Grit' }), timing: 'call' },
+    };
+    const result = await tryWorldToolScript(tool, '{}', cast);
+    expect(result.failure, result.text).toBeUndefined();
+    expect(result.warnings).toEqual([]);
+    // Ula's 9 plus 2; Tor's Grit is untouched.
+    expect(result.writes).toEqual(['entities.Ula.stats.Grit.value = 11']);
+  });
+});

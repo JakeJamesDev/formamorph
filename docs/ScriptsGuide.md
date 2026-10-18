@@ -35,7 +35,21 @@ A trait has its own **Scripts** tab. It runs its scripts only while the trait is
 
 The formulas are **Weighted Blend**, **Inverse of Another Stat**, **Threshold Flag**, **Daypart Modifier**, **Bound From Another Stat**, **Bonus From Persona Trait** and **Penalty From Entity Trait**. **Hourly Change** and **Regen Toward Target** read `clock.deltaHours`, which is `0` in every timing but **After the AI**.
 
+In an entity's stat, a stat or trait input lists the entity's own stats or traits first, under **Owner**, then the global ones. An **Owner** pick inserts `owner.stats` or `owner.traits`. A Blueprint stat's trait input lists the global traits only.
+
 To save your own template, select **New Template** or **Duplicate**. Pick each timing it works in under **Runs**. The template shows in the menu of each of those timings.
+
+In your own template, a stat or trait input can list the names of one entity. Put the entity input's name in brackets after the type:
+
+| Slot | What the input lists |
+|---|---|
+| `{{who:entity}}` | The world's entities |
+| `{{s:stat(who)}}` | The stats of the entity picked in `who`. Write it as `entities[{{who:entity}}].stats[{{s:stat(who)}}]` |
+| `{{t:trait(who)}}` | The traits of the entity picked in `who` |
+| `{{s:stat(persona)}}` | Each persona entity's stats. Write it as `persona.stats[{{s:stat(persona)}}]` |
+| `{{t:trait(persona)}}` | Each persona entity's traits |
+
+When you pick another entity, the stat and trait inputs that list its names clear.
 
 ## How to Insert a Name from Your World
 <!-- keywords: reference an entity's trait, trait of an entity, find a name, pick a name, insert a path, menu, variable button, drill down, dictionary placeholder, persona trait, stat value, don't type names, copy the right spelling -->

@@ -249,6 +249,34 @@ describe('the form a template presents', () => {
       expect(await rows()).toEqual(['StockOwner', 'WarmthWorld', 'DampWorld']);
     });
 
+    describe('a plain trait slot', () => {
+      const traitCode = 'return traits[{{t:trait}}].enabled;';
+      const miraTraits = entityTraitNames({ traits, traitGroups, entities, entityGroups }, [])[0].traits;
+      const world = ['Storm TouchedLineage › Storms', 'HeirLineage', 'CursedWorld'];
+
+      it('lists the entity’s own traits first under Owner, then the world’s, and fills `owner.traits`', async () => {
+        const user = userEvent.setup();
+        await authoring(user, traitCode, 'after', undefined, { ...owned, ownerTraits: miraTraits });
+
+        await user.click(await screen.findByRole('combobox', { name: 'T' }));
+        expect(await rows()).toEqual(['WoundedOwner › Scars', 'CalmOwner', ...world]);
+        await user.click(screen.getByRole('option', { name: /^Wounded/ }));
+        await waitFor(() => expect(generated()).toContain('return owner.traits["Wounded"].enabled;'));
+        expect(screen.getByRole('combobox', { name: 'T' })).toHaveTextContent('Wounded');
+
+        await user.click(screen.getByRole('combobox', { name: 'T' }));
+        await user.click(screen.getByRole('option', { name: /^Cursed/ }));
+        await waitFor(() => expect(generated()).toContain('return traits["Cursed"].enabled;'));
+      });
+
+      it('lists the world’s traits only in a global or a Blueprint stat’s box', async () => {
+        const user = userEvent.setup();
+        await authoring(user, traitCode, 'after', undefined, { ...owned, owner: 'blueprint', ownerStats: [stock] });
+        await user.click(await screen.findByRole('combobox', { name: 'T' }));
+        expect(await rows()).toEqual(world);
+      });
+    });
+
     it('hands a built-in template’s owner pick to Insert as code', async () => {
       const user = userEvent.setup();
       const onInsert = vi.fn();
@@ -308,6 +336,57 @@ describe('the form a template presents', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Who' }));
     await user.click(await screen.findByRole('option', { name: /^Mira/ }));
     await waitFor(() => expect(generated()).toContain('entities["Mira"].traits[""]'));
+  });
+
+  describe('a stat slot tied to an entity or the persona', () => {
+    const stat = (id: string, name: string): Stat =>
+      ({ id, name, type: 'number', description: '', value: 1, min: 0, max: 10, regen: 0, descriptors: [] });
+    const vale: Entity = { id: 'e4', name: 'Vale', order: 2, persona: true, stats: [stat('v1', 'Nerve')] };
+    const cast: Entity[] = [
+      { ...entities[0], stats: [stat('m1', 'Grit'), stat('m2', 'Hunger')] },
+      { ...entities[1], stats: [stat('a1', 'Faith')] },
+      { ...entities[2], stats: [stat('r1', 'Nerve'), stat('r2', 'Luck')] },
+      vale,
+    ];
+
+    it('lists the picked entity’s stats, fills its route, and clears when the entity changes', async () => {
+      const user = userEvent.setup();
+      await authoring(user, 'entities[{{who:entity}}].stats[{{s:stat(who)}}].value;', 'after', cast);
+
+      await user.click(await screen.findByRole('combobox', { name: 'S' }));
+      expect(screen.queryAllByRole('option')).toEqual([]);
+      await user.keyboard('{Escape}');
+      await user.click(await screen.findByRole('combobox', { name: 'Who' }));
+      await user.click(await screen.findByRole('option', { name: /^Mira/ }));
+      await user.click(screen.getByRole('combobox', { name: 'S' }));
+      expect(await rows()).toEqual(['Grit', 'Hunger']);
+      await user.click(screen.getByRole('option', { name: 'Hunger' }));
+      await waitFor(() => expect(generated()).toContain('entities["Mira"].stats["Hunger"].value'));
+
+      await user.click(screen.getByRole('combobox', { name: 'Who' }));
+      await user.click(await screen.findByRole('option', { name: 'Ash' }));
+      await waitFor(() => expect(generated()).toContain('entities["Ash"].stats[""].value'));
+      await user.click(screen.getByRole('combobox', { name: 'S' }));
+      expect(await rows()).toEqual(['Faith']);
+    });
+
+    it('lists each persona entity’s stats under its name, and fills `persona.stats`', async () => {
+      const user = userEvent.setup();
+      await authoring(user, 'persona.stats[{{s:stat(persona)}}].value;', 'after', cast);
+
+      await user.click(await screen.findByRole('combobox', { name: 'S' }));
+      expect(await rows()).toEqual(['NerveRook', 'LuckRook', 'NerveVale']);
+      await user.click(screen.getByRole('option', { name: /^Luck/ }));
+      await waitFor(() => expect(generated()).toContain('persona.stats["Luck"].value'));
+    });
+
+    it('lists the world’s stats for a loose tie', async () => {
+      const user = userEvent.setup();
+      await authoring(user, 'stats[{{s:stat(nobody)}}].value;', 'after', cast);
+
+      await user.click(await screen.findByRole('combobox', { name: 'S' }));
+      expect(await rows()).toEqual(['Damp']);
+    });
   });
 
   it('lists the picked entity’s traits in its own tree order under its own groups, and follows the pick', async () => {

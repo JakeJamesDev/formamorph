@@ -34,8 +34,8 @@ import {
   resolveSlotValue,
   validateSlotValues,
   isNameSlotType,
-  ownerStatAnswer,
-  PERSONA_TRAIT_OWNER,
+  ownerAnswer,
+  PERSONA_SLOT_OWNER,
   templatesFor,
   templateTimingLabels,
   TEMPLATE_TIMING_LABEL,
@@ -126,6 +126,8 @@ interface SlotNames {
   placeholder: readonly CodeTraitPlace[];
   /** The world's own traits, which `traits` keys. */
   trait: readonly CodeTraitPlace[];
+  /** The owning entity's traits, which `owner.traits` keys. Absent outside an entity stat's box. */
+  ownerTrait?: readonly CodeTraitPlace[];
   entities: readonly CodeEntityNames[];
   /** The Tool's named Parameters, which `args` keys. Empty outside a World Tool's box. */
   param: readonly ToolParam[];
@@ -185,22 +187,40 @@ const personaTraitRows = (entities: readonly CodeEntityNames[]): SlotRow[] => in
   .filter((entity) => entity.persona)
   .flatMap((entity) => traitRows(entity, entity.name ? [entity.name] : []));
 
-/** The answers with `slot` set to `value`. The trait slots tied to it clear, since they held the old entity's traits. */
+/** One entity's stats in authored order, each under `lead`. */
+const entityStatRows = (entity: CodeEntityNames, lead: readonly string[]): SlotRow[] =>
+  [...new Set(entity.stats)].map((name) => ({ key: `${entity.id}:stat:${name}`, value: name, name, breadcrumb: lead }));
+
+/** Each persona entity's stats under its name, in Entities-tab order. */
+const personaStatRows = (entities: readonly CodeEntityNames[]): SlotRow[] => inTabOrder(entities)
+  .filter((entity) => entity.persona)
+  .flatMap((entity) => entityStatRows(entity, entity.name ? [entity.name] : []));
+
+/** The entity a tied slot's entity slot picked. Undefined for an untied slot, null before a pick. */
+const tiedEntity = (slot: TemplateSlot, slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames) => {
+  const owner = slots.find((other) => other.name === slot.owner && other.type === 'entity');
+  return owner && (keyedEntity(names.entities, resolveSlotValue(owner, values)) ?? null);
+};
+
+/** The answers with `slot` set to `value`. The slots tied to it clear, since they held the old entity's names. */
 const withAnswer = (answers: Record<string, string>, slots: readonly TemplateSlot[], slot: TemplateSlot, value: string) => ({
   ...answers,
   ...Object.fromEntries(slots.filter((other) => other.owner === slot.name).map((other) => [other.name, ''])),
   [slot.name]: value,
 });
 
-/** What a slot's picker offers, given the answers so far. A tied trait slot lists its owner's traits. */
+/** What a slot's picker offers, given the answers so far. A tied trait or stat slot lists its entity's names. */
 function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames): SlotRow[] {
+  const tied = tiedEntity(slot, slots, values, names);
   switch (slot.type) {
     case 'stat': {
+      if (tied !== undefined) return tied ? entityStatRows(tied, []) : [];
+      if (slot.owner === PERSONA_SLOT_OWNER) return personaStatRows(names.entities);
       // An owned box lists both lists under a crumb each; the answer carries the list, so equal names stay two rows.
       const crumb = names.ownerStat ? { breadcrumb: WORLD_BREADCRUMB } : {};
       const world = names.stat.map((stat) => ({ key: stat.id, value: stat.name, name: stat.name, ...crumb }));
       const owner = (names.ownerStat ?? []).map((stat) => ({
-        key: `owner:${stat.id}`, value: ownerStatAnswer(stat.name), name: stat.name, breadcrumb: OWNER_CRUMB,
+        key: `owner:${stat.id}`, value: ownerAnswer(stat.name), name: stat.name, breadcrumb: OWNER_CRUMB,
       }));
       return [...owner, ...world];
     }
@@ -209,15 +229,16 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
     case 'entity':
       return entityRows(names.entities);
     case 'trait': {
-      const owner = slots.find((other) => other.name === slot.owner && other.type === 'entity');
-      if (owner) {
-        const entity = keyedEntity(names.entities, resolveSlotValue(owner, values));
-        return entity ? traitRows(entity, []) : [];
-      }
-      if (slot.owner === PERSONA_TRAIT_OWNER) return personaTraitRows(names.entities);
-      return names.trait.map((trait) => ({
+      if (tied !== undefined) return tied ? traitRows(tied, []) : [];
+      if (slot.owner === PERSONA_SLOT_OWNER) return personaTraitRows(names.entities);
+      // The owner's traits lead under Owner; the answer carries the list, so equal names stay two rows.
+      const owner = inTabOrder(names.ownerTrait ?? []).map((trait) => ({
+        key: `owner:${trait.id}`, value: ownerAnswer(trait.name), name: trait.name, breadcrumb: [...OWNER_CRUMB, ...trait.path],
+      }));
+      const world = names.trait.map((trait) => ({
         key: trait.id, value: trait.name, name: trait.name, breadcrumb: trait.path.length > 0 ? trait.path : WORLD_BREADCRUMB,
       }));
+      return [...owner, ...world];
     }
     case 'param': {
       // The Tool's Parameters of the slot's type, then a row that makes the one the template names.
@@ -379,6 +400,7 @@ export function StatCodeTemplateDialog({
   onInsert,
   placeholderPlaces = [],
   traitPlaces = [],
+  ownerTraits,
   entities = [],
   repository = productionRepository,
   fileTransfer,
@@ -401,6 +423,8 @@ export function StatCodeTemplateDialog({
   placeholderPlaces?: readonly CodeTraitPlace[];
   /** What an untied trait slot's picker offers. */
   traitPlaces?: readonly CodeTraitPlace[];
+  /** The owning entity's traits, which an untied trait slot lists first. Only an entity stat's box passes them. */
+  ownerTraits?: readonly CodeTraitPlace[];
   /** What an entity slot and a tied trait slot offer. */
   entities?: readonly CodeEntityNames[];
   /** Gets the filled code, and the Parameters the Tool lacks that its Parameter slots name. The caller adds them. */
@@ -452,9 +476,10 @@ export function StatCodeTemplateDialog({
     ...(owner ? { ownerStat: ownerStats.filter(stat => stat.id !== currentStatId && stat.name) } : {}),
     placeholder: placeholderPlaces,
     trait: traitPlaces,
+    ...(ownerTraits && { ownerTrait: ownerTraits }),
     entities,
     param: params ? namedParams(params) : [],
-  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, entities, params]);
+  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, ownerTraits, entities, params]);
   // The template editor has no world, so its Owner group types over each name.
   const treeOwner = useMemo<VariableTreeOwner | null>(() => {
     if (!owner) return null;

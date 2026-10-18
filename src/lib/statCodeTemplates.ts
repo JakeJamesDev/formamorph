@@ -7,8 +7,8 @@
  * reuses the first occurrence's declaration. Substitution is textual, so a template controls its own
  * quoting: a `stat`, `placeholder`, `trait`, `entity`, `param` or `daypart` slot emits a quoted string, while
  * `number`, `choice` and `text` emit their value as typed (which is what lets a choice supply a comparison
- * operator). `trait(slot)` lists the traits of the entity that `entity` slot picked, and `trait(persona)` lists the
- * persona's traits unless the template declares an `entity` slot named `persona`.
+ * operator). `trait(slot)` and `stat(slot)` list the traits or stats of the entity that `entity` slot picked, and
+ * `trait(persona)` and `stat(persona)` list the persona's, unless the template declares an `entity` slot named `persona`.
  */
 
 import type { ScriptTiming, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
@@ -41,12 +41,12 @@ export interface TemplateSlot {
   defaultValue?: string;
   /** The `choice(a|b|…)` options, in declaration order. Only ever set for `choice` slots. */
   options?: string[];
-  /** Whose traits a `trait` slot lists: `persona`, or the name of an `entity` slot. Absent, the world's. */
+  /** Whose traits or stats a `trait` or `stat` slot lists: `persona`, or the name of an `entity` slot. Absent, the world's. */
   owner?: string;
 }
 
-/** The `trait(…)` owner that lists the persona's traits. */
-export const PERSONA_TRAIT_OWNER = 'persona';
+/** The `trait(…)` or `stat(…)` owner that lists the persona's traits or stats. */
+export const PERSONA_SLOT_OWNER = 'persona';
 
 /** The surface a template is written for: a stat script box, or a World Tool's Script box. */
 export type TemplateKind = 'script' | 'worldTool';
@@ -185,16 +185,16 @@ export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTem
       const known = paramType === undefined || isSlotParamType(paramType);
       if (!known) errors.push(`Slot "${name}" has unknown Parameter type "${paramType}" — treating it as text.`);
       slot.paramType = known && paramType ? paramType : 'string';
-    } else if (type === 'trait' && options?.length === 1) slot.owner = options[0];
+    } else if ((type === 'trait' || type === 'stat') && options?.length === 1) slot.owner = options[0];
     else if (options && options.length > 0) slot.options = options;
 
     byName.set(name, slot);
     slots.push(slot);
   }
 
-  // A tie to anything but an entity slot or `persona` is dropped, so the slot lists the world's traits.
+  // A tie to anything but an entity slot or `persona` is dropped, so the slot lists the world's names.
   for (const slot of slots) {
-    if (slot.owner === undefined || slot.owner === PERSONA_TRAIT_OWNER || byName.get(slot.owner)?.type === 'entity') continue;
+    if (slot.owner === undefined || slot.owner === PERSONA_SLOT_OWNER || byName.get(slot.owner)?.type === 'entity') continue;
     delete slot.owner;
   }
 
@@ -302,25 +302,26 @@ export function validateSlotValues(slots: TemplateSlot[], values: Record<string,
   return problems;
 }
 
-// A stat slot's answer is a name, or an owner's stat name behind this control-character mark.
-const OWNER_STAT_MARK = '\u0001owner\u0001';
+// A stat or trait slot's answer is a name, or an owner's name behind this control-character mark.
+const OWNER_MARK = '\u0001owner\u0001';
 
-/** The answer a stat slot takes for the owner's stat `name`. */
-export const ownerStatAnswer = (name: string): string => OWNER_STAT_MARK + name;
+/** The answer a stat or trait slot takes for the owner's own stat or trait `name`. */
+export const ownerAnswer = (name: string): string => OWNER_MARK + name;
 
-/** Which list a stat slot's answer came from, and the stat's name. A plain answer is the world's. */
-export function statAnswer(answer: string): { route: 'owner' | 'world'; name: string } {
-  return answer.startsWith(OWNER_STAT_MARK)
-    ? { route: 'owner', name: answer.slice(OWNER_STAT_MARK.length) }
+/** Which list a stat or trait slot's answer came from, and the name. A plain answer is the world's. */
+export function slotAnswer(answer: string): { route: 'owner' | 'world'; name: string } {
+  return answer.startsWith(OWNER_MARK)
+    ? { route: 'owner', name: answer.slice(OWNER_MARK.length) }
     : { route: 'world', name: answer };
 }
 
-// `stats` as the word that indexes a slot, by `[` or `?.[`: not a member of something (`foo.stats`) or a longer name.
-const STATS_BEFORE_SLOT = /(^|[^\w$.])stats(\s*(?:\?\.\s*)?\[\s*)$/;
+// `stats` or `traits` as the word that indexes a slot, by `[` or `?.[`: not a member of something (`foo.stats`) or a longer name.
+const indexedBy = (list: string) => new RegExp(`(^|[^\\w$.])(${list})(\\s*(?:\\?\\.\\s*)?\\[\\s*)$`);
+const OWNER_ROUTES: Partial<Record<SlotType, RegExp>> = { stat: indexedBy('stats'), trait: indexedBy('traits') };
 
 /** Fill a template's slots and return runnable sandbox code. Unfilled slots stand for their declared
- *  default, so a partially completed form still previews. An owner's stat answer reroutes the `stats` that
- *  indexes its slot to `owner.stats`. A slot used any other way gets the bare name. */
+ *  default, so a partially completed form still previews. An owner's answer reroutes the `stats` or `traits`
+ *  that indexes its slot to `owner.stats` or `owner.traits`. A slot used any other way gets the bare name. */
 export function fillTemplate(code: string, values: Record<string, string>): string {
   const source = code || '';
   const { slots } = parseTemplateSlots(source);
@@ -334,10 +335,11 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
     const slot = byName.get(match[1]);
     if (!slot) continue;
     let answer = resolveSlotValue(slot, values);
-    if (slot.type === 'stat') {
-      const { route, name } = statAnswer(answer);
+    const ownerRoute = OWNER_ROUTES[slot.type];
+    if (ownerRoute) {
+      const { route, name } = slotAnswer(answer);
       answer = name;
-      if (route === 'owner') out = out.replace(STATS_BEFORE_SLOT, (_all, lead: string, open: string) => `${lead}owner.stats${open}`);
+      if (route === 'owner') out = out.replace(ownerRoute, (_all, lead: string, list: string, open: string) => `${lead}owner.${list}${open}`);
     }
     out += renderSlot(slot, answer);
   }

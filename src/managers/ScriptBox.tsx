@@ -88,6 +88,11 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const isOutput = timing === 'output';
   const { selfName, names, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup } = context;
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
+  // An entity stat's own traits, which a template's trait slot lists under Owner. A Blueprint's owners vary, so none.
+  const ownerTraits = useMemo(
+    () => (owner?.kind === 'entity' ? entities.find((entity) => entity.id === owner.entityId)?.traits : undefined),
+    [owner, entities],
+  );
   // The one build of this box's options: the editor and Test Code's problem count both read these.
   const analysis = useMemo(() => statBoxAnalysisOptions(names, {
     selfName, surface: scriptSurface(SCRIPT_SURFACES[self.kind], timing),
@@ -215,6 +220,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
           onInsert={(code) => write(migrateStatCodeRoutes(code, names.placeholders))}
           placeholderPlaces={placeholderPlaces}
           traitPlaces={traitPlaces}
+          ownerTraits={ownerTraits}
           entities={entities}
         />
       )}

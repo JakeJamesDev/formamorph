@@ -63,3 +63,15 @@ describe.each(BUILT_IN_TEMPLATES.flatMap((template) =>
     });
   },
 );
+
+describe('a stat slot tied to the persona', () => {
+  it('fills `persona.stats` and runs in Test Code', async () => {
+    const cast = statCodeNames({ ...world, entities: [{ id: 'wren', name: 'Wren', persona: true, stats: [stat('w-luck', 'Luck', 7, 10)] }] });
+    const template = 'return persona.stats[{{s:stat(persona)}}].value * 2;';
+    const code = fillTemplate(template, { s: 'Luck' });
+    expect(code).toBe('return persona.stats["Luck"].value * 2;');
+    // The editor's run has no persona playing, so it runs clean on an empty one; a pending persona holds Wren's stat.
+    expect((await runTestCode(code, 'after', subject, cast)).error).toBeNull();
+    expect(await runTestCode(code, 'after', subject, cast, { pendingPersona: true })).toMatchObject({ error: null, value: 14 });
+  });
+});
