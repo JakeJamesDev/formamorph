@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.3.2 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.2** — the latest released version.
+> ✅ **3.0.0 – 3.3.3 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.3** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.3** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.3.3 — Released 2026-10-18</strong> — Native Reasoning and Tools that follow the loaded model — Edit Stats for entity and persona stats — saves that survive an unreadable record — Blueprint stat gates in the Test Bench (click to expand)</summary>
 
 ### Minor Changes
 
@@ -23,6 +28,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Native Reasoning and Tools now match the model LM Studio or llama.cpp has loaded when you use `default`.** Switching back to a model reuses its answer with no request. Both rows get Recheck and name the model they describe.
 - **⚙️ Backend**
   - **The built-in engine updates to node-llama-cpp 3.22.2 with llama.cpp v0.7.0.** The update brings two llama.cpp releases of Vulkan fixes, including a fix for device start-up.
+
+</details>
 
 ---
 
