@@ -31,8 +31,27 @@ export const putSaveRecord = async (record: SaveRecord) => {
 export const getSaveRecord = async (id: string) =>
   promisifyRequest((await store(STORE_NAME, 'readonly')).get(id)) as Promise<SaveRecord | undefined>;
 
-export const getAllSaveRecords = async () =>
-  promisifyRequest((await store(STORE_NAME, 'readonly')).getAll()) as Promise<SaveRecord[]>;
+/** Keys of unreadable rows already warned about this session. */
+const warnedUnreadable = new Set<IDBValidKey>();
+
+/** Every save the browser can read. A row that reads back as a non-object (a value it failed to load) is
+ *  skipped and left in place, since the stored bytes may still be recoverable. */
+export const getAllSaveRecords = async (): Promise<SaveRecord[]> => {
+  const values = await promisifyRequest((await store(STORE_NAME, 'readonly')).getAll() as IDBRequest<unknown[]>);
+  const readable = values.filter((value): value is SaveRecord => value !== null && typeof value === 'object');
+  if (readable.length < values.length) void warnUnreadable(values);
+  return readable;
+};
+
+/** Warns once per key for each unreadable row; keys come in getAll's order. */
+async function warnUnreadable(values: unknown[]): Promise<void> {
+  const keys = await promisifyRequest((await store(STORE_NAME, 'readonly')).getAllKeys());
+  values.forEach((value, i) => {
+    if ((value !== null && typeof value === 'object') || warnedUnreadable.has(keys[i])) return;
+    warnedUnreadable.add(keys[i]);
+    console.warn(`Skipped an unreadable save record (id ${String(keys[i])})`);
+  });
+}
 
 export const deleteSaveRecord = async (id: string) => {
   await promisifyRequest((await store(STORE_NAME, 'readwrite')).delete(id));
