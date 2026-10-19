@@ -28,7 +28,10 @@ Each entity gets three new settings beside its existing Locations list. The game
   - **Stays Put**: never leaves where it is.
   - **Moves Between Its Locations**: moves one Connection hop at a time, only to its own locations.
   - **Can Follow the Player**: can join the player and travel with them.
-- **Mention When Nearby**: on by default. Off keeps the entity out of the nearby roster, so the AI learns of it only at its own location.
+- **Known In**: where the AI knows of the entity when it isn't present.
+  - **Nearby**: one hop from where it is, as today. The default.
+  - **Nowhere**: the AI learns of it only at its own location.
+  - **Picked locations**: anywhere inside each picked location, at any depth. A queen in Rosewood's throne room, Known In Rosewood, is known at Rosewood's inn.
 
 The Locations Canvas warns when two locations of a Moves Between entity have no Connection path through its own locations.
 
@@ -55,7 +58,7 @@ The Locations Canvas warns when two locations of a Moves Between entity have no 
 11. As an author, I want an entity to be able to follow the player, so that a companion comes along on the adventure.
 12. As an author, I want a Moves Between entity to come along only inside its own locations, so that the captain walks to the tower with me but never into the barrow.
 13. As an author, I want to hide an entity from the nearby roster, so that the AI doesn't learn about it before the player arrives.
-14. As an author, I want the nearby mention on by default, so that nearby entities are known as they are today.
+14. As an author, I want nearby entities known by default, so that they are known as they are today.
 15. As an author, I want to set an entity's locations on the Locations Canvas, so that placing the cast is visual and quick.
 16. As an author, I want the canvas to tint an entity's locations when I select it, so that I see its range at a glance.
 17. As an author, I want scripts to move any entity, so that I can build schedules and conditions (a wight that leaves its tomb when the crown is whole, a nightly raid).
@@ -82,6 +85,13 @@ The Locations Canvas warns when two locations of a Moves Between entity have no 
 38. As a prompt tuner, I want the entity request to have its own editable prompt, so that I can tune it apart from the player's.
 39. As a prompt tuner, I want the entity request pinned like the player's location request, so that it is as fast and as stable.
 40. As a prompt tuner, I want the entity request to show in Request Anatomy, so that I can see exactly what it sends.
+41. As an author, I want a famous entity known across a whole region, so that townsfolk at the inn can talk about the queen in the throne room.
+42. As an author, I want to pick several regions, so that a queen is known in her own city and the next town.
+43. As an author, I want a known entity to stay out of the scene, so that talk of the queen doesn't put her in the inn.
+44. As an author, I want a known entity to send only its summary, so that a long list of famous names stays cheap.
+45. As an author, I want to set Known In on the Locations Canvas, so that I see a reputation's reach on the map.
+46. As an author, I want a reputation to stay put when its owner travels, so that the queen is still known in Rosewood while she is away.
+47. As an author, I want Known In to fall back to Nearby when I delete its last picked location, so that the entity never silently goes unknown.
 
 ## Implementation Decisions
 
@@ -89,7 +99,7 @@ The Locations Canvas warns when two locations of a Moves Between entity have no 
 
 - `presence`: `'random'` for one individual at a random listed location. Absent means everywhere listed.
 - `movement`: `'stays' | 'between' | 'follow'`. Absent means Free.
-- `mentionWhenNearby`: `false` to hide from the nearby roster. Absent means on.
+- `knownIn`: `'nowhere'`, or a list of location ids. Absent means Nearby. Picks replace Nearby, so the list is the whole answer.
 
 The persona entity ignores Presence and Movement, and the editor hides them for it. An entity with Presence Everywhere offers only Free, Stays Put and Can Follow the Player: a group is at all its places at once, so Moves Between has no meaning for it.
 
@@ -101,7 +111,16 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 - An entity has a position when its Presence is One, when its Movement is not Free, or when code has moved it.
 - A runtime character's existing `locationId` is its position. Runtime characters get Can Follow the Player.
 
-**Presence roster.** The existing presence module stays the one inversion of membership. It gains a runtime layer: a tracked entity is at its position; an untracked entity is at all of its listed locations. Every roster during play (present, in scene, sublocations, reachable) reads through it. The reachable roster drops entities with Mention When Nearby off.
+**Presence roster.** The existing presence module stays the one inversion of membership. It gains a runtime layer: a tracked entity is at its position; an untracked entity is at all of its listed locations. Every roster during play (present, in scene, sublocations, reachable, known) reads through it. The reachable roster lists only entities whose Known In is Nearby.
+
+**Known roster.** A new `<ENTITIES|known>` chip scope lists each entity that is known at the player's location but not present. An entity is known there when one of its picked locations is the player's location or contains it at any depth.
+
+- Each known entity sends only its AI summary.
+- Picks stay fixed when the entity moves. Only Nearby follows its position.
+- The existing highest-scope-wins rule applies, so an entity here, in a sublocation or reachable isn't listed again as known.
+- The chip joins every default prompt that already uses `<ENTITIES|reachable>`. Each changed default prompt ships with probe numbers.
+- Deleting a location drops it from every Known In list. An empty list falls back to Nearby.
+- The persona hides Known In, and the known roster never lists the persona.
 
 **New game.** Each entity with Presence One draws one listed location at random. A tracked entity with Presence Everywhere has no single position; it stays at all of its listed locations.
 
@@ -144,8 +163,8 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 
 **Editor UI.**
 
-- Presence, Movement and Mention When Nearby sit in the entity panel.
-- The Locations Canvas gets an entity selection mode: the selected entity's locations tint, and a click toggles membership.
+- Presence, Movement and Known In sit in the entity panel.
+- The Locations Canvas gets an entity selection mode with a switch between **Locations** and **Known In**. Locations shows a solid tint, and a click toggles membership. Known In shows a lighter tint over each picked subtree, and a click toggles a pick. These visuals need the user's approval before they are built.
 - The canvas warns about a Moves Between entity whose locations aren't connected through its own locations.
 - Every new screen or modal state gets a dev-route entry.
 
@@ -155,7 +174,7 @@ A good test calls the real module through its public interface and asserts what 
 
 Three seams, all existing and pure:
 
-1. **Presence roster.** Who is present, in scene, nearby and reachable for a given world, positions map and follower set. Prior art: the presence module's own tests and the location context tests.
+1. **Presence roster.** Who is present, in scene, reachable and known for a given world, positions map and follower set. This includes subtree depth for picks, highest scope wins, and the empty-list fallback. Prior art: the presence module's own tests and the location context tests.
 2. **Turn commit.** Most rules live here: the join order, sticky following, "come along" only on a move, the Moves Between limit, the suggest-mode Go and Dismiss, collapse for One, peel-off for Everywhere, code moves last, and the stale-position fallback. Prior art: the turn commit tests.
 3. **Stat code executor.** The `move`, `follow` and `unfollow` writes: target lookup by id and name, the unknown-target throw, and tracking a Free entity. Prior art: the executor's world-write tests.
 
