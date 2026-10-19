@@ -2,6 +2,8 @@ import type { WireMessage } from '@/types';
 import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { redactUrl } from '@/lib/redactUrl';
 import { reasoningLevelLabel } from '@/lib/reasoningEffort';
+import { REQUEST_LABELS } from '@/lib/promptGroups';
+import { isMaxOutputKind } from '@/lib/promptMaxOutput';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
 import { noteUnusableExtraParams } from './extraParamsWarning';
@@ -77,11 +79,16 @@ export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
   const roomLines = room
     ? [`Thinking Room: ${room.tokens}`, `Thinking Room Strength: ${reasoningLevelLabel(room.strength)}`]
     : [];
+  const prompt = REQUEST_LABELS[spec.requestType] ?? spec.requestType;
   const message = room
-    ? 'The model used all its Thinking Room before it wrote an answer'
-    : 'The model reached its token limit before it wrote an answer';
+    ? `The model used all its Thinking Room before it wrote an answer for ${prompt}`
+    : `The model reached its token limit before it wrote an answer for ${prompt}`;
+  // With no room, the app didn't know the model thinks, so the cap held the thought too.
+  const hint = room || !isMaxOutputKind(spec.requestType)
+    ? []
+    : ['', `If this model thinks before it answers, raise Max Output for ${prompt}.`];
   return new AiStreamError('cut-thought', message, {
-    details: [...requestLines(spec), ...limit, ...roomLines].join('\n'),
+    details: [`Prompt: ${prompt}`, ...requestLines(spec), ...limit, ...roomLines, ...hint].join('\n'),
   });
 }
 

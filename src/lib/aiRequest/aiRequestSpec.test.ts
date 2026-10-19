@@ -1368,3 +1368,24 @@ describe('narration output caps — the reserve and the length guidance', () => 
     expect(lengthGuidance('auto', outputCaps(snap, narration).answerCap)).toMatch(/at most 9 /);
   });
 });
+
+/**
+ * NanoGPT's detailed list marks an always-on reasoner by listing no `none` effort. A switched-off short pass
+ * on such a model still thinks, so it gets room on top of its cap rather than the cap alone.
+ */
+describe('an always-on reasoner from a capability flag', () => {
+  const alwaysOn: ReasoningCapability = {
+    ...UNKNOWN_REASONING_CAPABILITY, reasons: true, levels: ['low', 'high', 'max'], offAllowed: false,
+    sources: { reasons: 'native', levels: 'native', offAllowed: 'native' },
+  };
+  const nano = external({ url: 'https://nano-gpt.com/api/v1/chat/completions', maxTokens: undefined, reasoning: alwaysOn });
+
+  it('gives a switched-off Choices pass Thinking Room above its cap', () => {
+    const spec = buildAiRequestSpec(
+      snapshot(nano, { reasoningEngaged: true }), call({ requestType: 'choices', maxTokensOverride: 256 }),
+    );
+    expect(spec.thinkingRoom).toBeDefined();
+    expect(spec.body.max_tokens).toBe(256 + (spec.thinkingRoom?.tokens ?? 0));
+    expect(spec.body).not.toHaveProperty('reasoning_effort', 'none');
+  });
+});

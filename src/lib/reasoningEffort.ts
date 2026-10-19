@@ -573,6 +573,17 @@ function originOf(endpointUrl: string): string | null {
   }
 }
 
+function hostOf(endpointUrl: string): string | null {
+  try {
+    return new URL(endpointUrl).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/** NanoGPT lists capabilities only on `?detailed=true`; its plain list carries ids alone. */
+const NANO_GPT_HOST = 'nano-gpt.com';
+
 function authHeaders(token: string): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -763,9 +774,30 @@ function openRouterCapability(reasoning: Record<string, unknown>): ReasoningCapa
 }
 
 /**
+ * A `capabilities.reasoning` flag with an optional `reasoning_efforts` list, as NanoGPT's detailed list
+ * publishes it. The flag answers the reasons question; the list, where it names known literals, the levels.
+ * A list without `none` marks an always-on reasoner, so off is not allowed.
+ */
+function capabilityFlagRecord(reasons: boolean, efforts: unknown): ReasoningCapability {
+  if (!reasons) return nonReasoningCapability('native');
+  const named = Array.isArray(efforts) ? efforts : null;
+  const levels = named ? orUnknown(dedupeLevels(named.filter(isEffortField))) : null;
+  const offAllowed = named && named.length > 0 ? named.includes('none') : null;
+  return {
+    reasons: true, levels, budget: null, dialect: 'unknown', offAllowed, tools: null, structuredOutput: null,
+    sources: {
+      reasons: 'native',
+      ...(levels ? { levels: 'native' as const } : {}),
+      ...(offAllowed === null ? {} : { offAllowed: 'native' as const }),
+    },
+  };
+}
+
+/**
  * An OpenAI-shaped model list, which several backends serve. An entry may carry a `reasoning` object, which
  * only OpenRouter publishes and only for a reasoning model, so it names that dialect and answers four
- * questions at once. An entry with only a `supported_parameters` list answers the reasons question alone.
+ * questions at once. An entry with a `capabilities.reasoning` flag (NanoGPT) answers reasons and the levels
+ * it lists. An entry with only a `supported_parameters` list answers the reasons question alone.
  *
  * An entry carrying `max_model_len` is vLLM or Aphrodite, the same key the context-length lookup reads for
  * them. That names the dialect and nothing else: whether the server runs a reasoning parser, and so whether
@@ -775,7 +807,10 @@ function openRouterCapability(reasoning: Record<string, unknown>): ReasoningCapa
 const modelListSource: NativeSource = async (target, doFetch, signal) => {
   const urls = deriveModelsUrls(target.url);
   if (!urls) return null;
-  const body = await readAdvertisement(urls.openai, doFetch, { headers: authHeaders(target.token) }, signal);
+  const host = hostOf(target.url);
+  const nanoGpt = host === NANO_GPT_HOST || !!host?.endsWith(`.${NANO_GPT_HOST}`);
+  const listUrl = nanoGpt ? `${urls.openai}?detailed=true` : urls.openai;
+  const body = await readAdvertisement(listUrl, doFetch, { headers: authHeaders(target.token) }, signal);
   const data = body?.data;
   if (!Array.isArray(data)) return null;
   const entry = data.find((m) => (m as { id?: unknown }).id === lookupModel(target));
@@ -783,6 +818,10 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
 
   const reasoning = (entry as { reasoning?: unknown }).reasoning;
   if (reasoning && typeof reasoning === 'object') return openRouterCapability(reasoning as Record<string, unknown>);
+
+  const capabilities = (entry as { capabilities?: unknown }).capabilities;
+  const flag = capabilities && typeof capabilities === 'object' ? (capabilities as { reasoning?: unknown }).reasoning : undefined;
+  if (typeof flag === 'boolean') return capabilityFlagRecord(flag, (entry as { reasoning_efforts?: unknown }).reasoning_efforts);
 
   const params = (entry as { supported_parameters?: unknown }).supported_parameters;
   if (Array.isArray(params)) {

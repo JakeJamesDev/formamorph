@@ -510,8 +510,19 @@ describe('the error for a thought the token limit cut', () => {
 
   it('says the model used all its Thinking Room before it wrote an answer', () => {
     expect(cutThoughtFailure(roomed)).toMatchObject({
-      kind: 'cut-thought', message: 'The model used all its Thinking Room before it wrote an answer',
+      kind: 'cut-thought', message: 'The model used all its Thinking Room before it wrote an answer for Narration',
     });
+  });
+
+  it('names the prompt that sent the call', () => {
+    const error = cutThoughtFailure({ ...spec, requestType: 'choices' });
+    expect(error.message).toBe('The model reached its token limit before it wrote an answer for Choices');
+    expect(error.details?.split('\n')[0]).toBe('Prompt: Choices');
+  });
+
+  it('names the request type where no prompt label covers it', () => {
+    const error = cutThoughtFailure({ ...spec, requestType: 'descriptionBridge' });
+    expect(error.details).toContain('Prompt: descriptionBridge');
   });
 
   it('lists the room and its strength beside max_tokens for a call that had a room', () => {
@@ -528,9 +539,15 @@ describe('the error for a thought the token limit cut', () => {
 
   it('names the token limit, and omits the room, for a call that had none', () => {
     const error = cutThoughtFailure(spec);
-    expect(error.message).toBe('The model reached its token limit before it wrote an answer');
+    expect(error.message).toBe('The model reached its token limit before it wrote an answer for Narration');
     expect(error.details).toContain('max_tokens: 64');
     expect(error.details).not.toContain('Thinking Room');
+  });
+
+  it('points at Max Output only for a room-less prompt that has a Max Output row', () => {
+    expect(cutThoughtFailure({ ...spec, requestType: 'choices' }).details).toContain('raise Max Output for Choices');
+    expect(cutThoughtFailure({ ...roomed, requestType: 'choices' }).details).not.toContain('Max Output');
+    expect(cutThoughtFailure({ ...spec, requestType: 'statUpdates' }).details).not.toContain('Max Output');
   });
 });
 
