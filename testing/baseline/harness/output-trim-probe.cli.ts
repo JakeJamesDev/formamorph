@@ -10,6 +10,8 @@
 //
 // Usage: npx vite-node testing/baseline/harness/output-trim-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 3] [--max 900] [--only idle,menu] [--show] [--dump]
+//          [--reasoning none|auto|low|medium|high]
+// With --reasoning on, it also reports each reply's thought length.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
@@ -27,6 +29,8 @@ const endpoint = argVal('--endpoint', 'http://127.0.0.1:1234/v1/chat/completions
 const runs = Number(argVal('--runs', '3'));
 const maxTokens = Number(argVal('--max', '900'));
 const only = argVal('--only', '');
+// `none` sends reasoning off; `auto` sends no field (Model Default); a level sends that level.
+const reasoning = argVal('--reasoning', 'none');
 const SEED = 616161;
 
 const BASELINE = path.resolve('testing/baseline');
@@ -80,19 +84,28 @@ async function loadedModel(): Promise<string> {
   return loaded[0].id;
 }
 
-async function narrate(model: string, system: string, user: string, seed: number): Promise<string> {
-  // Narration is unpinned in PROMPT_SAMPLER_PINS, so no temperature is sent.
+async function narrate(model: string, system: string, user: string, seed: number) {
+  // Narration is unpinned in PROMPT_SAMPLER_PINS, so no temperature is sent. `auto` is Model Default: no field.
+  const effort = reasoning === 'auto' ? {} : { reasoning_effort: reasoning };
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model, seed, max_tokens: maxTokens, reasoning_effort: 'none', stream: false,
+      model, seed, max_tokens: maxTokens, ...effort, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     }),
   });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-  const body = await res.json() as { choices: Array<{ message: { content: string | null } }> };
-  return body.choices[0].message.content ?? '';
+  const body = await res.json() as {
+    choices: Array<{ message: { content: string | null; reasoning_content?: string; reasoning?: string } }>;
+    usage?: { completion_tokens_details?: { reasoning_tokens?: number } };
+  };
+  const message = body.choices[0].message;
+  return {
+    text: message.content ?? '',
+    reasoning: message.reasoning_content ?? message.reasoning ?? '',
+    reasoningTokens: body.usage?.completion_tokens_details?.reasoning_tokens ?? null,
+  };
 }
 
 const count = (text: string, re: RegExp) => [...text.matchAll(re)].length;
@@ -122,12 +135,15 @@ if (args.includes('--dump')) {
 
 const totals: Record<string, Record<string, Record<string, number>>> = {};
 const replies: Record<string, Record<string, number>> = {};
+const thought: Record<string, Array<{ words: number; tokens: number | null; empty: boolean }>> = {};
 // Arms interleave per run so drift, if any, lands on both.
 for (const c of cases) {
   const user = defaultNarrationUserPrompt.replace('<PLAYER ACTION>', c.action);
   for (let i = 0; i < runs; i++) {
     for (const arm of Object.keys(ARMS)) {
-      const text = await narrate(model, systemPrompt(arm, c.action), user, SEED + i);
+      const reply = await narrate(model, systemPrompt(arm, c.action), user, SEED + i);
+      const text = reply.text;
+      (thought[arm] ??= []).push({ words: words(reply.reasoning), tokens: reply.reasoningTokens, empty: !text.trim() });
       const row = Object.fromEntries(names.map((n) => [n, METRICS[n](text)]));
       totals[arm] ??= {};
       replies[arm] ??= {};
@@ -137,6 +153,7 @@ for (const c of cases) {
         for (const n of names) totals[arm][kind][n] += row[n];
       }
       console.log(`[${arm}] ${c.id} #${i} ${names.map((n) => `${n}=${row[n]}`).join(' ')}${text.trim() ? '' : ' · EMPTY'}`);
+      if (reasoning !== 'none') console.log(`    thought ${words(reply.reasoning)}w · ${reply.reasoningTokens ?? '?'} tok`);
       if (args.includes('--show')) console.log(`    ${text.replace(/\n+/g, ' ¶ ')}`);
     }
   }
@@ -151,6 +168,18 @@ for (const kind of ['calm', 'dialogue', 'pivot', 'menu', 'all']) {
     if (!t) continue;
     const n = replies[arm][kind];
     console.log(`${`${arm}/${kind}`.padEnd(18)} ${names.map((m) => (SUMMED.has(m) ? `${t[m]}/${n}` : (t[m] / n).toFixed(1)).padStart(12)).join('')}`);
+  }
+}
+if (reasoning !== 'none') {
+  const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
+  const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : 0);
+  console.log(`\nREASONING (--reasoning ${reasoning})`);
+  for (const arm of Object.keys(ARMS)) {
+    const t = thought[arm] ?? [];
+    const tokens = t.flatMap((x) => (x.tokens === null ? [] : [x.tokens]));
+    console.log(`${arm.padEnd(10)} words mean ${mean(t.map((x) => x.words))} · median ${median(t.map((x) => x.words))}`
+      + ` · tokens mean ${tokens.length ? mean(tokens) : '?'} · median ${tokens.length ? median(tokens) : '?'}`
+      + ` · empty replies ${t.filter((x) => x.empty).length}/${t.length}`);
   }
 }
 console.log(`duration ${((Date.now() - started) / 1000).toFixed(0)}s`);
