@@ -63,6 +63,11 @@ export function recordCompletionProbe(url: string, model: string, answers: Compl
   completionAnswers.set(key, { ...completionAnswers.get(key), ...answers });
 }
 
+/** Forgets what the completion probes proved for this endpoint and model, so the next resolve asks again. */
+export function forgetCompletionProbe(url: string, model: string): void {
+  completionAnswers.delete(completionKey(url, model));
+}
+
 /** Test-only: forget everything. */
 export function resetProbeMemo(): void {
   absent.clear();

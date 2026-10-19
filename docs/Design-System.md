@@ -1650,6 +1650,7 @@ The badge labels are **Supporter** and **Supporter+**. Copy says Profile Image, 
 - ⋯ **One menu below `md`.** A single **Preset Actions** button holds every action. File actions come first, then a separator, then the destructive ones in red.
 - ✋ **Confirm first.** Reset and Delete open a confirm that names the preset. A surface whose Reset Undo or Cancel can revert, such as the Formaquestion **Mascot** tab, resets with no confirm. A surface can title its own confirm. Cancel returns focus to the icon, or to the **Preset Actions** button when the menu opened the confirm.
 - 🟢 **Badge.** An endpoint preset select shows whether its server answers, under the select. The row carries one dot, one line and **Recheck**.
+- 🔁 **Recheck on muted rows.** The muted **Native Reasoning** and **Tools** rows on the Output tab use the same **Recheck** link under their note. It reads **Checking…** while it runs. A **Checked for** line names the model when the server named it.
 - ↩️ **Reset and Compare.** The pair sits right-aligned, Reset left of Compare. One prompt on screen puts it in the modal footer. Stacked prompts put a smaller pair at the right of each label row.
 
 | Surface | Actions, in menu order |

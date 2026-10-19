@@ -86,6 +86,13 @@ import {
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { servedModel, servedModelKnown, useServedModelVersion } from '@/lib/servedModel';
+import { probeTextEndpoint } from '@/lib/textEndpointProbe';
+import { forgetCompletionProbe } from '@/lib/probeMemo';
+import type { AiEndpointTarget } from '@/lib/aiRequest/aiRequestSpec';
+
+/** The endpoint one capability resolve or Recheck runs against. */
+type CapabilityTarget = Pick<AiEndpointTarget, 'url' | 'apiToken' | 'model' | 'localEngine'>;
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
@@ -675,7 +682,15 @@ function useProvideSettings() {
   // An entry may also be a bare effort list, which `parseReasoningCapability` loads as a record with those
   // levels. Bounded so heavy testers don't grow it without limit; the oldest entry is dropped past the cap.
   const REASONING_CACHE_CAP = 30;
-  const reasoningCapabilitySig = `${activeEndpointUrl}|${activeModelName}`;
+  // Records key on the served model, so a swap behind `default` reads a fresh record.
+  const servedVersion = useServedModelVersion();
+  const activeServed = useMemo(
+    () => servedModel(activeEndpointUrl, activeModelName, localModelActive),
+    // servedVersion re-reads the store after a probe names another model.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeEndpointUrl, activeModelName, localModelActive, servedVersion],
+  );
+  const reasoningCapabilitySig = endpointSignature(activeEndpointUrl, activeServed.id);
   const [reasoningCapabilityCache, setReasoningCapabilityCache] = usePersistentState<Record<string, ReasoningCapability>>(
     `${APP_ID}_reasoningSupport`, {}, {
       parse: (r) => {
@@ -737,7 +752,7 @@ function useProvideSettings() {
     content: string,
     effort: ReasoningEffortField | null,
   ) => {
-    const sig = endpointSignature(target.url, target.model);
+    const sig = endpointSignature(target.url, servedModel(target.url, target.model).id);
     const prior = reasoningObservationsRef.current[sig];
     const observation = observeReply(reasoningText, content, effort);
     const before = observationAnswer(prior);
@@ -756,24 +771,66 @@ function useProvideSettings() {
   /** Records that an endpoint-and-model pair refused a JSON-schema response format, so its stat requests take the text pass. */
   const noteSchemaRejected = useCallback((target: { url: string; model: string }) => {
     if (unmountRef.current?.signal.aborted) return;
-    const sig = endpointSignature(target.url, target.model);
+    const sig = endpointSignature(target.url, servedModel(target.url, target.model).id);
     setReasoningCapabilityCache((prev) => storeCapability(prev, sig, withSchemaRejected(prev[sig] ?? null)));
   }, [setReasoningCapabilityCache, storeCapability]);
 
-  const resolveActiveCapability = useCallback(async () => {
-    const sig = `${activeEndpointUrl}|${activeModelName}`;
+  // The latest cache, for a resolve that reads it after an await.
+  const capabilityCacheRef = useRef(reasoningCapabilityCache);
+  capabilityCacheRef.current = reasoningCapabilityCache;
+  // Bumped per signature by Recheck, so a resolve that started before it stores nothing.
+  const capabilityGenerations = useRef(new Map<string, number>());
+
+  /** Resolves a target's record under its served-model key, reading the served model first. `force` skips the needs check. */
+  const resolveTargetCapability = useCallback(async (target: CapabilityTarget, force = false) => {
+    const { url, apiToken, model, localEngine } = target;
+    if (!servedModelKnown(url, model, localEngine)) await probeTextEndpoint(url, apiToken, model);
+    if (unmountRef.current?.signal.aborted) return;
+    const served = servedModel(url, model, localEngine);
+    const sig = endpointSignature(url, served.id);
     if (resolvedSignatures.current.has(sig)) return;
+    const stored = capabilityCacheRef.current[sig] ?? null;
+    if (!force && !reasoningNeedsResolve(stored) && !reasoningRereadsPerSession(stored, served.named)) return;
     resolvedSignatures.current.add(sig);
-    const record = await resolveReasoningCapability(
-      { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
-      fetch,
-      { observation: reasoningObservationsRef.current[sig], stored: reasoningCapability, signal: unmountRef.current?.signal },
-    );
-    // A resolve that answered nothing is not an answer. Release the signature so a server that was down
-    // during the debounce is asked again, rather than staying unresolved for the rest of the session.
-    if (!record) { resolvedSignatures.current.delete(sig); return; }
-    cacheReasoningCapability(sig, record);
-  }, [activeEndpointUrl, activeApiToken, activeModelName, reasoningCapability, cacheReasoningCapability]);
+    const generation = capabilityGenerations.current.get(sig) ?? 0;
+    const superseded = () => (capabilityGenerations.current.get(sig) ?? 0) !== generation;
+    try {
+      const record = await resolveReasoningCapability(
+        { url, token: apiToken, model, served: served.id },
+        fetch,
+        { observation: reasoningObservationsRef.current[sig], stored, signal: unmountRef.current?.signal },
+      );
+      if (superseded()) return;
+      // A resolve that answered nothing is not an answer. Release the signature so a server that was down
+      // during the debounce is asked again, rather than staying unresolved for the rest of the session.
+      if (!record) { resolvedSignatures.current.delete(sig); return; }
+      cacheReasoningCapability(sig, record);
+    } catch {
+      if (!superseded()) resolvedSignatures.current.delete(sig);
+    }
+  }, [cacheReasoningCapability]);
+
+  /** Reads the served model again, forgets everything known about it, and resolves it afresh. */
+  const recheckCapability = useCallback(async (target?: CapabilityTarget) => {
+    const t = target ?? { url: activeEndpointUrl, apiToken: activeApiToken, model: activeModelName, localEngine: localModelActive };
+    if (!t.localEngine) await probeTextEndpoint(t.url, t.apiToken, t.model);
+    if (unmountRef.current?.signal.aborted) return;
+    const served = servedModel(t.url, t.model, t.localEngine);
+    const sig = endpointSignature(t.url, served.id);
+    const without = (cache: Record<string, ReasoningCapability>) => {
+      if (!(sig in cache)) return cache;
+      const next = { ...cache };
+      delete next[sig];
+      return next;
+    };
+    capabilityGenerations.current.set(sig, (capabilityGenerations.current.get(sig) ?? 0) + 1);
+    capabilityCacheRef.current = without(capabilityCacheRef.current);
+    setReasoningCapabilityCache(without);
+    delete reasoningObservationsRef.current[sig];
+    resolvedSignatures.current.delete(sig);
+    forgetCompletionProbe(t.url, served.id);
+    await resolveTargetCapability(t, true);
+  }, [activeEndpointUrl, activeApiToken, activeModelName, localModelActive, setReasoningCapabilityCache, resolveTargetCapability]);
 
 
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
@@ -918,17 +975,23 @@ function useProvideSettings() {
     [allTools, enabledTools],
   );
 
-  // Resolve the endpoint's capability record once reasoning is engaged or a prompt offers a Tool, and only
-  // when the cache has nothing better: no record at all, one whose answers only the cache vouches for (a
-  // record stored before this session's sources existed), or one with no tools answer. An LM Studio record
-  // is read again once per session, since another loaded model may answer for the same name. Debounced so editing
-  // the URL doesn't fire per keystroke.
+  // Resolves once reasoning is engaged or a prompt offers a Tool, when the record wants it or the served
+  // model is unread. Debounced so editing the URL doesn't fire per keystroke.
+  const activeServedKnown = servedModelKnown(activeEndpointUrl, activeModelName, localModelActive);
   useEffect(() => {
     if (!(reasoningEngaged || toolsOffered)) return;
-    if (!reasoningNeedsResolve(reasoningCapability) && !reasoningRereadsPerSession(reasoningCapability)) return;
-    const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
+    if (activeServedKnown && !reasoningNeedsResolve(reasoningCapability)
+      && !reasoningRereadsPerSession(reasoningCapability, activeServed.named)) return;
+    const id = setTimeout(() => {
+      void resolveTargetCapability({
+        url: activeEndpointUrl, apiToken: activeApiToken, model: activeModelName, localEngine: localModelActive,
+      });
+    }, 1200);
     return () => clearTimeout(id);
-  }, [reasoningEngaged, toolsOffered, reasoningCapability, resolveActiveCapability]);
+  }, [
+    reasoningEngaged, toolsOffered, reasoningCapability, activeServedKnown, activeServed.named,
+    activeEndpointUrl, activeApiToken, activeModelName, localModelActive, resolveTargetCapability,
+  ]);
 
   // A reply that settled the reasons question re-runs the chain with that observation in hand, so the Native
   // Reasoning controls follow what the player can see happening without a reload. Once per signature and
@@ -950,7 +1013,7 @@ function useProvideSettings() {
     observedSignatures.current.add(key);
     const controller = new AbortController();
     void resolveReasoningCapability(
-      { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
+      { url: activeEndpointUrl, token: activeApiToken, model: activeModelName, served: activeServed.id },
       fetch,
       { observation, stored: reasoningCapability, signal: controller.signal },
     ).then((record) => {
@@ -959,7 +1022,7 @@ function useProvideSettings() {
     return () => controller.abort();
   }, [
     reasoningObserved, reasoningEngaged, reasoningCapabilitySig, reasoningCapability,
-    activeEndpointUrl, activeApiToken, activeModelName, cacheReasoningCapability,
+    activeEndpointUrl, activeApiToken, activeModelName, activeServed.id, cacheReasoningCapability,
   ]);
 
   const verbatimMap = useMemo(() => activeVerbatim(effectiveStore), [effectiveStore]);
@@ -1363,28 +1426,11 @@ function useProvideSettings() {
         rememberContext(sig, detected);
       });
     }
-    // Probe a routed target's reasoning support once per signature.
-    if (!routedProbedRef.current.has(sig)) {
-      routedProbedRef.current.add(sig);
-      const routedStored = reasoningCapabilityCache[sig];
-      if ((reasoningNeedsResolve(routedStored) || reasoningRereadsPerSession(routedStored)) && !resolvedSignatures.current.has(sig)) {
-        resolvedSignatures.current.add(sig);
-        void resolveReasoningCapability(
-          { url, token: resolved.apiToken, model: resolved.model },
-          fetch,
-          {
-            observation: reasoningObservationsRef.current[sig], stored: reasoningCapabilityCache[sig],
-            signal: unmountRef.current?.signal,
-          },
-        ).then((record) => {
-          if (!record) { resolvedSignatures.current.delete(sig); return; }
-          cacheReasoningCapability(sig, record);
-        }).catch(() => {
-          // Same: capability resolves fail quietly, the request itself reports. Release the signature so
-          // the next resolve for this target tries again.
-          resolvedSignatures.current.delete(sig);
-        });
-      }
+    // Resolve a routed target's capability record once per served-model signature.
+    const capabilitySig = endpointSignature(url, servedModel(url, resolved.model, resolved.localEngine).id);
+    if (!routedProbedRef.current.has(capabilitySig)) {
+      routedProbedRef.current.add(capabilitySig);
+      void resolveTargetCapability({ url, apiToken: resolved.apiToken, model: resolved.model, localEngine: resolved.localEngine });
     }
     return {
       ...resolved,
@@ -1394,12 +1440,14 @@ function useProvideSettings() {
       contextWindow: resolved.localEngine
         ? localContextSize
         : resolved.contextWindowOverride ?? contextCache[sig] ?? DEFAULT_CONTEXT_WINDOW,
-      reasoning: withEngineBudget(reasoningCapabilityCache[sig] ?? null),
+      reasoning: withEngineBudget(reasoningCapabilityCache[capabilitySig] ?? null),
     };
+    // servedVersion re-reads the store after a probe names another model.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     routeForKind, activeContextSig,
     contextWindow, reasoningCapability, contextCache, reasoningCapabilityCache, localContextSize,
-    rememberContext, cacheReasoningCapability,
+    rememberContext, resolveTargetCapability, servedVersion,
   ]);
 
   /** The routed-cache signature of the preset `id` names. */
@@ -1851,6 +1899,9 @@ function useProvideSettings() {
     nativeReasoning,
     setNativeReasoning,
     reasoningCapability,
+    /** The real model the active record describes, or null where the server named none. */
+    capabilityModelName: activeServed.fromServer ? activeServed.id : null,
+    recheckCapability,
     reasoningEngaged,
     noteReasoningReply,
     noteSchemaRejected,

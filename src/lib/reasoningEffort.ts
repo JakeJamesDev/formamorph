@@ -535,8 +535,14 @@ export function reasoningEffortValue(
 export interface ReasoningTarget {
   readonly url: string;
   readonly token: string;
+  /** The configured name, sent on the wire. */
   readonly model: string;
+  /** The model the server really runs, where a probe read one. Lookups and memos use it. */
+  readonly served?: string;
 }
+
+/** The model id a lookup matches against. */
+const lookupModel = (target: ReasoningTarget): string => target.served ?? target.model;
 
 /** The fetch a resolve uses. Injected so every backend shape is tested without a server. */
 export type ResolverFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -632,11 +638,13 @@ const lmStudioSource: NativeSource = async (target, doFetch, signal) => {
   const body = await readAdvertisement(`${origin}/api/v1/models`, doFetch, { headers: authHeaders(target.token) }, signal);
   const models = body?.models;
   if (!Array.isArray(models)) return null; // not the LM Studio native shape
-  // Match by exact key; if the configured name doesn't map to one (e.g. the literal "default", which makes
-  // LM Studio serve whatever's loaded), fall back to the loaded model so capability still resolves.
-  const loaded = (m: unknown) => Array.isArray((m as { loaded_instances?: unknown }).loaded_instances)
-    && (m as { loaded_instances: unknown[] }).loaded_instances.length > 0;
-  const entry = models.find((m) => (m as { key?: unknown }).key === target.model) ?? models.find(loaded);
+  // Match by exact key; an unmatched name (`default` with no served model read) takes the one loaded chat
+  // model, and two or more answer nothing rather than guess.
+  const loaded = models.filter((m) => Array.isArray((m as { loaded_instances?: unknown }).loaded_instances)
+    && (m as { loaded_instances: unknown[] }).loaded_instances.length > 0
+    && (m as { type?: unknown }).type !== 'embedding');
+  const entry = models.find((m) => (m as { key?: unknown }).key === lookupModel(target))
+    ?? (loaded.length === 1 ? loaded[0] : undefined);
   if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
   const caps = (entry as { capabilities?: unknown }).capabilities;
   const listed = caps && typeof caps === 'object' ? caps as Record<string, unknown> : {};
@@ -770,7 +778,7 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
   const body = await readAdvertisement(urls.openai, doFetch, { headers: authHeaders(target.token) }, signal);
   const data = body?.data;
   if (!Array.isArray(data)) return null;
-  const entry = data.find((m) => (m as { id?: unknown }).id === target.model);
+  const entry = data.find((m) => (m as { id?: unknown }).id === lookupModel(target));
   if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
 
   const reasoning = (entry as { reasoning?: unknown }).reasoning;
@@ -795,7 +803,7 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
  * only for the hosts the identity table claims, and leaves every other endpoint to the sources below.
  */
 const identitySource: NativeSource = async (target) => {
-  const answer = reasoningIdentityAnswer(target.url, target.model);
+  const answer = reasoningIdentityAnswer(target.url, lookupModel(target));
   if (!answer) return null;
   const from = 'identity' as const;
   return {
@@ -875,7 +883,8 @@ async function probeCompletions(
   wanted: ProbeFields,
   signal?: AbortSignal,
 ): Promise<CompletionProbeAnswers> {
-  const known = completionProbeAnswers(target.url, target.model);
+  const model = lookupModel(target);
+  const known = completionProbeAnswers(target.url, model);
   const open: ProbeFields = {
     reasoning: wanted.reasoning && known.reasoning === undefined,
     tools: wanted.tools && known.tools === undefined,
@@ -883,15 +892,15 @@ async function probeCompletions(
   if (open.reasoning && open.tools && !known.bundleRejected) {
     const both = await sendProbe(target, doFetch, open, signal);
     if (both === null) return known; // an inconclusive answer attributes nothing, so it is not split
-    recordCompletionProbe(target.url, target.model, both ? { reasoning: true, tools: true } : { bundleRejected: true });
-    if (both) return completionProbeAnswers(target.url, target.model);
+    recordCompletionProbe(target.url, model, both ? { reasoning: true, tools: true } : { bundleRejected: true });
+    if (both) return completionProbeAnswers(target.url, model);
   }
   for (const field of ['reasoning', 'tools'] as const) {
     if (!open[field]) continue;
     const accepted = await sendProbe(target, doFetch, { reasoning: field === 'reasoning', tools: field === 'tools' }, signal);
-    if (accepted !== null) recordCompletionProbe(target.url, target.model, { [field]: accepted });
+    if (accepted !== null) recordCompletionProbe(target.url, model, { [field]: accepted });
   }
-  return completionProbeAnswers(target.url, target.model);
+  return completionProbeAnswers(target.url, model);
 }
 
 /**
@@ -1000,7 +1009,7 @@ async function gatherAdvertised(
   // answers the reasons question alone; the levels and budget stay as the advertisements left them. Its
   // silence is never a no: the catalog holds only the ids that reason, so a miss falls through to the
   // sources below. A failed load says nothing and costs the chain nothing.
-  if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch), target.model)) {
+  if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch), lookupModel(target))) {
     const listed: ReasoningCapability = {
       reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'catalog' },
     };
@@ -1044,11 +1053,10 @@ function predatesLlamaCppDialect(capability: ReasoningCapability): boolean {
   return sources.levels === 'native' && sources.reasons !== 'native' && sources.dialect === undefined;
 }
 
-/** True for a record LM Studio's model list answered. A model loaded behind the same name (`default`, or
- *  any name the list lacks) changes those answers, so the list is read again once per session. Also true
- *  for a record an identity row answered: the row ships with the app, so an update must reach the cache. */
-export function reasoningRereadsPerSession(capability: ReasoningCapability | null | undefined): boolean {
-  return capability?.dialect === 'lmstudio' || capability?.sources.dialect === 'identity';
+/** True for an LM Studio record not keyed by a `named` model, which another loaded model may answer for,
+ *  and for an identity-row record, which an app update may change. */
+export function reasoningRereadsPerSession(capability: ReasoningCapability | null | undefined, named = false): boolean {
+  return (capability?.dialect === 'lmstudio' && !named) || capability?.sources.dialect === 'identity';
 }
 
 /** The record to store after a resolve. A fresh LM Studio answer replaces an LM Studio record whole, since
