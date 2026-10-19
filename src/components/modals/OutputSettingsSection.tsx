@@ -58,6 +58,8 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
   // The Output rows read the ACTIVE endpoint's record.
   const activeReasoningAlwaysOn = reasoningOffRefused(reasoningCapability);
   const activeToolsSupported = toolsSupported(reasoningCapability);
+  // Both capability rows carry it in every state: a stale yes sends what the model rejects.
+  const capabilityRecheck = <CapabilityRecheck model={capabilityModelName} onRecheck={() => recheckCapability()} />;
   const handleSemanticMemoryToggle = (on: boolean) => {
     setSemanticMemory(on);
     if (on) embeddingModel.start();
@@ -145,7 +147,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
         <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
           <div className="pt-2">
             <p className="text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
-            <CapabilityRecheck model={capabilityModelName} onRecheck={() => recheckCapability()} />
+            {capabilityRecheck}
           </div>
         </Row>
         </SubGroup>
@@ -170,6 +172,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
             <p className="mt-2 text-helper text-muted-foreground">
               {activeReasoningAlwaysOn ? REASONING_NOTES.always : REASONING_EFFORT_HELP[reasoningEffort]}
             </p>
+            {capabilityRecheck}
           </div>
         </Row>
         </SubGroup>
@@ -185,13 +188,14 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
           htmlFor="toolsEnabled"
           checked={toolsEnabled}
           onChange={setToolsEnabled}
+          below={capabilityRecheck}
           {...rowCopy('tools')}
         />
       ) : (
         <Row muted label={SETTINGS_COPY.tools.label} experimental={SETTINGS_COPY.tools.experimental}>
           <div className="pt-2">
             <p className="text-helper text-muted-foreground">{TOOLS_NOTES.unsupported}</p>
-            <CapabilityRecheck model={capabilityModelName} onRecheck={() => recheckCapability()} />
+            {capabilityRecheck}
           </div>
         </Row>
       )}

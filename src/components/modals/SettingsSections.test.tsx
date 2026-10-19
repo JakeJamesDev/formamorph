@@ -102,7 +102,7 @@ describe('Display section', () => {
   });
 });
 
-describe('Recheck on the muted capability rows', () => {
+describe('Recheck on the capability rows', () => {
   /** A record that rules out reasoning and Tools, so both rows are muted. */
   const MUTED = {
     reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: false, structuredOutput: null,
@@ -119,11 +119,24 @@ describe('Recheck on the muted capability rows', () => {
     expect(recheckCapability).toHaveBeenCalledTimes(1);
   });
 
-  it('shows no Recheck where the rows hold a control', () => {
+  it('puts Recheck and the model line on both rows where they hold a control', async () => {
+    const user = userEvent.setup();
+    const recheckCapability = vi.fn(() => Promise.resolve());
     const supported = { ...MUTED, reasons: true, levels: null, tools: true };
-    mount('output', { reasoningCapability: supported, recheckCapability: vi.fn(), capabilityModelName: 'g4-26b' });
-    expect(screen.queryByRole('button', { name: 'Recheck' })).toBeNull();
-    expect(screen.queryByText('Checked for g4-26b')).toBeNull();
+    mount('output', { reasoningCapability: supported, recheckCapability, capabilityModelName: 'g4-26b' });
+    expect(screen.getByRole('checkbox', { name: 'Tools' })).toBeTruthy();
+    const buttons = screen.getAllByRole('button', { name: 'Recheck' });
+    expect(buttons).toHaveLength(2);
+    expect(screen.getAllByText('Checked for g4-26b')).toHaveLength(2);
+    await user.click(buttons[1]);
+    expect(recheckCapability).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts Recheck on a row locked on because the model always reasons', () => {
+    const alwaysOn = { ...MUTED, reasons: true, levels: null, offAllowed: false, tools: false };
+    mount('output', { reasoningCapability: alwaysOn, recheckCapability: vi.fn(), capabilityModelName: null });
+    expect(screen.getByText(/always reasons/)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Recheck' })).toHaveLength(2);
   });
 
   it('shows the busy state while a recheck runs, and returns when it ends', async () => {
