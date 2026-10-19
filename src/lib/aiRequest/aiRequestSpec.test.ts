@@ -308,9 +308,9 @@ describe('reasoning budget on LM Studio — the cap and the hint travel together
 
   it('caps each prompt from its own stored value or shipped tier', () => {
     const snap = snapshot(lmStudioReasoning(), {
-      reasoningEngaged: true, promptReasoningBudget: { summary: 60 },
+      reasoningEngaged: true, promptReasoningBudget: { milestoneSelect: 60 },
     });
-    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ thinking_budget_tokens: 480 });
+    expect(buildRequestBody(snap, call({ requestType: 'milestoneSelect' }))).toMatchObject({ thinking_budget_tokens: 480 });
     expect(buildRequestBody(snap, call({ requestType: 'director' }))).toMatchObject({ thinking_budget_tokens: 600 });
     expect(buildRequestBody(snap, call({ requestType: 'statUpdates' }))).toMatchObject({ thinking_budget_tokens: 0 });
   });
@@ -377,8 +377,8 @@ describe('reasoning split — budget where the record says, effort everywhere el
   });
 
   it('budgets every prompt from its stored value or shipped tier', () => {
-    const snap = snapshot(localEngine(), { promptReasoningBudget: { narration: 50, summary: 60 } });
-    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ thinking_budget_tokens: 600 });
+    const snap = snapshot(localEngine(), { promptReasoningBudget: { narration: 50, milestoneSelect: 60 } });
+    expect(buildRequestBody(snap, call({ requestType: 'milestoneSelect' }))).toMatchObject({ thinking_budget_tokens: 600 });
     expect(buildRequestBody(snap, call({ requestType: 'director' }))).toMatchObject({ thinking_budget_tokens: 750 });
     expect(buildRequestBody(snap, call({ requestType: 'statUpdates' }))).toMatchObject({ thinking_budget_tokens: 0 });
   });
@@ -712,12 +712,12 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
 
   it('sends a no-budget target the Thought Ceiling whatever the prompt’s own percent', () => {
     const snap = (pct: number) => snapshot(levelOnly(), {
-      reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { summary: pct },
+      reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { milestoneSelect: pct },
     });
-    const summary = call({ requestType: 'summary', maxTokensOverride: 300 });
-    // Summary ships at Low, not Global.
-    expect(buildRequestBody(snap(50), summary).max_tokens).toBe(300 + 1024);
-    expect(buildRequestBody(snap(200), summary).max_tokens).toBe(300 + 1024);
+    const milestone = call({ requestType: 'milestoneSelect', maxTokensOverride: 300 });
+    // Milestone Select ships at Low, not Global.
+    expect(buildRequestBody(snap(50), milestone).max_tokens).toBe(300 + 1024);
+    expect(buildRequestBody(snap(200), milestone).max_tokens).toBe(300 + 1024);
   });
 
   it('sends no max_tokens where nothing caps the answer, room or not', () => {
@@ -754,9 +754,9 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     });
     const body = buildRequestBody(
       snapshot(gemini, { reasoningEngaged: true, reasoningEffort: 'high' }),
-      call({ requestType: 'summary', maxTokensOverride: 300 }),
+      call({ requestType: 'milestoneSelect', maxTokensOverride: 300 }),
     );
-    // Summary ships at Low, not Global.
+    // Milestone Select ships at Low, not Global.
     expect(body).toMatchObject({ google: { thinking_config: { thinking_budget: 1024 } }, max_tokens: 300 + 1024 });
   });
 
