@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import type { SettingsMode } from '@/lib/settingsMode';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ReasoningSwitch } from './ReasoningSwitch';
+import { CapabilityRecheck } from './CapabilityRecheck';
 import type { OutputSettingsSource } from './settingsSource';
 
 // Narrows each option's `value` to the setting's union, so a drifted option fails to compile.
@@ -36,6 +37,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
     limitActiveCharacters, setLimitActiveCharacters,
     activeCharacterLimit, setActiveCharacterLimit,
     reasoningEffort, nativeReasoning, setNativeReasoning, reasoningCapability,
+    capabilityModelName, recheckCapability,
     toolsEnabled, setToolsEnabled,
     memoryDigests, setMemoryDigests,
     semanticMemory, setSemanticMemory,
@@ -141,7 +143,10 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       {advanced && nativeReasoningRuledOut && (
         <SubGroup>
         <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
-          <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
+          <div className="pt-2">
+            <p className="text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
+            <CapabilityRecheck model={capabilityModelName} onRecheck={() => recheckCapability()} />
+          </div>
         </Row>
         </SubGroup>
       )}
@@ -184,7 +189,10 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
         />
       ) : (
         <Row muted label={SETTINGS_COPY.tools.label} experimental={SETTINGS_COPY.tools.experimental}>
-          <p className="pt-2 text-helper text-muted-foreground">{TOOLS_NOTES.unsupported}</p>
+          <div className="pt-2">
+            <p className="text-helper text-muted-foreground">{TOOLS_NOTES.unsupported}</p>
+            <CapabilityRecheck model={capabilityModelName} onRecheck={() => recheckCapability()} />
+          </div>
         </Row>
       )}
       </Section>

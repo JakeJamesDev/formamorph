@@ -30,6 +30,7 @@ export type OutputSettingsSource = Pick<SettingsValue,
   | 'thinkingMode' | 'setThinkingMode' | 'limitActiveCharacters' | 'setLimitActiveCharacters'
   | 'activeCharacterLimit' | 'setActiveCharacterLimit'
   | 'reasoningEffort' | 'nativeReasoning' | 'setNativeReasoning' | 'reasoningCapability'
+  | 'capabilityModelName' | 'recheckCapability'
   | 'toolsEnabled' | 'setToolsEnabled'
   | 'memoryDigests' | 'setMemoryDigests' | 'semanticMemory' | 'setSemanticMemory'
   | 'semanticBandCap' | 'setSemanticBandCap' | 'semanticRehydration' | 'setSemanticRehydration'

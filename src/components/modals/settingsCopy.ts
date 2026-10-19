@@ -789,6 +789,13 @@ export const TOOLS_NOTES = {
   unsupported: 'Your text endpoint doesn’t support Tools, or support isn’t confirmed yet',
 } as const;
 
+/** The Recheck control on the muted Native Reasoning and Tools rows. */
+export const CAPABILITY_RECHECK = {
+  checkedFor: (model: string) => `Checked for ${model}`,
+  recheck: 'Recheck',
+  checking: 'Checking…',
+} as const;
+
 /**
  * Help for the native-reasoning levels, keyed by value rather than listed as options: which levels appear
  * is decided per endpoint by `reasoningTabs`, which owns their short tab labels. Held to the same rules as

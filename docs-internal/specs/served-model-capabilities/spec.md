@@ -1,6 +1,6 @@
 # Spec: Served Model Capabilities
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 
@@ -96,6 +96,6 @@ The muted Native Reasoning and Tools rows in the Output tab get a **Recheck** bu
 
 ## Further Notes
 
-- UNVERIFIED: the llama.cpp server's `/v1/models` and `/props` shapes, and Ollama's lists. Neither server ran when this was written. Confirm each shape against a live server before building its branch.
+- The llama.cpp `/v1/models` shape was confirmed from its server source (`tools/server/server-context.cpp`, master, 2026-10-18), not a live server. Single-model mode lists one row with `owned_by: "llamacpp"` and the alias or file name as `id`. Router mode adds a `status` object per row and never serves `default`, so it falls back. Ollama's lists stay UNVERIFIED and unbuilt.
 - The project's agent notes say the cloud's `root` names the model. That stopped being true by 2026-10-18.
 - ADR-0008 says Tools go only to endpoints known to support them. This spec keeps that rule and changes only which model "known" refers to.

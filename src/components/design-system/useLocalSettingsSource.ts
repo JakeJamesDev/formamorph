@@ -213,6 +213,8 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
     prefersReducedMotion,
     reasoningEffort: resolveReasoningSetting(values.nativeReasoning),
     reasoningCapability: null,
+    capabilityModelName: null,
+    recheckCapability: async () => {},
     imageGenDisabled: false,
   };
 }

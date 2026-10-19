@@ -31,15 +31,22 @@ export function EndpointReachabilityView({ status, checking, model, onRecheck }:
     <div className="flex min-w-0 items-center gap-2 text-meta">
       <span aria-hidden className={cn('size-2 shrink-0 rounded-full', state.dot)} />
       <span className={cn('min-w-0 truncate', state.tone)}>{state.text}</span>
-      <button
-        type="button"
-        onClick={onRecheck}
-        disabled={checking}
-        className="shrink-0 text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-      >
-        Recheck
-      </button>
+      <RecheckButton onClick={onRecheck} disabled={checking}>Recheck</RecheckButton>
     </div>
+  );
+}
+
+/** The underlined Recheck link that reachability and capability rows share. */
+export function RecheckButton({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="shrink-0 text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+    >
+      {children}
+    </button>
   );
 }
 
