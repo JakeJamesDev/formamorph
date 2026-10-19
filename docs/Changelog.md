@@ -20,6 +20,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **On NanoGPT, Native Reasoning now knows which models think and which strengths they take.** Short prompts such as Choices give a thinking model room and no longer fail with "The model reached its token limit before it wrote an answer."
   - **The token-limit error now names the prompt that failed.** Error Details show it on a Prompt line. For a prompt with a Max Output setting, they also tell you to raise it.
   - **Summaries and Diary now ship with Native Reasoning off, so turns finish sooner on a thinking model.** Prompts you already set keep your setting.
+  - **The status bar now names the request a turn is still waiting on.** After choices land, it shows the memory or diary pass that is still running.
+  - **In the Chat layout, you can pick a choice as soon as choices land.** The pick fills your action. You can send it when the turn finishes.
 
 ---
 

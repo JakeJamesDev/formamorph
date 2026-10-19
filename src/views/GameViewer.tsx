@@ -155,6 +155,7 @@ import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
 import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
+import { createPendingRequests } from "../lib/turnPipeline/pendingRequests";
 import { computeTurnCommit, withCodeWrites, type TurnCommit, type TurnCommitContext } from "../lib/turnPipeline/computeTurnCommit";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
@@ -2833,9 +2834,6 @@ const GameViewer = ({
             };
           }
           if (event.stage === "postNarration") {
-            // The batch shows one stable label instead of a race between its own requests; "Choices" since
-            // that's what the player waits on.
-            if (plan.concurrency === "parallel") setAiRequestType("choices");
             // With no choices pass there is nothing to wait on, so the input unblocks right away.
             if (!planHasPass(plan, "choices")) setChoicesReady(true);
             // The scene's cast, whose text resolved with each owner: the diary pass sends it as is.
@@ -2932,11 +2930,14 @@ const GameViewer = ({
         }
       };
 
+      // The status label names the first request still running, so a batch shows what it really waits on.
+      const pendingRequests = createPendingRequests((type) => { if (mounted.current && !signal.aborted) setAiRequestType(type); });
+
       /** The pipeline's request seam, filled by the Request Transport. */
       // Each call reads the executor at call time, so a later call in the same request sees an earlier one's move.
-      const request: TurnRequestAdapter = (spec, context) => sendAiRequest({
+      const request: TurnRequestAdapter = (spec, context) => pendingRequests.track(spec.type, () => sendAiRequest({
         ...spec, signal: context.signal, executeTool: (tool, args) => executeTool(tool, args),
-      });
+      }));
 
       const result = await runTurn({
         plan,

@@ -939,7 +939,7 @@ export const MiddlePanel = ({
                       stream={playedTurn}
                       choices={latestChoices}
                       showContinue={chatShowContinue}
-                      disabled={disabled || isWaitingForAI}
+                      disabled={disabled || choicesRegenerating}
                       isSelected={(choice) => playerInput.includes(choice)}
                       choicePress={choicePress}
                       actions={regenChoicesActions(latestChoices.length > 0 || chatShowContinue)}
