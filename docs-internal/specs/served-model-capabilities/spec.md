@@ -1,6 +1,7 @@
 # Spec: Served Model Capabilities
 
-Status: ready-for-human
+Status: done
+Status note: 2026-10-18. Built as one unit with no tickets. Last landing 68990e170. Closed without gates.
 
 ## Problem Statement
 
