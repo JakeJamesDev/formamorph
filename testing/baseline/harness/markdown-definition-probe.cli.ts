@@ -18,6 +18,8 @@
 // Usage: npx vite-node testing/baseline/harness/markdown-definition-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--token T] [--runs 3] [--max 600] [--only idle,talk]
 //          [--arms definitions,shape,guidance,none] [--show] [--dump]
+//          [--reasoning none|auto|low|medium|high] [--show-thought]
+// With --reasoning on, it also reports each reply's thought length and how often the thought names formatting.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
@@ -41,6 +43,8 @@ const runs = Number(argVal('--runs', '3'));
 const maxTokens = Number(argVal('--max', '600'));
 const only = argVal('--only', '');
 const armNames = argVal('--arms', 'definitions,shape,guidance,none').split(',');
+// `none` sends reasoning off; `auto` sends no field (Model Default); a level sends that level.
+const reasoning = argVal('--reasoning', 'none');
 const SEED = 515151;
 
 const BASELINE = path.resolve('testing/baseline');
@@ -192,19 +196,31 @@ async function loadedModel(): Promise<string> {
   return loaded.id;
 }
 
-async function narrate(model: string, system: string, user: string, seed: number): Promise<string> {
-  // Narration is unpinned in PROMPT_SAMPLER_PINS, so no temperature is sent.
+/** The reply and, with `--reasoning`, the thought behind it. */
+interface Narration { text: string; reasoning: string; reasoningTokens: number | null }
+
+async function narrate(model: string, system: string, user: string, seed: number): Promise<Narration> {
+  // Narration is unpinned in PROMPT_SAMPLER_PINS, so no temperature is sent. `auto` is Model Default: no field.
+  const effort = reasoning === 'auto' ? {} : { reasoning_effort: reasoning };
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({
-      model, seed, max_tokens: maxTokens, reasoning_effort: 'none', stream: false,
+      model, seed, max_tokens: maxTokens, ...effort, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     }),
   });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-  const body = await res.json() as { choices: Array<{ message: { content: string | null } }> };
-  return body.choices[0].message.content ?? '';
+  const body = await res.json() as {
+    choices: Array<{ message: { content: string | null; reasoning_content?: string; reasoning?: string } }>;
+    usage?: { completion_tokens_details?: { reasoning_tokens?: number } };
+  };
+  const message = body.choices[0].message;
+  return {
+    text: message.content ?? '',
+    reasoning: message.reasoning_content ?? message.reasoning ?? '',
+    reasoningTokens: body.usage?.completion_tokens_details?.reasoning_tokens ?? null,
+  };
 }
 
 const model = await loadedModel();
@@ -220,6 +236,11 @@ if (args.includes('--dump')) {
 }
 
 const names = Object.keys(METRICS);
+const words = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
+// A thought that talks about the formatting rules rather than the scene.
+const FORMAT_TALK = /\b(bold(ed|ing)?|italic(s|ize|ized)?|markdown|format(ting)?|emphasi[sz]e?|struck|strikethrough)\b/gi;
+const thought: Record<string, Array<{ words: number; tokens: number | null; format: number; empty: boolean }>> =
+  Object.fromEntries(armNames.map((arm) => [arm, []]));
 const totals: Record<string, Record<string, Record<string, number>>> = {};
 const replies: Record<string, number> = {};
 for (const arm of armNames) {
@@ -229,8 +250,10 @@ for (const arm of armNames) {
     const system = systemPrompt(arm, c.action);
     const user = ARMS[arm].user?.(c.action) ?? c.action;
     for (let i = 0; i < runs; i++) {
-      const text = await narrate(model, system, user, SEED + i);
+      const reply = await narrate(model, system, user, SEED + i);
+      const text = reply.text;
       const row = Object.fromEntries(names.map((n) => [n, METRICS[n](text)]));
+      thought[arm].push({ words: words(reply.reasoning), tokens: reply.reasoningTokens, format: count(reply.reasoning, FORMAT_TALK), empty: !text.trim() });
       for (const kind of [c.kind, 'all']) {
         totals[arm][kind] ??= Object.fromEntries(names.map((n) => [n, 0]));
         for (const n of names) totals[arm][kind][n] += row[n];
@@ -238,7 +261,12 @@ for (const arm of armNames) {
       replies[arm]++;
       const colored = [...text.matchAll(COLORED)].map((m) => `${m[1]}:"${m[2]}"`).join(' ');
       console.log(`[${arm}] ${c.id} #${i} ${names.map((n) => `${n}=${row[n]}`).join(' ')} · ${text.split(/\s+/).length}w${colored ? ` · ${colored}` : ''}`);
+      if (reasoning !== 'none') {
+        const last = thought[arm].at(-1)!;
+        console.log(`    thought ${last.words}w · ${last.tokens ?? '?'} tok · format mentions ${last.format}${last.empty ? ' · EMPTY REPLY' : ''}`);
+      }
       if (args.includes('--show')) console.log(`    ${text.replace(/\n+/g, ' ¶ ')}`);
+      if (args.includes('--show-thought') && reply.reasoning) console.log(`    THOUGHT: ${reply.reasoning.replace(/\n+/g, ' ¶ ')}`);
     }
   }
 }
@@ -252,4 +280,16 @@ for (const arm of armNames) {
   }
 }
 console.log(`replies per arm: ${armNames.map((arm) => `${arm} ${replies[arm]}`).join(' · ')}`);
+if (reasoning !== 'none') {
+  const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
+  const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : 0);
+  console.log(`\nREASONING (--reasoning ${reasoning})`);
+  for (const arm of armNames) {
+    const t = thought[arm];
+    const tokens = t.flatMap((x) => (x.tokens === null ? [] : [x.tokens]));
+    console.log(`${arm.padEnd(14)} words mean ${mean(t.map((x) => x.words))} · median ${median(t.map((x) => x.words))}`
+      + ` · tokens mean ${tokens.length ? mean(tokens) : '?'} · format mentions ${t.reduce((a, x) => a + x.format, 0)}`
+      + ` in ${t.filter((x) => x.format > 0).length}/${t.length} · empty replies ${t.filter((x) => x.empty).length}`);
+  }
+}
 console.log(`duration ${((Date.now() - started) / 1000).toFixed(0)}s`);
