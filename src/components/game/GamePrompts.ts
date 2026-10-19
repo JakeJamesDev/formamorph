@@ -13,7 +13,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 - The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story.<PERSONA|name|pre=" Characters say the player's name, "|post=", only after they learn it.">
 - The player's own fixed features - their appearance, name, and role - are already established; don't re-introduce or re-describe them each turn. Reach for one only when the moment genuinely turns on it, never as scene-setting.
 - Don't report or tabulate any stats or their changes - a separate step handles them.
-<MARKDOWN GUIDANCE|format=markdown|header="Formatting">\
+<MARKDOWN GUIDANCE|pre="The game displays this syntax in your reply.\n\n"|format=markdown|header="Formatting">\
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
 <DICTIONARY|before|format=markdown|header="Background Lore">\
 <TRAITS DESCRIPTION|markdown|header="Global Traits">\
@@ -32,16 +32,6 @@ Output only the story prose - the events themselves, with no labels, no mention 
 
 <LANGUAGE>`;
 
-const MARKDOWN_OFF = 'Write plain prose - no headings, lists, or tables.';
-
-const MARKDOWN_ON = `- Write immersive, flowing prose - never a list, menu, or table.
-- Use Markdown emphasis with intent. When a moment genuinely pivots - a sudden threat, a key object, a revealed name - **bold** that one noun so it lands on the page. Don't bold out of habit: skip it on a calm turn, and never bold an incidental or trailing noun just to have one. *Italicize* a sharp inner thought, sound, or stressed word.`;
-
-/** The Markdown formatting directive injected into the game-text prompt (replaces `<MARKDOWN GUIDANCE>`). */
-export function markdownGuidance(enabled: boolean): string {
-  return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
-}
-
 // Inline syntax the narration display renders: its shape and what it means to a reader, never when to use
 // it. Block syntax and highlights are left out on purpose.
 const MARKDOWN_DEFINITIONS = `- \`**text**\` displays text in bold. Bold text means words said or heard louder than the rest of the sentence, such as a shouted word or a word hit with heavy stress.
@@ -49,8 +39,8 @@ const MARKDOWN_DEFINITIONS = `- \`**text**\` displays text in bold. Bold text me
 - \`~~text~~\` displays text struck through. Struck-through text means words written and then withdrawn.
 - \`"text"\` displays text as spoken dialogue. Quoted text means words spoken aloud.`;
 
-/** The syntax definitions for `<MARKDOWN GUIDANCE|definitions>`; empty while Markdown output is off. */
-export function markdownDefinitions(enabled: boolean): string {
+/** The syntax definitions for `<MARKDOWN GUIDANCE>`; empty while Markdown output is off. */
+export function markdownGuidance(enabled: boolean): string {
   return enabled ? MARKDOWN_DEFINITIONS : '';
 }
 

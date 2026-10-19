@@ -227,12 +227,8 @@ describe('planDirective', () => {
 });
 
 describe('markdownGuidance', () => {
-  // The toggle must actually toggle: enabled and disabled produce two distinct, non-empty directives.
-  it('produces distinct, non-empty guidance for the enabled and disabled modes', () => {
-    const on = markdownGuidance(true);
-    const off = markdownGuidance(false);
-    expect(on).toBeTruthy();
-    expect(off).toBeTruthy();
-    expect(on).not.toBe(off);
+  it('defines the syntax while Markdown is on and sends nothing while it is off', () => {
+    expect(markdownGuidance(true)).toContain('`**text**` displays text in bold.');
+    expect(markdownGuidance(false)).toBe('');
   });
 });

@@ -1,15 +1,14 @@
 // Markdown definition probe — what does the narrator do with syntax it is told exists but not when to use?
 // Sedge Landing, six actions: calm (idle, inner), dialogue (talk), pivot (threat, find, name).
 //
-// Default-preset arms: `default` (the shipped usage-directed guidance) and `defaultDefs` (the same prompt
-// with the chip on its definitions variant), both with the Thinking-off user message.
+// `default` runs the Default preset as shipped, with the Thinking-off user message.
 //
-// Arms, paired by seed, on the Experimental preset: `definitions` (the shipped `<MARKDOWN GUIDANCE|definitions>`),
+// Arms, paired by seed, on the Experimental preset: `definitions` (the shipped `<MARKDOWN GUIDANCE>`),
 // `shape` (the first definitions, display shape only), `emphasis` (meaning definitions, bold as "emphasis"),
 // `force` (bold as force "said or felt"), `long` / `short` (bold as volume, italics as source, with and
 // without examples),
 // `highlights` (meaning definitions plus both highlight
-// lines), `guidance` (the same chip slot carrying Default's usage-directed Markdown text), `none` (Markdown Formatting off,
+// lines), `none` (Markdown Formatting off,
 // so the Formatting section is absent). Every other byte of the prompt is shared.
 //
 // Per reply it counts each defined syntax, prints every colored highlight and its key, and counts the
@@ -17,18 +16,18 @@
 //
 // Usage: npx vite-node testing/baseline/harness/markdown-definition-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--token T] [--runs 3] [--max 600] [--only idle,talk]
-//          [--arms definitions,shape,guidance,none] [--show] [--dump]
+//          [--arms default,definitions,shape,none] [--show] [--dump]
 //          [--reasoning none|auto|low|medium|high] [--show-thought]
 // With --reasoning on, it also reports each reply's thought length and how often the thought names formatting.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
-import { defaultNarrationUserPrompt, defaultSystemPrompt, markdownDefinitions } from '@/components/game/GamePrompts';
+import { defaultNarrationUserPrompt, defaultSystemPrompt, markdownGuidance } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 import { parsePromptTemplate, renderPromptTemplate, serializeSegments } from '@/lib/promptTemplate';
-import { baseToken, joinToken, splitToken } from '@/lib/promptVariables';
+import { baseToken, splitToken } from '@/lib/promptVariables';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
 
@@ -42,7 +41,7 @@ const token = argVal('--token', process.env.PROBE_TOKEN ?? '');
 const runs = Number(argVal('--runs', '3'));
 const maxTokens = Number(argVal('--max', '600'));
 const only = argVal('--only', '');
-const armNames = argVal('--arms', 'definitions,shape,guidance,none').split(',');
+const armNames = argVal('--arms', 'default,definitions,shape,none').split(',');
 // `none` sends reasoning off; `auto` sends no field (Model Default); a level sends that level.
 const reasoning = argVal('--reasoning', 'none');
 const SEED = 515151;
@@ -52,15 +51,6 @@ const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-la
 const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'markdown-definition-cases.json'), 'utf8')) as {
   cases: Array<{ id: string; kind: string; action: string }>;
 };
-
-/** The Experimental template with the Markdown chip on its usage-directed variant, under the same Header. */
-function withGuidanceVariant(): string {
-  return serializeSegments(parsePromptTemplate(experimentalSystemPrompt).map((segment) => {
-    if (segment.type !== 'variable' || baseToken(segment.token) !== '<MARKDOWN GUIDANCE>') return segment;
-    const parts = splitToken(segment.token);
-    return parts ? { ...segment, token: joinToken({ ...parts, variantId: undefined, pre: '' }) } : segment;
-  }));
-}
 
 // The first definitions: display shape only, with no meaning sentences.
 const SHAPE_ONLY = `- \`**text**\` displays text in bold.
@@ -96,7 +86,7 @@ const FORCE_BOLD = EMPHASIS_BOLD.replace(
 
 /** The shipped definitions with the bold and italic lines replaced. */
 function withBoldItalic(bold: string, italic: string): string {
-  return markdownDefinitions(true).split('\n').map((line) => {
+  return markdownGuidance(true).split('\n').map((line) => {
     if (line.startsWith('- `**text**`')) return `- \`**text**\` displays text in bold. ${bold}`;
     if (line.startsWith('- `*text*`')) return `- \`*text*\` displays text in italics. ${italic}`;
     return line;
@@ -113,24 +103,11 @@ const SHORT = withBoldItalic(
   'Italic text means the words come from outside the narration.',
 );
 
-/** The Default template with its Markdown chip on the definitions variant, under Experimental's Prepend. */
-function defaultWithDefinitions(): string {
-  const pre = parsePromptTemplate(experimentalSystemPrompt)
-    .flatMap((s) => (s.type === 'variable' && baseToken(s.token) === '<MARKDOWN GUIDANCE>' ? [splitToken(s.token)?.pre] : []))[0];
-  return serializeSegments(parsePromptTemplate(defaultSystemPrompt).map((segment) => {
-    if (segment.type !== 'variable' || baseToken(segment.token) !== '<MARKDOWN GUIDANCE>') return segment;
-    const parts = splitToken(segment.token);
-    return parts ? { ...segment, token: joinToken({ ...parts, variantId: 'definitions', pre }) } : segment;
-  }));
-}
-
 /** The Default narration user message, as the app sends it with Thinking off. */
 const defaultUser = (action: string) => defaultNarrationUserPrompt.replace('<PLAYER ACTION>', action);
 
 const ARMS: Record<string, { template: string; markdownOutput: boolean; user?: (action: string) => string }> = {
-  // The Default preset: its usage-directed guidance as shipped, and the same prompt carrying the definitions.
   default: { template: defaultSystemPrompt, markdownOutput: true, user: defaultUser },
-  defaultDefs: { template: defaultWithDefinitions(), markdownOutput: true, user: defaultUser },
   long: { template: withFixedDefinitions(LONG), markdownOutput: true },
   short: { template: withFixedDefinitions(SHORT), markdownOutput: true },
   definitions: { template: experimentalSystemPrompt, markdownOutput: true },
@@ -138,7 +115,6 @@ const ARMS: Record<string, { template: string; markdownOutput: boolean; user?: (
   emphasis: { template: withFixedDefinitions(EMPHASIS_BOLD), markdownOutput: true },
   force: { template: withFixedDefinitions(FORCE_BOLD), markdownOutput: true },
   highlights: { template: withFixedDefinitions(MEANING_WITH_HIGHLIGHTS), markdownOutput: true },
-  guidance: { template: withGuidanceVariant(), markdownOutput: true },
   none: { template: experimentalSystemPrompt, markdownOutput: false },
 };
 

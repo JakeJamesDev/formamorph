@@ -50,10 +50,12 @@ describe('built-in Header adoption', () => {
         expect(runsTile(gameplay.prompt, gameplay.runs)).toBe(true);
         const name = placement.includes('Presentation') ? 'Presentation' : 'Formatting';
         const body = values['<MARKDOWN GUIDANCE>'];
-        const expected = placement === '<MARKDOWN GUIDANCE>' ? body
-          : style === 'markdown' ? `\n## ${name}\n${body}\n`
-            : style === 'labels' ? `\n${name.toUpperCase()}:\n${body}\n`
-              : `\n<${name.toLowerCase()}>\n${body}\n</${name.toLowerCase()}>\n`;
+        // An empty value drops the whole placement, header and Prepend included.
+        const shown = body && `${splitToken(placement)?.pre ?? ''}${body}`;
+        const expected = placement === '<MARKDOWN GUIDANCE>' || !body ? shown
+          : style === 'markdown' ? `\n## ${name}\n${shown}\n`
+            : style === 'labels' ? `\n${name.toUpperCase()}:\n${shown}\n`
+              : `\n<${name.toLowerCase()}>\n${shown}\n</${name.toLowerCase()}>\n`;
         expect(preview).toBe(expected);
         expect(body).not.toMatch(/^(?:## |FORMATTING:|<formatting>)/m);
       }

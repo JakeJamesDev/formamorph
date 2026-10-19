@@ -298,10 +298,10 @@ describe('the narration hub under the output settings the player chose', () => {
   });
 
   it('reflects the markdown-output setting', () => {
-    expect(systemText({ markdownOutput: true })).toContain('Use Markdown emphasis with intent');
+    expect(systemText({ markdownOutput: true })).toContain('`**text**` displays text in bold.');
     const off = systemText({ markdownOutput: false });
-    expect(off).toContain('Write plain prose');
-    expect(off).not.toContain('Use Markdown emphasis with intent');
+    expect(off).not.toContain('## Formatting');
+    expect(off).not.toContain('`**text**` displays text in bold.');
   });
 
   it('reflects the paragraph limit and the reply cap it is sized against', () => {
