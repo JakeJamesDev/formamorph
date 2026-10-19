@@ -905,9 +905,7 @@
    "post": "",
    "key": "<MARKDOWN GUIDANCE>"
   },
-  "selection": {
-   "variant": null
-  }
+  "selection": {}
  },
  {
   "token": "<MARKDOWN GUIDANCE|definitions>",
@@ -916,11 +914,9 @@
    "variantId": "definitions",
    "pre": "",
    "post": "",
-   "key": "<MARKDOWN GUIDANCE|definitions>"
+   "key": "<MARKDOWN GUIDANCE>"
   },
-  "selection": {
-   "variant": "definitions"
-  }
+  "selection": {}
  },
  {
   "token": "<MARKDOWN GUIDANCE|definitions|pre=\"The game displays this syntax in your reply.\\n\\n\"|format=markdown|header=\"Formatting\">",
@@ -929,13 +925,11 @@
    "variantId": "definitions",
    "pre": "The game displays this syntax in your reply.\\n\\n",
    "post": "",
-   "key": "<MARKDOWN GUIDANCE|definitions>",
+   "key": "<MARKDOWN GUIDANCE>",
    "headerFormat": "markdown",
    "header": "Formatting"
   },
-  "selection": {
-   "variant": "definitions"
-  }
+  "selection": {}
  },
  {
   "token": "<MARKDOWN GUIDANCE|format=markdown|header=\"Formatting\">",
@@ -948,9 +942,7 @@
    "headerFormat": "markdown",
    "header": "Formatting"
   },
-  "selection": {
-   "variant": null
-  }
+  "selection": {}
  },
  {
   "token": "<NARRATION>",

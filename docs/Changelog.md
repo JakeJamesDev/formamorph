@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Summaries and Diary now ship with Native Reasoning off, so turns finish sooner on a thinking model.** Prompts you already set keep your setting.
   - **The status bar now names the request a turn is still waiting on.** After choices land, it shows the memory or diary pass that is still running.
   - **In the Chat layout, you can pick a choice as soon as choices land.** The pick fills your action. You can send it when the turn finishes.
+  - **Narration now bolds only loud words, and thinking models spend less of each turn's thinking on formatting.** The Markdown Guidance chip now has one form. Prompts that used Definitions keep working.
 
 ---
 

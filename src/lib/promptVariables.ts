@@ -59,6 +59,8 @@ export interface PromptVariable {
   color: string; // chip/preview accent, from HIGHLIGHT_PALETTE
   variants?: PromptVariant[]; // single-axis Chip Options modes; first entry is the default/full form
   axes?: PromptVariantAxis[]; // multi-axis Chip Options (takes precedence over `variants`)
+  /** Variant ids a released version wrote. They still parse and render as the bare chip; Chip Options never offers them. */
+  retiredVariants?: string[];
   /** Offers the prefix/suffix fields: this chip renders one short value that can sit inside a sentence,
    *  rather than a multi-line block. See docs-internal/designs/chip-affixes/design.md. */
   affixable?: boolean;
@@ -218,10 +220,7 @@ const MARKDOWN: PromptVariable = {
   token: '<MARKDOWN GUIDANCE>',
   label: 'Markdown Guidance',
   color: HIGHLIGHT_PALETTE[6],
-  variants: [
-    { id: null, label: 'Guidance', help: 'Tells the AI how to use Markdown, or to write plain prose while Markdown is off' },
-    { id: 'definitions', label: 'Definitions', help: 'Lists the inline syntax the story displays, with no usage direction. Sends nothing while Markdown is off.' },
-  ],
+  retiredVariants: ['definitions'],
 };
 // Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
@@ -444,7 +443,7 @@ function canonicalVariant(variable: PromptVariable, id: string | null): string |
 const BY_BASE_LENGTH = [...ALL_PROMPT_VARIABLES].sort((a, b) => b.token.length - a.token.length);
 const baseSource = (variable: PromptVariable) => escapeRegExp(variable.token.slice(0, -1)); // drop trailing '>'
 const TOKEN_BASES = BY_BASE_LENGTH.map(baseSource).join('|');
-const OPTION_IDS = new Map(ALL_PROMPT_VARIABLES.map((v) => [v, new Set(variableOptionIds(v))]));
+const OPTION_IDS = new Map(ALL_PROMPT_VARIABLES.map((v) => [v, new Set([...variableOptionIds(v), ...(v.retiredVariants ?? [])])]));
 /** A base followed by an optional run of its own option ids. */
 function baseWithVariant(variable: PromptVariable): string {
   const ids = [...OPTION_IDS.get(variable)!].join('|');

@@ -4,9 +4,10 @@ import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
   variableAxes, decodeVariant, encodeVariant, NOW_LINE_VARIABLES,
-  PROMPT_KIND_VARIABLES, ALL_PROMPT_VARIABLES,
+  PROMPT_KIND_VARIABLES, ALL_PROMPT_VARIABLES, splitToken,
   type PromptVariable,
 } from './promptVariables';
+import { renderPromptTemplate } from './promptTemplate';
 
 describe('variant token helpers', () => {
   it('extracts the variant id (or null for the default form)', () => {
@@ -26,6 +27,23 @@ describe('variant token helpers', () => {
     expect(withVariant('<LOCATION>', 'reachable')).toBe('<LOCATION|reachable>');
     expect(withVariant('<LOCATION>', 'summary')).toBe('<LOCATION|summary>');
     expect(withVariant('<LOCATION>', null)).toBe('<LOCATION>');
+  });
+});
+
+describe('retired variant ids', () => {
+  // A released prompt may still hold the old Definitions variant; it reads as the one Markdown Guidance.
+  const saved = '<MARKDOWN GUIDANCE|definitions|pre="Syntax: "|format=markdown|header="Formatting">';
+
+  it('parse to the bare chip key', () => {
+    expect(splitToken(saved)?.key).toBe('<MARKDOWN GUIDANCE>');
+  });
+
+  it('render the bare chip value', () => {
+    expect(renderPromptTemplate(saved, { '<MARKDOWN GUIDANCE>': 'defs' })).toBe('\n## Formatting\nSyntax: defs\n');
+  });
+
+  it('stay out of Chip Options', () => {
+    expect(variableAxes(variableForToken('<MARKDOWN GUIDANCE>')!)).toEqual([]);
   });
 });
 
