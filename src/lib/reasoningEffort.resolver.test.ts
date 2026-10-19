@@ -219,6 +219,44 @@ describe('gateway model list', () => {
     expect(record).toMatchObject({ reasons: false });
   });
 
+  describe('NanoGPT detailed list', () => {
+    const NANO = { url: 'https://nano-gpt.com/api/v1/chat/completions', token: 't', model: 'm' };
+    const DETAILED = 'https://nano-gpt.com/api/v1/models?detailed=true';
+
+    it('asks for the detailed list and reads its reasoning flag and efforts', async () => {
+      const { doFetch, calls } = backend({
+        [DETAILED]: entry({ capabilities: { reasoning: true }, reasoning_efforts: ['low', 'high', 'max', 'turbo'] }),
+      });
+      const record = await resolveReasoningCapability(NANO, doFetch);
+      expect(calls.some((c) => c.url === DETAILED)).toBe(true);
+      expect(record).toMatchObject({ reasons: true, levels: ['low', 'high', 'max'], offAllowed: false });
+      expect(record?.sources).toMatchObject({ reasons: 'native', levels: 'native', offAllowed: 'native' });
+    });
+
+    it('allows off where the efforts list none', async () => {
+      const { doFetch } = backend({ [DETAILED]: entry({ capabilities: { reasoning: true }, reasoning_efforts: ['none', 'low'] }) });
+      expect(await resolveReasoningCapability(NANO, doFetch)).toMatchObject({ offAllowed: true, levels: ['none', 'low'] });
+    });
+
+    it('asks a NanoGPT subdomain for the detailed list too', async () => {
+      const www = { ...NANO, url: 'https://www.nano-gpt.com/api/v1/chat/completions' };
+      const { doFetch, calls } = backend({});
+      await resolveReasoningCapability(www, doFetch);
+      expect(calls.some((c) => c.url === 'https://www.nano-gpt.com/api/v1/models?detailed=true')).toBe(true);
+    });
+
+    it('rules a model out when the flag is false', async () => {
+      const { doFetch } = backend({ [DETAILED]: entry({ capabilities: { reasoning: false } }) });
+      expect(await resolveReasoningCapability(NANO, doFetch)).toMatchObject({ reasons: false });
+    });
+  });
+
+  it('reads a capabilities flag on any host, leaving the levels open without a list', async () => {
+    const { doFetch } = backend({ [OPENAI]: entry({ capabilities: { reasoning: true } }) });
+    const record = await resolveReasoningCapability(TARGET, doFetch);
+    expect(record).toMatchObject({ reasons: true, levels: null, offAllowed: null });
+  });
+
   it('moves on when the model is not in the list', async () => {
     const { doFetch } = backend({ [OPENAI]: { status: 200, body: { data: [{ id: 'someone-else' }] } } });
     const record = await resolveReasoningCapability(TARGET, doFetch);
