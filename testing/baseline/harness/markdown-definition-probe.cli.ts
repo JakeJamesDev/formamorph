@@ -1,6 +1,9 @@
 // Markdown definition probe — what does the narrator do with syntax it is told exists but not when to use?
 // Sedge Landing, six actions: calm (idle, inner), dialogue (talk), pivot (threat, find, name).
 //
+// Default-preset arms: `default` (the shipped usage-directed guidance) and `defaultDefs` (the same prompt
+// with the chip on its definitions variant), both with the Thinking-off user message.
+//
 // Arms, paired by seed, on the Experimental preset: `definitions` (the shipped `<MARKDOWN GUIDANCE|definitions>`),
 // `shape` (the first definitions, display shape only), `emphasis` (meaning definitions, bold as "emphasis"),
 // `force` (bold as force "said or felt"), `long` / `short` (bold as volume, italics as source, with and
@@ -18,7 +21,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
-import { markdownDefinitions } from '@/components/game/GamePrompts';
+import { defaultNarrationUserPrompt, defaultSystemPrompt, markdownDefinitions } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
@@ -106,7 +109,24 @@ const SHORT = withBoldItalic(
   'Italic text means the words come from outside the narration.',
 );
 
-const ARMS: Record<string, { template: string; markdownOutput: boolean }> = {
+/** The Default template with its Markdown chip on the definitions variant, under Experimental's Prepend. */
+function defaultWithDefinitions(): string {
+  const pre = parsePromptTemplate(experimentalSystemPrompt)
+    .flatMap((s) => (s.type === 'variable' && baseToken(s.token) === '<MARKDOWN GUIDANCE>' ? [splitToken(s.token)?.pre] : []))[0];
+  return serializeSegments(parsePromptTemplate(defaultSystemPrompt).map((segment) => {
+    if (segment.type !== 'variable' || baseToken(segment.token) !== '<MARKDOWN GUIDANCE>') return segment;
+    const parts = splitToken(segment.token);
+    return parts ? { ...segment, token: joinToken({ ...parts, variantId: 'definitions', pre }) } : segment;
+  }));
+}
+
+/** The Default narration user message, as the app sends it with Thinking off. */
+const defaultUser = (action: string) => defaultNarrationUserPrompt.replace('<PLAYER ACTION>', action);
+
+const ARMS: Record<string, { template: string; markdownOutput: boolean; user?: (action: string) => string }> = {
+  // The Default preset: its usage-directed guidance as shipped, and the same prompt carrying the definitions.
+  default: { template: defaultSystemPrompt, markdownOutput: true, user: defaultUser },
+  defaultDefs: { template: defaultWithDefinitions(), markdownOutput: true, user: defaultUser },
   long: { template: withFixedDefinitions(LONG), markdownOutput: true },
   short: { template: withFixedDefinitions(SHORT), markdownOutput: true },
   definitions: { template: experimentalSystemPrompt, markdownOutput: true },
@@ -172,14 +192,14 @@ async function loadedModel(): Promise<string> {
   return loaded.id;
 }
 
-async function narrate(model: string, system: string, action: string, seed: number): Promise<string> {
+async function narrate(model: string, system: string, user: string, seed: number): Promise<string> {
   // Narration is unpinned in PROMPT_SAMPLER_PINS, so no temperature is sent.
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({
       model, seed, max_tokens: maxTokens, reasoning_effort: 'none', stream: false,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: action }],
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     }),
   });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
@@ -207,8 +227,9 @@ for (const arm of armNames) {
   replies[arm] = 0;
   for (const c of cases) {
     const system = systemPrompt(arm, c.action);
+    const user = ARMS[arm].user?.(c.action) ?? c.action;
     for (let i = 0; i < runs; i++) {
-      const text = await narrate(model, system, c.action, SEED + i);
+      const text = await narrate(model, system, user, SEED + i);
       const row = Object.fromEntries(names.map((n) => [n, METRICS[n](text)]));
       for (const kind of [c.kind, 'all']) {
         totals[arm][kind] ??= Object.fromEntries(names.map((n) => [n, 0]));
