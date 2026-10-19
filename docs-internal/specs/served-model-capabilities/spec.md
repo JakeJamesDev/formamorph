@@ -1,7 +1,7 @@
 # Spec: Served Model Capabilities
 
 Status: done
-Status note: 2026-10-18. Built as one unit with no tickets. Last landing 68990e170. Closed without gates.
+Status note: 2026-10-18. Built as one unit with no tickets. Last landing 68990e170. Closed without gates. Ruling 2026-10-18: Recheck shows in every row state, not only muted.
 
 ## Problem Statement
 
@@ -15,7 +15,7 @@ The fix must not cost the player money. A paid endpoint bills every completion r
 
 The app reads the real model behind `default` during the reachability check it already runs, and stores capability answers under that real name. Loading another model then gives a new name and a fresh answer. Loading an earlier model again reuses its stored answer with no request. Where the server does not name its model, the app keeps today's behavior.
 
-The muted Native Reasoning and Tools rows in the Output tab get a **Recheck** button. Recheck reads the served model again, drops what the app stored for it, and asks again. Where the app knows the real name, these rows say which model the answer is for.
+The Native Reasoning and Tools rows in the Output tab get a **Recheck** button in every state. Recheck reads the served model again, drops what the app stored for it, and asks again. Where the app knows the real name, these rows say which model the answer is for.
 
 ## User Stories
 
@@ -41,6 +41,7 @@ The muted Native Reasoning and Tools rows in the Output tab get a **Recheck** bu
 20. As a player on the desktop app's bundled engine, I want nothing to change, so that the engine's own report stays the source.
 21. As a developer, I want the capability lookups (identity rows, reasoning catalog) to match the real name, so that free sources answer more often and the paid probe runs less.
 22. As a developer, I want a record stored under a real name to skip the LM Studio per-session reread, so that the app sends no wasted requests.
+23. As a player whose rows say my model reasons or takes Tools, I want Recheck there too, so that the app stops sending reasoning or Tools to a model that no longer takes them.
 
 ## Implementation Decisions
 
@@ -64,13 +65,13 @@ The muted Native Reasoning and Tools rows in the Output tab get a **Recheck** bu
 **Recheck**
 
 - The settings context exposes one recheck operation for a target endpoint. It runs the reachability probe again, so the served id is current. Then it drops the whole record for that id, including a learned schema rejection, clears the session memos for that pair (the resolved-signature set and the completion-probe answers), and resolves again.
-- A **Recheck** button goes on the muted Native Reasoning row and the muted Tools row in the Output tab. It follows the existing reachability badge's Recheck pattern. It shows a busy state while it runs.
+- A **Recheck** button goes on the Native Reasoning row and the Tools row in the Output tab, in every state: muted, holding a control, or locked on. A stale yes sends what the model rejects, so Recheck guards both ways. It follows the existing reachability badge's Recheck pattern. It shows a busy state while it runs.
 - These rows recheck the active endpoint.
-- No Recheck goes on the endpoint tab, the Tools tab notes, the Formaquestion Tools tab, or the locked-on reasoning note.
+- No Recheck goes on the endpoint tab, the Tools tab notes, or the Formaquestion Tools tab.
 
 **Model name line**
 
-- The two muted rows show a help line naming the model the answer is for, such as `Checked for g4-meromero-26b-a4b`, only where the served id is a real name. Copy follows the Writing Guide.
+- The two rows show a help line naming the model the answer is for, such as `Checked for g4-meromero-26b-a4b`, only where the server named the model. Copy follows the Writing Guide.
 
 ## Testing Decisions
 
@@ -84,14 +85,14 @@ The muted Native Reasoning and Tools rows in the Output tab get a **Recheck** bu
   - The completion probe runs once per served id.
   - Recheck re-probes, drops the whole record, clears the memos, and resolves again.
   - Every guard is proven by reinstating its bug: the `default` key, a kept record after Recheck, and a second paid probe.
-- **Seam 2: the Output section render.** Prior art: SettingsSections.test. It covers the Recheck button on both muted rows only, its busy state, and the `Checked for …` line present for a real name and absent for a fallback.
+- **Seam 2: the Output section render.** Prior art: SettingsSections.test. It covers the Recheck button on both rows in every state, its busy state, and the `Checked for …` line present for a real name and absent for a fallback.
 - The reachability probe and the resolver are covered through Seam 1, not on their own.
 
 ## Out of Scope
 
 - Detecting a model swap between reachability probes, such as reading the list every turn. Recheck covers it.
 - A fingerprint for servers that don't name their model (engine start time, chat-template render).
-- Recheck anywhere but the two muted Output rows.
+- Recheck anywhere but the two Output rows.
 - Limiting the completion probe to manual Recheck only.
 - The desktop app's bundled engine, which reports over IPC.
 
