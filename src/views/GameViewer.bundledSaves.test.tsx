@@ -96,6 +96,8 @@ async function playSaveAcross(before: World, after: World) {
   await screen.findByRole('button', { name: 'Re-generate Narration' });
   expect(assistantTurns).toBe(savedTurns);
   await playTurn('I keep going.');
+  // Wait for this turn's autosave too, so it can't land after the next test clears the store.
+  await waitFor(async () => expect((await getAllSaveRecords()).map(turnsIn)).toEqual([assistantTurns]), { timeout: 8000 });
   expect(vi.mocked(toast.error)).not.toHaveBeenCalled();
 }
 
