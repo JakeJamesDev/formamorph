@@ -91,12 +91,13 @@ The Locations Canvas warns when two locations of a Moves Between entity have no 
 - `movement`: `'stays' | 'between' | 'follow'`. Absent means Free.
 - `mentionWhenNearby`: `false` to hide from the nearby roster. Absent means on.
 
-The persona entity ignores Presence and Movement, and the editor hides them for it.
+The persona entity ignores Presence and Movement, and the editor hides them for it. An entity with Presence Everywhere offers only Free, Stays Put and Can Follow the Player: a group is at all its places at once, so Moves Between has no meaning for it.
 
 **Runtime shape (save envelope, Gameplay side only).** Gameplay never writes GameDataContext.
 
 - A per-entity position map (entity id → location id), beside the per-entity stat map.
 - The set of entity ids that are following the player.
+- The set of entity ids the player has met. An entity joins it the first time it is in the scene list with its name revealed. An alias-only stranger does not join until the narration names them.
 - An entity has a position when its Presence is One, when its Movement is not Free, or when code has moved it.
 - A runtime character's existing `locationId` is its position. Runtime characters get Can Follow the Player.
 
@@ -130,7 +131,7 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 - An Everywhere entity that comes along does not move. One member peels off as a new runtime character named after the group, already following. The group stays where it is.
 - Map travel has no turn and no AI call. It applies only step 2.
 
-**Code and World Tools.** A new entity move write beside the player's location move. It resolves the entity and the target by id, then by name. An unknown name throws. It works on any entity, and moving a Free entity starts tracking it.
+**Code and World Tools.** Each entry of the existing `entities` record gets three writes: `entities["Name"].move(target)`, `.follow()` and `.unfollow()`. `move` resolves the target by id, then by name, and an unknown target throws. The writes work on any entity, and a write on a Free entity starts tracking it. `follow` and `unfollow` add the entity to the followers or remove it.
 
 **Saves and stale data.** On load, a position on a location that no longer exists falls back to the Presence start rule. A follower or position for an entity that no longer exists is dropped. The world stays authoritative for saves.
 
@@ -139,7 +140,7 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 **Player UI.**
 
 - The entity panel marks followers. This is a new visual pattern and needs the user's approval before it is built.
-- The Map shows the live position of each tracked entity the player has met.
+- The Map shows the live position of each tracked entity in the met set.
 
 **Editor UI.**
 
@@ -156,7 +157,7 @@ Three seams, all existing and pure:
 
 1. **Presence roster.** Who is present, in scene, nearby and reachable for a given world, positions map and follower set. Prior art: the presence module's own tests and the location context tests.
 2. **Turn commit.** Most rules live here: the join order, sticky following, "come along" only on a move, the Moves Between limit, the suggest-mode Go and Dismiss, collapse for One, peel-off for Everywhere, code moves last, and the stale-position fallback. Prior art: the turn commit tests.
-3. **Stat code executor.** The entity move write: id and name lookup, the unknown-name throw, and tracking a Free entity. Prior art: the executor's world-write tests.
+3. **Stat code executor.** The `move`, `follow` and `unfollow` writes: target lookup by id and name, the unknown-target throw, and tracking a Free entity. Prior art: the executor's world-write tests.
 
 Also:
 
@@ -175,15 +176,8 @@ Also:
 
 ## Further Notes
 
-- **Export shape:** three new entity fields in world JSON, all additive. **Save shape:** a positions map and a follower set in the save envelope.
+- **Export shape:** three new entity fields in world JSON, all additive. **Save shape:** a positions map, a follower set and a met set in the save envelope.
 - The version is user-managed. Do not bump it.
 - If the Entity Movement setting gets a `DEFAULT_*` with a `VITE_DEFAULT_*` twin, remind the user about `.env.local`.
 - ADR-0003 expected this feature as the refinement of the entity-owned membership field. A new ADR may record "authored membership, runtime position".
 - The Emberwatch walkthrough that drove these rulings: Wenna Tallow, Mother Hesk, the Wight and the Barrow Dead Stay Put; Captain Blackwell Moves Between the Keep and the Watchtower; Albus, Sylvie and Corvin Can Follow.
-
-**Open questions**
-
-- "Met" for the Map is assumed to mean the existing visible-entities record in the save. Confirm.
-- Which Movement options a group (Everywhere) offers. Peel-off covers Can Follow. Whether Moves Between makes sense for a group is unsettled.
-- Whether code also gets follow and stop-following writes, or only the move write.
-- The stat code name for the entity move write.
