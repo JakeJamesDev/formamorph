@@ -23,7 +23,7 @@ export function devWorldPromptOverview(): WorldOverview {
     promptOverrides: {
       systemPrompt: defaultSystemPrompt
         .replace('vivid second-person prose', 'grim, weather-beaten prose')
-        .replace('- Be concise and vivid. <LENGTH GUIDANCE>', '- Be expansive and unhurried. <LENGTH GUIDANCE>')
+        .replace('- <LENGTH GUIDANCE>', '- Be expansive and unhurried. <LENGTH GUIDANCE>')
         .replace('## Background Lore\n<DICTIONARY|before>\n\n', '')
         .replace(
           '## Game World',
