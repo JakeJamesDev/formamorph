@@ -19,6 +19,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **The Test Bench no longer flags a Blueprint trait whose requirement reads a Blueprint stat its entities hold.** It checks each entity that links the trait, and names one that lacks the stat.
   - **Edit Stats in the Stats panel now edits every visible stat, entity and persona stats included.** It now works in a world whose only visible stats belong to entities. Your edit doesn't count as the turn's change.
+  - **Autosave and the save list no longer crash on a save the browser can't read.** The unreadable save stays stored but doesn't show, and your other saves load and autosave as usual.
   - **Native Reasoning and Tools now match the model LM Studio or llama.cpp has loaded when you use `default`.** Switching back to a model reuses its answer with no request. Both rows get Recheck and name the model they describe.
 - **⚙️ Backend**
   - **The built-in engine updates to node-llama-cpp 3.22.2 with llama.cpp v0.7.0.** The update brings two llama.cpp releases of Vulkan fixes, including a fix for device start-up.
