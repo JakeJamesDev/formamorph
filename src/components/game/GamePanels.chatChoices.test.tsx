@@ -84,8 +84,9 @@ describe('Chat choices', () => {
     expect(leave.className).not.toMatch(/(hover|focus-visible)[^\s]*dialogue-quote/);
   });
 
+  // GameViewer passes `disabled` while a turn runs and its choices have not landed.
   it('disables the choices while a reply streams', async () => {
-    renderMiddlePanel({}, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
+    renderMiddlePanel({ disabled: true }, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
     const leave = await screen.findByRole('button', { name: 'Leave' });
     expect((leave as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(leave);
@@ -121,8 +122,16 @@ describe('Chat choices', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  it('lets a choice fill the input once choices land while the turn still runs', async () => {
+    renderMiddlePanel({ disabled: false }, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
+    const leave = await screen.findByRole('button', { name: 'Leave' });
+    expect((leave as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(leave);
+    expect(input().value).toBe('Leave');
+  });
+
   it('opens no choices menu while a reply streams', async () => {
-    renderMiddlePanel({}, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
+    renderMiddlePanel({ disabled: true }, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
     const turns = await screen.findAllByRole('article');
     fireEvent.contextMenu(within(turns[2]).getByTestId('chat-choices'));
     expect(screen.queryByRole('menu')).toBeNull();
