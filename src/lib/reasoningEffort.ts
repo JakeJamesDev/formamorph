@@ -268,14 +268,15 @@ export function parsePromptReasoningSetting(raw: unknown): PromptReasoningSettin
   return { enabled, level };
 }
 
-/** Prompts whose shipped default is a small amount of native reasoning: the planning passes and the memory
- *  passes weigh several facts at once, so cheap thinking helps them. Parsers and choices ship switched off. */
+/** Prompts whose shipped default is a small amount of native reasoning: the planning passes and milestone
+ *  selection weigh several facts at once, so cheap thinking helps them. Summary, diary, parsers and choices
+ *  ship switched off. */
 const LOW_REASONING_KINDS: readonly AIRequestType[] = [
-  'thinking', 'director', 'character', 'storyboard', 'summary', 'milestoneSelect', 'diary',
+  'thinking', 'director', 'character', 'storyboard', 'milestoneSelect',
 ];
 
-/** Shipped setting per prompt: narration on at Global, planning and memory passes on at Low, parsers and
- *  choices off (remembering Global for when they're switched on). */
+/** Shipped setting per prompt: narration on at Global, planning passes and milestone selection on at Low,
+ *  the rest off (remembering Global for when they're switched on). */
 export function defaultPromptReasoningSetting(kind: AIRequestType): PromptReasoningSetting {
   if (kind === 'narration') return { enabled: true, level: 'global' };
   return LOW_REASONING_KINDS.includes(kind) ? { enabled: true, level: 'low' } : { enabled: false, level: 'global' };
