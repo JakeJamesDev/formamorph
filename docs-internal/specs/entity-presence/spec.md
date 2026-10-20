@@ -17,12 +17,12 @@ An author has no way to say "this one stays", "this one walks between these plac
 
 Each entity gets three new settings beside its existing Locations list. The game tracks where each moving entity is during play.
 
-**Authoring** (entity panel, plus the Locations Canvas):
+**Authoring** (the full-screen Locations Canvas, plus each location's **Presence** tab):
 
-- **Locations**: the existing list. On the Locations Canvas, the author selects an entity and its locations tint. A click on a location adds it or removes it.
+- **Locations**: the existing list. On the full-screen Locations Canvas, the author picks an entity, and its locations show a pin and a solid tint. A click on a location adds it or removes it.
 - **Presence** (shown with two or more locations):
-  - **Everywhere Listed**: a group or a kind, present at every listed location. This is today's behavior and the default.
-  - **One, at a Random Listed Place**: one individual, placed at one listed location at random when a new game starts.
+  - **Everywhere Listed**: present at every listed location at once. This is today's behavior and the default.
+  - **One, at Random**: one individual, placed at one listed location at random when a new game starts.
 - **Movement**:
   - **Free**: today's behavior. Not tracked, no AI call. The default.
   - **Stays Put**: never leaves where it is.
@@ -142,15 +142,16 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 1. The player's move, from the AI router, from code or from Map travel.
 2. Followers move with the player. They ignore Connections, since player travel is free (ADR-0006).
 3. "Come along" applies only when the player moves. For a Moves Between entity it applies only when the destination is one of its own locations. Otherwise the entity stays.
-4. In suggest mode, intents wait for the player's choice. Go applies them; Dismiss drops them.
+4. In suggest mode, only "come along" waits for the player's choice. Go applies it; Dismiss drops it. "Stay here" and "go to a location" apply at once, since they don't depend on the player's move.
 5. Code moves of entities apply last, so a script has the final word.
 
-- "Come along" adds the entity to the followers. "Stay here" removes it. Following is sticky until then.
+- For a Can Follow entity, "come along" adds it to the followers. "Stay here" removes it. Following is sticky until then.
+- For a Moves Between entity, "come along" moves it once, with the player. It never joins the followers, so the next move can't carry it outside its own locations.
 - A One entity is in one place after any move.
 - An Everywhere entity that comes along does not move. One member peels off as a new runtime character named after the group, already following. The group stays where it is.
 - Map travel has no turn and no AI call. It applies only step 2.
 
-**Code and World Tools.** Each entry of the existing `entities` record gets three writes: `entities["Name"].move(target)`, `.follow()` and `.unfollow()`. `move` resolves the target by id, then by name, and an unknown target throws. The writes work on any entity, and a write on a Free entity starts tracking it. `follow` and `unfollow` add the entity to the followers or remove it.
+**Code and World Tools.** Each entry of the existing `entities` record gets three writes: `entities["Name"].move(target)`, `.follow()` and `.unfollow()`. `move` resolves the target by id, then by name, and an unknown target throws. The writes work on any entity, and a write on a Free entity starts tracking it. `follow` adds the entity to the followers and moves it to the player's location. `unfollow` removes it from the followers and leaves it where the player is.
 
 **Saves and stale data.** On load, a position on a location that no longer exists falls back to the Presence start rule. A follower or position for an entity that no longer exists is dropped. The world stays authoritative for saves.
 
@@ -163,10 +164,45 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 
 **Editor UI.**
 
-- Presence, Movement and Known In sit in the entity panel.
-- The Locations Canvas gets an entity selection mode with a switch between **Locations** and **Known In**. Locations shows a solid tint, and a click toggles membership. Known In shows a lighter tint over each picked subtree, and a click toggles a pick. These visuals need the user's approval before they are built.
+The prototype settled this layout (variant D, see Prototype). The user approved its visuals.
+
+- **Full-screen canvas only.** The embedded canvas in the Locations tab shows none of this; it has no room.
+- **Inspector card** (top right): an entity picker (**Choose an entity**), a **Close Entity** button, a **Locations** / **Known In** toggle with a pin and a megaphone icon, then **Presence**, **Movement**, the range warning and **Known In**.
+- **Marks on the canvas**, while an entity is picked:
+  - Its locations: solid tint plus a pin icon.
+  - Its Known In picks: a megaphone icon, and a dashed outline over each pick's whole subtree.
+  - Every other location fades to 30% opacity. Connections and their labels fade to 25%.
+- **Picking is read-only.** While an entity is picked, the canvas is a picker, not an editor:
+  - No node drag, no nesting, no Connection drawing or editing, no selection or marquee, no context menu, no nudge keys, and no toolbar.
+  - A drag with any mouse button pans. A click or tap toggles the location for the current mode.
+  - Find a Location, zoom and the minimap still work.
+  - Escape leaves picking first. A second Escape leaves full screen.
+- **Location Presence tab.** Below the existing **Entities** field:
+  - **Entities Here**: one row per entity at this location, with its **Movement** select, its **Presence** toggle when it lists other locations, and the range warning.
+  - **Known Here**: each entity known at this location. A pick on this location shows **Remove**; a pick on a parent shows "Known in <parent>". A select adds this location to an entity's Known In.
+- **Entity panel.** It holds no Presence fields. A hint points to the canvas: "Set **Presence**, **Movement** and **Known In** on the full-screen **Locations Canvas**".
 - The canvas warns about a Moves Between entity whose locations aren't connected through its own locations.
 - Every new screen or modal state gets a dev-route entry.
+
+**Copy.** Swept with `copy:sweep` (0 notices) and settled with the user. "Group" and "kind" never appear in the UI: neither is defined.
+
+| Control | Help line |
+| --- | --- |
+| Presence: Everywhere Listed | Puts it at every listed location at once |
+| Presence: One, at Random | Places it at one of its locations at random in each new game |
+| Movement: Free | Keeps no position. It appears at every listed location and costs no AI request. |
+| Movement: Stays Put | Never leaves its location. Costs no AI request. |
+| Movement: Moves Between Its Locations | Moves one Connection at a time, only between its own locations |
+| Movement: Can Follow the Player | Joins the player when the AI decides, then travels with them until it stays behind |
+| Can Follow, with Everywhere Listed | Adds a new entity with this name that travels with the player. This one stays at every listed location. |
+| Known In: Nearby | Sends its summary to the AI one step away from where it is |
+| Known In: Nowhere | Sends it to the AI only at its own location |
+| Known In: Picked Locations | Sends its summary to the AI anywhere inside the picked locations |
+| Persona | Moves with the player, so **Presence**, **Movement** and **Known In** don't apply |
+| Canvas, Locations mode | Click a location to add it or remove it |
+| Canvas, Known In mode | Click a location to pick it. A pick covers every location inside it. |
+| Known Here | Sends these entities' summaries to the AI anywhere inside this location. They aren't here. |
+| Range warning | <Entity> can't reach <location> from <location> through its own locations. Add the location between them, or a Connection. |
 
 ## Testing Decisions
 
@@ -200,3 +236,28 @@ Also:
 - If the Entity Movement setting gets a `DEFAULT_*` with a `VITE_DEFAULT_*` twin, remind the user about `.env.local`.
 - ADR-0003 expected this feature as the refinement of the entity-owned membership field. A new ADR may record "authored membership, runtime position".
 - The Emberwatch walkthrough that drove these rulings: Wenna Tallow, Mother Hesk, the Wight and the Barrow Dead Stay Put; Captain Blackwell Moves Between the Keep and the Watchtower; Albus, Sylvie and Corvin Can Follow.
+
+**Open questions** (found by the logic model, not yet ruled):
+
+- **Nearby in a flat world.** The reachable roster is the parent and siblings in the location tree. Connections don't count. In a world of top-level locations joined only by Connections (Emberwatch), Nearby reaches nobody. Should Nearby use the router's effective destinations instead?
+- **Groups peel every turn.** An Everywhere Listed entity with Can Follow is offered "come along" every turn it is in the scene. Each "come along" adds another new entity, and each turn costs a request. Should it peel once per scene, once per playthrough, or stop while one of its peels is following?
+
+## Prototype
+
+Both prototypes live on branch `prototype/entity-presence` (worktree `.claude/worktrees/prototype-entity-presence`). Neither lands on main.
+
+**Logic model.** Question: do the turn rules feel right in real turns? File: `docs-internal/specs/entity-presence/prototype/entity-presence-model.html` on the prototype branch (commit 8e8f9bf75); open it with a double-click. Verdict: the rules hold. The user accepted its three choices, now in Implementation Decisions:
+
+- Moves Between "come along" moves once and never joins the followers.
+- `follow()` brings the entity to the player's location.
+- In suggest mode only "come along" waits for Go.
+
+**UI prototype.** Question: where and how does an author set Presence, Movement and Known In? Launch entry `prototype-entity-presence`, port 5262; open the Rosewood (Prototype) world in the World Editor, with `?variant=A|B|C|D`. Variants: A Canvas Inspector, B Entity Panel First, C Location-First Cast, D Inspector + Icons, Full Screen Only. Verdict: **D**, with C's location Presence tab. Final commit e937dee78. Rounds after the first pick:
+
+- Icons for Locations and Known In, in addition to the shading; C's letter badges rejected.
+- The inspector shows on the full-screen canvas only.
+- The canvas is read-only while picking, and every mouse button pans.
+- Locations the entity doesn't touch fade out.
+- Copy swept; "group" and "kind" removed.
+
+The sample world in the prototype seats Captain Aldric at the Barracks and the City Gate on purpose, to show the range warning.
