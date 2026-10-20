@@ -46,6 +46,8 @@ export interface DevRoute {
   fullscreen?: string;
   /** Stage attached images on the game view (see `DEV_MODAL_TABS.gameViewerAttach`). */
   attach?: string;
+  /** Pick this entity id on the full-screen Locations Canvas; `<id>:knownIn` starts in Known In mode. */
+  pick?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -67,6 +69,8 @@ function parseHash(hash: string): DevRoute | null {
   const mode = params.get('mode');
   const fullscreen = params.get('fullscreen');
   const attach = params.get('attach');
+  const pick = params.get('pick');
+  if (pick) route.pick = pick;
   if (fullscreen) route.fullscreen = fullscreen;
   if (attach) route.attach = attach;
   if (probe) route.probe = probe;
@@ -128,7 +132,7 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string; pick?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
@@ -143,6 +147,7 @@ export function installDevRouter(): () => void {
       if (opts?.mode) params.set('mode', opts.mode);
       if (opts?.fixture) params.set('fixture', opts.fixture);
       if (opts?.attach) params.set('attach', opts.attach);
+      if (opts?.pick) params.set('pick', opts.pick);
       // A probe outlives the screen it was turned on over, so it carries across a goto unless replaced.
       const probe = opts?.probe ?? getDevRoute()?.probe;
       if (probe) params.set('probe', probe);

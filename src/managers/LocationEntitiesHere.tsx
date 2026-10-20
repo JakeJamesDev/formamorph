@@ -3,34 +3,12 @@ import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { isEverywhere, movementOptions, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
+import {
+  FOLLOW_EVERYWHERE_HELP, MOVEMENT_HELP, MOVEMENT_LABEL, PERSONA_IGNORED_HELP, PRESENCE_HELP, PRESENCE_OPTIONS,
+} from '@/lib/entityPresenceCopy';
 import { fieldFrame } from '@/lib/historyField';
+import PersonaPresenceHint from '@/managers/PersonaPresenceHint';
 import type { Entity } from '@/types';
-
-const MOVEMENT_LABEL: Record<MovementChoice, string> = {
-  free: 'Free',
-  stays: 'Stays Put',
-  between: 'Moves Between Its Locations',
-  follow: 'Can Follow the Player',
-};
-
-const MOVEMENT_HELP: Record<MovementChoice, string> = {
-  free: 'Keeps no position. It appears at every listed location and costs no AI request.',
-  stays: 'Never leaves its location. Costs no AI request.',
-  between: 'Moves one Connection at a time, only between its own locations',
-  follow: 'Joins the player when the AI decides, then travels with them until it stays behind',
-};
-
-const FOLLOW_EVERYWHERE_HELP = 'Adds a new entity with this name that travels with the player. This one stays at every listed location.';
-
-const PRESENCE_OPTIONS = [
-  { value: 'everywhere', label: 'Everywhere Listed' },
-  { value: 'random', label: 'One, at Random' },
-] as const;
-
-const PRESENCE_HELP = {
-  everywhere: 'Puts it at every listed location at once',
-  random: 'Places it at one of its locations at random in each new game',
-} as const;
 
 /** One entity's Presence and Movement, as a row of the location's cast. */
 function EntityHereRow({ entity, label, onChange }: { entity: Entity; label: string; onChange: (next: Entity) => void }) {
@@ -38,7 +16,7 @@ function EntityHereRow({ entity, label, onChange }: { entity: Entity; label: str
     return (
       <div className="space-y-1 rounded-md border p-2">
         <span className="block truncate font-medium">{label}</span>
-        <Hint>Moves with the player, so <b>Presence</b>, <b>Movement</b> and <b>Known In</b> don’t apply</Hint>
+        <PersonaPresenceHint />
       </div>
     );
   }
@@ -71,7 +49,7 @@ function EntityHereRow({ entity, label, onChange }: { entity: Entity; label: str
           <Hint>{PRESENCE_HELP[presence]}</Hint>
         </div>
       )}
-      {entity.persona && <Hint>Ignored while the player plays this entity</Hint>}
+      {entity.persona && <Hint>{PERSONA_IGNORED_HELP}</Hint>}
     </div>
   );
 }

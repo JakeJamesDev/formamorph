@@ -56,13 +56,15 @@ const MORPH_ENTITY = {
 const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, value }] }) as unknown as EntityStatValues;
 
 const WHITE_ROOM_ID = '1783535114538';
-/** The `entityPresence` fixture's cast, each one at the White Room. */
+/** The `entityPresence` fixture's cast, all but the last at the White Room. */
 const ENTITY_PRESENCE_CAST: Entity[] = [
   { id: 'dev-warden', name: 'Warden', locations: [WHITE_ROOM_ID, 'dev-corridor'], presence: 'random', movement: 'stays' },
   { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], movement: 'follow' },
   { id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID] },
   { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
   { id: 'dev-self', name: 'Visitor', locations: [WHITE_ROOM_ID], customPersona: true },
+  // Off the White Room: the canvas's range warning (no path back from the Corridor) and a pick on a group.
+  { id: 'dev-sentry', name: 'Sentry', locations: ['dev-corridor', 'dev-alcove'], presence: 'random', movement: 'between', knownIn: [WHITE_ROOM_ID] },
 ];
 
 /** Page one of the `writtenOpening` fixture. */

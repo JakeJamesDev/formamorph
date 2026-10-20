@@ -19,6 +19,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Entity Presence:**
     - **An entity can stand at one random location from its list in each new game.** Set **One, at Random** under **Entities Here** on a location's **Presence** tab. Saves keep where it stands.
+    - **Pick an entity on the full-screen Locations Canvas to place it and set where the AI knows of it.** Click a location to add or remove it. In **Known In** mode, a pick covers every location inside it. The card also sets **Presence** and **Movement**, and warns when a moving entity can't reach one of its locations.
 
 ### Minor Changes
 
