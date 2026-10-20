@@ -178,7 +178,7 @@ describe('phase 2 registry changes', () => {
     const scope = variableAxes(ENT).find((a) => a.id === 'scope')!;
     expect(scope.options.map((o) => o.id)).toContain('inscene');
     expect(variantLabelForToken('<ENTITIES|inscene.name>')).toBe('In Scene, Name');
-    expect(scope.options.map((o) => o.label)).toEqual(['Here', 'In Sub', 'Reachable', 'In Scene']);
+    expect(scope.options.map((o) => o.label)).toEqual(['Here', 'In Sub', 'Reachable', 'Known', 'In Scene']);
   });
 
   it('registers Time as an ordinary affixable context chip', () => {

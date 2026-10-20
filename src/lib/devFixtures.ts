@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Entity, EntityStatValues, World, SaveObject } from '@/types';
+import type { Entity, EntityStatValues, GameLocation, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
@@ -56,7 +56,7 @@ const MORPH_ENTITY = {
 const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, value }] }) as unknown as EntityStatValues;
 
 const WHITE_ROOM_ID = '1783535114538';
-/** The `entityPresence` fixture's cast, all but the last at the White Room. */
+/** The `entityPresence` fixture's cast, all but the last two at the White Room. */
 const ENTITY_PRESENCE_CAST: Entity[] = [
   { id: 'dev-warden', name: 'Warden', locations: [WHITE_ROOM_ID, 'dev-corridor'], presence: 'random', movement: 'stays' },
   { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], movement: 'follow' },
@@ -64,8 +64,12 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
   { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
   { id: 'dev-self', name: 'Visitor', locations: [WHITE_ROOM_ID], customPersona: true },
   // Off the White Room: the canvas's range warning (no path back from the Corridor) and a pick on a group.
+  // It is also the White Room's own Known Here pick.
   { id: 'dev-sentry', name: 'Sentry', locations: ['dev-corridor', 'dev-alcove'], presence: 'random', movement: 'between', knownIn: [WHITE_ROOM_ID] },
+  // A Known Here row inherited from the Keep, which holds the White Room.
+  { id: 'dev-queen', name: 'Queen', locations: ['dev-keep'], knownIn: ['dev-keep'] },
 ];
+const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep', nearbyUsesConnections: true };
 
 /** Page one of the `writtenOpening` fixture. */
 export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
@@ -162,9 +166,11 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
     }
     case 'entityPresence': {
       // The white room with a cast for every Entities Here row: One with a Movement, a two-place entity
-      // that can follow, a one-place entity, a world persona and the Custom Persona.
+      // that can follow, a one-place entity, a world persona and the Custom Persona; then two Known Here rows,
+      // with the White Room nested in the Keep.
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
-      return { world: { ...world, entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
+      const locations = world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, parentId: DEV_KEEP.id } : l));
+      return { world: { ...world, locations: [DEV_KEEP, ...locations], entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
     }
     case 'writtenOpening': {
       // A new game whose only opening is an Opening Narration, so Start Game is page one. A world file

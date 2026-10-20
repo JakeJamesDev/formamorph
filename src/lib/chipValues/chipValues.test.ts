@@ -132,6 +132,17 @@ describe('the Entities chip', () => {
     expect(values('<ENTITIES|reachable.name>')).toBe('Watchman');
   });
 
+  it('lists a known entity only in Known, and never one a higher scope lists', () => {
+    // Both are Known In Old Town, which holds the North Gate. The Guard is here, so Here wins for him.
+    const herald: Entity = { id: 'herald', name: 'Herald', locations: ['market'], knownIn: ['old-town'], aiSummary: 'Reads the decrees.' };
+    const values = chipValues(scene({ entities: [{ ...guard, knownIn: ['old-town'] }, merchant, watchman, herald] }));
+    expect(values('<ENTITIES|known.name>')).toBe('Herald');
+    expect(values('<ENTITIES|known>')).toContain('Reads the decrees.');
+    // The Herald stands in the Market, a reachable place, but a picked entity is never Nearby.
+    expect(values('<ENTITIES|reachable.name>')).toBe('Watchman');
+    expect(values('<ENTITIES|name>')).toBe('Guard');
+  });
+
   it('lists the in-scene roster from the scene ids, wherever they are from', () => {
     const values = chipValues(scene());
     expect(values('<ENTITIES|inscene.name>')).toBe('Guard, Wanderer');

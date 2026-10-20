@@ -3,7 +3,7 @@ import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
   navigableDestinations, navigableDestinationEntries, buildDestinationsContext, sublocationEntityIds, reachableEntityIds, renderEntityRoster,
-  buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere,
+  buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, knownEntityIds, buildKnownEntitiesContext,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Connection, Entity, GameLocation } from "@/types";
@@ -206,22 +206,113 @@ describe("buildReachableLocationsContext / buildReachableEntitiesContext", () =>
   });
 
   it("reachable entities: gathers the containing location's cast alongside the neighbors'", () => {
-    const out = buildReachableEntitiesContext(houseA, locs, [sarah, mayor]);
+    const out = buildReachableEntitiesContext(houseA, locs, [], [sarah, mayor]);
     expect(out).toContain("Sarah");
     expect(out).toContain("Mayor");
     expect(out).toContain("Runs the town.");
   });
 
   it("reachable entities: honors excludeIds, N/A when nobody is left or nothing is reachable", () => {
-    expect(buildReachableEntitiesContext(houseA, locs, [sarah, mayor], { excludeIds: ["sarah", "mayor"] })).toBe(NONE_PLACEHOLDER);
-    expect(buildReachableEntitiesContext(top, locs, [sarah])).toBe(NONE_PLACEHOLDER);
+    expect(buildReachableEntitiesContext(houseA, locs, [], [sarah, mayor], { excludeIds: ["sarah", "mayor"] })).toBe(NONE_PLACEHOLDER);
+    expect(buildReachableEntitiesContext(top, locs, [], [sarah])).toBe(NONE_PLACEHOLDER);
   });
 
   it("reachableEntityIds: dedupes someone standing in two reachable places", () => {
     const twoPlaceMayor: Entity = { ...mayor, locations: ["town", "m"] }; // Mayor is in Town and at the Mall
-    expect(reachableEntityIds(houseA, [town, houseA, sarahs, mall], [sarah, twoPlaceMayor]).sort())
+    expect(reachableEntityIds(houseA, [town, houseA, sarahs, mall], [], [sarah, twoPlaceMayor]).sort())
       .toEqual(["mayor", "sarah"]);
-    expect(reachableEntityIds(top, locs, [sarah, mayor])).toEqual([]); // top-level → nothing reachable
+    expect(reachableEntityIds(top, locs, [], [sarah, mayor])).toEqual([]); // top-level → nothing reachable
+  });
+});
+
+describe("Known In rosters", () => {
+  // rosewood > { throne, inn > cellar, market } ; ashby is top-level, joined to the market by a Connection.
+  const rosewood: GameLocation = { id: "rosewood", name: "Rosewood" };
+  const throne: GameLocation = { id: "throne", name: "Throne Room", parentId: "rosewood" };
+  const inn: GameLocation = { id: "inn", name: "Inn", parentId: "rosewood" };
+  const cellar: GameLocation = { id: "cellar", name: "Cellar", parentId: "inn" };
+  const market: GameLocation = { id: "market", name: "Market", parentId: "rosewood" };
+  const ashby: GameLocation = { id: "ashby", name: "Ashby" };
+  const locs = [rosewood, throne, inn, cellar, market, ashby];
+  const road: Connection = { id: "road", a: "market", b: "ashby", aToB: {}, bToA: {} };
+
+  const queen: Entity = {
+    id: "queen", name: "Queen", locations: ["throne"], knownIn: ["rosewood"],
+    aiDescription: "Long history of the crown.", aiSummary: "The ruling queen.",
+  };
+  const sage: Entity = { id: "sage", name: "Sage", locations: ["throne"], knownIn: "nowhere" };
+  const guard: Entity = { id: "guard", name: "Guard", locations: ["throne"] };
+  const smith: Entity = { id: "smith", name: "Smith", locations: ["ashby"] };
+
+  it("a pick covers its whole subtree, at any depth", () => {
+    expect(knownEntityIds(inn, locs, [queen])).toEqual(["queen"]);
+    expect(knownEntityIds(cellar, locs, [queen])).toEqual(["queen"]);
+    expect(knownEntityIds(rosewood, locs, [queen])).toEqual(["queen"]);
+  });
+
+  it("a pick covers nothing outside its subtree", () => {
+    expect(knownEntityIds(ashby, locs, [queen])).toEqual([]);
+    expect(knownEntityIds(inn, locs, [{ ...queen, knownIn: ["market"] }])).toEqual([]);
+  });
+
+  it("Nearby and Nowhere entities are never on the known roster", () => {
+    expect(knownEntityIds(inn, locs, [sage, guard])).toEqual([]);
+  });
+
+  it("an emptied pick list falls back to Nearby: reachable again, not known", () => {
+    const emptied = { ...queen, knownIn: [] };
+    expect(knownEntityIds(inn, locs, [emptied])).toEqual([]);
+    expect(reachableEntityIds(inn, locs, [], [emptied])).toEqual(["queen"]);
+  });
+
+  it("picks stay fixed when the entity moves", () => {
+    const away = { ...queen, locations: ["ashby"] };
+    expect(knownEntityIds(cellar, locs, [away])).toEqual(["queen"]);
+  });
+
+  it("the reachable roster lists only Nearby entities", () => {
+    expect(reachableEntityIds(inn, locs, [], [queen, sage, guard])).toEqual(["guard"]);
+  });
+
+  it("the sublocations roster lists only Nearby entities", () => {
+    expect(sublocationEntityIds(rosewood, locs, [queen, sage, guard])).toEqual(["guard"]);
+  });
+
+  it("the known roster sends name and summary only, even under Full content", () => {
+    const owned = { queen: [{ id: "t", name: "Crowned" }] } as never;
+    const out = buildKnownEntitiesContext(inn, locs, [queen], { ownedTraits: owned });
+    expect(out).toContain("Queen");
+    expect(out).toContain("The ruling queen.");
+    expect(out).not.toContain("Long history");
+    expect(out).not.toContain("Crowned");
+  });
+
+  it("the known roster drops anyone a higher scope listed, and is N/A when empty", () => {
+    expect(buildKnownEntitiesContext(inn, locs, [queen], { excludeIds: ["queen"] })).toBe(NONE_PLACEHOLDER);
+    expect(buildKnownEntitiesContext(ashby, locs, [queen])).toBe(NONE_PLACEHOLDER);
+    expect(buildKnownEntitiesContext(null, locs, [queen])).toBe(NONE_PLACEHOLDER);
+  });
+
+  describe("nearbyUsesConnections", () => {
+    it("absent: the reachable roster is the tree only, so a Connection reaches nobody", () => {
+      expect(reachableEntityIds(market, locs, [road], [smith])).toEqual([]);
+    });
+
+    it("true: the reachable roster follows the router's effective destinations", () => {
+      const linked = { ...market, nearbyUsesConnections: true };
+      expect(reachableEntityIds(linked, locs, [road], [smith, guard]).sort()).toEqual(["guard", "smith"]);
+    });
+
+    it("true: a one-way leg reaches only in its own direction", () => {
+      const oneWay: Connection = { id: "road", a: "market", b: "ashby", bToA: {} };
+      const linked = { ...market, nearbyUsesConnections: true };
+      expect(reachableEntityIds(linked, locs, [oneWay], [smith])).toEqual([]);
+    });
+
+    it("true: a top-level location reaches through its Connections", () => {
+      const linked = { ...ashby, nearbyUsesConnections: true };
+      expect(reachableEntityIds(linked, locs, [road], [{ ...guard, locations: ["market"] }])).toEqual(["guard"]);
+    });
   });
 });
 

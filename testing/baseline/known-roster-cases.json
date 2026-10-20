@@ -1,0 +1,26 @@
+{
+  "_note": "Cases for the known roster probe (harness/known-roster-probe.cli.ts). Sedge Landing, plus one entity standing in the Eelhouse and Known In Sedge Landing and Sedge Hamlet, so the player at the landing receives her in <ENTITIES|known> only. `ask` cases give a present character a reason to speak of her; `neutral` cases give none. `checks` name scorers in the harness.",
+  "known": {
+    "id": "ent-reeve",
+    "name": "Reeve Ashcombe",
+    "locations": ["loc-eelhouse"],
+    "knownIn": ["loc-sedge", "loc-hamlet"],
+    "aiDescription": "The river-reeve of the gloamwater. Last spring she seized the eel weirs for the crown, and she now takes a copper from every crossing. She keeps her seat in the hamlet and rarely comes down to the water.",
+    "aiSummary": "The river-reeve who seized the eel weirs last spring and takes a copper from every crossing."
+  },
+  "cases": [
+    { "id": "narr-ask", "kind": "narration", "action": "I ask the ferryman what he thinks of the river-reeve.", "checks": ["uptake", "present-leak"] },
+    { "id": "narr-neutral", "kind": "narration", "action": "I sit on the end of the dock and watch the water.", "checks": ["present-leak", "mention"] },
+    { "id": "exp-ask", "kind": "experimental", "action": "I ask the ferryman what he thinks of the river-reeve.", "checks": ["uptake", "present-leak"] },
+    { "id": "exp-neutral", "kind": "experimental", "action": "I sit on the end of the dock and watch the water.", "checks": ["present-leak", "mention"] },
+    { "id": "plan-ask", "kind": "planning", "action": "I ask the ferryman what he thinks of the river-reeve.", "checks": ["uptake", "cast-leak"] },
+    { "id": "plan-neutral", "kind": "planning", "action": "I sit on the end of the dock and watch the water.", "checks": ["cast-leak"] },
+    { "id": "dir-ask", "kind": "director", "action": "I ask the ferryman what he thinks of the river-reeve.", "checks": ["cast-leak"] },
+    { "id": "dir-neutral", "kind": "director", "action": "I sit on the end of the dock and watch the water.", "checks": ["cast-leak"] },
+    {
+      "id": "choices-toll", "kind": "choices", "scene": ["Bram", "Odette"],
+      "narration": "The ferryman spits into the dark water. \"Toll's gone up again,\" he mutters, not looking at you. The eel-smoker beside him laughs once, without humor, and pulls her sack closer.",
+      "checks": ["address-leak", "mention", "contract"]
+    }
+  ]
+}

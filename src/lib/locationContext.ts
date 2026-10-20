@@ -1,7 +1,7 @@
 import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
 import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
-import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
+import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -327,11 +327,14 @@ export function buildSublocationsContext(
   return buildLocationList(kids, opts);
 }
 
-/** The deduped entity ids across the current location's direct sub-locations. */
+/** The entities a roster of places they aren't present at may list: those whose Known In is Nearby. */
+const nearbyKnown = (entities: Entity[]) => entities.filter((e) => knownInOf(e) === "nearby");
+
+/** The deduped ids of the Nearby entities across the current location's direct sub-locations. */
 export function sublocationEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[]): string[] {
   if (!current) return [];
   const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
-  return entityIdsAtAny(kids.map((k) => k.id), entities);
+  return entityIdsAtAny(kids.map((k) => k.id), nearbyKnown(entities));
 }
 
 /**
@@ -499,10 +502,50 @@ export function scenePresentHere(names: string[], entities: Entity[], hereIds: s
   });
 }
 
-/** The deduped entity ids across the current location's reachable locations (parent + siblings). */
-export function reachableEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[]): string[] {
+/** The deduped ids of the Nearby entities across the current location's reachable locations: the parent and
+ *  siblings, or its effective destinations when it sets `nearbyUsesConnections`. */
+export function reachableEntityIds(
+  current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[],
+): string[] {
   if (!current) return [];
-  return entityIdsAtAny(reachableLocations(current, locations).map((l) => l.id), entities);
+  const reach = current.nearbyUsesConnections
+    ? [...effectiveDestinations(current.id, locations, connections).keys()]
+    : reachableLocations(current, locations).map((l) => l.id);
+  return entityIdsAtAny(reach, nearbyKnown(entities));
+}
+
+/** The ids of the entities known at the current location: one of each one's Known In picks is the location
+ *  or contains it. The Custom Persona is never listed; the played persona is not in the cast play passes. */
+export function knownEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[]): string[] {
+  if (!current) return [];
+  return knownHere(current.id, locations, entities).map((row) => row.entity.id);
+}
+
+/**
+ * Serialize the entities known at the current location but not present, for the `<ENTITIES|known>` chip. Each
+ * sends its name and summary only: Full renders as Summary, and owned traits and stats are left out.
+ * `excludeIds` drops anyone a higher-precedence roster lists. Returns `N/A` when no one remains.
+ */
+export function buildKnownEntitiesContext(
+  current: MaybeLocation,
+  locations: GameLocation[],
+  entities: Entity[],
+  opts: RosterOpts & { excludeIds?: string[] } = {},
+): string {
+  return textOf(knownEntityRuns(current, locations, entities, opts));
+}
+
+/** {@link buildKnownEntitiesContext} as marked runs. */
+export function knownEntityRuns(
+  current: MaybeLocation,
+  locations: GameLocation[],
+  entities: Entity[],
+  opts: RosterOpts & { excludeIds?: string[] } = {},
+): MarkedRun[] {
+  if (!current) return runs(NONE_PLACEHOLDER);
+  const exclude = new Set(opts.excludeIds ?? []);
+  const ids = knownEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
+  return entityRosterRuns(ids, entities, { ...opts, preferSummary: true, noTraits: true, noStats: true });
 }
 
 /**
@@ -530,22 +573,24 @@ export function buildReachableLocationsContext(
 export function buildReachableEntitiesContext(
   current: MaybeLocation,
   locations: GameLocation[],
+  connections: Connection[],
   entities: Entity[],
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
-  return textOf(reachableEntityRuns(current, locations, entities, opts));
+  return textOf(reachableEntityRuns(current, locations, connections, entities, opts));
 }
 
 /** {@link buildReachableEntitiesContext} as marked runs. */
 export function reachableEntityRuns(
   current: MaybeLocation,
   locations: GameLocation[],
+  connections: Connection[],
   entities: Entity[],
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): MarkedRun[] {
   if (!current) return runs(NONE_PLACEHOLDER);
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = reachableEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
+  const ids = reachableEntityIds(current, locations, connections, entities).filter((id) => !exclude.has(id));
   return entityRosterRuns(ids, entities, opts);
 }
 

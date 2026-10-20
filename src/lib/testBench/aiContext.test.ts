@@ -4,7 +4,7 @@ import { estimateTokens } from '@/lib/memoryUtils';
 import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup } from '@/types';
 import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import {
-  buildAiContext, buildStatBlock, statsChipIn, type AiContextWorld, type ContextBlockId,
+  buildAiContext, buildStatBlock, statsChipIn, type AiContextWorld, type ContextBlockId, type RosterScope,
 } from './aiContext';
 import { buildLens, type LensState } from './lens';
 
@@ -90,7 +90,7 @@ const context = (state: LensState, over: Partial<AiContextWorld> = {}) => {
   return buildAiContext(w, buildLens({ ...w, traitGroups: w.traitGroups ?? [] }, state));
 };
 const block = (data: ReturnType<typeof context>, id: ContextBlockId) => data.blocks.find((b) => b.id === id)!;
-const roster = (data: ReturnType<typeof context>, scope: 'here' | 'sublocations' | 'reachable') =>
+const roster = (data: ReturnType<typeof context>, scope: RosterScope) =>
   data.rosters.find((r) => r.scope === scope)!;
 
 describe('context blocks', () => {
@@ -316,6 +316,19 @@ describe('entity rosters', () => {
     expect(text).toContain('Flaps in the wind.');
   });
 
+  it('lists an entity known here in Known Here, matching the block beside it', () => {
+    // The Gull's reputation covers all of Sedge Landing, so at the Net Loft it is known, not reachable.
+    // The Salt Crate is in the Net Loft itself, so Here lists it, though its picks cover the loft too.
+    const known = entities.map((e) => (e.id === 'e-gull' || e.id === 'e-crate' ? { ...e, knownIn: ['loc-landing'] } : e));
+    const data = context(at('loc-loft'), { entities: known });
+    expect(roster(data, 'here').entities.map((e) => e.id)).toContain('e-crate');
+    expect(roster(data, 'known').entities.map((e) => e.id)).toEqual(['e-gull']);
+    expect(roster(data, 'reachable').entities.map((e) => e.id)).not.toContain('e-gull');
+    const text = block(data, 'knownEntities').text;
+    expect(text).toContain('A watching gull.');
+    expect(text).not.toContain('A gull that watches the fish tables.');
+  });
+
   it('holds no roster anywhere when the lens stands nowhere', () => {
     expect(context(at(null)).rosters.every((r) => r.entities.length === 0)).toBe(true);
   });
@@ -326,7 +339,7 @@ describe('a malformed world', () => {
     // World JSON is hand-editable, so a collection the type calls required can simply be absent.
     const bare = { worldOverview: {}, stats: [], locations, entities: [], traits: [] } as unknown as AiContextWorld;
     const data = buildAiContext(bare, buildLens({ ...bare, traitGroups: [] }, at('loc-harbor')));
-    expect(data.blocks).toHaveLength(13);
+    expect(data.blocks).toHaveLength(14);
     expect(data.destinations.map((d) => d.id).sort()).toEqual(['loc-landing', 'loc-loft', 'loc-market']);
   });
 
