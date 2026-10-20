@@ -206,7 +206,7 @@ import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patc
 import { addToPending, setTurnAttachments, latestTurnAttachments, pruneAttachments } from "../lib/actionAttachments";
 import { useImageAttachments } from "../lib/useImageAttachments";
 import { useMountedRef } from "../lib/useMountedRef";
-import { generateImage, buildImageRequest } from "../lib/imageGen";
+import { generateImage, buildImageRequest, takesCharacterPrompts } from "../lib/imageGen";
 import { toastImageFailure } from "../lib/imageGen/failureToast";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -549,8 +549,8 @@ const GameViewer = ({
     summaryUserPrompt,
     milestoneSelectPrompt,
     milestoneSelectUserPrompt,
-    // Scene images: the tag pass's prompts and the toggles. The provider config itself is read off
-    // `settings` by buildImageRequest, not destructured here.
+    // Scene images: the tag pass's prompts and the toggles. buildImageRequest reads the rest of the
+    // provider config off `settings`; provider and model pick the scene line's form.
     sceneTagsPrompt,
     sceneTagsUserPrompt,
     discoverEntityPrompt,
@@ -558,6 +558,8 @@ const GameViewer = ({
     sceneImageAuto,
     imageTagPrompt,
     imageCleanTags,
+    imageProvider,
+    imageModel,
     imageGenDisabled,
     imageLandscapeWidth,
     imageLandscapeHeight,
@@ -3969,7 +3971,10 @@ const GameViewer = ({
     });
     const actionTags = await sendAiRequest({ ...request, signal });
     if (signal.aborted) return "";
-    const line = composeSceneTags({ characters: cast, locationTags, actionTags, places, knownTags, cleanTags: imageCleanTags });
+    const line = composeSceneTags({
+      characters: cast, locationTags, actionTags, places, knownTags, cleanTags: imageCleanTags,
+      segmented: takesCharacterPrompts(imageProvider, imageModel),
+    });
     // Stored whether or not an image follows, so the player can read and edit what would be sent.
     if (line) setFullMessageHistory((prev) => patchSceneTags(prev, turnId, line) ?? prev);
     return line;

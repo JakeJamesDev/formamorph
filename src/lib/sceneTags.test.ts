@@ -135,6 +135,97 @@ describe('composeSceneTags', () => {
   });
 });
 
+describe('composeSceneTags — segmented', () => {
+  it('puts counts, action and place in the base and each character in their own part', () => {
+    expect(composeSceneTags({
+      characters: [{ name: 'Wren', tags: '1boy, solo, short hair, grey coat' }, girl('Mira', 'silver hair')],
+      locationTags: 'wooden dock, river',
+      actionTags: 'arguing',
+      segmented: true,
+    })).toBe('1girl, 1boy, arguing, wooden dock, river | boy, short hair, grey coat | girl, silver hair');
+  });
+
+  it('merges same-kind counts in the base and keeps each kind bare in its part', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', 'silver hair'), { name: 'Sedge', tags: '2girls, red coat' }],
+      locationTags: '',
+      actionTags: 'walking',
+      segmented: true,
+    })).toBe('2girls, walking | girl, silver hair | girl, red coat');
+  });
+
+  it('splits a one-character scene the same way', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', 'solo focus, silver hair')],
+      locationTags: 'river',
+      actionTags: 'standing',
+      segmented: true,
+    })).toBe('1girl, standing, river | girl, silver hair');
+  });
+
+  it('keeps a tag both characters share in both parts', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', 'long hair, blue eyes'), girl('Sedge', 'long hair, red coat')],
+      locationTags: 'long hair',
+      actionTags: 'long hair',
+      segmented: true,
+    })).toBe('2girls, long hair | girl, long hair, blue eyes | girl, long hair, red coat');
+  });
+
+  it('dedupes inside one part', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', 'silver hair, Silver_Hair')],
+      locationTags: 'rain',
+      actionTags: 'rain',
+      segmented: true,
+    })).toBe('1girl, rain | girl, silver hair');
+  });
+
+  it('keeps the separators with Clean Up Tags on', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', '{{silver hair}}')],
+      locationTags: '[[river]]',
+      actionTags: 'source#hug',
+      segmented: true,
+      cleanTags: true,
+    })).toBe('1girl, source hug, river | girl, silver hair');
+  });
+
+  it('keeps NovelAI syntax inside a part with Clean Up Tags off', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', '{{silver hair}}, 0.8::freckles ::')],
+      locationTags: '[[river]]',
+      actionTags: 'source#hug',
+      segmented: true,
+      cleanTags: false,
+    })).toBe('1girl, source#hug, [[river]] | girl, {{silver hair}}, 0.8::freckles ::');
+  });
+
+  it('gives an untagged character a part with only their kind', () => {
+    expect(composeSceneTags({
+      characters: [{ name: 'Wren', tags: '' }, girl('Mira', 'silver hair')],
+      locationTags: '',
+      actionTags: 'talking',
+      segmented: true,
+    })).toBe('1girl, 1other, talking | other | girl, silver hair');
+  });
+
+  it('still drops "no humans" and strips names and places from the action', () => {
+    expect(composeSceneTags({
+      characters: [{ name: 'Dean Wolfram', tags: '1boy, grey coat' }],
+      locationTags: 'no humans, wooden dock',
+      actionTags: 'dean wolfram walking, sedge landing at dusk',
+      places: ['Sedge Landing'],
+      segmented: true,
+    })).toBe('1boy, walking, at dusk, wooden dock | boy, grey coat');
+  });
+
+  it('is the plain line for an empty scene', () => {
+    expect(composeSceneTags({ characters: [], locationTags: 'no humans, wooden dock', actionTags: 'rain', segmented: true }))
+      .toBe('rain, no humans, wooden dock');
+  });
+});
+
 describe('stripNames', () => {
   it('deletes a full name that is the whole tag', () => {
     expect(stripNames('dean wolfram', ['Dean Wolfram'])).toBe('');

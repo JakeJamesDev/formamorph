@@ -10,6 +10,9 @@ const SPACED_PIPE = /(?<=\s)\|(?=\s)/;
 export const splitPromptParts = (prompt: string, separator: RegExp): string[] =>
   prompt.split(separator).map((part) => part.replace(/^[\s,]+|[\s,]+$/g, ''));
 
+/** Parts joined as one line, in the spaced form every provider reads. */
+export const joinPromptParts = (parts: string[]): string => parts.join(' | ');
+
 /** A spaced-`|` line as one comma line, for a provider with no character prompts. */
 export function flattenSpacedPipes(prompt: string): string {
   if (!SPACED_PIPE.test(prompt)) return prompt;
