@@ -55,7 +55,7 @@ In play, the AI reads each relationship as one sentence: "Kate is Tera's mother"
 **Rendering (one seam: chip values).**
 
 - A relationship renders as a field line inside the entity blocks. No new chip. Each relationship gets its own `relationship` field, after the description and type fields and before traits and stats, in every format.
-- Each relationship prints once per scene, decided by roster precedence (here > sublocations > reachable > known): on the owner's block when the chain lists the owner, else on the target's block when the chain lists the target, else nowhere. In Scene is its own roster and applies the same rule over its own ids. Chip values stay per token. There is no template-aware pass, so a custom template with only some scopes can lose a line. That gap is accepted.
+- Each relationship prints once per scene, decided by roster precedence (here > sublocations > reachable > known): on the owner's block when the chain lists the owner, else on the target's block when the chain lists the target, else nowhere. In Scene is its own roster and applies the same rule over its own ids. Chip values stay per token. There is no template-aware pass, so a custom template with only some scopes can lose a line. So can an owner's scope token that is name-only or filters the owner out with Only With. That gap is accepted.
 - The Persona block counts as a block for this rule, at the head of the chain.
 - The line appears in every roster scope that renders full or summary blocks. A name-only scope shows no relationship lines.
 
@@ -63,6 +63,7 @@ In play, the AI reads each relationship as one sentence: "Kate is Tera's mother"
 
 - Each entity in the here roster or the in-scene roster pulls the other end of each of its relationships into the `<ENTITIES|known>` roster. The played persona counts as present.
 - The pull-in is one hop. An entity in the known, reachable or sublocation roster pulls in no one.
+- A pull source is never pulled. A relationship never adds a Here or In Scene entity to the known roster. Known In behavior is unchanged.
 - The pull-in ignores Known In, Nowhere included.
 - The existing precedence holds: here > sublocation > reachable > known. A pulled entity that a higher scope lists stays in that scope.
 - A pulled entity renders like any known entity: summary only, no traits, no stats.
@@ -109,3 +110,4 @@ A good test drives the public seam and asserts what the AI or the author would s
 - Q13: no change to the known roster's header text.
 - "The played persona counts as present" (Q3) is derived: the persona is always in the scene. The player's own relatives are therefore known in every scene.
 - This builds on the Entity Presence effort's known roster and roster precedence.
+- Ticket 02's probe (`relationship-probe.cli.ts`, cloud): the pull-in works on questions about the relative, and the relative stays absent. When the player seeks or addresses the relative, the relative is in the scene on ~8/10 runs, vs ~3/10 for an invented stand-in without the relationship. This is the known roster's general contract, which Q13 leaves to the separate header effort. The finding went to that effort.
