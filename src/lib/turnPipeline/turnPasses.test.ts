@@ -4,7 +4,7 @@ import { defaultMilestoneSelectUserPrompt } from '@/components/game/GamePrompts'
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues } from '@/lib/promptValues';
 import { planTurn } from './planTurn';
-import type { ChatMessage, Entity, PlayerStat } from '@/types';
+import type { ChatMessage, Entity, GameLocation, PlayerStat } from '@/types';
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPassSubject, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
@@ -218,6 +218,37 @@ describe('turn pass requests', () => {
       // A follower is never offered "come along", so the word means nothing from one.
       expect(read('Come along', ['keepFollowing', 'stayHere'])).toBeNull();
       expect(read('NONE', ['stay', 'comeAlong'])).toBeNull();
+    });
+
+    describe('for a Moves Between entity', () => {
+      const blackwell: Entity = { id: 'e3', name: 'Blackwell', movement: 'between', locations: ['keep', 'wall', 'tower'] } as Entity;
+      const walking = {
+        subject: {
+          name: 'Blackwell',
+          entity: blackwell,
+          moves: ['stay', 'comeAlong'],
+          destinations: [{ id: 'keep', name: 'The Keep' }, { id: 'tower', name: 'The Watchtower' }],
+        } as TurnPassSubject,
+      };
+
+      it('offers stay, come along, then each of its places', () => {
+        expect(lastMessage('entityLocationAuto', walking)).toMatch(/\| - Stay\n- Come along\n- The Keep\n- The Watchtower$/);
+      });
+
+      it('reads a place name as a walk there', () => {
+        const read = (raw: string) => pass('entityLocationAuto').parseResponse(raw, material(walking));
+        expect(read('The Watchtower')).toEqual({ goTo: 'tower' });
+        expect(read('Come along')).toBe('comeAlong');
+        // A place it isn't offered means nothing.
+        expect(read('The Barrow')).toBeNull();
+      });
+
+      it('caps the reply at its longest place', () => {
+        const cap = (destinations: GameLocation[]) =>
+          build('entityLocationAuto', { subject: { ...walking.subject, destinations } }).maxTokens!;
+        expect(cap([{ id: 'x', name: 'The Long Watchtower Above the Northern Gate' } as GameLocation]))
+          .toBeGreaterThan(cap([]));
+      });
     });
   });
 

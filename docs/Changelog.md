@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Pick an entity on the full-screen Locations Canvas to place it and set where the AI knows of it.** Click a location to add or remove it. In **Known In** mode, a pick covers every location inside it. The card also sets **Presence** and **Movement**, and warns when a moving entity can't reach one of its locations.
     - **The AI can know of an entity anywhere inside the locations you pick, without placing it there.** Set it under **Known Here** on a location's **Presence** tab. **Nearby Through Connections** lets entities one Connection away reach the AI as nearby.
     - **An entity set to Can Follow the Player now comes with you when you invite it, and keeps following.** It travels with you on every move, Map travel too, until it stays behind. Each such entity adds one short AI request per turn. **Entity Movement** turns the requests off.
+    - **An entity set to Moves Between Its Locations now walks between them, one Connection at a time.** The AI moves it when the story sends it to one of its locations. It comes along with you only into its own locations, and it never keeps following.
 
 ### Minor Changes
 

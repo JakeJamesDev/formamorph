@@ -1,4 +1,4 @@
-import type { AIRequestType, ChatMessage, Entity, ImageAttachment, RequestMessage } from '@/types';
+import type { AIRequestType, ChatMessage, Entity, GameLocation, ImageAttachment, RequestMessage } from '@/types';
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
@@ -147,6 +147,8 @@ export interface TurnPassSubject {
   laterMaterial?: string[];
   /** The replies an entity location request offers this subject, in offer order. */
   moves?: EntityMoveReply[];
+  /** The places an entity location request offers this subject to walk to, after `moves`. */
+  destinations?: GameLocation[];
 }
 
 /**

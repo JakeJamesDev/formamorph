@@ -9,7 +9,8 @@ import { randomUUID } from '@/lib/uuid';
 import type { parseStatUpdates } from '@/lib/statChanges';
 import { readStatResponse, statResponseChanges, type StatResponse } from '@/lib/statRequest';
 import {
-  joinEntityMoves, leaveBehind, NO_ENTITY_MOVES, type EntityMoveIntents, type EntityMoveReply, type FollowerState, type PlayerMove,
+  applyAtOnce, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf,
+  type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PlayerMove,
 } from '@/lib/entityFollowing';
 import type { TurnPassId, TurnPlan } from './turnPlan';
 import type { TurnPassOutcome, TurnResult } from './turnRunner';
@@ -219,30 +220,27 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
 /** The entity replies that change anything, by entity id. A failed request, "stay" and "keep following"
  *  change nothing. */
 export function entityMovesOf(passes: readonly TurnPassOutcome[]): EntityMoveIntents {
-  const replies = [...answers(passes, 'entityLocationAuto'), ...answers(passes, 'entityLocationSuggest')];
-  const idsAnswering = (reply: EntityMoveReply) => replies.flatMap((outcome) =>
-    outcome.parsed === reply && outcome.subject?.entity ? [outcome.subject.entity.id] : []);
-  const stayHere = idsAnswering('stayHere');
-  const comeAlong = idsAnswering('comeAlong');
-  return stayHere.length || comeAlong.length ? { stayHere, comeAlong } : NO_ENTITY_MOVES;
+  return entityMoveIntents([...answers(passes, 'entityLocationAuto'), ...answers(passes, 'entityLocationSuggest')]
+    .flatMap(({ subject, parsed }) => subject?.entity ? [{ entity: subject.entity, move: isEntityMove(parsed) ? parsed : null }] : []));
 }
 
 /**
  * A committed turn's entity replies laid over `state`, once the player's move is known: `from` is where the
  * turn began, `to` where the player stands after the router and the turn's code. While the commit offers a
- * move the player has not taken, "stay here" applies at once and "come along" waits in `offer` for Go.
+ * move the player has not taken, "stay here" and each walk apply at once and "come along" waits in `offer`
+ * for Go.
  */
 export function commitEntityMoves<S extends FollowerState>(
   state: S,
   commit: Pick<TurnCommit, 'entityMoves' | 'suggestedLocation'>,
   move: PlayerMove,
-): { state: S; offer: readonly string[] } {
+): { state: S; offer: EntityMoveOffer } {
   const { entityMoves } = commit;
   const moved = move.to !== undefined && move.to !== move.from;
   if (commit.suggestedLocation && !moved) {
-    return { state: leaveBehind(state, entityMoves.stayHere, move.from), offer: entityMoves.comeAlong };
+    return { state: applyAtOnce(state, entityMoves, move.from), offer: offerOf(entityMoves) };
   }
-  return { state: joinEntityMoves(state, move, entityMoves), offer: [] };
+  return { state: joinEntityMoves(state, move, entityMoves), offer: NO_ENTITY_OFFER };
 }
 
 /**
