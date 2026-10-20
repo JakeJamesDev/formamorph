@@ -109,7 +109,7 @@ describe('In Game — AI-Facing Description', () => {
     await startTour(worldWith('Greet {{user}} at the gate.'));
     await nextStep();
     // The chip reads as its label in the world block, so the field's own text is nowhere in it.
-    expect(narration().textContent).toContain('Greet Player Name at the gate.');
+    expect(narration().textContent).toContain('Greet Persona Name at the gate.');
     expect(marks(narration())).toEqual([]);
   });
 });

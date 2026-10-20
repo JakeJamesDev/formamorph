@@ -78,7 +78,7 @@ describe('the persona chip in the default prompts', () => {
     }
   });
 
-  // The block's own first line is the persona's name, so the default header carries no Player Name.
+  // The block's own first line is the persona's name, so the default header carries no Persona Name.
   it.each(styles)('heads the six headed persona blocks "Player Character", in the $name preset', ({ style, values }) => {
     const headed = PROMPT_TEXT_KEYS.filter((key) => parsePromptTemplate(values[key]).some((seg) =>
       seg.type === 'variable' && variableForToken(seg.token) === PERSONA && splitToken(seg.token)?.header === 'Player Character'));

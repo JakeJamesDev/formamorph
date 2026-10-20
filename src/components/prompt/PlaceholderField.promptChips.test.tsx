@@ -88,7 +88,7 @@ describe('a custom prompt field with both chip families', () => {
     expect(stored()).not.toContain(':palette');
   });
 
-  it('leaves Player Name out of the menu, since a prompt names the player with the Persona variable', async () => {
+  it('leaves Persona Name out of the menu, since a prompt names the player with the Persona variable', async () => {
     const user = userEvent.setup();
     render(<Field text="Narrate." />);
     await user.click(editor());

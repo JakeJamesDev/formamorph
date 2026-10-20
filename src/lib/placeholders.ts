@@ -231,7 +231,7 @@ export function newPlaceholder(name: string, values: string[] = []): Placeholder
   return { id: randomUUID(), name, values: values.map(newPlaceholderValue), roll: true };
 }
 
-/** Split text into literal runs and chip tokens: placeholder chips and the Player Name marker, as written
+/** Split text into literal runs and chip tokens: placeholder chips and the Persona Name marker, as written
  *  (mirrors parsePromptTemplate, so the same Lexical chip editor can render placeholder fields). */
 export function parsePlaceholderText(text: string): PromptSegment[] {
   const segments: PromptSegment[] = [];
@@ -961,7 +961,7 @@ export interface ResolveOptions {
   pins?: Record<string, string>;
   /** Called once per structural problem met while resolving. */
   onFinding?: (finding: PlaceholderFinding) => void;
-  /** Who the Player Name chip names and what kind of text this is. Absent, it is reference text with no
+  /** Who the Persona Name chip names and what kind of text this is. Absent, it is reference text with no
    *  persona. */
   player?: Omit<BuiltinRender, 'character'>;
   /** The resolved name of the entity that owns the text, which the Character Name chip renders. */
@@ -1596,7 +1596,7 @@ export function resolveEntityText(entity: { name: string } | null, text: string,
 }
 
 /** Resolve a trait's own text with its owner as the Character Name. With no entity owner the player owns
- *  it, so the Character Name reads as the Player Name. */
+ *  it, so the Character Name reads as the Persona Name. */
 export function resolveOwnerText(owner: { name: string } | null, text: string, opts: ResolveOptions): string {
   return resolveEntityText(owner, owner ? text : characterAsPlayer(text), opts);
 }

@@ -149,7 +149,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 <!-- keywords: variables in intro, my name in intro, legacy world, ai asks what next, ai offers options, pre-filled action, random details per run -->
 
 - **Placeholder chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time.
-- **The Player Name chip works in openings.** Type `{` and pick **Player Name**. Page one then says the [persona](Persona-Authoring#the-player-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
+- **The Persona Name chip works in openings.** Type `{` and pick **Persona Name**. Page one then says the [persona](Persona-Authoring#the-persona-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
 - **Search and replace reaches every opening**, on the world and on each entity.
 - **A world saved with one pre-filled opening** loads with it as an Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
 - **A world saved before openings existed** has none, so the box reads unchecked and the world plays the default opening. Nothing is stored and nothing is lost.

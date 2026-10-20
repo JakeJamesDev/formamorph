@@ -70,9 +70,9 @@ describe('the read-only pill', () => {
 });
 
 describe('the red ? treatment', () => {
-  it('reads the Player Name chip by its label and never marks it missing', () => {
+  it('reads the Persona Name chip by its label and never marks it missing', () => {
     draw('Friend of {{ user }}', []);
-    expect(screen.getByText('Player Name')).toBeInTheDocument();
+    expect(screen.getByText('Persona Name')).toBeInTheDocument();
     expect(screen.queryByText('?')).toBeNull();
   });
 

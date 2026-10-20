@@ -145,7 +145,7 @@ describe('placeholderVocabulary', () => {
   });
 });
 
-describe('placeholderVocabulary — the Player Name chip', () => {
+describe('placeholderVocabulary — the Persona Name chip', () => {
   const placeholders = [P('eye', ['Red', 'Blue'])];
   const v = placeholderVocabulary(placeholders, { builtins: true });
 
@@ -160,8 +160,8 @@ describe('placeholderVocabulary — the Player Name chip', () => {
   });
 
   it('reads as its label and offers no mode, affixes, drill, or rename', () => {
-    expect(v.label('{{user}}')).toBe('Player Name');
-    expect(v.display?.('{{user}}')).toBe('Player Name');
+    expect(v.label('{{user}}')).toBe('Persona Name');
+    expect(v.display?.('{{user}}')).toBe('Persona Name');
     expect(v.variantLabel('{{user}}')).toBeNull();
     expect(v.axes('{{user}}')).toEqual([]);
     expect(v.affixes('{{user}}')).toBeNull();
@@ -173,7 +173,7 @@ describe('placeholderVocabulary — the Player Name chip', () => {
   });
 
   it('heads the palette where the field offers it, and only there', () => {
-    expect(v.palette().map((r) => r.label)).toEqual(['Player Name', 'name-eye']);
+    expect(v.palette().map((r) => r.label)).toEqual(['Persona Name', 'name-eye']);
     expect(v.palette()[0].token).toBe('{{user}}');
     expect(placeholderVocabulary(placeholders).palette().map((r) => r.label)).toEqual(['name-eye']);
   });
@@ -229,22 +229,22 @@ describe('placeholderVocabulary — the Character Name chip', () => {
   const labels = (vocab: ReturnType<typeof placeholderVocabulary>) =>
     vocab.palette().filter((r) => r.headingKind === 'builtin').map((r) => r.label);
 
-  it('joins Player Name in an entity’s own fields', () => {
+  it('joins Persona Name in an entity’s own fields', () => {
     const v = placeholderVocabulary([eyes], { builtins: true, ownerId: 'keeper', scope: keeper });
-    expect(labels(v)).toEqual(['Player Name', 'Character Name']);
+    expect(labels(v)).toEqual(['Persona Name', 'Character Name']);
     expect(v.acceptsPaletteToken?.('{{char}}')).toBe(true);
   });
 
   it('stays out of a book’s fields and fields with no owner', () => {
-    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerId: 'lore', scope: book }))).toEqual(['Player Name']);
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerId: 'lore', scope: book }))).toEqual(['Persona Name']);
     const loose = placeholderVocabulary([eyes], { builtins: true });
-    expect(labels(loose)).toEqual(['Player Name']);
+    expect(labels(loose)).toEqual(['Persona Name']);
     expect(loose.acceptsPaletteToken?.('{{char}}')).toBe(false);
   });
 
   it('stays out of the values of a placeholder the entity owns', () => {
     const owners = new Map([['eye', keeper]]);
-    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerId: 'eye', owners }))).toEqual(['Player Name']);
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerId: 'eye', owners }))).toEqual(['Persona Name']);
   });
 
   it('stays out of an entity’s fields that offer no Built-ins', () => {
@@ -252,7 +252,7 @@ describe('placeholderVocabulary — the Character Name chip', () => {
   });
 
   it('joins where the fields name their owner’s kind outright', () => {
-    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerKind: 'entity' }))).toEqual(['Player Name', 'Character Name']);
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerKind: 'entity' }))).toEqual(['Persona Name', 'Character Name']);
   });
 
   it('takes its label, hint and color from the Built-in registry', () => {

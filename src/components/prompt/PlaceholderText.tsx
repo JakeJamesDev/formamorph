@@ -90,7 +90,7 @@ const ChipRun = ({ text, className, neutral, vocab, byId }: Omit<TextProps, 'pla
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const decoded = decodePlaceholderToken(seg.token);
         const ph = decoded && byId.get(decoded.id);
-        // The Player Name chip needs no definition, so it is never a missing one.
+        // The Persona Name chip needs no definition, so it is never a missing one.
         if (!vocab.fixed?.(seg.token)) {
           // A chip whose definition is gone: say so rather than rendering nothing, which is what the plain-text
           // form does and what makes a broken reference invisible in a list.

@@ -62,7 +62,7 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
     expect(d!.entries.map((e) => e.key)).toEqual([['b'], ['a']]);
   });
 
-  it('stores every user macro spelling in lore as the Player Name chip', () => {
+  it('stores every user macro spelling in lore as the Persona Name chip', () => {
     const d = convertLorebook({ entries: [{ keys: ['oath'], content: 'Sworn to {{ User }} and {{USER}}.' }] });
     expect(d!.entries[0].value).toBe(`Sworn to ${PLAYER_NAME.token} and ${PLAYER_NAME.token}.`);
   });

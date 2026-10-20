@@ -268,13 +268,13 @@ Import a SillyTavern PNG or JSON card, and it becomes an entity. The card's desc
 | **First message** | The entity's first Opening Narration |
 | Each **alternate greeting** | One more Opening Narration, in card order, at weight 1 |
 | The name macro, `{{char}}` | The **Character Name** chip, in the entity's description and openings. In the card's lorebook, the entity's name as plain text. |
-| The user macro, `{{user}}` | The [Player Name chip](Persona-Authoring#the-player-name-chip) |
+| The user macro, `{{user}}` | The [Persona Name chip](Persona-Authoring#the-persona-name-chip) |
 
 When these openings are in the draw, **Re-generate** on page one shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
 
 > 💡 **The Character Name chip shows the entity's name, and it follows a rename.** Rename the entity, and its description and openings use the new name.
 
-> 💡 **`{{user}}` stays in the stored text, as the Player Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
+> 💡 **`{{user}}` stays in the stored text, as the Persona Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
 
 ## In the library
 <!-- keywords: standalone character, edit outside world, reusable npc, my characters list, saved character editor, credit and labels, library character stats -->

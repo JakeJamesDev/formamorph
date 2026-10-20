@@ -705,17 +705,17 @@ describe('the persona pick', () => {
     expect(at(w, { personaId: 'e-wren' }).opening.text).toBe('Wren steps ashore.');
   });
 
-  it('names the persona as the Player Name of its own row', () => {
+  it('names the persona as the Persona Name of its own row', () => {
     const w = staged({ entities: [{ ...cast()[1], openings: [row('o-wren', '{{user}} steps ashore.', true)] }] });
     expect(at(w, { personaId: 'e-wren' }).opening.text).toBe('Wren steps ashore.');
   });
 
-  it('names the Custom Persona entity as the Player Name under None', () => {
+  it('names the Custom Persona entity as the Persona Name under None', () => {
     const w = staged({ entities: [{ ...custom(), openings: [row('o-custom', '{{user}} arrives.', true)] }] });
     expect(at(w, {}).opening.text).toBe('Newcomer arrives.');
   });
 
-  it('reads the Player Name as "you" when the world has no persona to play', () => {
+  it('reads the Persona Name as "you" when the world has no persona to play', () => {
     const w = staged({ worldOverview: { ...ov, openings: [row('o-world', '{{user}} wake.')] } });
     expect(at(w, {}).opening.text).toBe('You wake.');
   });

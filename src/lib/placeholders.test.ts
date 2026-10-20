@@ -79,7 +79,7 @@ describe('placeholders token codec', () => {
   });
 });
 
-describe('the Player Name chip in the placeholder pass', () => {
+describe('the Persona Name chip in the placeholder pass', () => {
   const eyes = P('eyes', ['green']);
   const mixed = `{{user}} has ${tok('eyes', 'world', 'p1')} eyes. She trusts {{User}}'s word.`;
 
@@ -116,8 +116,8 @@ describe('the Player Name chip in the placeholder pass', () => {
   });
 
   it('reads as its label on design-time surfaces', () => {
-    expect(describePlaceholders('Hi {{user}}.', [])).toBe('Hi Player Name.');
-    expect(buildPlaceholderPreview('Hi {{user}}.', [])).toEqual({ '{{user}}': 'Player Name' });
+    expect(describePlaceholders('Hi {{user}}.', [])).toBe('Hi Persona Name.');
+    expect(buildPlaceholderPreview('Hi {{user}}.', [])).toEqual({ '{{user}}': 'Persona Name' });
   });
 });
 
@@ -130,7 +130,7 @@ describe('the Character Name chip in the placeholder pass', () => {
       .toBe("Vos has green eyes. Vos's coat and Vos smiles.");
   });
 
-  it('renders beside Player Name without either taking the other', () => {
+  it('renders beside Persona Name without either taking the other', () => {
     expect(resolvePlaceholders('{{char}} greets {{user}}.', {
       placeholders: [], rolls: {}, character: 'Vos', player: { name: 'Wren' },
     })).toBe('Vos greets Wren.');
@@ -167,10 +167,10 @@ describe('the Character Name chip in the placeholder pass', () => {
     expect(out).toEqual({ [chip]: 'Blue', '{{char}}': 'Blue Vos' });
   });
 
-  it('previews as its label with an empty owner name, and leaves Player Name as its label', () => {
+  it('previews as its label with an empty owner name, and leaves Persona Name as its label', () => {
     expect(buildPlaceholderPreview('{{char}} greets {{user}}.', [], first, undefined, ' '))
-      .toEqual({ '{{char}}': 'Character Name', '{{user}}': 'Player Name' });
-    expect(buildPlaceholderPreview('{{user}} waits.', [], first, undefined, 'Vos')).toEqual({ '{{user}}': 'Player Name' });
+      .toEqual({ '{{char}}': 'Character Name', '{{user}}': 'Persona Name' });
+    expect(buildPlaceholderPreview('{{user}} waits.', [], first, undefined, 'Vos')).toEqual({ '{{user}}': 'Persona Name' });
   });
 });
 
@@ -195,7 +195,7 @@ describe('resolveEntityText', () => {
     })).toBe('I am Vos.');
   });
 
-  it('keeps Player Name rendering from the caller options', () => {
+  it('keeps Persona Name rendering from the caller options', () => {
     expect(resolveEntityText({ name: 'Vos' }, '{{char}} owes {{user}}.', {
       placeholders: [], rolls: {}, player: { name: 'Wren' },
     })).toBe('Vos owes Wren.');
@@ -210,7 +210,7 @@ describe('resolveOwnerText', () => {
       .toBe('Albus swore the oath.');
   });
 
-  it('reads Character Name as the Player Name when the player has the trait', () => {
+  it('reads Character Name as the Persona Name when the player has the trait', () => {
     expect(resolveOwnerText(null, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
       .toBe('Wren swore the oath.');
     expect(resolveOwnerText(null, '{{char}} swore. Kneel to {{char}}’s oath.', { placeholders: [], rolls: {} }))

@@ -7,7 +7,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 
-/** The Player Name chip names a reserved value, so its Chip Options has nothing to re-aim. */
+/** The Persona Name chip names a reserved value, so its Chip Options has nothing to re-aim. */
 
 const WORLD: Placeholder[] = [{ id: 'eye', name: 'Eye', values: phValues(['blue', 'green']) }];
 
@@ -17,12 +17,12 @@ function Harness({ value }: { value: string }) {
 
 const rePick = () => screen.queryByRole('button', { name: /Re-Pick/ });
 
-describe('VariableNode Chip Options — Player Name', () => {
-  it('offers no Re-Pick on the Player Name chip', async () => {
+describe('VariableNode Chip Options — Persona Name', () => {
+  it('offers no Re-Pick on the Persona Name chip', async () => {
     const user = userEvent.setup();
     render(<Harness value="Hi {{user}}" />);
-    await user.click(screen.getByText('Player Name'));
-    expect(screen.getByRole('button', { name: 'Remove Player Name' })).toBeInTheDocument();
+    await user.click(screen.getByText('Persona Name'));
+    expect(screen.getByRole('button', { name: 'Remove Persona Name' })).toBeInTheDocument();
     expect(rePick()).toBeNull();
   });
 
@@ -38,7 +38,7 @@ describe('VariableNode Chip Options — Player Name', () => {
 describe('VariableNode — Built-in chips', () => {
   const eye = encodePlaceholderToken({ id: 'eye', mode: 'world', placementId: 'p1' });
 
-  it.each(['Player Name', 'Character Name'])('opens no Chip Options on %s', async (label) => {
+  it.each(['Persona Name', 'Character Name'])('opens no Chip Options on %s', async (label) => {
     const user = userEvent.setup();
     render(<Harness value="{{user}} and {{char}}" />);
     await user.click(screen.getByText(label));
@@ -55,6 +55,6 @@ describe('VariableNode — Built-in chips', () => {
   it('carries the Built-in mark on each Built-in chip and no other', () => {
     render(<Harness value={`{{user}} {{ Char }} ${eye}`} />);
     const marked = [...document.querySelectorAll('[data-builtin-mark]')].map((el) => el.closest('[data-chip]')?.textContent);
-    expect(marked).toEqual(['Player Name', 'Character Name']);
+    expect(marked).toEqual(['Persona Name', 'Character Name']);
   });
 });

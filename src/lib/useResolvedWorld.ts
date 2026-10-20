@@ -92,7 +92,7 @@ export interface ResolvedWorld {
   /** Resolve with pins not yet in state — for a string written in the same pass that applies the traits
    *  carrying them, which `resolvePH` would resolve against the pins as they stood before. */
   resolveWith: (extraPins: Record<string, string>, text: string) => string;
-  /** Resolve opening text, where the Player Name chip reads "you" with no persona. */
+  /** Resolve opening text, where the Persona Name chip reads "you" with no persona. */
   resolveOpening: (text: string, over?: OpeningOverrides) => string;
   /** Resolve an entity's own text (descriptions, summary) with that entity as the Character Name. */
   resolveEntityText: ResolveEntityText;
@@ -140,7 +140,7 @@ export interface PinSources {
  */
 export function useResolvedAuthoredWorld(
   pinSet: PinSet = NO_PIN_SET,
-  /** Who the Player Name chip names. Absent, it reads "the player". */
+  /** Who the Persona Name chip names. Absent, it reads "the player". */
   personaName: string | null = null,
 ) {
   const {
@@ -227,7 +227,7 @@ const NO_PINS: Record<string, string> = {};
 const NO_COPIES = () => undefined;
 const NO_PIN_SET: PinSet = { world: NO_PINS, of: () => NO_PINS, bind: (trait) => trait, copies: () => NO_COPIES };
 
-/** The persona's name with its chips resolved, which the Player Name chip renders. Null with no persona. */
+/** The persona's name with its chips resolved, which the Persona Name chip renders. Null with no persona. */
 export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, string>): string | null {
   const { entities } = useGameData();
   const { placeholders } = usePlaceholderSession();

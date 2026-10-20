@@ -99,7 +99,7 @@ describe('the Values tab content', () => {
     render(field(`${tok('town', 'p1')} greets {{user}} here.`));
     await userEvent.click(tab('Values')!);
     const [, builtin] = openValues();
-    expect(valueText(builtin)).toBe('Player Name');
+    expect(valueText(builtin)).toBe('Persona Name');
     expect(builtin).toHaveAttribute('data-read-only', 'value');
     // An empty value renders a <br>, which breaks the field's line.
     expect(builtin.querySelector('[data-open-value-text] br')).toBeNull();

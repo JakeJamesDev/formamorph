@@ -280,7 +280,7 @@ export function inOwnerPlaces(traits: readonly Trait[], tree: Pick<OwnerTree, 't
   });
 }
 
-/** Each item with the Character Name in its name and AI description written as the Player Name, for items the
+/** Each item with the Character Name in its name and AI description written as the Persona Name, for items the
  *  player has. */
 export const borneByPlayer = <T extends { name: string; aiDescription?: string }>(items: readonly T[]): T[] =>
   mapPreservingIdentity(items, (item) => {

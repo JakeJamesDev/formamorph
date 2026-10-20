@@ -271,7 +271,7 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     headerBoundaries: (t) => {
       const parts = splitToken(t);
       const v = variableForToken(t);
-      // The editor has no playthrough, so the Player Name reads as its label.
+      // The editor has no playthrough, so the Persona Name reads as its label.
       const header = parts?.header && withPlayerName(parts.header, PLAYER_NAME.label);
       return parts && v ? promptHeader(header, parts.headerFormat ?? decodeVariant(v, parts.variantId).format) : null;
     },
