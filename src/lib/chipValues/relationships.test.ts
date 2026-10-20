@@ -3,6 +3,8 @@ import { chipValues, sceneEntityChipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { spelledTokens } from '@/test/chipTokens';
 import type { Entity, GameLocation, PlayerStat, Trait } from '@/types';
+import { YOU_TARGET } from '../entityRelationships';
+import type { ResolvedPersona } from '../persona';
 
 // Old Town holds the North Gate and the Market; the North Gate holds the Gatehouse. The scene is at the North
 // Gate: the Guard is here, the Merchant is in a sub-location, the Watchman is reachable, the Wanderer is nowhere.
@@ -213,5 +215,115 @@ describe('the known roster pull-in', () => {
     const roster = known(values);
     expect(roster.match(/Herald/g)).toHaveLength(1);
     expect(roster.search(/^Kate$/m)).toBeGreaterThan(roster.search(/^Herald$/m));
+  });
+});
+
+describe('You and the persona rules', () => {
+  // Kate is nowhere and known nowhere, so only a relationship can make her known. Rowan and Mara are
+  // persona-only world personas; the Custom Persona entity stands in under None and a library persona.
+  const kate: Entity = { id: 'kate', name: 'Kate', knownIn: 'nowhere', aiSummary: 'Runs the inn.' };
+  const rowan: Entity = { id: 'rowan', name: 'Rowan', persona: true, personaOnly: true, aiDescription: 'A courier.' };
+  const mara: Entity = { id: 'mara', name: 'Mara', persona: true, personaOnly: true, aiSummary: 'A smuggler.' };
+  const custom: Entity = { id: 'custom', name: 'Newcomer', customPersona: true, aiDescription: 'Just arrived.' };
+  const ash: Entity = { id: 'lib-ash', name: 'Ash', aiDescription: 'From the library.' };
+
+  type PersonaPick = 'world' | 'library' | 'none';
+  const PICKS: PersonaPick[] = ['world', 'library', 'none'];
+  const PLAYED_NAME: Record<PersonaPick, string> = { world: 'Rowan', library: 'Ash', none: 'Wren' };
+
+  /** A scene as play builds it under `pick`: the cast lacks the played entities, which ride as the persona and
+   *  the played list. Mara stays in the cast, unplayed, as the authored scene keeps her. */
+  const played = (cast: Entity[], pick: PersonaPick, over: Partial<ChipScene> = {}): ChipScene => {
+    const byId = (e: Entity) => cast.find((c) => c.id === e.id) ?? e;
+    const persona: ResolvedPersona = pick === 'world' ? { entity: byId(rowan), source: 'world' }
+      : pick === 'library' ? { entity: ash, source: 'library' }
+        : { entity: { ...byId(custom), name: 'Wren' }, source: 'custom' };
+    const playedEntities = pick === 'library' ? [byId(custom)] : [persona.entity];
+    const playedIds = new Set(playedEntities.map((e) => e.id));
+    return scene(cast.filter((e) => !playedIds.has(e.id)), { persona, playedEntities, ...over });
+  };
+  const base = [guard, merchant, watchman, wanderer];
+  const you = (label: string): [string, string] => [YOU_TARGET, label];
+
+  it.each(PICKS)('reads You as the played persona’s name, under %s', (pick) => {
+    const values = chipValues(played([...base, holding(kate, you('son')), rowan, mara, custom], pick));
+    expect(values('<PERSONA>')).toContain(`relationship: ${PLAYED_NAME[pick]} is Kate's son`);
+    for (const token of spelledTokens('<ENTITIES>')) expect(values(token), token).not.toMatch(/\byou\b/i);
+  });
+
+  it.each(PICKS)('prints a line that touches the persona on the Persona block only, under %s', (pick) => {
+    // Kate is here and in the scene, so every roster could print the line.
+    const values = chipValues(played([...base, { ...holding(kate, you('son')), locations: ['north-gate'] }, rowan, mara, custom], pick, {
+      presentIds: ['guard', 'kate'], inSceneIds: ['guard', 'kate'],
+    }));
+    expect(values('<PERSONA>')!.match(/relationship/g)).toHaveLength(1);
+    for (const token of spelledTokens('<ENTITIES>')) expect(values(token), token).not.toContain("Kate's son");
+  });
+
+  it.each(PICKS)('pulls the persona’s relatives into the known roster in every scene, under %s', (pick) => {
+    const values = chipValues(played([...base, holding(kate, you('mother')), rowan, mara, custom], pick, { presentIds: [], inSceneIds: [] }));
+    expect(values('<ENTITIES|known>')).toMatch(/^Kate$/m);
+    expect(values('<ENTITIES|known>')).not.toContain('relationship');
+  });
+
+  it.each(PICKS)('drops a relationship with an unplayed persona-only end, line and pull-in, under %s', (pick) => {
+    // Mara is never played here; the Guard is here, and Kate's only tie is to Mara.
+    const values = chipValues(played([
+      holding(guard, ['mara', 'sister']), merchant, watchman, wanderer, holding(kate, ['mara', 'aunt']), rowan, mara, custom,
+    ], pick));
+    for (const token of [...spelledTokens('<ENTITIES>'), '<PERSONA>']) expect(values(token), token).not.toMatch(/sister|aunt/);
+    expect(values('<ENTITIES|known>')).not.toMatch(/^Mara$/m);
+  });
+
+  it('renders a relationship with a persona-only entity once it is the one played', () => {
+    const values = chipValues(scene([holding(guard, ['mara', 'sister']), merchant, watchman, wanderer, rowan], {
+      persona: { entity: mara, source: 'world' }, playedEntities: [mara],
+    }));
+    expect(values('<PERSONA>')).toContain("relationship: Mara is Guard's sister");
+    expect(values('<ENTITIES>')).not.toContain('relationship');
+  });
+
+  it('renders the played world persona’s own relationships, and pulls their targets in', () => {
+    const values = chipValues(played([...base, kate, holding(rowan, ['kate', 'mother']), mara, custom], 'world', { presentIds: [], inSceneIds: [] }));
+    expect(values('<PERSONA>')).toContain("relationship: Kate is Rowan's mother");
+    expect(values('<ENTITIES|known>')).toMatch(/^Kate$/m);
+  });
+
+  it.each([['library', 'Ash'], ['none', 'Wren']] as const)('renders the Custom Persona entity’s relationships as the player’s, under %s', (pick, name) => {
+    const values = chipValues(played([...base, kate, rowan, mara, holding(custom, ['kate', 'aunt'])], pick, { presentIds: [], inSceneIds: [] }));
+    expect(values('<PERSONA>')).toContain(`relationship: Kate is ${name}'s aunt`);
+    expect(values('<ENTITIES|known>')).toMatch(/^Kate$/m);
+  });
+
+  it('drops the Custom Persona entity’s relationships under a world persona', () => {
+    const values = chipValues(played([
+      holding(guard, ['custom', 'ward']), merchant, watchman, wanderer, kate, rowan, mara, holding(custom, ['kate', 'aunt']),
+    ], 'world'));
+    for (const token of [...spelledTokens('<ENTITIES>'), '<PERSONA>']) expect(values(token), token).not.toMatch(/ward|aunt/);
+    expect(values('<ENTITIES|known>')).not.toMatch(/^Kate$/m);
+  });
+
+  it('drops every You row, line and pull-in, when nobody plays', () => {
+    const values = chipValues(scene([holding(guard, you('ward')), merchant, watchman, wanderer, holding(kate, you('son'))]));
+    for (const token of spelledTokens('<ENTITIES>')) expect(values(token), token).not.toMatch(/\b(ward|son)\b/);
+    expect(values('<PERSONA>')).toBe('N/A');
+  });
+
+  it('drops a You row that reads as its own owner, and renders it under another persona', () => {
+    const cast = [...base, kate, holding(rowan, you('rival')), mara, custom];
+    expect(chipValues(played(cast, 'world'))('<PERSONA>')).not.toContain('rival');
+    const asMara = chipValues(scene(cast.filter((e) => e.id !== 'mara').map((e) => (e.id === 'rowan' ? { ...e, personaOnly: false } : e)), {
+      persona: { entity: mara, source: 'world' }, playedEntities: [mara],
+    }));
+    expect(asMara('<PERSONA>')).toContain("relationship: Mara is Rowan's rival");
+  });
+
+  it('prints one line when a You row and a row to the played persona meet, the named row winning', () => {
+    for (const rows of [[you('ward'), ['rowan', 'nephew']], [['rowan', 'nephew'], you('ward')]] as [string, string][][]) {
+      const values = chipValues(played([holding(guard, ...rows), merchant, watchman, wanderer, rowan, mara, custom], 'world'));
+      const persona = values('<PERSONA>')!;
+      expect(persona.match(/relationship/g)).toHaveLength(1);
+      expect(persona).toContain("relationship: Rowan is Guard's nephew");
+    }
   });
 });

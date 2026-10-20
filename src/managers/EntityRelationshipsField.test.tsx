@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EntityRelationshipsField from './EntityRelationshipsField';
-import { withRelationships } from '@/lib/entityRelationships';
+import { YOU_TARGET, withRelationships } from '@/lib/entityRelationships';
 import type { Entity } from '@/types';
 
 const kate: Entity = { id: 'kate', name: 'Kate' };
@@ -36,7 +36,7 @@ const row = (name: string) => screen.getByText(name, { selector: 'span' }).paren
 describe('the Relationships list', () => {
   it('adds a row for a picked target, takes its label, and removes it', async () => {
     render(<Harness start={{ id: 'tera', name: 'Tera' }} />);
-    expect(await openAdd()).toEqual(['Kate', 'Ash', 'Rowan']);
+    expect(await openAdd()).toEqual(['You', 'Kate', 'Ash', 'Rowan']);
     await userEvent.click(screen.getByRole('option', { name: 'Kate' }));
     const role = within(row('Kate')).getByRole('textbox', { name: 'Kate’s Role' });
     expect(role).toHaveFocus();
@@ -52,7 +52,7 @@ describe('the Relationships list', () => {
   it('offers neither the owner nor a target it already uses', async () => {
     render(<Harness start={{ id: 'tera', name: 'Tera', relationships: [{ targetId: 'ash', label: 'butler' }] }} />);
     expect(within(row('Ash')).getByRole('textbox')).toHaveValue('butler');
-    expect(await openAdd()).toEqual(['Kate', 'Rowan']);
+    expect(await openAdd()).toEqual(['You', 'Kate', 'Rowan']);
   });
 
   it('edits one row without touching the others, in author order', () => {
@@ -74,8 +74,18 @@ describe('the Relationships list', () => {
   it('disables the select when every entity is used', () => {
     render(<Harness start={{
       id: 'tera', name: 'Tera',
-      relationships: ['kate', 'ash', 'rowan'].map((targetId) => ({ targetId, label: 'friend' })),
+      relationships: [YOU_TARGET, 'kate', 'ash', 'rowan'].map((targetId) => ({ targetId, label: 'friend' })),
     }} />);
     expect(screen.getByRole('combobox', { name: 'Add a Relationship' })).toBeDisabled();
+  });
+
+  it('adds You as a row of its own, and offers it no more once used', async () => {
+    render(<Harness start={{ id: 'tera', name: 'Tera' }} />);
+    await openAdd();
+    await userEvent.click(screen.getByRole('option', { name: 'You' }));
+    const role = within(row('You')).getByRole('textbox', { name: 'Your Role' });
+    fireEvent.change(role, { target: { value: 'ward' } });
+    expect(current.relationships).toEqual([{ targetId: YOU_TARGET, label: 'ward' }]);
+    expect(await openAdd()).toEqual(['Kate', 'Ash', 'Rowan']);
   });
 });

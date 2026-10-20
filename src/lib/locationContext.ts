@@ -2,7 +2,7 @@ import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
 import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
-import { relatedIds, type RelationshipLines } from "./entityRelationships";
+import type { RelationshipLines } from "./entityRelationships";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -154,8 +154,8 @@ export type RosterOpts = {
   relationshipLines?: RelationshipLines;
 };
 
-/** The known roster's options: `excludeIds` drops whom a higher scope lists; `pullFrom` ids pull their relations in. */
-export type KnownRosterOpts = RosterOpts & { excludeIds?: readonly string[]; pullFrom?: readonly string[] };
+/** The known roster's options: `excludeIds` drops whom a higher scope lists; `pulledIds` join it through a relationship. */
+export type KnownRosterOpts = RosterOpts & { excludeIds?: readonly string[]; pulledIds?: readonly string[] };
 
 const ALL_STAT_PIECES: StatPieces = { values: true, status: true, meaning: true };
 
@@ -522,19 +522,19 @@ export function reachableEntityIds(
 }
 
 /** The ids of the entities known at the current location, in cast order: one of each one's Known In picks is
- *  the location or contains it, or a relationship ties it to an id in `pullFrom`. The Custom Persona is never
- *  listed; the played persona is not in the cast play passes. */
-export function knownEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[], pullFrom: readonly string[] = []): string[] {
+ *  the location or contains it, or it is in `pulledIds`. The Custom Persona is never listed; the played persona
+ *  is not in the cast play passes. */
+export function knownEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[], pulledIds: readonly string[] = []): string[] {
   const known = new Set(current ? knownHere(current.id, locations, entities).map((row) => row.entity.id) : []);
-  const pulled = relatedIds(entities, pullFrom);
+  const pulled = new Set(pulledIds);
   return entities.flatMap((e) => (known.has(e.id) || (pulled.has(e.id) && !e.customPersona) ? [e.id] : []));
 }
 
 /**
  * Serialize the entities known at the current location but not present, for the `<ENTITIES|known>` chip. Each
  * sends its name and summary only: Full renders as Summary, and owned traits and stats are left out.
- * `pullFrom` adds the other end of each relationship those ids hold or are the target of. `excludeIds` drops
- * anyone a higher-precedence roster lists. Returns `N/A` when no one remains.
+ * `pulledIds` join it through a relationship. `excludeIds` drops anyone a higher-precedence roster lists.
+ * Returns `N/A` when no one remains.
  */
 export function buildKnownEntitiesContext(
   current: MaybeLocation,
@@ -553,7 +553,7 @@ export function knownEntityRuns(
   opts: KnownRosterOpts = {},
 ): MarkedRun[] {
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = knownEntityIds(current, locations, entities, opts.pullFrom).filter((id) => !exclude.has(id));
+  const ids = knownEntityIds(current, locations, entities, opts.pulledIds).filter((id) => !exclude.has(id));
   if (!current && !ids.length) return runs(NONE_PLACEHOLDER);
   return entityRosterRuns(ids, entities, { ...opts, preferSummary: true, noTraits: true, noStats: true });
 }

@@ -1,5 +1,6 @@
 import { emptyRosterRuns, entityRosterRuns, ownedKinds, passesOnlyWith, scopedChipRuns, type OwnedTraitsInForce, type RosterOpts } from './locationContext';
 import { mark, runs, textOf, type MarkedRun } from './markedText';
+import type { RelationshipLines } from './entityRelationships';
 import type { ResolvedPersona } from './persona';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import type { ValueLookup } from './promptValues';
@@ -78,11 +79,13 @@ function personaOver(
  *  unless the token switches them off. */
 export function personaContextValues(
   persona: ResolvedPersona | null, ownedTraits?: OwnedTraitsInForce, stats: readonly PlayerStat[] = [],
-  others: readonly PlayedPart[] = [],
+  others: readonly PlayedPart[] = [], relationshipLines?: RelationshipLines,
 ): ValueLookup {
   const over = persona && personaOver(persona, ownedTraits, stats, others);
   const ownedStats = over && over.stats.length ? { [over.persona.entity.id]: over.stats } : undefined;
   return scopedChipRuns('<PERSONA>', {
-    '': (opts) => personaContextRuns(over?.persona ?? null, { ...opts, ownedTraits: over?.ownedTraits ?? ownedTraits, ownedStats }),
+    '': (opts) => personaContextRuns(over?.persona ?? null, {
+      ...opts, ownedTraits: over?.ownedTraits ?? ownedTraits, ownedStats, relationshipLines,
+    }),
   });
 }

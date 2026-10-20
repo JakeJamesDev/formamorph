@@ -7,11 +7,12 @@ import { SelectOptions } from '@/components/SelectOptions';
 import { Tip } from '@/components/ui/tooltip';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { YOU_TARGET } from '@/lib/entityRelationships';
 import type { Entity, EntityRelationship } from '@/types';
 
 /** The Relationships list of an entity's Profile tab: one row per target with its role label and **Remove**,
- *  and a select that adds a target the entity doesn't use yet. Rows whose target the world lacks are kept but
- *  not shown. */
+ *  and a select that adds a target the entity doesn't use yet, You first. Rows whose target the world lacks are
+ *  kept but not shown. */
 export default function EntityRelationshipsField({ entity, entities, labelOf, onChange }: {
   entity: Entity;
   /** The world's entities, in the order the select lists them. */
@@ -20,11 +21,16 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
   onChange: (relationships: EntityRelationship[]) => void;
 }) {
   const relationships = useMemo(() => entity.relationships ?? [], [entity.relationships]);
-  const byId = useMemo(() => new Map(entities.map((e) => [e.id, e])), [entities]);
+  // Every target the owner can hold, You first, each with its row's input name.
+  const targets = useMemo(() => [
+    { value: YOU_TARGET, label: 'You', role: 'Your Role' },
+    ...entities.filter((e) => e.id !== entity.id).map((e) => ({ value: e.id, label: labelOf(e), role: `${labelOf(e)}’s Role` })),
+  ], [entities, entity.id, labelOf]);
+  const targetOf = useMemo(() => new Map(targets.map((t) => [t.value, t])), [targets]);
   const addable = useMemo(() => {
     const used = new Set(relationships.map((r) => r.targetId));
-    return entities.filter((e) => e.id !== entity.id && !used.has(e.id));
-  }, [entities, entity.id, relationships]);
+    return targets.filter((t) => !used.has(t.value));
+  }, [targets, relationships]);
   // The row just added takes focus, so the author types its label next.
   const [added, setAdded] = useState<string | null>(null);
   const addedRef = useRef<HTMLInputElement>(null);
@@ -38,15 +44,14 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
       <Label className="block">Relationships</Label>
       <Hint>Type each entity’s role to this one, such as mother or rival</Hint>
       {relationships.map(({ targetId, label }) => {
-        const target = byId.get(targetId);
+        const target = targetOf.get(targetId);
         if (!target) return null;
-        const name = labelOf(target);
         return (
           <div key={targetId} className="flex items-center gap-2 rounded-md border p-2" {...fieldFrame('relationships', targetId, 'label')}>
-            <span className="w-1/3 min-w-0 shrink-0 truncate font-medium">{name}</span>
+            <span className="w-1/3 min-w-0 shrink-0 truncate font-medium">{target.label}</span>
             <WorldInput
               ref={targetId === added ? addedRef : undefined}
-              aria-label={`${name}’s Role`}
+              aria-label={target.role}
               value={label}
               onChange={(e) => setLabel(targetId, e.target.value)}
               placeholder="mother, friend, rival"
@@ -63,7 +68,7 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
       <Select
         value=""
         onValueChange={(targetId) => {
-          if (!byId.has(targetId)) return;
+          if (!targetOf.has(targetId)) return;
           onChange([...relationships, { targetId, label: '' }]);
           setAdded(targetId);
           focusNewRow.current = true;
@@ -75,7 +80,7 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
         </SelectTrigger>
         {/* A pick hands focus to the new row's label, so the select doesn't take it back on close. */}
         <SelectContent onCloseAutoFocus={(e) => { if (focusNewRow.current) { e.preventDefault(); focusNewRow.current = false; addedRef.current?.focus(); } }}>
-          <SelectOptions options={addable.map((e) => ({ value: e.id, label: labelOf(e) }))} />
+          <SelectOptions options={addable} />
         </SelectContent>
       </Select>
     </div>
