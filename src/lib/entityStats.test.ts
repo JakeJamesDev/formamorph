@@ -36,9 +36,9 @@ describe('seedEntityStats', () => {
 describe('backfillEntityStats', () => {
   const saved = (value: number): PlayerStat => ({ ...trust, value });
 
-  it('adds a stat the world has since given an entity at its starting value, and keeps one it removed', () => {
+  it('adds a stat the world has since given an entity at its start value (Q8), and keeps one it removed', () => {
     const removed: PlayerStat = { ...stat({ id: 'old', name: 'Old' }), value: 9 };
-    const out = backfillEntityStats({ bram: [saved(44), removed] }, [{ ...bram, stats: [trust, { ...stock, starting: 7 }] }]);
+    const out = backfillEntityStats({ bram: [saved(44), removed] }, [{ ...bram, stats: [trust, { ...stock, value: 7 }] }]);
     expect(out.bram.map((s) => [s.id, s.value])).toEqual([['trust', 44], ['old', 9], ['stock', 7]]);
   });
 

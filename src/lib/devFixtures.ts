@@ -26,8 +26,8 @@ export interface DevFixture {
 
 const portrait = (fill: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="288"><rect width="240" height="288" fill="${fill}"/></svg>`)}`;
-const devStat = (name: string, starting: number, extra: Record<string, unknown> = {}) => ({
-  id: `dev-${name.toLowerCase()}`, name, type: 'number', description: '', min: 0, max: 100, starting, regen: 0, descriptors: [], ...extra,
+const devStat = (name: string, value: number, extra: Record<string, unknown> = {}) => ({
+  id: `dev-${name.toLowerCase()}`, name, type: 'number', description: '', min: 0, max: 100, value, regen: 0, descriptors: [], ...extra,
 });
 
 /** The `entityStats` fixture's cast. Bram also owns a hidden stat and a switched-off one, which never show.
@@ -124,7 +124,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
     }
     case 'entityStats': {
       // The white room plus three entities that own stats, in the scene: one met by name, one by alias only,
-      // and one who left earlier. Their values are the starting values the load backfills.
+      // and one who left earlier. Their values are the authored values the load backfills.
       const [world, save] = await Promise.all([
         import('./devFixtures/whiteRoomWorld.json'),
         import('./devFixtures/whiteRoomSave.json'),

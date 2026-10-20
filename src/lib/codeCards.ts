@@ -13,6 +13,7 @@ import type {
 } from '@/lib/codeWorldLookup';
 import { placeholderKindNoun, placeholderWeight } from '@/lib/placeholders';
 import { REGEN_UNIT_LABELS, regenPer, regenUnitOf } from '@/lib/regenUnits';
+import { statMin, statStartValue } from '@/lib/statDescriptorGeometry';
 import { isUnknownEntry, memberEntries, placeholderAt, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { isIdentifier } from '@/lib/statCodePaths';
 import { parseCode, resolveCodeName, type CodeMapOwner, type CodeValue, type PlaceholderOwner } from '@/lib/statCodeResolver';
@@ -131,9 +132,6 @@ const STAT_TYPE_LABEL: Record<Stat['type'], string> = { number: 'Number', percen
 const amount = (stat: Stat, n: number) => `${n}${stat.type === 'percentage' ? '%' : ''}`;
 const signed = (stat: Stat, n: number) => (n < 0 ? `−${amount(stat, -n)}` : `+${amount(stat, n)}`);
 
-/** The value a stat seeds with. */
-const startsAt = (stat: Stat) => stat.starting ?? stat.value ?? stat.min;
-
 /** The tag and the Owners value where no one owns an item. */
 export const NO_OWNERS_LABEL = 'No Owners';
 
@@ -153,7 +151,7 @@ const STAT_ROWS: readonly {
 }[] = [
   { label: 'Type', value: ({ stat }) => STAT_TYPE_LABEL[stat.type] ?? stat.type },
   { label: 'Range', value: ({ stat }) => `${stat.min} – ${amount(stat, stat.max)}` },
-  { label: 'Starts At', value: ({ stat }) => amount(stat, startsAt(stat)), drops: ({ stat }) => startsAt(stat) === stat.min },
+  { label: 'Starts At', value: ({ stat }) => amount(stat, statStartValue(stat)), drops: ({ stat }) => statStartValue(stat) === statMin(stat) },
   {
     label: 'Regen',
     value: ({ stat }) => {

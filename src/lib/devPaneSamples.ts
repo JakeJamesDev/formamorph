@@ -77,7 +77,7 @@ const galleryPicture = (hue: number, label: string): string => `data:image/svg+x
 /** An entity whose gallery shows every Visibility rule shape: a rule on the primary image, a stat rule, a Not
  *  trait rule, and a plain image. */
 export function devGalleryEntity(id: string): Entity {
-  const health: Stat = { id: 'dev-health', name: 'Health', type: 'number', description: '', min: 0, max: 100, starting: 100, regen: 0, descriptors: [] };
+  const health: Stat = { id: 'dev-health', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 100, regen: 0, descriptors: [] };
   const healed: Trait = { id: 'dev-healed', name: 'Healed', statChanges: [] };
   return {
     id,

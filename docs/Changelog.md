@@ -49,6 +49,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Default preset's narration prompt is shorter and states each rule once.** It no longer repeats the ban on option menus at the end, or asks for concise prose next to the length setting.
   - **The default prompts now call their entity sections Entities and tell the AI what each section holds.** A Known Here entity reads as elsewhere right now. The planner no longer casts one when you address it.
   - **A stat opens at its authored value in the Test Bench, Test Code and trait picker, matching play.** A stat with no authored value opens at its min.
+  - **A stat now starts at its authored value on code cards, in new Link Base Values and in older saves.** This matches where play opens the stat.
 
 ---
 

@@ -316,7 +316,7 @@ describe('owned trait state across a save/load round trip', () => {
 
   it('keeps each entity’s stat values, backfills a stat the world added, and drops an entity it removed', async () => {
     const trust: Stat = { ...authored, id: 'trust', name: 'Trust', value: 20 };
-    const stock: Stat = { ...authored, id: 'stock', name: 'Stock', value: 0, starting: 6 };
+    const stock: Stat = { ...authored, id: 'stock', name: 'Stock', value: 6 }; // The start value (Q8)
     const live = mount();
     await act(async () => {
       live().setEntityStats({ ash: [{ ...trust, value: 33 }], gone: [{ ...trust, value: 9 }] });
@@ -362,9 +362,9 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().viewEntityStatChanges).toEqual({ ash: { trust: 6 } });
   });
 
-  it("backfills a stat the library persona gained since the save, at its starting value (Q74)", async () => {
+  it("backfills a stat the library persona gained since the save, at its start value (Q74, Q8)", async () => {
     const trust: Stat = { ...authored, id: 'trust', name: 'Trust', value: 20 };
-    const stock: Stat = { ...authored, id: 'stock', name: 'Stock', value: 0, starting: 6 };
+    const stock: Stat = { ...authored, id: 'stock', name: 'Stock', value: 6 }; // The start value (Q8)
     const lib = { id: 'lib-q74', name: 'Shade', persona: true, stats: [trust] };
     await EntityStorageService.storeEntity({ id: lib.id, name: lib.name, data: lib });
     onTestFinished(() => EntityStorageService.deleteEntity(lib.id));
