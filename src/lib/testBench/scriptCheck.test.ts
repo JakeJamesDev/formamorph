@@ -196,10 +196,10 @@ describe('the on-demand script check', () => {
     expect(found.message).toContain('times out');
   }, 15000);
 
-  it('runs each coded stat against the world’s starting values, so a run mirrors turn one', async () => {
-    // Vigor opens at 80; code reading it must see 80, not the live-value default of zero.
+  it('runs each coded stat against the world’s authored values, so a run mirrors turn one (Q8)', async () => {
+    // Vigor opens at its authored 80, so code reading it sees 80.
     const found = await checkScripts(base([
-      stat({ id: 's1', name: 'Vigor', starting: 80 }),
+      stat({ id: 's1', name: 'Vigor', value: 80 }),
       stat({
         id: 's2',
         name: 'Fertility',
@@ -291,13 +291,13 @@ describe('the on-demand script check', () => {
       expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
     });
 
-    it('runs an owned box with its entity as owner and the world as stats, every owner at its starting values', async () => {
+    it('runs an owned box with its entity as owner and the world as stats, every owner at its authored values (Q8)', async () => {
       const check = 'if (owner.stats.Rage.value !== 7) throw new Error("owner");\n'
         + 'if (stats.Destruction.value !== 3) throw new Error("world");\n'
         + 'if (entities["The Creature"].stats.Rage.value !== 7) throw new Error("entry");\nreturn 1;';
       const world = owned(
-        [stat({ id: 'rage', name: 'Rage', starting: 7 }), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: check }) })],
-        [stat({ id: 'dest', name: 'Destruction', starting: 3 })],
+        [stat({ id: 'rage', name: 'Rage', value: 7 }), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: check }) })],
+        [stat({ id: 'dest', name: 'Destruction', value: 3 })],
       );
       expect(await checkScripts(world)).toEqual([]);
       // A world box reads the same entity through `entities`, and its own owner is empty.
@@ -314,9 +314,9 @@ describe('the on-demand script check', () => {
         const link = (id: string) => ({ id, originalId: 'guards', kind: 'group' as const, originalName: 'Guards', groupId: null });
         return {
           ...base([
-            stat({ id: 'dest', name: 'Destruction', starting: 3 }),
+            stat({ id: 'dest', name: 'Destruction', value: 3 }),
             stat({ id: 'guard', name: 'Guard', groupId: 'guards', scripts: boxScripts({ after: code }) }),
-            stat({ id: 'watch', name: 'Watch', groupId: 'guards', starting: 4 }),
+            stat({ id: 'watch', name: 'Watch', groupId: 'guards', value: 4 }),
           ]),
           statGroups: [blueprints, guards],
           entities: [
@@ -336,7 +336,7 @@ describe('the on-demand script check', () => {
 
     it('runs an owner’s overridden code on a linked stat once, with its entity as owner', async () => {
       const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: boxScripts({ after: 'return 1;' }) });
-      const owner = (code: string) => creature([stat({ id: 'rage', name: 'Rage', starting: 7 })], {
+      const owner = (code: string) => creature([stat({ id: 'rage', name: 'Rage', value: 7 })], {
         statLinks: [{
           id: 'link', originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null,
           overrides: { guard: { scripts: { value: boxScripts({ after: code }), blueprint: boxScripts({ after: 'return 1;' }) } } },

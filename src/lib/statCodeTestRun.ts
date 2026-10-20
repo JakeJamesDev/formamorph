@@ -24,6 +24,7 @@ import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
 import { startingGateStatsOf } from '@/lib/gateStats';
+import { atStartValues, statStartValue } from '@/lib/statDescriptorGeometry';
 import type { ScriptTiming, Stat, Trait, World } from '@/types';
 import { randomUUID } from '@/lib/uuid';
 
@@ -291,11 +292,16 @@ const droppedLine = (lead: string, names: readonly string[] | undefined) =>
  * as pending.
  */
 export async function runTestCode(
-  code: string, timing: ScriptTiming, stat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
-  { codeNamedStats, placeholders, traits, traitPlaces, entities, entityStats, places = NO_PLACES }:
+  code: string, timing: ScriptTiming, authoredStat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
+  { codeNamedStats: authoredStats, placeholders, traits, traitPlaces, entities, entityStats: authoredEntityStats, places = NO_PLACES }:
     Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'traitPlaces' | 'entities' | 'entityStats' | 'places'>,
-  { pendingPersona: pending = false, missing, owner, selfTrait, sentence, prompts, args }: TestRunOptions = {},
+  { pendingPersona: pending = false, missing, owner: authoredOwner, selfTrait, sentence, prompts, args }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
+  // Seed every stat at its start value, as turn one does (Q8).
+  const stat = authoredStat && { ...authoredStat, value: statStartValue(authoredStat) };
+  const codeNamedStats = atStartValues(authoredStats);
+  const entityStats = Object.fromEntries(Object.entries(authoredEntityStats).map(([id, own]) => [id, atStartValues(own)]));
+  const owner = authoredOwner && { ...authoredOwner, stats: atStartValues(authoredOwner.stats) };
   // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
   // A pending run's empty persona holds the playable entities' traits and placeholders, so a write to one is kept.
   const placeholderEntries = sandboxPlaceholders({ placeholders: placeholders.list, owners: placeholders.owners, rolls: {} });

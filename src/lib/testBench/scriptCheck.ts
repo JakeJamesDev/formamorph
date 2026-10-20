@@ -21,6 +21,7 @@ import {
   ruleScripts, scriptFinding, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { startingGateStats } from '@/lib/gateStats';
+import { atStartValues } from '@/lib/statDescriptorGeometry';
 import { codeLocationsOf } from '@/lib/statCodeBoxOptions';
 import type { Script, Stat, Trait } from '@/types';
 
@@ -48,15 +49,6 @@ const STAT_LEFT: Record<StatCodeFailure, string> = {
  *  which sets no value, changes nothing. */
 const leftBehind = (unit: ScriptUnit, kind: StatCodeFailure) => (unit.script.timing === 'output'
   ? 'so its sentence passes unchanged' : unit.kind === 'stat' ? STAT_LEFT[kind] : 'so the run changes nothing');
-
-/** The stats as turn one hands them to the sandbox: every value seeded at its starting number, so the run
- *  sees the same board the opening turn does rather than a world of zeroes. */
-const atStartingValues = (stats: Stat[]): Stat[] => stats.map((stat) => ({
-  ...stat,
-  value: typeof stat.starting === 'number' ? stat.starting
-    : typeof stat.value === 'number' ? stat.value
-      : stat.min ?? 0,
-}));
 
 const quote = (name: string) => `“${name}”`;
 const quoteAll = (names: readonly string[]) => names.map(quote).join(', ');
@@ -122,7 +114,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
   const authoredEntities = world.entities ?? [];
   const placeholderDefs = allPlaceholders(world);
   // Under their code names, so the run reaches a stat by the name the rules and the editor name it by.
-  const seeded = (stats: readonly Stat[]) => statCodeNamed(atStartingValues([...stats]), placeholderDefs);
+  const seeded = (stats: readonly Stat[]) => statCodeNamed(atStartValues(stats), placeholderDefs);
   const stats = seeded(globalStatsOf(statWorld.stats, statWorld.statGroups));
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
   const placeholders = sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} });

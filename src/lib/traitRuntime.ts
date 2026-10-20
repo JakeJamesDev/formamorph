@@ -15,6 +15,7 @@ import type {
   PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
+import { statStartValue } from './statDescriptorGeometry';
 import { ownedTraitStatesFrom, ownStatsRecordKey, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
@@ -286,7 +287,7 @@ export function codeBoundsToDeltas(stats: readonly LegacyCodeBoundsStat[], activ
  */
 export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
   return seedStatBases(authored.map((stat) => {
-    const value = stat.value || stat.min || 0;
+    const value = statStartValue(stat);
     return { ...stat, value, starting: stat.starting ?? value };
   }));
 }

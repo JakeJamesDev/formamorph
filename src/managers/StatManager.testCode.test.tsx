@@ -292,7 +292,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
-    expect(executeStatCode.mock.calls[0][1]).toBe(stats);
+    // Each stat at its opening number, a copy of the world's (Q8).
+    expect(executeStatCode.mock.calls[0][1]).toEqual(stats);
   });
 
   it('reads an owned stat’s code against the owner’s stats under owner.stats and the world’s under stats', async () => {
