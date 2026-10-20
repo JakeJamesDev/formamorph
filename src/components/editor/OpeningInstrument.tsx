@@ -112,7 +112,7 @@ const TraitRow = ({ trait }: { trait: OpeningTrait }) => (
     <div className="flex items-baseline gap-1.5">
       <span className="min-w-0 flex-grow truncate text-label">{trait.name}</span>
       {trait.isPc && (
-        <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">Lens PC</span>
+        <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">Lens Pick</span>
       )}
     </div>
     {(trait.pins.length > 0 || trait.toggles.length > 0) && (
@@ -236,6 +236,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
   });
 
   const narrated = data.opening.kind === 'narration';
+  const personaName = data.personas.find((persona) => persona.id === data.personaId)?.name;
 
   if (!data.location) {
     return (
@@ -250,7 +251,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
       <div className="space-y-2 pr-2">
         <div className="rounded-md border bg-muted/30 p-2">
           <p className="text-label font-medium">
-            Turn one as {data.pcName ?? 'the default character'}
+            {personaName ? `Turn one as ${personaName}` : 'Turn one with no persona'}
             {narrated ? ', opening on a written page one' : ` ≈ ${tokenLabel(data.totalTokens)} tokens`}
           </p>
           {data.personas.length > 0 && (
@@ -266,7 +267,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
                   ))}
                 </SelectContent>
               </Select>
-              <p className="min-w-0 truncate text-meta text-muted-foreground">sets who you play</p>
+              <p className="min-w-0 truncate text-meta text-muted-foreground">Sets the persona</p>
             </div>
           )}
           {data.starts.length > 1 ? (
@@ -322,7 +323,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
           </div>
         ))}
 
-        <SectionHeading label="Active Traits" note={data.pcName ? 'defaults plus the lens PC' : 'the defaults'} />
+        <SectionHeading label="Active Traits" note={data.pcName ? 'defaults plus the lens pick' : 'the defaults'} />
         {data.traits.length === 0 ? (
           <p className="text-meta text-muted-foreground">No traits are active at game start</p>
         ) : (

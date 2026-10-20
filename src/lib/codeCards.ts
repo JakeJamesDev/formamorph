@@ -271,7 +271,7 @@ export function reachedPlaceholderOwners(
 export function entityRows({ entity, stats, traits, placeholders }: CodeEntityRecord): CodeCardRow[] {
   return [
     ...(entity.type ? [{ label: 'Type', value: entity.type }] : []),
-    ...(canBePlayer(entity) ? [{ label: 'Persona', value: 'Can be played' }] : []),
+    ...(canBePlayer(entity) ? [{ label: 'Persona', value: 'Playable' }] : []),
     { label: 'Stats', value: listText(stats) },
     { label: 'Traits', value: listText(traits) },
     { label: 'Placeholders', value: listText(placeholders) },
