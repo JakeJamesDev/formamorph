@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { planTurn } from './planTurn';
-import { computeTurnCommit, withCodeWrites } from './computeTurnCommit';
+import { commitEntityMoves, computeTurnCommit, withCodeWrites } from './computeTurnCommit';
+import { carryFollowers, moveWithPlayer } from '@/lib/entityFollowing';
 import { dueDiscoveries } from '@/lib/backgroundPassQueue/backgroundPassQueue';
 import { pruneDiscoveredToHistory } from '@/lib/runtimeCharacters';
 import { TURN_PASSES } from './turnPasses';
@@ -10,7 +11,7 @@ import type { TurnPassOutcome, TurnResult, TurnRun } from './turnRunner';
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 import type { TurnCommitContext } from './computeTurnCommit';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
-import type { TurnToolCall } from '@/types';
+import type { Entity, TurnToolCall } from '@/types';
 
 /**
  * The commit computation as a pure function: outcomes in, one state delta out. Outcomes are parsed by the
@@ -380,6 +381,107 @@ describe('computeTurnCommit — stats and the move', () => {
       { locationAutoApply: false },
     );
     expect(computeTurnCommit({ result, plan, context: context() })?.suggestedLocation).toBeNull();
+  });
+});
+
+describe('computeTurnCommit — entity movement', () => {
+  const who = (id: string, moves: TurnPassSubject['moves']): TurnPassSubject => ({ name: id, entity: { id, name: id } as Entity, moves });
+  const NEW = ['stay', 'comeAlong'] as const;
+  const FOLLOWING = ['keepFollowing', 'stayHere'] as const;
+  /** The commit an auto-mode turn with these entity replies produces. */
+  const autoCommit = (replies: [TurnPassSubject, string | null][]) => {
+    const { plan, result } = runOf([
+      { id: 'narration', raw: NARRATION },
+      ...replies.map(([subject, raw]): Answer => (raw === null
+        ? { id: 'entityLocationAuto', subject, failed: true }
+        : { id: 'entityLocationAuto', raw, subject })),
+    ]);
+    return computeTurnCommit({ result, plan, context: context() })!;
+  };
+  /** Wenna stands at the inn; Albus and Corvin follow the player there. */
+  const atInn = { positions: { wenna: 'inn', albus: 'inn', corvin: 'inn' }, followers: ['albus', 'corvin'] };
+
+  it('reads each reply under its entity, and keeps only the ones that change something', () => {
+    const commit = autoCommit([
+      [who('wenna', [...NEW]), 'Come along'],
+      [who('sylvie', [...NEW]), 'Stay'],
+      [who('albus', [...FOLLOWING]), 'Stay here'],
+      [who('corvin', [...FOLLOWING]), 'Keep following'],
+      [who('mira', [...NEW]), null],
+    ]);
+    expect(commit.entityMoves).toEqual({ stayHere: ['albus'], comeAlong: ['wenna'] });
+  });
+
+  it('joins in order: stay here where the player stood, followers with the player, then come along', () => {
+    const commit = autoCommit([[who('wenna', [...NEW]), 'Come along'], [who('albus', [...FOLLOWING]), 'Stay here']]);
+    const { state, offer } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'square' });
+    expect(state.positions).toEqual({ wenna: 'square', albus: 'inn', corvin: 'square' });
+    expect(state.followers).toEqual(['corvin', 'wenna']);
+    expect(offer).toEqual([]);
+  });
+
+  it('keeps a follower following on every later move until it stays here', () => {
+    const joined = commitEntityMoves(atInn, autoCommit([[who('wenna', [...NEW]), 'Come along']]), { from: 'inn', to: 'square' }).state;
+    // Entity Movement off: no request, no reply, and the followers still come.
+    const later = commitEntityMoves(joined, autoCommit([]), { from: 'square', to: 'keep' }).state;
+    expect(later.positions).toMatchObject({ wenna: 'keep', albus: 'keep', corvin: 'keep' });
+    expect(carryFollowers(later, 'chapel').positions).toMatchObject({ wenna: 'chapel', albus: 'chapel', corvin: 'chapel' });
+  });
+
+  it('drops come along when the player stays, and still applies stay here', () => {
+    const commit = autoCommit([[who('wenna', [...NEW]), 'Come along'], [who('albus', [...FOLLOWING]), 'Stay here']]);
+    const { state } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'inn' });
+    expect(state.followers).toEqual(['corvin']);
+    expect(state.positions).toEqual(atInn.positions);
+  });
+
+  describe('in suggest mode', () => {
+    const suggestCommit = (location: string, replies: [TurnPassSubject, string][]) => {
+      const { plan, result } = runOf(
+        [
+          { id: 'narration', raw: NARRATION },
+          { id: 'locationSuggest', raw: location },
+          ...replies.map(([subject, raw]): Answer => ({ id: 'entityLocationSuggest', raw, subject })),
+        ],
+        {},
+        { locationAutoApply: false },
+      );
+      return computeTurnCommit({ result, plan, context: context() })!;
+    };
+    const commit = suggestCommit('The Long Pier', [[who('wenna', [...NEW]), 'Come along'], [who('albus', [...FOLLOWING]), 'Stay here']]);
+    const offered = commitEntityMoves(atInn, commit, { from: 'inn', to: 'inn' });
+
+    it('applies stay here at once and holds come along with the offer', () => {
+      expect(offered.state.followers).toEqual(['corvin']);
+      expect(offered.state.positions).toEqual(atInn.positions);
+      expect(offered.offer).toEqual(['wenna']);
+    });
+
+    it('brings the waiting entity along on Go', () => {
+      const went = moveWithPlayer(offered.state, offered.offer, 'pier');
+      expect(went.followers).toEqual(['corvin', 'wenna']);
+      expect(went.positions).toEqual({ wenna: 'pier', albus: 'inn', corvin: 'pier' });
+    });
+
+    it('leaves everyone in place on Dismiss', () => {
+      // Dismiss drops the offer: nothing beyond the at-once replies ever applies.
+      expect(offered.state.positions.wenna).toBe('inn');
+      expect(offered.state.followers).not.toContain('wenna');
+    });
+
+    it('lets a code move of the player beat the offer and carry come along with it', () => {
+      const { state, offer } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'keep' });
+      expect(offer).toEqual([]);
+      expect(state.followers).toEqual(['corvin', 'wenna']);
+      expect(state.positions).toEqual({ wenna: 'keep', albus: 'inn', corvin: 'keep' });
+    });
+
+    it('applies nothing to wait on when no move is offered', () => {
+      const stayCommit = suggestCommit('NONE', [[who('wenna', [...NEW]), 'Come along']]);
+      const { state, offer } = commitEntityMoves(atInn, stayCommit, { from: 'inn', to: 'inn' });
+      expect(offer).toEqual([]);
+      expect(state).toBe(atInn);
+    });
   });
 });
 

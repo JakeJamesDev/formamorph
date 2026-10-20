@@ -233,6 +233,8 @@ export interface GameState {
   entityStats?: EntityStatValues;
   /** Where each positioned entity stands, by entity id. Absent ⇒ none. */
   entityPositions?: EntityPositions;
+  /** The ids of the entities following the player, in the order they joined. Absent ⇒ none. */
+  entityFollowers?: string[];
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
   /** Absent ⇒ none. */

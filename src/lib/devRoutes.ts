@@ -226,7 +226,7 @@ export const DEV_MODAL_TABS = {
   // A prompt whose feature is off is not in the rail, and the panel lands on Narration.
   settingsPrompts: [
     'narration', 'thinking', 'director', 'character', 'discover', 'storyboard', 'choices',
-    'statupdates', 'location', 'timepassed', 'timeopening', 'summary', 'milestone', 'diary', 'scenetags',
+    'statupdates', 'location', 'entitylocation', 'timepassed', 'timeopening', 'summary', 'milestone', 'diary', 'scenetags',
   ],
   // Settings → Prompts has a THIRD level: which surface of the open prompt is on show, reached with
   // `surface=…` (`#dev?modal=settings&tab=prompts&subtab=narration&surface=anatomy`). `anatomy` is the

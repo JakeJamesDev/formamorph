@@ -67,7 +67,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → Output → Turn Extras toggles). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -269,6 +269,11 @@ const LATER_MATERIAL: PromptVariable = { token: '<LATER MATERIAL>', label: 'Late
 const REMEMBERED_MOMENTS: PromptVariable = { token: '<REMEMBERED MOMENTS>', label: 'Remembered Moments', color: HIGHLIGHT_PALETTE[11] };
 const NEW_MOMENTS: PromptVariable = { token: '<NEW MOMENTS>', label: 'New Moments', color: HIGHLIGHT_PALETTE[15] };
 
+// Entity location request only: the closed list of replies the entity can give, one per line.
+const MOVE_OPTIONS: PromptVariable = { token: '<MOVE OPTIONS>', label: 'Move Options', color: HIGHLIGHT_PALETTE[8] };
+// Entity location request only: one sentence saying whether the entity already follows the player.
+const MOVE_STATE: PromptVariable = { token: '<MOVE STATE>', label: 'Move State', color: HIGHLIGHT_PALETTE[7] };
+
 // The AI Language setting, as the directive the prompt actually carries (lib/languages `languageDirective`).
 // Placement is the author's: the default templates put it last, where recency makes a small model honor it,
 // and an author who knows their model better can move it. Renders nothing at all for English or a blank
@@ -282,7 +287,7 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
-  TIME, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS,
+  TIME, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS, MOVE_OPTIONS, MOVE_STATE,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -297,6 +302,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   choices: [...CONTEXT_VARS, LANGUAGE],
   statupdates: [...CONTEXT_VARS],
   location: [...CONTEXT_VARS],
+  entitylocation: [CHARACTER, ...CONTEXT_VARS],
   summary: [...CONTEXT_VARS],
   milestone: [...CONTEXT_VARS],
   diary: [...CONTEXT_VARS],
@@ -317,6 +323,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   choices: [PLAYER_ACTION, NARRATION],
   statupdates: [PLAYER_ACTION, NARRATION],
   location: [PLAYER_ACTION, NARRATION],
+  entitylocation: [CHARACTER, PLAYER_ACTION, NARRATION, MOVE_STATE, MOVE_OPTIONS],
   summary: [PLAYER_ACTION, NARRATION],
   milestone: [REMEMBERED_MOMENTS, NEW_MOMENTS],
   director: [PLAYER_ACTION, NARRATION],

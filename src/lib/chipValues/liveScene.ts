@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Entity, GameLocation, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Entity, EntityPositions, GameLocation, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
-import { entityIdsAt } from '../entityPresence';
+import { entitiesInPlay, entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
 import type { GateTree } from '../traitGates';
 import { borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
@@ -70,6 +70,8 @@ export interface SceneWrites {
   resolveEntity?: ResolveEntityText;
   /** Story hours the turn's clock advances moved the time to. */
   elapsed?: number;
+  /** Where the turn moved positioned entities, over the live positions. */
+  positions?: Readonly<EntityPositions>;
 }
 
 /**
@@ -88,7 +90,8 @@ export function liveChipScene(
   const ownText = (entities: Entity[]) => resolveOwnedTraitTexts(
     resolveEntityTexts(withOwnerTrees(entities, sources.owners), resolveEntity), resolveTrait, resolveEntity,
   );
-  const allEntities = ownText(sources.allEntities);
+  const placed = (entities: Entity[]) => (box?.positions ? entitiesInPlay(entities, box.positions) : entities);
+  const allEntities = ownText(placed(sources.allEntities));
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
   const presentIds = entityIdsAt(loc?.id, allEntities);
@@ -138,7 +141,7 @@ export function liveChipScene(
     resolve: box?.resolve ?? sources.resolve,
     resolveEntity,
     placeholders: sources.placeholders,
-    outerScopeEntities: ownText(sources.entities),
+    outerScopeEntities: ownText(placed(sources.entities)),
     inSceneNames,
   };
 }

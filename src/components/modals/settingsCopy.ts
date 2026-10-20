@@ -167,6 +167,12 @@ Useful for world authoring and debugging.`,
     description: 'Resolves the move before the scene is written',
     info: 'Applies your action\'s move first, so the scene is narrated in the new location. Skips the **Move to…?** confirmation.',
   },
+  entityMovement: {
+    label: 'Entity Movement',
+    description: 'Asks the AI each turn whether entities here come with you',
+    info: `- Each entity that can follow you adds its **own request**
+- Without it, followers still follow and fixed entities keep their places`,
+  },
 
   // ── Output · Reasoning ──────────────────────────────────────────────────────
   thinking: {

@@ -6,6 +6,7 @@ export interface PromptTabFlags {
   choicesEnabled: boolean;
   statUpdatesEnabled: boolean;
   locationChangeEnabled: boolean;
+  entityMovement: boolean;
   memoryDigests: boolean;
   characterDiaries: boolean;
   aiClock: boolean;
@@ -21,13 +22,14 @@ export interface PromptTabFlags {
  * persisted Character Diaries flag is on.
  */
 export function computePromptTabAvailability(flags: PromptTabFlags): Record<string, boolean> {
-  const { thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, describeCharacters, aiClock, sceneImages } = flags;
+  const { thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, entityMovement, memoryDigests, characterDiaries, describeCharacters, aiClock, sceneImages } = flags;
   return {
     narration: true,
     thinking: thinkingMode === 'precall',
     choices: choicesEnabled,
     statupdates: statUpdatesEnabled,
     location: locationChangeEnabled,
+    entitylocation: locationChangeEnabled && entityMovement,
     summary: memoryDigests,
     milestone: memoryDigests,
     diary: thinkingMode === 'staged' && characterDiaries,

@@ -360,6 +360,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     statUpdatesEnabled,
     locationChangeEnabled,
     locationAutoApply,
+    entityMovement,
     narrationVerbatimTurns,
     setNarrationVerbatimTurns,
     thinkingVerbatimTurns,
@@ -414,6 +415,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setStatUpdatesUserPrompt,
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
+    entityLocationPrompt,
+    setEntityLocationPrompt,
+    entityLocationUserPrompt,
+    setEntityLocationUserPrompt,
     summaryUserPrompt,
     milestoneSelectPrompt,
     setMilestoneSelectPrompt,
@@ -716,6 +721,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     choices: { label: PROMPT_LABELS.choices, value: choicesPrompt, def: styledDefaults.choicesPrompt, set: setChoicesPrompt, variables: PROMPT_KIND_VARIABLES.choices },
     statupdates: { label: PROMPT_LABELS.statupdates, value: statUpdatesPrompt, def: styledDefaults.statUpdatesPrompt, set: setStatUpdatesPrompt, variables: PROMPT_KIND_VARIABLES.statupdates },
     location: { label: PROMPT_LABELS.location, value: locationChangePromptText, def: styledDefaults.locationChangePromptText, set: setLocationChangePromptText, variables: PROMPT_KIND_VARIABLES.location },
+    entitylocation: { label: PROMPT_LABELS.entitylocation, value: entityLocationPrompt, def: styledDefaults.entityLocationPrompt, set: setEntityLocationPrompt, variables: PROMPT_KIND_VARIABLES.entitylocation },
     summary: { label: PROMPT_LABELS.summary, value: summaryPrompt, def: styledDefaults.summaryPrompt, set: setSummaryPrompt, variables: PROMPT_KIND_VARIABLES.summary },
     milestone: { label: PROMPT_LABELS.milestone, value: milestoneSelectPrompt, def: styledDefaults.milestoneSelectPrompt, set: setMilestoneSelectPrompt, variables: PROMPT_KIND_VARIABLES.milestone },
     timepassed: { label: PROMPT_LABELS.timepassed, value: timePassedPrompt, def: styledDefaults.timePassedPrompt, set: setTimePassedPrompt, variables: PROMPT_KIND_VARIABLES.timepassed },
@@ -731,7 +737,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
   // or on reopen), fall back to Narration so the panel isn't blank.
   const promptAvailable = computePromptTabAvailability({
-    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, describeCharacters, aiClock,
+    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, entityMovement, memoryDigests, characterDiaries, describeCharacters, aiClock,
     sceneImages: !imageGenDisabled,
   });
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
@@ -806,6 +812,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     choices: { value: choicesUserPrompt, set: setChoicesUserPrompt, def: styledDefaults.choicesUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.choices ?? NO_VARIABLES },
     statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, def: styledDefaults.statUpdatesUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? NO_VARIABLES },
     location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, def: styledDefaults.locationChangeUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.location ?? NO_VARIABLES },
+    entitylocation: { value: entityLocationUserPrompt, set: setEntityLocationUserPrompt, def: styledDefaults.entityLocationUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.entitylocation ?? NO_VARIABLES },
     summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, def: styledDefaults.summaryUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.summary ?? NO_VARIABLES },
     milestone: { value: milestoneSelectUserPrompt, set: setMilestoneSelectUserPrompt, def: styledDefaults.milestoneSelectUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.milestone ?? NO_VARIABLES },
     timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, def: styledDefaults.timePassedUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? NO_VARIABLES },
@@ -881,6 +888,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     turn: {
       locationChange: locationChangePromptText || '',
       locationChangeUser: locationChangeUserPrompt,
+      entityLocation: entityLocationPrompt,
+      entityLocationUser: entityLocationUserPrompt,
       thinking: thinkingPrompt,
       director: directorPrompt,
       directorUser: directorUserPrompt,
@@ -911,7 +920,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     },
   }), [
     systemPrompt, recapUserPrompt, nowLinePrompt, rehydrateUserPrompt,
-    locationChangePromptText, locationChangeUserPrompt, thinkingPrompt, directorPrompt, directorUserPrompt,
+    locationChangePromptText, locationChangeUserPrompt, entityLocationPrompt, entityLocationUserPrompt, thinkingPrompt, directorPrompt, directorUserPrompt,
     characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt,
     choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt, statTextPrompts,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
@@ -1763,6 +1772,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     value={showingUser ? locationChangeUserPrompt : locationChangePromptText}
                     onChange={showingUser ? setLocationChangeUserPrompt : setLocationChangePromptText}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.location ?? []) : PROMPT_KIND_VARIABLES.location}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicatePreset}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={promptsMorph.toggle}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                </TabsContent>
+              )}
+
+              {locationChangeEnabled && entityMovement && (
+                <TabsContent value="entitylocation" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? entityLocationUserPrompt : entityLocationPrompt}
+                    onChange={showingUser ? setEntityLocationUserPrompt : setEntityLocationPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.entitylocation ?? []) : PROMPT_KIND_VARIABLES.entitylocation}
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}

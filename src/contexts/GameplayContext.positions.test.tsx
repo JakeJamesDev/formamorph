@@ -65,6 +65,30 @@ describe('entity positions in the save', () => {
     expect(live().entityPositions).toEqual({ merchant: 'keep' });
   });
 
+  it('keeps the followers across a save and a load, and drops a deleted one', async () => {
+    const live = mount();
+    await act(async () => {
+      live().setEntityPositions({ merchant: 'tower' });
+      live().setEntityFollowers(['merchant', 'gone']);
+    });
+    expect(live().saveCurrentGameState().entityFollowers).toEqual(['merchant', 'gone']);
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-pos-4'); });
+    await act(async () => { live().setEntityFollowers([]); });
+    await act(async () => { await live().loadGame('save-pos-4', [keep, tower], [], [merchant, guard]); });
+    expect(live().entityFollowers).toEqual(['merchant']);
+    expect('entityFollowers' in mount()().saveCurrentGameState()).toBe(false);
+  });
+
+  it('brings the followers along on a move with no turn, as Map travel makes', async () => {
+    const live = mount();
+    await act(async () => {
+      live().setEntityPositions({ merchant: 'keep', guard: 'keep' });
+      live().setEntityFollowers(['merchant']);
+    });
+    await act(async () => { live().changeLocation(tower); });
+    expect(live().entityPositions).toEqual({ merchant: 'tower', guard: 'keep' });
+  });
+
   it('gives the played persona no position on load', async () => {
     const live = mount();
     await act(async () => {

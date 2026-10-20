@@ -28,7 +28,7 @@ type LocalSettingsValues = Pick<SettingsSource,
   | 'revealFade' | 'revealMove' | 'revealMoveDirection' | 'revealMoveDistance'
   | 'revealScale' | 'revealScaleMode' | 'revealScaleDirection' | 'revealScaleAmount'
   | 'revealBlur' | 'revealBlurAmount' | 'revealEasing' | 'revealMinDuration' | 'revealMinStagger'
-  | 'choicesEnabled' | 'statUpdatesEnabled' | 'locationChangeEnabled' | 'locationAutoApply'
+  | 'choicesEnabled' | 'statUpdatesEnabled' | 'locationChangeEnabled' | 'locationAutoApply' | 'entityMovement'
   | 'thinkingMode' | 'limitActiveCharacters' | 'activeCharacterLimit' | 'nativeReasoning' | 'toolsEnabled'
   | 'memoryDigests' | 'semanticMemory' | 'semanticBandCap' | 'semanticRehydration'
   | 'timeContext' | 'aiClock' | 'fixedTurnHours' | 'semanticLore' | 'describeCharacters' | 'characterDiaries' | 'semanticDiaries'
@@ -76,6 +76,7 @@ export const LOCAL_SETTINGS_DEFAULTS: LocalSettingsValues = {
   statUpdatesEnabled: true,
   locationChangeEnabled: true,
   locationAutoApply: false,
+  entityMovement: true,
   thinkingMode: 'off',
   limitActiveCharacters: HIDDEN_SETTING_DEFAULTS.limitActiveCharacters,
   activeCharacterLimit: HIDDEN_SETTING_DEFAULTS.activeCharacterLimit,
@@ -160,6 +161,7 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
       setStatUpdatesEnabled: set('statUpdatesEnabled'),
       setLocationChangeEnabled: set('locationChangeEnabled'),
       setLocationAutoApply: set('locationAutoApply'),
+      setEntityMovement: set('entityMovement'),
       setThinkingMode: set('thinkingMode'),
       setLimitActiveCharacters: set('limitActiveCharacters'),
       setActiveCharacterLimit: set('activeCharacterLimit'),

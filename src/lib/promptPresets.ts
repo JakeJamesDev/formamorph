@@ -37,6 +37,8 @@ export const PROMPT_TEXT_KEYS = [
   'choicesUserPrompt',
   'statUpdatesUserPrompt',
   'locationChangeUserPrompt',
+  'entityLocationPrompt',
+  'entityLocationUserPrompt',
   'summaryUserPrompt',
   'milestoneSelectPrompt',
   'milestoneSelectUserPrompt',

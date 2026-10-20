@@ -6,6 +6,7 @@ import type { StatText } from '@/lib/statTextPrompts';
 import type { TokenValues } from '@/lib/promptValues';
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
+import type { EntityMoveReply } from '@/lib/entityFollowing';
 
 /**
  * The Turn Plan: what one turn will ask the model, decided before any request is sent.
@@ -19,6 +20,7 @@ import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
 /** Every pass one turn can dispatch. */
 export type TurnPassId =
   | 'locationAuto'
+  | 'entityLocationAuto'
   | 'thinking'
   | 'director'
   | 'character'
@@ -27,6 +29,7 @@ export type TurnPassId =
   | 'choices'
   | 'statUpdates'
   | 'locationSuggest'
+  | 'entityLocationSuggest'
   | 'summary'
   | 'timePassed'
   | 'openingTime'
@@ -53,6 +56,8 @@ export interface TurnSettings {
   statCount: number;
   locationChangeEnabled: boolean;
   locationAutoApply: boolean;
+  /** The Entity Movement setting, which governs the entity location requests. */
+  entityMovement: boolean;
   aiClock: boolean;
   memoryDigests: boolean;
   characterDiaries: boolean;
@@ -73,6 +78,8 @@ export interface TurnSettings {
 export interface TurnPrompts {
   locationChange: string;
   locationChangeUser: string;
+  entityLocation: string;
+  entityLocationUser: string;
   thinking: string;
   director: string;
   directorUser: string;
@@ -138,6 +145,8 @@ export interface TurnPassSubject {
   /** What the story showed of a noted character after their first passage, oldest first. Only a rewrite
    *  of the note carries it. */
   laterMaterial?: string[];
+  /** The replies an entity location request offers this subject, in offer order. */
+  moves?: EntityMoveReply[];
 }
 
 /**
@@ -270,6 +279,11 @@ export interface TurnPassRecord<TParsed = unknown> {
    * nothing to ask about. Absent means always ready.
    */
   isReady?(material: TurnMaterial): boolean;
+  /**
+   * Sent in the same dispatch as its stage's other passes when the concurrency is parallel, after them when
+   * it is serial. A failed request is dropped instead of ending the turn.
+   */
+  companion?: boolean;
   buildRequest(input: TurnPlanInput, material: TurnMaterial): TurnPassRequest<ChatMessage>;
   parseResponse(raw: string, material: TurnMaterial): TParsed;
 }

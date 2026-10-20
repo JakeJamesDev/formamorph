@@ -27,6 +27,7 @@ export type DisplaySettingsSource = Pick<SettingsValue,
 export type OutputSettingsSource = Pick<SettingsValue,
   | 'choicesEnabled' | 'setChoicesEnabled' | 'statUpdatesEnabled' | 'setStatUpdatesEnabled'
   | 'locationChangeEnabled' | 'setLocationChangeEnabled' | 'locationAutoApply' | 'setLocationAutoApply'
+  | 'entityMovement' | 'setEntityMovement'
   | 'thinkingMode' | 'setThinkingMode' | 'limitActiveCharacters' | 'setLimitActiveCharacters'
   | 'activeCharacterLimit' | 'setActiveCharacterLimit'
   | 'reasoningEffort' | 'nativeReasoning' | 'setNativeReasoning' | 'reasoningCapability'

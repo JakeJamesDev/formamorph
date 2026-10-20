@@ -82,6 +82,7 @@ export type AIRequestType =
   | 'choices'
   | 'statUpdates'
   | 'locationChange'
+  | 'entityLocation'
   | 'summary'
   | 'milestoneSelect'
   | 'diary'

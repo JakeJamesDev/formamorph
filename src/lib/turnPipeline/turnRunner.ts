@@ -224,14 +224,40 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
         continue;
       }
 
+      // A companion goes out with the stage's first request when parallel, and right after the pass before it
+      // when serial. Its failures are dropped, so it never ends the turn.
+      const parallel = plan.concurrency === 'parallel';
+      const companionPlans = stagePasses.filter((pass) => pass.companion)
+        .map((pass) => ({ pass, planned: parallel ? requestsFor(pass) : [] }));
+      let companionAnswers: Promise<PromiseSettledResult<string>[]>[] | null = null;
+      const startCompanions = () => {
+        companionAnswers ??= companionPlans.map(({ planned }) => Promise.allSettled(planned.map(send)));
+        return companionAnswers;
+      };
+      /** One companion's settled answers as outcomes, a failure as an empty one. */
+      const companionOutcomes = (planned: PlannedRequest[], settled: PromiseSettledResult<string>[]) =>
+        planned.map((entry, j) => {
+          const answer = settled[j];
+          return answer.status === 'fulfilled' ? outcomeOf(entry, answer.value) : failedOutcome(entry, answer.reason);
+        });
+
       // One pass at a time. A fan-out pass still sends its subjects together when the knob says parallel —
       // they are independent of each other, and only the pass boundary is sequential.
       for (const pass of stagePasses) {
+        if (pass.companion && parallel) continue;
         const planned = requestsFor(pass);
         if (planned.length === 0) continue;
         const outcomes: TurnPassOutcome[] = [];
-        if (plan.concurrency === 'parallel') {
-          const answers = await Promise.all(planned.map(sendOrEndTurn));
+        if (pass.companion) {
+          for (const entry of planned) {
+            const [settled] = await Promise.allSettled([send(entry)]);
+            if (signal.aborted) return { status: 'aborted', run: run() };
+            outcomes.push(...companionOutcomes([entry], [settled]));
+          }
+        } else if (parallel) {
+          const answered = Promise.all(planned.map(sendOrEndTurn));
+          startCompanions();
+          const answers = await answered;
           if (signal.aborted) return { status: 'aborted', run: run() };
           outcomes.push(...planned.map((entry, i) => outcomeOf(entry, answers[i])));
         } else {
@@ -252,6 +278,15 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
           material = { ...material, narration };
         }
         await applyAdvance({ at: 'pass', outcomes });
+      }
+
+      if (!parallel) continue;
+      for (const [i, { planned }] of companionPlans.entries()) {
+        const settled = await startCompanions()[i];
+        if (signal.aborted) return { status: 'aborted', run: run() };
+        const outcomes = companionOutcomes(planned, settled);
+        passes.push(...outcomes);
+        if (outcomes.length > 0) await applyAdvance({ at: 'pass', outcomes });
       }
     }
   } catch (error) {

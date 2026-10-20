@@ -25,6 +25,7 @@ import { backfillGameStateStats } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
 import { positionedCast, reconcileGameStatePositions, type PlaceableEntity } from '../lib/entityPresence';
+import { carryFollowers, reconcileGameStateFollowers, type FollowerState } from '../lib/entityFollowing';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -118,6 +119,24 @@ function useProvideGameplay() {
   const [entityStats, setEntityStats] = useState<EntityStatValues>({});
   // Entity id → where it stands, for each positioned entity. Snapshotted per turn too.
   const [entityPositions, setEntityPositions] = useState<EntityPositions>({});
+  // The ids of the entities following the player. Snapshotted per turn too. The ref is read by a move made in
+  // the same batch as a followers write.
+  const [entityFollowers, setFollowersState] = useState<readonly string[]>([]);
+  const entityFollowersRef = useRef<readonly string[]>([]);
+  const setEntityFollowers = useCallback((followers: readonly string[]) => {
+    entityFollowersRef.current = followers;
+    setFollowersState(followers);
+  }, []);
+  /** Brings every follower to `locationId`: the player just moved there. */
+  const carryFollowersTo = useCallback((locationId: string) => {
+    const followers = entityFollowersRef.current;
+    if (followers.length) setEntityPositions((positions) => carryFollowers({ positions, followers }, locationId).positions);
+  }, []);
+  /** Puts a join in place: its followers, and the positions it moved over the live ones. */
+  const applyFollowerState = useCallback((state: FollowerState) => {
+    setEntityFollowers(state.followers);
+    setEntityPositions((positions) => ({ ...positions, ...state.positions }));
+  }, [setEntityFollowers]);
   // The entity stats as this turn found them, which the turn's entity deltas count from. Runtime only.
   const [entityStatBaseline, setEntityStatBaseline] = useState<EntityStatValues>({});
   const entityStatChanges = useMemo(() => entityStatDeltas(entityStats, entityStatBaseline), [entityStats, entityStatBaseline]);
@@ -267,8 +286,9 @@ function useProvideGameplay() {
 
   const changeLocation = useCallback((newLocation: GameLocation) => {
     setCurrentLocation(newLocation);
+    carryFollowersTo(newLocation.id);
     addLogEntry(`Entered new location: ${newLocation.name}`);
-  }, [addLogEntry]);
+  }, [addLogEntry, carryFollowersTo]);
 
   // Note: flattenNestedGameStates has been moved to a web worker to prevent UI freezing
 
@@ -288,6 +308,7 @@ function useProvideGameplay() {
       ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
       ...(Object.keys(entityStats).length ? { entityStats } : {}),
       ...(Object.keys(entityPositions).length ? { entityPositions } : {}),
+      ...(entityFollowers.length ? { entityFollowers: [...entityFollowers] } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
@@ -310,7 +331,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -336,6 +357,7 @@ function useProvideGameplay() {
       setOwnedTraits(gameState.ownedTraits ?? {});
       resetEntityStats(gameState.entityStats ?? {});
       setEntityPositions(gameState.entityPositions ?? {});
+      setEntityFollowers(gameState.entityFollowers ?? []);
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -494,8 +516,10 @@ function useProvideGameplay() {
     const backfilled = (state: GameState, persona?: PersonaRef) => {
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
       if (!worldEntities) return players;
-      return reconcileGameStatePositions(
-        backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities, persona), locationIds,
+      const cast = positionedCast(worldEntities, persona);
+      return reconcileGameStateFollowers(
+        reconcileGameStatePositions(backfillGameStateEntityStats(players, worldEntities), cast, locationIds),
+        new Set(cast.map((entity) => entity.id)),
       );
     };
     try {
@@ -801,6 +825,10 @@ function useProvideGameplay() {
     resetEntityStats,
     entityPositions,
     setEntityPositions,
+    entityFollowers,
+    setEntityFollowers,
+    carryFollowersTo,
+    applyFollowerState,
     codePins,
     setCodePins,
     runtimeDictionaries,

@@ -4,6 +4,7 @@ import { markdownGuidance, activeCharacterGuidance } from '@/components/game/Gam
 import { languageDirective, type LanguageSurface } from './languages';
 import { DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from './runtimeCharacters';
 import { milestoneMomentValues } from './milestoneMemory';
+import { entityMoveOptions, entityMoveOptionsText, entityMoveStateText } from './entityFollowing';
 import { chipValues } from './chipValues/chipValues';
 import { sampleChipScene } from './chipValues/sampleScene';
 import { layerValues, type TokenValues, type ValueLookup } from './promptValues';
@@ -70,6 +71,9 @@ const TURN_VALUES: Record<string, string> = {
   // Headed and numbered the way the milestone selector sends them.
   ...milestoneMomentValues(SAMPLE_MOMENTS.kept, SAMPLE_MOMENTS.fresh),
   '<SUBJECT>': 'a weathered lamp-keeper on a stone shore',
+  // Rendered the way the entity location request renders them for an entity not yet following.
+  '<MOVE STATE>': entityMoveStateText(SAMPLE_TURN.character.name, false),
+  '<MOVE OPTIONS>': entityMoveOptionsText(entityMoveOptions(false)),
 };
 
 /**

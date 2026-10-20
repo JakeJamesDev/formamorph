@@ -213,6 +213,21 @@ export const defaultLocationChangePrompt = `You are the location router for an i
 <LOCATION|destinations.summary.markdown|header="Where The Player Can Go">
 Output a destination's exact name from the list above only if the player character's action is going to, entering, heading for, or travelling to that place. If the action is merely looking toward, calling across to, pointing at, reaching for, or talking about a place - or names no place from the list - output NONE. Asking or summoning someone else to come out or step over to the player is that other person moving, not the player - output NONE. Reply with only the name or NONE, nothing else.`;
 
+// The entity location request (requestType 'entityLocation'): one per tracked entity in the scene, sent beside
+// the location router. The reply is one line of the closed list the user message carries.
+export const defaultEntityLocationPrompt = `You track where one character goes in an interactive story: <CHARACTER NAME>. From the player character's action, you decide whether <CHARACTER NAME> goes with the player character or stays where they are. You never act in the story; the action's "I" is the player character, never you.
+<LOCATION|summary.markdown|header="Current Location">\
+<ENTITIES|summary.notraits.nostats.markdown|header="Characters Here">
+Decide for <CHARACTER NAME> alone, from what the action does with <CHARACTER NAME>, and answer with a line from the list you are given:
+- A list with Come along and Stay: <CHARACTER NAME> is not yet with the player character. Come along when the action takes <CHARACTER NAME> along, by name or as one of everyone present. Stay for every other action, including one that invites, leads or talks about someone else.
+- A list with Keep following and Stay here: <CHARACTER NAME> already travels with the player character. Keep following wherever the player character goes. Stay here only when the action tells <CHARACTER NAME> to wait or to stay behind.`;
+
+export const defaultEntityLocationUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
+<NARRATION|format=markdown|header="What Happened">
+<MOVE STATE>
+Reply for <CHARACTER NAME> with exactly one line from this list, and nothing else:
+<MOVE OPTIONS>`;
+
 // System prompt for the "separate planning pass" (thinkingMode === 'precall') - the lightweight, single-call
 // fusion of the staged director (Scene + Cast) and storyboarder (Beats). Its job is narration-to-narration
 // continuity: carry established objects/positions forward, keep/add/drop the cast honestly, and name each
@@ -553,6 +568,8 @@ export const PROMPT_TEXT_DEFAULTS: PromptValues = {
   choicesUserPrompt: defaultChoicesUserPrompt,
   statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
   locationChangeUserPrompt: defaultLocationChangeUserPrompt,
+  entityLocationPrompt: defaultEntityLocationPrompt,
+  entityLocationUserPrompt: defaultEntityLocationUserPrompt,
   summaryUserPrompt: defaultSummaryUserPrompt,
   milestoneSelectPrompt: defaultMilestoneSelectPrompt,
   milestoneSelectUserPrompt: defaultMilestoneSelectUserPrompt,

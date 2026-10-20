@@ -13,6 +13,7 @@ export type PromptSampler = 'temperature' | 'repetitionPenalty';
 export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<PromptSampler, number>>>> = {
   statUpdates: { temperature: 0.2 },
   locationChange: { temperature: 0.15 },
+  entityLocation: { temperature: 0.15 },
   summary: { temperature: 0 },
   milestoneSelect: { temperature: 0 },
   timePassed: { temperature: 0 },

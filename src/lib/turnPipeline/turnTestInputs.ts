@@ -10,6 +10,8 @@ import type { TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 export const TEST_PROMPTS: TurnPrompts = {
   locationChange: 'ROUTER <WORLD DESCRIPTION>',
   locationChangeUser: 'Action: <PLAYER ACTION>',
+  entityLocation: 'MOVER <WORLD DESCRIPTION> for <CHARACTER NAME>',
+  entityLocationUser: 'Move: <CHARACTER NAME> | <PLAYER ACTION> | <NARRATION> | <MOVE STATE> | <MOVE OPTIONS>',
   thinking: 'THINK <WORLD DESCRIPTION>',
   director: 'DIRECTOR <WORLD DESCRIPTION> <ACTIVE CHARACTER GUIDANCE>',
   directorUser: 'Last: <NARRATION> | Now: <PLAYER ACTION>',
@@ -47,6 +49,7 @@ export const TEST_SETTINGS: TurnSettings = {
   statCount: 3,
   locationChangeEnabled: true,
   locationAutoApply: true,
+  entityMovement: true,
   aiClock: true,
   memoryDigests: true,
   characterDiaries: true,
