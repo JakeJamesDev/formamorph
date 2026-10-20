@@ -51,7 +51,7 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
       {relationships.map(({ targetId, label }) => {
         const target = rowOf(targetId);
         return (
-          <div key={targetId} className="flex items-center gap-2 rounded-md border p-2" {...fieldFrame('relationships', targetId, 'label')}>
+          <div key={targetId} className="flex items-center gap-2" {...fieldFrame('relationships', targetId, 'label')}>
             <span className="w-1/3 min-w-0 shrink-0 truncate font-medium">{target.label}</span>
             <WorldInput
               ref={targetId === added ? addedRef : undefined}
