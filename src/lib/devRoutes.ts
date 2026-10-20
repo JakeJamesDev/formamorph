@@ -159,6 +159,7 @@ export const DEV_MODAL_TABS = {
   // The World Editor's entity panel splits its fields across its own tabs, reached with the same `subtab=…`
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
   // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
+  // `fixture=entityPresence` gives the Archivist Relationships rows on `profile`.
   worldEditorEntity: ['profile', 'descriptions', 'traits', 'stats', 'placeholders', 'openings'],
   // The library entity editor (`#dev?modal=entityEditor&tab=placeholders`). It opens on a blank draft and is
   // never in Simple mode, so every tab is reachable. `fixture=gallery` opens it on an entity whose images carry

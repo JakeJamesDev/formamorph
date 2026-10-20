@@ -23,6 +23,7 @@ const entity = { id: 'e1', name: 'Wren', aiDescription: 'A lamp-keeper.' } as un
 
 const world = {
   entities: [entity],
+  entityGroups: [],
   locations: [],
   stats: [],
   traits: [],

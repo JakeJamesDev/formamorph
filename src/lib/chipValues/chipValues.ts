@@ -3,8 +3,9 @@ import { formatAbsolute } from '../gameClock';
 import {
   buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableLocationsContext,
   buildSublocationsContext, chipFamilyRuns, chipFamilyValues, chipFormat, entityRosterRuns, hasOnlyWith, ownedStatLines,
-  knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
+  knownEntityIds, knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
+import { relationshipLines } from '../entityRelationships';
 import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
 import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
@@ -138,9 +139,12 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => M
   // it belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
   const knownExclude = [...reachableExclude, ...reachableEntityIds(location, locations, connections, outer)];
+  // Each relationship prints once over the chain, and once over In Scene, which no default prompt pairs with it.
+  const chainLines = relationshipLines(entities, [...knownExclude, ...knownEntityIds(location, locations, outer)]);
+  const inSceneLines = relationshipLines(entities, inSceneIds);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
-  const roster = (opts: ContextOpts) => ({ ...opts, ownedTraits, ownedStats });
+  const roster = (opts: ContextOpts, lines = chainLines) => ({ ...opts, ownedTraits, ownedStats, relationshipLines: lines });
   // Here and In Scene list stats unless the chip switches them off; the lower scopes only when it switches them on.
   const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {
@@ -149,7 +153,7 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => M
     reachable: (opts) => reachableEntityRuns(location, locations, connections, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
     known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude }),
     inscene: (opts) => {
-      const block = entityRosterRuns(inSceneIds, entities, roster(opts));
+      const block = entityRosterRuns(inSceneIds, entities, roster(opts, inSceneLines));
       // A name with no entity record owns nothing, so a filter drops it.
       if (!opts.nameOnly || !inSceneNames.length || hasOnlyWith(opts)) return block;
       const names = inSceneNames.map((name) => mark(['content'], name));

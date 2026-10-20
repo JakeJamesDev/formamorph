@@ -303,3 +303,25 @@ describe('Steps that match intent', () => {
     expect(labels(history())).toEqual(['Edit Entity Wick: Player Description']);
   });
 });
+
+describe('relationships in the history', () => {
+  const tera = entity('tera', { name: 'Tera', relationships: [{ targetId: 'wick', label: 'mentor' }] });
+
+  it('records an added relationship as a Step that undo takes back', async () => {
+    const { ctx, history } = await open(world({ entities: [entity('wick', { name: 'Wick' }), entity('tera', { name: 'Tera' })] }));
+    await act1(() => ctx().updateEntity(tera));
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(ctx().entities.find((e) => e.id === 'tera')?.relationships).toBeUndefined();
+  });
+
+  it('records deleting a target as one Step, and undo restores the relationships that pointed at it', async () => {
+    const { ctx, history } = await open(world({ entities: [entity('wick', { name: 'Wick' }), tera] }));
+    await act1(() => ctx().removeEntity('wick'));
+    expect(ctx().entities).toEqual([{ id: 'tera', name: 'Tera' }]);
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(ctx().entities.map((e) => e.id)).toEqual(['wick', 'tera']);
+    expect(ctx().entities.find((e) => e.id === 'tera')?.relationships).toEqual([{ targetId: 'wick', label: 'mentor' }]);
+  });
+});

@@ -26,6 +26,7 @@ const store: { entity: Entity; stats: Stat[]; rerender: () => void } = {
 
 const world = () => ({
   entities: [store.entity],
+  entityGroups: [],
   locations: [],
   stats: store.stats,
   traits: [],

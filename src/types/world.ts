@@ -396,6 +396,8 @@ export interface Entity {
   /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
    *  covering its whole subtree. Absent = Nearby, one step from where it is. */
   knownIn?: 'nowhere' | string[];
+  /** The entity's links to other entities, at most one per target, in author order. Absent or empty = none. */
+  relationships?: EntityRelationship[];
   /** Editor-only folder this entity lives in; null/absent = ungrouped. Purely organizational — never sent
    *  to the AI (grouping does not change the entity context). Reset to ungrouped on character-card import. */
   groupId?: string | null;
@@ -453,6 +455,13 @@ export type EntityPresence = 'random';
 
 /** An entity's Movement beyond the default, Free. */
 export type EntityMovement = 'stays' | 'between' | 'follow';
+
+/** One authored link from an entity to another. `label` is the target's role toward the owner, read as
+ *  "<target> is <owner>'s <label>". */
+export interface EntityRelationship {
+  targetId: string;
+  label: string;
+}
 
 /** One location a piece of off-world content expects, as the world it left named it. The id is the key its
  *  connection is stored under, so the source renaming the location keeps the connection. */
