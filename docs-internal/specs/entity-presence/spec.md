@@ -102,7 +102,7 @@ The Locations Canvas warns when two locations of a Moves Between entity have no 
 - `movement`: `'stays' | 'between' | 'follow'`. Absent means Free.
 - `knownIn`: `'nowhere'`, or a list of location ids. Absent means Nearby. Picks replace Nearby, so the list is the whole answer.
 
-The persona entity ignores Presence and Movement, and the editor hides them for it. An entity with Presence Everywhere offers only Free, Stays Put and Can Follow the Player: a group is at all its places at once, so Moves Between has no meaning for it.
+The played persona ignores Presence and Movement: it has no position and gets no request. The editor hides both only for the entity with the **Custom Persona** mark, which is always the player. A world entity with the Persona mark keeps both, since it is in the cast whenever someone else is played; its controls carry the hint "Ignored while the player plays this entity". An entity with Presence Everywhere offers only Free, Stays Put and Can Follow the Player: a group is at all its places at once, so Moves Between has no meaning for it.
 
 **Runtime shape (save envelope, Gameplay side only).** Gameplay never writes GameDataContext.
 
@@ -163,7 +163,9 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 
 **Code and World Tools.** Each entry of the existing `entities` record gets three writes: `entities["Name"].move(target)`, `.follow()` and `.unfollow()`. `move` resolves the target by id, then by name, and an unknown target throws. The writes work on any entity, and a write on a Free entity starts tracking it. `follow` adds the entity to the followers and moves it to the player's location. `unfollow` removes it from the followers and leaves it where the player is.
 
-**Saves and stale data.** On load, a position on a location that no longer exists falls back to the Presence start rule. A follower or position for an entity that no longer exists is dropped. The world stays authoritative for saves.
+**Saves and stale data.** On load, a position on a location that no longer exists falls back to the Presence start rule. A follower or position for an entity that no longer exists is dropped. A One entity with no saved position is placed by the Presence rule. The world stays authoritative for saves.
+
+Load keeps every other position, because it can't tell a new-game draw from a code move. So switching an entity from One to Everywhere Listed reaches an existing save only on a new game.
 
 **Setting.** **Entity Movement**, on by default, in the location settings. Off stops only the entity location requests. Stays Put, Presence, sticky followers and code moves still apply.
 
