@@ -19,7 +19,7 @@ On every image preset that uses a NovelAI V4, V4.5 or V5 model, the scene image 
 
 When the request goes to NovelAI V4+, Formamorph turns each `|` part after the first into a character prompt. The player sees and edits the same `|` line under the image, so a hand edit (adding a tag to one character, adding a third part) is honored on the next draw. A `|` typed into the editor's Generate dialog is honored too.
 
-Every other provider, and NovelAI V3, gets the line with each `|` turned into a comma, so a stored scene line still draws after the player switches presets.
+Every other provider gets the line with each spaced ` | ` turned into a comma, so a stored scene line still draws after the player switches presets. NovelAI V3 gets the line unchanged, because V3 reads `|` as its own Prompt Mixing (Q6).
 
 ## User Stories
 
@@ -40,7 +40,7 @@ Every other provider, and NovelAI V3, gets the line with each `|` turned into a 
 15. As a player on NovelAI, I want NovelAI to choose where each character stands, so that I get the same placement behavior as NovelAI's "AI's Choice".
 16. As a player on NovelAI, I want each character prompt to get a matching empty negative prompt, so that the request has the shape NovelAI's own clients send.
 17. As a player on NovelAI V5, I want the same split, so that the newest model also keeps characters apart.
-18. As a player on NovelAI V3, I want the `|` turned into commas, so that a model without character prompts still gets a readable line.
+18. As a player on NovelAI V3, I want my `|` left as typed, so that V3 Prompt Mixing keeps working (Q6).
 19. As a player on A1111, ComfyUI, InvokeAI or OpenAI, I want the `|` turned into commas, so that a scene line written under a NovelAI preset still draws after I switch presets.
 20. As a player on a non-NovelAI provider, I want my scene line composed exactly as today, so that this change has no effect on my images.
 21. As a world author on NovelAI, I want to type `|` in the editor's Generate dialog prompt, so that I can test multi-character prompts on a subject image.
@@ -57,9 +57,10 @@ Every other provider, and NovelAI V3, gets the line with each `|` turned into a 
 - **Normalize and dedupe per part.** The tag normalizer runs on each part on its own, and the parts join with ` | `. A tag may appear in two parts. This also keeps **Clean Up Tags** from turning `|` into a space.
 - **Who asks for the segmented form:** the in-game scene tag run. It asks when the active image preset's provider is NovelAI and its model is V4, V4.5 or V5. The rule for "NovelAI V4+" is one shared predicate, the same one the NovelAI request builder uses to pick caption-wrapped prompts.
 - **The stored scene line stays a string.** The turn's `sceneTags` field keeps its type. It may now hold `|`. **This is not a save export-shape change:** the field and its type are unchanged.
-- **Splitting happens on our side.** The NovelAI request builder splits the final prompt on `|`. The first part becomes `base_caption`; each further non-empty, trimmed part becomes one `char_captions` entry `{ char_caption, centers: [{ x: 0.5, y: 0.5 }] }`. The negative caption gets one entry per character with an empty `char_caption` and the same center. `use_coords` stays `false` and `use_order` stays `true`. The top-level `input` and the V3 `prompt` fields get the base part only on V4+, and the flattened line on V3.
+- **Splitting happens on our side.** The NovelAI request builder splits the final prompt on `|`. The first part becomes `base_caption`; each further non-empty, trimmed part becomes one `char_captions` entry `{ char_caption, centers: [{ x: 0.5, y: 0.5 }] }`. The negative caption gets one entry per character with an empty `char_caption` and the same center. `use_coords` stays `false` and `use_order` stays `true`. The top-level `input` and the V3 `prompt` fields get the base part only on V4+, and the unchanged line on V3 (Q6).
 - **Rationale for client-side splitting:** every working NovelAI client checked (novelai-sdk, Marinara-Engine, a ComfyUI node, a SillyTavern plugin) builds `char_captions` itself. Whether NovelAI's server also parses `|` inside `base_caption` is UNVERIFIED. Client-side splitting is correct in both cases.
-- **Flattening for everything else.** The shared image request builder turns each ` | ` into `, ` for every provider other than NovelAI V4+. NovelAI V3 is flattened in the NovelAI request builder, which already branches on the model.
+- **Flattening for everything else.** The shared image request builder turns each ` | ` (whitespace on both sides) into `, ` for every provider other than NovelAI. A bare `|` stays literal, so A1111 alternation `[cow|horse]` and ComfyUI wildcards `{a|b}` survive (Q5). NovelAI V3 is not flattened (Q6).
+- **Splitting on V4+ uses any `|`**, spaced or bare: NovelAI V4+ has no other `|` syntax (Q5). Each part has leading and trailing commas trimmed, so `prefix, | girl` gives base `prefix`. A `|` inside the preset prefix also splits on V4+; that is accepted.
 - **Preset prefix placement.** The request builder still joins the preset's positive prompt in front of the subject prompt, so the prefix lands in the base part. No change is needed for that.
 - **The cast cap stays at two.** NovelAI allows more (6 on V4/V4.5, 22 on V5); raising the cap is out of scope.
 - **No new setting, no settings default, no prompt text change.** The scene tag pass prompt is unchanged, so no probe is needed.
@@ -69,7 +70,7 @@ Every other provider, and NovelAI V3, gets the line with each `|` turned into a 
 
 - A good test calls the public function with realistic input and asserts on its output. It never mirrors the implementation's string building. Each guard is proven by reinstating the bug it guards (for example, a shared dedupe across parts must fail the shared-tag test).
 - **Seam 1: the scene tag composer.** Extend the existing scene tag composer tests. Cover: two characters give counts in the base and `girl`/`boy` kinds in their parts; one character is still split; a tag shared by both characters stays in both parts; **Clean Up Tags** on keeps the separators; **Clean Up Tags** off keeps NovelAI syntax inside a part; an untagged character gets a kind-only part; `no humans` still drops; names are still stripped from the action; without the new input the output is unchanged (the existing tests stay green as written).
-- **Seam 2: the image request builder feeding the NovelAI request builder.** Extend the existing NovelAI request builder tests and the shared request builder tests. Cover: a pipe line on V4.5 and V5 gives `base_caption` plus one `char_captions` entry per part, with matching empty negative entries; an empty part is skipped; the preset prefix lands in the base; V3 gets the flattened line; A1111 and one other provider get the flattened line; a line with no `|` gives `char_captions: []` exactly as today.
+- **Seam 2: the image request builder feeding the NovelAI request builder.** Extend the existing NovelAI request builder tests and the shared request builder tests. Cover: a pipe line on V4.5 and V5 gives `base_caption` plus one `char_captions` entry per part, with matching empty negative entries; an empty part is skipped; the preset prefix lands in the base; V3 gets the line unchanged; A1111 and one other provider get ` | ` flattened while a bare `|` (`[cow|horse]`) stays; a line with no `|` gives `char_captions: []` exactly as today.
 - No GameViewer test: the scene tag run only passes the flag. The user confirmed these two seams.
 - Prior art: the existing scene tag composer tests and the NovelAI request builder tests (`buildNovelAIBody` cases for V3, V4.5 and V5).
 
@@ -82,6 +83,11 @@ Every other provider, and NovelAI V3, gets the line with each `|` turned into a 
 - Per-character negative prompts with content.
 - The root-level `characterPrompts` field. novelai-sdk sends it next to `char_captions`; Marinara-Engine sends `char_captions` alone. Add it only if images show the split is ignored.
 - Settling whether NovelAI's server parses `|` itself. That needs a paid request.
+
+## Rulings
+
+- **Q5** (ticket 01, 2026-10-20). Flatten only a spaced ` | ` for non-NovelAI providers; NovelAI V4+ splits on any `|`. Per-part comma trim accepted; a `|` in the preset prefix splits on V4+.
+- **Q6** (user, 2026-10-20). NovelAI V3 keeps `|` as typed, for Prompt Mixing. Supersedes the original story 18 (flatten on V3).
 
 ## Further Notes
 
