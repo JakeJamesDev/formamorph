@@ -136,6 +136,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     viewCharacterData: characterData,
     bodyMorphValues,
     viewVisibleEntities: visibleEntities,
+    viewEntityFollowers: entityFollowers,
     logEntries,
     calendar,
     logsEndRef,
@@ -357,6 +358,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                     <EntityListRow
                       key={index}
                       label={label}
+                      following={!!entityItem && entityFollowers.includes(entityItem.id)}
                       disabled={isDisabled}
                       onClick={() => handleEntityListClick(se)}
                       onRemove={isRemovable ? () => setPendingRemoval(label) : undefined}

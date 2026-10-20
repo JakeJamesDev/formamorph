@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The AI can know of an entity anywhere inside the locations you pick, without placing it there.** Set it under **Known Here** on a location's **Presence** tab. **Nearby Through Connections** lets entities one Connection away reach the AI as nearby.
     - **An entity set to Can Follow the Player now comes with you when you invite it, and keeps following.** It travels with you on every move, Map travel too, until it stays behind. Each such entity adds one short AI request per turn. **Entity Movement** turns the requests off.
     - **An entity set to Moves Between Its Locations now walks between them, one Connection at a time.** The AI moves it when the story sends it to one of its locations. It comes along with you only into its own locations, and it never keeps following.
+    - **The Entities tab marks who follows you, and the Map shows where the entities you've met are now.** A footprints icon marks each follower. Each Map location shows a count of the met entities there, and its tip names them. Entities you haven't met never show.
 
 ### Minor Changes
 

@@ -127,6 +127,8 @@ function useProvideGameplay() {
     entityFollowersRef.current = followers;
     setFollowersState(followers);
   }, []);
+  // The ids of the entities the player has met. Snapshotted per turn too.
+  const [metEntities, setMetEntities] = useState<readonly string[]>([]);
   /** Brings every follower to `locationId`: the player just moved there. */
   const carryFollowersTo = useCallback((locationId: string) => {
     const followers = entityFollowersRef.current;
@@ -309,6 +311,7 @@ function useProvideGameplay() {
       ...(Object.keys(entityStats).length ? { entityStats } : {}),
       ...(Object.keys(entityPositions).length ? { entityPositions } : {}),
       ...(entityFollowers.length ? { entityFollowers: [...entityFollowers] } : {}),
+      ...(metEntities.length ? { metEntities: [...metEntities] } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
@@ -331,7 +334,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -358,6 +361,7 @@ function useProvideGameplay() {
       resetEntityStats(gameState.entityStats ?? {});
       setEntityPositions(gameState.entityPositions ?? {});
       setEntityFollowers(gameState.entityFollowers ?? []);
+      setMetEntities(gameState.metEntities ?? []);
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -691,6 +695,7 @@ function useProvideGameplay() {
   // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
   const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
+  const viewEntityFollowers: readonly string[] = viewedSnapshot ? (viewedSnapshot.entityFollowers ?? EMPTY_IDS) : entityFollowers;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = useMemo(
     () => (viewedSnapshot ? normalizeVisibleEntities(viewedSnapshot.visibleEntities) : visibleEntities),
@@ -829,6 +834,9 @@ function useProvideGameplay() {
     setEntityFollowers,
     carryFollowersTo,
     applyFollowerState,
+    viewEntityFollowers,
+    metEntities,
+    setMetEntities,
     codePins,
     setCodePins,
     runtimeDictionaries,

@@ -37,7 +37,8 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
  *  an admin one, so they open empty otherwise rather than failing. `location` is in game (GameViewer) and
  *  opens the Change Location dialog on whichever of its two views was used last, so pair it with `fixture=…`
- *  to have a world worth traveling in. `editText` is in game (GameViewer) and
+ *  to have a world worth traveling in; `fixture=entityFollowers` puts met entities on its Map and a follower
+ *  in the Entities tab. `editText` is in game (GameViewer) and
  *  opens the narration editor on the current page's text — empty before any turn, which is enough to reach
  *  its full-screen toggle, the one editor that grows in place instead of raising a window. `changelog` opens
  *  MainMenu's What's New popout on a canned sample (`devChangelogSample.ts`) rather than the live GitHub

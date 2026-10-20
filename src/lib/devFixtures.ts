@@ -8,7 +8,7 @@ import type { Entity, EntityStatValues, GameLocation, World, SaveObject } from '
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityPresence'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityPresence', 'entityFollowers'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -69,6 +69,8 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
   // A Known Here row inherited from the Keep, which holds the White Room.
   { id: 'dev-queen', name: 'Queen', locations: ['dev-keep'], knownIn: ['dev-keep'] },
 ];
+/** The `entityFollowers` fixture's follower. */
+const ENTITY_FOLLOWER: Entity = { id: 'dev-scout', name: 'Scout', locations: [WHITE_ROOM_ID], movement: 'follow' };
 const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep', nearbyUsesConnections: true };
 
 /** Page one of the `writtenOpening` fixture. */
@@ -171,6 +173,35 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       const locations = world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, parentId: DEV_KEEP.id } : l));
       return { world: { ...world, locations: [DEV_KEEP, ...locations], entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
+    }
+    case 'entityFollowers': {
+      // A save mid-game: the Scout follows the player, the Archivist is met but untracked, the Sentry was met
+      // in the Corridor, and the Warden stands here unmet behind an alias.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      const saved = save.default as unknown as SaveObject;
+      return {
+        world: { ...base, entities: [...base.entities, ...ENTITY_PRESENCE_CAST, ENTITY_FOLLOWER] },
+        save: {
+          ...saved,
+          currentState: {
+            ...saved.currentState,
+            locationId: WHITE_ROOM_ID,
+            visibleEntities: [
+              { name: 'Scout', revealed: true },
+              { name: 'Archivist', revealed: true },
+              { name: 'Warden', alias: 'a figure by the door', revealed: false },
+            ],
+            entityPositions: { [ENTITY_FOLLOWER.id]: WHITE_ROOM_ID, 'dev-warden': WHITE_ROOM_ID, 'dev-sentry': 'dev-corridor' },
+            entityFollowers: [ENTITY_FOLLOWER.id],
+            metEntities: [ENTITY_FOLLOWER.id, 'dev-archivist', 'dev-sentry'],
+          },
+        },
+        saveName: 'DEV: Entity Followers',
+      };
     }
     case 'writtenOpening': {
       // A new game whose only opening is an Opening Narration, so Start Game is page one. A world file

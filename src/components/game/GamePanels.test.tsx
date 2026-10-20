@@ -230,6 +230,22 @@ describe('LeftPanel', () => {
     expect(screen.getByText('Direwolf')).toBeInTheDocument();
   });
 
+  it('marks the entities following the player, and no one else', () => {
+    const cast = [{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }];
+    renderLeftPanel({ entities: cast as never }, {
+      world: { entities: cast } as never,
+      seed: (gameplay) => {
+        gameplay.setVisibleEntities([{ name: 'Bram', revealed: true }, { name: 'Hesk', revealed: true }]);
+        gameplay.setEntityFollowers(['e1']);
+      },
+    });
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    const mark = screen.getByRole('img', { name: 'Following you' });
+    expect(screen.getByText('Bram').parentElement!.contains(mark)).toBe(true);
+    expect(screen.getAllByRole('img', { name: 'Following you' })).toHaveLength(1);
+  });
+
   it('labels a lone longer-named entity as itself, not as the shorter name it contains', () => {
     const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
     renderLeftPanel({ entities: cast as never }, {

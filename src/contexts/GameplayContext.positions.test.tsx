@@ -79,6 +79,17 @@ describe('entity positions in the save', () => {
     expect('entityFollowers' in mount()().saveCurrentGameState()).toBe(false);
   });
 
+  it('keeps the met set across a save and a load', async () => {
+    const live = mount();
+    await act(async () => { live().setMetEntities(['guard', 'merchant']); });
+    expect(live().saveCurrentGameState().metEntities).toEqual(['guard', 'merchant']);
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-pos-5'); });
+    await act(async () => { live().setMetEntities([]); });
+    await act(async () => { await live().loadGame('save-pos-5', [keep, tower], [], [merchant, guard]); });
+    expect(live().metEntities).toEqual(['guard', 'merchant']);
+    expect('metEntities' in mount()().saveCurrentGameState()).toBe(false);
+  });
+
   it('brings the followers along on a move with no turn, as Map travel makes', async () => {
     const live = mount();
     await act(async () => {
