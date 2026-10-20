@@ -50,6 +50,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Persona:**
+    - **The Test Bench's Openings preview now names the persona you pick, or says no persona under None.** Code cards mark an entity you can play as **Persona: Playable**. The author-note ⓘ line in Settings says "your persona".
   - **On NanoGPT, Native Reasoning now knows which models think and which strengths they take.** Short prompts such as Choices give a thinking model room and no longer fail with "The model reached its token limit before it wrote an answer."
   - **The token-limit error now names the prompt that failed.** Error Details show it on a Prompt line. For a prompt with a Max Output setting, they also tell you to raise it.
   - **Summaries and Diary now ship with Native Reasoning off, so turns finish sooner on a thinking model.** Prompts you already set keep your setting.

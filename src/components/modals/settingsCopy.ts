@@ -624,7 +624,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
     label: 'Direction Message',
     description: 'Marks bracketed text as your direction, not speech',
     sentWhen: 'Sent with your action whenever it contains [square brackets]',
-    info: 'Tells the AI the bracketed text is you directing the scene as the author, not something your character says',
+    info: 'Tells the AI the bracketed text is you directing the scene as the author, not something your persona says',
   },
 
   // ── Prompts · Overview ──────────────────────────────────────────────────────

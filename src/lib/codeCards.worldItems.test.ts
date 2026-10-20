@@ -229,7 +229,7 @@ describe('entity, dictionary and persona cards', () => {
     expect(card?.description).toBe('A quiet scout.');
     expect(rowsOf(card)).toEqual({ Type: 'Ranger', Stats: 'Health', Traits: 'Calm', Placeholders: 'Look' });
     expect(card?.item).toEqual({ kind: 'entity', entityId: 'mara' });
-    expect(rowsOf(cardAt('return entities.T|om.name;', worldBox))).toEqual({ Persona: 'Can be played', Stats: 'None', Traits: 'Brave', Placeholders: 'None' });
+    expect(rowsOf(cardAt('return entities.T|om.name;', worldBox))).toEqual({ Persona: 'Playable', Stats: 'None', Traits: 'Brave', Placeholders: 'None' });
   });
 
   it('leaves out an entity’s AI-only description', () => {

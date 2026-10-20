@@ -656,12 +656,24 @@ describe('TestBench Opening instrument', () => {
 
   it('shows the fresh game: cost, start, stats with their band, and the rolls', () => {
     renderOpening();
-    expect(screen.getByText(/Turn one as the default character ≈ ~\d/)).toBeInTheDocument();
+    expect(screen.getByText(/Turn one with no persona ≈ ~\d/)).toBeInTheDocument();
     expect(screen.getByText(/Starts at Harbor Steps/)).toBeInTheDocument();
     expect(screen.getByText('Nerve')).toBeInTheDocument();
     expect(screen.getByText('Shaky')).toBeInTheDocument();
     expect(screen.getByText('Coin Bird')).toBeInTheDocument();
     expect(screen.getByText('gull')).toBeInTheDocument();
+  });
+
+  it('marks the lens pick among the Active Traits', () => {
+    const picked: RuleWorld = {
+      ...openingWorld,
+      traitGroups: [{ id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 }],
+      traits: [{ id: 't-sedge', name: 'Sedge-Born', groupId: 'g-origin', statChanges: [], order: 0 }],
+    };
+    const data = buildOpening(picked, buildLens(picked, { pcTraitId: 't-sedge', locationId: null }), {});
+    renderBench(picked, { tab: 'opening', opening: { data } });
+    expect(screen.getByText('Lens Pick')).toBeInTheDocument();
+    expect(screen.getByText('defaults plus the lens pick')).toBeInTheDocument();
   });
 
   it('re-bands live as the slider scrubs, without touching the world', async () => {
@@ -769,6 +781,17 @@ describe('TestBench Opening instrument', () => {
     await userEvent.click(screen.getByRole('combobox', { name: 'Persona' }));
     await userEvent.click(screen.getByRole('option', { name: 'Wren' }));
     expect(opening.onPersonaChange).toHaveBeenCalledWith('e-wren');
+  });
+
+  it('names the picked persona in the preview line', () => {
+    renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
+    expect(screen.getByText(/^Turn one as Wren/)).toBeInTheDocument();
+    expect(screen.getByText('Sets the persona')).toBeInTheDocument();
+  });
+
+  it('says no persona in the preview line under None', () => {
+    renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
+    expect(screen.getByText(/^Turn one with no persona/)).toBeInTheDocument();
   });
 
   it('hands None back as null', async () => {
