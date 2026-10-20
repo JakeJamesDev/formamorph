@@ -349,7 +349,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `location` | `id`, `name`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
@@ -357,7 +357,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `diary` | — | — | `diary("<Entity>", <text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
 | `console` | `log()` | — | `console.log(<text>)` |
@@ -763,6 +763,9 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `traits` | The entity's own traits by name, owned or linked |
 | `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The entity's own stats by name. Entries take writes |
+| `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
+| `follow()` | Makes the entity follow the player |
+| `unfollow()` | Stops the entity following the player |
 
 Each entry in an entity's `stats` has the [same members as a `stats` entry](#stat-properties), `previous` and `delta` included. Code writes `value`, `min`, `max` and `regen` on an entry, by the rules in [Writing to Other Stats](#writing-to-other-stats). A write to any other field is ignored and reported. An entity's stats run every turn, whether or not the entity is in the scene. A stat the entity has switched off reads with `enabled` false, and a write to it is ignored and reported.
 
@@ -791,7 +794,33 @@ if (self.value <= 0) entities.Mira.stats.Stamina.value -= 10;
 - Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.
 - An entity's descriptions, aliases, locations and media are not in the entry.
 
-A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch or a stat write through it is ignored and reported. Check `entities.Mira.name` to test whether Mira is in the game.
+A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch or a stat write through it is ignored and reported. A `move`, `follow` or `unfollow` call through it stops the script with an error. Check `entities.Mira.name` to test whether Mira is in the game.
+
+#### Moving Entities
+<!-- keywords: move npc, companion joins, follow player, leave party, schedule, patrol, entity location, send away -->
+
+Three calls on an entity's entry set where it stands. Each one works on any entity, whatever its **Movement**.
+
+- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following entity stops following.
+- **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location.
+- **`entities.<Entity>.unfollow()`** stops the entity following and leaves it at the player's location. An entity that isn't following stays where it is.
+
+How the calls apply:
+
+- **The writes apply when the turn ends**, after the player's move, the followers and the AI's entity answers. So a script's write beats the AI's answer. Prompts in the same turn read the entities where they stood.
+- **Calls apply in call order**, across every script of the turn. The last call on an entity wins.
+- **A `move` or a `follow` keeps a position for the entity from then on.** A **Free** entity then stands at one location, not at every listed one.
+- **A location your world doesn't have stops the script with an error.** So does the persona, which moves with the player, and a name no entity has.
+- **A When a Trait Switches script that runs outside a turn applies none of them.**
+- **In suggest mode, a script's write beats a waiting "come along".** The AI may ask an entity to come along, and that entity waits for **Go**. A write on the entity takes it off the wait.
+
+```js
+// The wight leaves its tomb once the crown is whole.
+if (traits["Crown Restored"].enabled) entities.Wight.move("Barrow Road");
+
+// Albus joins the party when his trust is high enough.
+if (entities.Albus.stats.Trust.value >= 50) entities.Albus.follow();
+```
 
 **Test Code** lists every authored entity, with no trait chosen and each stat at its starting value. A switch or a stat write it makes is reported and never applied.
 

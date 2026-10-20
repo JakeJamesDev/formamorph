@@ -143,7 +143,12 @@ export interface WorldWrites {
   pins?: string[];
   /** Every `diary` line, in call order. */
   diary?: DiaryWrite[];
+  /** Every `move`, `follow` and `unfollow` on an entity entry, in call order. */
+  entities?: EntityCodeWrite[];
 }
+
+/** One `move`, `follow` or `unfollow` on an entity entry: the entity's id, or its name when it has none. */
+export type EntityCodeWrite = { entity: string } & ({ kind: 'move'; location: string } | { kind: 'follow' | 'unfollow' });
 
 /** One `diary` call: the entity's id, or its name when it has none, and the line. */
 export interface DiaryWrite {
@@ -719,7 +724,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
     [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
 
 /** The fields on an entity entry that a write never reaches. */
-const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders', 'stats'] as const;
+const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders', 'stats', 'move', 'follow', 'unfollow'] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
 export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
@@ -736,17 +741,18 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
 }
 
 /** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
- *  `fields`, built by `build(key, data, unknown) => [values, rows]`; an unknown name builds from `blank`.
+ *  `fields`, built by `build(key, data, unknown) => [values, rows, hidden?]`, where `hidden` fields are left
+ *  out of the entry's keys; an unknown name builds from `blank`.
  *  `entry(key, data, unknown, tag)` builds one more, whose reader row carries `tag`. */
 const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build) => {
   const readers = [];
   const entry = (key, data, unknown, tag = null) => {
-    const [values, rows] = build(key, data, unknown);
+    const [values, rows, hidden = []] = build(key, data, unknown);
     const written = [];
     readers.push([key, unknown, rows, written, tag]);
     const out = {};
     for (const field of fields) {
-      define(out, field, { enumerable: true, get: () => values[field], set: () => (${ADD_ONCE})(written, field) });
+      define(out, field, { enumerable: !hidden.includes(field), get: () => values[field], set: () => (${ADD_ONCE})(written, field) });
     }
     return freeze(out);
   };
@@ -799,9 +805,10 @@ const entitiesPrelude = (
 ): string => {
   const data = (entity: SandboxEntity, owner: boolean) => {
     const { id = '', type = '', pronouns = '', inScene = false, traits, placeholders } = entity;
+    const played = entity === persona || (!!persona.id && id === persona.id);
     return {
       id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
-      stats: owner ? {} : statMapData(statEntriesOf(entity)), owner,
+      stats: owner ? {} : statMapData(statEntriesOf(entity)), owner, played,
     };
   };
   const own = place.kind === 'own' ? place.entity : undefined;
@@ -826,7 +833,11 @@ const entitiesPrelude = (
     `  const placeholders = data.own ? ${OWNER_VIEW}(data.ph ?? -1, ['owner', 'owner'], !!data.absent)`,
     `    : ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
     `  const stats = data.owner ? ${OWNER_STATS} : statMap(key, unknown, data.stats || {});`,
-    `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: data.own ? data.name || '' : unknown ? '' : key, traits, placeholders, stats }, rows];`,
+    `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
+    `  const write = (kind) => (target) => ${ENTITY_WRITE}(who, kind, target);`,
+    `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow') };`,
+    `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: data.own ? data.name || '' : unknown ? '' : key, traits, placeholders, stats, ...moves }, rows,`,
+    `    who.played ? Object.keys(moves) : []];`,
     `});`,
     `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
     `const owner = spec.ownEntry ? entry('', spec.ownEntry, false, ${JSON.stringify(OWN_OWNER_TAG)})`,
@@ -1147,19 +1158,27 @@ export interface StatCodeRunOptions {
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
+const ENTITY_WRITE = '__formamorphEntityWrite';
 const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
 /** The prelude of `location`, `discover`, `memory`, `diary` and the hook `clock.advance` calls. An unknown location or
  *  entity is listed as well as thrown, so a script that catches the throw still fails. `cast` is who `diary` can name. */
 const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean): string => [
-  `const [location, discover, memory, diary, ${ADVANCE_CLOCK}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], unknown: [], maybe: [] };`,
-  `  const find = (kind, list, target) => {`,
-  `    const hit = typeof target === 'string' ? list.find((place) => place.id === target) || list.find((place) => place.name === target) : undefined;`,
-  `    if (hit) return hit.id;`,
-  `    const message = 'The world has no ' + kind + ' named "' + String(target) + '"';`,
+  `const [location, discover, memory, diary, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], unknown: [], maybe: [] };`,
+  `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
   `    throw new Error(message);`,
+  `  };`,
+  `  const find = (kind, list, target) => {`,
+  `    const hit = typeof target === 'string' ? list.find((place) => place.id === target) || list.find((place) => place.name === target) : undefined;`,
+  `    return hit ? hit.id : fail('The world has no ' + kind + ' named "' + String(target) + '"');`,
+  `  };`,
+  `  const entityWrite = (who, kind, target) => {`,
+  `    if (who.unknown) fail('The game has no entity named "' + who.name + '"');`,
+  `    if (who.played) fail('The persona moves with the player');`,
+  `    const entity = who.id || who.name;`,
+  `    writes.entities.push(kind === 'move' ? { entity, kind, location: find('location', places.locations, target) } : { entity, kind });`,
   `  };`,
   `  const here = places.location || { id: '', name: '' };`,
   `  const location = Object.freeze(lock({`,
@@ -1199,7 +1218,7 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    add: (value) => { writes.memory.push(line('memory.add', value)); },`,
   `    pin: (value) => { writes.pins.push(line('memory.pin', value)); },`,
   `  }, ['add', 'pin'], 'memory.', note));`,
-  `  return [location, Object.freeze(discover), memory, Object.freeze(diary), advance, writes];`,
+  `  return [location, Object.freeze(discover), memory, Object.freeze(diary), advance, entityWrite, writes];`,
   `})(${JSON.stringify({ locations, location })}, ${JSON.stringify(cast)}, ${openCast}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
 ].join('\n');
 
@@ -1214,9 +1233,9 @@ const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity): 
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, diary, unknown, maybe } = parsed as {
+  const { location, minutes, advanced, discover, memory, pins, diary, entities, unknown, maybe } = parsed as {
     location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[];
-    diary: DiaryWrite[]; unknown: string[]; maybe: string[];
+    diary: DiaryWrite[]; entities: EntityCodeWrite[]; unknown: string[]; maybe: string[];
   };
   if (unknown.length) return { error: unknown[0] };
   const writes: WorldWrites = {
@@ -1226,6 +1245,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),
     ...(diary.length ? { diary } : {}),
+    ...(entities.length ? { entities } : {}),
   };
   return {
     ...(Object.keys(writes).length ? { writes } : {}),

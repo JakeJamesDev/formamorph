@@ -10,6 +10,7 @@ import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSett
 import type { TurnPassOutcome, TurnResult, TurnRun } from './turnRunner';
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 import type { TurnCommitContext } from './computeTurnCommit';
+import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import type { Entity, GameLocation, TurnToolCall } from '@/types';
 
@@ -490,6 +491,11 @@ describe('computeTurnCommit — entity movement', () => {
       expect(offered.offer.comeOnce.map((once) => once.id)).toEqual(['hale']);
       expect(moveWithPlayer(offered.state, offered.offer, 'keep').positions).toEqual({ blackwell: 'tower', hale: 'keep' });
       expect(moveWithPlayer(offered.state, offered.offer, 'pier').positions).toEqual({ blackwell: 'tower', hale: 'wall' });
+      // A code write on the waiting entity takes it off the offer.
+      const coded = withCodeWrites(commit, { entities: [{ entity: 'hale', kind: 'move', location: 'gate' }] }, context());
+      const written = commitEntityMoves(start, coded, { from: 'wall', to: 'wall' });
+      expect(written.offer.comeOnce).toEqual([]);
+      expect(written.state.positions).toEqual({ blackwell: 'tower', hale: 'gate' });
     });
   });
 
@@ -539,6 +545,62 @@ describe('computeTurnCommit — entity movement', () => {
       const { state, offer } = commitEntityMoves(atInn, stayCommit, { from: 'inn', to: 'inn' });
       expect(offer.comeAlong).toEqual([]);
       expect(state).toBe(atInn);
+    });
+
+    it('drops an entity the code wrote from the offer, and applies the write at once', () => {
+      const coded = withCodeWrites(commit, { entities: [{ entity: 'wenna', kind: 'unfollow' }] }, context());
+      const { state, offer } = commitEntityMoves(atInn, coded, { from: 'inn', to: 'inn' });
+      expect(offer.comeAlong).toEqual([]);
+      expect(state.positions.wenna).toBe('inn');
+      const follows = commitEntityMoves(atInn, withCodeWrites(commit, { entities: [{ entity: 'mira', kind: 'follow' }] }, context()), { from: 'inn', to: 'inn' });
+      expect(follows.offer.comeAlong).toEqual(['wenna']);
+      expect(follows.state.followers).toEqual(['corvin', 'mira']);
+      expect(follows.state.positions).toMatchObject({ mira: 'inn' });
+    });
+  });
+
+  describe('code entity writes', () => {
+    const coded = (replies: [TurnPassSubject, string][], entities: NonNullable<WorldWrites['entities']>) =>
+      withCodeWrites(autoCommit(replies), { entities }, context());
+
+    it('apply after the replies and the followers, so code has the last word', () => {
+      const commit = coded([[who('wenna', [...NEW]), 'Come along'], [who('albus', [...FOLLOWING]), 'Stay here']], [
+        { entity: 'wenna', kind: 'unfollow' }, { entity: 'albus', kind: 'follow' }, { entity: 'corvin', kind: 'move', location: 'chapel' },
+      ]);
+      const { state } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'square' });
+      expect(state.positions).toEqual({ wenna: 'square', albus: 'square', corvin: 'chapel' });
+      expect(state.followers).toEqual(['albus']);
+    });
+
+    it('start tracking a Free entity that has no position', () => {
+      const { state } = commitEntityMoves(atInn, coded([], [{ entity: 'wight', kind: 'move', location: 'barrow' }]), { from: 'inn', to: 'inn' });
+      expect(state.positions).toEqual({ ...atInn.positions, wight: 'barrow' });
+      const joined = commitEntityMoves(atInn, coded([], [{ entity: 'sylvie', kind: 'follow' }]), { from: 'inn', to: 'keep' }).state;
+      expect(joined.positions).toMatchObject({ sylvie: 'keep' });
+      expect(joined.followers).toEqual(['albus', 'corvin', 'sylvie']);
+    });
+
+    it('leave an entity that is not following where it is on unfollow', () => {
+      const { state } = commitEntityMoves(atInn, coded([], [{ entity: 'wenna', kind: 'unfollow' }, { entity: 'wight', kind: 'unfollow' }]), { from: 'inn', to: 'keep' });
+      expect(state.positions).toEqual({ wenna: 'inn', albus: 'keep', corvin: 'keep' });
+      expect(state.followers).toEqual(['albus', 'corvin']);
+    });
+
+    it('apply in call order, the later write winning', () => {
+      const { state } = commitEntityMoves(atInn, coded([], [
+        { entity: 'wenna', kind: 'follow' }, { entity: 'wenna', kind: 'move', location: 'tower' }, { entity: 'albus', kind: 'move', location: 'tower' },
+        { entity: 'albus', kind: 'follow' },
+      ]), { from: 'inn', to: 'inn' });
+      expect(state.positions).toMatchObject({ wenna: 'tower', albus: 'inn' });
+      expect(state.followers).toEqual(['corvin', 'albus']);
+    });
+
+    it('join the writes of every timing in run order', () => {
+      const before = withCodeWrites(autoCommit([]), { entities: [{ entity: 'wenna', kind: 'move', location: 'tower' }] }, context());
+      const after = withCodeWrites(before, { entities: [{ entity: 'wenna', kind: 'follow' }] }, context());
+      const { state } = commitEntityMoves(atInn, after, { from: 'inn', to: 'keep' });
+      expect(state.positions.wenna).toBe('keep');
+      expect(state.followers).toContain('wenna');
     });
   });
 });

@@ -18,3 +18,11 @@ describe('advancedClock', () => {
     expect(advancedClock(10, { minutes: 0 })).toBe(10);
   });
 });
+
+describe('mergeWorldWrites', () => {
+  it('joins entity writes in run order, the earlier batch first', () => {
+    const before = { entities: [{ entity: 'wight', kind: 'move' as const, location: 'barrow' }] };
+    const after = { entities: [{ entity: 'wight', kind: 'follow' as const }] };
+    expect(mergeWorldWrites(before, after)?.entities).toEqual([...before.entities, ...after.entities]);
+  });
+});
