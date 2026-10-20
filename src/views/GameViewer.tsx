@@ -101,7 +101,7 @@ import {
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
-import { entityIdsAt } from "../lib/entityPresence";
+import { entitiesInPlay, entityIdsAt, positionedCast, startingPositions } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve } from "../lib/outputLength";
 import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -587,6 +587,7 @@ const GameViewer = ({
     setEntityStats,
     setEntityStatBaseline,
     resetEntityStats,
+    setEntityPositions,
     setSelectedEntityId,
     codePins,
     setCodePins,
@@ -4538,9 +4539,12 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
+      // Each One entity starts at one of its locations, so the opening pool reads who stands at the start.
+      const startPositions = startingPositions(positionedCast(codeEntities.world, personaPick.ref), locations.map((l) => l.id));
+      setEntityPositions(startPositions);
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
-        pick: personaPick, worldEntities: traitEntities, overview: worldOverview, locations, startingLocationId: location?.id,
+        pick: personaPick, worldEntities: entitiesInPlay(traitEntities, startPositions), overview: worldOverview, locations, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {
@@ -4598,6 +4602,7 @@ const GameViewer = ({
     setPlayerInput,
     setMemoryPins,
     setCodePins,
+    setEntityPositions,
     setEntityVisualPreference,
     setEntityImageIndex,
     setMilestoneSelection,

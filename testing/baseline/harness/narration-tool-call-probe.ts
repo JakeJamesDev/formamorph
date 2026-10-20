@@ -153,9 +153,9 @@ const SUBLOCATION_ENTITIES =
 const SUMMARY_SUBLOCATION_ENTITIES =
   '<ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">';
 const OUTPUT_SENTENCE =
-  'Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends.';
+  'Output only the story prose - the events themselves, with no labels and nothing after the scene ends.';
 const TOOL_OUTPUT_SENTENCE =
-  'Submit the finished story through write, with only the story prose in its narration argument: the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends.';
+  'Submit the finished story through write, with only the story prose in its narration argument: the events themselves, with no labels and nothing after the scene ends.';
 const ENTITY_INFORMATION = `## Entity information
 The entity listings contain summaries. Full descriptions are available through request_info.
 Before portraying a listed entity in this turn, retrieve its full description using its listed name. Use that description together with the established scene to write the entity consistently.

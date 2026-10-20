@@ -7,6 +7,7 @@ import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, ownerPins, type Pi
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, withPersonaEntry, worldEntitiesOf, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
+import { entitiesInPlay } from '@/lib/entityPresence';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
@@ -36,7 +37,8 @@ import type {
  * turn's pins would stop matching them.
  */
 export interface ResolvedWorld {
-  /** The cast: the authored entities without the one the player plays (see lib/persona). */
+  /** The cast: the authored entities without the one the player plays (see lib/persona), each positioned one
+   *  listing only its position. */
   entities: Entity[];
   /** Who the player plays, or null. */
   persona: ResolvedPersona | null;
@@ -245,7 +247,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     globalStats: rawGlobalStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, globalTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending, discoveredEntities,
+    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions,
   } = useGameplay();
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
@@ -290,10 +292,12 @@ export function useResolvedWorld(): ResolvedWorld {
     () => (libraryPersona ? resolveEntityNames([libraryPersona], resolveNameOf) : []),
     [libraryPersona, resolveNameOf],
   );
-  const { persona, cast: entities, playerNames, unresolved } = useMemo(
+  const { persona, cast, playerNames, unresolved } = useMemo(
     () => resolvePersona(personaRef, worldEntities, libraryEntities),
     [personaRef, worldEntities, libraryEntities],
   );
+  // The cast as it stands in play, so every roster reads each positioned entity at its position.
+  const entities = useMemo(() => entitiesInPlay(cast, entityPositions), [cast, entityPositions]);
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
   const customPersona = useMemo(() => customPersonaEntity(worldEntities) ?? null, [worldEntities]);
   // The one Traits tree's entities, their owned trait names resolved as the world's are.

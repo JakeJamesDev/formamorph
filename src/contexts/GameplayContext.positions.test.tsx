@@ -1,0 +1,78 @@
+// Entity positions across a save/load round trip. Storage is real (in-memory) — the provider writes to
+// IndexedDB. Must be imported before anything touches `indexedDB`.
+import 'fake-indexeddb/auto';
+import { describe, it, expect, vi } from 'vitest';
+import { render, act } from '@testing-library/react';
+import { GameplayProvider, useGameplay } from './GameplayContext';
+import { GameDataProvider } from './GameDataContext';
+import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
+import type { Entity, GameLocation } from '@/types';
+
+vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
+
+type Gameplay = ReturnType<typeof useGameplay>;
+
+const Expose = ({ expose }: { expose: (g: Gameplay) => void }) => {
+  expose(useGameplay());
+  return null;
+};
+
+const mount = () => {
+  let gameplay: Gameplay | null = null;
+  render(
+    <GameDataProvider>
+      <PlaceholderSessionProvider>
+        <GameplayProvider>
+          <Expose expose={(g) => { gameplay = g; }} />
+        </GameplayProvider>
+      </PlaceholderSessionProvider>
+    </GameDataProvider>,
+  );
+  return () => {
+    if (!gameplay) throw new Error('gameplay context not available (did the render throw?)');
+    return gameplay as Gameplay;
+  };
+};
+
+const place = (id: string): GameLocation => ({ id, name: id });
+const keep = place('keep');
+const tower = place('tower');
+const merchant: Entity = { id: 'merchant', name: 'Merchant', presence: 'random', locations: ['keep', 'tower'] };
+const guard: Entity = { id: 'guard', name: 'Guard', locations: ['keep'] };
+
+describe('entity positions in the save', () => {
+  it('keeps a position across a save and a load', async () => {
+    const live = mount();
+    await act(async () => { live().setEntityPositions({ merchant: 'tower' }); });
+    expect(live().saveCurrentGameState().entityPositions).toEqual({ merchant: 'tower' });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-pos-1'); });
+    await act(async () => { live().setEntityPositions({}); });
+    await act(async () => { await live().loadGame('save-pos-1', [keep, tower], [], [merchant, guard]); });
+    expect(live().entityPositions).toEqual({ merchant: 'tower' });
+  });
+
+  it('writes no field when nobody has a position', () => {
+    const live = mount();
+    expect('entityPositions' in live().saveCurrentGameState()).toBe(false);
+  });
+
+  it("re-places a position on a deleted location and drops a deleted entity's", async () => {
+    const live = mount();
+    await act(async () => { live().setEntityPositions({ merchant: 'tower', gone: 'keep' }); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-pos-2'); });
+    // The tower is gone, so the keep is the merchant's only live location.
+    await act(async () => { await live().loadGame('save-pos-2', [keep], [], [merchant, guard]); });
+    expect(live().entityPositions).toEqual({ merchant: 'keep' });
+  });
+
+  it('gives the played persona no position on load', async () => {
+    const live = mount();
+    await act(async () => {
+      live().setEntityPositions({ merchant: 'tower' });
+      live().setPersonaRef({ source: 'world', entityId: 'merchant' });
+    });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-pos-3'); });
+    await act(async () => { await live().loadGame('save-pos-3', [keep, tower], [], [merchant, guard]); });
+    expect(live().entityPositions).toEqual({});
+  });
+});

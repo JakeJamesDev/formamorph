@@ -165,6 +165,22 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
   });
 });
 
+describe('migrateWorld — entity presence fields', () => {
+  const entitiesOf = (w: unknown) => (w as { entities: Entity[] }).entities;
+  const world = (entities: Entity[]) => ({ worldOverview: {}, locations: [{ id: 'keep', name: 'Keep' }, { id: 'tower', name: 'Tower' }], entities });
+
+  it('adds no presence field to an old world', () => {
+    const [guard] = entitiesOf(migrateWorld(world([{ id: 'guard', name: 'Guard', locations: ['keep'] }])));
+    expect(['presence', 'movement', 'knownIn'].filter((key) => key in guard)).toEqual([]);
+  });
+
+  it('keeps the fields an author set', () => {
+    const set: Entity = { id: 'cap', name: 'Captain', locations: ['keep', 'tower'], presence: 'random', movement: 'between', knownIn: ['keep'] };
+    const [cap] = entitiesOf(migrateWorld(world([set])));
+    expect([cap.presence, cap.movement, cap.knownIn]).toEqual(['random', 'between', ['keep']]);
+  });
+});
+
 describe('migrateWorld — connection records (ADR-0002)', () => {
   // A world as 1.x–2.0 stored it: each location naming the places it connected to. Green and Cottage
   // declare each other; Green→Landing is one-sided; "Nowhere" names no location at all.
