@@ -1,6 +1,7 @@
 # Entity Presence
 
 Status: ready-for-agent
+Spec session: entity-presence — spec
 
 ## Problem Statement
 
@@ -113,6 +114,14 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 
 **Presence roster.** The existing presence module stays the one inversion of membership. It gains a runtime layer: a tracked entity is at its position; an untracked entity is at all of its listed locations. Every roster during play (present, in scene, sublocations, reachable, known) reads through it. The reachable roster lists only entities whose Known In is Nearby.
 
+**Nearby through Connections.** Today the reachable roster is the parent and siblings in the location tree, so in a world of top-level locations joined only by Connections, Nearby reaches nobody. A new optional location field fixes this without changing old worlds:
+
+- `nearbyUsesConnections`: when `true`, the location's reachable roster uses the router's effective destinations from it (tree neighbors plus Connection legs, one-way legs respected). Absent means today's tree-only rule.
+- A location created in the editor gets `true`. `migrateWorld` never sets it, so no old world changes on load.
+- The location's **Presence** tab shows it as a checkbox beside its Connections, so an author can opt an old location in.
+- The highest-scope-wins rule still applies, so a child reached through the tree stays in the sublocations scope.
+- Bundled worlds opt in where travel happens: every location that at least one Connection leg leaves gets `true`. That change ships with a probe run and regenerated fingerprints.
+
 **Known roster.** A new `<ENTITIES|known>` chip scope lists each entity that is known at the player's location but not present. An entity is known there when one of its picked locations is the player's location or contains it at any depth.
 
 - Each known entity sends only its AI summary.
@@ -148,7 +157,8 @@ The persona entity ignores Presence and Movement, and the editor hides them for 
 - For a Can Follow entity, "come along" adds it to the followers. "Stay here" removes it. Following is sticky until then.
 - For a Moves Between entity, "come along" moves it once, with the player. It never joins the followers, so the next move can't carry it outside its own locations.
 - A One entity is in one place after any move.
-- An Everywhere entity that comes along does not move. One member peels off as a new runtime character named after the group, already following. The group stays where it is.
+- An Everywhere entity that comes along does not move. A new runtime character with its name joins the followers, and the Everywhere entity stays where it is.
+- An Everywhere entity peels one follower at a time. While one of its runtime characters is following, it gets no request. Once that follower stays behind, it can be offered "come along" again.
 - Map travel has no turn and no AI call. It applies only step 2.
 
 **Code and World Tools.** Each entry of the existing `entities` record gets three writes: `entities["Name"].move(target)`, `.follow()` and `.unfollow()`. `move` resolves the target by id, then by name, and an unknown target throws. The writes work on any entity, and a write on a Free entity starts tracking it. `follow` adds the entity to the followers and moves it to the player's location. `unfollow` removes it from the followers and leaves it where the player is.
@@ -231,16 +241,13 @@ Also:
 
 ## Further Notes
 
-- **Export shape:** three new entity fields in world JSON, all additive. **Save shape:** a positions map, a follower set and a met set in the save envelope.
+- **Export shape:** three new entity fields and one new location field in world JSON, all additive. **Save shape:** a positions map, a follower set and a met set in the save envelope.
 - The version is user-managed. Do not bump it.
 - If the Entity Movement setting gets a `DEFAULT_*` with a `VITE_DEFAULT_*` twin, remind the user about `.env.local`.
 - ADR-0003 expected this feature as the refinement of the entity-owned membership field. A new ADR may record "authored membership, runtime position".
 - The Emberwatch walkthrough that drove these rulings: Wenna Tallow, Mother Hesk, the Wight and the Barrow Dead Stay Put; Captain Blackwell Moves Between the Keep and the Watchtower; Albus, Sylvie and Corvin Can Follow.
 
-**Open questions** (found by the logic model, not yet ruled):
-
-- **Nearby in a flat world.** The reachable roster is the parent and siblings in the location tree. Connections don't count. In a world of top-level locations joined only by Connections (Emberwatch), Nearby reaches nobody. Should Nearby use the router's effective destinations instead?
-- **Groups peel every turn.** An Everywhere Listed entity with Can Follow is offered "come along" every turn it is in the scene. Each "come along" adds another new entity, and each turn costs a request. Should it peel once per scene, once per playthrough, or stop while one of its peels is following?
+The logic model found two more gaps, now ruled: Nearby in a flat world (see Nearby through Connections) and groups peeling every turn (one peel at a time, see the turn commit).
 
 ## Prototype
 
