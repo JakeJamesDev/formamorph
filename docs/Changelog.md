@@ -58,6 +58,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A trait Script whose entity is out of the game reads `self` as not held.** `self.enabled` and `self.acquired` read false, as they do in Test Code.
   - **A stat now opens at its authored value, shows no change on turn one, and an authored zero stays zero.** A value outside the stat's range opens at the nearest edge.
   - **Test Code's `entities` now holds the cast a new game opens with.** An entity that can only be played as a persona is left out, as it is in play.
+  - **The Test Bench now checks a Script against the same turn-one world as Test Code and play.** It reads `clock` by timing and reads a switched-off stat as off. A `diary` name no entity has is a warning, not a failure.
 
 ---
 
