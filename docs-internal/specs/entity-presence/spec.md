@@ -1,6 +1,7 @@
 # Entity Presence
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-10-20. Tickets 01–09 are done. Last landing is 5ea4fa653. Closed without gates. The planner cast fix is a separate effort.
 Spec session: entity-presence — spec
 
 ## Problem Statement
