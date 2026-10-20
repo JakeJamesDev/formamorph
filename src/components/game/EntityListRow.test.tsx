@@ -30,6 +30,12 @@ describe('EntityListRow outside a running game', () => {
   it('marks a follower, and no one else', () => {
     render(<><EntityListRow label="Bram" following /><EntityListRow label="Hesk" /></>);
     expect(screen.getAllByRole('img', { name: 'Following you' })).toHaveLength(1);
-    expect(screen.getByText('Bram').parentElement!.contains(screen.getByRole('img', { name: 'Following you' }))).toBe(true);
+    expect(screen.getByText('Bram').closest('div')!.contains(screen.getByRole('img', { name: 'Following you' }))).toBe(true);
+  });
+
+  it('puts the You pill after the persona\'s name, and on no other row', () => {
+    render(<><EntityListRow label="Kate" you /><EntityListRow label="Hesk" /></>);
+    expect(screen.getAllByText('You')).toHaveLength(1);
+    expect(screen.getByText('Kate').closest('div')).toHaveTextContent(/^KateYou$/);
   });
 });

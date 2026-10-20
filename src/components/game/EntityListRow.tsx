@@ -1,11 +1,14 @@
 import { Footprints, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
+import { YouMark } from '@/components/game/YouMark';
 
 /** One row of the Entities tab: the name the player knows the entity by, a mark when it follows the player,
  *  and a remove control when `onRemove` is given. */
-export function EntityListRow({ label, following, disabled, onClick, onRemove }: {
+export function EntityListRow({ label, you, following, disabled, onClick, onRemove }: {
   label: string;
+  /** The played persona's row: the You pill follows the name. */
+  you?: boolean;
   following?: boolean;
   /** An authored entity that failed to resolve: shown, but it opens nothing. */
   disabled?: boolean;
@@ -19,7 +22,10 @@ export function EntityListRow({ label, following, disabled, onClick, onRemove }:
       }`}
       onClick={onClick}
     >
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="flex min-w-0 items-center">
+        <span className="min-w-0 truncate">{label}</span>
+        {you && <YouMark />}
+      </span>
       {(following || onRemove) && (
         <span className="flex items-center gap-1 shrink-0">
           {following && (

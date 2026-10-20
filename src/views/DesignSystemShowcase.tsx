@@ -11,6 +11,7 @@ import { LandingPulseReference } from '@/components/design-system/LandingPulseRe
 import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
 import { ChipOptionsReference } from '@/components/design-system/ChipOptionsReference';
 import { CodeCardReference } from '@/components/design-system/CodeCardReference';
+import { YouMarkReference } from '@/components/design-system/YouMarkReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -445,6 +446,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Code Hover Card',
     description: 'The card a code editor shows for a name, and its Find All Uses list',
     Component: CodeCardReference,
+  },
+  {
+    id: 'you-mark',
+    label: 'You Pill',
+    description: 'The mark after the played persona’s name, on a plain row and a selected row',
+    Component: YouMarkReference,
   },
 ];
 
