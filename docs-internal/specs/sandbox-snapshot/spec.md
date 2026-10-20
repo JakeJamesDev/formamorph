@@ -98,7 +98,7 @@ As built in ticket 02: the fold returns the `SandboxState` plus what only play's
 
 Ruled for ticket 04: Test Code takes the authored world slice and runs it through the opening fold with no picks and no persona. With no picks the fold applies no trait, so Test Code's numbers do not change. Its cast does: `entities` holds the cast a new game opens with, so an entity that can only be played as a persona is left out, as in play with no persona, and `persona` is play's empty entry. Its name lookups return a unit home, and the Owner comes from the snapshot's derivation. The open cast is a snapshot reading option beside the turn readings, not an overlay; the editors pass it and play does not.
 
-**Bench readings.** The Bench's check builds the clock from the Timing as Test Code does, passes the authored enabled map, and runs with the cast open.
+**Bench readings.** The Bench's check builds the clock from the Timing as Test Code does, passes the authored enabled map, and runs with the cast open. Under the open cast a `diary` for a name the cast lacks is a warning row under the existing unknown-name kind, with its own sentence in Test Code's phrasing, since play may discover the name (ruled for ticket 06). The two existing messages do not change.
 
 **The Bench's check.** It enumerates its units through the snapshot's Owner derivation, calls `snapshot.run` per unit, and maps a failing result to its existing execution finding and unknown write names to its existing unknown-name finding. Finding kinds and message shapes do not change.
 
