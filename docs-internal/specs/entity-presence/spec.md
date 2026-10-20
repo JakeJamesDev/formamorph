@@ -224,6 +224,9 @@ The prototype settled this layout (variant D, see Prototype). The user approved 
 | Canvas, Locations mode | Click a location to add it or remove it |
 | Canvas, Known In mode | Click a location to pick it. A pick covers every location inside it. |
 | Known Here | Sends these entities' summaries to the AI anywhere inside this location. They aren't here. |
+| Known Here add select (placeholder) | Make an entity known here |
+| Known Here **Remove** (tooltip) | Removes this location from <entity>'s Known In |
+| Nearby Through Connections (checkbox) | Adds entities one Connection away to what the AI receives as nearby |
 | Range warning | <Entity> can't reach <location> from <location> through its own locations. Add the location between them, or a Connection. |
 
 ## Testing Decisions
