@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PersonaPicker, type PersonaOption } from './PersonaPicker';
+import { YouMark } from './YouMark';
 import { personaOption, worldEntitiesOf } from '@/lib/persona';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -75,8 +76,10 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
           ? <img src={image} alt="" className={cn('h-full w-full', thumbFit('portrait'))} />
           : <PersonaIcon aria-hidden className="h-4 w-4 text-muted-foreground" />}
       </span>
-      <span className="min-w-0 flex-1 truncate text-label">
-        {persona ? persona.entity.name : <span className="text-muted-foreground">None</span>}
+      <span className="flex min-w-0 flex-1 items-center text-label">
+        {persona
+          ? <><span className="min-w-0 truncate">{persona.entity.name}</span><YouMark /></>
+          : <span className="truncate text-muted-foreground">None</span>}
       </span>
       <Button variant="outline" size="sm" className="shrink-0" onClick={() => showPicker(true)}>Change</Button>
       <Dialog open={open} onOpenChange={showPicker}>

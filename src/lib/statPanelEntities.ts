@@ -8,6 +8,8 @@ export interface StatPanelOption {
   id: string;
   label: string;
   present: boolean;
+  /** The played persona: the picker renders the You mark after the label. */
+  you?: boolean;
 }
 
 const UNKNOWN = 'Unknown';
@@ -61,7 +63,7 @@ export function statPanelOptions({ entities, persona, scene, history, values, ke
     listed.add(option.id);
     out.push(option);
   };
-  if (persona) add({ id: persona.id, label: `${persona.name} (You)`, present: true });
+  if (persona) add({ id: persona.id, label: persona.name, present: true, you: true });
   for (const seen of scene) {
     const entity = resolveEntityByName(seen.name, entities);
     if (entity) add({ id: entity.id, label: seen.revealed ? entity.name : seen.alias ?? UNKNOWN, present: true });

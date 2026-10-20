@@ -80,6 +80,23 @@ describe('the persona row', () => {
     await waitFor(() => expect(within(row()).getByText('Ash')).toBeTruthy());
   });
 
+  it('moves the You mark to the persona picked mid-game, on the row and on the stat heading', async () => {
+    const marked: Entity = { ...ash, stats: [{ id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], value: 30 }] };
+    await Promise.all([store(wren), store(marked)]);
+    renderRightPanel({}, { stats: [], seed: (g) => g.setPersonaRef({ source: 'library', entityId: 'l-wren' }) });
+    await waitFor(() => expect(within(row()).getByText('Wren')).toBeTruthy());
+    expect(within(row()).getByText('Wren').parentElement).toHaveTextContent(/^WrenYou$/);
+    expect(screen.queryByRole('region', { name: 'Ash stats' })).toBeNull();
+
+    await pick(await openPicker(), 'Ash');
+
+    await waitFor(() => expect(within(row()).getByText('Ash')).toBeTruthy());
+    expect(within(row()).getByText('Ash').parentElement).toHaveTextContent(/^AshYou$/);
+    expect(within(row()).queryByText('Wren')).toBeNull();
+    const section = await screen.findByRole('region', { name: 'Ash stats' });
+    expect(within(section).getByRole('heading')).toHaveTextContent(/^AshYou$/);
+  });
+
   it('hands the new persona and its name on, so the traits can settle under it', async () => {
     await store(wren);
     const onPersonaChange = vi.fn();

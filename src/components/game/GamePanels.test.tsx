@@ -6,7 +6,7 @@ import { CONTINUE_CHOICE } from '@/lib/choices';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { defaultSystemPrompt } from './GamePrompts';
 import openChat from '@/defaultworlds/open-chat.json';
-import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
+import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type Gameplay, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 
@@ -478,6 +478,51 @@ describe('RightPanel', () => {
     renderRightPanel({}, { turns: TURNS, stats: [] });
     expect(screen.queryByRole('tab', { name: 'Stats' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Traits' })).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+describe('RightPanel — the You mark', () => {
+  const mira = { id: 'mira', name: 'Mira', persona: true };
+  const asMira = {
+    world: { entities: [mira] } as never, turns: TURNS, stats: STATS,
+    seed: (gameplay: Gameplay) => {
+      gameplay.setEntityStats({ mira: [statFixture('Trust', 60)] });
+      gameplay.setPersonaRef({ source: 'world', entityId: 'mira' });
+    },
+  };
+
+  it('follows the persona’s name on the persona row', () => {
+    renderRightPanel({}, asMira);
+    const row = screen.getByTestId('persona-row');
+    expect(within(row).getByText('Mira').parentElement).toHaveTextContent(/^MiraYou$/);
+  });
+
+  it('shows no mark on the persona row under None', () => {
+    renderRightPanel({}, { turns: TURNS, stats: STATS, seed: (gameplay) => gameplay.setPersonaRef({ source: 'none' }) });
+    const row = screen.getByTestId('persona-row');
+    expect(within(row).getByText('None')).toBeInTheDocument();
+    expect(within(row).queryByText('You')).toBeNull();
+  });
+
+  it('follows the persona’s name on its stat section heading', () => {
+    renderRightPanel({}, asMira);
+    const section = screen.getByRole('region', { name: 'Mira stats' });
+    expect(within(section).getByRole('heading')).toHaveTextContent(/^MiraYou$/);
+    expect(within(screen.getByRole('region', { name: 'Global stats' })).queryByText('You')).toBeNull();
+  });
+
+  it('marks the Custom Persona entity’s stat heading under None', () => {
+    const custom = { id: 'w-you', name: 'Wanderer', customPersona: true };
+    renderRightPanel({}, {
+      world: { entities: [custom] } as never, turns: TURNS, stats: STATS,
+      seed: (gameplay) => {
+        gameplay.setEntityStats({ 'w-you': [statFixture('Trust', 70)] });
+        gameplay.setPersonaRef({ source: 'none' });
+      },
+    });
+    const section = screen.getByRole('region', { name: 'Wanderer stats' });
+    expect(within(section).getByRole('heading')).toHaveTextContent(/^WandererYou$/);
+    expect(within(screen.getByTestId('persona-row')).getByText('Wanderer').parentElement).toHaveTextContent(/^WandererYou$/);
   });
 });
 

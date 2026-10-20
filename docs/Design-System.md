@@ -1944,7 +1944,7 @@ Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a pl
 
 **Purpose:** Mark the played persona, so the player finds their own entity at a glance.
 
-> ✅ **Approved.** The user approved the pill in the Persona Labels spec (rulings Q1, Q2 and Q3). Production: the **Entities** tab.
+> ✅ **Approved.** The user approved the pill in the Persona Labels spec (rulings Q1, Q2 and Q3). Production: the **Entities** tab, the persona row, the played owner's stat heading and the stats panel picker.
 
 **Density:** None of its own. The pill sits inside the host row's line box and adds no height.
 
@@ -1968,6 +1968,8 @@ Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a pl
 | --- | --- |
 | The pill | `YouMark` in [`YouMark.tsx`](../src/components/game/YouMark.tsx) |
 | The **Entities** tab row | `EntityListRow` in [`EntityListRow.tsx`](../src/components/game/EntityListRow.tsx), with `you` |
+| The persona row | `PersonaRow` in [`PersonaRow.tsx`](../src/components/game/PersonaRow.tsx) |
+| The played owner's stat heading and the picker item | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx); the picker reads `you` on a `StatPanelOption` |
 | Isolated reference | [`YouMarkReference.tsx`](../src/components/design-system/YouMarkReference.tsx) |
 
 Use `YouMark` for every new surface. Do not draw another mark.

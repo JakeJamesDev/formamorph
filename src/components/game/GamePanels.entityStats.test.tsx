@@ -292,7 +292,7 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
     expect(within(global).getByRole('heading', { name: 'Global' })).toBeInTheDocument();
     expect(within(global).getByText('50 / 100')).toBeInTheDocument();
     expect(within(global).queryByText('60 / 100')).toBeNull();
-    expect(within(personaSection('Mira')).getByRole('heading', { name: 'Mira' })).toBeInTheDocument();
+    expect(within(personaSection('Mira')).getByRole('heading', { name: 'Mira You' })).toBeInTheDocument();
   });
 
   it('adds no Global node when no world stat is visible', () => {
@@ -300,10 +300,10 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
     expect(screen.queryByRole('region', { name: 'Global stats' })).toBeNull();
   });
 
-  it('lists the persona as "(You)" and shows no entity section when it is picked', async () => {
+  it('lists the persona with the You mark and shows no entity section when it is picked', async () => {
     renderRightPanel({}, asMira('bram'));
-    await choose('Mira (You)');
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Mira (You)');
+    await choose('Mira You');
+    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent(/^MiraYou$/);
     expect(section()).toBeNull();
     expect(within(personaSection('Mira')).getByText('60 / 100')).toBeInTheDocument();
   });
@@ -336,6 +336,9 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
     const [library, marked] = screen.getAllByTestId('persona-stats');
     expect(within(library).getByText('30 / 100')).toBeInTheDocument();
     expect(within(marked).getByText('70 / 100')).toBeInTheDocument();
+    // Both played owners carry the mark: the library persona and the Custom Persona entity under it.
+    expect(within(library).getByRole('heading')).toHaveTextContent(/^ShadeYou$/);
+    expect(within(marked).getByRole('heading')).toHaveTextContent(/^ShadeYou$/);
   });
 });
 
