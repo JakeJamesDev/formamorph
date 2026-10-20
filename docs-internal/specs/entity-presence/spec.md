@@ -147,6 +147,11 @@ The played persona ignores Presence and Movement: it has no position and gets no
   - **Can Follow** (not following): stay, or come along.
   - **Following**: keep following, or stay here.
 - The entity request does not wait for the player's request. It returns an intent. The turn commit joins the two.
+- "In the scene" means the present roster at the player's location when the turn starts: entities positioned there, plus followers. This holds in both modes.
+- With **Concurrent Turn Requests** on, the entity requests go in the same batch as the player's location request. With it off, they run one at a time after the player's request.
+- A failed entity request is dropped: that entity does nothing this turn, and the turn goes on.
+- An Everywhere Listed entity has no position, so it gets no request until peel-off exists.
+- "Stay here" applies before the player's move, so the entity stays at the location the player leaves. "Come along" applies after the move.
 
 **Turn commit (the join).** The commit applies, in order:
 
