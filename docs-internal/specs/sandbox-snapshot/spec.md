@@ -1,6 +1,7 @@
 # Sandbox Snapshot
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-10-20. Tickets 01–10 done. Last landing de8b232d4. Closed without gates.
 Spec session: sandbox-snapshot — spec
 
 One module assembles the world a Script runs against. Play, Test Code and the Test Bench all take a Sandbox Snapshot and run each Script through it, so an editor run and a real turn read the same board.
