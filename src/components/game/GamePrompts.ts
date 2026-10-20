@@ -26,7 +26,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <ENTITIES|markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
 <ENTITIES|sublocations.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it, and when the player seeks or addresses it, the scene shows its absence.\n\n"|header="Entities Known Here">\
+<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
 <DICTIONARY|format=markdown|header="Foreground Lore">
 ## Output
 Output only the story prose - the events themselves, with no labels and nothing after the scene ends. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.
@@ -145,7 +145,7 @@ export const defaultChoicesPrompt = `You are the player choice writer for an int
 <ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
 <ENTITIES|sublocations.summary.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it, and when the player seeks or addresses it, the scene shows its absence.\n\n"|header="Entities Known Here">
+<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">
 The player character is "I": every option is written in the player's own first-person voice.
 
 Suggest 3 to 5 distinct things I could do next - each a genuinely different way to respond to what is happening right now, engaging with the people, threats, and openings actually present in the scene, and fitting who I am (my stats, traits, and situation). Not generic filler.
@@ -244,7 +244,7 @@ export const defaultThinkingPrompt = `You are the continuity planner for an inte
 <ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
 <ENTITIES|sublocations.summary.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it, and when the player seeks or addresses it, the scene shows its absence.\n\n"|header="Entities Known Here">\
+<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
 <NOTES|format=markdown|header="Important Player Notes">
 Respond in exactly this format:
 Cast:
@@ -472,7 +472,7 @@ export const defaultDirectorPrompt = `You are the director of an interactive rol
 <ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
 <ENTITIES|sublocations.summary.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it, and when the player seeks or addresses it, the scene shows its absence.\n\n"|header="Entities Known Here">\
+<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
 <NOTES|format=markdown|header="Important Player Notes">
 Respond in exactly this format:
 Scene: <up to three sentences on where we are and what is visible right now>
