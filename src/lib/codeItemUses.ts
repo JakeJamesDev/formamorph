@@ -3,6 +3,7 @@
  * item. Each name is read through its card, and a route over several owners through each owner too.
  */
 
+import { boxOwnerOf, codeBoxOwnerOf } from './codeBoxOwner';
 import { codeCard, reachedPlaceholderOwners, type CodeCardItem } from './codeCards';
 import { boxUses, type CodeUse } from './codeUses';
 import { traitBoxSelf, type CodeBox, type CodeCardWorld, type CodeWorldLookup } from './codeWorldLookup';
@@ -10,9 +11,7 @@ import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { cardWorldNames, statBoxAnalysisOptions } from './statCodeBoxOptions';
 import { parseCode, resolveCodeName } from './statCodeResolver';
 import { scriptSurface, STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
-import {
-  statCodeBoxes, traitCodeBoxes, worldScriptBoxes, worldToolBoxes, type CodeOwners, type StatCodeBox, type TraitCodeBox,
-} from './statCodeTargets';
+import { statCodeBoxes, traitCodeBoxes, worldScriptBoxes, worldToolBoxes, type CodeOwners } from './statCodeTargets';
 import { worldToolSurface } from './tools/worldToolSurface';
 import { toolTimingOf } from './tools/worldTools';
 
@@ -62,11 +61,6 @@ function matchingOffsets(code: string, options: SurfaceAnalysisOptions, matches:
   return found;
 }
 
-const boxOwnerOf = (box: StatCodeBox | TraitCodeBox): CodeBox['owner'] => {
-  if (box.entity) return { kind: 'entity', entityId: box.entity.id };
-  return box.owner ? { kind: 'blueprint' } : null;
-};
-
 /** Every box and line whose code names the item, with each box read under the options its editor gives it. */
 export function itemUses(
   owners: CodeOwners, world: CodeCardWorld, item: OtherUseItem, lookupOf: (box: CodeBox) => CodeWorldLookup,
@@ -83,7 +77,7 @@ export function itemUses(
     return boxUses(owners, box, matchingOffsets(box.code, options, matches));
   });
   const statBoxUses = statCodeBoxes(owners).flatMap((box) => {
-    const owner = boxOwnerOf(box);
+    const owner = codeBoxOwnerOf(boxOwnerOf(box, world.placeholders));
     const selfName = owners.codeName(box.stat.name);
     const options = statBoxAnalysisOptions(names, {
       selfName, surface: scriptSurface(STAT_CODE_SURFACE, box.timing),
@@ -94,12 +88,13 @@ export function itemUses(
   });
   // A trait's box reads as its editor reads it: `self` is the trait, and a Blueprint trait's owner names go unchecked.
   const traitBoxUses = traitCodeBoxes(owners, world).flatMap((box) => {
-    const owner = boxOwnerOf(box);
+    const derived = boxOwnerOf(box, world.placeholders);
+    const owner = codeBoxOwnerOf(derived);
     const selfName = owners.codeName(box.trait.name);
     const self = traitBoxSelf(box.trait.id, selfName);
     const options = statBoxAnalysisOptions(names, {
       selfName, surface: scriptSurface(TRAIT_SCRIPT_SURFACE, box.timing),
-      ...(owner && { owner: { kind: owner.kind, ...(box.entity && { statNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [] }) } }),
+      ...(owner && { owner: { kind: owner.kind, ...(derived.kind !== 'blueprintTrait' && { statNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [] }) } }),
       lookup: lookupOf({ owner, timing: box.timing, self }),
     });
     return boxUses(owners, box, matchingOffsets(box.code, options, matches));
