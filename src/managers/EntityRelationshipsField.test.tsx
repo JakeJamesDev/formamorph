@@ -64,11 +64,28 @@ describe('the Relationships list', () => {
     expect(current.relationships).toEqual([{ targetId: 'rowan', label: 'friend' }, { targetId: 'kate', label: 'mother and employer' }]);
   });
 
-  it('keeps a row whose target the world lacks, without showing it', () => {
+  it('shows a row whose target the world lacks as an unknown entity, so it can be removed', () => {
     render(<Harness start={{ id: 'tera', name: 'Tera', relationships: [{ targetId: 'gone', label: 'twin' }, { targetId: 'kate', label: 'mother' }] }} />);
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
-    fireEvent.change(within(row('Kate')).getByRole('textbox'), { target: { value: 'aunt' } });
-    expect(current.relationships).toEqual([{ targetId: 'gone', label: 'twin' }, { targetId: 'kate', label: 'aunt' }]);
+    expect(within(row('Unknown Entity')).getByRole('textbox', { name: 'Unknown Entity’s Role' })).toHaveValue('twin');
+    fireEvent.click(within(row('Unknown Entity')).getByRole('button', { name: 'Remove this relationship' }));
+    expect(current.relationships).toEqual([{ targetId: 'kate', label: 'mother' }]);
+  });
+
+  it.each([
+    ['the Custom Persona entity', { customPersona: true }],
+    ['a persona-only Persona', { persona: true, personaOnly: true }],
+  ])('offers no You to %s, and still shows a stored You row to remove', async (_, marks) => {
+    const { unmount } = render(<Harness start={{ id: 'tera', name: 'Tera', ...marks }} />);
+    expect(await openAdd()).toEqual(['Kate', 'Ash', 'Rowan']);
+    unmount();
+    render(<Harness start={{ id: 'tera', name: 'Tera', ...marks, relationships: [{ targetId: YOU_TARGET, label: 'ward' }] }} />);
+    fireEvent.click(within(row('You')).getByRole('button', { name: 'Remove this relationship' }));
+    expect(current.relationships).toBeUndefined();
+  });
+
+  it('offers You to a Persona that plays in the cast too', async () => {
+    render(<Harness start={{ id: 'tera', name: 'Tera', persona: true }} />);
+    expect(await openAdd()).toEqual(['You', 'Kate', 'Ash', 'Rowan']);
   });
 
   it('disables the select when every entity is used', () => {
