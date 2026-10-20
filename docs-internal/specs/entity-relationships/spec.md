@@ -50,13 +50,19 @@ In play, the AI reads each relationship as one sentence: "Kate is Tera's mother"
 
 **You.** A **You** target resolves to the played persona at render time. The played persona's name fills the sentence: "Kate is Rowan's mother". There is no second person form. A relationship held by a world persona, or by the Custom Persona entity, works like any other.
 
+- You follows the owner You model. Under a library persona, the Custom Persona entity's relationships are the player's and render with the library persona's name. Under a world persona, the Custom Persona entity is unplayed and its relationships drop. Under None, it uses the entered name.
+- With no persona to resolve to, every You row drops, both its line and its pull-in.
+- A You row that resolves to its own owner drops while that persona plays. It renders under any other persona.
+- When an owner's You row and its row to a specific persona resolve to the same played entity, the specific row wins and the You row drops.
+- The You target is stored as the literal target id `you`.
+
 **Who counts.** A relationship renders only when both ends are in play. An end that is a persona-only entity the player doesn't play drops the relationship from the prompt. The editor keeps it. Runtime characters can't be targets.
 
 **Rendering (one seam: chip values).**
 
 - A relationship renders as a field line inside the entity blocks. No new chip. Each relationship gets its own `relationship` field, after the description and type fields and before traits and stats, in every format.
 - Each relationship prints once per scene, decided by roster precedence (here > sublocations > reachable > known): on the owner's block when the chain lists the owner, else on the target's block when the chain lists the target, else nowhere. In Scene is its own roster and applies the same rule over its own ids. Chip values stay per token. There is no template-aware pass, so a custom template with only some scopes can lose a line. So can an owner's scope token that is name-only or filters the owner out with Only With. That gap is accepted.
-- The Persona block counts as a block for this rule, at the head of the chain.
+- The Persona block counts as a block for this rule. It heads both the chain and the In Scene list, so a line that touches the played persona prints only on the Persona block.
 - The line appears in every roster scope that renders full or summary blocks. A name-only scope shows no relationship lines.
 
 **Known roster pull-in.**
