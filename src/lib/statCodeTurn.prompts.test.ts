@@ -8,6 +8,7 @@ import { PromptCanceled, type ScriptPromptHost, type ScriptPromptRequest } from 
 import type { StatCodeOwners } from './statCodeTraits';
 import type { PlayerStat } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -16,7 +17,7 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 
 const noTraits: StatCodeOwners = { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } };
 
-const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
+const turn = (over: Partial<FlatStatCodeTurn> & Pick<FlatStatCodeTurn, 'stats'>): StatCodeTurn => statCodeTurnOf({
   enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: noTraits,
   statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name, ...over,
 });

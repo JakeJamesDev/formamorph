@@ -9,6 +9,7 @@ import {
   backfillEntityStats, entityCodeTurns, entityStatOwners, seedEntityStats, withEntityRegen, withOwnerCodeResults,
 } from './entityStats';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<Stat> = {}): Stat => ({
   id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, value: 20, regen: 1, descriptors: [], ...over,
@@ -123,11 +124,11 @@ describe('entityStatOwners', () => {
     expect(owners.map((o) => o.id)).toEqual(['bram', 'cp']);
     expect(withEntityRegen(all, owners, 2).cp[0].value).toBe(22);
     const turns = entityCodeTurns(owners, 2, (_, stats) => stats);
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, owners: turns,
       ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(out.owners?.cp.stats[0].value).toBe(32);
   });
 

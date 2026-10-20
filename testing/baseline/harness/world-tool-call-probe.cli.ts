@@ -84,8 +84,11 @@ async function marks(target: string, text: string): Promise<boolean> {
   const out = await runStatCodeTurn({
     timing: 'output', narration: { sentence: text, full: text, index: 0, sent: [], buffered: [] },
     triggers: [{ name: 'lock_target', code: lockCode, args: { name: target } }],
-    stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {},
-    ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+    state: {
+      stats: [], enabled: {}, clock: {},
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+    },
+    previous: [], asks: [], regenApplied: {},
     statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name,
   });
   return (out.sentence ?? '').includes('⌖');

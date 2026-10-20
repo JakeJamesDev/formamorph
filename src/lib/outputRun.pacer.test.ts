@@ -7,11 +7,11 @@ import { rewriteSentences } from './aiRequest/narrationRewrite';
 import { narrationRevealListener } from './narrationRevealListener';
 import { getRevealReleased, getRevealTiming } from './revealTimingStore';
 import { useSentenceReveal } from './useSentenceReveal';
-import type { StatCodeTurn } from './statCodeTurn';
 import type { TransportEvent } from './aiRequest/requestTransport';
+import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 /** A turn whose one world script reports what sentence 3 reads, and shouts every other sentence. */
-const turn: StatCodeTurn = {
+const turn = statCodeTurnOf({
   stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {},
   ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
@@ -19,7 +19,7 @@ const turn: StatCodeTurn = {
     id: 'w', timing: 'output',
     code: 'narration.sentence = narration.index === 3 ? JSON.stringify([narration.sent, narration.buffered]) : narration.sentence.toUpperCase();',
   }],
-};
+});
 
 const settle = () => new Promise<void>((resolve) => { setImmediate(resolve); });
 // A wall-clock bound: each wait spans real QuickJS runs, whose tick count grows on a slower machine.

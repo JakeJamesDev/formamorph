@@ -9,6 +9,7 @@ import { runStatCodeTurn } from './statCodeTurn';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import type { PlayerStat, Stat } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<Stat>): Stat => ({
   id: 'a', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, ...over,
@@ -191,7 +192,7 @@ describe('the described surface against the sandbox that provides it', () => {
  */
 const turnProbe = async (timing: StatCodeTiming, code: string): Promise<number | undefined> => {
   const probe: PlayerStat = { ...stats[0], value: 50, descriptors: [], scripts: boxScripts({ [timing]: code }) };
-  const out = await runStatCodeTurn({
+  const out = await runStatCodeTurn(statCodeTurnOf({
     timing,
     stats: [probe],
     enabled: {},
@@ -202,7 +203,7 @@ const turnProbe = async (timing: StatCodeTiming, code: string): Promise<number |
     ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
-  });
+  }));
   return out.stats[0].value;
 };
 
@@ -238,7 +239,7 @@ describe('the described surface in each of the two boxes', () => {
       ...stats[0], value: 50, descriptors: [], scripts: boxScripts({ before: 'return 11;', after: 'return 22;' }),
     };
     const valueFrom = async (timing: StatCodeTiming) => {
-      const out = await runStatCodeTurn({
+      const out = await runStatCodeTurn(statCodeTurnOf({
         timing,
         stats: [both],
         enabled: {},
@@ -249,7 +250,7 @@ describe('the described surface in each of the two boxes', () => {
         ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
         statNameOf: (entry) => entry.name,
         traitNameOf: (entry) => entry.name,
-      });
+      }));
       return out.stats[0].value;
     };
     expect(await valueFrom('before')).toBe(11);

@@ -22,13 +22,14 @@ import { emptyToolSnapshot } from './toolSnapshot';
 import { parseTool } from './toolValidation';
 import { withImportedWorldTools } from './worldTools';
 import { DEFAULT_REPLY, openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from './worldToolTurn';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const health: PlayerStat = {
   id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 200, value: 10, regen: 0, descriptors: [],
 };
 
 /** A turn's state for its scripts, Health at 10 and nothing else in play. */
-const turnState = (over: Partial<StatCodeTurn> = {}): StatCodeTurn => ({
+const turnState = (over: Partial<FlatStatCodeTurn> = {}): StatCodeTurn => statCodeTurnOf({
   stats: [health], enabled: {}, previous: [health], asks: [], regenApplied: {}, clock: {},
   ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
@@ -163,7 +164,7 @@ describe('World Tools through a turn', () => {
     const { sentBack, live } = await playTurn([roll], [[['roll', {}]], [['roll', {}]], 'You rest.']);
     expect(sentBack[1]).toEqual(['rolled 15']);
     expect(sentBack[2]).toEqual(['rolled 15', 'rolled 20']);
-    expect(healthOf(live.state.stats)).toBe(20);
+    expect(healthOf(live.state.state.stats)).toBe(20);
   });
 
   it('lands each On Call run at once, so the After batch reads its write', async () => {
@@ -284,7 +285,7 @@ describe('A stat re-roll replays the turn\'s Tool effects', () => {
   it('reapplies an On Call write without running the script, so a random value matches the first run', async () => {
     const start = turnState({ stats: [luck], previous: [luck] });
     const { wt, live } = await playTurn([lucky], [[['lucky', {}]], 'You rest.'], { start });
-    const first = luckOf(live.state.stats);
+    const first = luckOf(live.state.state.stats);
     expect(first).not.toBe(0);
     expect(luckOf((await reroll([lucky], wt.calls(), start)).stats)).toBe(first);
   });

@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
@@ -11,6 +11,7 @@ import type { PlaceholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
 import type { Dictionary, Entity, PersonaRef, Placeholder, PlayerStat } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -58,12 +59,12 @@ function played(persona: PersonaRef, library: Entity[] = []): StatCodeOwners {
 const asLyra: PersonaRef = { source: 'library', entityId: 'lyra' };
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
-const run = (code: string, traits: StatCodeOwners = played(asLyra, [lyra])) => runStatCodeTurn({
+const run = (code: string, traits: StatCodeOwners = played(asLyra, [lyra])) => runStatCodeTurn(statCodeTurnOf({
   stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
   enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   placeholders: { placeholders: list, owners, dictionaries, rolls: { world: {} } },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-} satisfies StatCodeTurn);
+} satisfies FlatStatCodeTurn));
 
 const valueOf = (out: { stats: readonly PlayerStat[] }) => out.stats.find((s) => s.id === 's0')?.value;
 
@@ -130,12 +131,12 @@ describe('runStatCodeTurn owner placeholders', () => {
     const code = 'placeholders.Probe.pin(dictionaries.Tides.placeholders.Tide.value + "/" + dictionaries.Weather.placeholders.Sky.value);'
       + ' dictionaries.Tides.placeholders.Tide.pin("flood");'
       + ' return dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "run-weather" ? 1 : 0;';
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
       enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asLyra, [lyra]),
       placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides, weather], rolls: { world: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(out.pinWrites).toEqual({ probe: 'ebb/hail', tide: 'flood' });
     expect(valueOf(out)).toBe(1);
   });
@@ -143,12 +144,12 @@ describe('runStatCodeTurn owner placeholders', () => {
   it('keeps added characters’ and library books’ placeholders out of placeholders', async () => {
     const pip: Entity = { id: 'pip', name: 'Pip', placeholders: [ph('pip-tag', 'Tag', ['loyal'])] };
     const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: 'placeholders.Tag.pin("x"); placeholders.Tide.pin("y");' }) })],
       enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asMira, [pip]),
       placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(out.pinWrites).toEqual({});
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('the world does not have: Tag, Tide'));
   });
@@ -189,7 +190,7 @@ describe('runStatCodeTurn owner placeholders', () => {
       + ' dictionaries.Lore.placeholders.Mood.pin("x"); dictionaries.Weather.placeholders.Sky.pin("storm"); return gone ? 1 : 0;';
     const mood = ph('lore-mood', 'Mood', ['calm']);
     const withLore = new Map([...owners, ['lore-mood', { kind: 'dictionary' as const, id: 'lore', name: 'Lore' }]]);
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
       enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asLyra, [lyra]),
       placeholders: {
@@ -197,7 +198,7 @@ describe('runStatCodeTurn owner placeholders', () => {
         inPlayDictionaryIds: new Set(['first-weather', 'later-weather']),
       },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(valueOf(out)).toBe(1);
     expect(out.pinWrites).toEqual({ 'later-sky': 'storm' });
     expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in the game: Lore › Mood$/));
@@ -210,7 +211,7 @@ describe('runStatCodeTurn owner placeholders', () => {
 
   it('lists an authored dictionary left on and every library dictionary beside one turned off', async () => {
     const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: 'return dictionaries.Lore.id === "lore" && dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "" ? 1 : 0;' }) })],
       enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asLyra, [lyra]),
       placeholders: {
@@ -218,7 +219,7 @@ describe('runStatCodeTurn owner placeholders', () => {
         inPlayDictionaryIds: new Set(['lore']),
       },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(valueOf(out)).toBe(1);
   });
 

@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import type { PlayerStat, Script } from '@/types';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -18,7 +19,7 @@ const script = (timing: Script['timing'], code: string, over: Partial<Script> = 
 
 const none: StatCodeOwners = { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } };
 
-const start = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
+const start = (over: Partial<FlatStatCodeTurn> & Pick<FlatStatCodeTurn, 'stats'>): StatCodeTurn => statCodeTurnOf({
   timing: 'start', enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: none,
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });

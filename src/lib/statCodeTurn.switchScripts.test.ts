@@ -9,6 +9,7 @@ import { traitSwitchEvents, type TraitSwitchEvent } from './traitRuntime';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import type { Entity, OwnedTraitStates, PersonaRef, PlayerStat, Script, Trait } from '@/types';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const NO_PERSONA: PersonaRef = { source: 'none' };
 
@@ -34,8 +35,8 @@ function ownerTraits({ traits = [], entities = [], acquired = [], off = [], owne
 }
 
 const turnOf = (traits: StatCodeOwners, { stats = [hp()], owners, timing, worldScripts }: {
-  stats?: PlayerStat[]; owners?: OwnerCodeTurn[]; timing?: StatCodeTurn['timing']; worldScripts?: Script[];
-} = {}): StatCodeTurn => ({
+  stats?: PlayerStat[]; owners?: OwnerCodeTurn[]; timing?: FlatStatCodeTurn['timing']; worldScripts?: Script[];
+} = {}): StatCodeTurn => statCodeTurnOf({
   ...(timing ? { timing } : {}),
   stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   ...(owners ? { owners } : {}), ...(worldScripts ? { worldScripts } : {}),
