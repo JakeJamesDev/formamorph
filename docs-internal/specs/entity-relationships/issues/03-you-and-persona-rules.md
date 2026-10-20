@@ -17,6 +17,6 @@ An author picks **You** as a target, and "Kate is Rowan's mother" renders with w
 - [ ] You resolves to the played persona's name at render time. No second person form.
 - [ ] The Persona block counts as a block for the print-once rule.
 - [ ] The played persona counts as present, so its relationships pull targets into the known roster.
-- [ ] A relationship with an unplayed persona-only end drops from the prompt. The editor keeps it.
+- [ ] A relationship with an unplayed persona-only end drops from the prompt, both its line and its pull-in. Ticket 02 pulls such an entity into the known roster. The editor keeps the relationship.
 - [ ] Relationships held by a world persona or the Custom Persona entity render like any other.
 - [ ] Chip-value tests cover each rule above, under a world persona, a library persona and None.
