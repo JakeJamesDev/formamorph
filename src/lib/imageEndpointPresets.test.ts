@@ -29,6 +29,8 @@ describe('parseEnvPresets', () => {
     expect(v.model).toBe('a.safetensors');
     expect(v.cfg).toBe(4);
     expect(v.adetailer).toBe(true);
+    expect(v.cleanTags).toBe(true); // unspecified → default on
+    expect(parseEnvPresets('[{"name":"NAI","cleanTags":false}]')[0].values.cleanTags).toBe(false);
     expect(v.steps).toBe(DEFAULT_IMAGE_ENDPOINT_VALUES.steps); // wrong type falls back to default
     expect(v.negativePrompt).toBe(DEFAULT_IMAGE_ENDPOINT_VALUES.negativePrompt); // unspecified → default
     expect(v.portraitWidth).toBe(DEFAULT_IMAGE_ENDPOINT_VALUES.portraitWidth); // shared dims inherited

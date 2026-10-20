@@ -30,6 +30,15 @@ describe('normalizeBooruTags', () => {
   it('preserves count tags like 1girl', () => {
     expect(normalizeBooruTags('1girl, solo')).toBe('1girl, solo');
   });
+
+  it('keeps prompt syntax and case as written when clean is off', () => {
+    const raw = '{{blue hair}}, 1.5::rain, night ::, source#hug, (smile:1.2), <lora:x:0.8>, Text: Stop!';
+    expect(normalizeBooruTags(raw, false)).toBe(raw);
+  });
+
+  it('still trims, drops empties and dedupes exact repeats when clean is off', () => {
+    expect(normalizeBooruTags(' {a} ,, {a}, A_b\n[c]', false)).toBe('{a}, A_b, [c]');
+  });
 });
 
 describe('buildImagePrompt request', () => {
@@ -38,6 +47,13 @@ describe('buildImagePrompt request', () => {
     await expect(buildImagePrompt({ description: 'd', kind: 'character' }, { snapshot: textSnapshot() })).resolves.toBe('silver hair');
     vi.unstubAllGlobals();
     expect(sentBody(spy)).toMatchObject({ max_tokens: 200, temperature: 0.3 });
+  });
+
+  it('returns the model syntax untouched with cleanTags off', async () => {
+    stubStream(sseReply('{{Silver_Hair}}, 1.2::smile ::'));
+    await expect(buildImagePrompt({ description: 'd', kind: 'character' }, { snapshot: textSnapshot(), cleanTags: false }))
+      .resolves.toBe('{{Silver_Hair}}, 1.2::smile ::');
+    vi.unstubAllGlobals();
   });
 });
 

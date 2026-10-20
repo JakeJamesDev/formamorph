@@ -423,6 +423,11 @@ You can still generate a single scene yourself from the button above the story.`
     label: 'Sampler',
     description: 'Selects the sampling algorithm',
   },
+  cleanTags: {
+    label: 'Clean Up Tags',
+    description: 'Rewrites scene and generated tags as plain lowercase words',
+    info: 'Also removes weights and other prompt syntax, such as NovelAI’s `{tag}` or `1.5::tag ::`. Turn off to send your entity and location tags as you wrote them. Never changes the **Prompt Prefix** or **Negative Prompt**.',
+  },
   faceFix: {
     label: 'Face Fix',
     description: 'Re-renders faces in a second pass',

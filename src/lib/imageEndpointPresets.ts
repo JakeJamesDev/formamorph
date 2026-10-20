@@ -7,7 +7,7 @@ import {
   DEFAULT_IMAGE_PROVIDER, DEFAULT_IMAGE_ENDPOINT, DEFAULT_IMAGE_API_TOKEN, DEFAULT_IMAGE_MODEL,
   DEFAULT_IMAGE_POSITIVE, DEFAULT_IMAGE_NEGATIVE, DEFAULT_IMAGE_PORTRAIT_WIDTH, DEFAULT_IMAGE_PORTRAIT_HEIGHT,
   DEFAULT_IMAGE_LANDSCAPE_WIDTH, DEFAULT_IMAGE_LANDSCAPE_HEIGHT, DEFAULT_IMAGE_STEPS, DEFAULT_IMAGE_CFG,
-  DEFAULT_IMAGE_SAMPLER, DEFAULT_IMAGE_ADETAILER,
+  DEFAULT_IMAGE_SAMPLER, DEFAULT_IMAGE_ADETAILER, DEFAULT_IMAGE_CLEAN_TAGS,
 } from '../contexts/settingsDefaults';
 
 /** The full AI Endpoints → Image field set a preset captures (everything except the Tag Prompt sub-tab). */
@@ -26,6 +26,8 @@ export interface ImageEndpointValues {
   cfg: number;
   sampler: string;
   adetailer: boolean;
+  /** Rewrite scene and AI-written tags as plain booru words (lib/imagePrompt normalizeBooruTags). */
+  cleanTags: boolean;
   /** ComfyUI only: the API-format workflow template with %tokens%. */
   workflow: string;
   /** InvokeAI Z-Image only: Qwen3 encoder override (model name/key); blank = auto-pick. */
@@ -75,6 +77,7 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
   cfg: DEFAULT_IMAGE_CFG,
   sampler: DEFAULT_IMAGE_SAMPLER,
   adetailer: DEFAULT_IMAGE_ADETAILER,
+  cleanTags: DEFAULT_IMAGE_CLEAN_TAGS,
   workflow: DEFAULT_COMFY_WORKFLOW,
   invokeEncoder: '',
   invokeVae: '',
@@ -112,6 +115,7 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
     cfg: num('cfg', d.cfg),
     sampler: str('sampler', d.sampler),
     adetailer: typeof rec.adetailer === 'boolean' ? rec.adetailer : d.adetailer,
+    cleanTags: typeof rec.cleanTags === 'boolean' ? rec.cleanTags : d.cleanTags,
     workflow: str('workflow', d.workflow),
     invokeEncoder: str('invokeEncoder', d.invokeEncoder),
     invokeVae: str('invokeVae', d.invokeVae),

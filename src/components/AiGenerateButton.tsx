@@ -47,7 +47,7 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
   onChange: (v: string) => void;
   kind?: ImageSubjectKind; // tags/playerDesc/aiDesc: subject kind
 }) => {
-  const { imageTagPrompt } = useSettings();
+  const { imageTagPrompt, imageCleanTags } = useSettings();
   const snapshot = useAiSettingsSnapshot();
   const [loading, setLoading] = useState(false);
   const endpointTip = useEndpointTip();
@@ -70,7 +70,7 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
       const result = mode === 'tags'
         // The subject's name is deliberately not sent: models answer with it as a tag, and no image model
         // knows a person's name. An author who wants one in the tags can type it.
-        ? await buildImagePrompt({ description: text, kind: kind ?? 'character' }, { ...opts, tagPrompt: imageTagPrompt })
+        ? await buildImagePrompt({ description: text, kind: kind ?? 'character' }, { ...opts, tagPrompt: imageTagPrompt, cleanTags: imageCleanTags })
         : mode === 'summary'
           ? await summarizeDescription(text, opts)
           : await bridgeDescription(text, mode, bridgeKind, opts);
