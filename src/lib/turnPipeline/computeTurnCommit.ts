@@ -9,8 +9,8 @@ import { randomUUID } from '@/lib/uuid';
 import type { parseStatUpdates } from '@/lib/statChanges';
 import { readStatResponse, statResponseChanges, type StatResponse } from '@/lib/statRequest';
 import {
-  applyAtOnce, applyEntityCodeWrites, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf,
-  type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PlayerMove,
+  applyAtOnce, applyEntityCodeWrites, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf, peelIntents,
+  type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PeelOff, type PlayerMove,
 } from '@/lib/entityFollowing';
 import type { TurnPassId, TurnPlan } from './turnPlan';
 import type { TurnPassOutcome, TurnResult } from './turnRunner';
@@ -65,6 +65,8 @@ export interface TurnCommitContext {
   diaryNames?: Readonly<Record<string, string>>;
   /** The turn's Script World Tool calls, in call order. */
   toolCalls?: readonly TurnToolCall[];
+  /** How an Everywhere Listed entity's "come along" peels a new follower off it. Absent ⇒ none peels. */
+  peel?: PeelOff;
 }
 
 export interface TurnCommitInput {
@@ -174,7 +176,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     });
   }
 
-  const entityMoves = entityMovesOf(passes);
+  const entityMoves = peelIntents(entityMovesOf(passes), context.peel);
 
   const turn: AITurnResult = {
     narration,

@@ -25,7 +25,7 @@ import { backfillGameStateStats } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
 import { positionedCast, reconcileGameStatePositions, type PlaceableEntity } from '../lib/entityPresence';
-import { carryFollowers, reconcileGameStateFollowers, type FollowerState } from '../lib/entityFollowing';
+import { reconcileGameStateFollowers, withRuntimePositions, type FollowerState } from '../lib/entityFollowing';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -129,16 +129,34 @@ function useProvideGameplay() {
   }, []);
   // The ids of the entities the player has met. Snapshotted per turn too.
   const [metEntities, setMetEntities] = useState<readonly string[]>([]);
+  // The runtime character ids, so a join can tell their positions from the world entities'. A join adds its
+  // peeled ids at once, so a move in the same batch reads them.
+  const runtimeIdsRef = useRef<ReadonlySet<string>>(new Set());
+  runtimeIdsRef.current = new Set([...runtimeIdsRef.current, ...discoveredEntities.map((d) => d.entity.id)]);
+  /** Writes `moved` over the live positions: a runtime character's onto its anchor, `added` ones included. */
+  const placeMoved = useCallback((moved: Readonly<EntityPositions>, added: readonly DiscoveredEntity[] = []) => {
+    if (added.length) runtimeIdsRef.current = new Set([...runtimeIdsRef.current, ...added.map((d) => d.entity.id)]);
+    const runtimeIds = runtimeIdsRef.current;
+    const world = Object.fromEntries(Object.entries(moved).filter(([id]) => !runtimeIds.has(id)));
+    if (Object.keys(world).length) setEntityPositions((positions) => ({ ...positions, ...world }));
+    if (added.length || Object.keys(world).length < Object.keys(moved).length) {
+      setDiscoveredEntities((prev) => {
+        const fresh = added.filter((d) => !prev.some((known) => known.entity.id === d.entity.id));
+        return withRuntimePositions(fresh.length ? [...prev, ...fresh] : prev, moved);
+      });
+    }
+  }, []);
   /** Brings every follower to `locationId`: the player just moved there. */
   const carryFollowersTo = useCallback((locationId: string) => {
     const followers = entityFollowersRef.current;
-    if (followers.length) setEntityPositions((positions) => carryFollowers({ positions, followers }, locationId).positions);
-  }, []);
-  /** Puts a join in place: its followers, and the positions it moved over the live ones. */
-  const applyFollowerState = useCallback((state: FollowerState) => {
+    if (followers.length) placeMoved(Object.fromEntries(followers.map((id) => [id, locationId])));
+  }, [placeMoved]);
+  /** Puts a join in place: its followers, the positions it moved over the live ones, and the characters it
+   *  peeled off. */
+  const applyFollowerState = useCallback((state: FollowerState, peeled: readonly DiscoveredEntity[] = []) => {
     setEntityFollowers(state.followers);
-    setEntityPositions((positions) => ({ ...positions, ...state.positions }));
-  }, [setEntityFollowers]);
+    placeMoved(state.positions, peeled);
+  }, [setEntityFollowers, placeMoved]);
   // The entity stats as this turn found them, which the turn's entity deltas count from. Runtime only.
   const [entityStatBaseline, setEntityStatBaseline] = useState<EntityStatValues>({});
   const entityStatChanges = useMemo(() => entityStatDeltas(entityStats, entityStatBaseline), [entityStats, entityStatBaseline]);
@@ -523,7 +541,7 @@ function useProvideGameplay() {
       const cast = positionedCast(worldEntities, persona);
       return reconcileGameStateFollowers(
         reconcileGameStatePositions(backfillGameStateEntityStats(players, worldEntities), cast, locationIds),
-        new Set(cast.map((entity) => entity.id)),
+        new Set([...cast.map((entity) => entity.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]),
       );
     };
     try {

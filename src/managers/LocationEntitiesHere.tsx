@@ -2,9 +2,9 @@ import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { OptionSwitcher } from '@/components/SettingsRows';
-import { isEverywhere, movementOptions, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
+import { movementOptions, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
 import {
-  FOLLOW_EVERYWHERE_HELP, MOVEMENT_HELP, MOVEMENT_LABEL, PERSONA_IGNORED_HELP, PRESENCE_HELP, PRESENCE_OPTIONS,
+  MOVEMENT_LABEL, movementHelpFor, PERSONA_IGNORED_HELP, PRESENCE_HELP, PRESENCE_OPTIONS,
 } from '@/lib/entityPresenceCopy';
 import { fieldFrame } from '@/lib/historyField';
 import PersonaPresenceHint from '@/managers/PersonaPresenceHint';
@@ -23,7 +23,6 @@ function EntityHereRow({ entity, label, onChange }: { entity: Entity; label: str
   const listed = entity.locations?.length ?? 0;
   const presence = entity.presence === 'random' ? 'random' : 'everywhere';
   const movement: MovementChoice = entity.movement ?? 'free';
-  const movementHelp = movement === 'follow' && isEverywhere(entity) ? FOLLOW_EVERYWHERE_HELP : MOVEMENT_HELP[movement];
   return (
     <div className="space-y-2 rounded-md border p-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -37,7 +36,7 @@ function EntityHereRow({ entity, label, onChange }: { entity: Entity; label: str
           </Select>
         </div>
       </div>
-      <Hint>{movementHelp}</Hint>
+      <Hint>{movementHelpFor(entity)}</Hint>
       {listed > 1 && (
         <div className="space-y-1" {...fieldFrame('entities', entity.id, 'presence')}>
           <OptionSwitcher

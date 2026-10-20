@@ -162,7 +162,8 @@ import {
 } from "../lib/turnPipeline/computeTurnCommit";
 import {
   entityMoveOffers, entityMoveSubjects, hasEntityOffer, joinEntityMoves, movedPositions, moveWithPlayer,
-  NO_ENTITY_MOVES, NO_ENTITY_OFFER, type EntityMoveOffer, type FollowerState,
+  NO_ENTITY_MOVES, NO_ENTITY_OFFER, peelIntents, peeledCharacters, runtimePositions, turnPeelOff,
+  type EntityMoveOffer, type FollowerState, type PeelOff,
 } from "../lib/entityFollowing";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
@@ -1167,6 +1168,12 @@ const GameViewer = ({
   const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
   // The entities whose "come along" waits on the offered move: Go brings them, Dismiss drops them.
   const entityOfferRef = useRef<EntityMoveOffer>(NO_ENTITY_OFFER);
+  // The peel-off of the turn that made the offer, so Go creates the follower it promised.
+  const followerPeelRef = useRef<{ peelOff: PeelOff; turnId: string } | undefined>(undefined);
+  /** Where tracked entities and runtime characters stand, and who follows the player. */
+  const liveFollowerState = (): FollowerState => ({
+    positions: { ...runtimePositions(discoveredEntities), ...entityPositions }, followers: entityFollowers,
+  });
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
   // whether the player may already type their next action (choices done, background requests still finishing).
   const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
@@ -2400,8 +2407,20 @@ const GameViewer = ({
     const { start, from, applied } = turn.entityMove;
     if (from) {
       const { state, offer } = commitEntityMoves(start, final, { from, to: location?.id });
-      if (state !== applied) applyFollowerState({ followers: state.followers, positions: movedPositions(state.positions, applied.positions) });
+      const { peel } = turn.context;
+      const turnId = final.turn.turnId ?? currentTurnIdRef.current;
+      const anyKnown = new Set<string>();
+      if (state !== applied) {
+        applyFollowerState(
+          { followers: state.followers, positions: movedPositions(state.positions, applied.positions) },
+          peeledCharacters(state, peel, anyKnown, turnId),
+        );
+        // Removes peeled followers the final move dropped.
+        const unmade = peeledCharacters(applied, peel, anyKnown, turnId).filter((d) => !state.followers.includes(d.entity.id));
+        if (unmade.length) setDiscoveredEntities((prev) => prev.filter((d) => !unmade.some((gone) => gone.entity.id === d.entity.id)));
+      }
       entityOfferRef.current = offer;
+      followerPeelRef.current = offer.comeAlong.length && peel ? { peelOff: peel, turnId } : undefined;
     }
 
     setFullMessageHistory((prev) => {
@@ -2550,17 +2569,28 @@ const GameViewer = ({
     let playerInFrame: boolean | undefined;
     let turnParticipants: string[] = [];
     // Where tracked entities stood and who followed when the turn began; every join this turn starts here.
-    const moveStart: FollowerState = { positions: entityPositions, followers: entityFollowers };
+    const moveStart = liveFollowerState();
     const moveFrom = currentLocation?.id;
     let entityIntents = NO_ENTITY_MOVES;
     // The join the narration is written over: followers already beside the player. Null when it moves nobody.
     let turnJoin: FollowerState | null = null;
+    const movingCast = positionedCast(allEntities, personaRef);
+    const peel = turnPeelOff(movingCast, randomUUID);
+    // The runtime characters the scene list names, the only ones asked unless they already follow.
+    const runtimeInScene = new Set(discoveredEntities
+      .filter((d) => participants.some((name) => sameCharacterName(name, d.entity.name)))
+      .map((d) => d.entity.id));
     /** Each entity the turn asks whether it moves, with the replies it is offered. */
-    const moveSubjects = (): TurnPassSubject[] => !moveFrom ? [] : entityMoveSubjects(allEntities, moveStart, moveFrom).map((entity) => ({
+    const moveSubjects = (): TurnPassSubject[] => !moveFrom ? [] : entityMoveSubjects(
+      movingCast, moveStart, moveFrom, { runtime: discoveredEntities, inScene: runtimeInScene },
+    ).map((entity) => ({
       name: entity.name,
       entity,
       ...entityMoveOffers(entity, moveStart.followers.includes(entity.id), moveFrom, locations, connections),
     }));
+    /** The characters `join` peels off, born this turn. */
+    const peeledBy = (join: FollowerState) =>
+      peeledCharacters(join, peel, new Set(discoveredEntities.map((d) => d.entity.id)), currentTurnIdRef.current);
 
     const reportFailure = (error: unknown) =>
       reportTurnFailure(classifyTurnError(error), error, false, isOpeningTurn);
@@ -2578,6 +2608,7 @@ const GameViewer = ({
       setChoicesReady(false);
       setSuggestedLocation(null);
       entityOfferRef.current = NO_ENTITY_OFFER;
+      followerPeelRef.current = undefined;
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
       // The attachments leave the action box with the text, and the turn keeps the ones it may carry.
@@ -2627,7 +2658,11 @@ const GameViewer = ({
       turnClockRef.current = beforeClock ?? null;
       let codeView = turnCodeView(beforeBox, beforeClock);
       /** The world the turn's prompts read: the code view, with the followers at the player's side. */
-      const sceneBox = (): SceneWrites | null => (turnJoin ? { ...(codeView ?? {}), positions: turnJoin.positions } : codeView);
+      const sceneBox = (): SceneWrites | null => {
+        if (!turnJoin) return codeView;
+        const peeled = peeledBy(turnJoin);
+        return { ...(codeView ?? {}), positions: turnJoin.positions, ...(peeled.length && { addedEntities: discoveredAsEntities(peeled) }) };
+      };
       // An On Call write since the narration's context values were built, which later prompts must read (Q52).
       let narrationBuilt = false;
       let ctxStale = false;
@@ -2766,7 +2801,9 @@ const GameViewer = ({
       const applyNarrationReading = (narration: string): Partial<TurnMaterial> => {
         // Commit the auto-resolved move now that the narration — already written for the new location —
         // succeeded, so an aborted/empty turn leaves the location unchanged.
-        if (turnJoin) applyFollowerState({ followers: turnJoin.followers, positions: movedPositions(turnJoin.positions, moveStart.positions) });
+        if (turnJoin) {
+          applyFollowerState({ followers: turnJoin.followers, positions: movedPositions(turnJoin.positions, moveStart.positions) }, peeledBy(turnJoin));
+        }
         if (turnLocation && turnLocation.id !== currentLocation?.id) {
           changeLocation(turnLocation);
           addLogEntry(`Moved to location: ${turnLocation.name}`);
@@ -2941,7 +2978,7 @@ const GameViewer = ({
             return;
           }
           case "entityLocationAuto":
-            entityIntents = entityMovesOf(event.outcomes);
+            entityIntents = peelIntents(entityMovesOf(event.outcomes), peel);
             return;
           case "thinking": {
             if (!first.raw) return;
@@ -3069,6 +3106,7 @@ const GameViewer = ({
         heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
         diaryNames: Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
         toolCalls: worldToolTurn.calls(),
+        peel,
       };
       const commit = computeTurnCommit({ result, plan, context: commitContext });
       if (!commit) return;
@@ -4622,6 +4660,7 @@ const GameViewer = ({
       setEntityFollowers([]);
       setMetEntities([]);
       entityOfferRef.current = NO_ENTITY_OFFER;
+      followerPeelRef.current = undefined;
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
         pick: personaPick, worldEntities: entitiesInPlay(traitEntities, startPositions), overview: worldOverview, locations, startingLocationId: location?.id,
@@ -4871,10 +4910,16 @@ const GameViewer = ({
           changeLocation(suggestedLocation);
           addLogEntry(`Moved to location: ${suggestedLocation.name}`);
           const offer = entityOfferRef.current;
+          const offered = followerPeelRef.current;
           entityOfferRef.current = NO_ENTITY_OFFER;
+          followerPeelRef.current = undefined;
           if (hasEntityOffer(offer)) {
-            const went = moveWithPlayer({ positions: entityPositions, followers: entityFollowers }, offer, suggestedLocation.id);
-            applyFollowerState({ followers: went.followers, positions: movedPositions(went.positions, entityPositions) });
+            const live = liveFollowerState();
+            const went = moveWithPlayer(live, offer, suggestedLocation.id);
+            applyFollowerState(
+              { followers: went.followers, positions: movedPositions(went.positions, live.positions) },
+              offered ? peeledCharacters(went, offered.peelOff, new Set(), offered.turnId) : [],
+            );
           }
           setSuggestedLocation(null);
         }}
@@ -4886,6 +4931,7 @@ const GameViewer = ({
         variant="ghost"
         onClick={() => {
           entityOfferRef.current = NO_ENTITY_OFFER;
+          followerPeelRef.current = undefined;
           setSuggestedLocation(null);
         }}
       >

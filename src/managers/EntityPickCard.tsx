@@ -8,10 +8,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { OptionSwitcher } from '@/components/SettingsRows';
-import { isEverywhere, knownInOf, movementOptions, withKnownIn, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
+import { knownInOf, movementOptions, withKnownIn, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
 import { rangeGap, rangeWarning, type PickMode } from '@/lib/entityPicking';
 import {
-  FOLLOW_EVERYWHERE_HELP, KNOWN_IN_HELP, KNOWN_IN_LABEL, MOVEMENT_HELP, MOVEMENT_LABEL, PERSONA_IGNORED_HELP,
+  KNOWN_IN_HELP, KNOWN_IN_LABEL, MOVEMENT_LABEL, movementHelpFor, PERSONA_IGNORED_HELP,
   PICK_MODE_HELP, PRESENCE_HELP, PRESENCE_OPTIONS, type KnownInChoice,
 } from '@/lib/entityPresenceCopy';
 import { fieldFrame } from '@/lib/historyField';
@@ -83,7 +83,7 @@ function PickFields({ entity, label, locationName, locations, connections, mode,
             {movementOptions(entity).map((m) => <SelectItem key={m} value={m}>{MOVEMENT_LABEL[m]}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Hint>{movement === 'follow' && isEverywhere(entity) ? FOLLOW_EVERYWHERE_HELP : MOVEMENT_HELP[movement]}</Hint>
+        <Hint>{movementHelpFor(entity)}</Hint>
         {entity.persona && <Hint>{PERSONA_IGNORED_HELP}</Hint>}
       </div>
       {gap && (

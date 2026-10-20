@@ -9,6 +9,8 @@ export interface DiscoveredEntity {
   locationId?: string;
   /** The turn that first materialized it, for description generation / provenance. */
   sourceTurnId: string;
+  /** The Everywhere Listed entity this follower peeled off from. */
+  peeledFrom?: string;
 }
 
 /** One image the player attached to an action, already downscaled and re-encoded. */
