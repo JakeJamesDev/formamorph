@@ -52,6 +52,9 @@ export type OwnedTraitStates = Record<string, OwnedTraitState>;
 /** Entity id → its stats during the game, in authored order. */
 export type EntityStatValues = Record<string, PlayerStat[]>;
 
+/** Entity id → the location id it stands at during the game. An absent entity is at every location it lists. */
+export type EntityPositions = Record<string, string>;
+
 /** Entity id → stat id → what one turn moved that stat's value. Unmoved stats are absent. */
 export type EntityStatChanges = Record<string, Record<string, number>>;
 
@@ -228,6 +231,8 @@ export interface GameState {
   ownedTraits?: OwnedTraitStates;
   /** Each entity's stat values, by entity id. Absent ⇒ none. */
   entityStats?: EntityStatValues;
+  /** Where each positioned entity stands, by entity id. Absent ⇒ none. */
+  entityPositions?: EntityPositions;
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
   /** Absent ⇒ none. */

@@ -24,6 +24,7 @@ import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/t
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
+import { positionedCast, reconcileGameStatePositions, type PlaceableEntity } from '../lib/entityPresence';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -44,6 +45,7 @@ import type {
   Entity,
   EntityStatChanges,
   EntityStatValues,
+  EntityPositions,
   ImageAttachment,
   LogEntry,
   GameLocation,
@@ -114,6 +116,8 @@ function useProvideGameplay() {
   const [ownedTraits, setOwnedTraits] = useState<OwnedTraitStates>({});
   // Entity id → its stat values. Snapshotted per turn too.
   const [entityStats, setEntityStats] = useState<EntityStatValues>({});
+  // Entity id → where it stands, for each positioned entity. Snapshotted per turn too.
+  const [entityPositions, setEntityPositions] = useState<EntityPositions>({});
   // The entity stats as this turn found them, which the turn's entity deltas count from. Runtime only.
   const [entityStatBaseline, setEntityStatBaseline] = useState<EntityStatValues>({});
   const entityStatChanges = useMemo(() => entityStatDeltas(entityStats, entityStatBaseline), [entityStats, entityStatBaseline]);
@@ -283,6 +287,7 @@ function useProvideGameplay() {
       ...(savedCascade ? { cascadeOffTraitIds: savedCascade } : {}),
       ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
       ...(Object.keys(entityStats).length ? { entityStats } : {}),
+      ...(Object.keys(entityPositions).length ? { entityPositions } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
@@ -305,7 +310,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -330,6 +335,7 @@ function useProvideGameplay() {
       setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
       setOwnedTraits(gameState.ownedTraits ?? {});
       resetEntityStats(gameState.entityStats ?? {});
+      setEntityPositions(gameState.entityPositions ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -480,13 +486,17 @@ function useProvideGameplay() {
    *  `worldEntities` given, the owned trait state and stat values of an entity the playthrough no longer holds
    *  are dropped, and each authored entity's missing stats are backfilled. */
   const loadGame = useCallback(async (
-    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly Pick<Entity, 'id' | 'stats'>[],
+    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (PlaceableEntity & Pick<Entity, 'stats'>)[],
   ) => {
-    /** The state with every stat the world has since added, global and each entity's, and no entity stat
-     *  carrying stored code bounds. */
-    const backfilled = (state: GameState) => {
+    const locationIds = locations.map((l) => l.id);
+    /** The state with every stat the world has since added, global and each entity's, no entity stat
+     *  carrying stored code bounds, and each position checked against the world. */
+    const backfilled = (state: GameState, persona?: PersonaRef) => {
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
-      return worldEntities ? backfillGameStateEntityStats(players, worldEntities) : players;
+      if (!worldEntities) return players;
+      return reconcileGameStatePositions(
+        backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities, persona), locationIds,
+      );
     };
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
@@ -512,12 +522,12 @@ function useProvideGameplay() {
         // top-level history so loadGameState restores narration/rollback correctly. Backfill any stat the
         // world has since added (e.g. an updated default world) so an older save shows it — additive only.
         const success = loadGameState(
-          held(backfilled({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] })),
+          held(backfilled({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] }, migrated.persona)),
           locations,
           { worldStats },
         );
         if (success) {
-          setGameStates(migrated.stateHistory.map((s) => held(backfilled(s))));
+          setGameStates(migrated.stateHistory.map((s) => held(backfilled(s, migrated.persona))));
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
@@ -789,6 +799,8 @@ function useProvideGameplay() {
     setEntityStats,
     setEntityStatBaseline,
     resetEntityStats,
+    entityPositions,
+    setEntityPositions,
     codePins,
     setCodePins,
     runtimeDictionaries,

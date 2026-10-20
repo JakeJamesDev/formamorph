@@ -388,6 +388,14 @@ export interface Entity {
   /** Ids of the locations this entity belongs to. The entity is present at every one of them
    *  simultaneously. Read it through `lib/entityPresence`, which inverts it into per-location rosters. */
   locations?: string[];
+  /** `random`: one individual, placed at one of `locations` at random in each new game. Absent = present at
+   *  every listed location at once. The persona ignores it. */
+  presence?: EntityPresence;
+  /** How the entity moves during play. Absent = Free: no position, no AI request. The persona ignores it. */
+  movement?: EntityMovement;
+  /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
+   *  covering its whole subtree. Absent = Nearby, one step from where it is. */
+  knownIn?: 'nowhere' | string[];
   /** Editor-only folder this entity lives in; null/absent = ungrouped. Purely organizational — never sent
    *  to the AI (grouping does not change the entity context). Reset to ungrouped on character-card import. */
   groupId?: string | null;
@@ -439,6 +447,12 @@ export interface Entity {
   /** What this copy follows, where it follows anything (see `ContentLink`). Absent = independent copy. */
   link?: ContentLink;
 }
+
+/** An entity's Presence beyond the default, Everywhere Listed. */
+export type EntityPresence = 'random';
+
+/** An entity's Movement beyond the default, Free. */
+export type EntityMovement = 'stays' | 'between' | 'follow';
 
 /** One location a piece of off-world content expects, as the world it left named it. The id is the key its
  *  connection is stored under, so the source renaming the location keeps the connection. */

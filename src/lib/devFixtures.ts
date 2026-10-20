@@ -8,7 +8,7 @@ import type { Entity, EntityStatValues, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityPresence'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -54,6 +54,16 @@ const MORPH_ENTITY = {
   stats: [MORPH_STAT],
 } as unknown as Entity;
 const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, value }] }) as unknown as EntityStatValues;
+
+const WHITE_ROOM_ID = '1783535114538';
+/** The `entityPresence` fixture's cast, each one at the White Room. */
+const ENTITY_PRESENCE_CAST: Entity[] = [
+  { id: 'dev-warden', name: 'Warden', locations: [WHITE_ROOM_ID, 'dev-corridor'], presence: 'random', movement: 'stays' },
+  { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], movement: 'follow' },
+  { id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID] },
+  { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
+  { id: 'dev-self', name: 'Visitor', locations: [WHITE_ROOM_ID], customPersona: true },
+];
 
 /** Page one of the `writtenOpening` fixture. */
 export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
@@ -147,6 +157,12 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
         },
         saveName: 'DEV: Entity Morphs',
       };
+    }
+    case 'entityPresence': {
+      // The white room with a cast for every Entities Here row: One with a Movement, a two-place entity
+      // that can follow, a one-place entity, a world persona and the Custom Persona.
+      const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
+      return { world: { ...world, entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
     }
     case 'writtenOpening': {
       // A new game whose only opening is an Opening Narration, so Start Game is page one. A world file

@@ -16,13 +16,14 @@ import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
 import LocationConnections from './LocationConnections';
+import LocationEntitiesHere from './LocationEntitiesHere';
 import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { HintInfo } from '@/components/SettingsRows';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
-import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
+import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 import { fieldFrame } from '@/lib/historyField';
 
 /**
@@ -67,6 +68,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   // Membership is entity-owned, so location-first authoring reads the inversion and writes each changed
   // entity's own list — the same edit, expressed from the other side.
   const presentIds = entityIdsAt(location.id, entities);
+  const treeOrder = entitiesInTreeOrder(entityGroups, entities);
+  const entityLabel = (e: Entity) => labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const handleEntitiesChange = (ids: string[]) => {
     const before = new Map(entities.map((e) => [e.id, e]));
     // Only the entities whose membership actually moved are written through.
@@ -174,12 +177,17 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           <Label>Entities</Label>
           <MultiSelect
             key={editingLocation.id}
-            options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners }), value: e.id }))}
+            options={treeOrder.map((e) => ({ label: entityLabel(e), value: e.id }))}
             defaultValue={presentIds}
             onValueChange={handleEntitiesChange}
             placeholder="Select entities"
           />
         </div>
+        <LocationEntitiesHere
+          entities={treeOrder.filter((e) => presentIds.includes(e.id))}
+          labelOf={entityLabel}
+          onChange={updateEntity}
+        />
         <LocationConnections location={editingLocation} />
       </PanelTabContent>
 

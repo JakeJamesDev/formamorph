@@ -167,6 +167,7 @@ export const DEV_MODAL_TABS = {
   // The World Editor's location panel does the same over the Locations tab
   // (`#dev?modal=worldEditor&tab=locations&subtab=presence`). It shares that tab's `subtab=…` slot with the
   // List/Canvas switch above, which is why no value may appear in both lists. `pins` is Advanced only.
+  // `fixture=entityPresence` loads a cast for the Presence tab's Entities Here rows; select The White Room.
   worldEditorLocation: ['details', 'presence', 'media', 'pins', 'openings'],
   // The World Editor's stat panel does the same over the Stats tab
   // (`#dev?modal=worldEditor&tab=stats&subtab=code`). `descriptors` and `code` are Advanced only, and

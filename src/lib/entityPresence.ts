@@ -1,9 +1,12 @@
-import type { Entity } from "@/types";
+import type { Entity, EntityPositions, PersonaRef } from "@/types";
 
 /**
  * The inverted index over entity-owned location membership (see ADR-0003). Entities carry the locations
  * they belong to; every roster that asks "who is at this place" reads it through here, so there is one
  * inversion rather than one per caller.
+ *
+ * During play a runtime layer sits on top: an entity with a position is at that position only, and one
+ * without is at every location it lists. `entitiesInPlay` applies it, so the rosters read it unchanged.
  *
  * Roster order is the entity array's own order — the author's ordering of the cast — since an
  * entity-owned list carries no rank within a location.
@@ -30,7 +33,37 @@ export function withEntityLocations(entity: Entity, locationIds: string[]): Enti
     const { locations: _none, ...rest } = entity;
     return rest;
   }
-  return { ...entity, locations };
+  return withMovementRules({ ...entity, locations });
+}
+
+/** A Movement choice, Free included. */
+export type MovementChoice = NonNullable<Entity['movement']> | 'free';
+
+/** Whether `entity` is at every one of two or more listed locations at once. */
+export const isEverywhere = (entity: Entity) => (entity.locations?.length ?? 0) > 1 && entity.presence !== 'random';
+
+/** The Movement choices `entity` offers. One entity at several places at once has no route to walk. */
+export function movementOptions(entity: Entity): MovementChoice[] {
+  return isEverywhere(entity) ? ['free', 'stays', 'follow'] : ['free', 'stays', 'between', 'follow'];
+}
+
+/** `entity` with Moves Between reset to Free where it no longer applies. */
+function withMovementRules(entity: Entity): Entity {
+  return entity.movement === 'between' && isEverywhere(entity) ? withMovement(entity, 'free') : entity;
+}
+
+/** A copy of `entity` with `movement`; Free is stored as no field. */
+export function withMovement(entity: Entity, movement: MovementChoice): Entity {
+  if (movement !== 'free') return { ...entity, movement };
+  const { movement: _free, ...rest } = entity;
+  return rest;
+}
+
+/** A copy of `entity` with `presence`; Everywhere Listed is stored as no field. */
+export function withPresence(entity: Entity, presence: Entity['presence']): Entity {
+  if (presence) return { ...entity, presence };
+  const { presence: _everywhere, ...rest } = entity;
+  return withMovementRules(rest);
 }
 
 /** `entities` with `locationId` added to or removed from each listed entity's membership — the write side
@@ -47,6 +80,82 @@ export function setLocationRoster(locationId: string, entityIds: string[], entit
       : (entity.locations ?? []).filter((id) => id !== locationId);
     return withEntityLocations(entity, next);
   });
+}
+
+/** `entities` as they stand in play: each one with a position lists that location only. The same array when
+ *  nobody has a position. */
+export function entitiesInPlay(entities: Entity[], positions: Readonly<EntityPositions>): Entity[] {
+  if (!entities.some((e) => e.id in positions)) return entities;
+  return entities.map((entity) => {
+    const at = positions[entity.id];
+    return at === undefined ? entity : { ...entity, locations: [at] };
+  });
+}
+
+/** The entity fields a position is placed from. */
+export type PlaceableEntity = Pick<Entity, 'id' | 'locations' | 'presence' | 'movement' | 'customPersona'>;
+
+/** The entities that can hold a position under `persona`: all but the Custom Persona and the played one. */
+export function positionedCast<E extends PlaceableEntity>(entities: readonly E[], persona: PersonaRef | undefined): E[] {
+  const played = persona?.source === 'world' ? persona.entityId : undefined;
+  return entities.filter((e) => !e.customPersona && e.id !== played);
+}
+
+/** Where the Presence rule places `entity` among the locations the world still has: a One entity at one
+ *  of them drawn with `random`, an entity with a Movement and one listed location there. None for
+ *  anyone else. */
+function placeByPresence(entity: PlaceableEntity, live: ReadonlySet<string>, random: () => number): string | undefined {
+  const options = (entity.locations ?? []).filter((id) => live.has(id));
+  if (entity.presence === 'random') return options.length ? options[Math.floor(random() * options.length)] : undefined;
+  return entity.movement && entity.locations?.length === 1 ? options[0] : undefined;
+}
+
+/** The positions a new game starts with, each placed by the Presence rule. */
+export function startingPositions(
+  entities: readonly PlaceableEntity[], locationIds: readonly string[], random: () => number = Math.random,
+): EntityPositions {
+  const live = new Set(locationIds);
+  const positions: EntityPositions = {};
+  for (const entity of entities) {
+    const at = placeByPresence(entity, live, random);
+    if (at) positions[entity.id] = at;
+  }
+  return positions;
+}
+
+/** A save's positions against the world as it is now. A deleted entity's position goes. An entity
+ *  without a live position is placed again by the Presence rule; one the rule doesn't place goes back
+ *  to every location it lists. The same map when nothing changes. */
+export function reconcilePositions(
+  saved: EntityPositions, entities: readonly PlaceableEntity[], locationIds: readonly string[], random: () => number = Math.random,
+): EntityPositions {
+  const live = new Set(locationIds);
+  const next: EntityPositions = {};
+  let changed = false;
+  for (const entity of entities) {
+    const at = saved[entity.id];
+    if (at !== undefined && live.has(at)) {
+      next[entity.id] = at;
+      continue;
+    }
+    const drawn = placeByPresence(entity, live, random);
+    if (drawn) next[entity.id] = drawn;
+    if (drawn !== at) changed = true;
+  }
+  if (!changed && Object.keys(saved).length !== Object.keys(next).length) changed = true;
+  return changed ? next : saved;
+}
+
+/** {@link reconcilePositions} on a saved state; the same state when nothing changes. */
+export function reconcileGameStatePositions<S extends { entityPositions?: EntityPositions }>(
+  state: S, entities: readonly PlaceableEntity[], locationIds: readonly string[], random: () => number = Math.random,
+): S {
+  const saved = state.entityPositions ?? {};
+  const next = reconcilePositions(saved, entities, locationIds, random);
+  if (next === saved) return state;
+  const { entityPositions: _old, ...rest } = state;
+  // `rest` is `S` minus an optional field, so it still satisfies `S`; TypeScript can't see that through Omit.
+  return (Object.keys(next).length ? { ...rest, entityPositions: next } : rest) as S;
 }
 
 /** `entities` with `locationId` dropped from every membership — run when a location is deleted, so no

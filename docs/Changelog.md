@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.3** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Entity Presence:**
+    - **An entity can stand at one random location from its list in each new game.** Set **One, at Random** under **Entities Here** on a location's **Presence** tab. Saves keep where it stands.
+
 ### Minor Changes
 
 #### 🔧 Fixed
