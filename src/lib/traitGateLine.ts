@@ -32,7 +32,7 @@ const merged = (parts: readonly GateLinePart[]): GateLinePart[] => parts.reduce<
 /** One row's Conditions joined by "and". */
 const rowParts = (row: readonly GateLinePart[][]): GateLinePart[] => listParts(AND, row);
 
-/** One row's Conditions joined by "and". */
+/** One row's Conditions joined by "and", as plain text. */
 export const rowText = (row: readonly string[]): string => plainLine(rowParts(row.map((text) => [text])));
 
 /** Rows joined by "or", Conditions by "and". A comma closes an "and" row before the "or", so

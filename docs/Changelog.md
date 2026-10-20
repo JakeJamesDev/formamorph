@@ -41,9 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **On NovelAI V4 and later, a `|` in an image prompt now starts a separate character prompt.** The first part describes the whole image. Other providers read a ` | ` with spaces as a comma, and NovelAI V3 keeps its own Prompt Mixing.
     - **Scene images on NovelAI V4 and later now send each entity as its own prompt, so their looks don't mix.** The scene tag line under the image shows each entity's part after a `|`. Edit one part to change only that entity.
   - **You Pill:**
-    - **The Entities tab now marks your persona with a small You pill after its name.** It replaces the "(You)" text.
-    - **The Traits tab and Enter World now mark your persona with the You pill after its name.** It replaces the colored "You" word on the entity headings and the trait category list.
-    - **The persona row, your persona's stat heading and the Stats panel picker now carry the You pill.** The picker shows it in the list and on the closed control, in place of "(You)".
+    - **Your persona now carries a You pill after its name in the side panel, the Traits tab and Enter World.** It replaces the "(You)" text and the colored "You" word, including in the Stats panel picker.
     - **A requirement on your persona's traits now reads your persona's name with the You pill.** In the World Editor, the owner list and the condition read **Persona** instead of **You**. Worlds and saves don't change.
   - **Persona:**
     - **The Player Name chip is now called Persona Name in the World Editor and the wiki.** Type `{{user}}` or search "player name" to find it. It still reads "you" or "the player" with no persona.
