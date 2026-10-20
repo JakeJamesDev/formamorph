@@ -11,7 +11,7 @@ import type { TurnPassOutcome, TurnResult, TurnRun } from './turnRunner';
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 import type { TurnCommitContext } from './computeTurnCommit';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
-import type { Entity, TurnToolCall } from '@/types';
+import type { Entity, GameLocation, TurnToolCall } from '@/types';
 
 /**
  * The commit computation as a pure function: outcomes in, one state delta out. Outcomes are parsed by the
@@ -409,7 +409,7 @@ describe('computeTurnCommit — entity movement', () => {
       [who('corvin', [...FOLLOWING]), 'Keep following'],
       [who('mira', [...NEW]), null],
     ]);
-    expect(commit.entityMoves).toEqual({ stayHere: ['albus'], comeAlong: ['wenna'] });
+    expect(commit.entityMoves).toEqual({ stayHere: ['albus'], comeAlong: ['wenna'], comeOnce: [], goTo: [] });
   });
 
   it('joins in order: stay here where the player stood, followers with the player, then come along', () => {
@@ -417,7 +417,7 @@ describe('computeTurnCommit — entity movement', () => {
     const { state, offer } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'square' });
     expect(state.positions).toEqual({ wenna: 'square', albus: 'inn', corvin: 'square' });
     expect(state.followers).toEqual(['corvin', 'wenna']);
-    expect(offer).toEqual([]);
+    expect(offer.comeAlong).toEqual([]);
   });
 
   it('keeps a follower following on every later move until it stays here', () => {
@@ -433,6 +433,64 @@ describe('computeTurnCommit — entity movement', () => {
     const { state } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'inn' });
     expect(state.followers).toEqual(['corvin']);
     expect(state.positions).toEqual(atInn.positions);
+  });
+
+  describe('a Moves Between entity', () => {
+    const blackwell: TurnPassSubject = {
+      name: 'Blackwell',
+      entity: { id: 'blackwell', name: 'Blackwell', movement: 'between', locations: ['keep', 'wall', 'tower'] } as Entity,
+      moves: [...NEW],
+      destinations: [{ id: 'keep', name: 'The Keep' }, { id: 'tower', name: 'The Tower' }] as GameLocation[],
+    };
+    const atWall = { positions: { blackwell: 'wall', albus: 'wall' }, followers: ['albus'] };
+
+    it('reads a place name as a move there', () => {
+      expect(autoCommit([[blackwell, 'The Tower']]).entityMoves.goTo).toEqual([{ id: 'blackwell', to: 'tower' }]);
+    });
+
+    it('goes to a location at once, whether or not the player moves', () => {
+      const commit = autoCommit([[blackwell, 'The Tower']]);
+      expect(commitEntityMoves(atWall, commit, { from: 'wall', to: 'wall' }).state.positions.blackwell).toBe('tower');
+      expect(commitEntityMoves(atWall, commit, { from: 'wall', to: 'keep' }).state.positions)
+        .toEqual({ blackwell: 'tower', albus: 'keep' });
+    });
+
+    it('comes along once into one of its locations and never joins the followers', () => {
+      const commit = autoCommit([[blackwell, 'Come along']]);
+      const went = commitEntityMoves(atWall, commit, { from: 'wall', to: 'keep' }).state;
+      expect(went.positions).toEqual({ blackwell: 'keep', albus: 'keep' });
+      expect(went.followers).toEqual(['albus']);
+      // The next move carries the followers only.
+      const next = commitEntityMoves(went, autoCommit([]), { from: 'keep', to: 'barrow' }).state;
+      expect(next.positions).toEqual({ blackwell: 'keep', albus: 'barrow' });
+    });
+
+    it('stays when the player goes outside its locations', () => {
+      const commit = autoCommit([[blackwell, 'Come along']]);
+      const { state } = commitEntityMoves(atWall, commit, { from: 'wall', to: 'barrow' });
+      expect(state.positions).toEqual({ blackwell: 'wall', albus: 'barrow' });
+      expect(state.followers).toEqual(['albus']);
+    });
+
+    it('in suggest mode, goes to a location at once and holds come along for Go', () => {
+      const { plan, result } = runOf(
+        [
+          { id: 'narration', raw: NARRATION },
+          { id: 'locationSuggest', raw: 'The Long Pier' },
+          { id: 'entityLocationSuggest', raw: 'The Tower', subject: blackwell },
+          { id: 'entityLocationSuggest', raw: 'Come along', subject: { ...blackwell, entity: { ...blackwell.entity!, id: 'hale' } } },
+        ],
+        {},
+        { locationAutoApply: false },
+      );
+      const commit = computeTurnCommit({ result, plan, context: context() })!;
+      const start = { positions: { blackwell: 'wall', hale: 'wall' }, followers: [] };
+      const offered = commitEntityMoves(start, commit, { from: 'wall', to: 'wall' });
+      expect(offered.state.positions).toEqual({ blackwell: 'tower', hale: 'wall' });
+      expect(offered.offer.comeOnce.map((once) => once.id)).toEqual(['hale']);
+      expect(moveWithPlayer(offered.state, offered.offer, 'keep').positions).toEqual({ blackwell: 'tower', hale: 'keep' });
+      expect(moveWithPlayer(offered.state, offered.offer, 'pier').positions).toEqual({ blackwell: 'tower', hale: 'wall' });
+    });
   });
 
   describe('in suggest mode', () => {
@@ -454,7 +512,7 @@ describe('computeTurnCommit — entity movement', () => {
     it('applies stay here at once and holds come along with the offer', () => {
       expect(offered.state.followers).toEqual(['corvin']);
       expect(offered.state.positions).toEqual(atInn.positions);
-      expect(offered.offer).toEqual(['wenna']);
+      expect(offered.offer.comeAlong).toEqual(['wenna']);
     });
 
     it('brings the waiting entity along on Go', () => {
@@ -471,7 +529,7 @@ describe('computeTurnCommit — entity movement', () => {
 
     it('lets a code move of the player beat the offer and carry come along with it', () => {
       const { state, offer } = commitEntityMoves(atInn, commit, { from: 'inn', to: 'keep' });
-      expect(offer).toEqual([]);
+      expect(offer.comeAlong).toEqual([]);
       expect(state.followers).toEqual(['corvin', 'wenna']);
       expect(state.positions).toEqual({ wenna: 'keep', albus: 'inn', corvin: 'keep' });
     });
@@ -479,7 +537,7 @@ describe('computeTurnCommit — entity movement', () => {
     it('applies nothing to wait on when no move is offered', () => {
       const stayCommit = suggestCommit('NONE', [[who('wenna', [...NEW]), 'Come along']]);
       const { state, offer } = commitEntityMoves(atInn, stayCommit, { from: 'inn', to: 'inn' });
-      expect(offer).toEqual([]);
+      expect(offer.comeAlong).toEqual([]);
       expect(state).toBe(atInn);
     });
   });

@@ -20,7 +20,7 @@ import { languageDirective } from '@/lib/languages';
 import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import {
-  ENTITY_MOVE_LABELS, entityMoveOptions, entityMoveOptionsText, entityMoveStateText, type EntityMoveReply,
+  entityMoveCandidates, entityMoveOptions, entityMoveOptionsText, entityMoveStateText, type EntityMove,
 } from '@/lib/entityFollowing';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
@@ -257,8 +257,9 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
 const entityLocationRequest = (input: TurnPlanInput, material: TurnMaterial, values: TokenValues, narration: string) => {
   const subject = subjectOf(material);
   const moves = subject.moves ?? entityMoveOptions(false);
+  const destinations = subject.destinations ?? [];
   return labeledRequest(
-    { type: 'entityLocation', maxTokens: locationChangeCap(moves.map((move) => ENTITY_MOVE_LABELS[move])), silent: false, quiet: true },
+    { type: 'entityLocation', maxTokens: locationChangeCap(subjectCandidates(subject).map(([label]) => label)), silent: false, quiet: true },
     systemTiled(input.prompts.entityLocation, layerValues(values, { '<CHARACTER NAME>': subject.name })),
     userTiled(
       input.prompts.entityLocationUser,
@@ -267,22 +268,26 @@ const entityLocationRequest = (input: TurnPlanInput, material: TurnMaterial, val
         '<PLAYER ACTION>': material.action,
         '<NARRATION>': narration,
         '<MOVE STATE>': entityMoveStateText(subject.name, moves.includes('keepFollowing')),
-        '<MOVE OPTIONS>': entityMoveOptionsText(moves),
+        '<MOVE OPTIONS>': entityMoveOptionsText(moves, destinations),
       },
       { '<MOVE STATE>': 'move-options', '<MOVE OPTIONS>': 'move-options' },
     ),
   );
 };
 
-/** The reply an entity location request matched among its own options, or null. */
-const parseEntityMove = (raw: string, material: TurnMaterial): EntityMoveReply | null => {
-  const moves = subjectOf(material).moves ?? entityMoveOptions(false);
-  const matched = matchLocationResponse(raw, moves.map((move) => ENTITY_MOVE_LABELS[move]));
-  return moves.find((move) => ENTITY_MOVE_LABELS[move] === matched) ?? null;
+/** Each line a subject is offered, with the move it stands for. */
+const subjectCandidates = (subject: TurnPassSubject): [string, EntityMove][] =>
+  entityMoveCandidates(subject.moves ?? entityMoveOptions(false), subject.destinations);
+
+/** The move an entity location request matched among its own options, or null. */
+const parseEntityMove = (raw: string, material: TurnMaterial): EntityMove | null => {
+  const candidates = subjectCandidates(subjectOf(material));
+  const matched = matchLocationResponse(raw, candidates.map(([label]) => label));
+  return candidates.find(([label]) => label === matched)?.[1] ?? null;
 };
 
 /** Each tracked entity in the scene, asked beside the up-front router whether it moves with the player. */
-const entityLocationAutoPass: TurnPassRecord<EntityMoveReply | null> = {
+const entityLocationAutoPass: TurnPassRecord<EntityMove | null> = {
   id: 'entityLocationAuto',
   type: 'entityLocation',
   stage: 'preNarration',
@@ -295,7 +300,7 @@ const entityLocationAutoPass: TurnPassRecord<EntityMoveReply | null> = {
 };
 
 /** Each tracked entity in the scene, asked beside the suggest router. Suggest mode only. */
-const entityLocationSuggestPass: TurnPassRecord<EntityMoveReply | null> = {
+const entityLocationSuggestPass: TurnPassRecord<EntityMove | null> = {
   id: 'entityLocationSuggest',
   type: 'entityLocation',
   stage: 'postNarration',

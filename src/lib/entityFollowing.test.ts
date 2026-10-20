@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity } from '@/types';
+import type { Connection, Entity, GameLocation } from '@/types';
 import {
-  ENTITY_MOVE_LABELS, entityMoveOptions, entityMoveSubjects, joinEntityMoves, liveFollowers, movedPositions,
+  ENTITY_MOVE_LABELS, entityMoveDestinations, entityMoveOffers, entityMoveOptions, entityMoveSubjects, joinEntityMoves, liveFollowers, movedPositions,
+  NO_ENTITY_MOVES,
 } from './entityFollowing';
 import { defaultEntityLocationPrompt } from '@/components/game/GamePrompts';
 import { entitiesInPlay } from './entityPresence';
@@ -42,6 +43,49 @@ describe('who gets an entity location request', () => {
   });
 });
 
+describe('a Moves Between entity', () => {
+  const location = (id: string, over: Partial<GameLocation> = {}): GameLocation => ({ id, name: id.toUpperCase(), ...over }) as GameLocation;
+  // keep ← wall → tower; the barrow hangs off the tower, the yard sits inside the keep.
+  const locations = [location('keep'), location('yard', { parentId: 'keep' }), location('wall'), location('tower'), location('barrow')];
+  const connections = [
+    { id: 'c1', a: 'keep', b: 'wall', aToB: {}, bToA: {} },
+    { id: 'c2', a: 'wall', b: 'tower', aToB: {}, bToA: {} },
+    { id: 'c3', a: 'tower', b: 'barrow', aToB: {}, bToA: {} },
+  ] as Connection[];
+  const blackwell = entity('blackwell', { movement: 'between', locations: ['keep', 'wall', 'tower'] });
+  const names = (standingAt: string, who = blackwell) =>
+    entityMoveDestinations(who, standingAt, locations, connections).map((l) => l.id);
+
+  it('is asked when it stands where the player is', () => {
+    expect(entityMoveSubjects([blackwell], { positions: { blackwell: 'wall' }, followers: [] }, 'wall')).toEqual([blackwell]);
+    expect(entityMoveSubjects([blackwell], { positions: { blackwell: 'keep' }, followers: [] }, 'wall')).toEqual([]);
+  });
+
+  it('is offered each of its own locations one hop away, and nothing else', () => {
+    expect(names('wall')).toEqual(['keep', 'tower']);
+    // The yard is a tree neighbor and the barrow a Connection away, but neither is its own.
+    expect(names('keep')).toEqual(['wall']);
+    expect(names('tower')).toEqual(['wall']);
+  });
+
+  it('respects one-way legs', () => {
+    const oneWay = [{ id: 'c1', a: 'keep', b: 'wall', aToB: {} }] as Connection[];
+    expect(entityMoveDestinations(blackwell, 'wall', locations, oneWay).map((l) => l.id)).toEqual([]);
+    expect(entityMoveDestinations(blackwell, 'keep', locations, oneWay).map((l) => l.id)).toEqual(['wall']);
+  });
+
+  it('is offered stay, come along and its places, but walks nowhere while it follows', () => {
+    const offers = (following: boolean) => entityMoveOffers(blackwell, following, 'wall', locations, connections);
+    expect(offers(false).moves).toEqual(['stay', 'comeAlong']);
+    expect(offers(false).destinations.map((l) => l.id)).toEqual(['keep', 'tower']);
+    expect(offers(true)).toEqual({ moves: ['keepFollowing', 'stayHere'], destinations: [] });
+  });
+
+  it('is the only Movement offered places', () => {
+    expect(names('wall', entity('sylvie', { movement: 'follow', locations: ['keep', 'wall'] }))).toEqual([]);
+  });
+});
+
 describe('the shipped entity location prompt', () => {
   it('names every reply the request can offer', () => {
     for (const label of Object.values(ENTITY_MOVE_LABELS)) expect(defaultEntityLocationPrompt).toContain(label);
@@ -51,14 +95,14 @@ describe('the shipped entity location prompt', () => {
 describe('what a join writes back', () => {
   const start = { positions: { sylvie: 'inn', albus: 'inn', wenna: 'inn' }, followers: ['albus'] };
   it('writes only the positions it moved', () => {
-    const joined = joinEntityMoves(start, { from: 'inn', to: 'square' }, { stayHere: [], comeAlong: ['sylvie'] });
+    const joined = joinEntityMoves(start, { from: 'inn', to: 'square' }, { ...NO_ENTITY_MOVES, comeAlong: ['sylvie'] });
     expect(movedPositions(joined.positions, start.positions)).toEqual({ sylvie: 'square', albus: 'square' });
   });
 
   it('puts back a join the turn applied early when the commit ends where the turn began', () => {
-    const early = joinEntityMoves(start, { from: 'inn', to: 'square' }, { stayHere: [], comeAlong: ['sylvie'] });
+    const early = joinEntityMoves(start, { from: 'inn', to: 'square' }, { ...NO_ENTITY_MOVES, comeAlong: ['sylvie'] });
     // Code moved the player back, so the commit's join is the start itself.
-    const final = joinEntityMoves(start, { from: 'inn', to: 'inn' }, { stayHere: [], comeAlong: ['sylvie'] });
+    const final = joinEntityMoves(start, { from: 'inn', to: 'inn' }, { ...NO_ENTITY_MOVES, comeAlong: ['sylvie'] });
     expect(final).toBe(start);
     expect(movedPositions(final.positions, early.positions)).toEqual({ sylvie: 'inn', albus: 'inn' });
   });

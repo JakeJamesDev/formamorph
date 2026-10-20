@@ -220,7 +220,8 @@ export const defaultEntityLocationPrompt = `You track where one character goes i
 <ENTITIES|summary.notraits.nostats.markdown|header="Characters Here">
 Decide for <CHARACTER NAME> alone, from what the action does with <CHARACTER NAME>, and answer with a line from the list you are given:
 - A list with Come along and Stay: <CHARACTER NAME> is not yet with the player character. Come along when the action takes <CHARACTER NAME> along, by name or as one of everyone present. Stay for every other action, including one that invites, leads or talks about someone else.
-- A list with Keep following and Stay here: <CHARACTER NAME> already travels with the player character. Keep following wherever the player character goes. Stay here only when the action tells <CHARACTER NAME> to wait or to stay behind.`;
+- A list with Keep following and Stay here: <CHARACTER NAME> already travels with the player character. Keep following wherever the player character goes. Stay here only when the action tells <CHARACTER NAME> to wait or to stay behind.
+- A list that also names places: <CHARACTER NAME> can also go to one of those places alone. Answer with the place when the action sends <CHARACTER NAME> there without the player character. Otherwise answer Come along or Stay as above.`;
 
 export const defaultEntityLocationUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
 <NARRATION|format=markdown|header="What Happened">
