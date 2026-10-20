@@ -171,6 +171,12 @@ The played persona ignores Presence and Movement: it has no position and gets no
 
 **Code and World Tools.** Each entry of the existing `entities` record gets three writes: `entities["Name"].move(target)`, `.follow()` and `.unfollow()`. `move` resolves the target by id, then by name, and an unknown target throws. The writes work on any entity, and a write on a Free entity starts tracking it. `follow` adds the entity to the followers and moves it to the player's location. `unfollow` removes it from the followers and leaves it where the player is.
 
+- The three writes on the persona, however it is reached, throw "The persona moves with the player". An unknown entity throws "The game has no entity named "<name>"" and fails the run.
+- `move` on a follower also removes it from the followers. `unfollow` on an entity that isn't following changes nothing; only `move` and `follow` start tracking.
+- Entity writes from every turn timing collect with the other world writes and apply at the commit, after followers and entity replies. Prompts of the same turn don't see them. Runs outside a turn drop them, as they drop `location.move`.
+- In suggest mode, a code write on an entity whose "come along" waits on Go removes it from the pending offer.
+- Test Code lists one line per write, for example `entities.Wight.move: Barrow` and `entities.Albus.follow()`.
+
 **Saves and stale data.** On load, a position on a location that no longer exists falls back to the Presence start rule. A follower or position for an entity that no longer exists is dropped. A One entity with no saved position is placed by the Presence rule. The world stays authoritative for saves.
 
 Load keeps every other position, because it can't tell a new-game draw from a code move. So switching an entity from One to Everywhere Listed reaches an existing save only on a new game.
