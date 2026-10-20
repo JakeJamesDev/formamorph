@@ -6,6 +6,7 @@
 import type { Entity } from '@/types';
 import { sameCharacterName } from './entityMatch';
 import { normalizeBooruTags } from './imagePrompt';
+import { joinPromptParts } from './imageGen/promptParts';
 import { escapeRegExp } from './utils';
 
 /** One character in frame: the display name (for the model's user message) and their authored tags. */
@@ -105,6 +106,17 @@ export function stripPlaces(tag: string, places: string[], knownTags?: ReadonlyS
   return out.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * What one character counts as. Their own tags can only describe one character, so a `2girls` left in an
+ * authored field still reads as one girl.
+ */
+function characterKind(character: SceneCharacter): 'girl' | 'boy' | 'other' {
+  const tags = splitTags(character.tags.toLowerCase());
+  if (tags.some((t) => GIRL_COUNT.test(t))) return 'girl';
+  if (tags.some((t) => BOY_COUNT.test(t))) return 'boy';
+  return 'other';
+}
+
 /** Booru plural for a count: `1girl`, `2girls`. */
 const countTag = (n: number, singular: string, plural: string) => `${n}${n === 1 ? singular : plural}`;
 
@@ -121,11 +133,9 @@ export function deriveCountTags(characters: SceneCharacter[]): string[] {
   let boys = 0;
   let others = 0;
   for (const character of characters) {
-    const tags = splitTags(character.tags.toLowerCase());
-    // A character's own tags can only describe one character, so a `2girls` left in an authored field
-    // still counts as one subject here.
-    if (tags.some((t) => GIRL_COUNT.test(t))) girls += 1;
-    else if (tags.some((t) => BOY_COUNT.test(t))) boys += 1;
+    const kind = characterKind(character);
+    if (kind === 'girl') girls += 1;
+    else if (kind === 'boy') boys += 1;
     else others += 1;
   }
   const out: string[] = [];
@@ -138,7 +148,8 @@ export function deriveCountTags(characters: SceneCharacter[]): string[] {
 /**
  * Build the full prompt line for a scene image, in booru weight order: who is in frame, what they look
  * like, what they're doing, then where. Tags are normalized and deduped across all four sources, first
- * occurrence winning — so a tag the location and a character share is not sent twice.
+ * occurrence winning — so a tag the location and a character share is not sent twice. The segmented form
+ * dedupes per part instead.
  *
  * Characters past `MAX_SCENE_CHARACTERS` are dropped; the caller passes them in prominence order.
  */
@@ -153,11 +164,16 @@ export function composeSceneTags(input: {
   knownTags?: ReadonlySet<string>;
   /** Off keeps each tag's text as written (see normalizeBooruTags). */
   cleanTags?: boolean;
+  /**
+   * NovelAI's multi-character form: `<counts>, <action>, <place> | <kind>, <character tags> | …`, each part
+   * normalized and deduped on its own so two characters can share a tag.
+   */
+  segmented?: boolean;
 }): string {
   const characters = input.characters.slice(0, MAX_SCENE_CHARACTERS);
   const counts = deriveCountTags(characters);
   // Authored tags are never scrubbed for names or places: an author who typed one meant it.
-  const appearance = characters.flatMap((c) => splitTags(c.tags)).filter((t) => !isCountTag(t.toLowerCase()));
+  const ownTags = (c: SceneCharacter) => splitTags(c.tags).filter((t) => !isCountTag(t.toLowerCase()));
   // The model is told who is in frame, so it writes them in by name; take the names back out.
   const castNames = characters.flatMap((c) => [c.name, ...(c.aliases ?? [])]);
   const action = splitTags(input.actionTags)
@@ -168,5 +184,10 @@ export function composeSceneTags(input: {
     (t) => !(characters.length > 0 && NO_HUMANS.test(t.toLowerCase())),
   );
   // normalizeBooruTags does the lowercasing, un-joining and dedupe the whole pipeline relies on.
-  return normalizeBooruTags([...counts, ...appearance, ...action, ...place].join(', '), input.cleanTags);
+  const normalize = (tags: string[]) => normalizeBooruTags(tags.join(', '), input.cleanTags);
+  if (!input.segmented) {
+    return normalize([...counts, ...characters.flatMap(ownTags), ...action, ...place]);
+  }
+  const parts = characters.map((c) => normalize([characterKind(c), ...ownTags(c)]));
+  return joinPromptParts([normalize([...counts, ...action, ...place]), ...parts]);
 }
