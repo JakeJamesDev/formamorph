@@ -14,7 +14,7 @@ import {
   codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
 } from './statCodePlaceholders';
 import { codeEntities, sandboxTraits, worldTraitPlaces, type CodeEntities, type CodeEntity } from './statCodeTraits';
-import { sampleSwitchedTrait } from './scriptTestSamples';
+import { sampleNarration, sampleSwitchedTrait } from './scriptTestSamples';
 import { randomUUID } from './uuid';
 import { gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
@@ -62,8 +62,9 @@ export interface ScriptRunUnit {
   home: UnitHome;
   timing: RunTiming;
   code: string;
-  /** During AI Output's sentence. */
-  narration?: NarrationInput;
+  /** During AI Output's narration: play's live input, or an editor run's sentence, which the snapshot builds into
+   *  the first sentence of a reply. */
+  narration?: NarrationInput | string;
   /** When a Trait Switches' switch, and the world its trait reads. `sample` is an editor run's: the home's own
    *  trait, else the world's first trait (Q49). */
   switched?: { event: TraitSwitchEvent; world: TraitWorld } | 'sample';
@@ -288,7 +289,9 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
       ...(owner && { owner }), dictionaries: read.dictionaries, ...(unit.prompts && { prompts: unit.prompts }),
       ...(read.places && { places: read.places }), ...(read.discovered && { discovered: read.discovered }),
-      ...(unit.timing === 'output' && unit.narration && { narration: unit.narration }),
+      ...(unit.timing === 'output' && unit.narration !== undefined && {
+        narration: typeof unit.narration === 'string' ? sampleNarration(unit.narration) : unit.narration,
+      }),
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
       ...(options.openCast && { openCast: true }),
     };

@@ -9,7 +9,7 @@
  */
 import type { StatCodeFailure, StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { SAMPLE_SENTENCE, sampleNarration } from '@/lib/scriptTestSamples';
+import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import { askedBy, type ScriptPromptHost } from '@/lib/scriptPrompts';
 import {
   ruleScripts, scriptFinding, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
@@ -119,7 +119,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
     const result = await snapshotFor(timing).run({
       home, timing, code,
       ...(prompts && { prompts: askedBy(prompts, label) }),
-      ...(timing === 'output' && { narration: sampleNarration(SAMPLE_SENTENCE) }),
+      ...(timing === 'output' && { narration: SAMPLE_SENTENCE }),
       ...(timing === 'switch' && { switched: 'sample' as const }),
     });
     if (result.error) {
