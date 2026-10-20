@@ -234,6 +234,7 @@
       "aiDescription": "The last stronghold before the wild hills, a squat square keep with a walled gate yard, stables, a smithy and a barracks. Captain Blackwell commands it. A written call for hands is nailed to the gate post: the barrow beyond the wall has opened, and the keep pays in gold and renown for anyone who will go and see why. Guards drill in the yard by day. The gate yard smells of horses, tar, woodsmoke and cold iron from the smithy. Since the barrow opened, the gate is barred at dark and the wall bell rings at every alarm.",
       "aiSummary": "The frontier stronghold and gate yard where the call for hands is posted.",
       "parentId": null,
+      "nearbyUsesConnections": true,
       "isStarting": true,
       "imageTags": "stone fortress, frontier keep, walled gate yard, banners, guards, overcast sky, high fantasy"
     },
@@ -244,6 +245,7 @@
       "aiDescription": "The market square of the small town that grew up under Emberwatch Keep. Timber stalls sell wool, salted fish and tools. A public well stands at the center, a notice board beside it. A stone plinth marks where a statue was pulled down and never replaced. Farmers, traders and off-duty guards cross it all day; rumors travel here faster than riders.",
       "aiSummary": "The town market under the keep, a well and a notice board at its center.",
       "parentId": null,
+      "nearbyUsesConnections": true,
       "imageTags": "medieval market square, timber stalls, stone well, notice board, empty statue plinth, small town, high fantasy"
     },
     {
@@ -253,6 +255,7 @@
       "aiDescription": "A low-beamed tavern with a great hearth that has burned since the keep was raised. The taproom serves dark beer and mutton stew. A back table under the stairs belongs by custom to adventurers; maps get drawn on it in spilled beer. Rooms upstairs rent by the night. The tavern keeper hears everything and repeats half of it.",
       "aiSummary": "The town tavern, its hearth and back table where adventurers gather.",
       "parentId": null,
+      "nearbyUsesConnections": true,
       "imageTags": "medieval tavern interior, low wooden beams, great stone hearth, firelight, crowded taproom, high fantasy"
     },
     {
@@ -262,6 +265,7 @@
       "aiDescription": "A small round stone chapel beside the square. A brazier at its center holds the Ember's flame, tended day and night. Bundled herbs hang from the rafters, and cots line the walls for the sick and wounded. Mother Hesk runs it as a chapel and an infirmary at once. Blessings, healing and honest counsel are found here; so is a lecture for anyone who arrives bleeding from something stupid.",
       "aiSummary": "The round chapel and infirmary where Mother Hesk keeps the flame.",
       "parentId": null,
+      "nearbyUsesConnections": true,
       "imageTags": "small round stone chapel, central brazier, sacred flame, hanging herbs, infirmary cots, warm light"
     },
     {
@@ -271,6 +275,7 @@
       "aiDescription": "A cracked stone tower on the ridge above Emberwatch Keep, older than the keep itself. Its stair is sound but the roof is half gone. From the top the whole valley shows: the town, the river, the boundary wall, and beyond it the barrow field. The great mound's split side shows from here as a dark gash in the grass. A guard post here watches the wall, and since the barrow opened, the night watch reports cold lights moving among the mounds after dark.",
       "aiSummary": "The ridge tower above the keep with a view over the wall to the barrow field.",
       "parentId": null,
+      "nearbyUsesConnections": true,
       "imageTags": "ruined stone watchtower, ridge, half-collapsed roof, valley view, burial mounds in distance, dusk"
     },
     {
@@ -280,6 +285,7 @@
       "aiDescription": "A field of ancient grassy burial mounds a mile past the keep's boundary wall. The largest mound has split open along its side where the keep quarried stone for the wall last spring, and a carved passage leads down into it. Cold air breathes out of the opening, and nothing grows near it now. The upper halls hold grave goods and the barrow dead who guard them. The passage ends far below in the Bier Chamber.",
       "aiSummary": "The opened burial mound past the boundary wall, its upper halls held by the barrow dead.",
       "parentId": null,
+      "nearbyUsesConnections": true,
       "imageTags": "grassy burial mounds, opened barrow, stone passage entrance, cold mist, dead grass, gloomy sky"
     },
     {
@@ -289,6 +295,7 @@
       "aiDescription": "The round burial chamber at the heart of the great barrow, reached down a long carved passage. King Haldren's stone bier stands at its center under a low dome. Grave goods lie heaped around it: rusted arms, gold cups, and a sealed iron chest. Frost covers every surface. The Barrow Wight keeps watch here over the king it served. An empty socket in the bier's head is shaped for the crown the king was buried in.",
       "aiSummary": "The frost-covered chamber at the barrow's heart, where the Wight guards the king's bier.",
       "parentId": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
+      "nearbyUsesConnections": true,
       "imageTags": "underground burial chamber, stone bier, low dome, frost, grave goods, dim cold light, dark fantasy"
     }
   ],
