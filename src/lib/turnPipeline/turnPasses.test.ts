@@ -5,7 +5,7 @@ import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues } from '@/lib/promptValues';
 import { planTurn } from './planTurn';
 import type { ChatMessage, Entity, PlayerStat } from '@/types';
-import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
+import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPassSubject, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
@@ -171,6 +171,53 @@ describe('turn pass requests', () => {
       expect(pass('locationAuto').parseResponse('The Far Bank', material())).toBe('The Far Bank');
       expect(pass('locationAuto').parseResponse('NONE', material())).toBeNull();
       expect(pass('locationAuto').parseResponse('Atlantis', material())).toBeNull();
+    });
+  });
+
+  describe('the entity location request', () => {
+    const sylvie: Entity = { id: 'e2', name: 'Sylvie', movement: 'follow' } as Entity;
+    const asking = (moves: TurnPassSubject['moves']) => ({ subject: { name: 'Sylvie', entity: sylvie, moves } });
+
+    it('asks one entity, before the move, from the action alone', () => {
+      const request = build('entityLocationAuto', asking(['stay', 'comeAlong']));
+      expect(request.type).toBe('entityLocation');
+      expect(request.systemPrompt).toBe('MOVER CURRENT-LOCATION for Sylvie');
+      expect(request.messages).toEqual([{ role: 'user', content: 'Move: Sylvie | I read the notices. |  | Sylvie is not with the player character. | - Stay\n- Come along' }]);
+    });
+
+    it('asks after the narration in suggest mode, from the turn context and the narration', () => {
+      const request = build('entityLocationSuggest', asking(['stay', 'comeAlong']));
+      expect(request.systemPrompt).toBe('MOVER TURN-LOCATION for Sylvie');
+      expect(request.messages[0].content).toContain('| The notices are damp and half-illegible. |');
+    });
+
+    it('offers a follower keep following or stay here', () => {
+      expect(lastMessage('entityLocationAuto', asking(['keepFollowing', 'stayHere'])))
+        .toMatch(/\| Sylvie is following the player character\. \| - Keep following\n- Stay here$/);
+    });
+
+    it('caps the reply at the longest option plus slack', () => {
+      const cap = (moves: TurnPassSubject['moves']) => build('entityLocationAuto', asking(moves)).maxTokens!;
+      expect(cap(['keepFollowing', 'stayHere'])).toBeGreaterThan(cap(['stay', 'comeAlong']));
+      expect(cap(['keepFollowing', 'stayHere'])).toBeLessThan(16);
+    });
+
+    it('rides the batch without a status label of its own, and shows in the request capture', () => {
+      const request = build('entityLocationAuto', asking(['stay', 'comeAlong']));
+      expect(request.quiet).toBe(true);
+      expect(request.silent).toBe(false);
+    });
+
+    it('reads the reply against its own options only', () => {
+      const read = (raw: string, moves: TurnPassSubject['moves']) =>
+        pass('entityLocationAuto').parseResponse(raw, material(asking(moves)));
+      expect(read('Come along', ['stay', 'comeAlong'])).toBe('comeAlong');
+      expect(read('Stay.', ['stay', 'comeAlong'])).toBe('stay');
+      expect(read('Stay here', ['keepFollowing', 'stayHere'])).toBe('stayHere');
+      expect(read('keep following', ['keepFollowing', 'stayHere'])).toBe('keepFollowing');
+      // A follower is never offered "come along", so the word means nothing from one.
+      expect(read('Come along', ['keepFollowing', 'stayHere'])).toBeNull();
+      expect(read('NONE', ['stay', 'comeAlong'])).toBeNull();
     });
   });
 
@@ -608,6 +655,8 @@ describe('every pass request anatomy', () => {
   const SOURCES: Record<string, { system: boolean; user: boolean }> = {
     locationAuto: { system: true, user: true },
     locationSuggest: { system: true, user: true },
+    entityLocationAuto: { system: true, user: true },
+    entityLocationSuggest: { system: true, user: true },
     thinking: { system: true, user: false },
     director: { system: true, user: true },
     character: { system: true, user: false },

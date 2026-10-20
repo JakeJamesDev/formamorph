@@ -6,7 +6,7 @@ export type PromptAttachmentsMap = Partial<Record<AIRequestType, boolean>>;
 /** The prompts whose turn pass sends the player action, so the only ones that can carry its images. */
 export const ATTACHMENT_PROMPTS: ReadonlySet<AIRequestType> = new Set<AIRequestType>([
   'narration', 'thinking', 'director', 'character', 'storyboard',
-  'choices', 'statUpdates', 'locationChange', 'timePassed', 'summary',
+  'choices', 'statUpdates', 'locationChange', 'entityLocation', 'timePassed', 'summary',
 ]);
 
 /** Whether a prompt's pass receives the action's images: its stored flag, else on for Narration only. */

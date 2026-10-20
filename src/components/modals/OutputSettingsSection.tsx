@@ -33,6 +33,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
     statUpdatesEnabled, setStatUpdatesEnabled,
     locationChangeEnabled, setLocationChangeEnabled,
     locationAutoApply, setLocationAutoApply,
+    entityMovement, setEntityMovement,
     thinkingMode, setThinkingMode,
     limitActiveCharacters, setLimitActiveCharacters,
     activeCharacterLimit, setActiveCharacterLimit,
@@ -92,6 +93,12 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
           checked={locationAutoApply}
           onChange={setLocationAutoApply}
           {...rowCopy('moveAutomatically')}
+        />
+        <CheckRow
+          htmlFor="entityMovement"
+          checked={entityMovement}
+          onChange={setEntityMovement}
+          {...rowCopy('entityMovement')}
         />
         </SubGroup>
       )}

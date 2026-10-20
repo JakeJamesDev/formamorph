@@ -6,6 +6,7 @@ const base: PromptTabFlags = {
   choicesEnabled: false,
   statUpdatesEnabled: false,
   locationChangeEnabled: false,
+  entityMovement: false,
   memoryDigests: false,
   characterDiaries: false,
   describeCharacters: false,

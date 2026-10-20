@@ -9,7 +9,7 @@ import {
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
   defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt,
   defaultSceneTagsPrompt, defaultSceneTagsUserPrompt,
-  defaultLocationChangePrompt, defaultLocationChangeUserPrompt,
+  defaultLocationChangePrompt, defaultLocationChangeUserPrompt, defaultEntityLocationPrompt, defaultEntityLocationUserPrompt,
   defaultNarrationUserPrompt, defaultOocDirectivePrompt,
   defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, OPENING_SCENE_CUE,
   defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt,
@@ -39,6 +39,8 @@ export const PARITY_SETTINGS: TurnSettings = {
   statCount: 3,
   locationChangeEnabled: true,
   locationAutoApply: true,
+  // On, as it ships: a world with no tracked entity sends no entity request, so the recording still holds.
+  entityMovement: true,
   aiClock: true,
   memoryDigests: true,
   characterDiaries: true,
@@ -55,6 +57,8 @@ export const PARITY_SETTINGS: TurnSettings = {
 export const PARITY_PROMPTS: TurnPrompts = {
   locationChange: defaultLocationChangePrompt,
   locationChangeUser: defaultLocationChangeUserPrompt,
+  entityLocation: defaultEntityLocationPrompt,
+  entityLocationUser: defaultEntityLocationUserPrompt,
   thinking: defaultThinkingPrompt,
   director: defaultDirectorPrompt,
   directorUser: defaultDirectorUserPrompt,

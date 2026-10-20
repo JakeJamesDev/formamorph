@@ -904,7 +904,7 @@ function useProvideSettings() {
   const {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
-    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
+    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, entityLocationPrompt, entityLocationUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
     milestoneSelectPrompt, milestoneSelectUserPrompt,
   } = promptValues;
@@ -926,6 +926,8 @@ function useProvideSettings() {
   const setChoicesUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'choicesUserPrompt', v));
   const setStatUpdatesUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
   const setLocationChangeUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
+  const setEntityLocationPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'entityLocationPrompt', v));
+  const setEntityLocationUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'entityLocationUserPrompt', v));
   const setSummaryUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
   const setMilestoneSelectPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'milestoneSelectPrompt', v));
   const setMilestoneSelectUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'milestoneSelectUserPrompt', v));
@@ -1211,6 +1213,8 @@ function useProvideSettings() {
   const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, true, boolCodec);
   // When on, a detected in-scope move is applied immediately instead of prompting a "Move to X?" confirmation.
   const [locationAutoApply, setLocationAutoApply] = usePersistentState<boolean>(`${APP_ID}_locationAutoApply`, false, boolCodec);
+  // Off stops only the entity location requests; the authors' movement rules and the followers still hold.
+  const [entityMovement, setEntityMovement] = usePersistentState<boolean>(`${APP_ID}_entityMovement`, true, boolCodec);
   // Staged thinking: cap how many characters the director casts (each gets its own sequential pass). When off,
   // the cast is unbounded. Drives both the hard cap (matchCastToEntities) and the <ACTIVE CHARACTER GUIDANCE> chip.
   const [limitActiveCharacters, setLimitActiveCharacters] = usePersistentState<boolean>(`${APP_ID}_limitActiveCharacters`, true, boolCodec);
@@ -1877,6 +1881,8 @@ function useProvideSettings() {
     setLocationChangeEnabled,
     locationAutoApply,
     setLocationAutoApply,
+    entityMovement,
+    setEntityMovement,
     limitActiveCharacters,
     setLimitActiveCharacters,
     activeCharacterLimit,
@@ -1935,6 +1941,10 @@ function useProvideSettings() {
     setStatUpdatesUserPrompt,
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
+    entityLocationPrompt,
+    setEntityLocationPrompt,
+    entityLocationUserPrompt,
+    setEntityLocationUserPrompt,
     milestoneSelectPrompt,
     setMilestoneSelectPrompt,
     milestoneSelectUserPrompt,

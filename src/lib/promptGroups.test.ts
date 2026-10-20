@@ -4,7 +4,7 @@ import { computePromptTabAvailability } from './promptTabAvailability';
 import { sentenceShapeViolation } from '@/test/copyShape';
 
 const everyFeature = {
-  choicesEnabled: true, statUpdatesEnabled: true, locationChangeEnabled: true,
+  choicesEnabled: true, statUpdatesEnabled: true, locationChangeEnabled: true, entityMovement: true,
   memoryDigests: true, characterDiaries: true, describeCharacters: true, aiClock: true, sceneImages: true,
 };
 

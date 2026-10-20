@@ -392,7 +392,7 @@ describe('anatomyToggleAvailability', () => {
 const SYSTEM_TEMPLATE: Record<string, string> = {
   narration: 'system', thinking: 'thinking', director: 'director', character: 'character',
   storyboard: 'storyboard', choices: 'choices', statupdates: 'statUpdates',
-  location: 'locationChange', summary: 'summary', diary: 'diary',
+  location: 'locationChange', entitylocation: 'entityLocation', summary: 'summary', diary: 'diary',
   timepassed: 'timePassed', timeopening: 'openingTime', scenetags: 'sceneTags',
   discover: 'discoverEntity', milestone: 'milestoneSelect',
 };

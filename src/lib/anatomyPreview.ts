@@ -209,7 +209,7 @@ function previewInput(prompts: AnatomyPreviewPrompts, settings: AnatomyPreviewSe
       thinkingMode: settings.thinkingMode,
       concurrentTurnRequests: true,
       choicesEnabled: true, statUpdatesEnabled: true, statCount: 3,
-      locationChangeEnabled: true, locationAutoApply: settings.locationAutoApply,
+      locationChangeEnabled: true, locationAutoApply: settings.locationAutoApply, entityMovement: true,
       aiClock: true, memoryDigests: recap, characterDiaries: true, describeCharacters: true,
       imageAttachments: false, promptAttachments: {}, language: settings.language,
       stripLinksAndImages: false,
@@ -292,6 +292,13 @@ const LOCATION_PASSES: { id: TurnPassId; caption: string }[] = [
   { id: 'locationSuggest', caption: 'Sent after the narration. The move is offered, and you choose whether to take it.' },
 ];
 
+/** The entity location prompt rides beside whichever location request the turn sends. */
+const ENTITY_LOCATION_CAPTION = `Sent with the location request, once per entity that can follow you. ${EXAMPLE_CAPTION}`;
+const ENTITY_LOCATION_PASSES: { id: TurnPassId; caption: string }[] = [
+  { id: 'entityLocationAuto', caption: ENTITY_LOCATION_CAPTION },
+  { id: 'entityLocationSuggest', caption: ENTITY_LOCATION_CAPTION },
+];
+
 /**
  * Every request one prompt is part of, drawn under the player's own settings. An empty list means this
  * configuration never sends the prompt's request at all — which the panel says outright, rather than
@@ -327,6 +334,11 @@ export function buildAnatomyHub(
   };
   if (tab === 'location') {
     return LOCATION_PASSES
+      .filter(({ id }) => passById(id).isDue(input))
+      .map(({ id, caption }) => draw(passById(id), caption));
+  }
+  if (tab === 'entitylocation') {
+    return ENTITY_LOCATION_PASSES
       .filter(({ id }) => passById(id).isDue(input))
       .map(({ id, caption }) => draw(passById(id), caption));
   }

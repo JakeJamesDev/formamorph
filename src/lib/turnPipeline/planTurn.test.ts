@@ -24,6 +24,7 @@ describe('planTurn', () => {
   it('dispatches every pass, in stage order, with everything enabled', () => {
     expect(ids()).toEqual([
       'locationAuto',
+      'entityLocationAuto',
       'director',
       'character',
       'storyboard',
@@ -56,7 +57,7 @@ describe('planTurn', () => {
 
   it('groups passes by stage', () => {
     const plan = planTurn(input());
-    expect(passesInStage(plan, 'preNarration').map((p) => p.id)).toEqual(['locationAuto']);
+    expect(passesInStage(plan, 'preNarration').map((p) => p.id)).toEqual(['locationAuto', 'entityLocationAuto']);
     expect(passesInStage(plan, 'planning').map((p) => p.id)).toEqual(['director', 'character', 'storyboard']);
     expect(passesInStage(plan, 'narration').map((p) => p.id)).toEqual(['narration']);
     expect(planHasPass(plan, 'choices')).toBe(true);
@@ -75,7 +76,7 @@ describe('planTurn', () => {
       expect(serial).not.toContain('diary');
       expect(serial).not.toContain('discoverEntity');
       // The player-facing passes still run either way.
-      expect(serial).toEqual(['locationAuto', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'timePassed']);
+      expect(serial).toEqual(['locationAuto', 'entityLocationAuto', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'timePassed']);
     });
   });
 
@@ -127,6 +128,43 @@ describe('planTurn', () => {
 
     it('skips the up-front router when the player is nowhere', () => {
       expect(ids({ hasCurrentLocation: false })).not.toContain('locationAuto');
+    });
+  });
+
+  describe('the entity location passes', () => {
+    it('ride beside the player router in its own stage, in either mode', () => {
+      expect(ids()).toContain('entityLocationAuto');
+      expect(ids()).not.toContain('entityLocationSuggest');
+      const suggest = ids({}, { locationAutoApply: false });
+      expect(suggest).toContain('entityLocationSuggest');
+      expect(suggest).not.toContain('entityLocationAuto');
+    });
+
+    it("share the player router's due rules", () => {
+      const autoOff: [Partial<TurnPlanInput>, Partial<TurnSettings>][] = [
+        [{ destinationCount: 0 }, {}],
+        [{ hasCurrentLocation: false }, {}],
+        [{ isGameStarted: false }, {}],
+        [{}, { locationChangeEnabled: false }],
+        [{ prompts: { ...TEST_PROMPTS, locationChange: '' } }, {}],
+      ];
+      for (const [over, settings] of autoOff) expect(ids(over, settings)).not.toContain('entityLocationAuto');
+      const suggestOff: [Partial<TurnPlanInput>, Partial<TurnSettings>][] = [
+        [{ locationCount: 1 }, {}],
+        [{ isGameStarted: false }, {}],
+        [{}, { locationChangeEnabled: false }],
+        [{ prompts: { ...TEST_PROMPTS, locationChange: '' } }, {}],
+      ];
+      for (const [over, settings] of suggestOff) {
+        expect(ids(over, { ...settings, locationAutoApply: false })).not.toContain('entityLocationSuggest');
+      }
+    });
+
+    it('stop with Entity Movement off or an empty prompt, and leave the player router alone', () => {
+      expect(ids({}, { entityMovement: false })).toContain('locationAuto');
+      expect(ids({}, { entityMovement: false })).not.toContain('entityLocationAuto');
+      expect(ids({}, { entityMovement: false, locationAutoApply: false })).not.toContain('entityLocationSuggest');
+      expect(ids({ prompts: { ...TEST_PROMPTS, entityLocation: '' } })).not.toContain('entityLocationAuto');
     });
   });
 
@@ -187,7 +225,7 @@ describe('planTurn', () => {
 
   it('marks the passes that run once per subject', () => {
     const fanOut = TURN_PASSES.filter((p) => p.fanOut).map((p) => p.id);
-    expect(fanOut).toEqual(['character', 'diary', 'discoverEntity']);
+    expect(fanOut).toEqual(['entityLocationAuto', 'character', 'entityLocationSuggest', 'diary', 'discoverEntity']);
   });
 
   it('dispatches each pass at most once, fan-outs aside', () => {
