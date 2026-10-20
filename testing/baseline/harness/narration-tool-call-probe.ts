@@ -148,7 +148,7 @@ export interface ProbeTrialEvidence {
 // snapshot is frozen at the study's wording; the default prompt reads live from GamePrompts.ts.
 const ENTITY_DEFINITION_PRE =
   'pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"';
-const SUBLOCATION_PRE = 'pre="Entries for characters, creatures, or objects associated with sublocations.\n\n"';
+const SUBLOCATION_PRE = 'pre="Entries for entities associated with sublocations.\n\n"';
 const DEFAULT_ENTITY_SWAPS: ReadonlyArray<readonly [string, string]> = [
   [`<ENTITIES|markdown|${ENTITY_DEFINITION_PRE}|header="Entities in the Current Location">`,
     `<ENTITIES|summary.markdown|${ENTITY_DEFINITION_PRE}|header="Entities in the Current Location">`],
