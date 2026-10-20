@@ -16,7 +16,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import {
-  contextDelivery, navigableDestinationEntries, reachableEntityIds, scopedChipOpts, sublocationEntityIds,
+  contextDelivery, knownEntityIds, navigableDestinationEntries, reachableEntityIds, scopedChipOpts, sublocationEntityIds,
   type ContextDelivery,
 } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -40,7 +40,7 @@ export type AiContextWorld = Pick<
 export type ContextBlockId =
   | 'world' | 'persona' | 'stats' | 'traits'
   | 'location' | 'sublocations' | 'parent' | 'reachable' | 'destinations'
-  | 'entities' | 'subEntities' | 'reachableEntities'
+  | 'entities' | 'subEntities' | 'reachableEntities' | 'knownEntities'
   | 'dictionary';
 
 /** One context block as the panel lists it: what it is, what it renders to, and what that costs. */
@@ -67,8 +67,8 @@ export interface DestinationRow {
   via: 'implicit' | 'connection';
 }
 
-/** Which roster an entity is listed in — the three scopes the prompts pull separately. */
-export type RosterScope = 'here' | 'sublocations' | 'reachable';
+/** Which roster an entity is listed in — the four scopes the prompts pull separately. */
+export type RosterScope = 'here' | 'sublocations' | 'reachable' | 'known';
 
 /** One entity in one scope's roster, and which of its descriptions that scope's block carries. */
 export interface RosterEntity {
@@ -121,6 +121,7 @@ const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string; parts
   entities: { label: 'Entities Here', token: '<ENTITIES|markdown>' },
   subEntities: { label: 'Entities in Sub-Locations', token: '<ENTITIES|sublocations.markdown>' },
   reachableEntities: { label: 'Entities Reachable', token: '<ENTITIES|reachable.summary.markdown>' },
+  knownEntities: { label: 'Entities Known Here', token: '<ENTITIES|known.summary.markdown>' },
   dictionary: { label: 'Dictionary', token: '<DICTIONARY>', parts: ['<DICTIONARY|before>', '<DICTIONARY>'] },
 };
 
@@ -174,6 +175,7 @@ const ROSTERS: { scope: RosterScope; label: string; block: ContextBlockId }[] = 
   { scope: 'here', label: 'Here', block: 'entities' },
   { scope: 'sublocations', label: 'In Sub-Locations', block: 'subEntities' },
   { scope: 'reachable', label: 'In Reachable Locations', block: 'reachableEntities' },
+  { scope: 'known', label: 'Known Here', block: 'knownEntities' },
 ];
 
 /** The traits active under this lens, as the shared fresh-game substitution computes them. */
@@ -222,7 +224,9 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const here = new Set(hereIds);
   const subIds = sublocationEntityIds(location, locations, entities).filter((id) => !here.has(id));
   const shown = new Set([...hereIds, ...subIds]);
-  const reachIds = reachableEntityIds(location, locations, entities).filter((id) => !shown.has(id));
+  const reachIds = reachableEntityIds(location, locations, connections, entities).filter((id) => !shown.has(id));
+  const listed = new Set([...shown, ...reachIds]);
+  const knownIds = knownEntityIds(location, locations, entities).filter((id) => !listed.has(id));
 
   // Text stays exactly as the module produced it, trailing newline included — what an author reads here is
   // byte-for-byte what the model receives; the Dictionary block is its two lore chips, one after the other.
@@ -250,7 +254,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
       : [];
   });
   const scopeIds: Record<RosterScope, string[]> = {
-    here: hereIds, sublocations: subIds, reachable: reachIds,
+    here: hereIds, sublocations: subIds, reachable: reachIds, known: knownIds,
   };
 
   return {

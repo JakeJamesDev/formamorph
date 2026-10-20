@@ -96,6 +96,7 @@ const ENTITY_SCOPE_AXIS: PromptVariantAxis = {
     { id: null, label: 'Here', help: 'Sends the entities at the current location' },
     { id: 'sublocations', label: 'In Sub', help: 'Sends the entities in the direct sub-locations' },
     { id: 'reachable', label: 'Reachable', help: 'Sends the entities in the containing location and its neighbors' },
+    { id: 'known', label: 'Known', help: 'Sends the summaries of entities whose Known In covers this location' },
     { id: 'inscene', label: 'In Scene', help: 'Sends the entities from the last few turns, wherever they are' },
   ],
 };

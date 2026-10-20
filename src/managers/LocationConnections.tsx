@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, ArrowLeftRight, Plus, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ function legsAt(connection: Connection, locationId: string): { key: LegKey; word
  * Connection exists, it is the pair's whole travel rule — which is why the direction control offers the
  * one-way orientations rather than hiding a flip behind a second gesture.
  */
-const LocationConnections = ({ location }: { location: GameLocation }) => {
+const LocationConnections = ({ location, children }: { location: GameLocation; children?: ReactNode }) => {
   const { locations, connections, addConnection, updateConnection, removeConnection, placeholders, placementLetters, placeholderOwners } = useGameData();
   const [target, setTarget] = useState('');
 
@@ -85,6 +85,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
         Sets the travel rule for a pair of locations. Without one, a location still connects to its parent,
         its children, and its siblings.
       </Hint>
+      {children}
       {views.map(({ connection, partnerId, direction }) => {
         const Icon = DIRECTION_ICONS[direction];
         const partnerName = nameOf(partnerId);

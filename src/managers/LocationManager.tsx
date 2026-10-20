@@ -17,10 +17,12 @@ import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
 import LocationConnections from './LocationConnections';
 import LocationEntitiesHere from './LocationEntitiesHere';
+import LocationKnownHere from './LocationKnownHere';
 import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { HintInfo } from '@/components/SettingsRows';
+import { Hint } from '@/components/ui/typography';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
@@ -69,7 +71,12 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   // entity's own list — the same edit, expressed from the other side.
   const presentIds = entityIdsAt(location.id, entities);
   const treeOrder = entitiesInTreeOrder(entityGroups, entities);
-  const entityLabel = (e: Entity) => labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+  const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+  const entityLabel = (e: Entity) => label(e.name);
+  const locationLabel = (id: string) => {
+    const found = world.locations.find((l) => l.id === id);
+    return found ? label(found.name) : 'Unknown Location';
+  };
   const handleEntitiesChange = (ids: string[]) => {
     const before = new Map(entities.map((e) => [e.id, e]));
     // Only the entities whose membership actually moved are written through.
@@ -188,7 +195,25 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           labelOf={entityLabel}
           onChange={updateEntity}
         />
-        <LocationConnections location={editingLocation} />
+        <LocationKnownHere
+          location={editingLocation}
+          locations={world.locations}
+          entities={treeOrder}
+          labelOf={entityLabel}
+          locationLabel={locationLabel}
+          onChange={updateEntity}
+        />
+        <LocationConnections location={editingLocation}>
+          <div className="flex items-center gap-2" {...fieldFrame('nearbyUsesConnections')}>
+            <Checkbox
+              id={`location-nearby-${editingLocation.id}`}
+              checked={!!editingLocation.nearbyUsesConnections}
+              onCheckedChange={(checked) => apply({ nearbyUsesConnections: checked === true ? true : undefined })}
+            />
+            <Label htmlFor={`location-nearby-${editingLocation.id}`}>Nearby Through Connections</Label>
+          </div>
+          <Hint>Adds entities one Connection away to what the AI receives as nearby</Hint>
+        </LocationConnections>
       </PanelTabContent>
 
       <PanelTabContent value="media">

@@ -3,7 +3,7 @@ import { formatAbsolute } from '../gameClock';
 import {
   buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableLocationsContext,
   buildSublocationsContext, chipFamilyRuns, chipFamilyValues, chipFormat, entityRosterRuns, hasOnlyWith, ownedStatLines,
-  reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
+  knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
 import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
@@ -132,11 +132,12 @@ export function chipValues(scene: ChipScene): ValueLookup {
 
 /** The Entities chip's scope builders over one scene. */
 function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => MarkedText> {
-  const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
+  const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
   const outer = scene.outerScopeEntities ?? entities;
-  // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
-  // belongs to, so the lower scopes drop the ids the higher ones list.
+  // Roster precedence: here > sub-location > reachable > known. A character shows only in the highest scope
+  // it belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
+  const knownExclude = [...reachableExclude, ...reachableEntityIds(location, locations, connections, outer)];
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
   const roster = (opts: ContextOpts) => ({ ...opts, ownedTraits, ownedStats });
@@ -145,7 +146,8 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => M
   return {
     '': (opts) => entityRosterRuns(presentIds, entities, roster(opts)),
     sublocations: (opts) => sublocationEntityRuns(location, locations, outer, { ...lowerOpts(opts), excludeIds: presentIds }),
-    reachable: (opts) => reachableEntityRuns(location, locations, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
+    reachable: (opts) => reachableEntityRuns(location, locations, connections, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
+    known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude }),
     inscene: (opts) => {
       const block = entityRosterRuns(inSceneIds, entities, roster(opts));
       // A name with no entity record owns nothing, so a filter drops it.

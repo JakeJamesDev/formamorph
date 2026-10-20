@@ -1,4 +1,5 @@
-import type { Entity, EntityPositions, PersonaRef } from "@/types";
+import type { Entity, EntityPositions, GameLocation, PersonaRef } from "@/types";
+import { ancestors, parentLookup } from "@/lib/ancestors";
 
 /**
  * The inverted index over entity-owned location membership (see ADR-0003). Entities carry the locations
@@ -158,13 +159,62 @@ export function reconcileGameStatePositions<S extends { entityPositions?: Entity
   return (Object.keys(next).length ? { ...rest, entityPositions: next } : rest) as S;
 }
 
-/** `entities` with `locationId` dropped from every membership — run when a location is deleted, so no
- *  entity keeps pointing at a place that no longer exists. Returns the same array when nobody listed it. */
+/** An entity's Known In: Nearby, Nowhere, or the picked location ids, each covering its subtree. */
+export type KnownIn = 'nearby' | 'nowhere' | string[];
+
+/** `entity`'s Known In, an absent field or an empty list reading as Nearby. */
+export function knownInOf(entity: Pick<Entity, 'knownIn'>): KnownIn {
+  const { knownIn } = entity;
+  if (knownIn === 'nowhere') return 'nowhere';
+  return knownIn?.length ? knownIn : 'nearby';
+}
+
+/** A copy of `entity` with `knownIn`; Nearby and an empty list are stored as no field. */
+export function withKnownIn(entity: Entity, knownIn: KnownIn): Entity {
+  const picks = Array.isArray(knownIn) ? [...new Set(knownIn)] : knownIn;
+  if (picks !== 'nearby' && picks.length) return { ...entity, knownIn: picks };
+  const { knownIn: _nearby, ...rest } = entity;
+  return rest;
+}
+
+/** `entity` with `locationId` added to or removed from its Known In picks. A first pick replaces Nearby or
+ *  Nowhere; removing the last one falls back to Nearby. */
+export function toggleKnownInPick(entity: Entity, locationId: string): Entity {
+  const known = knownInOf(entity);
+  const picks = Array.isArray(known) ? known : [];
+  return withKnownIn(entity, picks.includes(locationId) ? picks.filter((id) => id !== locationId) : [...picks, locationId]);
+}
+
+/** An entity known at a location, and the picked location that makes it so: `null` for its own pick on the
+ *  location, else the nearest picked location containing it. */
+export interface KnownHereRow {
+  entity: Entity;
+  via: string | null;
+}
+
+/** The entities known at `locationId` through their Known In picks, in cast order. The Custom Persona is
+ *  never known anywhere. */
+export function knownHere(locationId: string, locations: readonly Pick<GameLocation, 'id' | 'parentId'>[], entities: Entity[]): KnownHereRow[] {
+  const chain = [locationId, ...ancestors(locationId, parentLookup(locations, (l) => l.parentId))];
+  return entities.flatMap((entity) => {
+    const known = knownInOf(entity);
+    if (entity.customPersona || !Array.isArray(known)) return [];
+    const at = chain.find((id) => known.includes(id));
+    return at === undefined ? [] : [{ entity, via: at === locationId ? null : at }];
+  });
+}
+
+const knownInIncludes = (entity: Entity, locationId: string) => Array.isArray(entity.knownIn) && entity.knownIn.includes(locationId);
+
+/** `entities` with `locationId` dropped from every membership and every Known In list — run when a location
+ *  is deleted, so no entity keeps pointing at a place that no longer exists. Returns the same array when
+ *  nobody listed it. */
 export function dropLocationFromEntities(locationId: string, entities: Entity[]): Entity[] {
-  if (!entities.some((e) => e.locations?.includes(locationId))) return entities;
-  return entities.map((entity) =>
-    entity.locations?.includes(locationId)
-      ? withEntityLocations(entity, entity.locations.filter((id) => id !== locationId))
-      : entity,
-  );
+  if (!entities.some((e) => e.locations?.includes(locationId) || knownInIncludes(e, locationId))) return entities;
+  return entities.map((entity) => {
+    let next = entity;
+    if (next.locations?.includes(locationId)) next = withEntityLocations(next, next.locations.filter((id) => id !== locationId));
+    if (knownInIncludes(next, locationId)) next = toggleKnownInPick(next, locationId);
+    return next;
+  });
 }

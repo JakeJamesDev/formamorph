@@ -8,8 +8,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { OptionSwitcher } from '@/components/SettingsRows';
-import { isEverywhere, movementOptions, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
-import { knownInOf, rangeGap, rangeWarning, withKnownIn, type PickMode } from '@/lib/entityPicking';
+import { isEverywhere, knownInOf, movementOptions, withKnownIn, withMovement, withPresence, type MovementChoice } from '@/lib/entityPresence';
+import { rangeGap, rangeWarning, type PickMode } from '@/lib/entityPicking';
 import {
   FOLLOW_EVERYWHERE_HELP, KNOWN_IN_HELP, KNOWN_IN_LABEL, MOVEMENT_HELP, MOVEMENT_LABEL, PERSONA_IGNORED_HELP,
   PICK_MODE_HELP, PRESENCE_HELP, PRESENCE_OPTIONS, type KnownInChoice,

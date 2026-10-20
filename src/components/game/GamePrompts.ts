@@ -26,6 +26,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <ENTITIES|markdown|header="Characters and things that may appear in this location">\
 <ENTITIES|sublocations.markdown|header="Characters and things that may appear in a sub-location">\
 <ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">\
+<ENTITIES|known.summary.markdown|header="Characters and things known here but not present">\
 <DICTIONARY|format=markdown|header="Foreground Lore">
 ## Output
 Output only the story prose - the events themselves, with no labels and nothing after the scene ends. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.
@@ -143,7 +144,8 @@ export const defaultChoicesPrompt = `You are the player choice writer for an int
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
 <ENTITIES|summary.markdown|header="Characters and things that may appear in this location">\
 <ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">\
-<ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">
+<ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">\
+<ENTITIES|known.summary.markdown|header="Characters and things known here but not present">
 The player character is "I": every option is written in the player's own first-person voice.
 
 Suggest 3 to 5 distinct things I could do next - each a genuinely different way to respond to what is happening right now, engaging with the people, threats, and openings actually present in the scene, and fitting who I am (my stats, traits, and situation). Not generic filler.
@@ -226,6 +228,7 @@ export const defaultThinkingPrompt = `You are the continuity planner for an inte
 <ENTITIES|summary.markdown|header="Characters and things that may appear in this location">\
 <ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">\
 <ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">\
+<ENTITIES|known.summary.markdown|header="Characters and things known here but not present">\
 <NOTES|format=markdown|header="Important Player Notes">
 Respond in exactly this format:
 Cast:
@@ -453,6 +456,7 @@ export const defaultDirectorPrompt = `You are the director of an interactive rol
 <ENTITIES|summary.markdown|header="Characters and things that may appear in this location">\
 <ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">\
 <ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">\
+<ENTITIES|known.summary.markdown|header="Characters and things known here but not present">\
 <NOTES|format=markdown|header="Important Player Notes">
 Respond in exactly this format:
 Scene: <up to three sentences on where we are and what is visible right now>

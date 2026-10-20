@@ -1,4 +1,4 @@
-import { withEntityLocations } from "@/lib/entityPresence";
+import { knownInOf, toggleKnownInPick, withEntityLocations } from "@/lib/entityPresence";
 import { effectiveDestinations } from "@/lib/locationGraph";
 import { holderOf } from "@/lib/locationTree";
 import type { Connection, Entity, GameLocation } from "@/types";
@@ -8,34 +8,8 @@ import type { Connection, Entity, GameLocation } from "@/types";
  * picked, and what a click on a location writes. Pure, so the canvas only draws the answer.
  */
 
-/** Known In as one value: Nearby, Nowhere, or the picked locations. */
-export type KnownIn = NonNullable<Entity["knownIn"]> | "nearby";
-
-const isNearby = (knownIn: Entity["knownIn"] | KnownIn): knownIn is "nearby" | undefined | [] =>
-  !knownIn || knownIn === "nearby" || (Array.isArray(knownIn) && knownIn.length === 0);
-
-/** `entity`'s Known In. Absent or an empty list reads Nearby. */
-export function knownInOf(entity: Pick<Entity, "knownIn">): KnownIn {
-  return isNearby(entity.knownIn) ? "nearby" : entity.knownIn;
-}
-
-/** A copy of `entity` with `knownIn`. Nearby, or an empty list, stores no field; a list is deduped. */
-export function withKnownIn(entity: Entity, knownIn: KnownIn): Entity {
-  if (isNearby(knownIn)) {
-    const { knownIn: _nearby, ...rest } = entity;
-    return rest;
-  }
-  return { ...entity, knownIn: Array.isArray(knownIn) ? [...new Set(knownIn)] : knownIn };
-}
-
 /** `ids` with `id` removed when present, added when not. */
 const toggled = (ids: readonly string[], id: string) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
-
-/** `entity` with `locationId` added to or removed from its Known In picks. Nearby and Nowhere start a list. */
-export function toggleKnownInPick(entity: Entity, locationId: string): Entity {
-  const knownIn = knownInOf(entity);
-  return withKnownIn(entity, toggled(Array.isArray(knownIn) ? knownIn : [], locationId));
-}
 
 /** What a canvas click writes while an entity is picked. */
 export type PickMode = "locations" | "knownIn";

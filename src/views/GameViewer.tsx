@@ -5256,6 +5256,7 @@ const GameViewer = ({
                 const scope = variant.includes("sublocations") ? "in the sub-locations"
                   : variant.includes("reachable") ? "nearby"
                   : variant.includes("destinations") ? "where you can go"
+                  : variant.includes("known") ? "known here"
                   : "here";
                 return `${what} ${scope}${variant.includes("summary") ? " (summary)" : ""}`;
               }

@@ -497,6 +497,9 @@ export interface GameLocation {
    *  nested, as the canvas reads a child's position. Editor-only: never sent to the AI. Absent means the
    *  canvas lays it out itself. */
   canvasPosition?: { x: number; y: number };
+  /** `true`: the entities reachable from here are the ones at the router's effective destinations (tree
+   *  neighbors plus Connection legs). Absent = the parent and siblings only. */
+  nearbyUsesConnections?: boolean;
   /** Placeholders held at a fixed value while the player is here. Released on leaving; a child location
    *  inherits nothing through `parentId`. */
   placeholderPins?: PlaceholderPin[];

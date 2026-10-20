@@ -84,6 +84,15 @@ const harrow: Entity = {
   stats: [stat('harrow-eagerness', 'Eagerness', 45, 'How badly he wants the next sale.', [[30, 'Idle'], [70, 'Keen'], [100, 'Desperate']])],
 };
 
+// Known In the whole town, so the Known scope lists her at the Landing while she stands on the Causeway.
+const ossery: Entity = {
+  id: 'ossery', name: 'Mother Ossery', locations: ['causeway'], knownIn: ['sample-town'],
+  aiDescription: 'The toll-keeper of the causeway, who has outlived three harbormasters and buried two of them.',
+  aiSummary: 'The causeway toll-keeper everyone in town knows of.',
+  traits: [trait('ossery-long-memory', 'Long Memory', 'Remembers every unpaid toll, and who it was owed by.')],
+  stats: [stat('ossery-temper', 'Temper', 35, 'How close she is to closing the gate.', [[30, 'Calm'], [70, 'Short'], [100, 'Furious']])],
+};
+
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {
   worldOverview: overview,
@@ -93,7 +102,7 @@ const SAMPLE_WORLD: AuthoredWorld = {
     stat('standing', 'Standing', 15, 'How the coast reckons the traveler.', [[20, 'A stranger'], [60, 'Known'], [100, 'Trusted']]),
   ],
   locations: [boathouse, tidePools, landing, causeway, sampleTown],
-  entities: [wren, gull, bell, harrow],
+  entities: [wren, gull, bell, harrow, ossery],
   traits: [
     trait('light-sleeper', 'Light Sleeper', 'Wakes at the smallest sound, and is never quite rested.'),
     trait('salvagers-eye', "Salvager's Eye", 'Spots the worth in a heap of junk, and rarely says so out loud.'),
