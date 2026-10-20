@@ -131,6 +131,11 @@ export function chipValues(scene: ChipScene): ValueLookup {
   }), (value) => scene.resolve(value));
 }
 
+/** The ids whose relationships pull the other end into the known roster: Here and In Scene. */
+export function knownPullSources(scene: Pick<ChipScene, 'presentIds' | 'inSceneIds'>): string[] {
+  return [...scene.presentIds, ...scene.inSceneIds];
+}
+
 /** The Entities chip's scope builders over one scene. */
 function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => MarkedText> {
   const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
@@ -139,8 +144,9 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => M
   // it belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
   const knownExclude = [...reachableExclude, ...reachableEntityIds(location, locations, connections, outer)];
+  const pullFrom = knownPullSources(scene);
   // Each relationship prints once over the chain, and once over In Scene, which no default prompt pairs with it.
-  const chainLines = relationshipLines(entities, [...knownExclude, ...knownEntityIds(location, locations, outer)]);
+  const chainLines = relationshipLines(entities, [...knownExclude, ...knownEntityIds(location, locations, outer, pullFrom)]);
   const inSceneLines = relationshipLines(entities, inSceneIds);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
@@ -151,7 +157,7 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => M
     '': (opts) => entityRosterRuns(presentIds, entities, roster(opts)),
     sublocations: (opts) => sublocationEntityRuns(location, locations, outer, { ...lowerOpts(opts), excludeIds: presentIds }),
     reachable: (opts) => reachableEntityRuns(location, locations, connections, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
-    known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude }),
+    known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude, pullFrom }),
     inscene: (opts) => {
       const block = entityRosterRuns(inSceneIds, entities, roster(opts, inSceneLines));
       // A name with no entity record owns nothing, so a filter drops it.

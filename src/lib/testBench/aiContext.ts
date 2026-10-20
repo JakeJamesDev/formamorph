@@ -12,7 +12,7 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
-import { chipValues } from '@/lib/chipValues/chipValues';
+import { chipValues, knownPullSources } from '@/lib/chipValues/chipValues';
 import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import {
@@ -226,7 +226,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const shown = new Set([...hereIds, ...subIds]);
   const reachIds = reachableEntityIds(location, locations, connections, entities).filter((id) => !shown.has(id));
   const listed = new Set([...shown, ...reachIds]);
-  const knownIds = knownEntityIds(location, locations, entities).filter((id) => !listed.has(id));
+  const knownIds = knownEntityIds(location, locations, entities, knownPullSources(scene)).filter((id) => !listed.has(id));
 
   // Text stays exactly as the module produced it, trailing newline included — what an author reads here is
   // byte-for-byte what the model receives; the Dictionary block is its two lore chips, one after the other.
