@@ -15,7 +15,7 @@ export const experimentalSystemPrompt = `You are the narrator of an interactive 
 <ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries summarize entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
 <ENTITIES|sublocations.summary.markdown|pre="Summaries of entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Summaries of entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Summaries of entities the player may know of here. Each is elsewhere right now: people here may speak of it, and when the player seeks or addresses it, the scene shows its absence.\n\n"|header="Entities Known Here">\
+<ENTITIES|known.summary.markdown|pre="Summaries of entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
 <DICTIONARY|pre="Specific details about the world that apply to the current scene.\n\n"|format=markdown|header="Foreground Lore">
 <LANGUAGE>`;
 

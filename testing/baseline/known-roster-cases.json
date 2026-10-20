@@ -1,5 +1,5 @@
 {
-  "_note": "Cases for the known roster probe (harness/known-roster-probe.cli.ts). Sedge Landing, plus one entity standing in the Eelhouse and Known In Sedge Landing and Sedge Hamlet, so the player at the landing receives her in <ENTITIES|known> only. `ask` cases give a present character a reason to speak of her; `neutral` cases give none; `address` cases have the player speak to her as if she were here, a deliberate positive trigger for the present leak. `checks` name scorers in the harness.",
+  "_note": "Cases for the known roster probe (harness/known-roster-probe.cli.ts). Sedge Landing, plus one entity standing in the Eelhouse and Known In Sedge Landing and Sedge Hamlet, so the player at the landing receives her in <ENTITIES|known> only. `ask` cases give a present character a reason to speak of her; `neutral` cases give none; `address` cases have the player speak to her as if she were here; they report what a seek does and are not a bar, since the AI may follow an explicit request. The bar is the `neutral` and `ask` cases: a known entity never enters the scene unprompted. `checks` name scorers in the harness.",
   "known": {
     "id": "ent-reeve",
     "name": "Reeve Ashcombe",
