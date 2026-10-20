@@ -10,12 +10,13 @@ import { fieldFrame } from '@/lib/historyField';
 import { YOU_TARGET, playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import type { Entity, EntityRelationship } from '@/types';
 
-const YOU_ROW = { value: YOU_TARGET, label: 'You', role: 'Your Role' };
+const PERSONA_ROW = { value: YOU_TARGET, label: 'Persona', role: 'Persona’s Role' };
 const UNKNOWN_ROW = { value: '', label: 'Unknown Entity', role: 'Unknown Entity’s Role' };
 
 /** The Relationships list of an entity's Profile tab: one row per target with its role label and **Remove**,
- *  and a select that adds a target the entity doesn't use yet, You first. You isn't offered to an entity that
- *  plays only when picked. A row whose target the world lacks shows as an unknown entity, so it can be removed. */
+ *  and a select that adds a target the entity doesn't use yet, Persona first. The Persona row isn't offered to
+ *  an entity that plays only when picked. A row whose target the world lacks shows as an unknown entity, so it
+ *  can be removed. */
 export default function EntityRelationshipsField({ entity, entities, labelOf, onChange }: {
   entity: Entity;
   /** The world's entities, in the order the select lists them. */
@@ -24,14 +25,14 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
   onChange: (relationships: EntityRelationship[]) => void;
 }) {
   const relationships = useMemo(() => entity.relationships ?? [], [entity.relationships]);
-  // Every target the owner can hold, You first, each with its row's input name.
+  // Every target the owner can hold, Persona first, each with its row's input name.
   const targets = useMemo(() => [
-    ...(playsOnlyWhenPicked(entity) ? [] : [YOU_ROW]),
+    ...(playsOnlyWhenPicked(entity) ? [] : [PERSONA_ROW]),
     ...entities.filter((e) => e.id !== entity.id).map((e) => ({ value: e.id, label: labelOf(e), role: `${labelOf(e)}’s Role` })),
   ], [entities, entity, labelOf]);
   const targetOf = useMemo(() => new Map(targets.map((t) => [t.value, t])), [targets]);
   // A stored row the select can't offer still shows, so the author can remove it.
-  const rowOf = (targetId: string) => targetOf.get(targetId) ?? (targetId === YOU_TARGET ? YOU_ROW : UNKNOWN_ROW);
+  const rowOf = (targetId: string) => targetOf.get(targetId) ?? (targetId === YOU_TARGET ? PERSONA_ROW : UNKNOWN_ROW);
   const addable = useMemo(() => {
     const used = new Set(relationships.map((r) => r.targetId));
     return targets.filter((t) => !used.has(t.value));

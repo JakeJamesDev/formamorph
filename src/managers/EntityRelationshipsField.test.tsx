@@ -36,7 +36,7 @@ const row = (name: string) => screen.getByText(name, { selector: 'span' }).paren
 describe('the Relationships list', () => {
   it('adds a row for a picked target, takes its label, and removes it', async () => {
     render(<Harness start={{ id: 'tera', name: 'Tera' }} />);
-    expect(await openAdd()).toEqual(['You', 'Kate', 'Ash', 'Rowan']);
+    expect(await openAdd()).toEqual(['Persona', 'Kate', 'Ash', 'Rowan']);
     await userEvent.click(screen.getByRole('option', { name: 'Kate' }));
     const role = within(row('Kate')).getByRole('textbox', { name: 'Kate’s Role' });
     expect(role).toHaveFocus();
@@ -52,7 +52,7 @@ describe('the Relationships list', () => {
   it('offers neither the owner nor a target it already uses', async () => {
     render(<Harness start={{ id: 'tera', name: 'Tera', relationships: [{ targetId: 'ash', label: 'butler' }] }} />);
     expect(within(row('Ash')).getByRole('textbox')).toHaveValue('butler');
-    expect(await openAdd()).toEqual(['You', 'Kate', 'Rowan']);
+    expect(await openAdd()).toEqual(['Persona', 'Kate', 'Rowan']);
   });
 
   it('edits one row without touching the others, in author order', () => {
@@ -74,18 +74,19 @@ describe('the Relationships list', () => {
   it.each([
     ['the Custom Persona entity', { customPersona: true }],
     ['a persona-only Persona', { persona: true, personaOnly: true }],
-  ])('offers no You to %s, and still shows a stored You row to remove', async (_, marks) => {
+  ])('offers no Persona row to %s, and still shows a stored one to remove', async (_, marks) => {
     const { unmount } = render(<Harness start={{ id: 'tera', name: 'Tera', ...marks }} />);
     expect(await openAdd()).toEqual(['Kate', 'Ash', 'Rowan']);
     unmount();
     render(<Harness start={{ id: 'tera', name: 'Tera', ...marks, relationships: [{ targetId: YOU_TARGET, label: 'ward' }] }} />);
-    fireEvent.click(within(row('You')).getByRole('button', { name: 'Remove this relationship' }));
+    expect(within(row('Persona')).getByRole('textbox', { name: 'Persona’s Role' })).toHaveValue('ward');
+    fireEvent.click(within(row('Persona')).getByRole('button', { name: 'Remove this relationship' }));
     expect(current.relationships).toBeUndefined();
   });
 
-  it('offers You to a Persona that plays in the cast too', async () => {
+  it('offers the Persona row to a Persona that plays in the cast too', async () => {
     render(<Harness start={{ id: 'tera', name: 'Tera', persona: true }} />);
-    expect(await openAdd()).toEqual(['You', 'Kate', 'Ash', 'Rowan']);
+    expect(await openAdd()).toEqual(['Persona', 'Kate', 'Ash', 'Rowan']);
   });
 
   it('disables the select when every entity is used', () => {
@@ -96,11 +97,11 @@ describe('the Relationships list', () => {
     expect(screen.getByRole('combobox', { name: 'Add a Relationship' })).toBeDisabled();
   });
 
-  it('adds You as a row of its own, and offers it no more once used', async () => {
+  it('adds the Persona row, and offers it no more once used', async () => {
     render(<Harness start={{ id: 'tera', name: 'Tera' }} />);
     await openAdd();
-    await userEvent.click(screen.getByRole('option', { name: 'You' }));
-    const role = within(row('You')).getByRole('textbox', { name: 'Your Role' });
+    await userEvent.click(screen.getByRole('option', { name: 'Persona' }));
+    const role = within(row('Persona')).getByRole('textbox', { name: 'Persona’s Role' });
     fireEvent.change(role, { target: { value: 'ward' } });
     expect(current.relationships).toEqual([{ targetId: YOU_TARGET, label: 'ward' }]);
     expect(await openAdd()).toEqual(['Kate', 'Ash', 'Rowan']);
