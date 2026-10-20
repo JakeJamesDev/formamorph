@@ -53,12 +53,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Narration now bolds only loud words, and thinking models spend less of each turn's thinking on formatting.** The Markdown Guidance chip now has one form. Prompts that used Definitions keep working.
   - **The Default preset's narration prompt is shorter and states each rule once.** It no longer repeats the ban on option menus at the end, or asks for concise prose next to the length setting.
   - **The default prompts now call their entity sections Entities and tell the AI what each section holds.** A Known Here entity reads as elsewhere right now. People in the scene may speak of it.
-  - **A stat opens at its authored value in the Test Bench, Test Code and trait picker, matching play.** A stat with no authored value opens at its min.
-  - **A stat now starts at its authored value on code cards, in new Link Base Values and in older saves.** This matches where play opens the stat.
-  - **A trait Script whose entity is out of the game reads `self` as not held.** `self.enabled` and `self.acquired` read false, as they do in Test Code.
-  - **A stat now opens at its authored value, shows no change on turn one, and an authored zero stays zero.** A value outside the stat's range opens at the nearest edge.
-  - **Test Code's `entities` now holds the cast a new game opens with.** An entity that can only be played as a persona is left out, as it is in play.
-  - **The Test Bench now checks a Script against the same turn-one world as Test Code and play.** It reads `clock` by timing and reads a switched-off stat as off. A `diary` name no entity has is a warning, not a failure.
+  - **A stat now opens at its authored value everywhere, and an authored zero stays zero.** Play, the Test Bench, Test Code, the trait picker, code cards, new Link Base Values and older saves agree. No change shows on turn one. A value outside the range opens at the nearest edge.
+  - **Test Code and the Test Bench now check a Script against the same turn-one world as play.** They read `clock` by timing and a switched-off stat as off. Test Code's `entities` holds a new game's cast, without persona-only entities. An unknown `diary` name warns. A trait Script whose entity is gone reads `self` as not held.
 
 ---
 
