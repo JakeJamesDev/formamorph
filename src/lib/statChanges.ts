@@ -117,6 +117,7 @@ export function pageStatDeltas(
 ): Record<string, number> {
   const map: Record<string, number> = {};
   for (const s of stats) {
+    // `starting` is the delta baseline, not the start value.
     const before = prevStats?.find((p) => p.name === s.name)?.value ?? s.starting ?? s.min;
     map[s.name.toLowerCase()] = typeof before === 'number' ? s.value - before : 0;
   }

@@ -15,7 +15,7 @@ const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
 
 const courage = stat('courage', 'Courage');
-const fatigue = stat('fatigue', 'Fatigue', { type: 'percentage', starting: 20, regen: 2, hidden: true });
+const fatigue = stat('fatigue', 'Fatigue', { type: 'percentage', value: 20, regen: 2, hidden: true });
 const stats = [courage, stat('stamina', 'Stamina'), fatigue];
 
 const brave: Trait = {

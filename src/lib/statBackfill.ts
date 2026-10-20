@@ -1,8 +1,9 @@
 import type { Stat, PlayerStat } from '@/types';
+import { statStartValue } from './statDescriptorGeometry';
 
 /**
  * Reconcile a save's `globalStats` against the world's current stat definitions by appending any stat the
- * world defines but the save lacks (matched by `id`), seeded at its starting value. A save made before a
+ * world defines but the save lacks (matched by `id`), seeded at its start value (Q8). A save made before a
  * stat was added therefore shows that stat on load instead of silently omitting it forever.
  *
  * Deliberately additive and id-keyed: existing saved stats — which each carry their own full schema
@@ -15,14 +16,7 @@ export function backfillPlayerStats(stats: PlayerStat[], worldStats: Stat[]): Pl
   const have = new Set(stats.map((s) => s.id));
   const missing = worldStats.filter((s) => s && s.id != null && !have.has(s.id));
   if (missing.length === 0) return stats;
-  const seeded = missing.map((s) => ({
-    ...s,
-    // PlayerStat.value is a number; prefer the definition's starting value, then any numeric live value,
-    // then the floor. (List-type stats aren't represented in runtime playerStats, so a number is correct.)
-    value: typeof s.starting === 'number' ? s.starting
-      : typeof s.value === 'number' ? s.value
-      : s.min ?? 0,
-  })) as PlayerStat[];
+  const seeded = missing.map((s) => ({ ...s, value: statStartValue(s) })) as PlayerStat[];
   return [...stats, ...seeded];
 }
 

@@ -13,6 +13,7 @@ import type { HeldReason } from './heldReasons';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
 import { regenUnitOf } from './regenUnits';
+import { statStartValue } from './statDescriptorGeometry';
 
 /** The tree place a link or leaf carries: its group and, when set, its order. */
 export const placeOf = (item: { groupId?: string | null; order?: number }): { groupId: string | null; order?: number } =>
@@ -98,13 +99,13 @@ export function globalStatsOf<T extends Stat>(stats: T[], groups: readonly StatG
 // ---- One link ----
 
 /** The overridable fields as the original carries them, absent ones read as off or empty. The Base Value is
- *  the stored starting value when the original has one, since a new game seeds from it. */
+ *  the original's start value (Q8). */
 export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   type: stat.type,
   description: stat.description ?? '',
   min: stat.min,
   max: stat.max,
-  value: stat.starting ?? stat.value ?? 0,
+  value: statStartValue(stat),
   regen: stat.regen ?? 0,
   regenUnit: regenUnitOf(stat),
   descriptors: stat.descriptors ?? [],
@@ -130,7 +131,7 @@ export function linkedStat(original: Stat, link: StatLink, at: { groupId: string
   const { record, overridden } = statLinkState(original, link);
   if (!overridden.length && original.starting === undefined) return { ...base, ...at };
   const fields = Object.fromEntries(overridden.map((field) => [field, record[field]]));
-  // The Base Value stands alone: a stored starting value would otherwise win at the seed.
+  // The copy's delta baseline is its own opening value, so the Original's `starting` stays behind.
   const { starting: _s, ...rest } = base;
   return { ...rest, ...(original.starting !== undefined ? { value: record.value } : {}), ...fields, ...at };
 }

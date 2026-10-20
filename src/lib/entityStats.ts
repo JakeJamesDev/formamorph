@@ -27,7 +27,7 @@ export const statOwnerEntities = (entities: { world: readonly Entity[]; library:
 export const seedEntityStats = (entities: readonly StatEntity[]): EntityStatValues =>
   Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])]));
 
-/** `saved` with each authored stat it lacks added at its starting value, owner by owner, as the player's stats
+/** `saved` with each authored stat it lacks added at its start value, owner by owner, as the player's stats
  *  are backfilled. A stat the world removed stays. The same map when nothing is missing. */
 export function backfillEntityStats(saved: EntityStatValues | undefined, entities: readonly StatEntity[]): EntityStatValues {
   const base = saved ?? {};

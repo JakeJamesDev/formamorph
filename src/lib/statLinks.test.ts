@@ -349,20 +349,24 @@ describe('detachStatLink', () => {
 });
 
 describe('a stored starting value', () => {
-  const seeded = { ...trust, starting: 20, value: 50 };
+  const seeded = { ...trust, starting: 10, value: 5 };
   const startWorld = { ...world, stats: [health, seeded, fear] };
   const linked = addStatLink(startWorld, bram(), 'trust', 'l1')!;
 
-  it('is the Initial Value a link reads', () => {
-    expect(statLinkState(seeded, linked.statLinks![0]).record.value).toBe(20);
-    expect(resolvedEntityStats(startWorld, linked)[0]).toMatchObject({ value: 20 });
-    expect(resolvedEntityStats(startWorld, linked)[0].starting).toBeUndefined();
+  // Q8: the Base Value copies the Original's start value, not `starting`.
+  it('is not the Base Value a link reads', () => {
+    expect(statLinkState(seeded, linked.statLinks![0]).record.value).toBe(5);
+    const [resolved] = resolvedEntityStats(startWorld, linked);
+    expect(resolved).toMatchObject({ value: 5 });
+    expect(resolved.starting).toBeUndefined();
   });
 
-  it('can be overridden, even to the Blueprint stored live value', () => {
-    const edited = editStatLink(startWorld, linked, 'l1', 'trust', { ...resolvedEntityStats(startWorld, linked)[0], value: 50 });
+  it('stays behind when the Base Value is overridden', () => {
+    const edited = editStatLink(startWorld, linked, 'l1', 'trust', { ...resolvedEntityStats(startWorld, linked)[0], value: 10 });
     expect(edited.statLinks![0].overrides?.trust?.value).toBeDefined();
-    expect(resolvedEntityStats(startWorld, edited)[0]).toMatchObject({ value: 50 });
+    const [resolved] = resolvedEntityStats(startWorld, edited);
+    expect(resolved).toMatchObject({ value: 10 });
+    expect(resolved.starting).toBeUndefined();
   });
 });
 

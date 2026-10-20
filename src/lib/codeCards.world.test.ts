@@ -17,8 +17,9 @@ const beast: StatGroup = { id: 'beast', name: 'Beast', parentId: 'bp' };
 const rage = stat('rage', 'Rage', { groupId: 'beast', description: 'How angry the owner is.' });
 const calm = stat('calm', 'Calm', { groupId: 'beast' });
 const health = stat('health', 'Health');
+// Fixtures author the opening number as `value`, the start value (Q8).
 const fatigue = stat('fatigue', 'Fatigue', {
-  description: 'How worn out the player is.', starting: 20, regen: -2 / 24, regenUnit: 'days', hidden: true, enabled: false,
+  description: 'How worn out the player is.', value: 20, regen: -2 / 24, regenUnit: 'days', hidden: true, enabled: false,
 });
 
 const link = (id: string, overrides?: StatLink['overrides']): StatLink =>
@@ -26,7 +27,7 @@ const link = (id: string, overrides?: StatLink['overrides']): StatLink =>
 
 const mara: Entity = {
   id: 'mara', name: 'Mara',
-  stats: [stat('mara-health', 'Health', { max: 10, starting: 5 })],
+  stats: [stat('mara-health', 'Health', { max: 10, value: 5 })],
   statLinks: [link('mara-rage', { rage: { max: { value: 50, blueprint: 100 } } })],
 };
 const tom: Entity = { id: 'tom', name: 'Tom', persona: true, statLinks: [link('tom-rage', { rage: { max: { value: 60, blueprint: 100 } } })] };
@@ -84,16 +85,22 @@ describe('stat cards: World Details', () => {
     expect(card?.item).toEqual({ kind: 'stat', statId: 'fatigue' });
   });
 
+  // Q8: the authored value is the start, not `starting`.
+  it('reads Starts At from the authored value', () => {
+    const rows = statRows({ stat: stat('s', 'S', { starting: 10, value: 5 }), owners: ['Tom'] });
+    expect(rows.find((row) => row.label === 'Starts At')?.value).toBe('5');
+  });
+
   it('reads a percentage stat’s amounts with a percent sign', () => {
-    const rows = statRows({ stat: stat('p', 'P', { type: 'percentage', starting: 40, regen: 1 }), owners: ['Tom'] });
+    const rows = statRows({ stat: stat('p', 'P', { type: 'percentage', value: 40, regen: 1 }), owners: ['Tom'] });
     expect(rows.map((row) => row.value)).toEqual(['Percentage', '0 – 100%', '40%', '+1% per story hour', 'Tom']);
   });
 
   // The default-row table: a stat at each default keeps only the rows that always show.
   it.each([
-    ['Starts At', { starting: 0 }, { starting: 1 }],
     ['Starts At', { value: 0 }, { value: 1 }],
-    ['Starts At', { min: 10, starting: 10 }, { min: 10, starting: 0 }],
+    ['Starts At', { min: 10, value: 10 }, { min: 10, value: 20 }],
+    ['Starts At', { starting: 1 }, { value: 1 }], // Q8: `starting` is not the start value
     ['Regen', { regen: 0 }, { regen: 1 }],
     ['Shown To', { hidden: false }, { hidden: true }],
     ['Off', { enabled: true }, { enabled: false }],

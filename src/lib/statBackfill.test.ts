@@ -9,7 +9,7 @@ const stat = (over: Partial<Stat>): Stat => ({
 const pstat = (over: Partial<PlayerStat>): PlayerStat => ({ ...stat(over), value: 0, ...over } as PlayerStat);
 
 describe('backfillPlayerStats', () => {
-  it('appends a world stat the save lacks, seeded at its starting value', () => {
+  it('appends a world stat the save lacks, seeded at its start value', () => {
     const saved = [pstat({ id: 'health', name: 'Health', value: 42 })];
     const world = [stat({ id: 'health', name: 'Health' }), stat({ id: 'charge', name: 'Charge', starting: 0, max: 100 })];
     const out = backfillPlayerStats(saved, world);
@@ -26,8 +26,12 @@ describe('backfillPlayerStats', () => {
     expect(out[0].descriptors[0].description).toBe('old'); // save's own schema wins
   });
 
-  it('seeds from a numeric live value, then the floor, when starting is absent', () => {
-    const world = [stat({ id: 'a', starting: undefined, value: 5 }), stat({ id: 'b', starting: undefined, value: undefined, min: 3 })];
+  it('seeds from the authored value over `starting` (Q8)', () => {
+    expect(backfillPlayerStats([], [stat({ id: 'a', starting: 10, value: 5 })])[0].value).toBe(5);
+  });
+
+  it('seeds from the authored value, then the floor', () => {
+    const world = [stat({ id: 'a', value: 5 }), stat({ id: 'b', min: 3 })];
     const out = backfillPlayerStats([], world);
     expect(out.map((s) => s.value)).toEqual([5, 3]);
   });
