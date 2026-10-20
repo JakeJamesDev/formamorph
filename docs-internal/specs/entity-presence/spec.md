@@ -112,7 +112,7 @@ The played persona ignores Presence and Movement: it has no position and gets no
 - An entity has a position when its Presence is One, when its Movement is not Free, or when code has moved it.
 - A runtime character's existing `locationId` is its position. Runtime characters get Can Follow the Player.
 
-**Presence roster.** The existing presence module stays the one inversion of membership. It gains a runtime layer: a tracked entity is at its position; an untracked entity is at all of its listed locations. Every roster during play (present, in scene, sublocations, reachable, known) reads through it. The reachable roster lists only entities whose Known In is Nearby.
+**Presence roster.** The existing presence module stays the one inversion of membership. It gains a runtime layer: a tracked entity is at its position; an untracked entity is at all of its listed locations. Every roster during play (present, in scene, sublocations, reachable, known) reads through it. Known In governs every roster for entities that aren't present: the sublocations and reachable rosters list only entities whose Known In is Nearby. Nearby keeps today's behavior for both.
 
 **Nearby through Connections.** Today the reachable roster is the parent and siblings in the location tree, so in a world of top-level locations joined only by Connections, Nearby reaches nobody. A new optional location field fixes this without changing old worlds:
 
@@ -124,7 +124,7 @@ The played persona ignores Presence and Movement: it has no position and gets no
 
 **Known roster.** A new `<ENTITIES|known>` chip scope lists each entity that is known at the player's location but not present. An entity is known there when one of its picked locations is the player's location or contains it at any depth.
 
-- Each known entity sends only its AI summary.
+- Each known entity sends only its name and AI summary. The scope ignores the Full content option (Full renders as Summary; Name still renders names) and drops owned traits and stats.
 - Picks stay fixed when the entity moves. Only Nearby follows its position.
 - The existing highest-scope-wins rule applies, so an entity here, in a sublocation or reachable isn't listed again as known.
 - The chip joins every default prompt that already uses `<ENTITIES|reachable>`, right after that line, with a header in the same form that says these entities aren't present. Default prompts means the app's own defaults plus any experimental prompt a player can select. Bundled world prompts that use `<ENTITIES|reachable>` change with the bundled worlds (ticket 09). Each changed prompt ships with probe numbers.
