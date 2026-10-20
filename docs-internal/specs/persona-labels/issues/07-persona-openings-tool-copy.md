@@ -13,7 +13,7 @@ An author opens the Openings test tool:
 
 - The preview line reads "Turn one as Kate", or "Turn one with no persona" when no persona is picked.
 - The persona select's hint reads "Sets the persona".
-- The lens badge reads **Lens Persona**, and the **Active Traits** note reads "defaults plus the lens persona".
+- The lens badge reads **Lens Pick**, and the **Active Traits** note reads "defaults plus the lens pick" (Q15 as reopened).
 
 Two more strings change:
 

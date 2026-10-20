@@ -40,7 +40,10 @@ An author meets four more names in the World Editor. A relationship targets **Yo
 - **Q8. The Player Name chip becomes Persona Name.** **Character Name** pairs with it and doesn't change. The `{{user}}` token stays.
 - **Q9. The chip's fallback words stay.** With no persona, the chip still reads "you" in an opening and "the player" elsewhere. Only the AI reads these words, so no probe is needed.
 - **Q10. The relationship target reads Persona.** Its role input is named **Persona's Role**, and **Persona** heads the **Add a relationship** list. The AI line still uses the picked persona's name: "Ash is Rowan's son".
-- **Q11. The requirement owner reads Persona.** In the editor the text reads "Persona: Elf". The **Playing As** condition keeps its name.
+- **Q11. The requirement owner reads Persona.** In the editor the text reads "Persona: Elf". The **Playing As** condition keeps its name. Ticket 04 intent answers:
+  - Under None with a Custom Persona entity, play shows that entity's entered name plus the pill. Only with no played owner at all does play show "Persona".
+  - Under a library persona with a Custom Persona entity, play shows the played persona's name and one pill, never both names.
+  - Every author surface keeps "Persona", the Test Bench included, even when its lens plays a persona. Only the player's surfaces (Traits tab, Enter World) get the name plus the pill.
 - **Q12. The opening preview reads "Turn one as Kate", or "Turn one with no persona".** The persona select's hint reads "Sets the persona". "The default character" goes. The name comes from the persona picked in the select, not from the lens PC trait. "With no persona" shows when the select is None or the world has no personas (ticket 07 intent answer).
 - **Q13. The code card's persona line reads "Persona: Playable".** It matches the **Persona** control's choice. In the glossary, the owner **You** becomes the owner **Persona**.
 - **Q15. "Lens PC" becomes "Lens Pick".** The **Active Traits** note reads "defaults plus the lens pick". Reopened by ticket 07: the badge marks the Test Bench lens's picked trait, not the persona, so "Lens Persona" would mislead.
@@ -50,7 +53,7 @@ An author meets four more names in the World Editor. A relationship targets **Yo
 **Docs and help**
 
 - **Q16. The wiki heading becomes "The Persona Name Chip".** The anchor fixture and every link to the old anchor change in the same commit.
-- **Q18. Editor-side wiki text names the owner Persona.** This covers World Editor Traits and the Glossary's **Owner** row. In-game pages keep "marked **You**", because that matches the pill.
+- **Q18. Editor-side wiki text names the owner Persona.** This covers every editor-side page that names this owner: World Editor Traits, World Editor Entities (image visibility rules), and the Glossary's **Owner** row. In-game pages keep "marked **You**", because that matches the pill.
 - **Q19. The commit that renames the docs also rebuilds the help search index.** That way, help search answers with the new words as soon as the change lands.
 
 **Scope**
