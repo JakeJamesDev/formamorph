@@ -1042,6 +1042,8 @@ describe('EnterWorldWorkspace cast pages', () => {
   }
 
   const nav = () => screen.getByRole('navigation', { name: 'World setup categories' });
+  /** The You pill inside `host`, found by what the player reads. */
+  const pill = (host: HTMLElement) => within(host).getByText('You');
 
   it("opens an entity's page with its portrait, name, description and owned traits, defaults picked", async () => {
     const user = userEvent.setup();
@@ -1109,17 +1111,23 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(ashRow.querySelector('svg.lucide-user')).not.toBeNull();
   });
 
-  it('marks the played entity "You" in its place, and moves the mark on a persona switch', async () => {
+  it('marks the played entity with the You pill in its place, and moves the pill on a persona switch', async () => {
     const user = userEvent.setup();
     render(<CastHarness />);
-    expect(within(nav()).getByRole('button', { name: /^Ash/ })).toHaveTextContent('You');
+    const ashRow = within(nav()).getByRole('button', { name: /^Ash/ });
+    expect(ashRow).toHaveTextContent(/^AshYou/);
+    expect(pill(ashRow)).toBeInTheDocument();
     expect(within(nav()).getByRole('button', { name: /^Bob/ })).not.toHaveTextContent('You');
 
     await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
     await user.click(screen.getByRole('radio', { name: 'Bob' }));
     expect(within(nav()).getByRole('button', { name: /^Ash/ })).not.toHaveTextContent('You');
     await user.click(within(nav()).getByRole('button', { name: /^Bob/ }));
-    expect(within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ })).toHaveTextContent('You');
+    // The selected row's pill inverts its colors, which no DOM read shows; the static frames carry that.
+    expect(pill(within(nav()).getByRole('button', { name: /^Bob/ }))).toBeInTheDocument();
+    const heading = within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ });
+    expect(heading).toHaveTextContent(/^BobYou$/);
+    expect(pill(heading)).toBeInTheDocument();
   });
 
   it("disables Begin while an entity owner's group is short, and enables it once that owner picks enough", async () => {

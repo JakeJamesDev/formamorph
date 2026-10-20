@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildTraitWorkspace, type TraitCategory } from '@/lib/setupTraitWorkspace';
 import { isShown } from '@/lib/traitEffects';
+import { YouMark } from '@/components/game/YouMark';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
 
 export interface EnterWorldWorkspaceProps {
@@ -126,11 +127,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     const entity = traitTree.entityNodes.get(entityId);
     return entity ? resolvedEntityStats({ stats: props.stats, statGroups: props.statGroups ?? [] }, entity) : undefined;
   };
-  // On the selected row the primary text would vanish into the primary fill.
-  const youMarkOf = (onFill: boolean) => (
-    <span className={cn('ml-2 text-meta font-normal', onFill ? 'text-primary-foreground' : 'text-primary')}>You</span>
-  );
-  const youMark = youMarkOf(false);
   // One entity, one role: the persona leaves the character list, and an added character leaves the picker.
   const personaId = props.persona?.source === 'library' ? props.persona.entityId : null;
   const personaOptions = useMemo(
@@ -190,7 +186,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         {category.kind === 'traits' && category.entityNode && <EntityIcon aria-hidden className="h-4 w-4 shrink-0" />}
         <span className="min-w-0 flex-1 break-words">
           {category.name}
-          {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && youMarkOf(isCurrent)}
+          {/* On the selected row the pill inverts, or it would vanish into the primary fill. */}
+          {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && <YouMark onFill={isCurrent} />}
         </span>
         {shown.length > 0 && (
           <span
@@ -218,7 +215,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
           <h2 className="break-words text-heading font-semibold">
             {entity.name}
-            {playerIds.includes(entity.id) && youMark}
+            {playerIds.includes(entity.id) && <YouMark />}
           </h2>
           {description && (
             <div className="mt-1 max-w-3xl text-helper text-muted-foreground">
