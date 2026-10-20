@@ -152,6 +152,17 @@ describe('a trait’s own switch script', () => {
     ]);
     expect(hpOf(out)).toBe(30);
   });
+
+  it('reads self as not held when its owner left the world with the switch (ticket 03, ruling 3)', async () => {
+    const grim = trait('grim', 'Grim', { scripts: [script('stats.HP.value = self.enabled === false && self.acquired === false ? 30 : 10;')] });
+    const bram: Entity = { id: 'bram', name: 'Bram', traits: [grim] };
+    // Bram is gone from the world the switch left, so no cast entry holds his trait.
+    const { world: before } = ownerTraits({ entities: [bram], owned: { bram: { chosen: ['grim'] } } });
+    const turn = { ...turnOf(ownerTraits({})), switchedFrom: before };
+    const out = await runSwitchScripts(turn, [{ traitId: 'grim', ownerId: 'bram', enabled: false }]);
+    expect(console.error).not.toHaveBeenCalled();
+    expect(hpOf(out)).toBe(30);
+  });
 });
 
 describe('a world script with When a Trait Switches', () => {
