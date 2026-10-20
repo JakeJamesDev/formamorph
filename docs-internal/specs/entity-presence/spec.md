@@ -127,7 +127,9 @@ The played persona ignores Presence and Movement: it has no position and gets no
 - Each known entity sends only its AI summary.
 - Picks stay fixed when the entity moves. Only Nearby follows its position.
 - The existing highest-scope-wins rule applies, so an entity here, in a sublocation or reachable isn't listed again as known.
-- The chip joins every default prompt that already uses `<ENTITIES|reachable>`. Each changed default prompt ships with probe numbers.
+- The chip joins every default prompt that already uses `<ENTITIES|reachable>`, right after that line, with a header in the same form that says these entities aren't present. Default prompts means the app's own defaults plus any experimental prompt a player can select. Bundled world prompts that use `<ENTITIES|reachable>` change with the bundled worlds (ticket 09). Each changed prompt ships with probe numbers.
+- `nearbyUsesConnections` changes only the entity roster. `<LOCATION|reachable>` stays tree-only, since `<LOCATION|destinations>` already carries Connections. The flag is read on the player's location; an entity counts when any place it is at is among that location's effective destinations.
+- The Test Bench's AI Context roster gains a **Known Here** scope, so it shows what the prompt receives.
 - Deleting a location drops it from every Known In list. An empty list falls back to Nearby.
 - The persona hides Known In, and the known roster never lists the persona.
 
