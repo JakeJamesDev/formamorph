@@ -11,7 +11,7 @@ Entities are the people, creatures and things in your world: a ferryman, an eel-
 
 Without entities, the narrator invents a stranger, names them, and forgets both by the next turn. An entity is a fixed person or thing the story can come back to. The AI reads about it again each time the player is at one of its locations.
 
-The default prompt introduces entities as "Characters and things that **may** appear in this location". That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
+The default prompt lists the entities that **may** appear in the current location. That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
 
 ## How to Add an Entity
 <!-- keywords: character, npc, create, new character, make, person, monster, companion, creature, bot, villain, love interest, pet, party member, enemy, add someone -->

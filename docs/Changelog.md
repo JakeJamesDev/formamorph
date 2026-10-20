@@ -45,6 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In the Chat layout, you can pick a choice as soon as choices land.** The pick fills your action. You can send it when the turn finishes.
   - **Narration now bolds only loud words, and thinking models spend less of each turn's thinking on formatting.** The Markdown Guidance chip now has one form. Prompts that used Definitions keep working.
   - **The Default preset's narration prompt is shorter and states each rule once.** It no longer repeats the ban on option menus at the end, or asks for concise prose next to the length setting.
+  - **The default prompts now call their entity sections Entities and tell the AI what each section holds.** A Known Here entity reads as elsewhere right now. The planner no longer casts one when you address it.
 
 ---
 
