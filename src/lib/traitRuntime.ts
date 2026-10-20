@@ -491,9 +491,11 @@ function flipOwnerTrait(state: TraitRuntimeState, ownerId: OwnerId, trait: Trait
 /**
  * Apply every entity's active traits' global rows, owner by owner in tree order, as picking them at creation
  * would. For a new game and the Enter World preview, whose owned picks are already chosen. `applied` is the
- * played entities' traits alone: the start log never names another entity's.
+ * played entities' traits alone: the start log never names another entity's. `appliedRows` pairs each with its owner.
  */
-export function applyGlobalRowTraits(state: TraitRuntimeState, world: TraitWorld): { state: TraitRuntimeState; applied: Trait[] } {
+export function applyGlobalRowTraits(
+  state: TraitRuntimeState, world: TraitWorld,
+): { state: TraitRuntimeState; applied: Trait[]; appliedRows: { trait: Trait; ownerId: string }[] } {
   const rows = globalRowTraitsByOwner(state, world);
   let next = state;
   const on: Trait[] = [];
@@ -501,7 +503,8 @@ export function applyGlobalRowTraits(state: TraitRuntimeState, world: TraitWorld
     on.push(trait);
     next = moveStats(next, trait, true, recordKey(ownerId, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
   }
-  return { state: next, applied: rows.filter(([ownerId]) => isPlayedOwner(world, ownerId)).map(([, t]) => t) };
+  const appliedRows = rows.filter(([ownerId]) => isPlayedOwner(world, ownerId)).map(([ownerId, trait]) => ({ trait, ownerId }));
+  return { state: next, applied: appliedRows.map((row) => row.trait), appliedRows };
 }
 
 /**
