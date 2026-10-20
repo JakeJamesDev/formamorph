@@ -1,6 +1,7 @@
 # Spec: NovelAI Character Prompts
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-20. Tickets 01–02 landed; the last landing is dbb5b39f4. Closed without gates.
 Spec session: novelai-character-prompts — spec
 
 ## Problem Statement
