@@ -17,6 +17,12 @@ export type RunTiming = StatCodeTiming | 'start' | 'output' | 'switch';
 /** Whether a run reads the turn's starting state: no ask, no regen and every delta zero. */
 export const readsTurnStart = (timing: RunTiming): boolean => timing !== 'after';
 
+/** The clock an editor run reads at turn one: the opening turn's start for a timing that reads the turn start,
+ *  as play gives it, and a one-hour turn for After the AI. */
+export const turnOneClock = (timing: RunTiming) => (readsTurnStart(timing)
+  ? { deltaHours: 0, elapsedHours: 0 }
+  : { deltaHours: 1, elapsedHours: 1 });
+
 /** Both boxes in the order the turn runs them. */
 export const STAT_CODE_TIMINGS = ['before', 'after'] as const satisfies readonly StatCodeTiming[];
 

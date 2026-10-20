@@ -9,6 +9,8 @@ import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { startingLocations } from './startingLocation';
 import { playStatWorld } from './statLinks';
 import type { SandboxState } from './statCodeTurn';
+import type { UnitHome } from './sandboxSnapshot';
+import { atStartValues, statStartValue } from './statDescriptorGeometry';
 import { activeStatEnabled, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import {
   acquireTrait, applyGlobalRowTraits, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
@@ -102,3 +104,13 @@ export function openingFold(world: OpeningFoldWorld, picks: OpeningPicks = NO_OP
 /** The `SandboxState` of turn one. */
 export const openingStateOf = (world: OpeningFoldWorld, picks?: OpeningPicks, persona?: OpeningPersona): SandboxState =>
   openingFold(world, picks, persona).state;
+
+/** `home` with its stats at their opening values, as turn one seeds them (Q8). */
+export function openingHomeOf(home: UnitHome): UnitHome {
+  switch (home.kind) {
+    case 'globalStat':
+    case 'entityStat': return { ...home, stat: { ...home.stat, value: statStartValue(home.stat) } };
+    case 'blueprintStat': return { ...home, stat: { ...home.stat, value: statStartValue(home.stat) }, groupStats: atStartValues(home.groupStats) };
+    default: return home;
+  }
+}

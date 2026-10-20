@@ -7,7 +7,7 @@ import { statCodeName, statCodeNamed } from './statCodeNames';
 import type { StatCodeBox, TraitCodeBox } from './statCodeTargets';
 
 /** Where a box's Script lives, as the snapshot names homes. A Blueprint box sits on no entity and holds an owner. */
-function boxHomeOf(box: StatCodeBox | TraitCodeBox, placeholders: readonly Placeholder[]): UnitHome {
+export function boxHomeOf(box: StatCodeBox | TraitCodeBox, placeholders: readonly Placeholder[]): UnitHome {
   const blueprint = !box.entity && box.owner !== null;
   if ('trait' in box) {
     return blueprint ? { kind: 'blueprintTrait', trait: box.trait } : { kind: 'trait', trait: box.trait, entityId: box.entity?.id ?? null };

@@ -15,23 +15,18 @@ import { cardWorldNames, codeLocationsOf, type StatCodeNames } from '@/lib/statC
 import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { blueprintItemIds } from '@/lib/traitTree';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
-import { readsTurnStart } from '@/lib/statCodeTiming';
+import { turnOneClock } from '@/lib/statCodeTiming';
 import { sampleNarration } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
-import { atStartValues, statStartValue } from '@/lib/statDescriptorGeometry';
-import { openingStateOf, type OpeningFoldWorld } from '@/lib/openingState';
-import { ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type ScriptRunUnit, type UnitHome } from '@/lib/sandboxSnapshot';
+import { openingHomeOf, openingStateOf, type OpeningFoldWorld } from '@/lib/openingState';
+import {
+  ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type SandboxSnapshot, type ScriptRunUnit, type SnapshotOptions, type UnitHome,
+} from '@/lib/sandboxSnapshot';
 import type { ScriptTiming, Stat, Trait, World } from '@/types';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
-
-/** The clock a timing reads under Test Code: the opening turn's start for a timing that reads the turn start,
- *  as play gives it, and a one-hour turn for After the AI. */
-const testClock = (timing: ScriptTiming) => (readsTurnStart(timing)
-  ? { deltaHours: 0, elapsedHours: 0 }
-  : { deltaHours: 1, elapsedHours: 1 });
 
 /** The parts of an authored world a stat's code reaches. */
 export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>
@@ -206,15 +201,11 @@ const worldWriteLines = (
 const droppedLine = (lead: string, names: readonly string[] | undefined) =>
   (names?.length ? [`${lead} Writes ignored: ${names.join(', ')}.`] : []);
 
-/** `home` with its stats at their opening values, as turn one seeds them (Q8). */
-function seededHome(home: UnitHome): UnitHome {
-  switch (home.kind) {
-    case 'globalStat':
-    case 'entityStat': return { ...home, stat: { ...home.stat, value: statStartValue(home.stat) } };
-    case 'blueprintStat': return { ...home, stat: { ...home.stat, value: statStartValue(home.stat) }, groupStats: atStartValues(home.groupStats) };
-    default: return home;
-  }
-}
+/** Test Code's snapshot of `world` at turn one for a `timing` run. No playthrough: no picks, no persona and no
+ *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
+export const testCodeSnapshotOf = (
+  world: OpeningFoldWorld, timing: ScriptTiming, overlays: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> = {},
+): SandboxSnapshot => snapshotOf({ ...openingStateOf(world), clock: turnOneClock(timing) }, { openCast: true, ...overlays });
 
 /**
  * Runs `code` from the `timing` box of `home` on `world` at turn one. Applies nothing. With `pendingPersona`, a
@@ -224,18 +215,13 @@ export async function runTestCode(
   code: string, timing: ScriptTiming, home: UnitHome, world: OpeningFoldWorld,
   { pendingPersona: pending = false, missing, sentence, prompts, args }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
-  const seeded = seededHome(home);
+  const seeded = openingHomeOf(home);
   const stat = 'stat' in seeded ? seeded.stat : null;
   const list = allPlaceholders(world);
   const entityNames = new Map((world.entities ?? []).map((entity) => [entity.id, statCodeName(entity.name, list)]));
   const { locations } = codeLocationsOf(world.locations ?? [], list);
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
-  // No playthrough: no picks, no persona and no rolls (Q3). The editor holds no discovered cast, so a `diary`
-  // name it lacks is a warning (Q46).
-  const snapshot = snapshotOf(
-    { ...openingStateOf(world), clock: testClock(timing) },
-    { openCast: true, pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) },
-  );
+  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) });
   const unit: ScriptRunUnit = {
     home: seeded, timing, code,
     ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
