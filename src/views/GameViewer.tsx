@@ -557,6 +557,7 @@ const GameViewer = ({
     discoverEntityUserPrompt,
     sceneImageAuto,
     imageTagPrompt,
+    imageCleanTags,
     imageGenDisabled,
     imageLandscapeWidth,
     imageLandscapeHeight,
@@ -3907,7 +3908,7 @@ const GameViewer = ({
       // describes what a character looks like, which is all this layer wants.
       const tags = await buildImagePrompt(
         { description, kind },
-        { snapshot: aiSnapshot, tagPrompt: imageTagPrompt, signal },
+        { snapshot: aiSnapshot, tagPrompt: imageTagPrompt, cleanTags: imageCleanTags, signal },
       );
       const cleaned = scrub ? scrub(tags) : tags;
       derivedTagsRef.current.set(subject.id, cleaned);
@@ -3968,7 +3969,7 @@ const GameViewer = ({
     });
     const actionTags = await sendAiRequest({ ...request, signal });
     if (signal.aborted) return "";
-    const line = composeSceneTags({ characters: cast, locationTags, actionTags, places, knownTags });
+    const line = composeSceneTags({ characters: cast, locationTags, actionTags, places, knownTags, cleanTags: imageCleanTags });
     // Stored whether or not an image follows, so the player can read and edit what would be sent.
     if (line) setFullMessageHistory((prev) => patchSceneTags(prev, turnId, line) ?? prev);
     return line;

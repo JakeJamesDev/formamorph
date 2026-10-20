@@ -152,6 +152,7 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
     cfg: flt('imageCfg', d.cfg),
     sampler: str('imageSampler', d.sampler),
     adetailer: d.adetailer,
+    cleanTags: d.cleanTags,
     workflow: d.workflow,
     invokeEncoder: d.invokeEncoder,
     invokeVae: d.invokeVae,
@@ -1258,7 +1259,7 @@ function useProvideSettings() {
     positivePrompt: imagePositivePrompt, negativePrompt: imageNegativePrompt,
     portraitWidth: imagePortraitWidth, portraitHeight: imagePortraitHeight,
     landscapeWidth: imageLandscapeWidth, landscapeHeight: imageLandscapeHeight,
-    steps: imageSteps, cfg: imageCfg, sampler: imageSampler, adetailer: imageAdetailer,
+    steps: imageSteps, cfg: imageCfg, sampler: imageSampler, adetailer: imageAdetailer, cleanTags: imageCleanTags,
     workflow: imageWorkflow, invokeEncoder: imageInvokeEncoder, invokeVae: imageInvokeVae,
     invokeBoard: imageInvokeBoard, fileName: imageFileName,
   } = imageValues;
@@ -1278,6 +1279,7 @@ function useProvideSettings() {
   const setImageCfg = patchImage('cfg');
   const setImageSampler = patchImage('sampler');
   const setImageAdetailer = patchImage('adetailer');
+  const setImageCleanTags = patchImage('cleanTags');
   const setImageWorkflow = patchImage('workflow');
   const setImageInvokeEncoder = patchImage('invokeEncoder');
   const setImageInvokeVae = patchImage('invokeVae');
@@ -2031,6 +2033,8 @@ function useProvideSettings() {
     setImageSampler,
     imageAdetailer,
     setImageAdetailer,
+    imageCleanTags,
+    setImageCleanTags,
     imageWorkflow,
     setImageWorkflow,
     imageInvokeEncoder,

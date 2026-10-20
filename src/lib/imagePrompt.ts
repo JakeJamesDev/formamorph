@@ -29,20 +29,23 @@ export const DEFAULT_TAG_PROMPT =
 const composeSystem = (template: string, kind: ImageSubjectKind) =>
   renderPromptTemplate(template, { [SUBJECT_TOKEN]: SUBJECT_GUIDANCE[kind] });
 
+const cleanTag = (piece: string) => piece
+  .replace(/([a-z0-9])([A-Z])/g, '$1 $2') // fooBar → foo Bar
+  .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // HTMLParser → HTML Parser
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ') // underscores/punctuation → space
+  .trim();
+
 /**
  * Repair an LLM's tag list into stripped danbooru form: lowercase, space-separated words per tag, comma
  * between tags. Splits CamelCase/joined tokens, turns underscores/punctuation into spaces, dedupes.
+ * With `clean` off, each tag keeps its text (weights, NovelAI syntax) and is only trimmed and deduped.
  */
-export function normalizeBooruTags(raw: string): string {
+export function normalizeBooruTags(raw: string, clean = true): string {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const piece of raw.split(/[,\n]/)) {
-    const tag = piece
-      .replace(/([a-z0-9])([A-Z])/g, '$1 $2') // fooBar → foo Bar
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // HTMLParser → HTML Parser
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ') // underscores/punctuation → space
-      .trim();
+    const tag = clean ? cleanTag(piece) : piece.trim();
     if (tag && !seen.has(tag)) { seen.add(tag); out.push(tag); }
   }
   return out.join(', ');
@@ -54,7 +57,7 @@ export function normalizeBooruTags(raw: string): string {
  */
 export async function buildImagePrompt(
   subject: { description: string; kind: ImageSubjectKind },
-  opts: { snapshot: AiSettingsSnapshot; tagPrompt?: string; signal?: AbortSignal },
+  opts: { snapshot: AiSettingsSnapshot; tagPrompt?: string; cleanTags?: boolean; signal?: AbortSignal },
 ): Promise<string> {
   // The subject's name is deliberately not sent: models answer with it as a tag, and no image model knows
   // a person's name. An author who wants one in the tags types it there.
@@ -64,5 +67,5 @@ export async function buildImagePrompt(
     requestType: 'imageTags',
     maxTokensOverride: 200,
   }, { signal: opts.signal });
-  return normalizeBooruTags(content);
+  return normalizeBooruTags(content, opts.cleanTags);
 }

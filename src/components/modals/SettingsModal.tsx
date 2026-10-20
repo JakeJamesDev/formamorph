@@ -519,6 +519,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setImageSampler,
     imageAdetailer,
     setImageAdetailer,
+    imageCleanTags,
+    setImageCleanTags,
     imageWorkflow,
     setImageWorkflow,
     imageFileName,
@@ -1331,6 +1333,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
                 )}
               </Row>
+              <CheckRow
+                htmlFor="imageCleanTags"
+                checked={imageCleanTags}
+                onChange={setImageCleanTags}
+                {...rowCopy('cleanTags')}
+              />
               {(imageProvider === 'a1111' || imageProvider === 'invokeai') && (
                 <CheckRow
                   htmlFor="imageAdetailer"

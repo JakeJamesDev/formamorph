@@ -59,6 +59,23 @@ describe('deriveCountTags', () => {
 });
 
 describe('composeSceneTags', () => {
+  it('passes authored NovelAI syntax through with cleanTags off', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', '{{silver hair}}, 0.8::freckles ::')],
+      locationTags: 'no humans, [[river]]',
+      actionTags: 'source#hug, Mira smiling',
+      cleanTags: false,
+    })).toBe('1girl, {{silver hair}}, 0.8::freckles ::, source#hug, smiling, [[river]]');
+  });
+
+  it('strips that syntax by default', () => {
+    expect(composeSceneTags({
+      characters: [girl('Mira', '{{silver hair}}')],
+      locationTags: '[[river]]',
+      actionTags: 'source#hug',
+    })).toBe('1girl, silver hair, source hug, river');
+  });
+
   it('orders subject, appearance, action, then background', () => {
     expect(composeSceneTags({
       characters: [girl('Mira', 'silver hair')],

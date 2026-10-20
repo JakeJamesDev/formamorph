@@ -151,6 +151,8 @@ export function composeSceneTags(input: {
   places?: string[];
   /** Real tags, so a place name that is also one survives. */
   knownTags?: ReadonlySet<string>;
+  /** Off keeps each tag's text as written (see normalizeBooruTags). */
+  cleanTags?: boolean;
 }): string {
   const characters = input.characters.slice(0, MAX_SCENE_CHARACTERS);
   const counts = deriveCountTags(characters);
@@ -166,5 +168,5 @@ export function composeSceneTags(input: {
     (t) => !(characters.length > 0 && NO_HUMANS.test(t.toLowerCase())),
   );
   // normalizeBooruTags does the lowercasing, un-joining and dedupe the whole pipeline relies on.
-  return normalizeBooruTags([...counts, ...appearance, ...action, ...place].join(', '));
+  return normalizeBooruTags([...counts, ...appearance, ...action, ...place].join(', '), input.cleanTags);
 }
