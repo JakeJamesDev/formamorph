@@ -100,9 +100,10 @@ describe('a stat Condition at setup (Q23)', () => {
   const berserk = T('Berserk', { isDefault: true, requires: [{ all: [{ kind: 'stat', id: 'rage', operator: '>=', value: 80, unit: 'raw' }] }] });
   const world = (rage: Partial<Stat>) => ({ traits: [berserk], traitGroups: [], entities: [], library: [], stats: [S('rage', 'Rage', rage)], statGroups: [] });
 
-  it('starts a stat-gated default against the stat’s authored start', () => {
-    expect(entryDefaults(world({ starting: 85 }), { source: 'none' }).traitIds).toEqual(['Berserk']);
-    expect(entryDefaults(world({ starting: 40 }), { source: 'none' }).traitIds).toEqual([]);
+  it('starts a stat-gated default against the stat’s authored value, never `starting` (Q8)', () => {
+    expect(entryDefaults(world({ value: 85 }), { source: 'none' }).traitIds).toEqual(['Berserk']);
+    expect(entryDefaults(world({ value: 40 }), { source: 'none' }).traitIds).toEqual([]);
+    expect(entryDefaults(world({ starting: 85, value: 40 }), { source: 'none' }).traitIds).toEqual([]);
   });
 
   it('reads the requirement line off the stat, and leaves out a hidden stat', () => {

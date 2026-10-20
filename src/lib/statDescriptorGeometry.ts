@@ -87,13 +87,13 @@ export function uncoveredSpan(stat: BandedStat): { from: number; to: number } | 
   return { from: top.to, to: max };
 }
 
-/** The stat's value at the top of turn one, resolved exactly as the seeder resolves it (lib/statBackfill):
- *  the authored start, else any live value, else the floor. */
-export function statStartValue(stat: BandedStat): number {
-  if (typeof stat.starting === 'number') return stat.starting;
-  if (typeof stat.value === 'number') return stat.value;
-  return statMin(stat);
-}
+/** The value a stat opens at in every reader: the authored value, else the min, else zero (Q8). `starting`
+ *  is the delta baseline, never the start value. */
+export const statStartValue = (stat: BandedStat): number => stat.value || statMin(stat);
+
+/** `stats`, each valued at its start value. */
+export const atStartValues = <T extends BandedStat>(stats: readonly T[]): T[] =>
+  stats.map((stat) => ({ ...stat, value: statStartValue(stat) }));
 
 /** Five digits is where an exact ceiling starts crowding out the value beside it. */
 const COMPACT_TAG_FLOOR = 10000;

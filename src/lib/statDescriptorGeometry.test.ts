@@ -130,8 +130,9 @@ describe('uncoveredSpan', () => {
 });
 
 describe('statStartValue', () => {
-  it('prefers the authored start, then a live value, then the floor', () => {
-    expect(statStartValue({ min: 2, max: 10, starting: 7, value: 4 })).toBe(7);
+  it('reads the authored value, then the floor, and never `starting` (Q8)', () => {
+    expect(statStartValue({ min: 2, max: 10, starting: 7, value: 4 })).toBe(4);
+    expect(statStartValue({ min: 2, max: 10, starting: 7 })).toBe(2);
     expect(statStartValue({ min: 2, max: 10, value: 4 })).toBe(4);
     expect(statStartValue({ min: 2, max: 10 })).toBe(2);
   });

@@ -1311,26 +1311,27 @@ describe('reachability rules', () => {
 });
 
 describe('stat sanity rules', () => {
+  // A stat opens at its authored value (Q8).
   const oneStat = (over: Partial<Stat>, traits: Trait[] = []) =>
     base({ stats: [stat({ id: 's1', name: 'Fertility', ...over })], traits });
 
   it('flags a starting value outside the stat’s own range, either end', () => {
-    const high = only(oneStat({ starting: 120 }), 'stat-starting-out-of-range');
+    const high = only(oneStat({ value: 120 }), 'stat-starting-out-of-range');
     expect(high).toHaveLength(1);
     expect(high[0].severity).toBe('error');
     expect(high[0].items.map((i) => i.id)).toEqual(['s1']);
     expect(high[0].message).toContain('120');
-    expect(only(oneStat({ starting: -5 }), 'stat-starting-out-of-range')).toHaveLength(1);
+    expect(only(oneStat({ value: -5 }), 'stat-starting-out-of-range')).toHaveLength(1);
     // Both bounds are inclusive, and a stat with no authored start opens at its floor.
-    expect(runRules(oneStat({ starting: 100 }))).toEqual([]);
-    expect(runRules(oneStat({ starting: 0 }))).toEqual([]);
+    expect(runRules(oneStat({ value: 100 }))).toEqual([]);
+    expect(runRules(oneStat({ value: 0 }))).toEqual([]);
     expect(runRules(oneStat({}))).toEqual([]);
   });
 
-  it('reads a stat with no starting value but a live one from that live value', () => {
-    // The seeder's own order: starting, then value, then the floor (lib/statBackfill).
+  it('reads the start from the authored value, never from `starting` (Q8)', () => {
     expect(only(oneStat({ value: 250 }), 'stat-starting-out-of-range')).toHaveLength(1);
-    expect(only(oneStat({ starting: 50, value: 250 }), 'stat-starting-out-of-range')).toEqual([]);
+    expect(only(oneStat({ starting: 50, value: 250 }), 'stat-starting-out-of-range')).toHaveLength(1);
+    expect(only(oneStat({ starting: 250, value: 50 }), 'stat-starting-out-of-range')).toEqual([]);
   });
 
   const banded = (over: Partial<Stat>) => oneStat({
@@ -1339,16 +1340,16 @@ describe('stat sanity rules', () => {
   });
 
   it('flags a starting value that lands above every descriptor band', () => {
-    const found = only(banded({ starting: 80 }), 'stat-start-no-descriptor');
+    const found = only(banded({ value: 80 }), 'stat-start-no-descriptor');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toContain('Fertility');
     // A band at 60 covers the value 60 and nothing above it.
-    expect(only(banded({ starting: 60 }), 'stat-start-no-descriptor')).toEqual([]);
+    expect(only(banded({ value: 60 }), 'stat-start-no-descriptor')).toEqual([]);
   });
 
   it('states the start and where coverage stops in the same units, so the two are comparable', () => {
-    const message = only(banded({ starting: 80 }), 'stat-start-no-descriptor')[0].message;
+    const message = only(banded({ value: 80 }), 'stat-start-no-descriptor')[0].message;
     // Raw thresholds, so both numbers are stat values: the start, and the top band's own ceiling.
     expect(message).toContain('starts at 80 of 100');
     expect(message).toContain('stops at 60 of 100');
@@ -1356,15 +1357,15 @@ describe('stat sanity rules', () => {
 
   it('reads thresholds as raw stat values, so a wider range leaves the bands where they were', () => {
     // The rockets case: raising max cannot move a raw band, so 80 stays above the 60 band either way.
-    expect(only(banded({ max: 200, starting: 80 }), 'stat-start-no-descriptor')).toHaveLength(1);
-    expect(only(banded({ max: 200, starting: 50 }), 'stat-start-no-descriptor')).toEqual([]);
+    expect(only(banded({ max: 200, value: 80 }), 'stat-start-no-descriptor')).toHaveLength(1);
+    expect(only(banded({ max: 200, value: 50 }), 'stat-start-no-descriptor')).toEqual([]);
   });
 
   it('reads them as percentages of min→max when the stat opts in, and says so in percent', () => {
     // Min 0 / max 200 puts the value 80 at 40% — inside the 60 band.
     const proportional = (over: Partial<Stat>) => banded({ max: 200, thresholdUnit: 'percent', ...over });
-    expect(only(proportional({ starting: 80 }), 'stat-start-no-descriptor')).toEqual([]);
-    const found = only(proportional({ starting: 140 }), 'stat-start-no-descriptor');
+    expect(only(proportional({ value: 80 }), 'stat-start-no-descriptor')).toEqual([]);
+    const found = only(proportional({ value: 140 }), 'stat-start-no-descriptor');
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain('starts at 70%');
     expect(found[0].message).toContain('stops at 60%');
@@ -1380,7 +1381,7 @@ describe('stat sanity rules', () => {
   });
 
   it('flags a threshold under the floor, which no value can reach downward', () => {
-    const found = only(banded({ min: 50, max: 100, starting: 60, descriptors: [
+    const found = only(banded({ min: 50, max: 100, value: 60, descriptors: [
       { id: 'd1', threshold: 20, description: 'barren' },
       { id: 'd2', threshold: 100, description: 'fertile' },
     ] }), 'stat-descriptor-out-of-range');
@@ -1404,7 +1405,7 @@ describe('stat sanity rules', () => {
 
   it('flags bands that stop short of Max, naming where coverage ends in the stat’s own unit', () => {
     // The Vane Hollow shape: thresholds read as band floors, so the author's top band covers nothing above it.
-    const found = only(banded({ starting: 50 }), 'stat-descriptor-coverage-gap');
+    const found = only(banded({ value: 50 }), 'stat-descriptor-coverage-gap');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toContain('stop at 60 of 100');
@@ -1418,37 +1419,37 @@ describe('stat sanity rules', () => {
   });
 
   it('reads the gap through the stat’s unit, so a percent stat is judged against 100%', () => {
-    const found = only(banded({ max: 10, thresholdUnit: 'percent', starting: 5 }), 'stat-descriptor-coverage-gap');
+    const found = only(banded({ max: 10, thresholdUnit: 'percent', value: 5 }), 'stat-descriptor-coverage-gap');
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain('stop at 60%');
     expect(only(banded({
-      max: 10, thresholdUnit: 'percent', starting: 5,
+      max: 10, thresholdUnit: 'percent', value: 5,
       descriptors: [{ id: 'd1', threshold: 100, description: 'full' }],
     }), 'stat-descriptor-coverage-gap')).toEqual([]);
   });
 
   it('fires alongside the start finding when the game also opens in the gap — this row carries the fix', () => {
-    const ids = runRules(banded({ starting: 80 })).map((f) => f.ruleId);
+    const ids = runRules(banded({ value: 80 })).map((f) => f.ruleId);
     expect(ids).toContain('stat-start-no-descriptor');
     expect(ids).toContain('stat-descriptor-coverage-gap');
   });
 
   it('raises only the top band to Max, in the stat’s own unit, leaving the rest untouched', () => {
-    const fixedRaw = applyRuleFix(banded({ starting: 50 }), 'stat-descriptor-coverage-gap');
+    const fixedRaw = applyRuleFix(banded({ value: 50 }), 'stat-descriptor-coverage-gap');
     expect(fixedRaw.stats[0].descriptors.map((d) => d.threshold)).toEqual([30, 100]);
     const fixedPct = applyRuleFix(
-      banded({ max: 10, thresholdUnit: 'percent', starting: 5 }), 'stat-descriptor-coverage-gap');
+      banded({ max: 10, thresholdUnit: 'percent', value: 5 }), 'stat-descriptor-coverage-gap');
     expect(fixedPct.stats[0].descriptors.map((d) => d.threshold)).toEqual([30, 100]);
   });
 
   it('says nothing about a stat that carries no descriptors at all', () => {
     // Descriptors are optional; a stat without them isn't missing a band, it just has no status to report.
-    expect(runRules(oneStat({ starting: 80 }))).toEqual([]);
+    expect(runRules(oneStat({ value: 80 }))).toEqual([]);
   });
 
   it('leaves the descriptor band alone when the starting value is out of range in the first place', () => {
     // Out-of-range is the sharper diagnosis and already fires; a second row about its band is noise.
-    expect(only(banded({ starting: 500 }), 'stat-start-no-descriptor')).toEqual([]);
+    expect(only(banded({ value: 500 }), 'stat-start-no-descriptor')).toEqual([]);
   });
 
   it('flags two descriptors sharing a threshold, since only the first can ever apply', () => {
@@ -1478,21 +1479,21 @@ describe('stat sanity rules', () => {
   });
 
   it('flags a percentage stat whose bounds aren’t 0 and 100', () => {
-    const found = only(oneStat({ type: 'percentage', min: 10, max: 50, starting: 20 }), 'stat-percentage-bounds');
+    const found = only(oneStat({ type: 'percentage', min: 10, max: 50, value: 20 }), 'stat-percentage-bounds');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toContain('10');
     expect(found[0].message).toContain('50');
     expect(runRules(oneStat({ type: 'percentage', min: 0, max: 100 }))).toEqual([]);
     // A number stat is free to use any range it likes.
-    expect(runRules(oneStat({ min: 10, max: 50, starting: 20 }))).toEqual([]);
+    expect(runRules(oneStat({ min: 10, max: 50, value: 20 }))).toEqual([]);
   });
 
   it('flags a trait’s negative starting delta on a stat already resting at its floor', () => {
     // The Centaur Breeder shape: a race penalty written against a stat that opens at zero, so the clamp
     // eats the whole thing and every race starts identical.
     const found = only(
-      oneStat({ starting: 0 }, [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })]),
+      oneStat({ value: 0 }, [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })]),
       'stat-trait-delta-clamped',
     );
     expect(found).toHaveLength(1);
@@ -1503,7 +1504,7 @@ describe('stat sanity rules', () => {
 
   it('reads a persona entity’s owned trait for a clamped starting delta', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
-    const w = { ...oneStat({ starting: 0 }), entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, traits: [ashen] }] };
+    const w = { ...oneStat({ value: 0 }), entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, traits: [ashen] }] };
     expect(only(w, 'stat-trait-delta-clamped').map((f) => f.items.map((i) => i.id))).toEqual([['s1', 't1']]);
   });
 
@@ -1514,26 +1515,26 @@ describe('stat sanity rules', () => {
       name: 'Ashen',
       statChanges: [{ statId: 's1', type: 'min', value: 10 }, { statId: 's1', type: 'starting', value: -5 }],
     });
-    expect(only(oneStat({ starting: 10 }, [raises]), 'stat-trait-delta-clamped')).toHaveLength(1);
+    expect(only(oneStat({ value: 10 }, [raises]), 'stat-trait-delta-clamped')).toHaveLength(1);
   });
 
   it('says nothing when part of the delta actually lands', () => {
     // 12 − 5 clamps to the floor at 10, so 2 points moved: the penalty is real, just smaller than written.
     // Only a delta that moves nothing at all is the defect.
     const partial = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -5 }] });
-    expect(runRules(oneStat({ min: 10, starting: 12 }, [partial]))).toEqual([]);
-    expect(runRules(oneStat({ starting: 40 }, [partial]))).toEqual([]);
+    expect(runRules(oneStat({ min: 10, value: 12 }, [partial]))).toEqual([]);
+    expect(runRules(oneStat({ value: 40 }, [partial]))).toEqual([]);
   });
 
   it('says nothing about a positive delta, or one on a stat the trait leaves room under', () => {
     const bonus = trait({ id: 't1', name: 'Blessed', statChanges: [{ statId: 's1', type: 'starting', value: 10 }] });
-    expect(runRules(oneStat({ starting: 0 }, [bonus]))).toEqual([]);
+    expect(runRules(oneStat({ value: 0 }, [bonus]))).toEqual([]);
   });
 
   it('flags a trait’s starting delta on a stat whose code recomputes it from scratch', () => {
     // Fertility's code recovers toward a fixed number, healing every race's penalty away within two turns.
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
-    const found = only(oneStat({ starting: 40, scripts: boxScripts({ after: 'return Math.round((stats.find(s => s.name === "Vigor")?.value ?? 0) / 2);' }) }, [ashen]), 'script-overrides-trait');
+    const found = only(oneStat({ value: 40, scripts: boxScripts({ after: 'return Math.round((stats.find(s => s.name === "Vigor")?.value ?? 0) / 2);' }) }, [ashen]), 'script-overrides-trait');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].items.map((i) => i.id)).toEqual(['s1', 't1']);
@@ -1545,19 +1546,19 @@ describe('stat sanity rules', () => {
     const reads = 'return self.value + 1;';
     const recomputes = 'return 25;';
     // The after box reads the stat, so only the before box erases what the trait set.
-    const beforeOnly = only(oneStat({ starting: 40, scripts: boxScripts({ before: recomputes, after: reads }) }, [ashen]), 'script-overrides-trait');
+    const beforeOnly = only(oneStat({ value: 40, scripts: boxScripts({ before: recomputes, after: reads }) }, [ashen]), 'script-overrides-trait');
     expect(beforeOnly.map((f) => f.message)).toEqual([
       '“Ashen” lowers “Fertility” by 10, but that stat’s Before the AI code recomputes its value without '
       + 'reading it — the change is gone by the next run',
     ]);
-    const afterOnly = only(oneStat({ starting: 40, scripts: boxScripts({ before: reads, after: recomputes }) }, [ashen]), 'script-overrides-trait');
+    const afterOnly = only(oneStat({ value: 40, scripts: boxScripts({ before: reads, after: recomputes }) }, [ashen]), 'script-overrides-trait');
     expect(afterOnly.map((f) => f.message)).toEqual([
       '“Ashen” lowers “Fertility” by 10, but that stat’s After the AI code recomputes its value without '
       + 'reading it — the change is gone by the next run',
     ]);
     // Both boxes recompute. One trait change is still one finding, so the collapsed row's count stays a
     // count of trait changes; the message names both boxes instead.
-    const both = only(oneStat({ starting: 40, scripts: boxScripts({ before: recomputes, after: recomputes }) }, [ashen]), 'script-overrides-trait');
+    const both = only(oneStat({ value: 40, scripts: boxScripts({ before: recomputes, after: recomputes }) }, [ashen]), 'script-overrides-trait');
     expect(both.map((f) => f.message)).toEqual([
       '“Ashen” lowers “Fertility” by 10, but that stat’s Before the AI and After the AI code recompute its '
       + 'value without reading it — the change is gone by the next run',
@@ -1569,8 +1570,8 @@ describe('stat sanity rules', () => {
     // Both ways code can find itself by a literal: its own id, and its own name.
     const byId = 'const me = Object.values(stats).find(s => s.id === "s1"); return Math.min(me.value + 1, me.max);';
     const byName = 'const me = stats.find(s => s.name === "Fertility"); return me.value + 1;';
-    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: byId }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
-    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: byName }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ value: 40, scripts: boxScripts({ after: byId }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ value: 40, scripts: boxScripts({ after: byName }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
   });
 
   it('says nothing when the code reads the self map entry, by bare self or by its own name', () => {
@@ -1578,16 +1579,16 @@ describe('stat sanity rules', () => {
     const bareSelf = 'return Math.min(self.value + 1, self.max);';
     const dotName = 'return stats.Fertility.value + 1;';
     const bracketName = 'return stats["Fertility"].value + 1;';
-    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: bareSelf }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
-    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: dotName }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
-    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: bracketName }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ value: 40, scripts: boxScripts({ after: bareSelf }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ value: 40, scripts: boxScripts({ after: dotName }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ value: 40, scripts: boxScripts({ after: bracketName }) }, [ashen]), 'script-overrides-trait')).toEqual([]);
   });
 
   it('reads a chip-bearing stat’s own name as its code name, not as what the chip rolled', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
     const chipped = (code: string) => base({
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
-      stats: [stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', starting: 40, scripts: boxScripts({ after: code }) })],
+      stats: [stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', value: 40, scripts: boxScripts({ after: code }) })],
       traits: [ashen],
     });
     expect(only(chipped('return stats["Beast Power"].value + 1;'), 'script-overrides-trait')).toEqual([]);
@@ -1598,7 +1599,7 @@ describe('stat sanity rules', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
     const other = base({
       stats: [
-        stat({ id: 's1', name: 'Fertility', starting: 40, scripts: boxScripts({ after: 'return stats.Vigor.value;' }) }),
+        stat({ id: 's1', name: 'Fertility', value: 40, scripts: boxScripts({ after: 'return stats.Vigor.value;' }) }),
         stat({ id: 's2', name: 'Vigor' }),
       ],
       traits: [ashen],
@@ -1610,7 +1611,7 @@ describe('stat sanity rules', () => {
     // A short legacy id inside an ordinary number would otherwise read as a self-lookup and quiet the rule.
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: '1', type: 'starting', value: -10 }] });
     const shortId = (code: string) => base({
-      stats: [stat({ id: '1', name: 'Fertility', min: 0, max: 100, starting: 40, scripts: boxScripts({ after: code }) })],
+      stats: [stat({ id: '1', name: 'Fertility', min: 0, max: 100, value: 40, scripts: boxScripts({ after: code }) })],
       traits: [ashen],
     });
     expect(only(shortId('return 100;'), 'script-overrides-trait')).toHaveLength(1);
@@ -1619,7 +1620,7 @@ describe('stat sanity rules', () => {
 
   it('says nothing when a trait moves a bound rather than the value', () => {
     const wider = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'max', value: -10 }] });
-    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: 'return 25;' }) }, [wider]), 'script-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ value: 40, scripts: boxScripts({ after: 'return 25;' }) }, [wider]), 'script-overrides-trait')).toEqual([]);
   });
 
   it('flags a codeless stat locked in both directions with nothing else able to move it', () => {
@@ -1633,11 +1634,11 @@ describe('stat sanity rules', () => {
     const locks = { noIncrease: true, noDecrease: true } as const;
     // Each of the three movers on its own is enough.
     expect(runRules(oneStat({ ...locks, regen: 2 }))).toEqual([]);
-    expect(only(oneStat({ ...locks, scripts: boxScripts({ after: 'return 25;' }), starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
+    expect(only(oneStat({ ...locks, scripts: boxScripts({ after: 'return 25;' }), value: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
     // Either box counts as code: a stat moved only before the AI is not frozen.
-    expect(only(oneStat({ ...locks, scripts: boxScripts({ before: 'return 25;' }), starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
+    expect(only(oneStat({ ...locks, scripts: boxScripts({ before: 'return 25;' }), value: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
     expect(runRules(oneStat(
-      { ...locks, starting: 40 },
+      { ...locks, value: 40 },
       [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })],
     ))).toEqual([]);
     // And a lock in one direction only leaves the other direction open.
@@ -1650,10 +1651,10 @@ describe('stat sanity rules', () => {
         stat({
           id: 's1',
           name: 'Fertility',
-          starting: 20,
+          value: 20,
           descriptors: [{ id: 'd1', threshold: 30, description: 'barren' }, { id: 'd2', threshold: 100, description: 'fertile' }],
         }),
-        stat({ id: 's2', name: 'Vigor', type: 'percentage', min: 0, max: 100, starting: 50 }),
+        stat({ id: 's2', name: 'Vigor', type: 'percentage', min: 0, max: 100, value: 50 }),
       ],
       traits: [trait({ id: 't1', name: 'Hardy', statChanges: [{ statId: 's2', type: 'starting', value: 10 }] })],
     }))).toEqual([]);

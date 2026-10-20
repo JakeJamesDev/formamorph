@@ -41,7 +41,7 @@ import type { StatOwner } from '@/lib/statOwners';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
 import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import {
-  applyOwnedStatTraits, entityStatTraitsInForce, seedStatBases, type TraitWorld,
+  applyOwnedStatTraits, entityStatTraitsInForce, seedNewGameStats, type TraitWorld,
 } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
@@ -294,12 +294,10 @@ function collisionChance(chances: number[], draws: number): number {
 /** The fresh game's starting stats: seeded exactly as a new game seeds them, then every active trait
  *  acquired in authored order — bounds derived, deltas applied, clamps allowed to bite. */
 function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: PlayerStat[]; seeded: PlayerStat[] } {
-  const seeded = seedStatBases(globalStatsOf(world.stats ?? [], world.statGroups ?? []).map((stat) => {
-    const value = stat.value || stat.min || 0;
-    return { ...stat, value, starting: stat.starting ?? value };
-  }));
+  const authored = globalStatsOf(world.stats ?? [], world.statGroups ?? []);
+  const seeded = seedNewGameStats(authored);
   // The persona's picks reach the global stats only through their Global rows (Q33).
-  return { settled: lensStartingStats(world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), active), seeded };
+  return { settled: lensStartingStats(world, authored, active), seeded };
 }
 
 /** Each authored entity's stats as a new game seeds them, then settles under the entity's own default traits.
