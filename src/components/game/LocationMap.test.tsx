@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH } from '@/lib/locationCanvas';
 import LocationMap from './LocationMap';
@@ -59,7 +59,10 @@ const stubBrowser = (canHover: boolean, page = WIDE) => {
 const implicitEdges = () => [...document.querySelectorAll('.react-flow__edge[data-id^="implicit:"]')]
   .map((edge) => edge.getAttribute('data-id')!);
 
-const show = (props: { connections?: Connection[]; current: string | null; onTravel?: (l: GameLocation) => void }) => {
+const show = (props: {
+  connections?: Connection[]; current: string | null; onTravel?: (l: GameLocation) => void;
+  entitiesAt?: Record<string, string[]>;
+}) => {
   const view = (current: string | null) => (
     <TooltipProvider>
       <div style={{ width: SIZE.width, height: SIZE.height }}>
@@ -67,6 +70,7 @@ const show = (props: { connections?: Connection[]; current: string | null; onTra
           locations={crowd}
           connections={props.connections ?? []}
           currentLocationId={current}
+          entitiesAt={props.entitiesAt}
           onTravel={props.onTravel ?? (() => {})}
         />
       </div>
@@ -137,6 +141,16 @@ describe('the Map', () => {
       await drawnAt(2 * 149);
       fireEvent.click(box('Spoke 40'), { detail: 1 });
       expect(onTravel).toHaveBeenCalledWith(expect.objectContaining({ id: 's40' }));
+    });
+
+    it('counts the met entities on their box and names them in the tip, on no other box', async () => {
+      show({ current: 's7', entitiesAt: { s40: ['Bram', 'Tilly'], hub: ['Queen Ysolde'] } });
+      await drawnAt(2 * 149);
+      const counts = () => [...document.querySelectorAll('.react-flow__node [role="img"]')];
+      expect(counts()).toHaveLength(2);
+      const badge = within(nodeOf('Spoke 40') as HTMLElement).getByRole('img', { name: 'Bram, Tilly' });
+      expect(badge.textContent).toBe('2');
+      within(nodeOf('Hub') as HTMLElement).getByRole('img', { name: 'Queen Ysolde' });
     });
   });
 

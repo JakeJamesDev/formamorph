@@ -26,4 +26,10 @@ describe('EntityListRow outside a running game', () => {
     expect(onRemove).toHaveBeenCalledOnce();
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it('marks a follower, and no one else', () => {
+    render(<><EntityListRow label="Bram" following /><EntityListRow label="Hesk" /></>);
+    expect(screen.getAllByRole('img', { name: 'Following you' })).toHaveLength(1);
+    expect(screen.getByText('Bram').parentElement!.contains(screen.getByRole('img', { name: 'Following you' }))).toBe(true);
+  });
 });

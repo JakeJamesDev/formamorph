@@ -2,6 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { ownerPins, inPlayOwners, inPlayLibrary, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
+import { metFromScene, metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
@@ -578,6 +579,7 @@ const GameViewer = ({
 
   const {
     setCharacterData,
+    visibleEntities,
     setVisibleEntities,
     setCurrentLocation,
     setGlobalStats,
@@ -602,6 +604,8 @@ const GameViewer = ({
     setEntityFollowers,
     carryFollowersTo,
     applyFollowerState,
+    metEntities,
+    setMetEntities,
     setSelectedEntityId,
     codePins,
     setCodePins,
@@ -749,6 +753,17 @@ const GameViewer = ({
     () => [...entities, ...discoveredAsEntities(discoveredEntities)],
     [entities, discoveredEntities],
   );
+  // An entity is met once the scene lists it by its revealed name.
+  useEffect(() => {
+    setMetEntities((met) => metFromScene(met, visibleEntities, allEntities));
+  }, [visibleEntities, allEntities, setMetEntities]);
+  // The Map's live roster: where each met entity with a position stands. A runtime character stands where
+  // it was met.
+  const metRoster = useMemo(() => metRosterByLocation({
+    entities: allEntities,
+    positions: { ...runtimeCharacterPositions(discoveredEntities), ...entityPositions },
+    met: metEntities,
+  }), [allEntities, discoveredEntities, entityPositions, metEntities]);
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
   // never gets promoted to a person. Location names include the whole world, not just here — the
@@ -4605,6 +4620,7 @@ const GameViewer = ({
       const startPositions = startingPositions(positionedCast(codeEntities.world, personaPick.ref), locations.map((l) => l.id));
       setEntityPositions(startPositions);
       setEntityFollowers([]);
+      setMetEntities([]);
       entityOfferRef.current = NO_ENTITY_OFFER;
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
@@ -5155,6 +5171,7 @@ const GameViewer = ({
         locations={locations}
         connections={connections}
         currentLocationId={currentLocation?.id ?? null}
+        entitiesAt={metRoster}
         changeLocation={changeLocation}
         resolveText={resolvePH}
       />

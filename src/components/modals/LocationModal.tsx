@@ -9,6 +9,7 @@ import { defaultCollapsedLocations, locationRows, removeCollapsedChildren } from
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { useTravelView, type TravelView } from "@/lib/travelPrefs";
 import { cn } from "@/lib/utils";
+import type { MetRoster } from "@/lib/metEntities";
 import type { Connection, GameLocation } from "@/types";
 
 /**
@@ -23,13 +24,15 @@ const INDENT_REM = 1.25;
 const ROW_INSET_REM = 0.75;
 
 export const LocationModal = ({
-  isOpen, onOpenChange, locations, connections, currentLocationId, changeLocation, resolveText,
+  isOpen, onOpenChange, locations, connections, currentLocationId, entitiesAt, changeLocation, resolveText,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   locations: GameLocation[];
   connections: Connection[];
   currentLocationId: string | null;
+  /** The met entities the Map shows. */
+  entitiesAt?: MetRoster;
   changeLocation: (location: GameLocation) => void;
   resolveText: (text: string) => string;
 }) => {
@@ -174,6 +177,7 @@ export const LocationModal = ({
                 locations={locations}
                 connections={connections}
                 currentLocationId={currentLocationId}
+                entitiesAt={entitiesAt}
                 onTravel={travel}
               />
             </div>
