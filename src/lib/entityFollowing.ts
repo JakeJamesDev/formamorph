@@ -1,5 +1,6 @@
 import type { Connection, Entity, EntityPositions, GameLocation } from "@/types";
 import { effectiveDestinations } from "@/lib/locationGraph";
+import type { EntityCodeWrite } from "@/lib/statCodeExecutor";
 
 /**
  * Followers and the entity location request's replies. A follower is at the player's location after every
@@ -214,6 +215,35 @@ export function joinEntityMoves<S extends FollowerState>(state: S, move: PlayerM
   const left = applyAtOnce(state, intents, move.from);
   if (!move.to || move.to === move.from) return left;
   return moveWithPlayer(left, intents, move.to);
+}
+
+/**
+ * `state` with code's entity writes applied in call order, the player standing at `playerAt`. `move` places
+ * the entity and ends its following; `follow` joins it at the player's side; `unfollow` leaves a follower
+ * there. A move or a follow on an untracked entity gives it a position, so it is tracked from then on.
+ */
+export function applyEntityCodeWrites<S extends FollowerState>(
+  state: S, writes: readonly EntityCodeWrite[] | undefined, playerAt: string | undefined,
+): S {
+  let next = state;
+  for (const write of writes ?? []) {
+    const { entity } = write;
+    const following = next.followers.includes(entity);
+    const without = () => next.followers.filter((id) => id !== entity);
+    const atPlayer = () => (playerAt ? placeAt(next.positions, [entity], playerAt) : next.positions);
+    switch (write.kind) {
+      case "move":
+        next = { ...next, positions: placeAt(next.positions, [entity], write.location), followers: without() };
+        break;
+      case "unfollow":
+        if (following) next = { ...next, positions: atPlayer(), followers: without() };
+        break;
+      case "follow":
+        next = { ...next, positions: atPlayer(), followers: following ? next.followers : [...next.followers, entity] };
+        break;
+    }
+  }
+  return next;
 }
 
 /** A saved state's followers against the cast that can still hold a position. The same state when nobody goes. */

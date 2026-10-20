@@ -261,20 +261,23 @@ function ownerMaps(entities: readonly CodeEntityNames[], owner: TestRunOwner | u
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
-/** One line for a move, one for the advances together, and one per discovery, memory line, pin and diary line. */
+/** One line for a move, one for the advances together, and one per discovery, memory line, pin, diary line and
+ *  entity write. */
 const worldWriteLines = (
   writes: WorldWrites | undefined, locations: readonly SandboxPlace[], entities: readonly SandboxEntity[],
 ): string[] => {
   if (!writes) return [];
-  const { location, minutes, discover = [], memory = [], pins = [], diary = [] } = writes;
+  const { location, minutes, discover = [], memory = [], pins = [], diary = [], entities: entityWrites = [] } = writes;
   const entityName = (entity: string) => entities.find((known) => known.id === entity)?.name ?? entity;
+  const placeName = (id: string) => locations.find((place) => place.id === id)?.name ?? id;
   return [
-    ...(location === undefined ? [] : [`location.move: ${locations.find((place) => place.id === location)?.name ?? location}`]),
+    ...(location === undefined ? [] : [`location.move: ${placeName(location)}`]),
     ...(minutes === undefined ? [] : [`clock.advance: ${minutes} minutes`]),
     ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
     ...memory.map((line) => `memory.add: ${line}`),
     ...pins.map((line) => `memory.pin: ${line}`),
     ...diary.map(({ entity, line }) => `diary: ${entityName(entity)}: ${line}`),
+    ...entityWrites.map((write) => `${memberPath('entities', entityName(write.entity))}.${write.kind === 'move' ? `move: ${placeName(write.location)}` : `${write.kind}()`}`),
   ];
 };
 

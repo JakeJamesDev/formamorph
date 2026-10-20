@@ -9,7 +9,7 @@ import { randomUUID } from '@/lib/uuid';
 import type { parseStatUpdates } from '@/lib/statChanges';
 import { readStatResponse, statResponseChanges, type StatResponse } from '@/lib/statRequest';
 import {
-  applyAtOnce, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf,
+  applyAtOnce, applyEntityCodeWrites, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf,
   type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PlayerMove,
 } from '@/lib/entityFollowing';
 import type { TurnPassId, TurnPlan } from './turnPlan';
@@ -228,19 +228,27 @@ export function entityMovesOf(passes: readonly TurnPassOutcome[]): EntityMoveInt
  * A committed turn's entity replies laid over `state`, once the player's move is known: `from` is where the
  * turn began, `to` where the player stands after the router and the turn's code. While the commit offers a
  * move the player has not taken, "stay here" and each walk apply at once and "come along" waits in `offer`
- * for Go.
+ * for Go. The code's entity writes apply last, and an entity they name leaves the offer.
  */
 export function commitEntityMoves<S extends FollowerState>(
   state: S,
-  commit: Pick<TurnCommit, 'entityMoves' | 'suggestedLocation'>,
+  commit: Pick<TurnCommit, 'entityMoves' | 'suggestedLocation' | 'codeWrites'>,
   move: PlayerMove,
 ): { state: S; offer: EntityMoveOffer } {
   const { entityMoves } = commit;
+  const code = commit.codeWrites?.entities;
   const moved = move.to !== undefined && move.to !== move.from;
   if (commit.suggestedLocation && !moved) {
-    return { state: applyAtOnce(state, entityMoves, move.from), offer: offerOf(entityMoves) };
+    const written = new Set(code?.map((write) => write.entity));
+    const offer = offerOf(entityMoves);
+    return {
+      state: applyEntityCodeWrites(applyAtOnce(state, entityMoves, move.from), code, move.from),
+      offer: written.size ? {
+        comeAlong: offer.comeAlong.filter((id) => !written.has(id)), comeOnce: offer.comeOnce.filter(({ id }) => !written.has(id)),
+      } : offer,
+    };
   }
-  return { state: joinEntityMoves(state, move, entityMoves), offer: NO_ENTITY_OFFER };
+  return { state: applyEntityCodeWrites(joinEntityMoves(state, move, entityMoves), code, move.to ?? move.from), offer: NO_ENTITY_OFFER };
 }
 
 /**

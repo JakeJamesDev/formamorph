@@ -43,6 +43,14 @@ describe('runTestCode world writes', () => {
     expect(report.writes).toEqual(['memory.add: Tor lied.', 'memory.pin: The bridge is out.', 'diary: Tor: I lied.']);
   });
 
+  it('lists each entity write as one line', async () => {
+    const report = await run('entities.Tor.move("loc-gate"); entities["Old Mira"].follow(); entities.Tor.unfollow();', {
+      ...world, entities: [{ id: 'e-tor', name: 'Tor' }, { id: 'e-mira', name: 'Old Mira' }],
+    });
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual(['entities.Tor.move: North Gate', 'entities["Old Mira"].follow()', 'entities.Tor.unfollow()']);
+  });
+
   // The editor has no discovered cast, so play may know a name the authored world lacks (Q46).
   it('warns on a diary for a name the authored world lacks, and does not fail', async () => {
     const report = await run('diary("Stranger", "Hello."); diary("Tor", "I lied.");', { ...world, entities: [{ id: 'e-tor', name: 'Tor' }] });
