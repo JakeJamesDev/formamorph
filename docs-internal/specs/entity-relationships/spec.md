@@ -1,6 +1,7 @@
 # Entity Relationships
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-20: tickets 01–03, last landing a6ba2abee. Gates green except lint, which fails only on the gitignored worlds-wip/cb-3.3.2-live.ts.
 Spec session: entity-relationships — spec
 
 ## Problem Statement
