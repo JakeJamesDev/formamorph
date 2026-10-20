@@ -229,9 +229,9 @@ describe('labelPlaceholders', () => {
     expect(labelPlaceholders(`The ${chip('town', 't1')} Inn`, placeholders, { letters })).toBe('The {Town Name (A)} Inn');
   });
 
-  it('reads the Player Name chip by its label, bare when lone and braced when embedded', () => {
-    expect(labelPlaceholders('{{user}}', placeholders, { letters })).toBe('Player Name');
-    expect(labelPlaceholders('Friend of {{user}}', placeholders, { letters })).toBe('Friend of {Player Name}');
+  it('reads the Persona Name chip by its label, bare when lone and braced when embedded', () => {
+    expect(labelPlaceholders('{{user}}', placeholders, { letters })).toBe('Persona Name');
+    expect(labelPlaceholders('Friend of {{user}}', placeholders, { letters })).toBe('Friend of {Persona Name}');
   });
 
   it('shows a World chip by name, with no letter', () => {

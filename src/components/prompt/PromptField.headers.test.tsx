@@ -71,7 +71,7 @@ describe('Header in the shared prompt editor', () => {
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Before\n<player_character>\nMeet Mira.\n</player_character>\nAfter');
   });
 
-  it('takes the Player Name in Header, framed by its label in Edit and by the name in Preview', async () => {
+  it('takes the Persona Name in Header, framed by its label in Edit and by the name in Preview', async () => {
     const user = userEvent.setup();
     const view = render(<Field initial="<PERSONA|markdown>" />);
     await user.click(screen.getByText('Persona (Markdown)'));
@@ -82,7 +82,7 @@ describe('Header in the shared prompt editor', () => {
     const { container } = render(<PromptField value={saved} onChange={() => {}} vocabulary={vocab}
       previewValues={{ '<PERSONA|markdown>': 'Mira', 'header:{{user}}': 'Sylvie' }} />);
     await waitFor(() => expect(container.querySelector('[contenteditable]')?.textContent)
-      .toBe('\n## Player Name (Player Character)\nPersona (Markdown)\n'));
+      .toBe('\n## Persona Name (Player Character)\nPersona (Markdown)\n'));
     await user.click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('\n## Sylvie (Player Character)\nMira\n');
   });

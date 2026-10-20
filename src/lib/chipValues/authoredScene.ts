@@ -107,7 +107,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     defaultPicks(tree.traits, tree.groups);
   const activeIds = new Set(options.activeTraitIds ?? defaultsOf(global));
   const globalCopies = copiesOf(globalReader);
-  // A global trait's Character Name reads as the Player Name, under a caller's resolve or own pins.
+  // A global trait's Character Name reads as the Persona Name, under a caller's resolve or own pins.
   const globalText = (trait: Trait, text: string) => (options.resolve
     ? options.resolve(characterAsPlayer(text), globalCopies)
     : resolveOwnerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, globalReader), copies: globalCopies }));
@@ -139,7 +139,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ownedStats,
     // Under None the Custom Persona entity is the persona, as play resolves it.
     persona: resolvePersona(undefined, cast, []).persona,
-    // Under None the Custom Persona entity plays, so its name is the Player Name.
+    // Under None the Custom Persona entity plays, so its name is the Persona Name.
     playerName: played[0]?.name ?? null,
     location,
     locations,

@@ -77,7 +77,7 @@ describe('authoredChipScene and entity stats', () => {
     expect(authoredChipScene(world()).ownedStats ?? {}).toEqual({});
   });
 
-  it('carries the Custom Persona entity’s name as the Player Name, and the player without one', () => {
+  it('carries the Custom Persona entity’s name as the Persona Name, and the player without one', () => {
     const you: Entity = { id: 'you', name: 'Sylvie', customPersona: true };
     expect(chipValues(authoredChipScene(world({ entities: [wren, { ...wren, id: 'p', name: 'Odd', persona: true }, you] })))('header:{{user}}'))
       .toBe('Sylvie');

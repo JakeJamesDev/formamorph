@@ -40,7 +40,7 @@ export interface ChipScene {
   /** Each entity's switched-on stats at their current values. None when absent. */
   ownedStats?: OwnedStatsInForce;
   persona: ResolvedPersona | null;
-  /** The played entity's name, which a chip Header reads as the Player Name. Nobody plays when absent or null. */
+  /** The played entity's name, which a chip Header reads as the Persona Name. Nobody plays when absent or null. */
   playerName?: string | null;
   /** Where the scene is, or nowhere: a world with no locations, or a start not yet resolved. */
   location: GameLocation | null;

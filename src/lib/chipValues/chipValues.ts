@@ -75,7 +75,7 @@ export function playedStatParts<P extends StatChipPart>(
 /**
  * A Chip Scene as a lookup over every scene-derived chip token: World Description, Stats, Traits, Persona,
  * Location, Entities, Notes, Time and the lore blocks. A key renders from its decoded axes on first read, so
- * any token the registry's axes can spell has a value. The one other key is the Player Name, which only a
+ * any token the registry's axes can spell has a value. The one other key is the Persona Name, which only a
  * chip Header reads. Placeholder chips are resolved in every value.
  */
 export function chipValues(scene: ChipScene): ValueLookup {

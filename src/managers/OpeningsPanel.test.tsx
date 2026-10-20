@@ -44,22 +44,22 @@ async function menu(): Promise<string[]> {
 describe('opening fields', () => {
   it('offer Character Name in an entity’s opening', async () => {
     mount(<EntityOpenings entity={keeper} onChange={() => {}} placeholders={[]} />);
-    expect(await menu()).toEqual(['Player Name', 'Character Name']);
+    expect(await menu()).toEqual(['Persona Name', 'Character Name']);
   });
 
   it('leave it out of a world opening', async () => {
     mount(<OpeningsList owner={keeper} rows={ownerOpeningRows(keeper)} onChange={() => {}} placeholders={[]} empty={null} />);
-    expect(await menu()).toEqual(['Player Name']);
+    expect(await menu()).toEqual(['Persona Name']);
   });
 });
 
 describe('an entity opening’s Preview', () => {
   const greeting = { ...keeper, openings: [{ id: 'o1', text: '{{char}} nods to {{user}}.', kind: 'narration' }] } as Entity;
 
-  it('reads Character Name as the entity’s name and Player Name as its label', async () => {
+  it('reads Character Name as the entity’s name and Persona Name as its label', async () => {
     mount(<EntityOpenings entity={greeting} onChange={() => {}} placeholders={[]} />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
-    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Player Name.');
+    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');
   });
 
   it('reads the entity’s name on the World tab’s Openings panel too', async () => {
@@ -69,7 +69,7 @@ describe('an entity opening’s Preview', () => {
     };
     mount(<OpeningsPanel />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
-    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Player Name.');
+    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');
   });
 });
 

@@ -176,7 +176,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [World or Unique](World-Editor-Placeholders#world-or-unique) | Every World chip of a placeholder shows the same roll. Each Unique chip rolls on its own. |
 | [Draw Weight](World-Editor-Placeholders#draw-weight) | How often a value comes up, compared with the others. Weight 0 never draws it. |
 | [Pin](World-Editor-Placeholders#pins) | Holds a placeholder at one value while its source is active: a stat band, a location, a trait or a value |
-| [Player Name, Character Name](World-Editor-Placeholders#built-in-chips) | The two built-in chips. Type `{{user}}` for your name, or `{{char}}` for the entity that owns the text. |
+| [Persona Name, Character Name](World-Editor-Placeholders#built-in-chips) | The two built-in chips. Type `{{user}}` for your name, or `{{char}}` for the entity that owns the text. |
 | [Dictionary](World-Editor-Dictionary) | A world's lorebook. Its entries reach the AI only when a keyword matches. |
 | [Book](World-Editor-Dictionary#books) | A group of dictionary entries. A library dictionary is one book. |
 | [Entry](World-Editor-Dictionary#the-entry-panel) | One piece of lore: **Trigger Keywords** and the **Value** the AI gets |

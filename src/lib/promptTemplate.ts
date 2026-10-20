@@ -138,7 +138,7 @@ export function chipHeaderFormat(parts: TokenParts): 'markdown' | 'xml' | undefi
   return parts.headerFormat ?? parts.variantId?.split('.').find((id): id is 'markdown' | 'xml' => id === 'markdown' || id === 'xml');
 }
 
-/** A Header with its Player Name from the map, before it is framed. A map without one leaves the token. */
+/** A Header with its Persona Name from the map, before it is framed. A map without one leaves the token. */
 function headerText(header: string | undefined, values: TokenValues): string | undefined {
   const name = readValue(values, PLAYER_NAME_HEADER_KEY);
   return name === undefined || header === undefined ? header : withPlayerName(header, name);

@@ -102,7 +102,7 @@ describe('the render guard', () => {
     }
   });
 
-  it('reads the Player Name for chip Headers', () => {
+  it('reads the Persona Name for chip Headers', () => {
     expect(chipValues(scene({ playerName: ' Mira ' }))('header:{{user}}')).toBe('Mira');
   });
 

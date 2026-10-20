@@ -122,7 +122,7 @@ describe('built-in Header adoption', () => {
         if (seg.type !== 'variable') continue;
         const parts = splitToken(seg.token)!;
         if (!parts.header) continue;
-        // The Header reads the scene's Player Name, as the whole template does.
+        // The Header reads the scene's Persona Name, as the whole template does.
         const populated = renderPromptTemplate(seg.token, { 'header:{{user}}': ctx('header:{{user}}')!, [parts.key]: 'Body line one\nBody line two' });
         expect(populated).toContain('Body line one\nBody line two');
         // The header line renders once; a whole-line match, since one header's words can sit inside another's.

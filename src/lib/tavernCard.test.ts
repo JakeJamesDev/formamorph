@@ -150,7 +150,7 @@ Personality: ${CHARACTER_NAME.token} is fond of ${PLAYER_NAME.token}
 Scenario: ${CHARACTER_NAME.token} with ${PLAYER_NAME.token}`);
   });
 
-  it('names the character as plain text in the embedded lorebook and keeps the Player Name chip', () => {
+  it('names the character as plain text in the embedded lorebook and keeps the Persona Name chip', () => {
     const result = readTavernCard(png('chara', b64(JSON.stringify({
       data: { name: 'Aria', character_book: { entries: [{ keys: ['oath'], content: '{{ Char }} swore to {{ User }}. {{CHAR}} kept it.' }] } },
     }))));

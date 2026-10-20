@@ -532,7 +532,7 @@ A chip is a token in a text field. The editor inserts chips. To write one by han
 
 The editor can add two more parts after the placement id: a path to a part of the placeholder, and a label after `:=`. Copy those from a chip the editor wrote.
 
-Two chips need no placeholder. `{{user}}` is the [Player Name chip](Persona-Authoring#the-player-name-chip). `{{char}}` is the [Character Name chip](Persona-Authoring#the-character-name-chip).
+Two chips need no placeholder. `{{user}}` is the [Persona Name chip](Persona-Authoring#the-persona-name-chip). `{{char}}` is the [Character Name chip](Persona-Authoring#the-character-name-chip).
 
 ## Dictionaries
 <!-- keywords: lorebook object, keyword array, regex flag, constant flag, position values, depth key, world info fields, token budget -->

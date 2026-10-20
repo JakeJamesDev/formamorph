@@ -85,7 +85,7 @@ const armIds = Object.keys(ARMS);
 const cards = JSON.parse(await readFile(path.join(HARNESS_DIR, '../open-chat-cards.json'), 'utf8'))
   .map((card) => readTavernJson(JSON.stringify(card)).entity);
 const [lead, second] = cards;
-// Persona None: the Player Name marker reads as "you", the way play renders it.
+// Persona None: the Persona Name marker reads as "you", the way play renders it.
 const greeting = renderBuiltins(lead.openings[0].text, { kind: 'opening' });
 
 // Each turn is a beat label and the player's own line, as the app sends it. `start` is the world's own

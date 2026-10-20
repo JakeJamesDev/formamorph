@@ -5,14 +5,15 @@ import {
 } from './builtinPlaceholders';
 
 describe('the Built-in registry', () => {
-  it('lists Player Name first, stored in the SillyTavern spelling', () => {
+  it('lists Persona Name first, stored in the SillyTavern spelling', () => {
     expect(BUILTIN_PLACEHOLDERS[0]).toBe(PLAYER_NAME);
     expect(PLAYER_NAME.token).toBe('{{user}}');
-    expect(PLAYER_NAME.label).toBe('Player Name');
+    expect(PLAYER_NAME.label).toBe('Persona Name');
     expect(PLAYER_NAME.searchTerms).toContain('user');
+    expect(PLAYER_NAME.searchTerms).toContain('player name');
   });
 
-  it('offers Player Name in fields that offer Built-ins and nowhere else', () => {
+  it('offers Persona Name in fields that offer Built-ins and nowhere else', () => {
     expect(PLAYER_NAME.visible({ offered: true })).toBe(true);
     expect(PLAYER_NAME.visible({ offered: false })).toBe(false);
   });
@@ -31,7 +32,7 @@ describe('the Built-in registry', () => {
     expect(CHARACTER_NAME.visible({ offered: false, ownerKind: 'entity' })).toBe(false);
   });
 
-  it('offers Player Name whoever owns the field', () => {
+  it('offers Persona Name whoever owns the field', () => {
     expect(PLAYER_NAME.visible({ offered: true, ownerKind: 'dictionary' })).toBe(true);
     expect(PLAYER_NAME.visible({ offered: true, ownerKind: 'entity' })).toBe(true);
   });
@@ -53,14 +54,14 @@ describe('builtinForToken', () => {
 
 describe('builtinLabel', () => {
   it('names a Built-in token and nothing else', () => {
-    expect(builtinLabel('{{User}}')).toBe('Player Name');
+    expect(builtinLabel('{{User}}')).toBe('Persona Name');
     expect(builtinLabel('{{ph:x:world:p1}}')).toBeUndefined();
   });
 });
 
 describe('labelBuiltins', () => {
   it('writes every Built-in in the text as its label', () => {
-    expect(labelBuiltins('Hi {{user}}, {{ User }}’s cup.')).toBe('Hi Player Name, Player Name’s cup.');
+    expect(labelBuiltins('Hi {{user}}, {{ User }}’s cup.')).toBe('Hi Persona Name, Persona Name’s cup.');
   });
 });
 

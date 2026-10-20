@@ -50,7 +50,7 @@ describe('PlaceholderPaletteBar cycle filter', () => {
         <PlaceholderPaletteBar placeholders={world} />
       </ChipInsertTargetProvider>,
     );
-    expect(names()).toEqual(['Player Name', 'Molly', 'Northern', 'Hair', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Molly', 'Northern', 'Hair', 'Town']);
   });
 
   it('leaves out the value’s own placeholder and everything that reaches it', () => {
@@ -60,7 +60,7 @@ describe('PlaceholderPaletteBar cycle filter', () => {
         <PlaceholderPaletteBar placeholders={world} />
       </ChipInsertTargetProvider>,
     );
-    expect(names()).toEqual(['Player Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Town']);
   });
 
   it('keeps the strip when the filter empties it, so the panel does not reflow', () => {
@@ -72,7 +72,7 @@ describe('PlaceholderPaletteBar cycle filter', () => {
       </ChipInsertTargetProvider>,
     );
     expect(screen.getByRole('button', { name: /Placeholders/ })).toBeInTheDocument();
-    expect(names()).toEqual(['Player Name']);
+    expect(names()).toEqual(['Persona Name']);
   });
 });
 
@@ -113,7 +113,7 @@ describe('PlaceholderPaletteBar sections', () => {
       </PlaceholderStoreProvider>,
     );
     expect(strip()).toEqual([
-      '[Built-in]', 'Player Name', 'Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Eyes',
+      '[Built-in]', 'Persona Name', 'Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Eyes',
     ]);
   });
 
@@ -126,7 +126,7 @@ describe('PlaceholderPaletteBar sections', () => {
         </ChipInsertTargetProvider>
       </PlaceholderStoreProvider>,
     );
-    expect(strip()).toEqual(['[Built-in]', 'Player Name', 'Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
+    expect(strip()).toEqual(['[Built-in]', 'Persona Name', 'Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
   });
 });
 
@@ -260,7 +260,7 @@ describe('PlaceholderPaletteBar owner headings', () => {
     // The name is what a reader hears; the shape is what an author sees. Both, or a swapped icon passes.
     expect(icon).toHaveClass('lucide-user');
     expect(icon.parentElement).toHaveTextContent('Molly');
-    expect(names()).toEqual(['Player Name', 'Town', 'Eyes']);
+    expect(names()).toEqual(['Persona Name', 'Town', 'Eyes']);
   });
 
   it('carries the dictionary icon for a book owner', () => {
@@ -310,7 +310,7 @@ describe('PlaceholderPaletteBar owner headings', () => {
 });
 
 /**
- * The Built-in section: every world's Player Name, and Character Name over an entity's panel. A Built-in the
+ * The Built-in section: every world's Persona Name, and Character Name over an entity's panel. A Built-in the
  * claimed field refuses stays in place, dimmed, so the strip does not reflow as focus moves.
  */
 describe('PlaceholderPaletteBar Built-in section', () => {
@@ -332,15 +332,15 @@ describe('PlaceholderPaletteBar Built-in section', () => {
 
   it('offers Character Name over an entity’s panel', () => {
     mount('molly');
-    expect(names()).toEqual(['Player Name', 'Character Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Character Name', 'Town']);
   });
 
   it('leaves Character Name out over a book and over world text', () => {
     mount('lore');
-    expect(names()).toEqual(['Player Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Town']);
     cleanup();
     mount();
-    expect(names()).toEqual(['Player Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Town']);
   });
 
   it('offers Character Name over a library entity, whose store names it, but not over its values', () => {
@@ -354,17 +354,17 @@ describe('PlaceholderPaletteBar Built-in section', () => {
       </PlaceholderStoreProvider>,
     );
     library();
-    expect(names()).toEqual(['Player Name', 'Character Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Character Name', 'Town']);
     cleanup();
     // Scoped to one of its placeholders, the fields are that placeholder's values.
     library('town');
-    expect(names()).toEqual(['Player Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Town']);
   });
 
   it('marks each Built-in chip and no author chip', () => {
     mount('molly');
     const marked = [...document.querySelectorAll('[data-builtin-mark]')].map((el) => el.closest('button')?.textContent);
-    expect(marked).toEqual(['Player Name', 'Character Name']);
+    expect(marked).toEqual(['Persona Name', 'Character Name']);
     expect(document.querySelector('[data-builtin-mark]')).toHaveClass('lucide-pencil-sparkles');
   });
 
@@ -375,7 +375,7 @@ describe('PlaceholderPaletteBar Built-in section', () => {
     mount(undefined, <FocusClaimer insert={insert} accepts={accepts} />);
     await userEvent.click(screen.getByRole('button', { name: 'Field' }));
 
-    const player = screen.getByRole('button', { name: 'Player Name' });
+    const player = screen.getByRole('button', { name: 'Persona Name' });
     expect(player).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByRole('button', { name: 'Town' })).toHaveAttribute('aria-disabled', 'false');
     await userEvent.click(screen.getByRole('button', { name: 'Town' }));
@@ -386,7 +386,7 @@ describe('PlaceholderPaletteBar Built-in section', () => {
 
   it('opens no rename on a double-clicked Built-in', async () => {
     mount();
-    await userEvent.dblClick(screen.getByRole('button', { name: 'Player Name' }));
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Persona Name' }));
     expect(screen.queryByRole('textbox', { name: /Rename/ })).not.toBeInTheDocument();
     await userEvent.dblClick(screen.getByRole('button', { name: 'Town' }));
     expect(screen.getByRole('textbox', { name: 'Rename Town' })).toBeInTheDocument();

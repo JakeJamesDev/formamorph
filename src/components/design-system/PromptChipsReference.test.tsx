@@ -11,10 +11,10 @@ function palette() {
 }
 
 describe('prompt chips reference', () => {
-  it('lists Player Name and Character Name under Built-in, each with its mark', () => {
+  it('lists Persona Name and Character Name under Built-in, each with its mark', () => {
     render(<PromptChipsReference />);
-    expect(palette()).toHaveTextContent(/^Built-in\s*Player Name\s*Character Name\s*Town$/);
-    for (const name of ['Player Name', 'Character Name']) {
+    expect(palette()).toHaveTextContent(/^Built-in\s*Persona Name\s*Character Name\s*Town$/);
+    for (const name of ['Persona Name', 'Character Name']) {
       expect(within(palette()).getByRole('button', { name }).querySelector('[data-builtin-mark]')).not.toBeNull();
     }
   });

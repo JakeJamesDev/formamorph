@@ -148,12 +148,12 @@ describe('ChipTypeahead — the Built-in section', () => {
   it('lists the Built-ins first, under their heading', async () => {
     render(<BuiltinHarness />);
     await open();
-    expect(offered().slice(0, 3)).toEqual(['Player Name', 'Character Name', 'Molly']);
+    expect(offered().slice(0, 3)).toEqual(['Persona Name', 'Character Name', 'Molly']);
     expect(within(menu()!).getByText('Built-in')).toBeInTheDocument();
   });
 
   it.each([
-    ['player', 'Player Name'], ['user', 'Player Name'], ['Character', 'Character Name'], ['char', 'Character Name'],
+    ['persona', 'Persona Name'], ['player', 'Persona Name'], ['player name', 'Persona Name'], ['user', 'Persona Name'], ['Character', 'Character Name'], ['char', 'Character Name'],
   ])('finds %s', async (query, label) => {
     render(<BuiltinHarness />);
     await open(query);

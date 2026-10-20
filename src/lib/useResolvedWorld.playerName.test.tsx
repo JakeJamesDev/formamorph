@@ -46,7 +46,7 @@ const mount = () => {
   };
 };
 
-// The greeting holds the marker as an import before the Player Name chip stored it.
+// The greeting holds the marker as an import before the Persona Name chip stored it.
 const greeting = '{{user}} steps off the boat. Vos takes {{user}}’s bag.';
 const mira: Entity = { id: 'w-mira', name: 'Mira', persona: true, locations: ['dock'] };
 const vos: Entity = {
@@ -74,7 +74,7 @@ describe('the game view renders every opening through resolveOpening', () => {
   });
 });
 
-describe('the Player Name chip in play', () => {
+describe('the Persona Name chip in play', () => {
   it('names the persona on page one at the first draw, before the persona is in state', async () => {
     const live = mount();
     await loadWorld(live);

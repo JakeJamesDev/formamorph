@@ -206,7 +206,7 @@ describe('authored prompt headers', () => {
   });
 });
 
-describe('the Player Name in a Header', () => {
+describe('the Persona Name in a Header', () => {
   const persona = (variantId: string | null) =>
     joinToken({ base: '<PERSONA>', variantId, header: '{{user}} (Player Character)' });
   const values = (name: string | undefined, body = 'Meet Mira.') => ({
@@ -237,7 +237,7 @@ describe('the Player Name in a Header', () => {
     expect(renderPromptTemplate(persona(variantId), values('  '))).toBe(expected);
   });
 
-  it('leaves the token in the Header when the map has no Player Name', () => {
+  it('leaves the token in the Header when the map has no Persona Name', () => {
     expect(renderPromptTemplate(persona(null), values(undefined))).toBe('\n{{USER}} (PLAYER CHARACTER):\nMeet Mira.\n');
   });
 
@@ -246,7 +246,7 @@ describe('the Player Name in a Header', () => {
     expect(renderPromptTemplate(template, values('Sylvie', body))).toBe('Before\n\nAfter');
   });
 
-  it('keeps a Player Name typed in prompt text or an affix as written', () => {
+  it('keeps a Persona Name typed in prompt text or an affix as written', () => {
     const token = joinToken({ base: '<PERSONA>', variantId: null, pre: '{{user}}: ' });
     expect(renderPromptTemplate(`Speak to {{user}}. ${token}`, values('Sylvie'))).toBe('Speak to {{user}}. {{user}}: Meet Mira.');
   });

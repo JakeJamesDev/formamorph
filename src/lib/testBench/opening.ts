@@ -460,7 +460,7 @@ export function buildOpening(
   const chances = poolChances(entries);
   const entityName = new Map([...cast, persona?.entity, customPersona].flatMap((e) => (e ? [[e.id, e.name] as const] : [])));
   const locationName = new Map((world.locations ?? []).map((l) => [l.id, l.name]));
-  // The Player Name chip names the played entity: the persona, or the Custom Persona entity under None. A
+  // The Persona Name chip names the played entity: the persona, or the Custom Persona entity under None. A
   // world with neither reads "you".
   const player = { name: persona ? resolve(persona.entity.name) : undefined, kind: 'opening' as const };
   const openingText = (text: string, owner: Entity | null = null) =>

@@ -20,8 +20,8 @@ describe('statCodeName', () => {
     expect(statCodeName(`${chip('ph-beast')} Power`, [beast])).toBe('Beast Power');
   });
 
-  it('reads the Player Name chip as its label, whoever the persona is', () => {
-    expect(statCodeName('Trust in {{user}}', [beast])).toBe('Trust in Player Name');
+  it('reads the Persona Name chip as its label, whoever the persona is', () => {
+    expect(statCodeName('Trust in {{user}}', [beast])).toBe('Trust in Persona Name');
   });
 
   it('reads the same name whatever the placeholder rolled', () => {
