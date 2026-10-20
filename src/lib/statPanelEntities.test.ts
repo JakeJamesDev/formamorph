@@ -42,9 +42,10 @@ describe('statPanelOptions', () => {
     expect(list.map((o) => o.label)).toEqual(['Mute', 'Bram']);
   });
 
-  it('puts the played persona first and marks it', () => {
+  it('puts the played persona first and marks it as the player’s, with its bare name', () => {
     const list = options({ persona: you, scene: [seen('Bram')] });
-    expect(list.map((o) => o.label)).toEqual(['Sera (You)', 'Bram', 'Odette', 'Wick']);
+    expect(list.map((o) => o.label)).toEqual(['Sera', 'Bram', 'Odette', 'Wick']);
+    expect(list.map((o) => o.you ?? false)).toEqual([true, false, false, false]);
     expect(list[0].present).toBe(true);
   });
 

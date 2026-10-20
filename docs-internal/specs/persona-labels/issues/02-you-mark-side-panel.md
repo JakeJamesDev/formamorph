@@ -1,6 +1,6 @@
 # 02: You Mark in the Side Panel
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -24,3 +24,10 @@ A player looks at the side panel:
 - [ ] GamePanels render tests cover the persona row and the stat heading. Removing the pill from either one makes its test fail.
 - [ ] Static frames in dark theme, light theme, and mobile (375 px) on the **Status** tab.
 - [ ] A changelog fragment. Four gates green, exit codes read.
+
+## Outcome
+
+- **Picker: the pill.** The Stats panel picker renders the pill inside the select item, and Radix copies the item's content into the closed trigger, so both show `Sable [You]`. The `(You)` text is gone. Frame of the open list: `.scratch/you-mark-02/1-dark-picker-open.jpg` (gitignored, in the ticket worktree).
+- **Alignment read from the DOM:** on the persona row, the trigger and the stat heading, the pill is 14 px tall and its center matches the name's line center to the pixel.
+- **Dev fixture:** `entityStats` now plays Sable, a world persona with one stat, so the three spots render on one route (`#dev?view=gameViewer&fixture=entityStats`).
+- **Accessible names:** the played owner's heading reads "Sable You". The `aria-label` of its section stays `Sable stats`.

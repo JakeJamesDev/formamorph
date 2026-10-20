@@ -43,6 +43,8 @@ const ENTITY_STATS_CAST = [
   },
   { id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), stats: [devStat('Nerve', 70), devStat('Stamina', 55)] },
   { id: 'dev-odette', name: 'Odette', stats: [devStat('Stock', 12)] },
+  // The played persona, for the You mark on the persona row, its stat heading and the picker.
+  { id: 'dev-sable', name: 'Sable', persona: true, stats: [devStat('Poise', 65)] },
 ] as unknown as Entity[];
 
 /** The `entityMorphs` fixture's entity: the bundled avatar as an entity model, its Bulk stat bound to a face
@@ -124,7 +126,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
     }
     case 'entityStats': {
       // The white room plus three entities that own stats, in the scene: one met by name, one by alias only,
-      // and one who left earlier. Their values are the authored values the load backfills.
+      // and one who left earlier. Their values are the authored values the load backfills. Sable is played.
       const [world, save] = await Promise.all([
         import('./devFixtures/whiteRoomWorld.json'),
         import('./devFixtures/whiteRoomSave.json'),
@@ -135,6 +137,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
         world: { ...base, entities: [...base.entities, ...ENTITY_STATS_CAST] },
         save: {
           ...saved,
+          persona: { source: 'world', entityId: 'dev-sable' },
           currentState: {
             ...saved.currentState,
             visibleEntities: [

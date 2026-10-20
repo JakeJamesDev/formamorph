@@ -89,6 +89,7 @@ import type { OwnerId } from '@/lib/scope';
 import { StatGroupSections } from './StatGroupSections';
 import { statPanelLayout } from '@/lib/statGroupTree';
 import { PersonaRow } from './PersonaRow';
+import { YouMark } from './YouMark';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
 import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntities';
@@ -1220,7 +1221,9 @@ const NO_ENTITY = '__none';
 const NO_STAT_GROUPS: StatGroup[] = [];
 const NO_AUTHORED_STATS: Stat[] = [];
 const entityItems = (options: StatPanelOption[]) =>
-  options.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>);
+  options.map((option) => (
+    <SelectItem key={option.id} value={option.id}>{option.label}{option.you && <YouMark />}</SelectItem>
+  ));
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
@@ -1480,7 +1483,10 @@ export const RightPanel = ({
             )}
             {playedRows.map((owner) => (
               <section key={owner.entity.id} aria-label={`${owner.entity.name} stats`} data-testid="persona-stats" className="mt-2">
-                <h3 className="truncate px-2 pb-1 text-label font-medium">{owner.entity.name}</h3>
+                <h3 className="flex items-center px-2 pb-1 text-label font-medium">
+                  <span className="min-w-0 truncate">{owner.entity.name}</span>
+                  <YouMark />
+                </h3>
                 {ownerStatRows(owner)}
               </section>
             ))}
