@@ -801,6 +801,15 @@ describe('entity stats at game start', () => {
     expect(row).toMatchObject({ value: 20, max: 100, traitShift: 0 });
   });
 
+  it('moves a global stat through an entity’s default global row, as play opens it (ticket 02 persona ruling)', () => {
+    const lucky: Trait = { id: 't-lucky', name: 'Lucky', isDefault: true, statChanges: [{ statId: 's-luck', value: 3, type: 'starting' }] };
+    const luckOf = (opening: ReturnType<typeof openingFor>) => opening.stats.find((s) => s.id === 's-luck')!.value;
+    const base = luckOf(openingFor(staged([maren({ traits: [] })])));
+    expect(luckOf(openingFor(staged([maren({ traits: [lucky] })])))).toBe(base + 3);
+    const wren = staged([maren({ id: 'e-wren', name: 'Wren', persona: true, personaOnly: true, traits: [lucky] })]);
+    expect(luckOf(atPersona(wren, 'e-wren'))).toBe(base + 3);
+  });
+
   it('never lets an entity’s trait move the player’s stats', () => {
     const base = openingFor(staged([maren({ traits: [] })])).stats;
     const withTrait = openingFor(staged([maren()])).stats;

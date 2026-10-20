@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
-import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
-import { ownerPins, inPlayOwners, inPlayLibrary, libraryUnder } from '@/lib/ownedTraitsInPlay';
+import { openingFold } from '@/lib/openingState';
+import { ownerPins, inPlayOwners, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
 import { metFromScene, metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
@@ -24,7 +24,7 @@ import {
 import { landSwitchRun } from "@/lib/switchRunLanding";
 import { openOutputRun, type OutputRun } from "@/lib/outputRun";
 import {
-  applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, seedEntityStats, statOwnerEntities,
+  applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, statOwnerEntities,
   statRequestOwners, withEntityRegen, withOwnerCodeResults,
 } from "@/lib/entityStats";
 import { readsTurnStart, type RunTiming } from "@/lib/statCodeTiming";
@@ -218,7 +218,7 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyGlobalRowTraits, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, seedNewGameStats, startingTraitLog,
+  activeTraits as traitsInForce, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
   gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn, traitSwitchEvents,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
@@ -4561,46 +4561,22 @@ const GameViewer = ({
         return;
       }
 
-      // New game: seed the live stats from the world defaults, recording each stat's game-start baseline
-      // (`starting`) so the opening turn's deltas read from the world value, not 0/min. Seeding lives here —
-      // not in a reactive effect on `stats` — so it runs exactly once for a fresh game and can never race
-      // with / clobber a loaded save (which returns above).
-      // Seeded from the AUTHORED stats, chips and all: names resolve on the way out of state, never in, so
-      // a resolved name written in here would freeze whatever pins happened to be active at game start and
-      // no later pin could ever move it.
-      const seeded = seedNewGameStats(authoredStats);
+      // New game, once: a loaded save returned above. The fold reads the authored world, chips and all.
+      const opening = openingFold(getWorldData(), { traits: initialTraits, owned: initialOwnedTraits }, {
+        ...(initialPersona ?? { ref: { source: 'none' } }), characters: initialCharacters ?? [],
+      });
+      const acquired = opening.state.ownerTraits.acquired;
+      const seedLibrary = opening.state.ownerTraits.library ?? [];
       newPlaythroughRef.current = true;
-
-      // Authored order, not click order: stat changes apply in sequence, so a deterministic order is what
-      // makes two players who picked the same traits end up with the same stats. Authored traits for the
-      // same reason as the stats above.
-      const chosen = new Set(initialTraits);
-      const seedLibrary = inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []);
-      const seedWorld: TraitWorld = {
-        traits: authoredTraits, groups: traitGroups, entities: traitEntities, persona: initialPersona?.ref ?? { source: 'none' },
-        ...inPlayOwners(ownerWorld, initialPersona?.ref, seedLibrary),
-      };
-      // Only the held picks: a Custom Persona pick made before the entry step moved to a world persona is not
-      // the player's under it.
-      const chosenList = inAuthoredOrder(heldGlobalTraits(authoredTraits.filter((t) => chosen.has(t.id)), seedWorld), traitOrder);
-      // Folded rather than set one trait at a time: each acquisition reads the whole slice, so the batch has
-      // to thread through in one pass instead of racing several queued state updates.
-      let seedState: TraitRuntimeState = { stats: seeded, traits: [], disabledTraitIds: [], appliedValues: {} };
-      for (const trait of chosenList) {
-        seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
+      // A log line is frozen when written, so each authored trait resolves now with its owner's pins.
+      const ownerEntity = (id: string | null) =>
+        (id == null ? null : traitEntities.find((e) => e.id === id) ?? seedLibrary.find((e) => e.id === id) ?? null);
+      for (const { trait, ownerId } of opening.startingTraits) {
+        for (const line of startingTraitLog([trait], (t) => resolveTraitText(t, t.name, ownerEntity(ownerId)))) addLogEntry(line);
       }
-      // Every entity's global rows apply after the world picks; then each entity's own traits apply to its stats.
-      const globalRows = applyGlobalRowTraits({
-        ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits), entityStats: seedEntityStats(statOwnerEntities({ world: codeEntities.world, library: seedLibrary })),
-      }, seedWorld);
-      seedState = applyOwnedStatTraits(globalRows.state, seedWorld);
-      // Logs are write-time strings shown raw, and each trait here is authored (chips intact), so each resolves
-      // now with its own pins.
-      const traitLabel = (trait: Trait) => resolveTraitText(trait, trait.name);
-      for (const line of startingTraitLog([...chosenList, ...globalRows.applied], traitLabel)) addLogEntry(line);
-      commitTraitState(seedState);
+      commitTraitState(opening.traitState);
       // The seeded entity stats are also the baseline their first changes read from.
-      resetEntityStats(seedState.entityStats ?? {});
+      resetEntityStats(opening.entityStats);
       // A new game starts with no entity picked in the stat panel or the entity view.
       setSelectedEntityId(undefined);
 
@@ -4614,10 +4590,10 @@ const GameViewer = ({
         world: ownerWorld,
         persona: initialPersona?.ref,
         library: seedLibrary,
-        globalTraits: chosenList,
+        globalTraits: acquired,
         owned: initialOwnedTraits,
         sharedPlaceholders: worldPlaceholders,
-      }, { location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls }).world;
+      }, { location: authoredLocation, stats: opening.traitState.stats, placeholders, rolls: sessionRolls }).world;
       if (location && authoredLocation) {
         changeLocation(location);
         // A log line is frozen the moment it is written.
@@ -4701,12 +4677,10 @@ const GameViewer = ({
     initialCharacters,
     initialPersona,
     dictionaries,
-    authoredTraits,
+    getWorldData,
     authoredLocations,
-    traitGroups,
     ownerWorld,
     worldPlaceholders,
-    traitOrder,
     locations,
     worldLoaded,
     worldOverview,
