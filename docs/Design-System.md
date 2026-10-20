@@ -1970,6 +1970,7 @@ Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a pl
 | The **Entities** tab row | `EntityListRow` in [`EntityListRow.tsx`](../src/components/game/EntityListRow.tsx), with `you` |
 | The persona row | `PersonaRow` in [`PersonaRow.tsx`](../src/components/game/PersonaRow.tsx) |
 | The played owner's stat heading and the picker item | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx); the picker reads `you` on a `StatPanelOption` |
+| A requirement line in play | `GateLineText` in [`GateLineText.tsx`](../src/components/game/GateLineText.tsx), from `gateLineParts` |
 | Isolated reference | [`YouMarkReference.tsx`](../src/components/design-system/YouMarkReference.tsx) |
 
 Use `YouMark` for every new surface. Do not draw another mark.

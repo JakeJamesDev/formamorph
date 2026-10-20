@@ -160,7 +160,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, a persona, or a stat. **Not** makes it hold while the target is off. |
 | [Stat Condition](World-Editor-Traits#stat-conditions) | A Condition that compares a stat to a number, raw or as a percent of the stat's range. *Rage >= 80* |
 | [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows in play. With no rows, it always shows. |
-| [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. The played persona is the owner **You**. An item with no owner is global. |
+| [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. The played persona is the owner **Persona**. An item with no owner is global. |
 | [Global Stat](World-Editor-Stats#how-the-ai-tracks-stat-changes) | A stat on the **Stats** tab, outside every entity. No one owns it. The AI reads it under **Global Stats**. |
 | [Global Trait](World-Editor-Traits#whose-trait-counts) | A trait outside every entity, such as one the player picks at the start. No one owns it. The AI reads the picked ones under **Global Traits**. |
 | [Persona Stat](Persona-Authoring#persona-stats) | A stat of the entity the player plays. The AI reads it in the **Persona** block, under the `Player Character` key. |

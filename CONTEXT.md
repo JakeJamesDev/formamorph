@@ -342,7 +342,7 @@ One field a Link or a Copy sets for itself, stored with the Blueprint's value it
 _Avoid_: local value, patch, delta
 
 **Owner**:
-The entity or dictionary whose tree holds a trait, stat or placeholder, as its own item or through a Link or Copy. The played persona is the owner **You**; so is the entity with the **Custom Persona** mark under None and a library persona. Global scope is never an owner: an item with no owner is global. Requirements and pins resolve per owner. Where it matters, the editor says **Own** or **Linked**.
+The entity or dictionary whose tree holds a trait, stat or placeholder, as its own item or through a Link or Copy. The played persona is the owner **Persona**; so is the entity with the **Custom Persona** mark under None and a library persona. Global scope is never an owner: an item with no owner is global. Requirements and pins resolve per owner. Where it matters, the editor says **Own** or **Linked**.
 _Avoid_: bearer, holder
 
 **Global Stat**:

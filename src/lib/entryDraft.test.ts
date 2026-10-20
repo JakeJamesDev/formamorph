@@ -3,7 +3,7 @@ import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, libraryCastIds, rekeyOwnedPicks, withLibraryDefaults,
   withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from './entryDraft';
-import { settle, switchTrait } from './traitGates';
+import { gateOf, gateStates, settle, switchTrait } from './traitGates';
 import { cascadeOffInput } from './traitRuntime';
 import type { PersonaPickContext } from './personaPick';
 import type { Entity, GameLocation, PersonaRef, Trait } from '@/types';
@@ -81,6 +81,15 @@ describe('owned trait picks in the draft', () => {
     withSettledTraits({ ...draft, persona: ref }, settle(entryGateInput(w, { ...draft, persona: ref }), cascadeOffInput(draft.cascadeOffTraitIds)));
   const toggle = (draft: EntryDraft, ownerId: string, traitId: string) =>
     withSettledTraits(draft, switchTrait(entryGateInput(castWorld(), draft), ownerId, traitId, cascadeOffInput(draft.cascadeOffTraitIds))!);
+
+  // Q7: the setup screen reads a Condition on the persona by the played persona's name, for the You pill.
+  it("reads a Condition on the persona by the played persona's name, or Persona with no one played", () => {
+    const knight: Entity = { id: 'knight', name: 'Knight', traits: [trait('squire', { requires: [{ all: [{ kind: 'trait', id: 'tamed', owner: { kind: 'you' } }] }] })] };
+    const condition = (persona: PersonaRef) =>
+      gateOf(gateStates(entryGateInput(castWorld([knight]), { ...emptyEntryDraft(), persona })), 'knight', 'squire')!.rows[0].conditions[0];
+    expect(condition(world('ash'))).toMatchObject({ text: 'Ash: tamed', persona: 'Ash' });
+    expect(condition({ source: 'none' })).toMatchObject({ text: 'Persona: tamed', persona: undefined });
+  });
 
   it("preselects every owner's defaults, the world's and each entity's, settled under the persona", () => {
     const asAsh = entryDefaults(castWorld([wren]), world('ash'));

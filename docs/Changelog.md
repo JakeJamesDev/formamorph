@@ -44,6 +44,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Entities tab now marks your persona with a small You pill after its name.** It replaces the "(You)" text.
     - **The Traits tab and Enter World now mark your persona with the You pill after its name.** It replaces the colored "You" word on the entity headings and the trait category list.
     - **The persona row, your persona's stat heading and the Stats panel picker now carry the You pill.** The picker shows it in the list and on the closed control, in place of "(You)".
+    - **A requirement on your persona's traits now reads your persona's name with the You pill.** In the World Editor, the owner list and the condition read **Persona** instead of **You**. Worlds and saves don't change.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.

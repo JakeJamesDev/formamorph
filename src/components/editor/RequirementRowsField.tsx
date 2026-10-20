@@ -26,7 +26,7 @@ type AddTarget = number | 'new';
  * The Requires field over plain data: Requirement Rows, each a bordered line of chips joined by "and", the
  * rows joined by "or". **And** adds a Condition to its row, **Or Another Way** adds a row, and removing a
  * row's last chip removes the row (Q6). Picking a target opens a second page for the owner: the same
- * owner, You, or an entity that owns it. Off-world, or for a global target, it is added at once. A chip
+ * owner, Persona, or an entity that owns it. Off-world, or for a global target, it is added at once. A chip
  * opens its target, unless `opens` says the host has nowhere to open it, when it
  * reads as plain text; a chip whose target is gone reads red under its stored name. Each chip flips between
  * plain and Not; a Not chip shows a NOT mark and a dashed border.

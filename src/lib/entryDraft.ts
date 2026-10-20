@@ -57,6 +57,7 @@ export interface EntryTraitWorld {
 const entryGateBase = (world: EntryTraitWorld, persona: PersonaRef): Omit<GateInput, 'active'> => ({
   ...resolveOwners(world, persona, world.library).gate,
   stats: startingGateStats(world, world.library),
+  reader: 'player',
 });
 
 /** Global scope's tree and every present entity owner under `persona`: the world's entities, then the library

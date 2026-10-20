@@ -2501,7 +2501,7 @@ describe('trait gate rules', () => {
       // On a global target, "You:" reads global scope, as no owner does (Q10).
       const youNot = { ...ref('paladin'), owner: { kind: 'you' as const }, not: true as const };
       const found = only(gates([rowed('a', [{ all: [ref('paladin'), youNot] }]), paladin], { traitGroups }), rule);
-      expect(found.map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and You: not Paladin”']);
+      expect(found.map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and Persona: not Paladin”']);
     });
 
     it('passes the same pair under two owners, or split across two rows', () => {

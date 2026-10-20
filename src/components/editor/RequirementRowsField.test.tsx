@@ -84,7 +84,7 @@ describe('RequirementRowsField without a trait or a store', () => {
   describe('with only You as an owner for the target, in a world', () => {
     const single: RequirementOptions = {
       ...options,
-      traits: [{ ...options.traits[0], owners: [{ owner: { kind: 'you' }, name: 'You' }] }],
+      traits: [{ ...options.traits[0], owners: [{ owner: { kind: 'you' }, name: 'Persona' }] }],
     };
 
     it('asks which owner', async () => {
@@ -92,7 +92,7 @@ describe('RequirementRowsField without a trait or a store', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
       expect(screen.getByRole('button', { name: 'Back to targets' })).toBeInTheDocument();
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'You']);
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'Persona']);
     });
   });
 });

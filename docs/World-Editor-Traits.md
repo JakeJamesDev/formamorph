@@ -35,7 +35,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 2. Open the **Availability** tab.
 3. Under **Requires**, select **Add Requirement**.
 4. Pick a target in the **Traits**, **Any Trait in a Group** or **Playing As** list.
-5. Pick whose trait counts: **Same Owner**, **You**, or an entity. A **Playing As** target skips this step, and so does a target that only one owner can have.
+5. Pick whose trait counts: **Same Owner**, **Persona**, or an entity. A **Playing As** target skips this step, and so does a target that only one owner can have.
 6. Optional: to need a second target as well, select **And** in the same row and pick it. The trait then needs both.
 7. Optional: to open the trait another way, select **Or Another Way** and pick a target for the new row. Any one row is enough.
 
@@ -322,7 +322,7 @@ A locked trait shows its requirements as one line: *Requires Knight and not Pala
 
 ### Whose trait counts
 
-The entity that has a trait, as its own or through a link, is its *owner*. The entity the player plays is one owner, marked **You**. Each entity in the cast is another.
+The entity that has a trait, as its own or through a link, is its *owner*. The entity the player plays is one owner, named **Persona**. Each entity in the cast is another.
 
 A trait outside every entity, such as one the player picks at the start, is a *global trait*. A global trait has no owner. It never counts as the persona's trait, so no persona trait can use it as its same-owner target.
 
@@ -333,12 +333,12 @@ To check another owner, pick one after you pick the target. When only one owner 
 | Owner | The condition holds when |
 |---|---|
 | **Same Owner** | Whoever has the trait also has the target. This is the default. It never pairs a global trait with an entity's trait. |
-| **You** | The entity the player plays has the target. With no entity played, it never holds. |
+| **Persona** | The entity the player plays has the target. With no entity played, it never holds. |
 | An entity | That entity has the target. The list shows only entities that can have it. |
 
-For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player plays a Paladin.
+For example, *Squire* requires **Persona**: *Paladin*. A squire entity gets its Squire trait only when the player plays a Paladin.
 
-> ⚠️ **A global trait can't use Same Owner with an entity's trait.** A global *Duelist* that requires an entity's *Paladin* from the same owner never opens. The [Test Bench](Test-Bench) warns about it. Pick **You** or the entity.
+> ⚠️ **A global trait can't use Same Owner with an entity's trait.** A global *Duelist* that requires an entity's *Paladin* from the same owner never opens. The [Test Bench](Test-Bench) warns about it. Pick **Persona** or the entity.
 
 A condition that names an entity describes a relationship to someone else. When the player plays that entity, the relationship can't apply to themself, so the row with that condition can never hold. The game drops that row. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second row, such as *Paladin* on the same owner, stays and opens by that row. A trait with no row left is not offered. An entity's own traits keep every row, so Albus can still gate his own trait on *Albus: Paladin*.
 
@@ -507,7 +507,7 @@ It shows a warning when:
 - More **Automatic** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
 - A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
-- A global trait requires an entity's trait, group or stat from the same owner. Only entities have the target, so the row never holds. Pick **You** or the entity.
+- A global trait requires an entity's trait, group or stat from the same owner. Only entities have the target, so the row never holds. Pick **Persona** or the entity.
 - A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
 - A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
 - Every image of an entity has a Visibility rule, and no two images have opposite conditions. The entity can end up with no image.

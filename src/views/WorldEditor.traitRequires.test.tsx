@@ -121,7 +121,7 @@ describe('the Requires field', () => {
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Tamed/ }));
 
     const page = screen.getAllByRole('option').map((o) => o.textContent);
-    expect(page).toEqual(['Same OwnerWhoever has the trait', 'You', 'Ash']);
+    expect(page).toEqual(['Same OwnerWhoever has the trait', 'Persona', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
   });

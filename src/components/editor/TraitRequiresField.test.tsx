@@ -70,12 +70,12 @@ const chips = () => screen.getAllByRole('button').map((b) => b.textContent).filt
 const rowTexts = () => [...document.querySelectorAll('[data-requirement-row]')].map((row) => row.textContent);
 
 describe('TraitRequiresField owner choice', () => {
-  it('asks which owner after a target, listing Same Owner, You, then every entity that owns it', async () => {
+  it('asks which owner after a target, listing Same Owner, Persona, then every entity that owns it', async () => {
     render(<Harness trait={traits[3]} />);
     openPicker();
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
     expect(screen.getByRole('button', { name: 'Back to targets' }).parentElement?.textContent).toBe('Requires Paladin on');
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'You', 'Albus']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'Persona', 'Albus']);
     expect(screen.getByPlaceholderText('Search owners')).toHaveValue('');
   });
 
@@ -88,19 +88,19 @@ describe('TraitRequiresField owner choice', () => {
 
     openPicker();
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
-    fireEvent.click(option(/^You/));
-    expect(screen.getByRole('button', { name: 'You: Paladin' })).toBeInTheDocument();
+    fireEvent.click(option(/^Persona/));
+    expect(screen.getByRole('button', { name: 'Persona: Paladin' })).toBeInTheDocument();
 
     openPicker();
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
     fireEvent.click(option(/^Same Owner/));
-    expect(chips()).toEqual(['Albus: Paladin', 'You: Paladin', 'Paladin']);
+    expect(chips()).toEqual(['Albus: Paladin', 'Persona: Paladin', 'Paladin']);
   });
 
   it('opens a chip on its target whatever its owner', async () => {
     const onOpen = vi.fn();
     render(<Harness trait={trait('smite', { name: 'Smite', requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }] }] })} onOpen={onOpen} />);
-    fireEvent.click(screen.getByRole('button', { name: 'You: Paladin' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Persona: Paladin' }));
     expect(onOpen).toHaveBeenCalledWith({ kind: 'trait', id: 'paladin', owner: { kind: 'you' } });
   });
 
@@ -111,7 +111,7 @@ describe('TraitRequiresField owner choice', () => {
     const paladin = await screen.findByRole('option', { name: /^Paladin/ });
     expect(paladin).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(paladin);
-    expect(option(/^You/)).toHaveAttribute('aria-disabled', 'true');
+    expect(option(/^Persona/)).toHaveAttribute('aria-disabled', 'true');
     expect(option(/^Same Owner/)).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(option(/^Same Owner/));
     openPicker();
@@ -139,7 +139,7 @@ describe('TraitRequiresField owner choice', () => {
     render(<Harness trait={mira.traits![0]} />);
     openPicker();
     fireEvent.click(await screen.findByRole('option', { name: /^any Classes/ }));
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'You', 'Albus']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'Persona', 'Albus']);
     fireEvent.click(option(/^Albus/));
     expect(screen.getByRole('button', { name: 'Albus: any Classes' })).toBeInTheDocument();
   });
@@ -303,9 +303,9 @@ describe('TraitRequiresField Not flip', () => {
 
   it('keeps the owner on a flipped chip', () => {
     render(<Harness trait={smite([{ all: [{ ...paladin, owner: { kind: 'you' } }] }])} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Require You: Paladin to be off' }));
-    expect(screen.getByRole('button', { name: 'NOT You: Paladin' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Require You: Paladin instead' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Require Persona: Paladin to be off' }));
+    expect(screen.getByRole('button', { name: 'NOT Persona: Paladin' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Require Persona: Paladin instead' })).toBeInTheDocument();
   });
 
   it('disables a flip that would repeat a Condition in its row', () => {
@@ -388,6 +388,6 @@ describe.skip('TraitRequiresField summary', () => {
       [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }, off('brave')],
       [on('paladin'), off('brave')],
     )} />);
-    expect(summary()).toEqual(['Needs One Of:', 'You: Paladin', 'Paladin', 'Blocked By: Brave']);
+    expect(summary()).toEqual(['Needs One Of:', 'Persona: Paladin', 'Paladin', 'Blocked By: Brave']);
   });
 });
