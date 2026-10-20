@@ -126,6 +126,13 @@ describe('authoredChipScene', () => {
     expect(scene.stats.map((s) => [s.name, s.value])).toEqual([['Warmth', 40], ['Nerve', 10]]);
   });
 
+  it('opens a stat through the seed rule: an authored zero stays zero, then clamps to the range (Q8)', () => {
+    const scene = authoredChipScene(world({ stats: [
+      { ...warmth, min: -10, value: 0 }, { ...nerve, value: 0 }, { ...warmth, id: 'w2', name: 'Chill', value: 5, starting: 10 },
+    ] }));
+    expect(scene.stats.map((s) => [s.name, s.value])).toEqual([['Warmth', 0], ['Nerve', 10], ['Chill', 5]]);
+  });
+
   it("nests the Stats chips under the world's stat groups, loose stats first", () => {
     const grouped = world({
       stats: [{ ...warmth, groupId: 'body' }, nerve],

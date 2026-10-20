@@ -282,13 +282,13 @@ export function codeBoundsToDeltas(stats: readonly LegacyCodeBoundsStat[], activ
 
 /**
  * The stats a fresh playthrough opens with, before any trait: the authored defaults, each with its live
- * value and its game-start baseline (`starting`) settled so the opening turn's deltas read from the world
- * value rather than 0/min. Authored, chips and all — names resolve on the way out of state, never in.
+ * value and its game-start baseline (`starting`) set to that value, so the opening turn shows no change
+ * the author did not make (Q8). Authored, chips and all — names resolve on the way out of state, never in.
  */
 export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
   return seedStatBases(authored.map((stat) => {
     const value = statStartValue(stat);
-    return { ...stat, value, starting: stat.starting ?? value };
+    return { ...stat, value, starting: value };
   }));
 }
 

@@ -1,4 +1,5 @@
 import type { Stat, StatDescriptor, ThresholdUnit } from '@/types';
+import { clamp } from '@/lib/utils';
 
 /**
  * Descriptor geometry: where each band actually starts and stops on a stat's min→max scale, what the
@@ -87,9 +88,14 @@ export function uncoveredSpan(stat: BandedStat): { from: number; to: number } | 
   return { from: top.to, to: max };
 }
 
-/** The value a stat opens at in every reader: the authored value, else the min, else zero (Q8). `starting`
- *  is the delta baseline, never the start value. */
-export const statStartValue = (stat: BandedStat): number => stat.value || statMin(stat);
+/** The number the author typed as a stat's start: the authored value, else the min. Unclamped, for the
+ *  checks that judge it against the range. */
+export const statAuthoredStart = (stat: BandedStat): number => stat.value ?? statMin(stat);
+
+/** The value a stat opens at in every reader: the authored start clamped to the range (Q8). `starting` is
+ *  the delta baseline, never the start value. */
+export const statStartValue = (stat: BandedStat): number =>
+  clamp(statAuthoredStart(stat), statMin(stat), statMax(stat));
 
 /** `stats`, each valued at its start value. */
 export const atStartValues = <T extends BandedStat>(stats: readonly T[]): T[] =>

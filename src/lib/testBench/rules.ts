@@ -31,7 +31,7 @@ import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
 import {
   describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, sortedDescriptors,
-  statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
+  statAuthoredStart, statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
 import { statCodeName } from '@/lib/statCodeNames';
 import { filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
@@ -1347,8 +1347,9 @@ const statDisabledForever: Rule = {
 
 // ── Stat sanity: numbers that can't mean what the author wrote ────────────────────────────────────────────
 
+// The sanity rules judge the number the author typed, not the clamped value play opens at.
 const startsInRange = (stat: Stat): boolean => {
-  const value = statStartValue(stat);
+  const value = statAuthoredStart(stat);
   return value >= stat.min && value <= stat.max;
 };
 
@@ -1364,7 +1365,7 @@ const statStartingOutOfRange: Rule = {
     const item = namedItem(stat.id, stat.name, world);
     return finding(
       statStartingOutOfRange,
-      `${quote(item.name)} starts at ${statStartValue(stat)}, outside its range of ${stat.min} to ${stat.max}`,
+      `${quote(item.name)} starts at ${statAuthoredStart(stat)}, outside its range of ${stat.min} to ${stat.max}`,
       [item],
     );
   }),
@@ -1379,7 +1380,7 @@ const statStartNoDescriptor: Rule = {
   check: (world) => (world.stats ?? [])
     // A start outside the range is the sharper diagnosis and already fires; its band is nobody's question.
     .filter((stat) => (stat.descriptors ?? []).length > 0 && startsInRange(stat)
-      && !activeDescriptor(stat, statStartValue(stat)))
+      && !activeDescriptor(stat, statAuthoredStart(stat)))
     .map((stat) => {
       const item = namedItem(stat.id, stat.name, world);
       const spans = descriptorSpans(stat);
@@ -1388,7 +1389,7 @@ const statStartNoDescriptor: Rule = {
       // is exactly the reading that made this message unreadable.
       return finding(
         statStartNoDescriptor,
-        `${quote(item.name)} starts at ${describeInThresholdUnits(stat, statStartValue(stat))}, above its top band, `
+        `${quote(item.name)} starts at ${describeInThresholdUnits(stat, statAuthoredStart(stat))}, above its top band, `
         + `which stops at ${describeInThresholdUnits(stat, top.to)} — the AI is told no status for it until the value drops`,
         [item],
       );

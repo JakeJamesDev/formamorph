@@ -37,7 +37,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
-
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
   - **The relationship probe measures whether narration uses an absent relative without placing them in the scene.** It runs an A/B, relationship off vs on, on the shipped prompts.
@@ -56,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A stat opens at its authored value in the Test Bench, Test Code and trait picker, matching play.** A stat with no authored value opens at its min.
   - **A stat now starts at its authored value on code cards, in new Link Base Values and in older saves.** This matches where play opens the stat.
   - **A trait Script whose entity is out of the game reads `self` as not held.** `self.enabled` and `self.acquired` read false, as they do in Test Code.
+  - **A stat now opens at its authored value, shows no change on turn one, and an authored zero stays zero.** A value outside the stat's range opens at the nearest edge.
 
 ---
 

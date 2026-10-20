@@ -14,7 +14,7 @@ import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
-import { treeStatTraits } from '../traitRuntime';
+import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
 import type {
@@ -55,12 +55,9 @@ export interface AuthoredSceneOptions {
 }
 
 
-/** An authored stat as a playthrough holds it at the start: its own value, or its minimum when none is set. */
-const atStartingValue = (stat: Stat): PlayerStat => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min });
-
 /**
  * The world being edited as a Chip Scene: its own opening. The scene is at the starting location with the
- * cast the author placed there, every stat at its authored starting value, the traits the author marked
+ * cast the author placed there, every stat seeded as a new game opens it, the traits the author marked
  * default, and every enabled lore entry (nothing has been typed yet, so no keyword has fired to narrow
  * them). No persona is picked, so the Custom Persona entity is the persona, as under None. There are no
  * notes and no clock: a world has none until a player enters it.
@@ -118,14 +115,14 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const played = entities.filter((entity) => playsAs(entity, undefined));
   // Each entity's default traits switch its stats on and off.
   const ownedStats = enabledOwnerStats(withTraitToggles(
-    Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, (e.stats ?? []).map(atStartingValue)])),
+    Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])])),
     treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
   ));
 
   return {
     overview: worldOverview?.systemPrompt || '',
-    // Stats read their authored starting value — the same shape a playthrough's stats carry.
-    stats: options.stats ?? stats.map(atStartingValue),
+    // Stats open as a playthrough's do.
+    stats: options.stats ?? seedNewGameStats(stats),
     statPlacement: statPlacementOf(world),
     // With no persona picked, the Custom Persona entity's stats are the player's, as its traits are.
     playedStats: ownerStatParts(played, ownedStats),
