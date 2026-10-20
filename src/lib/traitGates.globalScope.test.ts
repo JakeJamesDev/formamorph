@@ -85,7 +85,7 @@ describe('You (Q13)', () => {
   it('is unmet, not unresolved, with no played entity', () => {
     const gate = gateOf(gateStates(input({ mira: [squire] }, NONE, scoped([], { albus: ['paladin'], mira: ['paladin'] }))), 'mira', 'squire')!;
     expect(gate.unlocked).toBe(false);
-    expect(gate.rows[0].conditions[0]).toMatchObject({ text: 'You: paladin', holds: false, unresolved: false });
+    expect(gate.rows[0].conditions[0]).toMatchObject({ text: 'Persona: paladin', holds: false, unresolved: false });
   });
 
   it('reads the Custom Persona entity under None', () => {

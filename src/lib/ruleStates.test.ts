@@ -59,7 +59,7 @@ describe('shownWhileLine', () => {
 
   it('reads a stat Condition and a Not trait Condition with the "Shown while" lead', () => {
     const states = ruleStates(input(), 'wren', [row(lowHealth, { kind: 'trait', id: 'healed', owner: { kind: 'you' }, not: true })]);
-    expect(shownWhileLine(states)).toBe('Shown while Health < 20% and You: not Healed');
+    expect(shownWhileLine(states)).toBe('Shown while Health < 20% and Persona: not Healed');
   });
 
   it('closes an "and" row with a comma before "or"', () => {
@@ -67,6 +67,6 @@ describe('shownWhileLine', () => {
       row(lowHealth, { kind: 'trait', id: 'knight', owner: { kind: 'you' } }),
       row({ kind: 'trait', id: 'healed', owner: { kind: 'you' } }),
     ]);
-    expect(shownWhileLine(states)).toBe('Shown while Health < 20% and You: Knight, or You: Healed');
+    expect(shownWhileLine(states)).toBe('Shown while Health < 20% and Persona: Knight, or Persona: Healed');
   });
 });

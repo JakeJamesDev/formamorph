@@ -696,6 +696,7 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },
   originals: { traits: world.traits, groups: world.groups },
+  reader: 'player',
 });
 
 /** Every owner's gate on each of its traits, for one read of the state. */

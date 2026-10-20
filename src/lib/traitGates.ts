@@ -94,11 +94,16 @@ export interface GateInput {
   /** Every world trait and group a requirement can name, whether or not a present owner holds it. Absent,
    *  only the owners' items resolve. */
   originals?: { traits: readonly Trait[]; groups: readonly TraitGroup[] };
+  /** Who reads the Condition text. The author reads the persona owner as "Persona"; the player reads the
+   *  played persona's name, which the line marks (Q7, Q11). Absent, the author. */
+  reader?: 'author' | 'player';
 }
 
 /** One Condition's state against the active sets. */
 export interface ConditionState {
   text: string;
+  /** The played persona's name the text opens with, for the You pill on the player's line. */
+  persona?: string;
   holds: boolean;
   unresolved: boolean;
   /** The target is a Hidden trait, or a hidden or inert stat, so player-facing lines leave it out (Q14, Q21). */
@@ -221,6 +226,10 @@ function index(input: GateInput) {
   }
   const entities = new Map(input.entities.map((entity) => [entity.id, entity]));
   const played = playedEntityIds(input.persona, input.entities);
+  // The owner carries the name the player entered under None; the entity list has the authored one.
+  const personaName = input.reader === 'player' && played.length > 0
+    ? owners.get(played[0])?.owner.name || entities.get(played[0])?.name || null
+    : null;
   const stats = input.stats;
   const global = globalItems(input);
   const holds = (ownerId: OwnerId, req: Targeted): boolean => (req.kind === 'stat' ? !!statsIn(stats, ownerId)?.[req.id]
@@ -251,7 +260,7 @@ function index(input: GateInput) {
     return null;
   };
   return {
-    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, persona: input.persona,
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, persona: input.persona, personaName,
   };
 }
 
@@ -335,10 +344,12 @@ function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>,
 const growthHolds = (trait: Located<Trait>, activeIn: ActiveIn, idx: Index) => (req: TraitRequirement): boolean =>
   (req.not && req.kind !== 'stat' ? resolves(req, idx) : requirementHolds(req, trait, activeIn, idx));
 
-/** The owner's name as the text reads it, or null when the named entity is gone. */
-function ownerName(owner: RequirementOwner, idx: Index): string | null {
-  if (owner.kind === 'you') return 'You';
-  return idx.entities.get(owner.id)?.name ?? idx.owners.get(owner.id)?.owner.name ?? null;
+/** The owner's name as the reader's text reads it, or null when the named entity is gone. The persona owner
+ *  reads "Persona" to the author and the played persona's name to the player, which `persona` marks. */
+function ownerName(owner: RequirementOwner, idx: Index): { name: string; persona?: string } | null {
+  if (owner.kind === 'you') return idx.personaName ? { name: idx.personaName, persona: idx.personaName } : { name: 'Persona' };
+  const name = idx.entities.get(owner.id)?.name ?? idx.owners.get(owner.id)?.owner.name;
+  return name === undefined ? null : { name };
 }
 
 /** Whether a Condition's target, and its named owner, still exist. A global target's owner is inert (Q10). */
@@ -351,8 +362,9 @@ function resolves(req: Exclude<TraitRequirement, StatRequirement>, idx: Index): 
 /** What follows the stat's name in a stat Condition's text: the operator, then the number, with `%` under percent. */
 export const statTail = (req: StatRequirement): string => `${req.operator} ${req.value}${req.unit === 'percent' ? '%' : ''}`;
 
-/** "Paladin", "not any Class", "Ash: not Tamed" (Q11). */
-function requirementText(req: TraitRequirement, idx: Index): { text: string; unresolved: boolean } {
+/** "Paladin", "not any Class", "Ash: not Tamed" (Q11). `persona` is the played persona's name the text opens
+ *  with, for the player's line to mark. */
+function requirementText(req: TraitRequirement, idx: Index): { text: string; unresolved: boolean; persona?: string } {
   const not = req.not ? 'not ' : '';
   if (req.kind === 'playingAs') {
     const entity = idx.entities.get(req.id);
@@ -374,9 +386,9 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
       };
   const target = { ...named, text: `${not}${named.text}` };
   if (!req.owner) return target;
-  const name = ownerName(req.owner, idx);
-  return name
-    ? { text: `${name}: ${target.text}`, unresolved: target.unresolved }
+  const owner = ownerName(req.owner, idx);
+  return owner
+    ? { text: `${owner.name}: ${target.text}`, unresolved: target.unresolved, persona: owner.persona }
     : {
       text: `${req.owner.kind === 'entity' && req.owner.name ? req.owner.name : 'a missing entity'}: ${target.text}`,
       unresolved: target.unresolved || !idx.isGlobal(req),
@@ -433,7 +445,7 @@ function rowStatesOf(rows: readonly TraitRequirementRow[], host: Located<{ id: s
       const stat = req.kind === 'stat' ? idx.statOf(req, host.owner) : null;
       const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
       const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id) : !!stat && (!!stat.hidden || !!stat.inert);
-      return { text: named.text, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx) };
+      return { text: named.text, persona: named.persona, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx) };
     });
     return { holds: conditions.every((c) => c.holds), conditions };
   });
@@ -1032,7 +1044,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   };
   // A global item reads global scope whoever is named (Q10), so it offers no owner.
   const ownersOf = (id: string, kind: 'trait' | 'group'): RequirementOwnerOption[] => ((kind === 'trait' ? idx.global.traits : idx.global.groups).has(id) ? [] : [
-    { owner: { kind: 'you' }, name: 'You' },
+    { owner: { kind: 'you' }, name: 'Persona' },
     ...input.owners
       .filter((o) => (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),

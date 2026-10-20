@@ -337,6 +337,36 @@ describe('a gated trait in play', () => {
     expect(screen.getByText('Unlocked by playing as Sir Aldric')).toBeTruthy();
   });
 
+  // Q7: a Condition on the persona reads the played persona's name with the You pill, or Persona with no one played.
+  describe("a Condition on the persona's traits", () => {
+    // Sir Aldric's own Knighthood is the target: a global target offers no owner (Q10).
+    const knight = { ...aldric, traits: [T('t-knighthood', 'Knighthood')] };
+    const SQUIRE = T('t-squire', 'Squire', { requires: [{ all: [{ kind: 'trait', id: 't-knighthood', owner: { kind: 'you' } }] }] });
+    const unfoldGlobal = () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Global,/ }));
+      openDisabled('Global');
+    };
+
+    it('names the played world persona with the pill', () => {
+      renderTraits([...TRAITS, SQUIRE], [], [], {
+        world: { entities: [knight] },
+        seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-aldric' }),
+      });
+      unfoldGlobal();
+      const line = screen.getByText(/^Requires Sir Aldric/);
+      expect(line).toHaveTextContent(/^Requires Sir AldricYou: Knighthood$/);
+      expect(within(line).getByText('You')).toBeTruthy();
+    });
+
+    it('reads Persona, with no pill, when no one is played', () => {
+      renderTraits([...TRAITS, SQUIRE], [], [], { world: { entities: [knight] } });
+      unfoldGlobal();
+      const line = screen.getByText(/^Requires Persona/);
+      expect(line).toHaveTextContent(/^Requires Persona: Knighthood$/);
+      expect(within(line).queryByText('You')).toBeNull();
+    });
+  });
+
   it('shows the cascade banner until the player dismisses it', async () => {
     const onDismissTraitCascade = vi.fn();
     renderRightPanel({ traitCascade: { off: ['Plate Armor'], because: 'Paladin' }, onDismissTraitCascade }, {

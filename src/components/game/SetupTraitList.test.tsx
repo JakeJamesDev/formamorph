@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { SetupTraitList } from './SetupTraitList';
-import { groupPickState } from '@/lib/traitGates';
+import { groupPickState, type ConditionState } from '@/lib/traitGates';
 import { scoped } from '@/lib/scope';
 import type { Stat, Trait, TraitGroup } from '@/types';
 
@@ -132,7 +132,7 @@ describe('SetupTraitList outside the setup dialog', () => {
 });
 
 describe('SetupTraitList gates', () => {
-  const req = (text: string, holds: boolean, hidden = false) => ({ text, holds, unresolved: false, hidden });
+  const req = (text: string, holds: boolean, hidden = false): ConditionState => ({ text, holds, unresolved: false, hidden });
   /** Each Condition as a row of its own. */
   const oneEach = (...conditions: ReturnType<typeof req>[]) => conditions.map((c) => ({ holds: c.holds, conditions: [c] }));
   const gates = scoped(new Map([
@@ -156,6 +156,16 @@ describe('SetupTraitList gates', () => {
     view({ gates, picks: null });
     expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
     expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
+  });
+
+  it("marks the played persona's name in the line with the You pill (Q7)", () => {
+    const onPersona = scoped(new Map([
+      ['dockhand', { unlocked: false, rows: oneEach({ ...req('Kate: Paladin', false), persona: 'Kate' }, req('Knight', false)) }],
+    ]));
+    view({ gates: onPersona, picks: null });
+    const line = screen.getByText(/^Requires Kate/);
+    expect(line).toHaveTextContent(/^Requires KateYou: Paladin or Knight$/);
+    expect(within(line).getByText('You')).toBeInTheDocument();
   });
 
   it('shows a dismissible banner naming what a change turned off and why', () => {

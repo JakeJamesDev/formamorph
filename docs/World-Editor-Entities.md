@@ -221,7 +221,7 @@ An image shows while **any one row** holds. A row holds when **all** its conditi
 
 A thumbnail with a rule carries an eye badge. The line under the selected thumbnail reads the rule: *Shown while Health < 20% and not Healed*.
 
-A condition checks the entity that owns the image, unless you pick another owner. To read the traits or stats of the entity the player plays, pick **You**. A global trait or stat needs no owner. *Shown while You: Night Vision* shows the true form to a player who has Night Vision.
+A condition checks the entity that owns the image, unless you pick another owner. To read the traits or stats of the entity the player plays, pick **Persona**. A global trait or stat needs no owner. *Shown while Persona: Night Vision* shows the true form to a player who has Night Vision.
 
 ### Order sets priority
 
@@ -230,7 +230,7 @@ Put the special states first and the fallback last. For a rule on each of *Wound
 | Place | Image | Rule | Shows |
 |---|---|---|---|
 | 1 | Wounded | *Health < 20%* | While Health is under 20% |
-| 2 | Armored | *Knight and You: Trusted Ally* | While both hold, and Wounded doesn't |
+| 2 | Armored | *Knight and Persona: Trusted Ally* | While both hold, and Wounded doesn't |
 | 3 | Plain | None | The rest of the time |
 
 - Drag a thumbnail to reorder. The rule goes with its image.

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { soleOwnerRequirement } from '@/lib/requirementOwners';
 import type { RequirementOption } from '@/lib/traitGates';
 
-const YOU = { owner: { kind: 'you' as const }, name: 'You' };
+const YOU = { owner: { kind: 'you' as const }, name: 'Persona' };
 const ASH = { owner: { kind: 'entity' as const, id: 'ash', name: 'Ash' }, name: 'Ash' };
 
 const option = (owners: RequirementOption['owners']): RequirementOption =>

@@ -9,7 +9,8 @@ import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
 import { gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import type { OwnerId } from '@/lib/scope';
-import { gateLine } from '@/lib/traitGateLine';
+import { gateLineParts } from '@/lib/traitGateLine';
+import { GateLineText } from '@/components/game/GateLineText';
 import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
@@ -96,7 +97,7 @@ export function SetupTraitList({
     const gate = gates && gateOf(gates, ownerId, trait.id);
     const locked = gate?.unlocked === false;
     const disabled = locked || (!selected && (radio ? fixedRadio : !!picks?.full));
-    const line = gateLine(gate);
+    const line = gateLineParts(gate);
     const description = resolveTraitText(trait, trait.playerDescription ?? '').trim();
     const changes = trait.statChanges
       .map((change) => ({ change, stat: statOf(change) }))
@@ -142,7 +143,7 @@ export function SetupTraitList({
           </strong>
           {description && <span className="mt-1 block text-helper text-muted-foreground">{description}</span>}
           {line && (
-            <span className={cn('mt-1 block text-meta', locked ? 'text-foreground' : 'text-muted-foreground')}>{line}</span>
+            <span className={cn('mt-1 block text-meta', locked ? 'text-foreground' : 'text-muted-foreground')}><GateLineText parts={line} /></span>
           )}
           {changes.length > 0 && (
             <ul className="mt-2 list-inside list-disc text-helper text-muted-foreground">

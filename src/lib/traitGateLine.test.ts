@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gateLine } from './traitGateLine';
+import { gateLine, gateLineParts } from './traitGateLine';
 import { gateOf, gateStates, type ConditionState, type GateInput, type GateOwner, type GateState } from './traitGates';
 import { scoped } from './scope';
 import type { Trait, TraitRequirement } from '@/types';
@@ -50,6 +50,24 @@ describe('gateLine', () => {
   });
 });
 
+describe('gateLineParts', () => {
+  const kate = (text: string, holds = false): ConditionState => ({ ...c(`Kate: ${text}`, holds), persona: 'Kate' });
+
+  it("splits the played persona's name off its Condition, and runs the text around it together", () => {
+    expect(gateLineParts(gate([c('Knight'), kate('Paladin')], [c('Mercenary')])))
+      .toEqual(['Requires Knight and ', { persona: 'Kate' }, ': Paladin, or Mercenary']);
+    expect(gateLineParts(gate([kate('not Paladin', true)]))).toEqual(['Unlocked by ', { persona: 'Kate' }, ': not Paladin']);
+    expect(gateLineParts(gate([kate('Paladin')], [kate('Knight')]))).toEqual(['Requires ', { persona: 'Kate' }, ': Paladin or ', { persona: 'Kate' }, ': Knight']);
+  });
+
+  it('reads one text part for a line with no persona, and the same text as gateLine', () => {
+    expect(gateLineParts(gate([c('Knight'), c('Heavy Build')], [c('Mercenary')]))).toEqual(['Requires Knight and Heavy Build, or Mercenary']);
+    expect(gateLine(gate([c('Knight'), kate('Paladin')], [c('Mercenary')]))).toBe('Requires Knight and Kate: Paladin, or Mercenary');
+    expect(gateLineParts(gate([c('Secret Bond', false, true)]))).toEqual(['Locked']);
+    expect(gateLineParts(gate())).toBeNull();
+  });
+});
+
 describe('gateLine with Not Conditions', () => {
   const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
   const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true });
@@ -81,9 +99,16 @@ describe('gateLine with Not Conditions', () => {
         { all: [not(trait('Paladin', { owner: { kind: 'you' } })), not({ kind: 'group', id: 'Class' })] },
       ],
     });
-    expect(lineOf(many)).toBe('Unlocked by not playing as Sir Aldric and Ash: not Tamed, or You: not Paladin and not any Class');
+    expect(lineOf(many)).toBe('Unlocked by not playing as Sir Aldric and Ash: not Tamed, or Persona: not Paladin and not any Class');
     expect(lineOf(many, ['Paladin', 'Knight'], { persona: { source: 'world', entityId: 'aldric' } }))
-      .toBe('Requires not playing as Sir Aldric and Ash: not Tamed, or You: not Paladin and not any Class');
+      .toBe('Requires not playing as Sir Aldric and Ash: not Tamed, or Persona: not Paladin and not any Class');
+  });
+
+  it("reads the played persona's name to the player (Q7)", () => {
+    const squire = T('Squire', { requires: [{ all: [not(trait('Paladin', { owner: { kind: 'you' } })), not(trait('Tamed', { owner: { kind: 'entity', id: 'wolf' } }))] }] });
+    expect(lineOf(squire, [], { persona: { source: 'world', entityId: 'aldric' }, reader: 'player' }))
+      .toBe('Unlocked by Sir Aldric: not Paladin and Ash: not Tamed');
+    expect(lineOf(squire, [], { reader: 'player' })).toBe('Unlocked by Persona: not Paladin and Ash: not Tamed');
   });
 
   it('leaves a Not Condition on a Hidden target out, like a plain one (Q12)', () => {
