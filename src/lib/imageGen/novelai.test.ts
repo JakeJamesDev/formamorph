@@ -3,6 +3,7 @@ import { zipSync, strToU8 } from 'fflate';
 import {
   NOVELAI_DEFAULTS,
   buildNovelAIBody,
+  takesCharacterPrompts,
   toNovelAISampler,
   toNovelAIDimension,
   extractImageBytes,
@@ -66,6 +67,21 @@ describe('toNovelAIDimension', () => {
   });
 });
 
+describe('takesCharacterPrompts', () => {
+  it('holds for NovelAI V4, V4.5 and V5, and for a NovelAI preset with no model', () => {
+    for (const model of ['nai-diffusion-4-full', 'nai-diffusion-4-5-curated', 'nai-diffusion-5-full', '']) {
+      expect(takesCharacterPrompts('novelai', model)).toBe(true);
+    }
+  });
+
+  it('fails for NovelAI V3 and for every other provider', () => {
+    expect(takesCharacterPrompts('novelai', 'nai-diffusion-3')).toBe(false);
+    expect(takesCharacterPrompts('novelai', 'nai-diffusion-3-furry')).toBe(false);
+    expect(takesCharacterPrompts('a1111', 'nai-diffusion-4-5-full')).toBe(false);
+    expect(takesCharacterPrompts('comfyui', '')).toBe(false);
+  });
+});
+
 describe('buildNovelAIBody', () => {
   it('sends the prompt as `input` and wraps both prompts as V4 captions on a V4.5 model', () => {
     const body = buildNovelAIBody(params);
@@ -114,6 +130,63 @@ describe('buildNovelAIBody', () => {
     expect(buildNovelAIBody({ ...params, sampler: 'DDIM' }).parameters.noise_schedule).toBe('native');
     expect(buildNovelAIBody({ ...params, sampler: 'Euler a' }).parameters.noise_schedule).toBe('karras');
     expect(buildNovelAIBody({ ...params, sampler: 'DPM++ 2M' }).parameters.noise_schedule).toBe('karras');
+  });
+
+  it('turns each part after the first into a character prompt on V4.5 and V5', () => {
+    const center = [{ x: 0.5, y: 0.5 }];
+    for (const model of ['nai-diffusion-4-5-full', 'nai-diffusion-5-full']) {
+      const body = buildNovelAIBody({ ...params, model, prompt: '2girls, dock | girl, red hair | girl, blue eyes' });
+      expect(body.input).toBe('2girls, dock');
+      expect(body.parameters.v4_prompt).toEqual({
+        caption: {
+          base_caption: '2girls, dock',
+          char_captions: [
+            { char_caption: 'girl, red hair', centers: center },
+            { char_caption: 'girl, blue eyes', centers: center },
+          ],
+        },
+        use_coords: false,
+        use_order: true,
+      });
+      expect(body.parameters.v4_negative_prompt?.caption).toEqual({
+        base_caption: 'blurry',
+        char_captions: [
+          { char_caption: '', centers: center },
+          { char_caption: '', centers: center },
+        ],
+      });
+      expect(body.parameters.use_coords).toBe(false);
+    }
+  });
+
+  it('trims each part and skips an empty or blank one', () => {
+    const body = buildNovelAIBody({ ...params, prompt: '  1girl  ||  girl, red hair  |   |' });
+    expect(body.parameters.v4_prompt?.caption.base_caption).toBe('1girl');
+    expect(body.parameters.v4_prompt?.caption.char_captions).toEqual([
+      { char_caption: 'girl, red hair', centers: [{ x: 0.5, y: 0.5 }] },
+    ]);
+    expect(body.parameters.v4_negative_prompt?.caption.char_captions).toHaveLength(1);
+  });
+
+  it('splits on a bare separator too, and drops commas at the edge of each part', () => {
+    const body = buildNovelAIBody({ ...params, prompt: 'masterpiece, |girl, red hair,|  , girl' });
+    expect(body.input).toBe('masterpiece');
+    expect(body.parameters.v4_prompt?.caption.char_captions.map((c) => c.char_caption))
+      .toEqual(['girl, red hair', 'girl']);
+  });
+
+  it('sends the whole line unchanged on V3, which reads `|` as Prompt Mixing', () => {
+    const line = '2girls, dock | girl, red hair | | girl';
+    const body = buildNovelAIBody({ ...params, model: 'nai-diffusion-3', prompt: line });
+    expect(body.parameters.prompt).toBe(line);
+    expect(body.input).toBe(line);
+  });
+
+  it('sends a line with no separator as one base caption and no character prompts', () => {
+    const body = buildNovelAIBody(params);
+    expect(body.parameters.v4_prompt?.caption).toEqual({ base_caption: 'a knight, shiny armor', char_captions: [] });
+    expect(body.parameters.v4_negative_prompt?.caption).toEqual({ base_caption: 'blurry', char_captions: [] });
+    expect(buildNovelAIBody({ ...params, model: 'nai-diffusion-3' }).parameters.prompt).toBe('a knight, shiny armor');
   });
 
   it('asks for exactly one PNG', () => {

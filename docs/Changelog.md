@@ -37,6 +37,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **👤 User-facing**
+  - **NovelAI Character Prompts:**
+    - **On NovelAI V4 and later, a `|` in an image prompt now starts a separate character prompt.** The first part describes the whole image. Other providers read a ` | ` with spaces as a comma, and NovelAI V3 keeps its own Prompt Mixing.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
