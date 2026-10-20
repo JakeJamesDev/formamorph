@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { boxOwnerOf, codeBoxOwnerOf } from '@/lib/codeBoxOwner';
 import { statBoxLookups, traitBoxSelf } from '@/lib/codeWorldLookup';
+import type { UnitOwner } from '@/lib/sandboxSnapshot';
 import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
-import { blueprintGroupStats, resolvedEntityStats } from '@/lib/statLinks';
+import { resolvedEntityStats } from '@/lib/statLinks';
 import { useScriptWorldNames } from '@/lib/useScriptWorldNames';
 import type { ScriptEntry } from '@/lib/worldScripts';
 import type { ScriptTiming, Stat } from '@/types';
@@ -26,14 +28,13 @@ export function useScriptEntryContext(entry: ScriptEntry): { self: ScriptSelf; c
     const trait = box && 'trait' in box ? box.trait : undefined;
     const stat = box && 'stat' in box ? box.stat : undefined;
     const selfName = statCodeName(trait?.name ?? stat?.name ?? '', placeholders);
-    // A Blueprint box sits on no entity and still runs under an owner: each one that links it.
-    const blueprint = !!box && !entity && box.owner !== null;
-    const owner: ScriptBoxOwner | null = entity ? { kind: 'entity', entityId: entity.id } : blueprint ? { kind: 'blueprint' } : null;
-    const ownerStats = entity ? statCodeNamed(resolvedEntityStats(statWorld, entity), placeholders)
-      : blueprint && stat ? statCodeNamed(blueprintGroupStats(statWorld, stat), placeholders)
+    const derived: UnitOwner = box ? boxOwnerOf(box, placeholders) : { kind: 'none' };
+    const owner: ScriptBoxOwner | null = codeBoxOwnerOf(derived);
+    const ownerStats = entity && derived.kind === 'entity' ? statCodeNamed(resolvedEntityStats(statWorld, entity), placeholders)
+      : derived.kind === 'blueprintStat' ? [...derived.stats]
         : [];
     // A Blueprint trait's owners vary, so its `owner.stats` names go unchecked.
-    const ownerStatNames = trait && !entity ? undefined : namesOf(ownerStats);
+    const ownerStatNames = derived.kind === 'blueprintTrait' ? undefined : namesOf(ownerStats);
     const lookupSelf: Stat = stat ? { ...stat, name: selfName } : traitBoxSelf(trait?.id ?? '', selfName);
     const self: ScriptSelf = trait ? { kind: 'trait', id: trait.id } : stat ? { kind: 'stat', stat } : { kind: 'world' };
     const context: ScriptBoxContext = {
