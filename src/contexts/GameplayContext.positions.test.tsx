@@ -100,6 +100,44 @@ describe('entity positions in the save', () => {
     expect(live().entityPositions).toEqual({ merchant: 'tower', guard: 'keep' });
   });
 
+  describe('a runtime character following', () => {
+    const mira = { entity: { id: 'mira', name: 'Mira', aiDescription: 'A ferry hand.' }, locationId: 'keep', sourceTurnId: 't1' };
+
+    it('moves its own anchor on Map travel, never a world position', async () => {
+      const live = mount();
+      await act(async () => {
+        live().setDiscoveredEntities([mira]);
+        live().setEntityFollowers(['mira']);
+      });
+      await act(async () => { live().changeLocation(tower); });
+      expect(live().discoveredEntities[0].locationId).toBe('tower');
+      expect(live().entityPositions).toEqual({});
+    });
+
+    it('joins the cast when a join peels it off, and survives a save and a load', async () => {
+      const live = mount();
+      const peeled = { ...mira, locationId: 'tower', peeledFrom: 'guard' };
+      await act(async () => { live().applyFollowerState({ positions: { mira: 'tower' }, followers: ['mira'] }, [peeled]); });
+      expect(live().discoveredEntities).toEqual([peeled]);
+      expect(live().entityPositions).toEqual({});
+      await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-pos-5'); });
+      await act(async () => { await live().loadGame('save-pos-5', [keep, tower], [], [merchant, guard]); });
+      expect(live().entityFollowers).toEqual(['mira']);
+      expect(live().discoveredEntities).toEqual([peeled]);
+    });
+
+    it('keeps a follower peeled and carried in one batch on its own anchor', async () => {
+      const live = mount();
+      const peeled = { ...mira, locationId: 'keep', peeledFrom: 'guard' };
+      await act(async () => {
+        live().applyFollowerState({ positions: { mira: 'keep' }, followers: ['mira'] }, [peeled]);
+        live().changeLocation(tower);
+      });
+      expect(live().entityPositions).toEqual({});
+      expect(live().discoveredEntities[0].locationId).toBe('tower');
+    });
+  });
+
   it('gives the played persona no position on load', async () => {
     const live = mount();
     await act(async () => {

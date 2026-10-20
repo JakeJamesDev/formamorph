@@ -22,18 +22,17 @@ describe('who gets an entity location request', () => {
   const subjects = (followers: string[]) =>
     entityMoveSubjects(entitiesInPlay(cast, positions), { positions, followers }, 'inn').map((e) => e.id);
 
-  it('asks each Can Follow entity standing here, and each follower', () => {
-    expect(subjects(['albus'])).toEqual(['sylvie', 'corvin', 'albus']);
+  it('asks each Can Follow entity standing or listed here, and each follower', () => {
+    expect(subjects(['albus'])).toEqual(['sylvie', 'corvin', 'guards', 'albus']);
   });
 
-  it('never asks a Stays Put or Free entity, or one at every listed location at once', () => {
+  it('never asks a Stays Put or Free entity', () => {
     expect(subjects([])).not.toContain('wenna');
     expect(subjects([])).not.toContain('moths');
-    expect(subjects([])).not.toContain('guards');
   });
 
   it('asks nobody standing elsewhere, and nobody when the player is nowhere', () => {
-    expect(entityMoveSubjects(cast, { positions: { corvin: 'gate' }, followers: [] }, 'inn')).toEqual([]);
+    expect(entityMoveSubjects(cast, { positions: { corvin: 'gate', sylvie: 'inn', albus: 'inn' }, followers: [] }, 'keep')).toEqual([]);
     expect(entityMoveSubjects(cast, { positions, followers: ['albus'] }, undefined)).toEqual([]);
   });
 

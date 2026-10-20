@@ -1,4 +1,5 @@
-import type { MovementChoice } from '@/lib/entityPresence';
+import { isEverywhere, type MovementChoice } from '@/lib/entityPresence';
+import type { Entity } from '@/types';
 import type { PickMode } from '@/lib/entityPicking';
 
 /** The labels and help lines of the Presence, Movement and Known In controls, shared by every surface that
@@ -19,6 +20,12 @@ export const MOVEMENT_HELP: Record<MovementChoice, string> = {
 };
 
 export const FOLLOW_EVERYWHERE_HELP = 'Adds a new entity with this name that travels with the player. This one stays at every listed location.';
+
+/** The help line under `entity`'s Movement: Can Follow peels a new follower off an Everywhere Listed one. */
+export const movementHelpFor = (entity: Entity): string => {
+  const movement: MovementChoice = entity.movement ?? 'free';
+  return movement === 'follow' && isEverywhere(entity) ? FOLLOW_EVERYWHERE_HELP : MOVEMENT_HELP[movement];
+};
 
 export const PRESENCE_OPTIONS = [
   { value: 'everywhere', label: 'Everywhere Listed' },

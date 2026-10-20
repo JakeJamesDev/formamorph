@@ -72,6 +72,8 @@ export interface SceneWrites {
   elapsed?: number;
   /** Where the turn moved positioned entities, over the live positions. */
   positions?: Readonly<EntityPositions>;
+  /** Runtime characters the turn made before they reach the live cast. */
+  addedEntities?: readonly Entity[];
 }
 
 /**
@@ -91,7 +93,7 @@ export function liveChipScene(
     resolveEntityTexts(withOwnerTrees(entities, sources.owners), resolveEntity), resolveTrait, resolveEntity,
   );
   const placed = (entities: Entity[]) => (box?.positions ? entitiesInPlay(entities, box.positions) : entities);
-  const allEntities = ownText(placed(sources.allEntities));
+  const allEntities = ownText(placed(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities));
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
   const presentIds = entityIdsAt(loc?.id, allEntities);

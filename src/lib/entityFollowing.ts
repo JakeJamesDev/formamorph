@@ -1,6 +1,7 @@
-import type { Connection, Entity, EntityPositions, GameLocation } from "@/types";
+import type { Connection, DiscoveredEntity, Entity, EntityPositions, GameLocation } from "@/types";
 import { effectiveDestinations } from "@/lib/locationGraph";
 import type { EntityCodeWrite } from "@/lib/statCodeExecutor";
+import { isEverywhere } from "@/lib/entityPresence";
 
 /**
  * Followers and the entity location request's replies. A follower is at the player's location after every
@@ -70,20 +71,95 @@ export interface FollowerState {
   followers: readonly string[];
 }
 
+/** The runtime characters beside the world's entities, and which of them the scene list holds this turn. */
+export interface RuntimeCast {
+  runtime: readonly DiscoveredEntity[];
+  inScene: ReadonlySet<string>;
+}
+
+const NO_RUNTIME_CAST: RuntimeCast = { runtime: [], inScene: new Set() };
+
 /**
- * The entities that get a location request this turn: each follower, and each Can Follow or Moves Between
- * entity positioned at the player's location. In `entities` order. An entity without a position is at every
- * listed location, so it gets none.
+ * The entities that get a location request this turn: each follower; each Can Follow or Moves Between entity
+ * positioned at the player's location; each runtime character there that the scene list holds; and each
+ * Everywhere Listed Can Follow entity listed there, unless one of its peeled followers follows. In
+ * `entities` order.
  */
 export function entityMoveSubjects(
-  entities: readonly Entity[], state: FollowerState, playerLocationId: string | undefined,
+  entities: readonly Entity[], state: FollowerState, playerLocationId: string | undefined, cast: RuntimeCast = NO_RUNTIME_CAST,
 ): Entity[] {
   if (!playerLocationId) return [];
   const following = new Set(state.followers);
-  return entities.filter((entity) =>
-    following.has(entity.id)
-    || ((entity.movement === "follow" || entity.movement === "between") && state.positions[entity.id] === playerLocationId),
-  );
+  const runtimeIds = new Set(cast.runtime.map((d) => d.entity.id));
+  const peeledAway = new Set(cast.runtime.flatMap((d) => (d.peeledFrom && following.has(d.entity.id) ? [d.peeledFrom] : [])));
+  return entities.filter((entity) => {
+    if (following.has(entity.id)) return true;
+    const at = state.positions[entity.id];
+    if (runtimeIds.has(entity.id)) return at === playerLocationId && cast.inScene.has(entity.id);
+    if (entity.movement !== "follow" && entity.movement !== "between") return false;
+    if (at !== undefined) return at === playerLocationId;
+    return entity.movement === "follow" && isEverywhere(entity) && !!entity.locations?.includes(playerLocationId) && !peeledAway.has(entity.id);
+  });
+}
+
+/** Turns an Everywhere Listed entity's "come along" into a new runtime character that follows instead. */
+export interface PeelOff {
+  sources: ReadonlyMap<string, Entity>;
+  /** The new character's id for a source: the same id for the same source all turn. */
+  idFor(sourceId: string): string;
+}
+
+/** The peel-off for one turn: every Everywhere Listed Can Follow entity, each with one id minted on first ask. */
+export function turnPeelOff(entities: readonly Entity[], newId: () => string): PeelOff {
+  const sources = new Map(entities.filter((e) => e.movement === "follow" && isEverywhere(e)).map((e) => [e.id, e]));
+  const ids = new Map<string, string>();
+  return {
+    sources,
+    idFor: (sourceId) => {
+      const id = ids.get(sourceId) ?? newId();
+      ids.set(sourceId, id);
+      return id;
+    },
+  };
+}
+
+/** `intents` with each source's "come along" given to its new character. The same intents when none peels. */
+export function peelIntents<I extends EntityMoveIntents>(intents: I, peel: PeelOff | undefined): I {
+  if (!peel || !intents.comeAlong.some((id) => peel.sources.has(id))) return intents;
+  return { ...intents, comeAlong: intents.comeAlong.map((id) => (peel.sources.has(id) ? peel.idFor(id) : id)) };
+}
+
+/** The runtime character peeled off `source`: its name and its summary. */
+export function peeledEntity(source: Entity, id: string): Entity {
+  const summary = source.aiSummary?.trim() ?? "";
+  return { id, name: source.name, aiDescription: summary || source.aiDescription?.trim() || "", ...(summary ? { aiSummary: summary } : {}) };
+}
+
+/** The runtime characters `state` has following that `peel` minted and `known` lacks, each where it stands. */
+export function peeledCharacters(
+  state: FollowerState, peel: PeelOff | undefined, known: ReadonlySet<string>, sourceTurnId: string,
+): DiscoveredEntity[] {
+  if (!peel) return [];
+  return [...peel.sources.values()].flatMap((source) => {
+    const id = peel.idFor(source.id);
+    const locationId = state.positions[id];
+    if (known.has(id) || !state.followers.includes(id) || locationId === undefined) return [];
+    return [{ entity: peeledEntity(source, id), locationId, sourceTurnId, peeledFrom: source.id }];
+  });
+}
+
+/** Where each runtime character stands: its anchor location. */
+export function runtimePositions(discovered: readonly DiscoveredEntity[]): EntityPositions {
+  return Object.fromEntries(discovered.flatMap((d) => (d.locationId ? [[d.entity.id, d.locationId]] : [])));
+}
+
+/** `discovered` with each character `positions` names moved there. The same array when none moves. */
+export function withRuntimePositions(discovered: DiscoveredEntity[], positions: Readonly<EntityPositions>): DiscoveredEntity[] {
+  if (!discovered.some((d) => positions[d.entity.id] !== undefined && positions[d.entity.id] !== d.locationId)) return discovered;
+  return discovered.map((d) => {
+    const at = positions[d.entity.id];
+    return at === undefined || at === d.locationId ? d : { ...d, locationId: at };
+  });
 }
 
 /** `positions` with each of `ids` at `locationId`. */

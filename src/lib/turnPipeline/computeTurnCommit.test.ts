@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { planTurn } from './planTurn';
 import { commitEntityMoves, computeTurnCommit, withCodeWrites } from './computeTurnCommit';
-import { carryFollowers, moveWithPlayer } from '@/lib/entityFollowing';
+import {
+  carryFollowers, entityMoveSubjects, moveWithPlayer, peeledCharacters, runtimePositions, turnPeelOff, withRuntimePositions, type FollowerState, type PeelOff,
+} from '@/lib/entityFollowing';
+import { entitiesInPlay } from '@/lib/entityPresence';
 import { dueDiscoveries } from '@/lib/backgroundPassQueue/backgroundPassQueue';
 import { pruneDiscoveredToHistory } from '@/lib/runtimeCharacters';
 import { TURN_PASSES } from './turnPasses';
@@ -601,6 +604,96 @@ describe('computeTurnCommit — entity movement', () => {
       const { state } = commitEntityMoves(atInn, after, { from: 'inn', to: 'keep' });
       expect(state.positions.wenna).toBe('keep');
       expect(state.followers).toContain('wenna');
+    });
+  });
+
+  describe('peel-off from an Everywhere Listed entity', () => {
+    const soldiers = {
+      id: 'soldiers', name: 'Barrow Soldier', movement: 'follow', locations: ['barrow', 'inn'],
+      aiSummary: 'A dead soldier in rusted mail.', aiDescription: 'The long description.',
+    } as Entity;
+    const cast = [soldiers, { id: 'wenna', name: 'Wenna', locations: ['inn'] } as Entity];
+    const peelCommit = (replies: [TurnPassSubject, string][], peel: PeelOff, suggest?: string) => {
+      const { plan, result } = runOf(
+        [
+          { id: 'narration', raw: NARRATION },
+          ...(suggest ? [{ id: 'locationSuggest', raw: suggest } as Answer] : []),
+          ...replies.map(([subject, raw]): Answer => ({ id: suggest ? 'entityLocationSuggest' : 'entityLocationAuto', raw, subject })),
+        ],
+        {},
+        suggest ? { locationAutoApply: false } : {},
+      );
+      return computeTurnCommit({ result, plan, context: context({ peel }) })!;
+    };
+    const start: FollowerState = { positions: {}, followers: [] };
+
+    it('adds a new follower with its name and summary at the destination, and leaves the original listed', () => {
+      const peel = turnPeelOff(cast, () => 'peeled-1');
+      const commit = peelCommit([[who('soldiers', [...NEW]), 'Come along']], peel);
+      const { state } = commitEntityMoves(start, commit, { from: 'inn', to: 'square' });
+      expect(state.followers).toEqual(['peeled-1']);
+      expect(state.positions).toEqual({ 'peeled-1': 'square' });
+      expect(peeledCharacters(state, peel, new Set(), 'turn-1')).toEqual([{
+        entity: { id: 'peeled-1', name: 'Barrow Soldier', aiDescription: 'A dead soldier in rusted mail.', aiSummary: 'A dead soldier in rusted mail.' },
+        locationId: 'square', sourceTurnId: 'turn-1', peeledFrom: 'soldiers',
+      }]);
+      expect(entitiesInPlay(cast, state.positions)[0].locations).toEqual(['barrow', 'inn']);
+    });
+
+    it('peels nobody when the player stays', () => {
+      const peel = turnPeelOff(cast, () => 'peeled-1');
+      const { state } = commitEntityMoves(start, peelCommit([[who('soldiers', [...NEW]), 'Come along']], peel), { from: 'inn', to: 'inn' });
+      expect(state).toBe(start);
+      expect(peeledCharacters(state, peel, new Set(), 'turn-1')).toEqual([]);
+    });
+
+    it('holds the peel with the suggest offer, so only Go creates the follower', () => {
+      const peel = turnPeelOff(cast, () => 'peeled-1');
+      const commit = peelCommit([[who('soldiers', [...NEW]), 'Come along']], peel, 'The Long Pier');
+      const offered = commitEntityMoves(start, commit, { from: 'inn', to: 'inn' });
+      expect(offered.offer.comeAlong).toEqual(['peeled-1']);
+      expect(peeledCharacters(offered.state, peel, new Set(), 'turn-1')).toEqual([]);
+      const went = moveWithPlayer(offered.state, offered.offer, 'pier');
+      expect(peeledCharacters(went, peel, new Set(), 'turn-1').map((d) => d.locationId)).toEqual(['pier']);
+    });
+
+    it('asks the original again only once its follower stays behind', () => {
+      const peel = turnPeelOff(cast, () => 'peeled-1');
+      const joined = commitEntityMoves(start, peelCommit([[who('soldiers', [...NEW]), 'Come along']], peel), { from: 'inn', to: 'barrow' }).state;
+      const runtime = peeledCharacters(joined, peel, new Set(), 'turn-1');
+      const scene = { runtime, inScene: new Set<string>() };
+      const everyone = [...entitiesInPlay(cast, joined.positions), ...runtime.map((d) => d.entity)];
+      // At another listed location, with its follower beside the player: the follower is asked, the original isn't.
+      expect(entityMoveSubjects(everyone, joined, 'barrow', scene).map((e) => e.id)).toEqual(['peeled-1']);
+
+      const stayCommit = peelCommit([[who('peeled-1', [...FOLLOWING]), 'Stay here']], turnPeelOff(cast, () => 'peeled-2'));
+      const left = commitEntityMoves(joined, stayCommit, { from: 'barrow', to: 'inn' }).state;
+      expect(left.followers).toEqual([]);
+      expect(left.positions['peeled-1']).toBe('barrow');
+      expect(entityMoveSubjects(everyone, left, 'inn', scene).map((e) => e.id)).toEqual(['soldiers']);
+    });
+  });
+
+  describe('a runtime character', () => {
+    const stranger = { entity: { id: 'mira', name: 'Mira', aiDescription: 'A ferry hand.' }, locationId: 'inn', sourceTurnId: 't0' };
+
+    it('is asked while the scene list holds it, and not when it is only anchored here', () => {
+      const state = { positions: runtimePositions([stranger]), followers: [] };
+      const asked = (inScene: string[]) =>
+        entityMoveSubjects([stranger.entity], state, 'inn', { runtime: [stranger], inScene: new Set(inScene) }).map((e) => e.id);
+      expect(asked(['mira'])).toEqual(['mira']);
+      expect(asked([])).toEqual([]);
+    });
+
+    it('follows on come along, travels with the player, and stays where it stays behind', () => {
+      const start = { positions: runtimePositions([stranger]), followers: [] as string[] };
+      const joined = commitEntityMoves(start, autoCommit([[who('mira', [...NEW]), 'Come along']]), { from: 'inn', to: 'square' }).state;
+      expect(joined.followers).toEqual(['mira']);
+      const later = carryFollowers(joined, 'keep');
+      const left = commitEntityMoves(later, autoCommit([[who('mira', [...FOLLOWING]), 'Stay here']]), { from: 'keep', to: 'pier' }).state;
+      expect(left.followers).toEqual([]);
+      // Its anchor is its position, so the stored record moves with it.
+      expect(withRuntimePositions([stranger], left.positions)).toEqual([{ ...stranger, locationId: 'keep' }]);
     });
   });
 });
