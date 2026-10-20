@@ -110,7 +110,8 @@ The played persona ignores Presence and Movement: it has no position and gets no
 - The set of entity ids that are following the player.
 - The set of entity ids the player has met. An entity joins it the first time it is in the scene list with its name revealed. An alias-only stranger does not join until the narration names them.
 - An entity has a position when its Presence is One, when its Movement is not Free, or when code has moved it.
-- A runtime character's existing `locationId` is its position. Runtime characters get Can Follow the Player.
+- A runtime character's existing `locationId` is its position. Runtime characters get Can Follow the Player, with no new field. Only runtime characters in this turn's scene list (the recent participants) get a stay / come-along request, not every one anchored at the location; a following one always gets its keep-following request. This keeps the fan-out small, since runtime characters pile up at often-visited locations.
+- A runtime character peeled from an Everywhere Listed entity carries an optional `peeledFrom` with the source entity's id, which the one-at-a-time rule reads. Its name and aiSummary are the source's; its aiDescription is the source's aiSummary, or its aiDescription when the summary is empty.
 
 **Presence roster.** The existing presence module stays the one inversion of membership. It gains a runtime layer: a tracked entity is at its position; an untracked entity is at all of its listed locations. Every roster during play (present, in scene, sublocations, reachable, known) reads through it. Known In governs every roster for entities that aren't present: the sublocations and reachable rosters list only entities whose Known In is Nearby. Nearby keeps today's behavior for both.
 
@@ -257,7 +258,7 @@ Also:
 
 ## Further Notes
 
-- **Export shape:** three new entity fields and one new location field in world JSON, all additive. **Save shape:** a positions map, a follower set and a met set in the save envelope.
+- **Export shape:** three new entity fields and one new location field in world JSON, all additive. **Save shape:** a positions map, a follower set and a met set in the save envelope, plus an optional `peeledFrom` on runtime character records.
 - The version is user-managed. Do not bump it.
 - If the Entity Movement setting gets a `DEFAULT_*` with a `VITE_DEFAULT_*` twin, remind the user about `.env.local`.
 - ADR-0003 expected this feature as the refinement of the entity-owned membership field. A new ADR may record "authored membership, runtime position".
