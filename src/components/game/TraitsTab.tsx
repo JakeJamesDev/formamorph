@@ -22,6 +22,7 @@ import { gateLine } from '@/lib/traitGateLine';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
+import { YouMark } from './YouMark';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
 export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidden'>;
@@ -83,9 +84,9 @@ export const TraitsTab = ({
     () => groupGlobalSections(buildTraitSections(traits, groups, entityNodeIds)),
     [traits, groups, entityNodeIds],
   );
-  // An entity node wears the user glyph, and the played one a You mark, as at Enter World.
+  // An entity node wears the user glyph, and the played one the You pill, as at Enter World.
   const entityIcon = <EntityIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />;
-  const youMark = <span className="ml-1 text-meta font-normal text-primary">You</span>;
+  const youMark = <YouMark />;
   const sectionKeys = sections.map((s) => s.key).join('|');
 
   // Which sections stand open is seeded from what is switched on, then owned by the player. It re-seeds only
@@ -253,10 +254,10 @@ export const TraitsTab = ({
       <div key={block.key}>
         {block.subheader && (
           <p className="mb-0.5 mt-1.5 flex items-center gap-1 pl-1 text-meta font-medium text-muted-foreground">
-            {/* The glyph and the You mark sit on the node's own heading, not on every group below it. */}
+            {/* The glyph and the You pill sit on the node's own heading, not on every group below it. */}
             {block.entityNode && entityIcon}
-            {block.subheader}
-            {block.entityNode && isPlayer(block.entityId) && youMark}
+            {/* One span, so the pill keeps its own gap from the name instead of adding the row's. */}
+            <span>{block.subheader}{block.entityNode && isPlayer(block.entityId) && youMark}</span>
           </p>
         )}
         {block.traits.map((trait) => row(trait, block, isOff(trait.id, ownerOf(block))))}

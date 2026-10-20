@@ -42,6 +42,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scene images on NovelAI V4 and later now send each entity as its own prompt, so their looks don't mix.** The scene tag line under the image shows each entity's part after a `|`. Edit one part to change only that entity.
   - **You Pill:**
     - **The Entities tab now marks your persona with a small You pill after its name.** It replaces the "(You)" text.
+    - **The Traits tab and Enter World now mark your persona with the You pill after its name.** It replaces the colored "You" word on the entity headings and the trait category list.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
