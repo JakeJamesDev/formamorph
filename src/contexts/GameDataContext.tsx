@@ -8,6 +8,7 @@ import { holdUnsavedWorld } from '@/lib/unsavedWorld';
 import { onWorldChangedElsewhere, type WorldChange } from '@/lib/worldChangeSignal';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
+import { dropRelationshipsTo } from '@/lib/entityRelationships';
 import { dropLinksTo, removeBlueprints } from '@/lib/traitLinks';
 import { dropStatLinksTo, playStatWorld, removeStatBlueprints } from '@/lib/statLinks';
 import { neededCopies, syncBlueprintCopies } from '@/lib/blueprintCopies';
@@ -304,10 +305,10 @@ function useProvideGameData() {
     setEntities(prevEntities => [...prevEntities, newEntity]);
   }, []);
 
-  // Membership rides on the entity itself, so deleting it takes every location link with it — no
-  // location-side cleanup to do.
+  // Membership rides on the entity itself, so deleting it takes every location link with it. Relationships
+  // that target it ride on other entities, so they go in the same pass.
   const removeEntity = useCallback((entityId: string) => {
-    setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
+    setEntities(prevEntities => dropRelationshipsTo(entityId, prevEntities.filter(entity => entity.id !== entityId)));
   }, []);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {

@@ -10,6 +10,9 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { statCodeName } from '@/lib/statCodeNames';
 import { useRenameField } from '@/lib/useCodeRename';
 import { withEntityLocations } from '@/lib/entityPresence';
+import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
+import { withRelationships } from '@/lib/entityRelationships';
+import EntityRelationshipsField from './EntityRelationshipsField';
 import { customPersonaHeldElsewhere } from '@/lib/customPersona';
 import type { Entity, FocusFieldHint } from '@/types';
 import { Hint } from '@/components/ui/typography';
@@ -47,7 +50,7 @@ const EntityManager = ({
   onOpenWorldPlaceholder: (id: string) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateEntity, entities, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
+  const { updateEntity, entities, entityGroups, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
   const { draft: editingEntity, setDraft, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
   const { advanced } = useEditorMode();
   // An entity that owns placeholders is a node of the `placeholders` map, so renaming it moves the owner
@@ -123,6 +126,12 @@ const EntityManager = ({
                 {!editingEntity.customPersona && (
                   <Hint>Set <b>Presence</b>, <b>Movement</b> and <b>Known In</b> on the full-screen <b>Locations Canvas</b></Hint>
                 )}
+                <EntityRelationshipsField
+                  entity={editingEntity}
+                  entities={entitiesInTreeOrder(entityGroups, entities)}
+                  labelOf={(e) => labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}
+                  onChange={(relationships) => writeWhole(withRelationships(editingEntity, relationships))}
+                />
               </>
             )}
           />

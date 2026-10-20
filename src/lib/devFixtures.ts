@@ -60,7 +60,11 @@ const WHITE_ROOM_ID = '1783535114538';
 const ENTITY_PRESENCE_CAST: Entity[] = [
   { id: 'dev-warden', name: 'Warden', locations: [WHITE_ROOM_ID, 'dev-corridor'], presence: 'random', movement: 'stays' },
   { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], movement: 'follow' },
-  { id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID] },
+  // Relationships rows for the entity panel's Profile tab: one long label, one blank.
+  {
+    id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID],
+    relationships: [['dev-warden', 'mentor and former employer'], ['dev-queen', '']].map(([targetId, label]) => ({ targetId, label })),
+  },
   { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
   { id: 'dev-self', name: 'Visitor', locations: [WHITE_ROOM_ID], customPersona: true },
   // Off the White Room: the canvas's range warning (no path back from the Corridor) and a pick on a group.

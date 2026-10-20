@@ -2,6 +2,7 @@ import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
 import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
+import type { RelationshipLines } from "./entityRelationships";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -149,6 +150,8 @@ export type RosterOpts = {
   noStats?: boolean;
   /** The pieces an owned stat line carries; all three when absent. */
   statPieces?: StatPieces;
+  /** The relationship sentences each entity's block prints. None when absent. */
+  relationshipLines?: RelationshipLines;
 };
 
 const ALL_STAT_PIECES: StatPieces = { values: true, status: true, meaning: true };
@@ -241,7 +244,7 @@ export function entityRosterRuns(
   entities: Entity[],
   opts: RosterOpts = {},
 ): MarkedRun[] {
-  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces, relationshipLines } = opts;
   const entityIds = allIds.filter((id) => passesOnlyWith(id, opts));
   if (nameOnly) {
     const named = entityIds.flatMap((id) => {
@@ -283,6 +286,7 @@ export function entityRosterRuns(
       pronounLine,
       hasDesc ? mark(["content"], field(descKey, entityDescription!)) : "",
       appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field),
+      (relationshipLines?.[entityItem.id] ?? []).map((line) => field("relationship", line)).join(""),
       ownedLines,
     );
     const block = xml
