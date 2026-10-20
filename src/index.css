@@ -955,6 +955,12 @@ b {
   z-index: 100; /* above the node layer, whose nesting hands each node its own z-index */
 }
 
+/* Locations canvas while an entity is picked: Connections and their hints recede behind the marks. */
+.canvas-picking .react-flow__edges,
+.canvas-picking .react-flow__edgelabel-renderer {
+  opacity: 0.25;
+}
+
 /* The zoom controls: xyflow's base stylesheet leaves them unpainted, so they take the app's own button look
    and follow the theme with everything else. */
 .react-flow__controls-button {

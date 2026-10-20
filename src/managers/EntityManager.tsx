@@ -12,6 +12,7 @@ import { useRenameField } from '@/lib/useCodeRename';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { customPersonaHeldElsewhere } from '@/lib/customPersona';
 import type { Entity, FocusFieldHint } from '@/types';
+import { Hint } from '@/components/ui/typography';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
@@ -119,6 +120,9 @@ const EntityManager = ({
                   onLocationsChange={handleLocationsChange}
                 />
                 <EntityStartingLocationField {...groupProps} options={locationOptions} />
+                {!editingEntity.customPersona && (
+                  <Hint>Set <b>Presence</b>, <b>Movement</b> and <b>Known In</b> on the full-screen <b>Locations Canvas</b></Hint>
+                )}
               </>
             )}
           />

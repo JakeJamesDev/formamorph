@@ -11,9 +11,12 @@ import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2,
-  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Pencil, Redo2, Spline, SquareCheck, Star, Trash2,
-  Undo2, X,
+  LayoutGrid, Magnet, Maximize2, Megaphone, Minimize2, Minus, Pencil, Redo2, Spline, SquareCheck, Star,
+  Trash2, Undo2, X,
 } from 'lucide-react';
+import EntityPickCard, { type PickState } from '@/managers/EntityPickCard';
+import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
+import { LocationIcon } from '@/lib/elementIcons';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
 import { FloatingEdge } from '@/components/FloatingEdge';
@@ -57,7 +60,7 @@ import {
 import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
-import type { Connection, GameLocation, LegKey } from '@/types';
+import type { Connection, Entity, GameLocation, LegKey } from '@/types';
 import { CanvasControlButton, CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 
@@ -122,6 +125,24 @@ const flashRing = 'ring-2 ring-primary motion-safe:animate-pulse';
 
 const UNREACHABLE_TITLE = 'No starting location can reach here';
 
+/** Every location's mark while an entity is picked; null when none is. */
+const PickMarkContext = createContext<Map<string, PickMark> | null>(null);
+
+/** How a box draws its pick mark: a solid tint for the entity's locations, a dashed outline over each pick
+ *  (a group's box encloses its whole subtree), and a fade for the rest. */
+const pickClass = (mark: PickMark | undefined) => cn(
+  mark?.kind === 'member' && 'bg-primary/20 ring-2 ring-primary',
+  mark?.pick && 'outline-dashed outline-2 outline-offset-2 outline-primary',
+  mark?.kind === 'faded' && 'opacity-30',
+);
+
+const PickIcons = ({ mark }: { mark: PickMark | undefined }) => (
+  <>
+    {mark?.kind === 'member' && <LocationIcon className="h-4 w-4 shrink-0 text-primary" aria-label="Entity Location" />}
+    {mark?.pick && <Megaphone className="h-4 w-4 shrink-0 text-primary" aria-label="Known In Pick" />}
+  </>
+);
+
 /** The badges a node carries: where a new game may begin, and where a player can never arrive. */
 const NodeBadges = ({ data }: { data: CanvasNodeData }) => (
   <>
@@ -143,13 +164,18 @@ const NodeBadges = ({ data }: { data: CanvasNodeData }) => (
  */
 const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
   const drawing = useConnection((c) => c.inProgress);
+  // Hidden rather than removed while picking: edges attach to the handles xyflow measured at mount.
+  const picking = useContext(PickMarkContext) !== null;
   return (
     <>
-      <Tip tip="Drag To Connect">
+      <Tip tip={picking ? undefined : 'Drag To Connect'}>
         <Handle
           type="source"
           position={Position.Right}
-          className="!h-3 !w-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity group-hover/node:opacity-100"
+          className={cn(
+            '!h-3 !w-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity',
+            picking ? '!pointer-events-none' : 'group-hover/node:opacity-100',
+          )}
         />
       </Tip>
       <Handle
@@ -175,15 +201,18 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
   // Armed by a drag resting on it: this box is about to become one holding what is being dragged, and saying
   // so before the release is what lets the author bail by moving away.
   const armed = useContext(ArmedLeafContext) === id;
+  const mark = useContext(PickMarkContext)?.get(id);
   return (
     // The box already carries its own name; the tip only says it cannot be reached.
     <Tip tip={data.unreachable ? UNREACHABLE_TITLE : undefined} labelsChild={false}>
       <div
         data-drop-target={armed || undefined}
         data-flash={flashing || undefined}
+        data-pick-mark={mark?.kind}
         className={cn(
           'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
           data.unreachable && 'border-destructive',
+          pickClass(mark),
           flashing ? flashRing : selected && 'ring-2 ring-ring',
           armed && 'bg-primary/10 ring-2 ring-primary',
         )}
@@ -191,6 +220,7 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
         <EdgeAnchors dropHeight="!h-full" />
         <NodeBadges data={data} />
         <span className="truncate">{data.label}</span>
+        <PickIcons mark={mark} />
       </div>
     </Tip>
   );
@@ -202,14 +232,17 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
   // Named while the drag is still in the air: this is the box that would come to hold what is being moved.
   const willTakeTheDrop = useContext(DropTargetContext).into.includes(id);
   const flashing = useContext(FlashContext) === id;
+  const mark = useContext(PickMarkContext)?.get(id);
   return (
     <Tip tip={data.unreachable ? UNREACHABLE_TITLE : undefined} labelsChild={false}>
       <div
         data-drop-target={willTakeTheDrop || undefined}
         data-flash={flashing || undefined}
+        data-pick-mark={mark?.kind}
         className={cn(
           'group/node h-full w-full rounded-md border bg-muted/40',
           data.unreachable && 'border-destructive',
+          pickClass(mark),
           flashing ? flashRing : selected && 'ring-2 ring-ring',
           willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
         )}
@@ -218,6 +251,7 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
         <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
           <NodeBadges data={data} />
           <span className="truncate">{data.label}</span>
+          <PickIcons mark={mark} />
         </div>
       </div>
     </Tip>
@@ -277,7 +311,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
   const [a, b] = connectionEnds(connection);
   const names = [nameOf(a), nameOf(b)] as const;
   return (
-    <Panel position="top-right" className="!m-2 w-72 space-y-2 rounded-md border bg-card p-3 shadow-md">
+    <div className="space-y-2 rounded-md border bg-card p-3 shadow-md">
       <div className="flex items-center gap-1">
         <Tip tip={`${names[0]} — ${names[1]}`} labelsChild={false}>
           <span className="min-w-0 flex-grow truncate text-label">
@@ -333,7 +367,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
         onChange={(next, typedLeg) => onIntent(updateIntent(next), typedLeg)}
         focus={focus}
       />
-    </Panel>
+    </div>
   );
 };
 
@@ -713,7 +747,9 @@ interface CanvasSession {
 
 type CanvasData = Pick<ReturnType<typeof useGameData>,
   'locations' | 'setLocations' | 'connections' | 'setConnections' | 'placeholders' |
-  'placementLetters' | 'placeholderOwners'>;
+  'placementLetters' | 'placeholderOwners'>
+  // The cast, for picking an entity on the full-screen canvas. A canvas without one has no entity card.
+  & Partial<Pick<ReturnType<typeof useGameData>, 'entities' | 'updateEntity'>>;
 
 export interface LocationCanvasInputs {
   data: CanvasData;
@@ -733,7 +769,16 @@ const CanvasInner = ({
   fullscreen: boolean;
   onToggleFullscreen: () => void;
 } & Pick<LocationCanvasInputs, 'data' | 'preferences'> & Pick<CanvasReveal, 'revealSelection' | 'onSelectionRevealed'>) => {
-  const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = data;
+  const {
+    locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners,
+    entities, updateEntity,
+  } = data;
+  // The entity the full-screen canvas picks for. While one is picked, the canvas is a read-only picker.
+  const [pickState, setPickState] = useState<PickState | null>(null);
+  const pickedEntity = fullscreen && pickState ? entities?.find((e) => e.id === pickState.entityId) : undefined;
+  const picking = !!pickedEntity;
+  const pickMode = pickedEntity?.customPersona ? 'locations' : pickState?.mode ?? 'locations';
+  const marks = useMemo(() => (pickedEntity ? pickMarks(pickedEntity, locations) : null), [pickedEntity, locations]);
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
   } = session;
@@ -817,6 +862,11 @@ const CanvasInner = ({
   const map = useMemo(
     () => buildLocationCanvas(locations, connections, { resolveName }),
     [locations, connections, resolveName],
+  );
+
+  const entityLabel = useCallback(
+    (entity: Entity) => labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
+    [placeholders, placementLetters, placeholderOwners],
   );
 
   const findLocations = useCallback(
@@ -943,12 +993,13 @@ const CanvasInner = ({
   // A node change on every drag frame rebuilds `selectedIds`; the focus keeps its identity until it differs.
   const focusRef = useRef<string[]>([]);
   const focus = useMemo(() => {
-    const next = canvasFocus({ hovered: hoveredId, selected: selectedIds, dragging });
+    // A picker draws no Connections, so it shows no implicit arrow to draw one from.
+    const next = picking ? [] : canvasFocus({ hovered: hoveredId, selected: selectedIds, dragging });
     const last = focusRef.current;
     if (next.length === last.length && next.every((id, i) => id === last[i])) return last;
     focusRef.current = next;
     return next;
-  }, [hoveredId, selectedIds, dragging]);
+  }, [hoveredId, selectedIds, dragging, picking]);
 
   const implicitEdges = useMemo(
     () => implicitCanvasEdges(locations, connections, focus),
@@ -1130,7 +1181,7 @@ const CanvasInner = ({
       activeRef.current = !!frameRef.current?.contains(target) || !!menuRef.current?.contains(target);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!activeRef.current || isEditableTarget(event.target)) return;
+      if (picking || !activeRef.current || isEditableTarget(event.target)) return;
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
       const nudge = NUDGES[event.key];
@@ -1154,7 +1205,48 @@ const CanvasInner = ({
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection, fullscreen, nudgeSelection, zoomToSelection]);
+  }, [setSelection, fullscreen, nudgeSelection, zoomToSelection, picking]);
+
+  // Picking starts from a clean canvas: nothing selected, no Connection open.
+  useEffect(() => {
+    if (!picking) return;
+    setSelection(() => false);
+    setSelectedConnectionId(null);
+  }, [picking, setSelection, setSelectedConnectionId]);
+
+  // Escape leaves picking before the window hears it, so a second Escape leaves full screen. An open list
+  // in the card takes its own Escape first.
+  useEffect(() => {
+    if (!picking) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if ((event.target as HTMLElement | null)?.closest?.('[role="listbox"]')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setPickState(null);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [picking]);
+
+  // A canvas click on a location toggles it for the picked entity. A drag that ends on the box was a pan.
+  const togglePicked = (event: React.MouseEvent, locationId: string) => {
+    if (!pickedEntity || !updateEntity) return;
+    if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
+    // Keyed by the location, so each click is its own Step rather than a typing run on the entity.
+    history.keyNext({
+      slice: 'entities', id: pickedEntity.id, field: pickMode === 'knownIn' ? 'knownIn' : 'locations', ids: [locationId],
+    });
+    updateEntity(togglePick(pickedEntity, pickMode, locationId));
+  };
+
+  // DEV dev-router: `pick=<entity id>` (or `<entity id>:knownIn`) picks an entity on the full-screen canvas.
+  const devPick = useDevRoute()?.pick;
+  useEffect(() => {
+    if (!import.meta.env.DEV || !devPick || !fullscreen) return;
+    const [entityId, mode] = devPick.split(':');
+    setPickState({ entityId, mode: mode === 'knownIn' ? 'knownIn' : 'locations' });
+  }, [devPick, fullscreen]);
 
   /**
    * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
@@ -1203,6 +1295,8 @@ const CanvasInner = ({
       frameRef.current?.removeEventListener('click', swallowClickRef.current, { capture: true });
       swallowClickRef.current = null;
     }
+    // A picker's boxes don't hold the pan back, so xyflow pans from them with every button on its own.
+    if (picking) return;
     const overNode = (event.target as HTMLElement).closest?.('.react-flow__node');
     if (overNode && event.pointerType === 'touch') holdToToggle(overNode, event);
     if (!overNode || (event.button !== 1 && event.button !== 2)) return;
@@ -1278,7 +1372,7 @@ const CanvasInner = ({
     // The frame is the menu's trigger, so the browser's own menu never opens over the canvas — Radix takes
     // every right-click the pane, a node or the selection did not already stop as a pan's release.
     <ContextMenu>
-    <ContextMenuTrigger asChild>
+    <ContextMenuTrigger asChild disabled={picking}>
     <div
       ref={frameRef}
       // Programmatically focusable but out of the Tab order, exactly as the pane itself is: the map takes no
@@ -1286,11 +1380,13 @@ const CanvasInner = ({
       tabIndex={-1}
       className="relative h-full w-full"
       onPointerDownCapture={handlePointerDown}
-      onContextMenu={reraiseForTrigger}
+      // A picker has no menu, and the browser's own stays shut too.
+      onContextMenu={picking ? (event) => event.preventDefault() : reraiseForTrigger}
     >
       <DropTargetContext.Provider value={dropHighlight}>
       <ArmedLeafContext.Provider value={armedLeaf}>
       <FlashContext.Provider value={flashId}>
+      <PickMarkContext.Provider value={marks}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
         edges={edges}
@@ -1300,7 +1396,8 @@ const CanvasInner = ({
         onNodeDragStart={handleDragStart}
         onNodeDrag={handleDrag}
         onNodeDragStop={handleDragStop}
-        onNodeClick={(_, node) => {
+        onNodeClick={(event, node) => {
+          if (picking) return togglePicked(event, node.id);
           setSelectedConnectionId(null);
           // The editor tracks the last node clicked; announcing it here is what keeps the prop coming back
           // from collapsing a multi-selection this click may have just added to.
@@ -1308,7 +1405,12 @@ const CanvasInner = ({
           onSelect(node.id);
         }}
         onSelectionChange={handleSelectionChange}
-        onEdgeClick={handleEdgeClick}
+        onEdgeClick={picking ? undefined : handleEdgeClick}
+        // A picker is read-only: no drag, nesting, Connection or selection, and a drag with any button pans.
+        nodesDraggable={!picking}
+        nodesConnectable={!picking}
+        elementsSelectable={!picking}
+        edgesFocusable={!picking}
         onNodeMouseEnter={(_, node) => hoverOn(node.id)}
         onNodeMouseLeave={hoverOff}
         onEdgeMouseEnter={cancelHoverClear}
@@ -1321,10 +1423,10 @@ const CanvasInner = ({
         onSelectionContextMenu={(e) => openMenu(e, { kind: 'selection' })}
         // Node-editor controls: left-drag draws a marquee over the pane and moves a node on a node, the other
         // two buttons pan, and Shift or Ctrl composes a selection a node at a time.
-        panOnDrag={[1, 2]}
-        selectionOnDrag
+        panOnDrag={picking ? [0, 1, 2] : [1, 2]}
+        selectionOnDrag={!picking}
         selectionKeyCode={null}
-        multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
+        multiSelectionKeyCode={picking ? null : ['Shift', 'Control', 'Meta']}
         // Snapping applies to the drag itself, so what the author sees land is exactly what is stored.
         snapToGrid={snap}
         snapGrid={[CANVAS_GRID, CANVAS_GRID]}
@@ -1339,7 +1441,7 @@ const CanvasInner = ({
         attributionPosition="bottom-left"
         minZoom={0.2}
         fitView
-        className="h-full w-full"
+        className={cn('h-full w-full', picking && 'canvas-picking')}
       >
         {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
@@ -1356,7 +1458,7 @@ const CanvasInner = ({
         <TopLevelDrop />
         {/* The window's own orientation aids and power tools. The pane is a view of a map the author can
             already take in; these are for the map that has grown past it. */}
-        {fullscreen && (
+        {fullscreen && !picking && (
           <CanvasToolbar
             arrangeLabel={arrangeScope() === undefined ? 'Auto Arrange All' : 'Auto Arrange'}
             onArrange={arrangeFromToolbar}
@@ -1382,16 +1484,38 @@ const CanvasInner = ({
             onNavigate={(at) => setCenter(at.x, at.y, { duration: reduceMotion ? 0 : 200 })}
           />
         )}
-        {selectedConnection && (
-          <ConnectionInspector
-            connection={selectedConnection}
-            focus={hintFocus?.connectionId === selectedConnection.id ? hintFocus : null}
-            nameOf={nameOf}
-            onIntent={applyIntent}
-            onClose={() => setSelectedConnectionId(null)}
-          />
+        {/* One column on the right: an open Connection above the entity card, so neither covers the other.
+            Below the toolbar and the search box on a narrow window. */}
+        {((selectedConnection && !picking) || (fullscreen && entities && updateEntity)) && (
+          <Panel
+            position="top-right"
+            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'max-sm:!mt-28 max-sm:max-h-[40%]')}
+          >
+            {selectedConnection && !picking && (
+              <ConnectionInspector
+                connection={selectedConnection}
+                focus={hintFocus?.connectionId === selectedConnection.id ? hintFocus : null}
+                nameOf={nameOf}
+                onIntent={applyIntent}
+                onClose={() => setSelectedConnectionId(null)}
+              />
+            )}
+            {fullscreen && entities && updateEntity && (
+              <EntityPickCard
+                entities={entities}
+                entityLabel={entityLabel}
+                locationName={nameOf}
+                locations={locations}
+                connections={connections}
+                picking={pickedEntity && pickState ? { ...pickState, mode: pickMode } : null}
+                onPickingChange={setPickState}
+                onChange={updateEntity}
+              />
+            )}
+          </Panel>
         )}
       </ReactFlow>
+      </PickMarkContext.Provider>
       </FlashContext.Provider>
       </ArmedLeafContext.Provider>
       </DropTargetContext.Provider>
