@@ -193,7 +193,10 @@ The prototype settled this layout (variant D, see Prototype). The user approved 
   - **Entities Here**: one row per entity at this location, with its **Movement** select, its **Presence** toggle when it lists other locations, and the range warning.
   - **Known Here**: each entity known at this location. A pick on this location shows **Remove**; a pick on a parent shows "Known in <parent>". A select adds this location to an entity's Known In.
 - **Entity panel.** It holds no Presence fields. A hint points to the canvas: "Set **Presence**, **Movement** and **Known In** on the full-screen **Locations Canvas**".
-- The canvas warns about a Moves Between entity whose locations aren't connected through its own locations.
+- The canvas warns about a Moves Between entity whose locations aren't connected through its own locations. One warning names every unreachable location, joined with commas and "and", measured from the entity's first listed location.
+- The entity picker lists every entity. For the Custom Persona the card shows only **Locations** mode and the persona hint, with no **Known In** toggle. A Persona-marked world entity keeps every control.
+- Choosing **Picked Locations** while the entity has no picks stores nothing. It switches the card to **Known In** mode, and the select shows Picked Locations until the author leaves that mode. The first click stores the first pick.
+- Picking closes the Connection inspector. When not picking, the Connection inspector stacks above the card in one top-right column.
 - Every new screen or modal state gets a dev-route entry.
 
 **Copy.** Swept with `copy:sweep` (0 notices) and settled with the user. "Group" and "kind" never appear in the UI: neither is defined.
