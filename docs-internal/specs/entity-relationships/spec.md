@@ -46,7 +46,7 @@ In play, the AI reads each relationship as one sentence: "Kate is Tera's mother"
 
 **Authored shape (world JSON).** One optional entity field: an ordered list of `{ targetId, label }`. `targetId` is an entity id or the **You** target. Absent or empty means no relationships, so existing worlds need no migration. At most one row per target per entity. This is an export-shape change (additive).
 
-**Direction.** The label names the target's role toward the holder. Tera holding `{ Kate, "mother" }` reads "Kate is Tera's mother". The game never infers an inverse (mother → daughter).
+**Direction.** The label names the target's role toward the owner. Tera owning `{ Kate, "mother" }` reads "Kate is Tera's mother". The game never infers an inverse (mother → daughter).
 
 **You.** A **You** target resolves to the played persona at render time. The played persona's name fills the sentence: "Kate is Rowan's mother". There is no second person form. A relationship held by a world persona, or by the Custom Persona entity, works like any other.
 
@@ -54,9 +54,9 @@ In play, the AI reads each relationship as one sentence: "Kate is Tera's mother"
 
 **Rendering (one seam: chip values).**
 
-- A relationship renders as a field line inside the entity blocks. No new chip.
-- Each relationship prints once per prompt: on the holder's block when the holder renders, else on the target's block.
-- The Persona block counts as a block for this rule.
+- A relationship renders as a field line inside the entity blocks. No new chip. Each relationship gets its own `relationship` field, after the description and type fields and before traits and stats, in every format.
+- Each relationship prints once per scene, decided by roster precedence (here > sublocations > reachable > known): on the owner's block when the chain lists the owner, else on the target's block when the chain lists the target, else nowhere. In Scene is its own roster and applies the same rule over its own ids. Chip values stay per token. There is no template-aware pass, so a custom template with only some scopes can lose a line. That gap is accepted.
+- The Persona block counts as a block for this rule, at the head of the chain.
 - The line appears in every roster scope that renders full or summary blocks. A name-only scope shows no relationship lines.
 
 **Known roster pull-in.**
@@ -70,14 +70,14 @@ In play, the AI reads each relationship as one sentence: "Kate is Tera's mother"
 
 **Deleting an entity** drops every relationship that targets it, in the same pass that removes the entity.
 
-**Editor.** The entity panel gets a Relationships list: a target dropdown and a label field per row, with add and remove. The dropdown lists You, then the world's entities, without the holder itself and without targets the holder already uses. The exact placement follows the Design System and the `design-system` skill. A new visual pattern needs the user's approval.
+**Editor.** The World Editor entity panel's Profile tab gets a Relationships list below the Locations block. It reuses the Known Here row pattern: a bordered row with the target name, a label input and Remove. A select under the rows adds a target. A row's target is fixed once added; the author removes it and adds it again to change it. The select lists You, then the world's entities, without the owner itself and without targets the owner already uses. The library entity editor gets no Relationships list, since a library character has no world to target.
 
 ## Testing Decisions
 
 A good test drives the public seam and asserts what the AI or the author would see. It never asserts internal helpers.
 
-- **Chip values.** Build a scene and read the rendered chip text. Cover: the sentence form; print-once (holder rendered, only target rendered, both rendered); pull-in from here and in scene; no pull-in from lower scopes; Nowhere still pulled in; precedence when the target is reachable; You resolving to the played name; an unplayed persona-only end dropping the line; no lines in a name-only scope; a world without relationships rendering byte-equal to today. Prior art: the known-roster tests in the chip values test file.
-- **Editor.** An RTL test of the Relationships list: add a row, pick a target, type a label, remove a row; the dropdown hides the holder and used targets. Prior art: the Location Known Here component test.
+- **Chip values.** Build a scene and read the rendered chip text. Cover: the sentence form; print-once (owner rendered, only target rendered, both rendered); pull-in from here and in scene; no pull-in from lower scopes; Nowhere still pulled in; precedence when the target is reachable; You resolving to the played name; an unplayed persona-only end dropping the line; no lines in a name-only scope; a world without relationships rendering byte-equal to today. Prior art: the known-roster tests in the chip values test file.
+- **Editor.** An RTL test of the Relationships list: add a row, pick a target, type a label, remove a row; the dropdown hides the owner and used targets. Prior art: the Location Known Here component test.
 - **Entity deletion.** A pure helper drops relationships that target a removed entity. Prior art: the helper that drops a deleted location from every membership and Known In list.
 - **Prompt probe.** No default prompt text changes. The probe still runs an in-batch A/B, relationship off vs on: does the narration use the absent relative correctly, without placing them in the scene?
 
