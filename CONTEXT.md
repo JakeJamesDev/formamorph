@@ -369,6 +369,10 @@ _Avoid_: stat code, code box, formula (a returned number is one use), macro
 When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. The Timing menu is the only way to move a script between timings. Inside one timing, an optional `order` decides who runs first.
 _Avoid_: hook, phase, trigger (a Test Bench Instrument), event
 
+**Sandbox Snapshot**:
+A frozen read of one playthrough state that every Script of a turn or a check runs against: the stats and which are on, the Owners and their stats, the traits in force, the placeholders, the dictionaries, the places, the discovered cast and the clock. Play takes one per turn. Test Code and the Test Bench take one of the authored world at turn one, so an editor run and a real turn read the same board. Taken once, read by every run.
+_Avoid_: sandbox context, run options, script world, code scene
+
 **Before the AI**:
 The Timing that runs at the start of a turn, before the prompt is built. Its writes are in that turn's prompt. No AI change, regen or clock time exists yet, so `previous` reads as the stat and every `delta` reads zero.
 _Avoid_: pre-turn, before box
