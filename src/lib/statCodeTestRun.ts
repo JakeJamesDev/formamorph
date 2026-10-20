@@ -16,7 +16,6 @@ import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { blueprintItemIds } from '@/lib/traitTree';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import { turnOneClock } from '@/lib/statCodeTiming';
-import { sampleNarration } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
 import { openingHomeOf, openingStateOf, type OpeningFoldWorld } from '@/lib/openingState';
@@ -224,7 +223,7 @@ export async function runTestCode(
   const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) });
   const unit: ScriptRunUnit = {
     home: seeded, timing, code,
-    ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
+    ...(timing === 'output' && { narration: sentence ?? '' }),
     ...(timing === 'switch' && { switched: 'sample' as const }), ...(prompts && { prompts }), ...(args && { args }),
   };
   const outcome = await snapshot.run(unit);

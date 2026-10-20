@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import type { Entity, Stat, Trait, World } from '@/types';
 import { optionsFor, type UnitHome } from '@/lib/sandboxSnapshot';
 import { testCodeSnapshotOf } from '@/lib/statCodeTestRun';
-import { SAMPLE_SENTENCE, sampleNarration } from '@/lib/scriptTestSamples';
+import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import type { RunTiming } from '@/lib/statCodeTiming';
 import { benchSnapshotOf } from './scriptCheck';
 import type { RuleWorld } from './rules';
@@ -53,7 +53,7 @@ describe('the Bench and Test Code read one world (ADR-0005, Q9)', () => {
       it(`assembles the same options for a ${name} Script at ${timing}`, () => {
         const unit = {
           home, timing, code: 'return 1;',
-          ...(timing === 'output' && { narration: sampleNarration(SAMPLE_SENTENCE) }),
+          ...(timing === 'output' && { narration: SAMPLE_SENTENCE }),
           ...(timing === 'switch' && { switched: 'sample' as const }),
         };
         expect(optionsFor(benchSnapshotOf(world, timing), unit)).toEqual(optionsFor(testCodeSnapshotOf(world, timing), unit));

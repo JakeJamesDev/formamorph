@@ -141,6 +141,13 @@ describe('the readings and overlays an editor run takes', () => {
     expect(Object.values(options.enabled ?? {})).toEqual([true, true]);
   });
 
+  it('builds During AI Output’s narration from a sentence, as the first of its reply', () => {
+    const fromSentence = (timing: RunTiming): ScriptRunUnit => ({ home: HOMES['world script'], timing, code: 'return 1;', narration: 'The door opens.' });
+    expect(optionsFor(snapshotOf(state), fromSentence('output')).narration)
+      .toEqual({ sentence: 'The door opens.', full: 'The door opens.', index: 0, sent: [], buffered: [] });
+    expect(optionsFor(snapshotOf(state), fromSentence('after')).narration).toBeUndefined();
+  });
+
   it('fires a sample switch on the home’s own trait, under its Owner', () => {
     const options = optionsFor(snapshotOf(state), sample(HOMES['trait on an entity']));
     expect(options.switchedTrait).toMatchObject({ id: 'grim', enabled: true, owner: 'Bram' });
