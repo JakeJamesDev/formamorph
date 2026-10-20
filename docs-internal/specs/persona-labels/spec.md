@@ -41,9 +41,9 @@ An author meets four more names in the World Editor. A relationship targets **Yo
 - **Q9. The chip's fallback words stay.** With no persona, the chip still reads "you" in an opening and "the player" elsewhere. Only the AI reads these words, so no probe is needed.
 - **Q10. The relationship target reads Persona.** Its role input is named **Persona's Role**, and **Persona** heads the **Add a relationship** list. The AI line still uses the picked persona's name: "Ash is Rowan's son".
 - **Q11. The requirement owner reads Persona.** In the editor the text reads "Persona: Elf". The **Playing As** condition keeps its name.
-- **Q12. The opening preview reads "Turn one as Kate", or "Turn one with no persona".** The persona select's hint reads "Sets the persona". "The default character" goes.
+- **Q12. The opening preview reads "Turn one as Kate", or "Turn one with no persona".** The persona select's hint reads "Sets the persona". "The default character" goes. The name comes from the persona picked in the select, not from the lens PC trait. "With no persona" shows when the select is None or the world has no personas (ticket 07 intent answer).
 - **Q13. The code card's persona line reads "Persona: Playable".** It matches the **Persona** control's choice. In the glossary, the owner **You** becomes the owner **Persona**.
-- **Q15. "Lens PC" becomes "Lens Persona".** The **Active Traits** note reads "defaults plus the lens persona".
+- **Q15. "Lens PC" becomes "Lens Pick".** The **Active Traits** note reads "defaults plus the lens pick". Reopened by ticket 07: the badge marks the Test Bench lens's picked trait, not the persona, so "Lens Persona" would mislead.
 - **Q17. The Persona Name chip keeps "player name" as a search term.** Authors who search the old label still find it.
 - **Q20. The author-note ⓘ line says "not something your persona says".** It no longer says "your character".
 
@@ -93,7 +93,7 @@ An author meets four more names in the World Editor. A relationship targets **Yo
 27. As an author who learned **Player Name**, I want a search for "player name" to find the chip, so that the rename doesn't hide it.
 28. As an author, I want `{{user}}` to keep working, so that imported cards and my typing habits still turn into the chip.
 29. As an author, I want the opening preview to say "Turn one as Kate" or "Turn one with no persona", so that I see which persona the draw used.
-30. As an author, I want the Openings test tool to say **Lens Persona**, so that it uses the same word as the rest of the editor.
+30. As an author, I want the Openings test tool to say **Lens Pick** for the trait the lens picked, so that no character word sits on a trait.
 31. As an author, I want the code card to say "Persona: Playable", so that it matches the **Persona** control.
 32. As an author, I want `player.*` and the variable menu's **Player** group unchanged, so that "Player" still means the person I ask a question.
 33. As an author reading the wiki, I want the editor pages to say **Persona** where the editor says it, so that the docs match the screen.
@@ -148,7 +148,7 @@ An author meets four more names in the World Editor. A relationship targets **Yo
 - The Persona Authoring heading, the anchor fixture and every inbound link change together.
 - The glossary in CONTEXT.md names the owner **Persona**.
 - The help search index is rebuilt in the commit that renames the docs.
-- Released changelog entries stay as they are. The relationships entry in 🚧 In Progress folds in **Persona** in place of **You**.
+- Released changelog entries stay as they are. The relationships entry in 🚧 In Progress folds in **Persona** in place of **You**. A fragment can't edit an existing line, so the spec session rewords that entry on main after ticket 05 lands.
 
 **Design System**
 
