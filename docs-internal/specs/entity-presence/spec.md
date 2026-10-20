@@ -1,7 +1,7 @@
 # Entity Presence
 
 Status: done
-Status note: 2026-10-20. Tickets 01–09 are done. Last landing is 5ea4fa653. Closed without gates. The planner cast fix is a separate effort.
+Status note: 2026-10-20. Tickets 01–09 are done. Last landing is 5ea4fa653. Gates on 2026-10-20: typecheck, test and build green; lint red only on the untracked worlds-wip/cb-3.3.2-live.ts. The planner cast fix is a separate effort.
 Spec session: entity-presence — spec
 
 ## Problem Statement
