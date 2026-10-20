@@ -122,7 +122,7 @@ The played persona ignores Presence and Movement: it has no position and gets no
 - The location's **Presence** tab shows it as a checkbox beside its Connections, so an author can opt an old location in.
 - The highest-scope-wins rule still applies, so a child reached through the tree stays in the sublocations scope.
 - Bundled worlds opt in where travel happens: every location that at least one Connection leg leaves gets `true`. That change ships with a probe run and regenerated fingerprints.
-- The default planner prompt casts reachable entities as present: its Cast rules never say they are elsewhere. Ticket 09's probe found it (Emberwatch square, neutral action: 0 of 8 runs before, 8 of 8 after). The user ruled to land ticket 09 anyway. Ticket 10 adds the cast contract with probe numbers.
+- The default planner prompt casts reachable entities as present: its Cast rules never say they are elsewhere. Ticket 09's probe found it (Emberwatch square, neutral action: 0 of 8 runs before, 8 of 8 after). The user ruled to land ticket 09 anyway. Fixing the planner's cast rules is a larger effort outside this spec (see Out of Scope).
 
 **Known roster.** A new `<ENTITIES|known>` chip scope lists each entity that is known at the player's location but not present. An entity is known there when one of its picked locations is the player's location or contains it at any depth.
 
@@ -262,6 +262,7 @@ Also:
 - Counted group members (how many of a group are where).
 - Gating player travel on Connections (ADR-0006 stands).
 - Movement for the persona.
+- The planner's cast rules for nearby and known entities. The default planner prompt casts them as present; fixing that is its own effort.
 
 ## Further Notes
 
