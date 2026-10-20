@@ -9,6 +9,7 @@ import type { ImageGenOpts, ImageGenParams, ImageProvider, ImageProviderId } fro
 
 export type { ImageGenParams, ImageGenOpts, ImageProviderId } from './types';
 export { buildImageRequest, type ImageSettings, type ImageRequest } from './request';
+export { takesCharacterPrompts } from './novelai';
 
 /** Per-provider default endpoint, used when the Endpoint field is left blank. Local providers have a
  *  standard loopback address; the cloud provider has none (a base URL must be entered). */

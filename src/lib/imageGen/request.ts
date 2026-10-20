@@ -6,6 +6,7 @@
 import type { ImageGenOpts, ImageGenParams, ImageProviderId } from './types';
 import { resolveImageEndpoint } from './index';
 import { DEFAULT_IMAGE_FILE_NAME, imageFilePrefix, type ImageFileParts } from './fileName';
+import { flattenSpacedPipes } from './promptParts';
 
 /** The image-endpoint preset fields a request is built from (a subset of the settings context). */
 export interface ImageSettings {
@@ -57,10 +58,12 @@ export function buildImageRequest(
   settings: ImageSettings,
   req: ImageRequest,
 ): { provider: ImageProviderId; params: ImageGenParams; opts: Omit<ImageGenOpts, 'signal' | 'onProgress'> } {
+  // NovelAI reads `|` itself: character prompts on V4+, Prompt Mixing on V3.
+  const own = settings.imageProvider === 'novelai' ? req.prompt : flattenSpacedPipes(req.prompt);
   return {
     provider: settings.imageProvider,
     params: {
-      prompt: joinPrompt(settings.imagePositivePrompt, req.prompt),
+      prompt: joinPrompt(settings.imagePositivePrompt, own),
       negativePrompt: joinPrompt(settings.imageNegativePrompt, req.negative ?? ''),
       width: req.width,
       height: req.height,

@@ -3,9 +3,10 @@
 // so no desktop bridge is involved and the web build can use it too. POST /ai/generate-image returns a ZIP
 // holding the PNG. Request shape verified against the caru-ini/novelai-sdk client.
 import { unzipSync } from 'fflate';
-import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
+import type { ImageGenOpts, ImageGenParams, ImageProvider, ImageProviderId } from './types';
 import { trimUrl, authHeaders, reachFetch } from './http';
 import { bytesToDataUrl } from '../imageOptim';
+import { ANY_PIPE, splitPromptParts } from './promptParts';
 
 /** A model the dropdown offers. NovelAI has no model-listing endpoint, so the list is maintained here. */
 export interface NovelAIModel {
@@ -66,6 +67,20 @@ export function toNovelAISampler(name: string): string {
 const isV4Model = (model: string): boolean => /^nai-diffusion-(4|5)\b/.test(model);
 const isV5Model = (model: string): boolean => /^nai-diffusion-5\b/.test(model);
 
+/** Whether a preset draws on NovelAI V4+, which turns a `|` prompt line into character prompts. */
+export const takesCharacterPrompts = (provider: ImageProviderId, model: string): boolean =>
+  provider === 'novelai' && isV4Model(model || NOVELAI_DEFAULTS.model);
+
+/** The base part, even when blank, and the non-empty character parts; a line with no `|` is all base. */
+function characterParts(prompt: string): { base: string; characters: string[] } {
+  if (!ANY_PIPE.test(prompt)) return { base: prompt, characters: [] };
+  const [base, ...rest] = splitPromptParts(prompt, ANY_PIPE);
+  return { base, characters: rest.filter(Boolean) };
+}
+
+/** NovelAI's own "AI's Choice" placement; `use_coords: false` makes the server ignore it. */
+const AUTO_CENTERS = [{ x: 0.5, y: 0.5 }];
+
 const clamp = (n: number, min: number, max: number, dflt: number): number =>
   Math.min(max, Math.max(min, Number.isFinite(n) ? n : dflt));
 
@@ -73,8 +88,13 @@ const clamp = (n: number, min: number, max: number, dflt: number): number =>
 export const toNovelAIDimension = (n: number): number =>
   clamp(Math.round(clamp(n, 64, 1600, NOVELAI_DEFAULTS.width) / 64) * 64, 64, 1600, NOVELAI_DEFAULTS.width);
 
+interface CharCaption {
+  char_caption: string;
+  centers: { x: number; y: number }[];
+}
+
 interface V4Caption {
-  caption: { base_caption: string; char_captions: never[] };
+  caption: { base_caption: string; char_captions: CharCaption[] };
   use_coords?: boolean;
   use_order?: boolean;
   legacy_uc?: boolean;
@@ -147,14 +167,24 @@ export function buildNovelAIBody(params: ImageGenParams): NovelAIRequest {
     noise_schedule: sampler === 'ddim' ? 'native' : 'karras',
     cfg_rescale: 0,
   };
-  if (isV4Model(model)) {
+  // V3 keeps the whole line: it reads `|` as its own Prompt Mixing.
+  let input = params.prompt;
+  if (takesCharacterPrompts('novelai', model)) {
+    const { base, characters } = characterParts(params.prompt);
+    input = base;
     parameters.v4_prompt = {
-      caption: { base_caption: params.prompt, char_captions: [] },
+      caption: {
+        base_caption: base,
+        char_captions: characters.map((char_caption) => ({ char_caption, centers: AUTO_CENTERS })),
+      },
       use_coords: false,
       use_order: true,
     };
     parameters.v4_negative_prompt = {
-      caption: { base_caption: params.negativePrompt, char_captions: [] },
+      caption: {
+        base_caption: params.negativePrompt,
+        char_captions: characters.map(() => ({ char_caption: '', centers: AUTO_CENTERS })),
+      },
       legacy_uc: false,
     };
   } else {
@@ -162,7 +192,7 @@ export function buildNovelAIBody(params: ImageGenParams): NovelAIRequest {
   }
   // A seed left off is randomized server-side, which is what -1 asks for.
   if (Number.isFinite(params.seed) && params.seed >= 0) parameters.seed = Math.round(params.seed);
-  return { action: 'generate', input: params.prompt, model, parameters };
+  return { action: 'generate', input, model, parameters };
 }
 
 // "PK" covers both a local file header and the end-of-central-directory record an empty archive starts
