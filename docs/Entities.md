@@ -11,7 +11,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 <!-- route: gameViewer.entities -->
 
 1. During the game, open the side panel's **Entities** tab. On desktop, select **Entities** above the panel if the avatar shows.
-2. Read the list. Your persona heads it, marked **(You)**.
+2. Read the list. Your persona heads it, marked **You**.
 3. Select an entry to open its details.
 
 ## How to Add Your Own Entities to a Game

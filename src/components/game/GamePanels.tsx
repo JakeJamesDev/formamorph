@@ -339,7 +339,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
           <ScrollArea className="flex-grow min-h-0">
             <div className="p-2">
               {personaEntity && (
-                <EntityListRow label={`${personaEntity.name} (You)`} onClick={() => openEntity(personaEntity, true)} />
+                <EntityListRow label={personaEntity.name} you onClick={() => openEntity(personaEntity, true)} />
               )}
               {visibleEntities.length > 0 ? (
                 visibleEntities.map((se, index) => {

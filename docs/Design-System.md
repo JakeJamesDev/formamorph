@@ -1940,6 +1940,57 @@ Every label is AP title case, and both parts of a hyphenated label are capitaliz
 
 Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a placeholder, a Read-Only name and a declared name, then a pinned card with its list and an empty list, in both themes. The controls only report what they do.
 
+## Pattern: You Pill
+
+**Purpose:** Mark the played persona, so the player finds their own entity at a glance.
+
+> ✅ **Approved.** The user approved the pill in the Persona Labels spec (rulings Q1, Q2 and Q3). Production: the **Entities** tab.
+
+**Density:** None of its own. The pill sits inside the host row's line box and adds no height.
+
+### Composition
+
+- 💊 **Pill.** A rounded primary fill that reads **You**. It is 14px tall, with 9px semibold text and 4px side padding.
+- 📏 **Line box.** The pill sits in a box one line tall, so it centers on the name's line in flex and inline hosts alike.
+- 🔤 **After the name.** The pill follows the name with a 6px gap. It never replaces the name. The host renders the name.
+- 🔁 **On a fill.** A selected row on the primary fill passes `onFill`, which inverts the pill's colors.
+
+### Where it goes
+
+| Surface | Mark |
+| --- | --- |
+| In game, after the played persona's name | The You pill |
+| Editor surfaces | The word **Persona**, never the pill |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The pill | `YouMark` in [`YouMark.tsx`](../src/components/game/YouMark.tsx) |
+| The **Entities** tab row | `EntityListRow` in [`EntityListRow.tsx`](../src/components/game/EntityListRow.tsx), with `you` |
+| Isolated reference | [`YouMarkReference.tsx`](../src/components/design-system/YouMarkReference.tsx) |
+
+Use `YouMark` for every new surface. Do not draw another mark.
+
+### Responsive behavior
+
+The pill is the same size on desktop and mobile. The reference shows its three panels side by side from `lg`.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Plain row | Primary fill, primary-foreground text. |
+| Selected row | `onFill`: primary-foreground fill, primary text. |
+| No persona | No pill and no empty badge. |
+| Long name on the **Entities** row | The name truncates. The pill stays whole. |
+
+### Writing review
+
+The pill reads **You**. A screen reader hears it after the name.
+
+Open `#dev?modal=designSystem&tab=you-mark` for a plain row and a selected row in light, dark and the Purple palette.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

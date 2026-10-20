@@ -242,7 +242,7 @@ describe('LeftPanel', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
     const mark = screen.getByRole('img', { name: 'Following you' });
-    expect(screen.getByText('Bram').parentElement!.contains(mark)).toBe(true);
+    expect(screen.getByText('Bram').closest('div')!.contains(mark)).toBe(true);
     expect(screen.getAllByRole('img', { name: 'Following you' })).toHaveLength(1);
   });
 
@@ -267,10 +267,23 @@ describe('LeftPanel', () => {
     });
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('Kira (You)')).toBeInTheDocument();
+    const name = screen.getByText('Kira');
+    expect(name.parentElement).toHaveTextContent(/^KiraYou$/);
     expect(screen.queryByText('No entity visible.')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Kira (You)'));
+    fireEvent.click(name);
     expect(onEntityClick).toHaveBeenCalledWith('Kira');
+  });
+
+  it('lists no persona and no You mark under None in a world without a Custom Persona', () => {
+    const world = [{ id: 'e1', name: 'Wolf' }];
+    renderLeftPanel({ entities: world as never }, {
+      world: { entities: world } as never,
+      seed: (gameplay) => gameplay.setPersonaRef({ source: 'none' }),
+    });
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    expect(screen.getByText('No entity visible.')).toBeInTheDocument();
+    expect(screen.queryByText('You')).toBeNull();
   });
 });
 
