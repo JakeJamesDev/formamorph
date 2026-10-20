@@ -50,8 +50,9 @@ describe('relationship lines in the Entities chip', () => {
   });
 
   it('prints on the target’s block when the owner renders in no scope', () => {
-    const values = chipValues(scene([guard, merchant, watchman, holding(wanderer, ['guard', 'sister'])]));
-    expect(values('<ENTITIES>')).toContain("  relationship: Guard is Wanderer's sister\n");
+    // The Watchman is reachable, so it pulls no one in, and the Wanderer stays unlisted.
+    const values = chipValues(scene([guard, merchant, watchman, holding(wanderer, ['watchman', 'sister'])]));
+    expect(values('<ENTITIES|reachable>')).toContain("  relationship: Watchman is Wanderer's sister\n");
   });
 
   it('prints on the owner’s block in a lower scope', () => {
@@ -119,5 +120,98 @@ describe('relationship lines in the Entities chip', () => {
       inSceneIds: ['guard', 'wanderer'],
     }));
     for (const token of spelledTokens('<ENTITIES>')) expect(empty(token), token).toBe(bare(token));
+  });
+});
+
+describe('the known roster pull-in', () => {
+  // Kate is nowhere and known nowhere, so only a relationship can make her known.
+  const kate: Entity = {
+    id: 'kate', name: 'Kate', knownIn: 'nowhere', aiSummary: 'Runs the inn.', aiDescription: 'A stern innkeeper.', traits: [],
+  };
+  const known = (values: ReturnType<typeof chipValues>) => values('<ENTITIES|known>')!;
+
+  it('pulls the target of a relationship held here into the known roster', () => {
+    const values = chipValues(scene([holding(guard, ['kate', 'mother']), merchant, watchman, wanderer, kate]));
+    expect(known(values)).toMatch(/^Kate$/m);
+    expect(known(values)).toContain('Runs the inn.');
+    // The line prints once, on the owner's block.
+    expect(values('<ENTITIES>')).toContain("relationship: Kate is Guard's mother");
+    expect(known(values)).not.toContain('relationship');
+  });
+
+  it('pulls the owner of a relationship that targets an entity here', () => {
+    const values = chipValues(scene([guard, merchant, watchman, wanderer, holding(kate, ['guard', 'son'])]));
+    expect(known(values)).toMatch(/^Kate$/m);
+    expect(known(values)).toContain("relationship: Guard is Kate's son");
+    expect(values('<ENTITIES>')).not.toContain('relationship');
+  });
+
+  it('pulls from the In Scene roster', () => {
+    // The Wanderer is in the scene but in no location scope.
+    const values = chipValues(scene([guard, merchant, watchman, holding(wanderer, ['kate', 'aunt']), kate], { inSceneIds: ['guard', 'wanderer'] }));
+    expect(known(values)).toMatch(/^Kate$/m);
+  });
+
+  it('pulls no one from the sub-location, reachable or known rosters', () => {
+    for (const owner of [merchant, watchman, herald]) {
+      const cast = [guard, merchant, watchman, wanderer, herald, kate].map((e) => (e.id === owner.id ? holding(e, ['kate', 'mother']) : e));
+      expect(known(chipValues(scene(cast))), owner.name).not.toMatch(/^Kate$/m);
+    }
+  });
+
+  it('renders a pulled entity by summary only, with no traits or stats', () => {
+    const oath: Trait = { id: 'oath', name: 'Sworn', aiDescription: 'Bound to the inn.', statChanges: [] };
+    const grit: PlayerStat = { id: 'grit', name: 'Grit', type: 'number', description: 'Will to go on.', descriptors: [], min: 0, max: 10, value: 4, regen: 0 };
+    const values = chipValues(scene([holding(guard, ['kate', 'mother']), merchant, watchman, wanderer, { ...kate, traits: [oath] }], {
+      ownedTraits: { kate: ['oath'] }, ownedStats: { kate: [grit] },
+    }));
+    expect(known(values)).toContain('Runs the inn.');
+    expect(known(values)).not.toContain('A stern innkeeper.');
+    expect(known(values)).not.toContain('Sworn');
+    expect(known(values)).not.toContain('Grit');
+  });
+
+  it('leaves a pulled entity that a higher scope lists in that scope', () => {
+    const values = chipValues(scene([holding(guard, ['watchman', 'friend'], ['merchant', 'brother']), merchant, watchman, wanderer]));
+    expect(values('<ENTITIES|reachable>')).toContain('Watchman');
+    expect(values('<ENTITIES|sublocations>')).toContain('Merchant');
+    expect(known(values)).not.toContain('Watchman');
+    expect(known(values)).not.toContain('Merchant');
+  });
+
+  it('pulls from the In Scene roster when the scene has no location', () => {
+    const at = (cast: Entity[]) => known(chipValues(scene(cast, { location: null, presentIds: [] })));
+    expect(at([holding(guard, ['kate', 'mother']), kate])).toMatch(/^Kate$/m);
+    expect(at([guard, kate])).toBe('N/A');
+  });
+
+  it('pulls one hop only', () => {
+    // Kate is pulled in, and the Wanderer is related only to Kate.
+    const values = chipValues(scene([holding(guard, ['kate', 'mother']), merchant, watchman, wanderer, holding(kate, ['wanderer', 'lodger'])]));
+    expect(known(values)).toMatch(/^Kate$/m);
+    expect(known(values)).not.toMatch(/^Wanderer$/m);
+  });
+
+  it('never lists an In Scene entity as known', () => {
+    // The Wanderer is in the scene but in no location scope, and related to the Guard here.
+    const values = chipValues(scene([holding(guard, ['wanderer', 'cousin']), merchant, watchman, wanderer], { inSceneIds: ['guard', 'wanderer'] }));
+    expect(known(values)).toBe('N/A');
+    expect(values('<ENTITIES>')).toContain("Wanderer is Guard's cousin");
+  });
+
+  it('pulls no one through a row with a blank label', () => {
+    expect(known(chipValues(scene([holding(guard, ['kate', '  ']), merchant, watchman, wanderer, kate])))).not.toMatch(/^Kate$/m);
+  });
+
+  it('never pulls in the Custom Persona', () => {
+    const custom: Entity = { id: 'custom', name: 'Custom', customPersona: true, aiSummary: 'A newcomer.' };
+    expect(known(chipValues(scene([holding(guard, ['custom', 'ward']), merchant, watchman, wanderer, custom])))).not.toContain('Custom');
+  });
+
+  it('lists a pulled entity once beside one known by place, in world order', () => {
+    const values = chipValues(scene([holding(guard, ['herald', 'uncle'], ['kate', 'mother']), merchant, watchman, wanderer, herald, kate]));
+    const roster = known(values);
+    expect(roster.match(/Herald/g)).toHaveLength(1);
+    expect(roster.search(/^Kate$/m)).toBeGreaterThan(roster.search(/^Herald$/m));
   });
 });

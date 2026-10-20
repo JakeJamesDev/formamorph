@@ -25,6 +25,21 @@ export function relationshipLines(entities: readonly Entity[], listed: readonly 
   return lines;
 }
 
+/** The other end of each relationship that touches an id in `fromIds`, held by either end, unless that end is
+ *  in `fromIds` too. One hop: an id found here pulls no one further. A blank label prints no line, so it pulls
+ *  no one. */
+export function relatedIds(entities: readonly Entity[], fromIds: readonly string[]): Set<string> {
+  const from = new Set(fromIds);
+  const related = new Set<string>();
+  for (const owner of entities) {
+    for (const { targetId, label } of owner.relationships ?? []) {
+      if (!label.trim() || from.has(owner.id) === from.has(targetId)) continue;
+      related.add(from.has(owner.id) ? targetId : owner.id);
+    }
+  }
+  return related;
+}
+
 /** `entities` with every relationship that targets `entityId` dropped, run when that entity is deleted. Returns
  *  the same array when nobody targets it. */
 export function dropRelationshipsTo(entityId: string, entities: Entity[]): Entity[] {

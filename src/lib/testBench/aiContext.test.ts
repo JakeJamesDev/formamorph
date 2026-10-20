@@ -329,6 +329,15 @@ describe('entity rosters', () => {
     expect(text).not.toContain('A gull that watches the fish tables.');
   });
 
+  it('lists an entity a relationship pulls in under Known Here, matching the block beside it', () => {
+    // The Salt Crate is in the Net Loft; its owner is nowhere and known nowhere.
+    const owner: Entity = { id: 'e-owner', name: 'Crate Owner', knownIn: 'nowhere', aiSummary: 'A trader.' };
+    const crate = (e: Entity) => (e.id === 'e-crate' ? { ...e, relationships: [{ targetId: 'e-owner', label: 'owner' }] } : e);
+    const data = context(at('loc-loft'), { entities: [...entities.map(crate), owner] });
+    expect(roster(data, 'known').entities.map((e) => e.id)).toEqual(['e-owner']);
+    expect(block(data, 'knownEntities').text).toContain('A trader.');
+  });
+
   it('holds no roster anywhere when the lens stands nowhere', () => {
     expect(context(at(null)).rosters.every((r) => r.entities.length === 0)).toBe(true);
   });

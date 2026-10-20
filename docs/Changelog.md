@@ -29,6 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the bundled worlds, the AI now knows who is one Connection away from you.** Every location that a Connection leaves turns on **Nearby Through Connections**.
   - **Entity Relationships:**
     - **Entities can list their relationships in the World Editor, and the AI reads each one as a sentence.** On an entity's **Profile** tab, pick another entity and type its role, such as mother. The AI reads "Kate is Tera's mother" once per prompt.
+    - **Absent relatives of anyone in the scene join Entities Known Here, so the AI knows who they are.** When Tera is present, Entities Known Here lists her mother Kate with her summary. The AI doesn't put Kate in the scene.
 
 ### Minor Changes
 
@@ -36,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
+  - **The relationship probe measures whether narration uses an absent relative without placing them in the scene.** It runs an A/B, relationship off vs on, on the shipped prompts.
 
 #### 🔧 Fixed
 
