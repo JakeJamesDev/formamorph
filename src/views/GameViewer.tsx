@@ -18,7 +18,8 @@ import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
 import { pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import {
-  overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
+  overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, withPinWrites, type SandboxState, type ScriptTrigger,
+  type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
 import { landSwitchRun } from "@/lib/switchRunLanding";
 import { openOutputRun, type OutputRun } from "@/lib/outputRun";
@@ -3265,7 +3266,7 @@ const GameViewer = ({
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
         const entityBase = entityTurn?.values ?? entityPrevious;
         const world = traitWorld ?? gatedWorld();
-        const owners = entityCodeTurns(
+        const ownerRows = entityCodeTurns(
           entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined, world), readsTurnStart(timing) ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
           (ownerId, ticked) => resolveStatText(
             refreshSavedStats(ticked, statEntities.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
@@ -3285,14 +3286,12 @@ const GameViewer = ({
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
         const here = scriptLocationRef.current ?? currentLocation;
-        const turn: StatCodeTurn = {
-          timing,
-          prompts: playPrompts(timing),
-          stats, enabled, previous: before, asks, regenApplied, clock,
+        const { owners, ownerTurns } = splitOwnerTurns(ownerRows);
+        const state: SandboxState = {
+          stats, enabled, clock,
           gateStats: gateStatsOf({
             traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
           }, world),
-          ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
           ownerTraits: {
             ...held, world, entities: codeEntities.world, library: libraryIn(world),
             inSceneIds: liveScene().inSceneIds,
@@ -3303,20 +3302,27 @@ const GameViewer = ({
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
             // A During AI Output run reads the pins its earlier sentences left.
-            pinsAfter: (state) => pinsFor(state.codePins, {
-              traits: [...state.acquired], disabledTraitIds: [...state.disabledTraitIds], ownedTraits: state.ownedTraits, stats: [...state.stats],
+            pinsAfter: (after) => pinsFor(after.codePins, {
+              traits: [...after.acquired], disabledTraitIds: [...after.disabledTraitIds], ownedTraits: after.ownedTraits, stats: [...after.stats],
             }).world,
           },
-          statNameOf: (stat) => resolvePH(stat.name),
-          traitNameOf: (trait) => resolveTraitText(trait, trait.name),
           owners,
-          worldScripts,
-          ...(triggers?.length ? { triggers } : {}),
           places: {
             locations: locations.map(({ id, name }) => ({ id, name })),
             location: here && { id: here.id, name: here.name },
           },
           discovered: discoveredEntities.map(({ entity }) => ({ id: entity.id, name: entity.name })),
+        };
+        const turn: StatCodeTurn = {
+          state,
+          timing,
+          prompts: playPrompts(timing),
+          previous: before, asks, regenApplied, ownerTurns,
+          ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
+          statNameOf: (stat) => resolvePH(stat.name),
+          traitNameOf: (trait) => resolveTraitText(trait, trait.name),
+          worldScripts,
+          ...(triggers?.length ? { triggers } : {}),
         };
         /** Lays the run's result onto live state and hands back what it left. */
         const finish = (result: StatCodeTurnResult) => {

@@ -25,12 +25,12 @@ export interface OutputRun {
 }
 
 /** Whether any script of the timing has code to run: the world's, or an enabled stat's of any owner. */
-const hasOutputScripts = (turn: StatCodeTurn): boolean => {
+const hasOutputScripts = ({ worldScripts, state }: StatCodeTurn): boolean => {
   const enabledStat = (enabled: Readonly<Record<string, boolean>>) => (stat: PlayerStat) =>
     enabled[stat.id] !== false && filledScriptsAt(stat, 'output').length > 0;
-  return filledScriptsAt({ scripts: turn.worldScripts }, 'output').length > 0
-    || turn.stats.some(enabledStat(turn.enabled))
-    || (turn.owners ?? []).some((owner) => owner.stats.some(enabledStat(owner.enabled)));
+  return filledScriptsAt({ scripts: worldScripts }, 'output').length > 0
+    || state.stats.some(enabledStat(state.enabled))
+    || (state.owners ?? []).some((owner) => owner.stats.some(enabledStat(owner.enabled)));
 };
 
 export interface OutputRunOptions {

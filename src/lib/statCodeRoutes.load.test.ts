@@ -4,12 +4,13 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { migrateWorld } from './version';
-import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
 import type { PersonaRef, Placeholder, PlayerStat, World } from '@/types';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const ph = (id: string, name: string, values: string[], over: Partial<Placeholder> = {}): Placeholder =>
   ({ id, name, values: phValues(values), ...over });
@@ -69,7 +70,7 @@ function playTurn(world: World) {
       ...inPlayOwners({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
     },
   };
-  return runStatCodeTurn({
+  return runStatCodeTurn(statCodeTurnOf({
     stats: world.stats as PlayerStat[],
     enabled: {}, previous: [], asks: [], regenApplied: {}, clock: { deltaHours: 7, elapsedHours: 40 }, ownerTraits: traits,
     placeholders: {
@@ -77,7 +78,7 @@ function playTurn(world: World) {
       dictionaries: world.dictionaries.map(({ id, name }) => ({ id, name })), rolls: { world: {} },
     },
     statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  } satisfies StatCodeTurn);
+  } satisfies FlatStatCodeTurn));
 }
 
 describe('a v3.1.2 world on the retired routes', () => {

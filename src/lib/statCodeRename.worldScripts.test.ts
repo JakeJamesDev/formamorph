@@ -7,13 +7,14 @@ import { planCodeRename } from './statCodeRename';
 import { withScriptCode } from './scripts';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { PlayerStat, Script } from '@/types';
+import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 const gale = (name: string): PlayerStat => ({
   id: 'gale', name, type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [],
 });
 const weather: Script = { id: 'weather', timing: 'after', code: 'stats.Gale.value = 3;' };
 
-const turn = (stat: PlayerStat, worldScripts: Script[]): StatCodeTurn => ({
+const turn = (stat: PlayerStat, worldScripts: Script[]): StatCodeTurn => statCodeTurnOf({
   stats: [stat], worldScripts, enabled: {}, previous: [stat], asks: [], regenApplied: {}, clock: {},
   ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,

@@ -3,13 +3,14 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn, type OwnerCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { setTraitEnabled } from './traitRuntime';
 import { linkedStat } from './statLinks';
 import type { Entity, PlayerStat, Trait } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 /** A stat as a playthrough carries it: bases seeded, no AI or code delta booked. */
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -34,10 +35,10 @@ const ownerTraits = (acquired: Trait[] = [], off: string[] = []): StatCodeOwners
 
 const owner = (id: string, stats: PlayerStat[]): OwnerCodeTurn => ({ id, stats, enabled: {}, previous: stats, regenApplied: {} });
 
-const run = (stats: PlayerStat[], over: Partial<StatCodeTurn> = {}) => runStatCodeTurn({
+const run = (stats: PlayerStat[], over: Partial<FlatStatCodeTurn> = {}) => runStatCodeTurn(statCodeTurnOf({
   stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: ownerTraits(),
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
-});
+}));
 
 const find = (stats: readonly PlayerStat[] | undefined, id: string) => stats?.find((s) => s.id === id);
 const valueOf = (stats: readonly PlayerStat[] | undefined, id: string) => find(stats, id)?.value;

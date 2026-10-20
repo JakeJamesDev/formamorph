@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { recordKey } from './ownedTraitState';
@@ -11,6 +11,7 @@ import { withPersonaEntry } from './persona';
 import { encodePlaceholderToken } from './placeholders';
 import type { Entity, OwnedTraitStates, PersonaRef, Placeholder, PlayerStat, Trait } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -54,11 +55,11 @@ function played(
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
 /** Health at 40 under Scarred, plus one stat per piece of code, in order. */
-const run = (codes: string[], traits: StatCodeOwners = played(asMira)) => runStatCodeTurn({
+const run = (codes: string[], traits: StatCodeOwners = played(asMira)) => runStatCodeTurn(statCodeTurnOf({
   stats: [stat({ id: 'h', name: 'Health', value: 40 }), ...codes.map((code, i) => stat({ id: `s${i}`, name: `S${i}`, value: 0, scripts: boxScripts({ after: code }) }))],
   enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-} satisfies StatCodeTurn);
+} satisfies FlatStatCodeTurn));
 
 const valueOf = (out: { stats: readonly PlayerStat[] }, id: string) => out.stats.find((s) => s.id === id)?.value;
 

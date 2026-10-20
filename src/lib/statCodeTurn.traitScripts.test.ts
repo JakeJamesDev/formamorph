@@ -3,11 +3,12 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn, type OwnerCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { worldScriptEntries } from './worldScripts';
 import type { Entity, OwnedTraitStates, PersonaRef, PlayerStat, Script, Trait, TraitGroup } from '@/types';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const NO_PERSONA: PersonaRef = { source: 'none' };
 
@@ -39,12 +40,12 @@ function ownerTraits({ traits = [], groups = [], entities = [], acquired = [], o
 
 const run = (traits: StatCodeOwners, { stats = [hp()], owners, timing }: {
   stats?: PlayerStat[]; owners?: OwnerCodeTurn[]; timing?: 'before' | 'after';
-} = {}) => runStatCodeTurn({
+} = {}) => runStatCodeTurn(statCodeTurnOf({
   ...(timing ? { timing } : {}),
   stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   ...(owners ? { owners } : {}),
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-} satisfies StatCodeTurn);
+} satisfies FlatStatCodeTurn));
 
 const hpOf = (out: { stats: readonly PlayerStat[] }) => out.stats.find((s) => s.id === 'hp')?.value;
 

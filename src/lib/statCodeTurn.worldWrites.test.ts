@@ -7,6 +7,7 @@ import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import { openOutputRun } from './outputRun';
 import type { StatCodeOwners } from './statCodeTraits';
 import type { PlayerStat, Script } from '@/types';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -15,12 +16,12 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 const script = (code: string, over: Partial<Script> = {}): Script => ({ id: code, timing: 'after', code, ...over });
 const inForce = (): StatCodeOwners => ({ acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } });
 
-const places: NonNullable<StatCodeTurn['places']> = {
+const places: NonNullable<FlatStatCodeTurn['places']> = {
   locations: [{ id: 'inn', name: 'Inn' }, { id: 'gate', name: 'Gate' }],
   location: { id: 'inn', name: 'Inn' },
 };
 
-const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
+const turn = (over: Partial<FlatStatCodeTurn> & Pick<FlatStatCodeTurn, 'stats'>): StatCodeTurn => statCodeTurnOf({
   enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: inForce(), places,
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });

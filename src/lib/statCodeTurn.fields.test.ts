@@ -3,12 +3,13 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { Entity, PersonaRef, Placeholder, PlayerStat, Trait, TraitGroup } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -49,12 +50,12 @@ function played(over: { inSceneIds?: string[] } = {}): StatCodeOwners {
 const sky: Placeholder = { id: 'p-sky', name: 'Sky', values: [] };
 
 /** One stat per piece of code; `S1` is switched off when `off` is set. */
-const run = (codes: string[], traits: StatCodeOwners = played(), off = false) => runStatCodeTurn({
+const run = (codes: string[], traits: StatCodeOwners = played(), off = false) => runStatCodeTurn(statCodeTurnOf({
   stats: codes.map((code, i) => stat({ id: `s${i}`, name: `S${i}`, value: 0, scripts: boxScripts({ after: code }) })),
   enabled: off ? { s1: false } : {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   placeholders: { placeholders: [sky], rolls: {} },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-} satisfies StatCodeTurn);
+} satisfies FlatStatCodeTurn));
 
 const valueOf = (out: { stats: readonly PlayerStat[] }, id: string) => out.stats.find((s) => s.id === id)?.value;
 
@@ -149,14 +150,14 @@ describe('runStatCodeTurn entry fields', () => {
   });
 
   it('reads a switched-off stat as a real entry, its writes dropped and reported', async () => {
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [
         stat({ id: 'a', name: 'A', value: 0, scripts: boxScripts({ after: 'const real = !stats.B.enabled && stats.B.value === 7 && stats.B.max === 40 && stats.B.previous.value === 7; stats.B.value = 9; return real ? 1 : 0;' }) }),
         stat({ id: 'b', name: 'B', value: 7, max: 40, scripts: boxScripts({ after: 'return 99;' }) }),
       ],
       enabled: { b: false }, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(),
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(valueOf(out, 'a')).toBe(1);
     expect(valueOf(out, 'b')).toBe(7);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('stats.B.value'));
@@ -165,11 +166,11 @@ describe('runStatCodeTurn entry fields', () => {
   it('keys a shared name to the live stat over a switched-off one, and to the later of two alike', async () => {
     const twin = (id: string, value: number, code = '') => stat({ id, name: 'Twin', value, scripts: boxScripts({ after: code }) });
     const reads = async (enabled: Record<string, boolean>) => {
-      const out = await runStatCodeTurn({
+      const out = await runStatCodeTurn(statCodeTurnOf({
         stats: [twin('a', 1, 'return self === stats.Twin ? stats.Twin.value * 10 : 99;'), twin('b', 2), twin('c', 3)],
         enabled, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(),
         statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-      });
+      }));
       return valueOf(out, 'a');
     };
     expect(await reads({ b: false, c: false })).toBe(10);
@@ -201,7 +202,7 @@ describe('runStatCodeTurn entry fields', () => {
   });
 
   it('reads a switched-off stat’s previous and delta from the turn', async () => {
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       stats: [
         stat({ id: 'a', name: 'A', value: 0, max: 1000, scripts: boxScripts({ after: 'return stats.B.previous.value * 100 + stats.B.delta.ai.value;' }) }),
         stat({ id: 'b', name: 'B', value: 7 }),
@@ -209,7 +210,7 @@ describe('runStatCodeTurn entry fields', () => {
       enabled: { b: false }, previous: [stat({ id: 'b', name: 'B', value: 3 })], asks: [{ id: 'b', value: 4, max: 0 }],
       regenApplied: {}, clock: {}, ownerTraits: played(),
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-    });
+    }));
     expect(valueOf(out, 'a')).toBe(304);
   });
 

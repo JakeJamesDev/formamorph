@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Entity, PersonaRef, PlayerStat, SaveObject, Script, Stat, World } from '@/types';
 import { migrateSave, migrateWorld } from './version';
-import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn, type OwnerCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { executeStatCode, type SandboxEntity } from './statCodeExecutor';
@@ -19,6 +19,7 @@ import { parseEntityCardData } from './entityFile';
 import { clamp } from './utils';
 import { newScript } from './scriptRows';
 import { editScripts, orderEdits, reorderWrites, scriptsByTiming, worldScriptEntries } from './worldScripts';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const NO_PERSONA: PersonaRef = { source: 'none' };
 
@@ -44,11 +45,11 @@ function playTurn(migrated: World, timing: 'before' | 'after' | 'start') {
     return stats.length ? [{ id: entity.id, stats, enabled: {}, previous: stats, regenApplied: {} }] : [];
   });
   const stats = atStart(globalStatsOf(world.stats, world.statGroups ?? []));
-  return runStatCodeTurn({
+  return runStatCodeTurn(statCodeTurnOf({
     timing, stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {}, ownerTraits, owners,
     worldScripts: world.scripts,
     statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  } satisfies StatCodeTurn);
+  } satisfies FlatStatCodeTurn));
 }
 
 beforeEach(() => {

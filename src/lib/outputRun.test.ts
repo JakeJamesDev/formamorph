@@ -15,6 +15,7 @@ import type { Placeholder, PlaceholderRolls, PlayerStat, Script, Tool, Trait } f
 import { collectPins } from './placeholderPins';
 import { phValues } from '@/test/placeholderValues';
 import { sseFrame, sseResponse, sseTokens, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -26,9 +27,9 @@ const mood: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['calm', 
 const rolls: PlaceholderRolls = { world: { mood: 'calm' } };
 
 /** A turn at its start, before the first sentence. */
-const turn = (over: Partial<StatCodeTurn>): StatCodeTurn => {
+const turn = (over: Partial<FlatStatCodeTurn>): StatCodeTurn => {
   const stats = over.stats ?? [];
-  return {
+  return statCodeTurnOf({
     stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {},
     ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [calm], groups: [] } },
     statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
@@ -38,7 +39,7 @@ const turn = (over: Partial<StatCodeTurn>): StatCodeTurn => {
         collectPins({ traits: [...acquired], disabledTraitIds: [...disabledTraitIds], placeholders: [mood], rolls, codePins, stats: [...stats] }),
     },
     ...over,
-  };
+  });
 };
 
 /** Plays `sentences` through a run, one after another, and answers what each one came out as. */

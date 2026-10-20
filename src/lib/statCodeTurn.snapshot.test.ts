@@ -8,13 +8,14 @@ import type { StatCodeOwners } from './statCodeTraits';
 import { activeTraits, settleTraits, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import type { PlayerStat, Trait } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
   baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
 });
 
-const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats' | 'ownerTraits'>): StatCodeTurn => ({
+const turn = (over: Partial<FlatStatCodeTurn> & Pick<FlatStatCodeTurn, 'stats' | 'ownerTraits'>): StatCodeTurn => statCodeTurnOf({
   enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {},
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });

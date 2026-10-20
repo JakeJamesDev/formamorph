@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import type { PlayerStat, Script } from '@/types';
+import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -15,7 +16,7 @@ const script = (code: string, over: Partial<Script> = {}): Script => ({ id: code
 const inForce = (): StatCodeOwners => ({ acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } });
 
 /** A During AI Output run over `sentence`, with nothing else happening unless a case says so. */
-const output = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>, sentence = 'The door creaks.'): StatCodeTurn => ({
+const output = (over: Partial<FlatStatCodeTurn> & Pick<FlatStatCodeTurn, 'stats'>, sentence = 'The door creaks.'): StatCodeTurn => statCodeTurnOf({
   timing: 'output', narration: { sentence, full: sentence, index: 0, sent: [], buffered: [] },
   enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: inForce(),
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,

@@ -15,6 +15,7 @@ import { entityTraitNames } from './statCodeTraits';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import { runRules, type RuleWorld } from './testBench/rules';
 import { boxScripts } from '@/test/scriptFixtures';
+import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 /**
  * The three surfaces that name a stat to code have to agree, or an author completes one name and runs
@@ -40,7 +41,7 @@ const inBox = (timing: StatCodeTiming, code: string): Partial<PlayerStat> =>
 /** The name the sandbox itself hands `self.name`, read back through a pin, under one playthrough's roll. */
 async function nameInSandbox(rolled: string, timing: StatCodeTiming): Promise<string | null> {
   const subject = stat({ id: 's1', name: CHIPPED, ...inBox(timing, 'placeholders.Probe.pin(self.name);') });
-  const out = await runStatCodeTurn({
+  const out = await runStatCodeTurn(statCodeTurnOf({
     timing,
     stats: [subject],
     enabled: {},
@@ -52,7 +53,7 @@ async function nameInSandbox(rolled: string, timing: StatCodeTiming): Promise<st
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
-  });
+  }));
   const pin = out.pinWrites['ph-probe'];
   return typeof pin === 'string' || pin === null ? pin : pin.join(', ');
 }
@@ -112,7 +113,7 @@ async function traitNamesInSandbox(rolled: string, timing: StatCodeTiming): Prom
   const reader = stat({
     id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(traits).join("|"));'),
   });
-  const out = await runStatCodeTurn({
+  const out = await runStatCodeTurn(statCodeTurnOf({
     timing,
     stats: [reader],
     enabled: {},
@@ -124,7 +125,7 @@ async function traitNamesInSandbox(rolled: string, timing: StatCodeTiming): Prom
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
-  });
+  }));
   return String(out.pinWrites['ph-probe']);
 }
 
@@ -189,7 +190,7 @@ async function entityKeysInSandbox(rolled: string, timing: StatCodeTiming): Prom
     ...inBox(timing, 'placeholders.Probe.pin(Object.keys(entities).map((n) => n + ":" + Object.keys(entities[n].traits)).join("|"));'),
   });
   const entities = [rider, lateRider];
-  const out = await runStatCodeTurn({
+  const out = await runStatCodeTurn(statCodeTurnOf({
     timing,
     stats: [reader],
     enabled: {},
@@ -207,7 +208,7 @@ async function entityKeysInSandbox(rolled: string, timing: StatCodeTiming): Prom
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
-  });
+  }));
   return String(out.pinWrites['ph-probe']);
 }
 
@@ -244,7 +245,7 @@ const keeper: Entity = { id: 'e-keeper', name: 'Keeper', stats: [stat({ id: 'k-p
 async function entityStatKeysInSandbox(rolled: string, timing: StatCodeTiming): Promise<string> {
   const reader = stat({ id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(entities.Keeper.stats).join("|"));') });
   const owned = keeper.stats!.map((s) => ({ ...s, value: s.value ?? 0 }));
-  const out = await runStatCodeTurn({
+  const out = await runStatCodeTurn(statCodeTurnOf({
     timing, stats: [reader], enabled: {}, previous: [reader], asks: [], regenApplied: {}, clock: {},
     ownerTraits: {
       acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [keeper],
@@ -257,7 +258,7 @@ async function entityStatKeysInSandbox(rolled: string, timing: StatCodeTiming): 
     statNameOf: (s) => s.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
-  });
+  }));
   return String(out.pinWrites['ph-probe']);
 }
 
@@ -294,7 +295,7 @@ const editorOptions = { placeholders: { list: scoped, owners }, entities: [{ id:
 /** One stat's `code` run over the scoped fixture, with Molly in the cast, and the pins it left, by placeholder id. */
 async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<string, string | string[] | null>> {
   const only = stat({ id: 's1', name: 'Reader', ...inBox(timing, code) });
-  const out = await runStatCodeTurn({
+  const out = await runStatCodeTurn(statCodeTurnOf({
     timing,
     stats: [only],
     enabled: {},
@@ -306,7 +307,7 @@ async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<s
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: scoped, owners, rolls: { world: {} } },
-  });
+  }));
   return out.pinWrites;
 }
 
@@ -405,7 +406,7 @@ describe('a stat with code in both boxes', () => {
       scripts: boxScripts({ before: 'placeholders.Probe.pin("before");', after: 'placeholders.Probe.pin("after");' }),
     });
     const pinFrom = async (timing: StatCodeTiming) => {
-      const out = await runStatCodeTurn({
+      const out = await runStatCodeTurn(statCodeTurnOf({
         timing,
         stats: [both],
         enabled: {},
@@ -417,7 +418,7 @@ describe('a stat with code in both boxes', () => {
         statNameOf: (entry) => entry.name,
         traitNameOf: (entry) => entry.name,
         placeholders: { placeholders: [probe], rolls: { world: {} } },
-      });
+      }));
       return out.pinWrites['ph-probe'];
     };
     expect(await pinFrom('before')).toBe('before');
@@ -457,12 +458,12 @@ describe.each(STAT_CODE_TIMINGS)('one dictionary code name across the sandbox, t
 
   async function keysInSandbox(rolled: string): Promise<string> {
     const reader = stat({ id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(dictionaries).join("|"));') });
-    const out = await runStatCodeTurn({
+    const out = await runStatCodeTurn(statCodeTurnOf({
       timing, stats: [reader], enabled: {}, previous: [reader], asks: [], regenApplied: {}, clock: {},
       ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
       placeholders: { placeholders: [beast, probe], dictionaries: books, rolls: { world: { 'ph-beast': rolled } } },
-    });
+    }));
     return String(out.pinWrites['ph-probe']);
   }
 

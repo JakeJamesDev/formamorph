@@ -5,7 +5,7 @@ import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { seedEntityStats } from '@/lib/entityStats';
-import type { StatCodeTurn, StatCodeTurnResult } from '@/lib/statCodeTurn';
+import type { SandboxState, StatCodeTurn, StatCodeTurnResult } from '@/lib/statCodeTurn';
 import type { Entity, PersonaRef, PlayerStat, Trait, World } from '@/types';
 
 /** Stat name → value. */
@@ -27,7 +27,7 @@ export interface TurnInput {
   globals?: PlayerStat[];
   globalPrevious?: PlayerStat[];
   enabled?: Record<string, boolean>;
-  clock?: StatCodeTurn['clock'];
+  clock?: SandboxState['clock'];
 }
 
 /**
@@ -80,11 +80,15 @@ export function bundledWorldHarness(raw: string) {
   /** One turn over the persona's build, as the script runner takes it. */
   function turn(state: SettleResult, { stats, previous = stats, globals = [], globalPrevious = globals, enabled = {}, clock = {} }: TurnInput): StatCodeTurn {
     return {
-      stats: globals, enabled: {}, previous: globalPrevious, asks: [], regenApplied: {}, clock,
-      ownerTraits: {
-        acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
+      state: {
+        stats: globals, enabled: {}, clock,
+        ownerTraits: {
+          acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
+        },
+        owners: [{ id: persona.id, stats, enabled }],
       },
-      owners: [{ id: persona.id, stats, enabled, previous, regenApplied: {} }],
+      previous: globalPrevious, asks: [], regenApplied: {},
+      ownerTurns: { [persona.id]: { previous, regenApplied: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     };
   }
