@@ -2,6 +2,7 @@ import type { Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } fr
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { ownerStatParts } from '../statContext';
+import { seedNewGameStats } from '../traitRuntime';
 import type { ChipScene } from './chipScene';
 
 // Generic on purpose, so no one takes the preview for their own world. Code-only, never in the library.
@@ -146,7 +147,7 @@ const persona: ResolvedPersona = {
  */
 export function sampleChipScene(): ChipScene {
   const authored = authoredChipScene(SAMPLE_WORLD);
-  const travelerStats = [{ ...travelerStat, value: travelerStat.value ?? travelerStat.min }];
+  const travelerStats = seedNewGameStats([travelerStat]);
   return {
     ...authored,
     persona,

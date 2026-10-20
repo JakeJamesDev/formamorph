@@ -7,6 +7,7 @@ import type { Stat, WorldOverview } from '@/types';
 import { startingGateStat } from './gateStats';
 import { statStartValue } from './statDescriptorGeometry';
 import { seedNewGameStats } from './traitRuntime';
+import { pageStatDeltas } from './statChanges';
 import { runTestCode, statCodeNames, type StatCodeWorld } from './statCodeTestRun';
 import { checkScripts } from './testBench/scriptCheck';
 import type { RuleWorld } from './testBench/rules';
@@ -25,7 +26,19 @@ describe('the seed rule (Q8)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('opens a stat at its authored value in play, not at `starting`', () => {
-    expect(seedNewGameStats([mood])[0]).toMatchObject({ value: 5, starting: 10 });
+    expect(seedNewGameStats([mood])[0]).toMatchObject({ value: 5 });
+  });
+
+  it('writes the delta baseline from the opening value, so turn one shows no change (Q8)', () => {
+    const [seeded] = seedNewGameStats([mood]);
+    expect(seeded.starting).toBe(5);
+    expect(pageStatDeltas([seeded], undefined)).toEqual({ mood: 0 });
+  });
+
+  it('opens an authored zero at zero inside the range, and clamps it to a higher min', () => {
+    expect(seedNewGameStats([stat({ id: 's', name: 'S', min: -10, value: 0 })])[0]).toMatchObject({ value: 0, starting: 0 });
+    expect(seedNewGameStats([stat({ id: 's', name: 'S', min: 5, value: 0 })])[0]).toMatchObject({ value: 5, starting: 5 });
+    expect(seedNewGameStats([stat({ id: 's', name: 'S', min: 3 })])[0]).toMatchObject({ value: 3, starting: 3 });
   });
 
   it('gives a stat Condition the authored value as its start', () => {

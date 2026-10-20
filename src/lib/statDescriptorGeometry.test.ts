@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   convertDescriptorUnits, describeInThresholdUnits, describeThreshold, descriptorSpans,
-  isThresholdOutOfRange, startCaptionLeft, statStartValue, thresholdInputWidthRem, thresholdTagInsetRem,
+  isThresholdOutOfRange, startCaptionLeft, statAuthoredStart, statStartValue, thresholdInputWidthRem, thresholdTagInsetRem,
   thresholdUnitOf, thresholdUnitTag, thresholdValue, uncoveredSpan, valueThreshold, type BandedStat,
 } from './statDescriptorGeometry';
 
@@ -135,6 +135,20 @@ describe('statStartValue', () => {
     expect(statStartValue({ min: 2, max: 10, starting: 7 })).toBe(2);
     expect(statStartValue({ min: 2, max: 10, value: 4 })).toBe(4);
     expect(statStartValue({ min: 2, max: 10 })).toBe(2);
+  });
+
+  it('keeps an authored zero and clamps the start to the range (Q8)', () => {
+    expect(statStartValue({ min: -10, max: 10, value: 0 })).toBe(0);
+    expect(statStartValue({ min: 5, max: 10, value: 0 })).toBe(5);
+    expect(statStartValue({ min: 0, max: 10, value: 50 })).toBe(10);
+  });
+});
+
+describe('statAuthoredStart', () => {
+  it('reads the typed number unclamped, for the range checks', () => {
+    expect(statAuthoredStart({ min: 0, max: 10, value: 50 })).toBe(50);
+    expect(statAuthoredStart({ min: 5, max: 10, value: 0 })).toBe(0);
+    expect(statAuthoredStart({ min: 5, max: 10 })).toBe(5);
   });
 });
 

@@ -49,7 +49,8 @@ describe('the world as play reads it', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(world); });
     const seeded = seedEntityStats(result.current.playEntities);
-    expect(seeded.bram.map((s) => [s.id, s.value])).toEqual([['bp-trust', 20]]);
+    // Bram's override sits above Trust's 0–10 range, so the seed opens it at the max (Q8).
+    expect(seeded.bram.map((s) => [s.id, s.value])).toEqual([['bp-trust', 10]]);
     expect(seeded.odette.find((s) => s.id === 'bp-trust')?.value).toBe(5);
     expect(entityCodeStats(result.current.playEntities, []).bram.map((s) => s.name)).toEqual(['Trust']);
   });
