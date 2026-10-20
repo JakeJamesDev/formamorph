@@ -5,7 +5,7 @@
 import type { Tool } from '@/types';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import { runTestCode, type TestCodeReport } from '@/lib/statCodeTestRun';
-import type { StatCodeNames } from '@/lib/statCodeBoxOptions';
+import type { OpeningFoldWorld } from '@/lib/openingState';
 import { parseToolArgs, type ToolCallFailure } from './toolRunner';
 import { armsTrigger } from './toolValidation';
 import { DEFAULT_REPLY } from './worldToolTurn';
@@ -34,9 +34,9 @@ export interface WorldToolTryOptions {
 const errorResult = (failure: ToolCallFailure, error: string): WorldToolTry =>
   ({ text: JSON.stringify({ error }), failure, writes: [], warnings: [] });
 
-/** Run a Script World Tool's code over `argsText` on the authored world `names`, as play would run its call. */
+/** Run a Script World Tool's code over `argsText` on the authored `world`, as play would run its call. */
 export async function tryWorldToolScript(
-  tool: Tool, argsText: string, names: StatCodeNames, { sentence, prompts }: WorldToolTryOptions = {},
+  tool: Tool, argsText: string, world: OpeningFoldWorld, { sentence, prompts }: WorldToolTryOptions = {},
 ): Promise<WorldToolTry> {
   const { handler } = tool;
   if (handler.kind !== 'script') return errorResult('handler', 'The Tool has no script');
@@ -45,7 +45,7 @@ export async function tryWorldToolScript(
   const timing = toolTimingOf(tool);
   let report: TestCodeReport;
   try {
-    report = await runTestCode(handler.code, SCRIPT_TIMING_OF_TOOL[timing], null, names, {
+    report = await runTestCode(handler.code, SCRIPT_TIMING_OF_TOOL[timing], { kind: 'tool' }, world, {
       args: parsed.args, ...(timing === 'output' && { sentence: sentence ?? '' }), ...(prompts && { prompts }),
     });
   } catch (error) {

@@ -71,11 +71,11 @@ export function useWorldToolsAdapter({ selectedId, onSelect, snapshot }: {
   const { userTools } = useSettings();
   const [draft, setDraft] = useState<ToolDraft | null>(null);
   // Try It and the script box read the world's names as the Scripts tab's boxes do, unsaved edits included.
-  const { names, placeholderPlaces } = useScriptWorldNames();
+  const { names, placeholderPlaces, world: foldWorld } = useScriptWorldNames();
   const lookups = useMemo(() => statBoxLookups(gameData), [gameData]);
   const world = useMemo<TryItWorld>(() => ({
-    snapshot, open: true, runScript: (tool, argsText, options) => tryWorldToolScript(tool, argsText, names, options),
-  }), [snapshot, names]);
+    snapshot, open: true, runScript: (tool, argsText, options) => tryWorldToolScript(tool, argsText, foldWorld, options),
+  }), [snapshot, foldWorld]);
   const worldCode = useMemo<WorldToolCode>(() => ({
     names, placeholderPlaces, lookup: (timing) => lookups({ owner: null, timing, self: traitBoxSelf('', '') }),
   }), [names, placeholderPlaces, lookups]);

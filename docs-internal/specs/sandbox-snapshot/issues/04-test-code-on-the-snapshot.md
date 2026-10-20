@@ -1,6 +1,6 @@
 # 04: Test Code on the Snapshot
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

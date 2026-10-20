@@ -1,5 +1,5 @@
 /**
- * One Test Code run: a stat box's code run once on the authored world, with no playthrough. The editor's
+ * One Test Code run: a box's code run once on the authored world at turn one, with no playthrough. The editor's
  * Test Code button and Formaquestion's code test both run through here, so both report the same writes.
  */
 import { blueprintGroupStats, playStatWorld, statBlueprintIds } from './statLinks';
@@ -7,26 +7,22 @@ import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import {
-  clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField,
-  type OwnerStatWrites, type PlaceholderWrite, type SandboxEntity, type SandboxPlace, type SandboxPlaces, type SandboxPlaceholderNode, type StatWrite,
-  type TraitWrite, type WorldWrites,
+  clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField,
+  type OwnerStatWrites, type PlaceholderWrite, type SandboxPlace, type StatWrite, type TraitWrite, type WorldWrites,
 } from '@/lib/statCodeExecutor';
-import type { CodeEntityNames, MissingName } from '@/lib/statCodeAnalysis';
-import { cardWorldNames, type StatCodeNames } from '@/lib/statCodeBoxOptions';
+import type { MissingName } from '@/lib/statCodeAnalysis';
+import { cardWorldNames, codeLocationsOf, type StatCodeNames } from '@/lib/statCodeBoxOptions';
 import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { blueprintItemIds } from '@/lib/traitTree';
-import { sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import { readsTurnStart } from '@/lib/statCodeTiming';
-import { sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
-import { activeStatEnabled } from '@/lib/traitEffects';
-import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
+import { sampleNarration } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
-import { startingGateStatsOf } from '@/lib/gateStats';
 import { atStartValues, statStartValue } from '@/lib/statDescriptorGeometry';
+import { openingStateOf, type OpeningFoldWorld } from '@/lib/openingState';
+import { ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type ScriptRunUnit, type UnitHome } from '@/lib/sandboxSnapshot';
 import type { ScriptTiming, Stat, Trait, World } from '@/types';
-import { randomUUID } from '@/lib/uuid';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -49,25 +45,9 @@ export function statCodeNames(world: StatCodeWorld): StatCodeNames {
   });
 }
 
-/** The owner a non-global stat's code runs under. */
-export interface TestRunOwner {
-  /** The entity that owns the stat. Absent for a Blueprint stat, whose `owner` is no entity of the world. */
-  entityId?: string;
-  /** What `owner.stats` holds, under code names, at their starting values: the entity's own stats, or the
-   *  Blueprint group's. */
-  stats: readonly Stat[];
-}
-
-/** A stat found by name, under its code name, with the owner its box runs under. */
-export interface StatCodeTarget {
-  stat: Stat;
-  /** Absent for a global stat. */
-  owner?: TestRunOwner;
-}
-
-/** The stat code names `name`, by code name first, then by authored name: a global stat, then a Blueprint
- *  stat, then an entity's own stat in authored order. */
-export function findStat(world: StatCodeWorld, names: StatCodeNames, name: string): StatCodeTarget | undefined {
+/** The home of the stat code names `name`, by code name first, then by authored name: a global stat, then a
+ *  Blueprint stat, then an entity's own stat in authored order. */
+export function statHomeNamed(world: StatCodeWorld, names: StatCodeNames, name: string): UnitHome | undefined {
   const list = allPlaceholders(world);
   const link = { stats: world.stats, statGroups: world.statGroups ?? [] };
   const play = playStatWorld({ ...link, entities: world.entities });
@@ -78,32 +58,25 @@ export function findStat(world: StatCodeWorld, names: StatCodeNames, name: strin
     return byAuthored && coded.find((stat) => stat.id === byAuthored.id);
   };
   const worldStat = hit(play.stats, names.codeNamedStats);
-  if (worldStat) return { stat: worldStat };
+  if (worldStat) return { kind: 'globalStat', stat: worldStat };
   const blueprintIds = statBlueprintIds(link);
   const blueprints = world.stats.filter((stat) => blueprintIds.has(stat.id));
   const blueprint = hit(blueprints, statCodeNamed(blueprints, list));
   if (blueprint) {
     const group = world.stats.find((stat) => stat.id === blueprint.id)!;
-    return { stat: blueprint, owner: { stats: statCodeNamed(blueprintGroupStats(link, group), list) } };
+    return { kind: 'blueprintStat', stat: blueprint, groupStats: statCodeNamed(blueprintGroupStats(link, group), list) };
   }
   for (const entity of play.entities) {
     const coded = names.entityStats[entity.id];
     const owned = coded && hit(entity.stats ?? [], coded);
-    if (owned) return { stat: owned, owner: { entityId: entity.id, stats: coded } };
+    if (owned) return { kind: 'entityStat', entityId: entity.id, stat: owned };
   }
   return undefined;
 }
 
-/** A trait found by name, under its code name, with the owner its scripts run under. */
-export interface TraitCodeTarget {
-  trait: { id: string; name: string };
-  /** Absent for a global trait. A Blueprint trait's owner holds no stats, since its owners vary. */
-  owner?: TestRunOwner;
-}
-
-/** The trait that `name` names, by code name first, then by authored name: a global trait, then a Blueprint
- *  trait, then an entity's own trait in authored order. */
-export function findTrait(world: StatCodeWorld, names: StatCodeNames, name: string): TraitCodeTarget | undefined {
+/** The home of the trait `name` names, by code name first, then by authored name: a global trait, then a
+ *  Blueprint trait, then an entity's own trait in authored order. */
+export function traitHomeNamed(world: StatCodeWorld, name: string): UnitHome | undefined {
   const list = allPlaceholders(world);
   const hit = (traits: readonly Trait[]) => {
     const found = traits.find((trait) => statCodeName(trait.name, list) === name) ?? traits.find((trait) => trait.name === name);
@@ -111,12 +84,12 @@ export function findTrait(world: StatCodeWorld, names: StatCodeNames, name: stri
   };
   const blueprintIds = blueprintItemIds({ traits: world.traits, traitGroups: world.traitGroups ?? [] });
   const global = hit(world.traits.filter((trait) => !blueprintIds.has(trait.id)));
-  if (global) return { trait: global };
+  if (global) return { kind: 'trait', trait: global, entityId: null };
   const blueprint = hit(world.traits.filter((trait) => blueprintIds.has(trait.id)));
-  if (blueprint) return { trait: blueprint, owner: { stats: [] } };
+  if (blueprint) return { kind: 'blueprintTrait', trait: blueprint };
   for (const entity of world.entities) {
     const owned = hit(entity.traits ?? []);
-    if (owned) return { trait: owned, owner: { entityId: entity.id, stats: names.entityStats[entity.id] ?? [] } };
+    if (owned) return { kind: 'trait', trait: owned, entityId: entity.id };
   }
   return undefined;
 }
@@ -150,11 +123,6 @@ export interface TestRunOptions {
   /** Names the world does not have yet. Each stat among them runs as a number at 0 in 0–100, and a write
    *  to any of them is left out of `dropped`. */
   missing?: readonly MissingName[];
-  /** Whose code it is, for an owned or Blueprint stat. Absent for a global stat, whose `owner` is empty. In
-   *  every run `stats` is the global stats. */
-  owner?: TestRunOwner;
-  /** A trait script's own trait, which `self` reads in place of a stat. */
-  selfTrait?: { id: string; name: string };
   /** The sentence a During AI Output run rewrites. Absent, it reads blank. */
   sentence?: string;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
@@ -162,54 +130,6 @@ export interface TestRunOptions {
   /** A World Tool's call arguments. Given, `args` exists and the report carries the script's `reply`. */
   args?: ToolArgs;
 }
-
-/** The range and value an assumed stat runs with. */
-const ASSUMED_STAT = { min: 0, max: 100, value: 0 };
-
-/** The id of the stand-in persona a pending run reads. */
-const PENDING_PERSONA_ID = 'pending-persona';
-
-/** The stand-in persona's placeholder node: every persona-capable entity's own placeholders under
- *  `persona`. Each node is a copy, so a write through it is told apart from one through the entity. */
-function personaPlaceholders(entities: readonly CodeEntityNames[], owners: ReadonlyMap<string, SandboxPlaceholderNode>): SandboxPlaceholderNode {
-  const rooted = (node: SandboxPlaceholderNode): SandboxPlaceholderNode =>
-    ({ ...node, path: ['persona', ...node.path.slice(1)], ownedBy: 'persona', children: (node.children ?? []).map(rooted) });
-  const children = entities.filter((entity) => entity.persona).flatMap((entity) => owners.get(entity.id)?.children ?? []);
-  return { name: 'persona', path: ['persona'], ownedBy: 'persona', children: children.map(rooted) };
-}
-
-/** A pin by the entry it lands on and the path it was reached by. */
-const pinKey = (id: string, path: readonly string[]) => JSON.stringify([id, path]);
-
-/** The keys of every entry under `node`. */
-function nodeKeys(node: SandboxPlaceholderNode): Set<string> {
-  const keys = new Set<string>();
-  const walk = (at: SandboxPlaceholderNode) => {
-    if (at.entry) keys.add(pinKey(at.entry.id, at.path));
-    (at.children ?? []).forEach(walk);
-  };
-  walk(node);
-  return keys;
-}
-
-/** The empty persona holding every trait name, placeholder and stat a persona-capable entity holds, none
- *  chosen, and in the scene. Its traits read as an unplayed entity's do. */
-const personaOfPlayables = (
-  entities: readonly CodeEntityNames[], placeholders: SandboxPlaceholderNode, entityStats: Readonly<Record<string, readonly Stat[]>>,
-): SandboxEntity => {
-  const playables = entities.filter((entity) => entity.persona);
-  const playableStats = playables.flatMap((entity) => entityStats[entity.id] ?? []);
-  return {
-    // The stand-in has an id so the run keys its stat writes, which land on the played persona in a real turn.
-    id: PENDING_PERSONA_ID,
-    name: '',
-    inScene: true,
-    traits: [...new Set(playables.flatMap((entity) => entity.traits.map((trait) => trait.name)))]
-      .map((name) => ({ name, enabled: false, acquired: false })),
-    placeholders,
-    stats: { stats: playableStats, enabled: activeStatEnabled(playableStats, []) },
-  };
-};
 
 /** The keys of a missing name from its map's root, `persona` first under `persona`. */
 export const missingSegments = ({ root, segments }: MissingName): readonly string[] =>
@@ -249,27 +169,27 @@ const statWriteLines = (map: string, { name, ...fields }: StatWrite) =>
     return typeof number === 'number' ? [`${memberPath(map, name)}.${field} = ${number}`] : [];
   });
 
-/** The stat map code wrote through to reach each owner a run wrote to: `owner.stats` for the run's own owner,
+/** The stat map code wrote through to reach each owner a run wrote to: `owner.stats` for the home's Owner,
  *  `persona.stats` for the stand-in persona, else the entity's by its code name. */
-function ownerMaps(entities: readonly CodeEntityNames[], owner: TestRunOwner | undefined) {
-  const names = new Map(entities.map((entity) => [entity.id, entity.name]));
-  return ({ ownerId }: OwnerStatWrites): { map: string; pending: boolean } => {
-    if (ownerId === PENDING_PERSONA_ID) return { map: 'persona.stats', pending: true };
-    if (owner && ownerId === (owner.entityId ?? '')) return { map: 'owner.stats', pending: false };
-    return { map: `${memberPath('entities', names.get(ownerId) ?? ownerId)}.stats`, pending: false };
+function ownerMaps(entityNames: ReadonlyMap<string, string>, home: UnitHome) {
+  const owner = ownerOfHome(home);
+  // The executor keys an Owner entry with no entity as ''.
+  const ownerId = owner.kind === 'none' ? undefined : owner.kind === 'entity' ? owner.entityId : '';
+  return ({ ownerId: wrote }: OwnerStatWrites): { map: string; pending: boolean } => {
+    if (wrote === PENDING_PERSONA_ID) return { map: 'persona.stats', pending: true };
+    if (wrote === ownerId) return { map: 'owner.stats', pending: false };
+    return { map: `${memberPath('entities', entityNames.get(wrote) ?? wrote)}.stats`, pending: false };
   };
 }
-
-const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
 /** One line for a move, one for the advances together, and one per discovery, memory line, pin, diary line and
  *  entity write. */
 const worldWriteLines = (
-  writes: WorldWrites | undefined, locations: readonly SandboxPlace[], entities: readonly SandboxEntity[],
+  writes: WorldWrites | undefined, locations: readonly SandboxPlace[], entityNames: ReadonlyMap<string, string>,
 ): string[] => {
   if (!writes) return [];
   const { location, minutes, discover = [], memory = [], pins = [], diary = [], entities: entityWrites = [] } = writes;
-  const entityName = (entity: string) => entities.find((known) => known.id === entity)?.name ?? entity;
+  const entityName = (entity: string) => entityNames.get(entity) ?? entity;
   const placeName = (id: string) => locations.find((place) => place.id === id)?.name ?? id;
   return [
     ...(location === undefined ? [] : [`location.move: ${placeName(location)}`]),
@@ -286,88 +206,51 @@ const worldWriteLines = (
 const droppedLine = (lead: string, names: readonly string[] | undefined) =>
   (names?.length ? [`${lead} Writes ignored: ${names.join(', ')}.`] : []);
 
+/** `home` with its stats at their opening values, as turn one seeds them (Q8). */
+function seededHome(home: UnitHome): UnitHome {
+  switch (home.kind) {
+    case 'globalStat':
+    case 'entityStat': return { ...home, stat: { ...home.stat, value: statStartValue(home.stat) } };
+    case 'blueprintStat': return { ...home, stat: { ...home.stat, value: statStartValue(home.stat) }, groupStats: atStartValues(home.groupStats) };
+    default: return home;
+  }
+}
+
 /**
- * Runs `code` from the `timing` box of `stat`, whose name is its code name, or of `selfTrait` with no stat. Applies nothing. With
- * `pendingPersona`, a `persona` write to a trait or placeholder a persona-capable entity holds is reported
- * as pending.
+ * Runs `code` from the `timing` box of `home` on `world` at turn one. Applies nothing. With `pendingPersona`, a
+ * `persona` write to a trait or placeholder a persona-capable entity holds is reported as pending.
  */
 export async function runTestCode(
-  code: string, timing: ScriptTiming, authoredStat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
-  { codeNamedStats: authoredStats, placeholders, traits, traitPlaces, entities, entityStats: authoredEntityStats, places = NO_PLACES }:
-    Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'traitPlaces' | 'entities' | 'entityStats' | 'places'>,
-  { pendingPersona: pending = false, missing, owner: authoredOwner, selfTrait, sentence, prompts, args }: TestRunOptions = {},
+  code: string, timing: ScriptTiming, home: UnitHome, world: OpeningFoldWorld,
+  { pendingPersona: pending = false, missing, sentence, prompts, args }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
-  // Seed every stat at its start value, as turn one does (Q8).
-  const stat = authoredStat && { ...authoredStat, value: statStartValue(authoredStat) };
-  const codeNamedStats = atStartValues(authoredStats);
-  const entityStats = Object.fromEntries(Object.entries(authoredEntityStats).map(([id, own]) => [id, atStartValues(own)]));
-  const owner = authoredOwner && { ...authoredOwner, stats: atStartValues(authoredOwner.stats) };
-  // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
-  // A pending run's empty persona holds the playable entities' traits and placeholders, so a write to one is kept.
-  const placeholderEntries = sandboxPlaceholders({ placeholders: placeholders.list, owners: placeholders.owners, rolls: {} });
-  const owners = placeholderEntries.owners;
-  // Stat Conditions read the authored start, as Enter World's do (Q23, Q33).
-  const traitEntries = sandboxTraits(
-    {
-      acquired: [], disabledTraitIds: [], appliedValues: {},
-      world: { traits: [...traits], groups: [], gateStats: startingGateStatsOf(codeNamedStats, entityStats) },
-    },
-    placeholders.list,
-  );
-  const personaNode = pending ? personaPlaceholders(entities, owners) : undefined;
+  const seeded = seededHome(home);
+  const stat = 'stat' in seeded ? seeded.stat : null;
+  const list = allPlaceholders(world);
+  const entityNames = new Map((world.entities ?? []).map((entity) => [entity.id, statCodeName(entity.name, list)]));
+  const { locations } = codeLocationsOf(world.locations ?? [], list);
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
-  const stats = assumed.length ? [
-    ...codeNamedStats,
-    ...assumed.map((name): Stat => ({ id: randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT })),
-  ] : codeNamedStats;
-  // Each entity's stats read as authored, as `stats` does, a switched-off one as off.
-  const entityEntries = unplayedEntities(entities, owners).map((entity) => {
-    const own = entity.id ? entityStats[entity.id] : undefined;
-    return own ? { ...entity, stats: { stats: own, enabled: activeStatEnabled(own, []) } } : entity;
-  });
-  // The owner reads as the turn hands it: its entry among the entities, or, for a Blueprint stat, an entry of
-  // its own holding the group's stats and no entity.
-  const ownerEntry: SandboxEntity | undefined = owner && {
-    ...(entityEntries.find((entity) => owner.entityId && entity.id === owner.entityId) ?? { name: '', traits: [], ...(owner.entityId && { id: owner.entityId }) }),
-    stats: { stats: owner.stats, enabled: activeStatEnabled(owner.stats, []) },
+  // No playthrough: no picks, no persona and no rolls (Q3). The editor holds no discovered cast, so a `diary`
+  // name it lacks is a warning (Q46).
+  const snapshot = snapshotOf(
+    { ...openingStateOf(world), clock: testClock(timing) },
+    { openCast: true, pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) },
+  );
+  const unit: ScriptRunUnit = {
+    home: seeded, timing, code,
+    ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
+    ...(timing === 'switch' && { switched: 'sample' as const }), ...(prompts && { prompts }), ...(args && { args }),
   };
-  // A trait's entry as its owner's map holds it; one no map holds reads as not held.
-  const traitSelf = selfTrait && (
-    (ownerEntry ? ownerEntry.traits : traitEntries).find((entry) => entry.id === selfTrait.id)
-    ?? { ...selfTrait, enabled: false, acquired: false }
-  );
-  // A switch run fires on the trait's own switch, else on the world's first trait (Q49).
-  const switchedTrait = timing === 'switch' ? sampleSwitchedTrait(
-    traitEntries, traitPlaces[0]?.id, traitSelf && { entry: traitSelf, owner: ownerEntry?.name ?? '' },
-  ) : undefined;
-  const outcome = await executeStatCode(
-    // A half-filled stat still runs: the executor defaults every number it marshals, so only the id and the
-    // code name have to be real.
-    code, stats, stat as Stat | null,
-    {
-      clock: testClock(timing),
-      ...(traitSelf && { selfTrait: traitSelf }), placeholders: placeholderEntries.top, traits: traitEntries,
-      // No trait is on, so a stat is off only as authored; a write to it is dropped as it is in a turn.
-      enabled: activeStatEnabled(stats, []),
-      entities: entityEntries,
-      dictionaries: sandboxDictionaries(placeholders.dictionaries ?? [], owners),
-      ...(personaNode && { persona: personaOfPlayables(entities, personaNode, entityStats) }),
-      ...(ownerEntry && { owner: ownerEntry }),
-      ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
-      ...(switchedTrait && { switchedTrait }), ...(prompts && { prompts }), ...(args && { args }),
-      // The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46).
-      places, openCast: true,
-    },
-  );
+  const outcome = await snapshot.run(unit);
   const assumedField = missing ? { assumed } : {};
   if (outcome.error) return { error: outcome.error, value: null, writes: [], ...(pending && { pending: [] }), ...assumedField, dropped: [] };
   // The executor names the empty persona '', and the empty `owner` too, which it marks.
   const personaWrites = pending ? outcome.entities?.find((row) => row.entity === '' && !row.owner) : undefined;
-  const personaKeys = personaNode ? nodeKeys(personaNode) : new Set<string>();
-  const isPersonaPin = (entry: PlaceholderWrite) => personaKeys.has(pinKey(entry.id, entry.path));
+  // Under a pending persona, only the stand-in's placeholder node is rooted at `persona`.
+  const isPersonaPin = (entry: PlaceholderWrite) => pending && entry.path[0] === 'persona';
   const pinLine = (entry: PlaceholderWrite, at: string) => ('unpin' in entry ? `${at} unpinned` : `${at} = ${codePinText(entry.value)}`);
   // Each owner's stat writes under the map code wrote through; the stand-in persona's are pending.
-  const mapOf = ownerMaps(entities, owner);
+  const mapOf = ownerMaps(entityNames, home);
   const ownerLines = (outcome.ownerStatWrites ?? []).map((row) => {
     const { map, pending: toPersona } = mapOf(row);
     return { pending: toPersona, lines: row.writes.flatMap((write) => statWriteLines(map, write)) };
@@ -384,7 +267,7 @@ export async function runTestCode(
     ...(outcome.traits ?? []).map((entry) => switchLine('', entry)),
     ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap((row) =>
       (row.traits ?? []).map((entry) => switchLine(`${traitWritesPath(row)}.`, entry))),
-    ...worldWriteLines(outcome.worldWrites, places.locations, entityEntries),
+    ...worldWriteLines(outcome.worldWrites, locations, entityNames),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [
@@ -410,7 +293,7 @@ export async function runTestCode(
   ];
   return {
     // Applies nothing, so the value lands in the range the run left on itself.
-    error: null, value: outcome.value === null || !stat ? null : clampToOwnRange(outcome.value, stat as Stat, outcome.bounds), writes,
+    error: null, value: outcome.value === null || !stat ? null : clampToOwnRange(outcome.value, stat, outcome.bounds), writes,
     ...(pending && {
       pending: [
         ...(personaWrites?.traits ?? []).map((entry) => switchLine(`${entityTraitsPath('')}.`, entry)),

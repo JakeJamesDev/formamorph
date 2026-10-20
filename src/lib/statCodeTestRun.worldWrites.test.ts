@@ -3,7 +3,8 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runTestCode, statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
+import type { Stat } from '@/types';
 
 const world: StatCodeWorld = {
   stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [], placeholderGroups: [],
@@ -11,21 +12,22 @@ const world: StatCodeWorld = {
   locations: [{ id: 'loc-gate', name: 'North Gate' }, { id: 'loc-inn', name: 'Inn', isStarting: true }],
 };
 
-const run = (code: string, at: StatCodeWorld = world) => runTestCode(code, 'after', null, statCodeNames(at));
+const STAT_HOME = { kind: 'globalStat', stat: { id: 's', name: 'S' } as Stat } as const;
+const run = (code: string, at: StatCodeWorld = world) => runTestCode(code, 'after', { kind: 'world' }, at);
 
 describe('runTestCode world writes', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
 
   it('stands at the starting location', async () => {
-    const report = await runTestCode('return location.name === "Inn" ? 1 : 0;', 'after', { id: 's', name: 'S' }, statCodeNames(world));
+    const report = await runTestCode('return location.name === "Inn" ? 1 : 0;', 'after', STAT_HOME, world);
     expect(report.value).toBe(1);
   });
 
   it('stands at the first location when none is the starting one', async () => {
-    const report = await runTestCode('return location.id === "loc-gate" ? 1 : 0;', 'after', { id: 's', name: 'S' }, statCodeNames({
+    const report = await runTestCode('return location.id === "loc-gate" ? 1 : 0;', 'after', STAT_HOME, {
       ...world, locations: world.locations?.map(({ isStarting: _start, ...location }) => location),
-    }));
+    });
     expect(report.value).toBe(1);
   });
 
@@ -70,7 +72,7 @@ describe('runTestCode world writes', () => {
   });
 
   it('hands a World Tool run its arguments and reports the value it returned', async () => {
-    const report = await runTestCode('return "Hello " + args.who;', 'before', null, statCodeNames(world), { args: { who: 'Tor' } });
+    const report = await runTestCode('return "Hello " + args.who;', 'before', { kind: 'tool' }, world, { args: { who: 'Tor' } });
     expect(report.error).toBeNull();
     expect(report.reply).toBe('Hello Tor');
   });

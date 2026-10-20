@@ -19,7 +19,7 @@ const world: StatCodeWorld = {
   stats: [], statGroups: [], traits: [], traitGroups: [], entities: [{ id: 'e-tor', name: 'Tor' }], entityGroups: [], placeholders: [],
   placeholderGroups: [], dictionaries: [],
 };
-const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), ownerStats: [], selfName: '', placeholderPlaces: [] };
+const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [] };
 const LABEL = 'World · After the AI';
 
 function Box({ initial }: { initial: Script }) {

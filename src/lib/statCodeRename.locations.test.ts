@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Entity, Script, Stat, Trait } from '@/types';
 import { planCodeRename, codeRenameTarget } from './statCodeRename';
-import { statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { type StatCodeWorld } from './statCodeTestRun';
 import { tryWorldToolScript } from '@/lib/tools/worldToolTry';
 import { withToolCode } from '@/lib/tools/worldTools';
 import { boxScripts } from '@/test/scriptFixtures';
@@ -81,8 +81,8 @@ describe('the rename keeps a World Tool moving', () => {
     const plan = rename({ worldTools: [tool] });
     const [moved] = withToolCode([tool], plan!.edits[0].scripts);
 
-    expect((await tryWorldToolScript(moved, '{}', statCodeNames(world))).writes).toEqual(['location.move: Harbor Steps']);
+    expect((await tryWorldToolScript(moved, '{}', world)).writes).toEqual(['location.move: Harbor Steps']);
     // Left as it was, the Tool names a place that no longer exists.
-    expect((await tryWorldToolScript(tool, '{}', statCodeNames(world))).failure).toBe('script');
+    expect((await tryWorldToolScript(tool, '{}', world)).failure).toBe('script');
   });
 });

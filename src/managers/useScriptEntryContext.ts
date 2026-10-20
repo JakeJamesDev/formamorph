@@ -18,7 +18,7 @@ const namesOf = (stats: readonly Stat[]) => stats.map((stat) => stat.name).filte
  */
 export function useScriptEntryContext(entry: ScriptEntry): { self: ScriptSelf; context: ScriptBoxContext } {
   const world = useGameData();
-  const { names, placeholderPlaces } = useScriptWorldNames();
+  const { names, placeholderPlaces, world: foldWorld } = useScriptWorldNames();
   const placeholders = names.placeholders.list;
   const { box, entity } = entry;
   const statWorld = useMemo(() => ({ stats: world.stats, statGroups: world.statGroups }), [world.stats, world.statGroups]);
@@ -38,9 +38,9 @@ export function useScriptEntryContext(entry: ScriptEntry): { self: ScriptSelf; c
     const lookupSelf: Stat = stat ? { ...stat, name: selfName } : traitBoxSelf(trait?.id ?? '', selfName);
     const self: ScriptSelf = trait ? { kind: 'trait', id: trait.id } : stat ? { kind: 'stat', stat } : { kind: 'world' };
     const context: ScriptBoxContext = {
-      selfName, owner, names, ownerStats, ...(ownerStatNames && { ownerStatNames }), placeholderPlaces,
+      selfName, owner, names, world: foldWorld, ownerStats, ...(ownerStatNames && { ownerStatNames }), placeholderPlaces,
       lookup: (timing: ScriptTiming) => lookups({ owner, timing, self: lookupSelf }),
     };
     return { self, context };
-  }, [box, entity, placeholders, statWorld, names, placeholderPlaces, lookups]);
+  }, [box, entity, placeholders, statWorld, names, foldWorld, placeholderPlaces, lookups]);
 }

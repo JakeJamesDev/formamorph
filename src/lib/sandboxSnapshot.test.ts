@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { optionsFor, ownerOfHome, snapshotOf, type ScriptRunUnit, type UnitHome } from './sandboxSnapshot';
+import { optionsFor, ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type ScriptRunUnit, type UnitHome } from './sandboxSnapshot';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import type { SandboxState } from './statCodeTurn';
 import type { RunTiming } from './statCodeTiming';
@@ -108,6 +108,48 @@ describe('the options a snapshot assembles', () => {
     const options = optionsFor(snapshot, unitAt(offstage, 'after'));
     expect(options.owner).toEqual({ id: 'ghost', name: '', type: '', pronouns: '', inScene: false, traits: [], stats: { stats: [], turn: {}, enabled: {} } });
     expect(options.selfTrait).toEqual({ id: 'grim', name: 'Grim', enabled: false, acquired: false });
+  });
+});
+
+describe('the readings and overlays an editor run takes', () => {
+  const sample = (home: UnitHome): ScriptRunUnit => ({ home, timing: 'switch', code: 'return 1;', switched: 'sample' });
+
+  it('opens the cast only when asked, as play never does', () => {
+    expect(optionsFor(snapshotOf(state, { openCast: true }), unitAt(HOMES['world script'], 'after')).openCast).toBe(true);
+    expect(optionsFor(snapshotOf(state), unitAt(HOMES['world script'], 'after')).openCast).toBeUndefined();
+  });
+
+  it('stands a pending persona in for every persona-capable entity, with its traits, placeholders and stats', () => {
+    const playable: Entity = { ...bram, persona: true, placeholders: [{ id: 'oath', name: 'Oath', values: [{ id: 'o', text: 'iron' }] }] };
+    const withPlayable: SandboxState = {
+      ...state,
+      ownerTraits: { ...state.ownerTraits, entities: [playable], world: { ...state.ownerTraits.world, entities: [playable] } },
+      placeholders: { placeholders: playable.placeholders ?? [], owners: new Map([['oath', { kind: 'entity', id: 'bram', name: 'Bram' }]]), rolls: {} },
+    };
+    const options = optionsFor(snapshotOf(withPlayable, { pendingPersona: true }), unitAt(HOMES['world script'], 'after'));
+    expect(options.persona).toMatchObject({
+      id: PENDING_PERSONA_ID, name: '', inScene: true,
+      traits: [{ name: 'Grim', enabled: false, acquired: false }],
+      stats: { stats: [expect.objectContaining({ id: 'grit' })], enabled: { grit: true } },
+      placeholders: { path: ['persona'], children: [expect.objectContaining({ name: 'Oath', path: ['persona', 'Oath'], ownedBy: 'persona' })] },
+    });
+    expect(optionsFor(snapshotOf(withPlayable), unitAt(HOMES['world script'], 'after')).persona?.id).not.toBe(PENDING_PERSONA_ID);
+  });
+
+  it('adds an assumed stat for a name the world lacks, switched on', () => {
+    const options = optionsFor(snapshotOf(state, { assumedStats: ['Ghost'] }), unitAt(HOMES['world script'], 'after'));
+    expect(Object.values(options.enabled ?? {})).toEqual([true, true]);
+  });
+
+  it('fires a sample switch on the home’s own trait, under its Owner', () => {
+    const options = optionsFor(snapshotOf(state), sample(HOMES['trait on an entity']));
+    expect(options.switchedTrait).toMatchObject({ id: 'grim', enabled: true, owner: 'Bram' });
+  });
+
+  it('fires a sample switch on the world’s first trait in tree order, else on a blank one', () => {
+    expect(optionsFor(snapshotOf(state), sample(HOMES['world script'])).switchedTrait).toMatchObject({ id: 'brave', enabled: true, owner: '' });
+    const bare: SandboxState = { ...state, ownerTraits: { ...state.ownerTraits, acquired: [], world: { ...state.ownerTraits.world, traits: [] } } };
+    expect(optionsFor(snapshotOf(bare), sample(HOMES['world script'])).switchedTrait).toEqual({ name: '', enabled: true, acquired: true, owner: '' });
   });
 });
 

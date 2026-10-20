@@ -33,6 +33,14 @@ const entities = [
   { id: 'e2', name: 'Ash', traits: [{ id: 't5', name: 'Loyal', statChanges: [] }], stats: [ashStock] },
 ] as Entity[];
 
+/** The seed fields turn one adds to a stat with min 0, max 10 and no regen. */
+const BASES = { baseMin: 0, baseMax: 10, baseRegen: 0, aiMaxDelta: 0 };
+/** `stats` as turn one seeds them (Q3). */
+const SEEDED = [{ ...stats[0], starting: 7, ...BASES }, { ...stats[1], starting: 3, ...BASES }];
+
+/** The executor's `persona` when none plays. */
+const NO_PERSONA = { id: '', name: '', type: '', pronouns: '', inScene: false, traits: [] };
+
 const updateStat = vi.fn();
 /** What a case adds to the mocked world, such as Blueprint stats. */
 const worldExtra = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
@@ -40,7 +48,7 @@ const worldExtra = vi.hoisted(() => ({ current: {} as Record<string, unknown> })
 const noWorld = vi.hoisted(() => ({ current: false }));
 vi.mock('@/contexts/GameDataContext', () => {
   const world = () => ({
-    updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
+    updateStat, stats, playStats: stats, placeholders: [beast], worldPlaceholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
     ...worldExtra.current,
   });
   return { useGameData: world, useGameDataOptional: () => (noWorld.current ? null : world()) };
@@ -292,8 +300,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
-    // Each stat at its opening number, a copy of the world's (Q8).
-    expect(executeStatCode.mock.calls[0][1]).toEqual(stats);
+    // Each stat at its opening number, a copy of the world's (Q8), seeded by the opening fold as play seeds it (Q3).
+    expect(executeStatCode.mock.calls[0][1]).toEqual(SEEDED);
   });
 
   it('reads an owned stat’s code against the owner’s stats under owner.stats and the world’s under stats', async () => {
@@ -430,8 +438,8 @@ describe('what Test Code reports', () => {
     await testCode(user, 'persona.traits.Scarred.enabled = false;');
 
     await waitFor(() => expect(row()).toHaveTextContent('persona.traits.Scarred switched off'));
-    // Absent, the executor's `persona` is the empty entry.
-    expect(executeStatCode.mock.calls[0][3].persona).toBeUndefined();
+    // No persona plays, so `persona` is turn one's empty entry under None (Q3).
+    expect(executeStatCode.mock.calls[0][3].persona).toEqual(NO_PERSONA);
   });
 
   it('names the persona trait writes that did nothing', async () => {
@@ -446,7 +454,8 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('Unknown trait names. Writes ignored: persona.traits.Scarred.'));
     expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: persona.traits.Marked.');
     // Mira can be played, so Formaquestion's code test calls Scarred pending; the editor still runs the empty persona.
-    expect(executeStatCode.mock.calls[0][3].persona).toBeUndefined();
+    // Turn one's empty entry under None (Q3).
+    expect(executeStatCode.mock.calls[0][3].persona).toEqual(NO_PERSONA);
   });
 
   it('runs with every authored entity listed, nothing chosen and each stat as authored, and lists an entity switch without making it', async () => {
@@ -457,9 +466,14 @@ describe('what Test Code reports', () => {
     await testCode(user, 'entities.Ash.traits.Loyal.enabled = true;');
 
     await waitFor(() => expect(row()).toHaveTextContent('entities.Ash.traits.Loyal switched on'));
+    // Turn one's cast entries, built by the opening fold as play builds them (Q3).
+    const unheld = { enabled: false, acquired: false, available: true, group: '', mode: 'optional', playerToggle: false };
     expect(executeStatCode.mock.calls[0][3].entities).toEqual([
-      { id: 'e1', name: 'Mira', type: '', pronouns: '', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
-      { id: 'e2', name: 'Ash', type: '', pronouns: '', traits: [{ name: 'Loyal', enabled: false, acquired: false }], stats: { stats: [ashStock], enabled: { a1: false } } },
+      { id: 'e1', name: 'Mira', type: '', pronouns: '', inScene: false, traits: [{ id: 't4', name: 'Scarred', ...unheld }] },
+      {
+        id: 'e2', name: 'Ash', type: '', pronouns: '', inScene: false, traits: [{ id: 't5', name: 'Loyal', ...unheld }],
+        stats: { stats: [{ ...ashStock, starting: 4, ...BASES }], enabled: { a1: false } },
+      },
     ]);
   });
 
@@ -528,7 +542,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Grit.value = 5'));
     const [, runStats, , options] = executeStatCode.mock.calls[0];
-    expect(runStats).toEqual(stats);
+    // Seeded by the opening fold as play seeds it (Q3).
+    expect(runStats).toEqual(SEEDED);
     expect(options.owner).toMatchObject({ id: 'e2', name: 'Ash', stats: { stats: [hub, grit] } });
     expect(grit).toMatchObject({ value: 4, max: 8 });
     expect(updateStat.mock.calls.map(([saved]) => saved.id)).not.toContain('o2');
@@ -548,7 +563,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Calm.value = 5'));
     const [, runStats, , options] = executeStatCode.mock.calls[0];
-    expect(runStats).toEqual(stats);
+    // Seeded by the opening fold as play seeds it (Q3).
+    expect(runStats).toEqual(SEEDED);
     expect(options.owner).toMatchObject({ name: '', stats: { stats: [fear, calm] } });
     expect(options.owner.id).toBeUndefined();
   });

@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { findStat, runTestCode, statCodeNames, type StatCodeWorld, type TestRunOptions } from './statCodeTestRun';
+import { runTestCode, statCodeNames, statHomeNamed, type StatCodeWorld, type TestRunOptions } from './statCodeTestRun';
 import type { Stat } from '@/types';
 
 const health: Stat = { id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
@@ -13,24 +13,25 @@ const world: StatCodeWorld = {
   dictionaries: [],
 };
 const hubWorld: StatCodeWorld = { ...world, stats: [health, luck] };
+const HEALTH = { kind: 'globalStat', stat: health } as const;
 
 describe('runTestCode bound writes', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
 
   it('lists a bound the run wrote', async () => {
-    const report = await runTestCode('self.max = 60;', 'after', health, statCodeNames(world));
+    const report = await runTestCode('self.max = 60;', 'after', HEALTH, world);
     expect(report.error).toBeNull();
     expect(report.writes).toHaveLength(1);
   });
 
   it('reports the result in the range the run left on itself', async () => {
-    expect((await runTestCode('self.max = 60; return 90;', 'after', health, statCodeNames(world))).value).toBe(60);
-    expect((await runTestCode('return 500;', 'after', health, statCodeNames(world))).value).toBe(100);
+    expect((await runTestCode('self.max = 60; return 90;', 'after', HEALTH, world)).value).toBe(60);
+    expect((await runTestCode('return 500;', 'after', HEALTH, world)).value).toBe(100);
   });
 
   it.each(['value', 'min', 'max', 'regen'])('fails on null written to self.%s and lists no writes', async (field) => {
-    const report = await runTestCode(`self.max = 60; self.${field} = null;`, 'after', health, statCodeNames(world));
+    const report = await runTestCode(`self.max = 60; self.${field} = null;`, 'after', HEALTH, world);
     expect(report.error).toContain(`self.${field} must be`);
     expect(report.writes).toEqual([]);
   });
@@ -42,7 +43,7 @@ describe('runTestCode writes to other stats', () => {
 
   it('lists each write to another stat with its stat name, field and number, beside the box’s own', async () => {
     const code = 'self.max = 60; stats.Luck.value += 2; stats.Luck.max = 12; stats["Luck"].regen = 0.5; return 40;';
-    const report = await runTestCode(code, 'after', health, statCodeNames(hubWorld));
+    const report = await runTestCode(code, 'after', HEALTH, hubWorld);
     expect(report.error).toBeNull();
     expect(report.value).toBe(40);
     expect(report.writes).toEqual([
@@ -52,19 +53,19 @@ describe('runTestCode writes to other stats', () => {
   });
 
   it('lists a bound written to the value it already holds, as any bound assignment is a write', async () => {
-    const report = await runTestCode('stats.Luck.max = 10;', 'after', health, statCodeNames(hubWorld));
+    const report = await runTestCode('stats.Luck.max = 10;', 'after', HEALTH, hubWorld);
     expect(report.writes).toEqual(['stats.Luck.max = 10']);
   });
 
   it('names a stat with a space in its name the way code reaches it', async () => {
     const vision: Stat = { ...luck, id: 'v', name: 'Night Vision' };
-    const report = await runTestCode('stats["Night Vision"].value = 9;', 'after', health, statCodeNames({ ...world, stats: [health, vision] }));
+    const report = await runTestCode('stats["Night Vision"].value = 9;', 'after', HEALTH, { ...world, stats: [health, vision] });
     expect(report.writes).toEqual(['stats["Night Vision"].value = 9']);
   });
 
   it('applies nothing to the authored world', async () => {
     const before = JSON.stringify(hubWorld);
-    await runTestCode('self.max = 60; stats.Luck.value = 9; stats.Luck.max = 99; return 1;', 'after', health, statCodeNames(hubWorld));
+    await runTestCode('self.max = 60; stats.Luck.value = 9; stats.Luck.max = 99; return 1;', 'after', HEALTH, hubWorld);
     expect(JSON.stringify(hubWorld)).toBe(before);
     expect(luck).toMatchObject({ value: 3, max: 10, regen: 1 });
   });
@@ -72,8 +73,8 @@ describe('runTestCode writes to other stats', () => {
   it('drops and names a write to a stat that does not exist, and to one a trait switched off', async () => {
     const off: Stat = { ...luck, id: 'o', name: 'Dusk', enabled: false };
     const report = await runTestCode(
-      'stats.Helth.value = 1; stats.Dusk.value = 2; stats.Luck.value = 4;', 'after', health,
-      statCodeNames({ ...world, stats: [health, luck, off] }),
+      'stats.Helth.value = 1; stats.Dusk.value = 2; stats.Luck.value = 4;', 'after', HEALTH,
+      { ...world, stats: [health, luck, off] },
     );
     expect(report.writes).toEqual(['stats.Luck.value = 4']);
     expect(report.dropped).toEqual([
@@ -83,16 +84,34 @@ describe('runTestCode writes to other stats', () => {
   });
 });
 
+describe('runTestCode at turn one (Q3)', () => {
+  // Bram's Boast raises the global Luck once picked; Albus can only be played, so turn one casts only Bram.
+  const boast = { id: 'boast', name: 'Boast', statChanges: [{ statId: 'l', value: 2, type: 'starting' as const }] };
+  const turnOne: StatCodeWorld = {
+    ...hubWorld,
+    entities: [{ id: 'bram', name: 'Bram', traits: [boast] }, { id: 'albus', name: 'Albus', persona: true, personaOnly: true }],
+  };
+
+  it('applies no entity trait, since nothing is picked', async () => {
+    expect((await runTestCode('return stats.Luck.value;', 'after', HEALTH, turnOne)).value).toBe(3);
+  });
+
+  it('casts only the entities a new game with no persona casts', async () => {
+    const report = await runTestCode('return Object.keys(entities).length * 10 + (Object.keys(entities)[0] === "Bram" ? 1 : 0);', 'after', HEALTH, turnOne);
+    expect(report.value).toBe(11);
+  });
+});
+
 describe('runTestCode trait gates', () => {
   it("reads a stat gate against each stat's authored start", async () => {
     const berserk = {
       id: 'berserk', name: 'Berserk', statChanges: [],
       requires: [{ all: [{ kind: 'stat' as const, id: 'h', operator: '>=' as const, value: 80, unit: 'raw' as const }] }],
     };
-    const at = (value: number) => statCodeNames({ ...world, stats: [{ ...health, value }], traits: [berserk] });
+    const at = (value: number): StatCodeWorld => ({ ...world, stats: [{ ...health, value }], traits: [berserk] });
     const code = 'return traits.Berserk.available ? 1 : 0;';
-    expect((await runTestCode(code, 'after', health, at(85))).value).toBe(1);
-    expect((await runTestCode(code, 'after', health, at(70))).value).toBe(0);
+    expect((await runTestCode(code, 'after', HEALTH, at(85))).value).toBe(1);
+    expect((await runTestCode(code, 'after', HEALTH, at(70))).value).toBe(0);
   });
 });
 
@@ -106,7 +125,7 @@ describe('runTestCode entity fields', () => {
     ['type', "entities.Mira.type === 'Guide'"],
     ['an unset pronouns', "entities.Rook.pronouns === ''"],
   ])('reads an entity’s authored %s', async (_, check) => {
-    expect((await runTestCode(`return ${check} ? 1 : 0;`, 'after', health, statCodeNames(castWorld))).value).toBe(1);
+    expect((await runTestCode(`return ${check} ? 1 : 0;`, 'after', HEALTH, castWorld)).value).toBe(1);
   });
 });
 
@@ -133,12 +152,11 @@ const cityWorld: StatCodeWorld = {
   ],
 };
 
-/** Test Code on the stat of `cityWorld` named `statName`, under the owner `findStat` finds for it. */
+/** Test Code on the stat of `cityWorld` named `statName`, from the home `statHomeNamed` finds for it. */
 async function runOn(statName: string, code: string, options: TestRunOptions = {}) {
-  const names = statCodeNames(cityWorld);
-  const found = findStat(cityWorld, names, statName);
-  if (!found) throw new Error(`no stat named ${statName}`);
-  return runTestCode(code, 'after', found.stat, names, { owner: found.owner, ...options });
+  const home = statHomeNamed(cityWorld, statCodeNames(cityWorld), statName);
+  if (!home) throw new Error(`no stat named ${statName}`);
+  return runTestCode(code, 'after', home, cityWorld, options);
 }
 
 describe('runTestCode for an owned stat', () => {
@@ -260,28 +278,24 @@ describe('runTestCode dropped stat writes', () => {
   });
 });
 
-describe('findStat', () => {
+describe('statHomeNamed', () => {
   const names = statCodeNames(cityWorld);
 
   it('finds a world stat with no owner', () => {
-    expect(findStat(cityWorld, names, 'Destruction')).toEqual({ stat: destruction });
+    expect(statHomeNamed(cityWorld, names, 'Destruction')).toEqual({ kind: 'globalStat', stat: destruction });
   });
 
-  it('finds a Blueprint stat with its group’s stats as the owner’s, and no entity', () => {
-    const found = findStat(cityWorld, names, 'Calm');
-    expect(found?.stat).toMatchObject({ id: 'calm' });
-    expect(found?.owner).toEqual({ stats: [fear, calm] });
+  it('finds a Blueprint stat with its group’s stats, and no entity', () => {
+    expect(statHomeNamed(cityWorld, names, 'Calm')).toMatchObject({ kind: 'blueprintStat', stat: { id: 'calm' }, groupStats: [fear, calm] });
   });
 
-  it('finds an entity’s own stat with that entity as the owner and all of its stats', () => {
-    const found = findStat(cityWorld, names, 'Stamina');
-    expect(found?.stat).toMatchObject({ id: 'stamina' });
-    expect(found?.owner).toEqual({ entityId: 'creature', stats: [fury, stamina, idle] });
+  it('finds an entity’s own stat with that entity as its home', () => {
+    expect(statHomeNamed(cityWorld, names, 'Stamina')).toMatchObject({ kind: 'entityStat', entityId: 'creature', stat: { id: 'stamina' } });
   });
 
   it('prefers a world stat to an entity stat of the same name, and finds nothing for an unknown name', () => {
     const twin: StatCodeWorld = { ...cityWorld, entities: [{ id: 'creature', name: 'The Creature', stats: [{ ...fury, name: 'Destruction' }] }] };
-    expect(findStat(twin, statCodeNames(twin), 'Destruction')?.owner).toBeUndefined();
-    expect(findStat(cityWorld, names, 'Nope')).toBeUndefined();
+    expect(statHomeNamed(twin, statCodeNames(twin), 'Destruction')?.kind).toBe('globalStat');
+    expect(statHomeNamed(cityWorld, names, 'Nope')).toBeUndefined();
   });
 });

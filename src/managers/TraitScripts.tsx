@@ -34,7 +34,7 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
   reveal?: CodeUseReveal | null;
 }) {
   const world = useGameDataOptional();
-  const { names, placeholderPlaces } = useScriptWorldNames();
+  const { names, placeholderPlaces, world: foldWorld } = useScriptWorldNames();
   const placeholders = names.placeholders.list;
   const selfName = statCodeName(trait.name, placeholders);
   const blueprint = !owner && isBlueprintItem({ traits: [...names.traits], traitGroups: world?.traitGroups ?? [] }, trait.id);
@@ -59,8 +59,8 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
     return (timing: ScriptTiming) => lookups({ owner: boxOwner, timing, self });
   }, [world, trait.id, selfName, boxOwner]);
   const context = useMemo<ScriptBoxContext>(() => ({
-    selfName, owner: boxOwner, names, ownerStats, ...(ownerStatNames && { ownerStatNames }), placeholderPlaces, lookup,
-  }), [selfName, boxOwner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
+    selfName, owner: boxOwner, names, world: foldWorld, ownerStats, ...(ownerStatNames && { ownerStatNames }), placeholderPlaces, lookup,
+  }), [selfName, boxOwner, names, foldWorld, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
 
   // The help window's Insert adds a script of its timing to this trait and lands on it. This tab mounts only while shown.
   const landOnScript = useLanding(scriptRow, { focus: noFocus });
