@@ -157,6 +157,8 @@ An author meets four more names in the World Editor. A relationship targets **Yo
 
 - A new section names the You pill, says where it goes (after the played persona's name, in game) and where it doesn't (editor surfaces, which say **Persona**).
 - The showcase gets a production-backed reference with the pill on a plain row and on a selected row.
+- The section's production mapping grows in one edit, made by the spec session after 02, 03 and 04 land. The tickets leave that table alone, so their rebases don't collide.
+- The `onFill` inversion is a color only, so static frames of a selected and an unselected row prove it. No test checks class names.
 - The Built-in Placeholder chips section names **Persona Name**.
 
 **No export-shape change.** Nothing in a world or save file changes.
