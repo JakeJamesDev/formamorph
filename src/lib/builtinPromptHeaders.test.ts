@@ -125,7 +125,9 @@ describe('built-in Header adoption', () => {
         // The Header reads the scene's Player Name, as the whole template does.
         const populated = renderPromptTemplate(seg.token, { 'header:{{user}}': ctx('header:{{user}}')!, [parts.key]: 'Body line one\nBody line two' });
         expect(populated).toContain('Body line one\nBody line two');
-        expect(runs.content.split(populated.trimStart().split('\n')[0]), `${key}: ${parts.header}`).toHaveLength(2);
+        // The header line renders once; a whole-line match, since one header's words can sit inside another's.
+        const headerLine = populated.trimStart().split('\n')[0];
+        expect(runs.content.split('\n').filter((line) => line === headerLine), `${key}: ${parts.header}`).toHaveLength(1);
         for (const value of ['', ' \n\t', 'N/A']) {
           expect(renderPromptTemplate(seg.token, { [parts.key]: value })).toBe('');
           const empty = renderPromptTemplateRuns(template, layerValues(ctx, { [parts.key]: value }), { source: 'system-template' });
