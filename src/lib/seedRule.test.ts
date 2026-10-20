@@ -8,7 +8,7 @@ import { startingGateStat } from './gateStats';
 import { statStartValue } from './statDescriptorGeometry';
 import { seedNewGameStats } from './traitRuntime';
 import { pageStatDeltas } from './statChanges';
-import { runTestCode, statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
 import { checkScripts } from './testBench/scriptCheck';
 import type { RuleWorld } from './testBench/rules';
 import { boxScripts } from '@/test/scriptFixtures';
@@ -62,10 +62,10 @@ describe('the seed rule (Q8)', () => {
     expect(await checkScripts(world)).toEqual([]);
   });
 
-  const testCode = (stats: Stat[], code: string) => runTestCode(code, 'after', probe, statCodeNames({
+  const testCode = (stats: Stat[], code: string) => runTestCode(code, 'after', { kind: 'globalStat', stat: probe }, {
     stats: [...stats, probe], statGroups: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [],
     placeholderGroups: [], dictionaries: [],
-  } satisfies StatCodeWorld));
+  } satisfies StatCodeWorld);
 
   it('hands Test Code the authored value', async () => {
     const report = await testCode([mood], reads);

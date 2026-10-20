@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ToolParam } from '@/types';
 import { codeCompletions, codeDiagnostics } from '@/lib/statCodeAnalysis';
-import { statCodeNames, type StatCodeWorld } from '@/lib/statCodeTestRun';
+import { type StatCodeWorld } from '@/lib/statCodeTestRun';
 import { variableTreeLeaves } from '@/lib/statCodeVariableTree';
 import { tryWorldToolScript } from './worldToolTry';
 import { worldToolArgsNodes, worldToolSurface } from './worldToolSurface';
@@ -34,7 +34,7 @@ describe('the World Tool script surface', () => {
     const probe = `return [${held.map((name) => `typeof ${name}`).join(', ')}, typeof player.tell].join(' ');`;
     const result = await tryWorldToolScript(
       { id: 't', name: 't', description: '', params, emptyResult: '{}', offeredTo: [], handler: { kind: 'script', timing: 'call', code: probe } },
-      '{"place":"Inn"}', statCodeNames(world),
+      '{"place":"Inn"}', world,
     );
     expect(result.failure).toBeUndefined();
     expect(result.text.split(' ')).toHaveLength(globals.length);

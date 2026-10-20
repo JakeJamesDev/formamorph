@@ -4,14 +4,15 @@
  */
 import { codeDiagnostics, type SurfaceAnalysisOptions, type CodeDiagnostic, type EntryNoun, type MissingName } from '@/lib/statCodeAnalysis';
 import { memberStep, placeholderPathExpression } from '@/lib/statCodePaths';
-import { statBoxAnalysisOptions } from '@/lib/statCodeBoxOptions';
+import { statBoxAnalysisOptions, type StatCodeNames } from '@/lib/statCodeBoxOptions';
 import {
-  findStat, findTrait, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport, type TestRunOwner,
+  missingSegments, runTestCode, statCodeNames, statHomeNamed, traitHomeNamed, type StatCodeWorld, type TestCodeReport,
 } from '@/lib/statCodeTestRun';
+import { ownerOfHome, type UnitHome } from '@/lib/sandboxSnapshot';
 import { SCRIPT_SURFACES, scriptSurface } from '@/lib/statCodeSurface';
 import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import { randomUUID } from '@/lib/uuid';
-import type { ScriptTiming } from '@/types';
+import type { ScriptTiming, Stat } from '@/types';
 
 /** The most characters of code one finding quotes. */
 const FINDING_TEXT_MAX = 60;
@@ -83,11 +84,19 @@ function analysis(code: string, options: SurfaceAnalysisOptions): Omit<CodeTestR
 /** Whose script a test runs: a stat or trait by name, or the world. */
 export type CodeTestOwner = { kind: 'stat' | 'trait'; name: string } | { kind: 'world' };
 
-/** The analysis owner of a run's owner. A Blueprint trait's owner stats go unchecked, since its owners vary. */
-const analysisOwner = (owner: TestRunOwner | undefined, kind: CodeTestOwner['kind']) => owner && {
-  kind: owner.entityId ? 'entity' as const : 'blueprint' as const,
-  ...((owner.entityId || kind === 'stat') && { statNames: owner.stats.map((owned) => owned.name) }),
-};
+// A half-filled stat still runs: the executor defaults every number it marshals, so only the id and name have to be real.
+const blankStat = () => ({ id: randomUUID(), name: '' }) as Stat;
+
+/** The analysis owner of a home's Owner. A Blueprint trait's owner stats go unchecked, since its owners vary. */
+function analysisOwner(home: UnitHome, names: StatCodeNames) {
+  const owner = ownerOfHome(home);
+  switch (owner.kind) {
+    case 'entity': return { kind: 'entity' as const, statNames: (names.entityStats[owner.entityId] ?? []).map((owned) => owned.name) };
+    case 'blueprintStat': return { kind: 'blueprint' as const, statNames: owner.stats.map((owned) => owned.name) };
+    case 'blueprintTrait': return { kind: 'blueprint' as const };
+    default: return undefined;
+  }
+}
 
 /**
  * Tests `code` in its `timing` on `owner`: a world stat, a Blueprint stat or an entity's own stat; a global,
@@ -103,19 +112,16 @@ export async function testScript(code: string, timing: ScriptTiming, owner: Code
   }
   const names = statCodeNames(world);
   const name = owner.kind === 'world' ? '' : owner.name.trim();
-  const stat = owner.kind === 'stat' ? findStat(world, names, name) : undefined;
-  const trait = owner.kind === 'trait' ? findTrait(world, names, name) : undefined;
-  const runOwner = stat?.owner ?? trait?.owner;
-  const selfName = stat?.stat.name ?? trait?.trait.name ?? (owner.kind === 'trait' ? name : '');
-  const { missing, ...rest } = analysis(code, statBoxAnalysisOptions(names, { selfName, owner: analysisOwner(runOwner, owner.kind), surface }));
-  const self = owner.kind === 'stat' ? stat?.stat ?? { id: randomUUID(), name: '' } : null;
+  const home: UnitHome = owner.kind === 'stat' ? statHomeNamed(world, names, name) ?? { kind: 'globalStat', stat: blankStat() }
+    : owner.kind === 'trait' ? traitHomeNamed(world, name) ?? { kind: 'trait', trait: { id: randomUUID(), name }, entityId: null }
+      : { kind: 'world' };
+  const selfName = 'stat' in home ? home.stat.name : 'trait' in home ? home.trait.name : '';
+  const { missing, ...rest } = analysis(code, statBoxAnalysisOptions(names, { selfName, owner: analysisOwner(home, names), surface }));
   return {
     world: true,
     ...rest,
-    run: await runTestCode(code, timing, self, names, {
-      pendingPersona: true, missing, owner: runOwner,
-      ...(owner.kind === 'trait' && { selfTrait: trait?.trait ?? { id: randomUUID(), name } }),
-      ...(timing === 'output' && { sentence: SAMPLE_SENTENCE }),
+    run: await runTestCode(code, timing, home, world, {
+      pendingPersona: true, missing, ...(timing === 'output' && { sentence: SAMPLE_SENTENCE }),
     }),
   };
 }

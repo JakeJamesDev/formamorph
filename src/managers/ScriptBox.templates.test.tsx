@@ -28,7 +28,7 @@ const world: StatCodeWorld = {
   placeholders: [], placeholderGroups: [], dictionaries: [],
   locations: [{ id: 'gate', name: 'North Gate' }, { id: 'inn', name: 'Inn', isStarting: true }],
 };
-const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), ownerStats: [], selfName: '', placeholderPlaces: [] };
+const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [] };
 const LABEL = 'Box · After the AI';
 
 /** A box that keeps its own code, as its panel does. */

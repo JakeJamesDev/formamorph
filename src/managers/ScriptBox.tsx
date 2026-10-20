@@ -9,6 +9,8 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import { SquareFunction } from "lucide-react";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { runTestCode } from "@/lib/statCodeTestRun";
+import type { OpeningFoldWorld } from "@/lib/openingState";
+import type { UnitHome } from "@/lib/sandboxSnapshot";
 import { statBoxAnalysisOptions, type StatCodeNames } from "@/lib/statCodeBoxOptions";
 import type { CodeTraitPlace } from "@/lib/statCodeAnalysis";
 import { SCRIPT_SURFACES, scriptSurface } from "@/lib/statCodeSurface";
@@ -18,7 +20,7 @@ import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
 import { useCodeCardNavigation } from "@/lib/codeCardNavigation";
 import { settleCodeUseReveal, type CodeUseReveal } from "@/lib/codeUseReveal";
 import type { HistoryFieldAttribute } from "@/lib/historyField";
-import type { Script, ScriptTiming, Stat } from "@/types";
+import type { Entity, Script, ScriptTiming, Stat } from "@/types";
 
 export type { CodeBoxOwner as ScriptBoxOwner } from "@/lib/codeWorldLookup";
 
@@ -26,8 +28,10 @@ export type { CodeBoxOwner as ScriptBoxOwner } from "@/lib/codeWorldLookup";
 export interface ScriptBoxContext {
   /** Whose code the boxes hold. Null for a global stat or trait. */
   owner: CodeBoxOwner | null;
-  /** The world's names: what completes, what the checks read, and what a run's entries hold. */
+  /** The world's names: what completes and what the checks read. */
   names: StatCodeNames;
+  /** The authored world Test Code opens at turn one. */
+  world: OpeningFoldWorld;
   /** What `owner.stats` keys, under their code names: the entity's own stats, or a Blueprint group's. None in a
    *  global box. */
   ownerStats: Stat[];
@@ -43,6 +47,32 @@ export interface ScriptBoxContext {
 
 /** What `self` is in a box: the stat as the panel holds it mid-edit, a trait, or nothing on a world script. */
 export type ScriptSelf = { kind: 'stat'; stat: Partial<Stat> & Pick<Stat, 'id'> } | { kind: 'trait'; id: string } | { kind: 'world' };
+
+/** The home a box's Script runs from. A Blueprint stat runs on `ownerStats`, its group's stats. */
+function boxHome(self: ScriptSelf, selfName: string, owner: CodeBoxOwner | null, ownerStats: Stat[]): UnitHome {
+  const entityId = owner?.kind === 'entity' ? owner.entityId : null;
+  if (self.kind === 'world') return { kind: 'world' };
+  if (self.kind === 'trait') {
+    const trait = { id: self.id, name: selfName };
+    return owner?.kind === 'blueprint' ? { kind: 'blueprintTrait', trait } : { kind: 'trait', trait, entityId };
+  }
+  // A half-filled stat still runs: the executor defaults every number it marshals.
+  const stat = { ...self.stat, name: selfName } as Stat;
+  if (owner?.kind === 'blueprint') return { kind: 'blueprintStat', stat, groupStats: ownerStats };
+  return entityId ? { kind: 'entityStat', entityId, stat } : { kind: 'globalStat', stat };
+}
+
+/** `world` with an entity Owner holding the stats the panel holds, so a library entity, which no world has,
+ *  still runs with its `owner.stats`. */
+function withOwnerStats(world: OpeningFoldWorld, owner: CodeBoxOwner | null, ownerStats: Stat[]): OpeningFoldWorld {
+  if (owner?.kind !== 'entity') return world;
+  const entities = world.entities ?? [];
+  const own = (entity: Entity): Entity => (entity.id === owner.entityId ? { ...entity, stats: ownerStats } : entity);
+  return {
+    ...world,
+    entities: entities.some((entity) => entity.id === owner.entityId) ? entities.map(own) : [...entities, { id: owner.entityId, name: '', stats: ownerStats }],
+  };
+}
 
 /**
  * One script's code box: the editor, the Templates menu on a stat or world script, its own Test Code button, and the report
@@ -88,7 +118,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const isOutput = timing === 'output';
   // Stat and world scripts have a Templates menu; a trait's has none.
   const hasTemplates = self.kind !== 'trait';
-  const { selfName, names, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup } = context;
+  const { selfName, names, world, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup } = context;
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // An entity stat's own traits, which a template's trait slot lists under Owner. A Blueprint's owners vary, so none.
   const ownerTraits = useMemo(
@@ -150,14 +180,9 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
     const run = prompts.open();
     try {
       // A switch is reported here and never applied.
-      const report = await runTestCode(
-        value, timing, self.kind === 'stat' ? { ...self.stat, name: selfName } : null, names,
-        {
-          ...(owner && { owner: { ...(owner.kind === 'entity' && { entityId: owner.entityId }), stats: ownerStats } }),
-          ...(self.kind === 'trait' && { selfTrait: { id: self.id, name: selfName } }),
-          ...(isOutput && { sentence: sample }), prompts: run.host,
-        },
-      );
+      const report = await runTestCode(value, timing, boxHome(self, selfName, owner, ownerStats), withOwnerStats(world, owner, ownerStats), {
+        ...(isOutput && { sentence: sample }), prompts: run.host,
+      });
       // An edit or an unmount mid-run closed this run, and its report is stale.
       if (!prompts.isCurrent(run)) return;
       // A tell or toast before a failure still showed, so the report keeps it.

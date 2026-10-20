@@ -7,7 +7,7 @@ import type { Tool, ToolParam, ToolScriptTiming } from '@/types';
 import {
   BUILT_IN_TEMPLATES, defaultSlotValues, fillTemplate, missingParams, parseTemplateSlots, type CodeTemplate, type TemplateSlot,
 } from './statCodeTemplates';
-import { statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { type StatCodeWorld } from './statCodeTestRun';
 import { tryWorldToolScript } from './tools/worldToolTry';
 
 const world: StatCodeWorld = {
@@ -16,7 +16,6 @@ const world: StatCodeWorld = {
   placeholders: [], placeholderGroups: [], dictionaries: [],
   locations: [{ id: 'loc-gate', name: 'North Gate' }, { id: 'loc-inn', name: 'Inn', isStarting: true }],
 };
-const names = statCodeNames(world);
 
 /** What the AI sends for each Parameter a built-in reads, by its slot name. */
 const SENT: Record<string, string | number> = {
@@ -68,7 +67,7 @@ describe.each(worldToolCases)(
     it('runs without error and changes something', async () => {
       const { tool, params } = toolOf(template, timing, true);
       const args = JSON.stringify(Object.fromEntries(params.map((param) => [param.name, SENT[param.name]])));
-      const result = await tryWorldToolScript(tool, args, names, { sentence: SENTENCE });
+      const result = await tryWorldToolScript(tool, args, world, { sentence: SENTENCE });
       expect(result.failure, result.text).toBeUndefined();
       expect(result.warnings).toEqual([]);
       const replied = timing === 'call' && result.text !== tool.emptyResult;
@@ -79,7 +78,7 @@ describe.each(worldToolCases)(
     // An optional Parameter the AI leaves out is missing from `args`, never the text "undefined".
     it('writes nothing made of a left-out optional argument', async () => {
       const { tool } = toolOf(template, timing, false);
-      const result = await tryWorldToolScript(tool, '{}', names, { sentence: SENTENCE });
+      const result = await tryWorldToolScript(tool, '{}', world, { sentence: SENTENCE });
       expect(result.failure, result.text).toBeUndefined();
       expect(JSON.stringify(result)).not.toContain('undefined');
     });
@@ -89,7 +88,7 @@ describe.each(worldToolCases)(
 describe('a template with an entity slot and a stat slot tied to it', () => {
   const stat = (id: string, name: string, value: number) =>
     ({ id, name, type: 'number' as const, description: '', min: 0, max: 20, value, regen: 0, descriptors: [] });
-  const cast = statCodeNames({ ...world, entities: [{ id: 'e-tor', name: 'Tor', stats: [stat('t-grit', 'Grit', 4)] }, { id: 'e-ula', name: 'Ula', stats: [stat('u-grit', 'Grit', 9)] }] });
+  const cast: StatCodeWorld = { ...world, entities: [{ id: 'e-tor', name: 'Tor', stats: [stat('t-grit', 'Grit', 4)] }, { id: 'e-ula', name: 'Ula', stats: [stat('u-grit', 'Grit', 9)] }] };
   const code = 'entities[{{who:entity}}].stats[{{s:stat(who)}}].value += 2;';
 
   it('writes the picked entity’s stat in Try It', async () => {

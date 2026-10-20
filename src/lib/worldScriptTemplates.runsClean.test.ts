@@ -62,7 +62,7 @@ describe.each(cases.filter(([, , template]) => template.id !== 'builtin-world-ti
   'world script built-in %s at %s',
   (_name, timing, template) => {
     it('runs without error and changes something', async () => {
-      const report = await runTestCode(filled(template), timing, null, names, { sentence: SAMPLE_SENTENCE });
+      const report = await runTestCode(filled(template), timing, { kind: 'world' }, world, { sentence: SAMPLE_SENTENCE });
       expect(report.error).toBeNull();
       expect(report.dropped).toEqual([]);
       const rewrote = report.sentence !== undefined && report.sentence !== SAMPLE_SENTENCE;
@@ -97,14 +97,14 @@ describe.each(cases.filter(([, , template]) => template.id === 'builtin-world-ti
 describe('a world script template that acts on a condition', () => {
   it('Leave When a Stat Runs Out moves only while the stat has run out', async () => {
     const template = builtIn('builtin-world-leave-when-empty');
-    const run = (stat: string) => runTestCode(filled(template, { stat }), 'after', null, names);
+    const run = (stat: string) => runTestCode(filled(template, { stat }), 'after', { kind: 'world' }, world);
     expect((await run('Energy')).writes).toEqual(['location.move: North Gate']);
     expect((await run('Health')).writes).toEqual([]);
   });
 
   it('Placeholder by Daypart pins only in the daypart it names', async () => {
     const template = builtIn('builtin-world-placeholder-by-daypart');
-    const run = (when: string) => runTestCode(filled(template, { when, position: '2' }), 'before', null, names);
+    const run = (when: string) => runTestCode(filled(template, { when, position: '2' }), 'before', { kind: 'world' }, world);
     expect((await run(TEST_CODE_DAYPART)).writes).toEqual(['Mood = wary']);
     expect((await run('night')).writes).toEqual([]);
   });

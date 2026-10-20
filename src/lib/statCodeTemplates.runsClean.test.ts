@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_TEMPLATES, defaultSlotValues, fillTemplate, parseTemplateSlots, type TemplateSlot } from './statCodeTemplates';
-import { runTestCode, statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
 import { SAMPLE_SENTENCE } from './scriptTestSamples';
 import type { Stat } from '@/types';
 
@@ -12,6 +12,7 @@ const stat = (id: string, name: string, value: number, max = 100): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max, value, regen: 0, descriptors: [] });
 
 const subject = stat('self', 'Subject', 40, 200);
+const home = { kind: 'globalStat', stat: subject } as const;
 const world: StatCodeWorld = {
   stats: [subject, stat('h', 'Health', 80), stat('s', 'Strength', 20)], statGroups: [],
   traits: [{ id: 'cursed', name: 'Cursed', statChanges: [] }], traitGroups: [],
@@ -19,7 +20,6 @@ const world: StatCodeWorld = {
   placeholders: [{ id: 'mood', name: 'Mood', values: ['calm', 'wary', 'angry', 'furious'].map((text) => ({ id: text, text })) }],
   placeholderGroups: [], dictionaries: [],
 };
-const names = statCodeNames(world);
 
 /** A name slot filled the way an author picks from this world; every other slot keeps its default. */
 const pick = (slot: TemplateSlot): string | undefined => {
@@ -54,9 +54,9 @@ describe.each(BUILT_IN_TEMPLATES.flatMap((template) =>
       for (const slot of slots) values[slot.name] = pick(slot) ?? values[slot.name];
       const code = fillTemplate(template.code, values);
       // A random template may land on the stat's current value, so it gets a few runs. A fixed one repeats its result.
-      let report = await runTestCode(code, timing, subject, names, { sentence: SAMPLE_SENTENCE });
+      let report = await runTestCode(code, timing, home, world, { sentence: SAMPLE_SENTENCE });
       for (let run = 1; run < MAX_RUNS && !changedBy(report); run++) {
-        report = await runTestCode(code, timing, subject, names, { sentence: SAMPLE_SENTENCE });
+        report = await runTestCode(code, timing, home, world, { sentence: SAMPLE_SENTENCE });
       }
       expect(report.error).toBeNull();
       expect(changedBy(report), JSON.stringify(report)).toBe(true);
@@ -66,12 +66,12 @@ describe.each(BUILT_IN_TEMPLATES.flatMap((template) =>
 
 describe('a stat slot tied to the persona', () => {
   it('fills `persona.stats` and runs in Test Code', async () => {
-    const cast = statCodeNames({ ...world, entities: [{ id: 'wren', name: 'Wren', persona: true, stats: [stat('w-luck', 'Luck', 7, 10)] }] });
+    const cast: StatCodeWorld = { ...world, entities: [{ id: 'wren', name: 'Wren', persona: true, stats: [stat('w-luck', 'Luck', 7, 10)] }] };
     const template = 'return persona.stats[{{s:stat(persona)}}].value * 2;';
     const code = fillTemplate(template, { s: 'Luck' });
     expect(code).toBe('return persona.stats["Luck"].value * 2;');
     // The editor's run has no persona playing, so it runs clean on an empty one; a pending persona holds Wren's stat.
-    expect((await runTestCode(code, 'after', subject, cast)).error).toBeNull();
-    expect(await runTestCode(code, 'after', subject, cast, { pendingPersona: true })).toMatchObject({ error: null, value: 14 });
+    expect((await runTestCode(code, 'after', home, cast)).error).toBeNull();
+    expect(await runTestCode(code, 'after', home, cast, { pendingPersona: true })).toMatchObject({ error: null, value: 14 });
   });
 });

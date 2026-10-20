@@ -99,7 +99,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   link?: StatLinkEdit;
 }) => {
   const { placeholders, placeholderOwners, placementLetters } = useStatEditorWorld();
-  const { names, placeholderPlaces } = useScriptWorldNames();
+  const { names, placeholderPlaces, world: foldWorld } = useScriptWorldNames();
   // A store carries an owner's own stats; only a world stat reads the world, which an owned stat's editor may not have.
   const world = useGameDataOptional();
   if (!store && !world) throw new Error('StatManager needs a store or a world');
@@ -167,8 +167,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   }, [boxLookups, stat, editingStat, selfCodeName, owner]);
   // One surface for every box: what completes in one is what runs in each.
   const codeContext = useMemo<ScriptBoxContext>(() => ({
-    selfName: selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup,
-  }), [selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
+    selfName: selfCodeName, owner, names, world: foldWorld, ownerStats, ownerStatNames, placeholderPlaces, lookup,
+  }), [selfCodeName, owner, names, foldWorld, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />

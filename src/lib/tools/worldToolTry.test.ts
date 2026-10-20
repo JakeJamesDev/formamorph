@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Tool, ToolScriptHandler } from '@/types';
-import { statCodeNames, type StatCodeWorld } from '@/lib/statCodeTestRun';
+import { type StatCodeWorld } from '@/lib/statCodeTestRun';
 import { tryWorldToolScript } from './worldToolTry';
 
 const world: StatCodeWorld = {
@@ -13,7 +13,6 @@ const world: StatCodeWorld = {
   placeholderGroups: [], dictionaries: [],
   locations: [{ id: 'loc-gate', name: 'North Gate' }, { id: 'loc-inn', name: 'Inn', isStarting: true }],
 };
-const names = statCodeNames(world);
 
 const tool = (handler: Partial<ToolScriptHandler>, params: Tool['params'] = []): Tool => ({
   id: 'tool-1', name: 'travel', description: 'Moves the scene', params, emptyResult: '{}', offeredTo: [],
@@ -28,7 +27,7 @@ describe('tryWorldToolScript', () => {
   it('answers an After the AI Tool with its Reply and lists each staged write', async () => {
     const result = await tryWorldToolScript(
       tool({ timing: 'after', reply: 'Off you go.', code: 'location.move(args.place); clock.advance(30); stats.Luck.value = 9;' }, where),
-      '{"place":"North Gate"}', names,
+      '{"place":"North Gate"}', world,
     );
     expect(result.failure).toBeUndefined();
     expect(result.text).toBe('Off you go.');
@@ -36,44 +35,44 @@ describe('tryWorldToolScript', () => {
   });
 
   it('answers “Done.” for a trigger with a blank Reply, whatever the script returns', async () => {
-    const result = await tryWorldToolScript(tool({ timing: 'output', reply: '  ', code: 'return "ignored";' }), '{}', names);
+    const result = await tryWorldToolScript(tool({ timing: 'output', reply: '  ', code: 'return "ignored";' }), '{}', world);
     expect(result.text).toBe('Done.');
   });
 
   it('answers an On Call Tool with the value its script returns', async () => {
-    const result = await tryWorldToolScript(tool({ code: 'return "At " + args.place;' }, where), '{"place":"Inn"}', names);
+    const result = await tryWorldToolScript(tool({ code: 'return "At " + args.place;' }, where), '{"place":"Inn"}', world);
     expect(result.text).toBe('At Inn');
   });
 
   it('answers the empty result when an On Call script returns nothing', async () => {
-    const result = await tryWorldToolScript(tool({ code: 'memory.add("Noted.");' }), '{}', names);
+    const result = await tryWorldToolScript(tool({ code: 'memory.add("Noted.");' }), '{}', world);
     expect(result.text).toBe('{}');
     expect(result.writes).toEqual(['memory.add: Noted.']);
   });
 
   it('rejects arguments that miss the parameters, as the AI would be told', async () => {
-    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'location.move(args.place);' }, where), '{}', names);
+    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'location.move(args.place);' }, where), '{}', world);
     expect(result.failure).toBe('arguments');
     expect(JSON.parse(result.text).error).toMatch(/place/);
     expect(result.writes).toEqual([]);
   });
 
   it('reports a script that throws as a script failure with no writes', async () => {
-    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'clock.advance(5); location.move("Moon");' }), '{}', names);
+    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'clock.advance(5); location.move("Moon");' }), '{}', world);
     expect(result.failure).toBe('script');
     expect(JSON.parse(result.text).error).toMatch(/Moon/);
     expect(result.writes).toEqual([]);
   });
 
   it('warns on a diary target the authored world lacks without failing the run', async () => {
-    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'diary("Stranger", "Hello.");' }), '{}', names);
+    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'diary("Stranger", "Hello.");' }), '{}', world);
     expect(result.failure).toBeUndefined();
     expect(result.warnings).toEqual(['Diary target “Stranger” may be discovered in play.']);
   });
 
   it('rewrites the sample sentence of a During AI Output Tool', async () => {
     const result = await tryWorldToolScript(
-      tool({ timing: 'output', code: 'narration.sentence = narration.sentence.toUpperCase();' }), '{}', names, { sentence: 'The gate creaks.' },
+      tool({ timing: 'output', code: 'narration.sentence = narration.sentence.toUpperCase();' }), '{}', world, { sentence: 'The gate creaks.' },
     );
     expect(result.sentence).toBe('THE GATE CREAKS.');
   });

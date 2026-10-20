@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Entity, Placeholder, PlayerStat, Tool } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { planCodeRename } from './statCodeRename';
-import { statCodeNames, type StatCodeWorld } from './statCodeTestRun';
+import { type StatCodeWorld } from './statCodeTestRun';
 import { tryWorldToolScript } from '@/lib/tools/worldToolTry';
 import { withToolCode } from '@/lib/tools/worldTools';
 import { scriptWorldTool } from '@/test/worldToolFixtures';
@@ -35,11 +35,11 @@ describe('a rename that a World Tool script names', () => {
 
     const rewritten = withToolCode([storm, calm], plan!.edits[0].scripts);
     expect(rewritten.map((tool) => tool.handler.kind === 'script' && tool.handler.code)).toEqual(['stats.Gust.value = 3;', 'return 0;']);
-    const names = statCodeNames(worldOf(gale('Gust')));
-    const moved = await tryWorldToolScript(rewritten[0], '{}', names);
+    const world = worldOf(gale('Gust'));
+    const moved = await tryWorldToolScript(rewritten[0], '{}', world);
     expect(moved.writes).toEqual(['stats.Gust.value = 3']);
     // Left as it was, the Tool names a stat that no longer exists.
-    const stranded = await tryWorldToolScript(storm, '{}', names);
+    const stranded = await tryWorldToolScript(storm, '{}', world);
     expect(stranded.writes).toEqual([]);
   });
 

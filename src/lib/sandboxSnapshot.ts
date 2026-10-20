@@ -6,14 +6,16 @@
 import type { Placeholder, Stat, Trait } from '@/types';
 import {
   executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
   codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
 } from './statCodePlaceholders';
-import { codeEntities, sandboxTraits, type CodeEntities, type CodeEntity } from './statCodeTraits';
+import { codeEntities, sandboxTraits, worldTraitPlaces, type CodeEntities, type CodeEntity } from './statCodeTraits';
+import { sampleSwitchedTrait } from './scriptTestSamples';
+import { randomUUID } from './uuid';
 import { gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
@@ -21,14 +23,17 @@ import type { RunTiming } from './statCodeTiming';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { SandboxState } from './statCodeTurn';
 
+/** The trait a trait home names. */
+export type HomeTrait = Pick<Trait, 'id' | 'name'>;
+
 /** Where a Script lives. Stats carry their code names; a Blueprint stat carries its group's stats. */
 export type UnitHome =
   | { kind: 'globalStat'; stat: Stat }
   | { kind: 'entityStat'; entityId: string; stat: Stat }
   | { kind: 'blueprintStat'; stat: Stat; groupStats: readonly Stat[] }
   /** A trait held globally (`entityId` null) or by an entity. */
-  | { kind: 'trait'; trait: Trait; entityId: string | null }
-  | { kind: 'blueprintTrait'; trait: Trait }
+  | { kind: 'trait'; trait: HomeTrait; entityId: string | null }
+  | { kind: 'blueprintTrait'; trait: HomeTrait }
   | { kind: 'world' }
   | { kind: 'tool' };
 
@@ -59,8 +64,9 @@ export interface ScriptRunUnit {
   code: string;
   /** During AI Output's sentence. */
   narration?: NarrationInput;
-  /** When a Trait Switches' switch, and the world its trait reads. */
-  switched?: { event: TraitSwitchEvent; world: TraitWorld };
+  /** When a Trait Switches' switch, and the world its trait reads. `sample` is an editor run's: the home's own
+   *  trait, else the world's first trait (Q49). */
+  switched?: { event: TraitSwitchEvent; world: TraitWorld } | 'sample';
   /** A World Tool call's arguments. */
   args?: Readonly<Record<string, unknown>>;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
@@ -77,7 +83,20 @@ export interface TurnReadings {
 export interface SnapshotOptions {
   /** This turn's asks, regen and previous values. Absent, every stat reads an untouched turn. */
   turn?: TurnReadings;
+  /** An editor run's cast, which has no discovered entities: a `diary` name the cast lacks is a warning. */
+  openCast?: boolean;
+  /** Test Code's overlay: `persona` is a stand-in holding every trait, placeholder and stat a persona-capable
+   *  entity holds, keyed `PENDING_PERSONA_ID`. */
+  pendingPersona?: boolean;
+  /** Test Code's overlay: global stats for names the world lacks, each a number at 0 in 0–100. */
+  assumedStats?: readonly string[];
 }
+
+/** The id of the pending persona's stand-in, which keys its stat writes. */
+export const PENDING_PERSONA_ID = 'pending-persona';
+
+/** The range and value an assumed stat runs with. */
+const ASSUMED_STAT = { min: 0, max: 100, value: 0 };
 
 /** A trait switch a run wrote, by id: a global trait's, or an Owner's with `ownerId`. */
 export interface TraitSwitchWrite {
@@ -156,7 +175,33 @@ interface Board {
   placeholderDefs: readonly Placeholder[];
 }
 
-function boardOf(state: SandboxState, { turn }: SnapshotOptions): Board {
+/** The pending persona's placeholder node: every persona-capable entity's own placeholders under `persona`. Each
+ *  node is a copy, so a write through it is told apart from one through the entity. */
+function personaPlaceholders(playables: readonly string[], owners: ReadonlyMap<string, SandboxPlaceholderNode> | undefined): SandboxPlaceholderNode {
+  const rooted = (node: SandboxPlaceholderNode): SandboxPlaceholderNode =>
+    ({ ...node, path: ['persona', ...node.path.slice(1)], ownedBy: 'persona', children: (node.children ?? []).map(rooted) });
+  const children = playables.flatMap((id) => owners?.get(id)?.children ?? []);
+  return { name: 'persona', path: ['persona'], ownedBy: 'persona', children: children.map(rooted) };
+}
+
+/** The empty persona holding every trait name, placeholder and stat a persona-capable entity holds, none chosen,
+ *  and in the scene. Its traits read as an unplayed entity's do. */
+function pendingPersonaOf(
+  state: SandboxState, cast: CodeEntities, owners: ReadonlyMap<string, SandboxPlaceholderNode> | undefined, ownerStats: (id: string) => SandboxStats,
+): CodeEntity {
+  const playables = (state.ownerTraits.entities ?? []).filter((entity) => entity.persona).map((entity) => entity.id);
+  const entries = playables.map((id) => cast.entities.find((entity) => entity.id === id));
+  const stats = playables.flatMap((id) => ownerStats(id).stats);
+  return {
+    id: PENDING_PERSONA_ID, name: '', type: '', pronouns: '', inScene: true,
+    traits: [...new Set(entries.flatMap((entity) => entity?.traits.map((trait) => trait.name) ?? []))]
+      .map((name) => ({ id: '', name, enabled: false, acquired: false })),
+    placeholders: personaPlaceholders(playables, owners),
+    stats: { stats, enabled: activeStatEnabled(stats, []) },
+  };
+}
+
+function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] }: SnapshotOptions): Board {
   const placeholderDefs = state.placeholders?.placeholders ?? [];
   const { world } = state.ownerTraits;
   const before = runtimeStateOf(state);
@@ -173,13 +218,17 @@ function boardOf(state: SandboxState, { turn }: SnapshotOptions): Board {
     ({ stats: statCodeNamed(stats, placeholderDefs), ...(inputs ? { turn: inputs } : {}), enabled });
   const owned = new Map((state.owners ?? []).map((owner) => [owner.id, scopeStats(owner.stats, owner.enabled, turn && (turn.owners?.[owner.id] ?? {}))]));
   const ownerStats = (id: string): SandboxStats => owned.get(id) ?? { stats: [], ...(turn ? { turn: {} } : {}), enabled: {} };
-  const inPlay = withEntityFields(cast, (id) => {
+  const withFields = withEntityFields(cast, (id) => {
     const node = sandbox?.owners.get(id);
     const stats = owned.get(id);
     return { ...(node ? { placeholders: node } : {}), ...(stats ? { stats } : {}) };
   });
+  const inPlay = pendingPersona ? { ...withFields, persona: pendingPersonaOf(state, withFields, sandbox?.owners, ownerStats) } : withFields;
+  const assumed = assumedStats.map((name): Stat => ({ id: randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT }));
+  const globalStats = assumed.length ? [...state.stats, ...assumed] : state.stats;
+  const globalEnabled = assumed.length ? { ...state.enabled, ...activeStatEnabled(assumed, []) } : state.enabled;
   return {
-    stats: scopeStats(state.stats, state.enabled, turn?.global),
+    stats: scopeStats(globalStats, globalEnabled, turn?.global),
     traits, inPlay, placeholderDefs, ownerStats,
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners),
@@ -201,7 +250,7 @@ function ownerEntryOf(board: Board, owner: UnitOwner): SandboxEntity | undefined
 
 /** The `trait` a switch run reads: the switched trait's entry in its owner's map after the switch, else one
  *  built from the authored trait. */
-function switchedTraitEntry(board: Board, { event, world }: NonNullable<ScriptRunUnit['switched']>): SwitchedTrait | undefined {
+function switchedTraitEntry(board: Board, { event, world }: { event: TraitSwitchEvent; world: TraitWorld }): SwitchedTrait | undefined {
   const { traitId, ownerId, enabled } = event;
   const { inPlay, traits, placeholderDefs } = board;
   const entity = ownerId === null ? null : [...inPlay.entities, inPlay.persona].find((cast) => cast.id === ownerId);
@@ -222,6 +271,8 @@ const optionsOfSnapshot = new WeakMap<SandboxSnapshot, (unit: ScriptRunUnit) => 
 export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): SandboxSnapshot {
   let built: Board | undefined;
   const board = () => (built ??= boardOf(state, options));
+  const { traits: worldTraits, groups } = state.ownerTraits.world;
+  const firstTraitId = () => worldTraitPlaces({ traits: worldTraits, traitGroups: groups ?? [] }, board().placeholderDefs)[0]?.id;
   const optionsFor = (unit: ScriptRunUnit): StatCodeRunOptions => {
     const read = board();
     const owner = ownerEntryOf(read, ownerOfHome(unit.home));
@@ -229,7 +280,9 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
     // A trait's entry as its Owner's map holds it; one no map holds reads as not held.
     const selfTrait = trait && ((owner ? owner.traits : read.traits).find((entry) => entry.id === trait.id)
       ?? { id: trait.id, name: statCodeName(trait.name, read.placeholderDefs), enabled: false, acquired: false });
-    const switchedTrait = unit.timing === 'switch' && unit.switched ? switchedTraitEntry(read, unit.switched) : undefined;
+    const switchedTrait = unit.timing !== 'switch' || !unit.switched ? undefined
+      : unit.switched === 'sample' ? sampleSwitchedTrait(read.traits, firstTraitId(), selfTrait && { entry: selfTrait, owner: owner?.name ?? '' })
+        : switchedTraitEntry(read, unit.switched);
     return {
       clock: state.clock, ...(read.stats.turn ? { turn: read.stats.turn } : {}), enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
@@ -237,6 +290,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(read.places && { places: read.places }), ...(read.discovered && { discovered: read.discovered }),
       ...(unit.timing === 'output' && unit.narration && { narration: unit.narration }),
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
+      ...(options.openCast && { openCast: true }),
     };
   };
   const snapshot: SandboxSnapshot = {
