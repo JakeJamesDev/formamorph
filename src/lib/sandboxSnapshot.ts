@@ -72,6 +72,8 @@ export interface ScriptRunUnit {
   args?: Readonly<Record<string, unknown>>;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
   prompts?: ScriptPromptHost;
+  /** A user Tool's run: the surface without writes. */
+  readOnly?: boolean;
 }
 
 /** Each scope's stat turn inputs: the global run's and each Owner's, by id. The caller leaves them empty at a
@@ -316,6 +318,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       }),
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
       ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
+      ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
     };
   };
   const snapshot: SandboxSnapshot = {

@@ -355,6 +355,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
+| `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
@@ -1010,6 +1011,16 @@ if (stats.Energy.value <= 0) location.move("Camp");
 ```js
 // The vault opened, so the story keeps the fact for good.
 if (stats.Keys.value >= 3) memories.pin("The vault under the chapel is open.");
+```
+
+### Notes
+<!-- keywords: player notes, notes text, read notes -->
+
+`notes` is the player's notes, as one text. It's empty in Test Code and the Test Bench, where no game runs. It's read-only.
+
+```js
+// The player wrote down the password, so the gate opens.
+if (notes.includes("swordfish")) traits.GateOpen.enabled = true;
 ```
 
 ### Diary

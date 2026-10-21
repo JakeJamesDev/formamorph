@@ -230,21 +230,29 @@ describe('codeCard: a template slot', () => {
 
 describe('codeCard: a Tool script', () => {
   const tool: SurfaceAnalysisOptions = {
-    surface: toolScriptSurface([{ name: 'size', type: 'number', description: 'How big.', required: true, options: [] }], ['Weather']),
+    ...world, selfName: '', surface: toolScriptSurface([{ name: 'size', type: 'number', description: 'How big.', required: true, options: [] }]),
   };
   it.each([
     ['return ar|gs.size;', '(global) args: { size } [readOnly]'],
     ['return args.si|ze;', '(property) args.size: number [readOnly]'],
-    ['return scene.location.na|me;', '(property) scene.location.name: string [readOnly]'],
-    ['return placeholders.Wea|ther;', '(property) placeholders.Weather: string [readOnly]'],
+    ['return location.na|me;', '(property) location.name: string [readOnly]'],
+    ['return cl|ock.day;', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous } [readOnly]'],
+    ['return no|tes;', '(global) notes: string [readOnly]'],
+    ['return entities.Mara.loca|tion;', '(property) Entity.location: string [readOnly]'],
+    ['return traits.Brave.ena|bled;', '(property) Trait.enabled: boolean [readOnly]'],
+    ['return placeholders.Mood.va|lue;', '(property) Placeholder.value: string [readOnly]'],
     ['cons|ole.log(1);', '(global) console: object'],
     ['return Math.fl|oor(1);', '(method) Math.floor: (n) => number'],
   ])('%s', (doc, expected) => {
     expect(line(cardAt(doc, tool))).toBe(expected);
   });
 
-  it('reads no stat-code map', () => {
-    expect(cardAt('return st|ats.Health;', tool)).toBeNull();
+  it.each([
+    'location.mo|ve("Dock");', 'memories.ad|d("x");', 'entities.Mara.mo|ve("Dock");', 'entities.Mara.dia|ry("x");',
+    'clock.adv|ance(5);', 'placeholders.Mood.pi|n("x");', 'disc|over("Kit");', 'return se|lf;', 'return ow|ner;',
+    'return wor|ld.entities;', 'return sce|ne.present;',
+  ])('gives no card on %s, which the surface lacks', (doc) => {
+    expect(cardAt(doc, tool)).toBeNull();
   });
 });
 

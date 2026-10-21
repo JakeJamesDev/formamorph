@@ -5,7 +5,7 @@
  */
 import type { ToolParam, ToolScriptTiming } from '@/types';
 import type { CodeSurface } from '@/lib/codeSurface';
-import { TOOL_GUIDE_LINKS } from '@/lib/codeGuideLinks';
+import { WORLD_TOOL_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import { memberStep } from '@/lib/statCodePaths';
 import { scriptSurface, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
 import type { VariableNode } from '@/lib/statCodeVariableTree';
@@ -30,7 +30,7 @@ export function worldToolSurface(params: readonly ToolParam[], timing: ToolScrip
     ],
     members: new Map([...surface.members, ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),
     missingReturn: timing === 'call' ? 'This script never returns, so the Tool sends its empty result.' : null,
-    guide: TOOL_GUIDE_LINKS,
+    guide: WORLD_TOOL_GUIDE_LINKS,
   };
 }
 

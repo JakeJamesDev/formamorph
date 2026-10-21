@@ -67,9 +67,9 @@ describe('the Guide link on a global’s card', () => {
     expect(linkOf(name, 1, toolScriptSurface([]))).toEqual({ id: 'guide', target: TOOL_GUIDE_LINKS[name] });
   });
 
-  it('reads the row of the surface the code is in, as placeholders sits in both tables', () => {
-    expect(linkOf('placeholders', 1, STAT_CODE_SURFACE)).toMatchObject({ target: { page: 'ScriptsGuide' } });
-    expect(linkOf('placeholders', 1, toolScriptSurface([]))).toMatchObject({ target: { page: 'Tools' } });
+  it('links a Tool’s args to the Tools doc and its script globals to the Scripts Guide, as a Script’s are', () => {
+    expect(linkOf('args', 1, toolScriptSurface([]))).toMatchObject({ target: { page: 'Tools' } });
+    expect(linkOf('placeholders', 1, toolScriptSurface([]))).toEqual(linkOf('placeholders', 1, STAT_CODE_SURFACE));
   });
 
   it('leaves console, a member and a built-in without one', () => {

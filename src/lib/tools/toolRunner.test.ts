@@ -5,9 +5,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import rawWorld from '../../../testing/baseline/sedge-landing.json';
 import { migrateWorld } from '@/lib/version';
+import { openingStateOf } from '@/lib/openingState';
 import { authoredChipScene, type AuthoredWorld } from '@/lib/chipValues/authoredScene';
 import { TOOL_CATALOG } from './toolCatalog';
-import { buildToolSnapshot, sampleToolSnapshot, type ToolSnapshot } from './toolSnapshot';
+import { buildToolSnapshot, type ToolSnapshot } from './toolSnapshot';
+import { sampleToolSnapshot } from './sampleToolSnapshot';
 import { runToolCall } from './toolRunner';
 import { argChipToken } from './argChips';
 import type { Tool, ToolHandler, ToolParam } from '@/types';
@@ -26,7 +28,7 @@ function sedge(): AuthoredWorld {
 }
 
 function snapshot(world = sedge()): ToolSnapshot {
-  return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? []);
+  return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? [], null, { state: openingStateOf(world), authored: null });
 }
 
 const param = (name: string, over: Partial<ToolParam> = {}): ToolParam =>
@@ -329,58 +331,66 @@ describe('runToolCall: Script', () => {
     expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: '{"a":1}' });
   });
 
-  it('shows the script only its own globals', async () => {
+  it('reaches none of the prelude’s hooks', async () => {
     const code = `return Object.getOwnPropertyNames(globalThis).filter((n) => n.startsWith('__')).join(',')
-      + '|' + typeof __formamorphFinish;`;
-    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: '|undefined' });
+      + '|' + [typeof __formamorphWorldWrites, typeof __formamorphEntityWrite, typeof __formamorphReadOnlyView, typeof __formamorphStringify].join(',');`;
+    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: '|undefined,undefined,undefined,undefined' });
   });
 
-  it('reads the world and the current scene', async () => {
+  it('reads the world on the script surface', async () => {
     const code = `
-      const bram = world.entities.find((e) => e.name === 'Bram');
-      const lore = world.dictionary.find((d) => d.keys.includes('gloam'));
+      const lore = Object.values(dictionaries).flatMap((d) => Object.values(d.entries)).find((e) => e.keys.includes('gloam'));
       return {
-        description: bram.description, aliases: bram.aliases, place: scene.location.name,
-        present: scene.present, vigor: scene.stats.Vigor, traits: scene.traits, lore: lore.id,
+        description: entities.Bram.description, aliases: entities.Bram.aliases, place: location.name,
+        present: location.present.map((e) => e.name), vigor: stats.Vigor.value, lore: lore.id,
+        same: location.present[0] === entities[location.present[0].name],
       };`;
     const result = JSON.parse((await runToolCall(script(code, []), '{}', s)).text);
     expect(result).toEqual({
       description: entity('ent-bram').aiDescription, aliases: ['Ferryman', 'ferry-folk'], place: 'Sedge Landing',
-      present: ['Bram', 'Odette', 'Rope Ferry'], vigor: 23, traits: ['Wren the Mapmaker', 'Footsore'],
-      lore: 'dict-gloamwater',
+      present: ['Bram', 'Odette', 'Rope Ferry'], vigor: 23, lore: 'dict-gloamwater', same: true,
     });
   });
 
-  it('cannot change the snapshot it reads', async () => {
+  it('drops every write, reads the snapshot value back, and lists what it dropped', async () => {
     const code = `
-      const attempt = (write) => { try { write(); } catch { /* a frozen value refuses some writes loudly */ } };
-      attempt(() => { world.entities[0].name = 'Changed'; });
-      attempt(() => world.entities.push({ name: 'Intruder' }));
-      attempt(() => { scene.stats.Vigor = 0; });
-      attempt(() => { args.name = 'Changed'; });
-      return [world.entities[0].name, world.entities.length, scene.stats.Vigor, args.name];`;
+      entities.Bram.summary = 'Changed';
+      stats.Vigor.value = 0;
+      args.name = 'Changed';
+      delete entities.Bram.name;
+      const pushed = (() => { try { location.present.push(entities.Wick); return true; } catch { return false; } })();
+      return [entities.Bram.summary, stats.Vigor.value, args.name, entities.Bram.name, location.present.length, pushed];`;
     const result = await runToolCall(script(code), '{"name": "Wick"}', s);
-    expect(JSON.parse(result.text)).toEqual(['Bram', 5, 23, 'Wick']);
-    expect(s.world.entities[0].name).toBe('Bram');
-    expect(s.world.entities).toHaveLength(5);
-    expect(s.scene.stats.Vigor).toBe(23);
+    expect(result.failure).toBeUndefined();
+    expect(JSON.parse(result.text)).toEqual([entity('ent-bram').aiSummary, 23, 'Wick', 'Bram', 3, false]);
+    expect(result.warnings).toEqual(['Read-only fields. Writes ignored: entities.Bram.summary, stats.Vigor.value, args.name, entities.Bram.name.']);
   });
 
-  it('reaches no stat-code globals, and its placeholders are plain text with no pin', async () => {
-    const code = 'return [typeof stats, typeof self, typeof traits, typeof placeholders.pin].join(",");';
-    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: 'undefined,undefined,undefined,undefined' });
+  it.each([
+    ['memories.add("A line.")'], ['memories.pin("A line.")'], ['location.move("Far Bank")'], ['entities.Bram.move("Far Bank")'],
+    ['entities.Bram.follow()'], ['entities.Bram.diary("A line.")'], ['clock.advance(30)'], ['placeholders.Anything.pin("x")'],
+  ])('has no verb: %s fails as not a function', async (call) => {
+    const result = await runToolCall(script(`${call}; return "ran";`, []), '{}', s);
+    expect(result.failure).toBe('script');
+    expect(errorOf(result.text)).toMatch(/not a function/);
+  });
+
+  it('has no world, scene, self, owner, discover or player', async () => {
+    const code = 'return [typeof world, typeof scene, typeof self, typeof owner, typeof discover, typeof player].join(",");';
+    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: 'undefined,undefined,undefined,undefined,undefined,undefined' });
+    const read = await runToolCall(script('return world.entities;', []), '{}', s);
+    expect(read.failure).toBe('script');
+    expect(errorOf(read.text)).toMatch(/world/);
+  });
+
+  it('lets the code declare a name the surface hides', async () => {
+    expect(await runToolCall(script('const owner = args.name; let self = 1; return owner + self;'), '{"name": "Wick"}', s)).toEqual({ text: 'Wick1' });
   });
 
   it('returns a thrown error as a readable result', async () => {
     const result = await runToolCall(script('throw new Error("no ferry after dark");', []), '{}', s);
     expect(result.failure).toBe('script');
-    expect(errorOf(result.text)).toContain('no ferry after dark');
-  });
-
-  it('returns a value JSON cannot hold as a readable result', async () => {
-    const result = await runToolCall(script('return () => 1;', []), '{}', s);
-    expect(result.failure).toBe('script');
-    expect(errorOf(result.text)).toMatch(/JSON/);
+    expect(errorOf(result.text)).toBe('The script failed: no ferry after dark');
   });
 
   it('reports a thrown "interrupted" error as a script error, not a timeout', async () => {

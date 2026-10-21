@@ -126,6 +126,9 @@ const SAMPLE_WORLD: AuthoredWorld = {
 /** The sample world's dictionaries, for a reader that takes them beside the scene. */
 export const sampleDictionaries = () => SAMPLE_WORLD.dictionaries ?? [];
 
+/** The sample world as authored, for a reader that builds its own state from it. */
+export const sampleWorld = (): AuthoredWorld => SAMPLE_WORLD;
+
 /** The player the sample plays: a library persona, so no known-person line. It owns one trait and one
  *  stat, so the preview shows the block as an authored persona fills it. */
 const travelerTrait = trait('false-map', 'False Map', 'Carries a chart that lies, and knows which parts.');
@@ -140,6 +143,9 @@ const persona: ResolvedPersona = {
     stats: [travelerStat],
   },
 };
+
+/** The library persona the sample plays. */
+export const samplePersona = (): Entity => persona.entity;
 
 /**
  * The sample world as a Chip Scene: its authored opening, plus the player state a world alone lacks — a

@@ -16,7 +16,7 @@ import { rewrittenKey } from '@/lib/statCodeRename';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
-  nearestName, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
+  isMethodEntry, nearestName, readOnlyEntries, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
 } from '@/lib/codeSurface';
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
@@ -519,7 +519,16 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
 
 /** The members a resolved value carries, as completion offers them after its dot. */
 export const memberEntries = (value: CodeValue, options: SurfaceAnalysisOptions): readonly SurfaceEntry[] | null =>
-  membersOf(value, options, statRulesOf(options.surface));
+  surfaceMembersOf(value, options, statRulesOf(options.surface));
+
+/** `membersOf` as the surface exposes it: on a read-only surface, the sandbox's own values have no method and
+ *  every field read-only. A built-in such as `Math` keeps its members. */
+function surfaceMembersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: StatRules): readonly SurfaceEntry[] | null {
+  const members = membersOf(value, options, rules);
+  const { surface } = options;
+  const builtin = value.is === 'listed' && surface.builtins.some((entry) => entry.name === value.path.split('.')[0]);
+  return members && surface.readOnly && !builtin ? readOnlyEntries(members.filter((entry) => !isMethodEntry(entry))) : members;
+}
 
 /** Whether a map entry's key is missing from the names its map holds. False where those names are not given. */
 export function isUnknownEntry(name: ResolvedCodeName, options: SurfaceAnalysisOptions): boolean {
@@ -1157,7 +1166,7 @@ export function codeCompletions(
   const punctuationAt = beforeWord.trimEnd().length - 1;
   if (/\.\s*$/.test(beforeWord)) {
     const value = resolver.valueBefore(punctuationAt);
-    const members = value && membersOf(value, options, rules);
+    const members = value && surfaceMembersOf(value, options, rules);
     if (!members) return null;
     return { from, to: pos, options: members.map((member) => asCompletion(member, 'property')) };
   }

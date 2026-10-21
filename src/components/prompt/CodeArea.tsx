@@ -13,7 +13,7 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
-import { buildVariableTree, timingGlobalsOf, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
+import { buildVariableTree, readOnlyTree, timingGlobalsOf, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
@@ -305,10 +305,11 @@ export function CodeArea(props: CodeAreaProps) {
     const { slots: template, statNames, owner, placeholders, traits, entities, locations, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
     // A box that gives a menu beside stat maps, such as a World Tool's arguments, lists it first.
-    return [
+    const tree = [
       ...variables?.() ?? [],
       ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities, locations }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
     ];
+    return surface.readOnly ? readOnlyTree(tree) : tree;
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;

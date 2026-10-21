@@ -6,8 +6,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { authoredChipScene, type AuthoredWorld } from '@/lib/chipValues/authoredScene';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { encodePlaceholderToken, resolveEntityText, resolvePlaceholders } from '@/lib/placeholders';
+import { openingStateOf } from '@/lib/openingState';
 import type { Placeholder, PlaceholderRolls, Tool, ToolHandler, WorldOverview } from '@/types';
-import { buildToolSnapshot, sampleToolSnapshot, type ToolSnapshot } from './toolSnapshot';
+import { buildToolSnapshot, type ToolSnapshot } from './toolSnapshot';
+import { sampleToolSnapshot } from './sampleToolSnapshot';
 import { runToolCall } from './toolRunner';
 
 const ph = (id: string, name: string, texts: string[], over: Partial<Placeholder> = {}): Placeholder =>
@@ -21,8 +23,6 @@ const SHARED: Placeholder[] = [
   ph('weather', 'Weather', ['rain', 'fog', 'snow']),
   ph('sky', 'Sky', [`a sky of ${chip('weather')}`]),
   ph('mood', 'Mood', ['calm', 'grim']),
-  ph('weather-2', 'Weather', ['hail']),
-  ph('sky-part', 'Sky Part', ['clouds'], { ownerId: 'sky' }),
 ];
 
 function world(): AuthoredWorld {
@@ -30,7 +30,7 @@ function world(): AuthoredWorld {
     worldOverview: overview, stats: [], locations: [], traits: [],
     entities: [{
       id: 'ada', name: 'Ada', aliases: [],
-      placeholders: [ph('eyes', 'Eyes', ['green']), ph('eyes-owner', 'Owner', ['{{char}}'])],
+      placeholders: [ph('eyes', 'Eyes', ['green'])],
     }],
     dictionaries: [{
       id: 'book', name: 'Lore', placeholders: [ph('ink', 'Ink', ['blue'])],
@@ -43,7 +43,7 @@ function world(): AuthoredWorld {
 const ROLLS: PlaceholderRolls = { world: { weather: 'fog', mood: 'calm' } };
 const PINS = { mood: 'grim' };
 
-/** The world as play reads it: frozen rolls and pins in force, entity text under its owner. */
+/** The world as play reads it: frozen rolls and pins in force, in the scene a Template reads and the state a script reads. */
 function snapshotOf(w: AuthoredWorld = world()): ToolSnapshot {
   const placeholders = allPlaceholders(w);
   const opts = { placeholders, rolls: ROLLS, pins: PINS };
@@ -51,7 +51,9 @@ function snapshotOf(w: AuthoredWorld = world()): ToolSnapshot {
     resolve: (text) => resolvePlaceholders(text, opts),
     resolveEntity: (entity, text) => resolveEntityText(entity, text, opts),
   });
-  return buildToolSnapshot(scene, w.dictionaries ?? []);
+  const opening = openingStateOf(w);
+  const state = { ...opening, placeholders: { ...opening.placeholders!, rolls: ROLLS, pins: PINS } };
+  return buildToolSnapshot(scene, w.dictionaries ?? [], null, { state, authored: null });
 }
 
 const tool = (handler: ToolHandler): Tool => ({
@@ -60,65 +62,64 @@ const tool = (handler: ToolHandler): Tool => ({
 const script = (code: string) => tool({ kind: 'script', code });
 const run = async (code: string, s = snapshotOf()) => (await runToolCall(script(code), '{}', s)).text;
 
-describe('a Tool script reads resolved placeholders', () => {
+describe('a Tool script reads placeholder entries', () => {
   // The executor logs a script's console output to the host console; keep test output clean.
   beforeEach(() => { vi.spyOn(console, 'log').mockImplementation(() => {}); });
   afterEach(() => { vi.restoreAllMocks(); });
 
   it('reads a shared placeholder by name, as this playthrough rolled it', async () => {
-    expect(await run('return placeholders.Weather;')).toBe('fog');
+    expect(await run('return placeholders.Weather.text;')).toBe('fog');
   });
 
   it('reads a pinned value, not the roll underneath', async () => {
-    expect(await run('return placeholders.Mood;')).toBe('grim');
+    expect(await run('return placeholders.Mood.text;')).toBe('grim');
   });
 
   it('reads a placeholder that holds another chip fully resolved', async () => {
-    expect(await run('return placeholders.Sky;')).toBe('a sky of fog');
+    expect(await run('return placeholders.Sky.text;')).toBe('a sky of fog');
   });
 
-  it('reads an entity’s placeholder from its item, under that entity as owner', async () => {
-    expect(await run('return world.entities[0].placeholders;')).toBe(JSON.stringify({ Eyes: 'green', Owner: 'Ada' }));
+  // An entry's text reads as a Script reads it; the old surface's per-owner resolved text is gone (spec: Migrations).
+  it('reads an entity’s placeholder from its entry', async () => {
+    expect(await run('return entities.Ada.placeholders.Eyes.text;')).toBe('green');
     expect(await run('return "Eyes" in placeholders;')).toBe('false');
   });
 
-  it('reads a book’s placeholder from each of its entries', async () => {
-    expect(await run('return world.dictionary.map((e) => e.placeholders.Ink);')).toBe('["blue","blue"]');
+  it('reads a book’s placeholder from its dictionary entry', async () => {
+    expect(await run('return dictionaries.Lore.placeholders.Ink.text;')).toBe('blue');
     expect(await run('return "Ink" in placeholders;')).toBe('false');
   });
 
-  it('gives a repeated name the first placeholder’s value', async () => {
-    expect(await run('return placeholders.Weather;')).toBe('fog');
-  });
-
-  it('leaves out a placeholder another placeholder owns', async () => {
-    expect(await run('return Object.keys(placeholders);')).toBe('["Weather","Sky","Mood"]');
-  });
-
-  it('gives an empty map in a world with none', async () => {
+  it('gives no keys in a world with none', async () => {
     const bare: AuthoredWorld = { ...world(), placeholders: [], entities: [], dictionaries: [] };
-    expect(await run('return placeholders;', snapshotOf(bare))).toBe('{}');
+    expect(await run('return Object.keys(placeholders);', snapshotOf(bare))).toBe('[]');
   });
 
-  it('keeps the values when a script writes to them', async () => {
-    const code = 'try { placeholders.Weather = "sun"; placeholders.Extra = "x"; } catch (e) {} return placeholders;';
-    expect(JSON.parse((await run(code))!)).toEqual({ Weather: 'fog', Sky: 'a sky of fog', Mood: 'grim' });
+  it('keeps the value when a script writes to it, and has no pin', async () => {
+    const result = await runToolCall(script('placeholders.Weather.value = "sun"; return [placeholders.Weather.text, typeof placeholders.Weather.pin];'), '{}', snapshotOf());
+    expect(result.text).toBe('["fog","undefined"]');
+    expect(result.warnings).toEqual(['Read-only fields. Writes ignored: placeholders.Weather.value.']);
   });
 
-  it('reads the same value a Template chip renders for the same placeholder', async () => {
+  it('reads the same text a Template chip renders for the same placeholder', async () => {
     const s = snapshotOf();
     for (const [id, name] of [['weather', 'Weather'], ['sky', 'Sky'], ['mood', 'Mood']]) {
       const template = await runToolCall(tool({ kind: 'template', body: chip(id, 'template-placement') }), '{}', s);
-      expect(await run(`return placeholders[${JSON.stringify(name)}];`, s)).toBe(template.text);
+      expect(await run(`return placeholders[${JSON.stringify(name)}].text;`, s)).toBe(template.text);
     }
   });
 });
 
 describe('the sample snapshot', () => {
-  it('carries sample placeholders, shared and on an item', () => {
-    const sample = sampleToolSnapshot();
-    expect(Object.keys(sample.placeholders).length).toBeGreaterThan(0);
-    expect(sample.world.entities.some((e) => Object.keys(e.placeholders).length)).toBe(true);
-    expect(sample.world.dictionary.some((e) => Object.keys(e.placeholders).length)).toBe(true);
+  beforeEach(() => { vi.spyOn(console, 'log').mockImplementation(() => {}); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('carries sample placeholders, shared and on an entity and a book', async () => {
+    const code = `return [Object.keys(placeholders).length, Object.values(entities).some((e) => Object.keys(e.placeholders).length),
+      Object.values(dictionaries).some((d) => Object.keys(d.placeholders).length)];`;
+    const [shared, onEntity, onBook] = JSON.parse(await run(code, sampleToolSnapshot())) as [number, boolean, boolean];
+    expect(shared).toBeGreaterThan(0);
+    expect(onEntity).toBe(true);
+    expect(onBook).toBe(true);
   });
 });

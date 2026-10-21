@@ -435,6 +435,7 @@ export function buildVariableTree(
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
     { kind: 'group', label: 'Memories', info: globalInfo('memories'), children: memoryFields() },
+    { kind: 'field', label: 'notes', detail: 'string', info: globalInfo('notes') ?? '', access: 'readOnly', insert: 'notes' },
     ...timingGroups(timing),
   ];
   return top.map(leafForOneChild);
@@ -446,6 +447,26 @@ function leafForOneChild(node: VariableNode): VariableNode {
   if (node.kind !== 'group') return node;
   const children = node.children.map(leafForOneChild);
   return children.length === 1 && children[0].kind === 'field' ? children[0] : { ...node, children };
+}
+
+/** `nodes` as a read-only surface lists them (Q24): no method, every field read-only, and no level left empty. */
+export function readOnlyTree(nodes: readonly VariableNode[]): VariableNode[] {
+  return nodes.flatMap((node): VariableNode[] => {
+    if (node.kind === 'field') return isMethodEntry(node) ? [] : [{ ...node, access: 'readOnly' }];
+    if (node.kind === 'group') {
+      const children = readOnlyTree(node.children);
+      return children.length ? [{ ...node, children }] : [];
+    }
+    if (node.kind === 'names') {
+      const rows = node.rows.flatMap((row) => {
+        const field = row.field && !isMethodEntry(row.field) ? { ...row.field, access: 'readOnly' as const } : undefined;
+        const children = readOnlyTree(row.children);
+        return field || children.length ? [{ ...row, children, ...(field ? { field } : {}) }] : [];
+      });
+      return rows.length ? [{ ...node, rows }] : [];
+    }
+    return [node];
+  });
 }
 
 /** Every leaf under `nodes`, depth first. */

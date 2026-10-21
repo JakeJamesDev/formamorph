@@ -132,6 +132,7 @@ import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { Tip } from '@/components/ui/tooltip';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { openingStateOf } from '@/lib/openingState';
 import { useHelpWorldSource } from '@/lib/formaquestion/helpWorld';
 
 /** The Take Me There mark for a tab's search and add row. The registry says which tabs have one; Overview has no list. */
@@ -206,7 +207,7 @@ const WorldEditorInner = ({
   // unsaved edits included.
   const editorToolWorld = useCallback(() => {
     const world = getWorldData();
-    return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? []);
+    return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? [], null, { state: openingStateOf(world), authored: world });
   }, [getWorldData]);
   useHelpWorldSource(editorToolWorld, getWorldData);
 

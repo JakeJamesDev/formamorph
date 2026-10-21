@@ -1,65 +1,61 @@
 import { describe, it, expect } from 'vitest';
 import type { ToolParam } from '@/types';
-import { codeCompletions, codeDiagnostics } from '@/lib/statCodeAnalysis';
+import { codeCompletions, codeDiagnostics, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
+import { WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
 import { runToolScript } from './toolScript';
-import { sampleToolSnapshot } from './toolSnapshot';
-import { SCENE_MEMBERS, WORLD_MEMBERS, toolScriptSurface } from './toolScriptSurface';
+import { sampleToolSnapshot } from './sampleToolSnapshot';
+import { toolScriptSurface } from './toolScriptSurface';
 
 const params: ToolParam[] = [
   { name: 'name', type: 'string', description: 'Who to find.', required: true, options: [] },
   { name: 'mood', type: 'enum', description: '', required: false, options: ['calm', 'angry'] },
   { name: 'place-name', type: 'number', description: '', required: true, options: [] },
 ];
-const surface = toolScriptSurface(params, ['Weather', 'Hair Color']);
+const surface = toolScriptSurface(params);
+const named: SurfaceAnalysisOptions = {
+  surface, statNames: ['Health'], entities: [{ id: 'mara', name: 'Mara', traits: [], persona: false, stats: [] }], locations: ['Dock'],
+};
 
-function labelsAt(doc: string) {
+function labelsAt(doc: string, options: SurfaceAnalysisOptions = { surface }) {
   const pos = doc.indexOf('|');
-  return (codeCompletions(doc.replace('|', ''), pos, { surface })?.options ?? []).map((option) => option.label);
+  return (codeCompletions(doc.replace('|', ''), pos, options)?.options ?? []).map((option) => option.label);
 }
 const messages = (code: string) => codeDiagnostics(code, { surface }).map((d) => d.message);
-const names = (entries: readonly { name: string }[]) => entries.map((e) => e.name).sort();
 
 describe('the Tool script surface matches the sandbox', () => {
   const snapshot = sampleToolSnapshot();
 
   it('lists every global the script can reach, and each is really there', async () => {
     const globals = surface.globals.map((g) => g.name);
-    expect(globals).toEqual(['args', 'world', 'scene', 'placeholders', 'console']);
+    expect(globals).toEqual([
+      'args', 'stats', 'clock', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+    ]);
     const probe = `return [${globals.map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, { name: 'Wren' }, snapshot);
     expect(JSON.parse((result as { text: string }).text)).not.toContain('undefined');
   });
 
-  it('lists exactly the world’s and the scene’s fields', () => {
-    expect(names(WORLD_MEMBERS)).toEqual(Object.keys(snapshot.world).sort());
-    expect(names(SCENE_MEMBERS)).toEqual(Object.keys(snapshot.scene).sort());
-    expect(names(surface.members.get('scene.location')!)).toEqual(Object.keys(snapshot.scene.location!).sort());
-    expect(names(surface.members.get('scene.time')!)).toEqual(Object.keys(snapshot.scene.time!).sort());
-  });
-
-  it('names each item’s fields as the world holds them', () => {
-    const shape = (key: 'entities' | 'locations' | 'dictionary') =>
-      WORLD_MEMBERS.find((m) => m.name === key)!.detail.replace(/[{}[\]\s]/g, '').split(',').sort();
-    expect(shape('entities')).toEqual(Object.keys(snapshot.world.entities[0]).sort());
-    expect(shape('locations')).toEqual(Object.keys(snapshot.world.locations[0]).sort());
-    expect(shape('dictionary')).toEqual(Object.keys(snapshot.world.dictionary[0]).sort());
+  it('leaves out every name a world script has that the Tool surface lacks, and the sandbox lacks each too', async () => {
+    const absent = WORLD_SCRIPT_SURFACE.globals.map((g) => g.name).filter((name) => !surface.globals.some((g) => g.name === name));
+    expect(absent.sort()).toEqual(['discover', 'owner', 'self']);
+    const probe = `return [${[...absent, 'player', 'world', 'scene'].map((g) => `typeof ${g}`).join(', ')}];`;
+    const result = await runToolScript(probe, {}, snapshot);
+    expect(JSON.parse((result as { text: string }).text)).toEqual(['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']);
   });
 });
 
-describe('placeholders', () => {
-  it('offers the world’s placeholder names after a dot, each as resolved text', () => {
-    expect(labelsAt('return placeholders.|')).toEqual(['Weather', 'Hair Color']);
-    expect(surface.members.get('placeholders')!.every((m) => m.detail === 'string')).toBe(true);
+describe('no verb on the surface', () => {
+  it('offers the fields of each world value and none of its calls', () => {
+    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present']);
+    expect(labelsAt('return clock.|')).toEqual(['day', 'daypart', 'deltaHours', 'elapsedHours', 'previous']);
+    expect(labelsAt('return memories.|')).toEqual([]);
+    expect(labelsAt('return entities.Mara.|', named)).not.toEqual(expect.arrayContaining(['move']));
+    expect(labelsAt('return entities.Mara.|', named)).toEqual(expect.arrayContaining(['location', 'following', 'stats']));
+    expect(labelsAt('return entities.Mara.|', named).filter((label) => ['move', 'follow', 'unfollow', 'diary'].includes(label))).toEqual([]);
   });
 
-  it('follows the names it is given, and offers none without any', () => {
-    expect(toolScriptSurface(params).members.get('placeholders')).toEqual([]);
-    expect(toolScriptSurface(params, ['Tide']).members.get('placeholders')!.map((m) => m.name)).toEqual(['Tide']);
-  });
-
-  it('reads the map as plain text, not stat code’s placeholder tree', () => {
-    expect(messages('return placeholders.Weather + placeholders["Hair Color"];')).toEqual([]);
-    expect(messages('placeholders.Weather = "sun";')).toEqual(['This script never returns, so the Tool sends its empty result.']);
+  it('keeps a built-in’s calls', () => {
+    expect(labelsAt('return Math.|')).toContain('floor');
   });
 });
 
@@ -78,23 +74,14 @@ describe('args', () => {
   });
 });
 
-describe('completions and diagnostics read the surface', () => {
-  it('offers the world’s and the scene’s fields after a dot', () => {
-    expect(labelsAt('return world.|')).toEqual(['entities', 'locations', 'dictionary']);
-    expect(labelsAt('return scene.location.|')).toEqual(['id', 'name']);
+describe('diagnostics read the surface', () => {
+  it('marks the retired globals unknown', () => {
+    expect(messages('return world.entities;')).toEqual(['“world” isn’t available in a Tool script.']);
+    expect(messages('return scene.present;')).toEqual(['“scene” isn’t available in a Tool script.']);
   });
 
-  it('reads the path through optional chaining and spaces, as the sandbox does', () => {
-    expect(labelsAt('return scene?.location?.|')).toEqual(['id', 'name']);
-    expect(labelsAt('return scene . location .|')).toEqual(['id', 'name']);
-  });
-
-  it('flags stat-code names in the Tool script’s words', () => {
-    expect(messages('return stats.Health;')).toEqual(['“stats” isn’t available in a Tool script.']);
-  });
-
-  it('accepts a script that reads its own names and warns when it returns nothing', () => {
-    expect(messages('return world.entities.filter((e) => e.name === args.name);')).toEqual([]);
-    expect(messages('const x = scene.notes;')).toEqual(['This script never returns, so the Tool sends its empty result.']);
+  it('accepts a script that reads the script surface and warns when it returns nothing', () => {
+    expect(messages('return Object.values(entities).filter((e) => e.name === args.name).map((e) => e.location);')).toEqual([]);
+    expect(messages('const x = notes;')).toEqual(['This script never returns, so the Tool sends its empty result.']);
   });
 });

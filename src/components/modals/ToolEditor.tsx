@@ -3,7 +3,7 @@ import { Info, Plus, SquareFunction, Trash2 } from 'lucide-react';
 import type { ScriptTiming, Stat, Tool, ToolHandler, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming } from '@/types';
 import { StatCodeTemplateDialog } from './StatCodeTemplateDialog';
 import { migrateStatCodeRoutes } from '@/lib/statCodeRoutes';
-import type { CodeTraitPlace } from '@/lib/statCodeAnalysis';
+import type { CodeTraitPlace, SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -28,10 +28,10 @@ import {
 } from '@/lib/tools/toolDraft';
 import { infoWithAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
-import { buildToolVariableTree, type ToolVariableNames } from '@/lib/tools/toolVariableTree';
 import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
 import { SCRIPT_TIMING_OF_TOOL, toolTimingOf } from '@/lib/tools/worldTools';
 import { statBoxAnalysisOptions, type StatCodeNames } from '@/lib/statCodeBoxOptions';
+import { statCodeNames } from '@/lib/statCodeTestRun';
 import { useCodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { settleCodeUseReveal, useCodeUseReveal } from '@/lib/codeUseReveal';
@@ -358,12 +358,13 @@ function WorldToolTemplates({ params, timing, worldCode, hasExistingCode, onInse
   );
 }
 
-function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names, home, worldCode }: TabProps & {
-  onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[]; home: ToolHome;
+function HandlerTab({ draft, onChange, onKindChange, problems, chipReads, codeNames, home, worldCode }: TabProps & {
+  onKindChange: (kind: ToolHandler['kind']) => void; home: ToolHome;
   /** The open world's script names. Absent, a World Tool's script completes against its surface alone. */
   worldCode?: WorldToolCode;
-  /** The open world's names, which the script's Variable menu lists. Null with only the sample world. */
-  names: ToolVariableNames | null;
+  /** The open world's names, which a user Tool's script completes against and its Variable menu lists. Null with
+   *  only the sample world. */
+  codeNames: StatCodeNames | null;
   /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
   chipReads: ValueLookup;
 }) {
@@ -372,12 +373,15 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
   const named = namedParams(params);
   const source = LOOKUP_SOURCES.find((s) => handler.kind === 'lookup' && s.value === handler.source);
   const handlerError = problems.handler && HANDLER_PROBLEM[problems.handler];
-  const surface = useMemo(() => toolScriptSurface(params, placeholderNames), [params, placeholderNames]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
-  const variables = useCallback(() => buildToolVariableTree(params, names), [params, names]);
+  // A user Tool's script reads the same surface, without writes (Q24).
+  const userAnalysis = useMemo((): SurfaceAnalysisOptions => {
+    const surface = toolScriptSurface(params);
+    return codeNames ? statBoxAnalysisOptions(codeNames, { selfName: '', surface }) : { surface };
+  }, [params, codeNames]);
   // A World Tool's script runs on the Scripts' sandbox, so its box reads that surface with `args` beside it.
   const scriptTiming = toolTimingOf(draft);
-  const worldAnalysis = useMemo(() => {
+  const worldAnalysis = useMemo((): SurfaceAnalysisOptions => {
     const worldSurface = worldToolSurface(params, scriptTiming);
     if (!worldCode) return { surface: worldSurface };
     return statBoxAnalysisOptions(worldCode.names, {
@@ -464,13 +468,13 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
       {handler.kind === 'script' && home === 'world' && (
         <CodeArea
           label="Script" ariaLabel="Script" rows={10} surface={worldAnalysis.surface} variables={argsMenu}
-          statNames={'statNames' in worldAnalysis ? worldAnalysis.statNames : undefined}
-          placeholders={'placeholders' in worldAnalysis ? worldAnalysis.placeholders : undefined}
-          entities={'entities' in worldAnalysis ? worldAnalysis.entities : undefined}
-          locations={'locations' in worldAnalysis ? worldAnalysis.locations : undefined}
+          statNames={worldAnalysis.statNames}
+          placeholders={worldAnalysis.placeholders}
+          entities={worldAnalysis.entities}
+          locations={worldAnalysis.locations}
           traits={worldCode?.names.traitPlaces}
           owner={null}
-          lookup={'lookup' in worldAnalysis ? worldAnalysis.lookup : undefined}
+          lookup={worldAnalysis.lookup}
           navigation={navigation}
           revealLine={reveal?.line}
           onLineRevealed={() => { if (reveal) settleCodeUseReveal(reveal); }}
@@ -491,8 +495,14 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
       )}
       {handler.kind === 'script' && home !== 'world' && (
         <CodeArea
-          label="Script" ariaLabel="Script" rows={10} surface={surface} variables={variables}
-          info={<ScriptReference globals={surface.globals} />}
+          label="Script" ariaLabel="Script" rows={10} surface={userAnalysis.surface} variables={argsMenu}
+          statNames={userAnalysis.statNames}
+          placeholders={userAnalysis.placeholders}
+          entities={userAnalysis.entities}
+          locations={userAnalysis.locations}
+          traits={codeNames?.traitPlaces}
+          owner={null}
+          info={<ScriptReference globals={userAnalysis.surface.globals} />}
           value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
         />
       )}
@@ -566,7 +576,7 @@ export function ToolEditor({
   // Autocomplete and the Variable menu list the open world's names, never the sample world's.
   const { snapshot, open } = world;
   const toolSnapshot = useMemo(() => snapshot(), [snapshot]);
-  const placeholderNames = useMemo(() => (open ? Object.keys(toolSnapshot.placeholders) : []), [open, toolSnapshot]);
+  const codeNames = useMemo(() => (open && toolSnapshot.script.authored ? statCodeNames(toolSnapshot.script.authored) : null), [open, toolSnapshot]);
 
   const { gridRef, narrow, shownTab, tryItOpen, tabs } = useTryItPlacement(editTab, onEditTabChange);
 
@@ -595,7 +605,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} home={home} worldCode={worldCode} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} home={home} worldCode={worldCode} onKindChange={switchKind} chipReads={toolSnapshot.chips} codeNames={codeNames} /></TabsContent>
             </div>
           </ScrollArea>
         </div>

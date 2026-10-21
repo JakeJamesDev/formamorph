@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { openingFold } from '@/lib/openingState';
+import { openingFold, openingStateOf } from '@/lib/openingState';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
 import { metFromScene, metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
@@ -123,7 +123,7 @@ import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurn
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
-import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
+import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
 import { openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from "../lib/tools/worldToolTurn";
@@ -2150,9 +2150,12 @@ const GameViewer = ({
     } : null),
     [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns, stripMedia, semanticMemory, embedActionVec, semanticDiaries, characterDiaries],
   );
+  // What a user Tool's script reads (Q24): the turn's start as code has left it, as an On Call World Tool reads it.
+  // Set beside `prepareTurnStartCode`, once per render.
+  const toolScriptSourceRef = useRef<((base: TurnCodeState | null) => ToolScriptSource) | null>(null);
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(
-    () => buildToolSnapshot(liveScene(), dictionaries, toolMemorySource()),
+    () => buildToolSnapshot(liveScene(), dictionaries, toolMemorySource(), toolScriptSourceRef.current?.(null)),
     [liveScene, dictionaries, toolMemorySource],
   );
   // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
@@ -2896,8 +2899,8 @@ const GameViewer = ({
               turnLocation = target;
               scriptLocationRef.current = target;
             }
-            // An advance moves the time later prompts, Tool calls and scripts read (Q45).
-            if (target || world?.minutes !== undefined) executeTool = turnToolExecutor();
+            // An advance moves the time later prompts, Tool calls and scripts read (Q45); any write, what a user Tool reads.
+            if (target || world?.minutes !== undefined || written) executeTool = turnToolExecutor();
             if (written) {
               if (!beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
               onCallStateRef.current = written;
@@ -2913,7 +2916,9 @@ const GameViewer = ({
       const worldToolTurn = openWorldToolTurn(worldTools, onCall);
       worldToolTurnRef.current = worldToolTurn;
       const turnToolExecutor = () => worldToolTurn.executor(
-        snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, sceneBox()), dictionaries, toolMemorySource())),
+        snapshotToolExecutor(() => buildToolSnapshot(
+          liveScene(turnLocation, sceneBox()), dictionaries, toolMemorySource(), toolScriptSourceRef.current?.(onCallStateRef.current ?? turnBeforeBoxRef.current),
+        )),
       );
       let executeTool = turnToolExecutor();
 
@@ -3348,6 +3353,7 @@ const GameViewer = ({
           followers: entityFollowers,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
+          notes: liveScene().notes,
         };
         const turn: StatCodeTurn = {
           state,
@@ -3876,6 +3882,10 @@ const GameViewer = ({
   const prepareTurnStartCode = (base: TurnCodeState | null, timing: RunTiming = 'before') => {
     const stats = base?.globalStats ?? rawGlobalStatsRef.current;
     return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: turnClockRef.current ?? gameTime, calendar }, base ?? undefined, timing);
+  };
+  toolScriptSourceRef.current = (base) => {
+    const world = getWorldData();
+    return { state: prepareTurnStartCode(base)?.turn.state ?? openingStateOf(world), authored: world };
   };
 
   /**

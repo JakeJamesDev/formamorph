@@ -11,6 +11,7 @@ import { isRecord } from './toolValidation';
 import { runToolScript } from './toolScript';
 import { recallMatches } from './toolRecall';
 import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
+import { readOnlyWritesLines } from '@/lib/droppedWrites';
 import type { ToolSnapshot } from './toolSnapshot';
 
 /** Why a call returned an error result. `arguments` is the model's mistake; the others are the Tool's. */
@@ -20,6 +21,8 @@ export type ToolCallFailure = 'arguments' | 'handler' | 'script' | 'timeout';
 export interface ToolCallResult {
   text: string;
   failure?: ToolCallFailure;
+  /** What Try It shows under the text: the writes a script dropped. The AI never reads them. */
+  warnings?: readonly string[];
 }
 
 type ToolArgValue = string | number | boolean;
@@ -137,7 +140,8 @@ async function runHandler(tool: Tool, args: ToolArgs, snapshot: ToolSnapshot): P
     case 'script': {
       const result = await runToolScript(handler.code, args, snapshot);
       if ('error' in result) return failed(result.kind, result.error);
-      return { text: result.text === null || !result.text.trim() ? tool.emptyResult : result.text };
+      const text = result.text === null || !result.text.trim() ? tool.emptyResult : result.text;
+      return result.dropped ? { text, warnings: readOnlyWritesLines(result.dropped) } : { text };
     }
   }
 }

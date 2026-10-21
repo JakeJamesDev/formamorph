@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Tool, ToolScriptTiming } from '@/types';
-import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { sampleToolSnapshot } from '@/lib/tools/sampleToolSnapshot';
 import { statCodeNames } from '@/lib/statCodeTestRun';
 import { ToolEditor } from './ToolEditor';
 

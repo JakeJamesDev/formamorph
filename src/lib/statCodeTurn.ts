@@ -80,6 +80,8 @@ export interface SandboxState {
   /** The Memory panel's rows as the turn began, oldest first; between turns, as they stand. Absent, `memories` is
    *  empty, as in the editor. */
   memories?: readonly SandboxMemory[];
+  /** The player's notes. Absent, `notes` is empty, as in the editor. */
+  notes?: string;
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */
