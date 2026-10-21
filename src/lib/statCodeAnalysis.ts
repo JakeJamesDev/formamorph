@@ -547,6 +547,16 @@ export function isUnknownEntry(name: ResolvedCodeName, options: SurfaceAnalysisO
   return !!keys && !keys.some((entry) => entry.name === name.key);
 }
 
+/** The span of a retired global's member read at `name`, `scene.traits`, and the sentence naming its new form. */
+function retiredRead(name: SyntaxNode, code: string, surface: CodeSurface): { from: number; to: number; newForm: string } | null {
+  const members = surface.retired?.[code.slice(name.from, name.to)];
+  const read = name.parent;
+  if (!members || read?.name !== 'MemberExpression' || read.firstChild?.from !== name.from) return null;
+  const property = read.getChild('PropertyName');
+  const member = property ? code.slice(property.from, property.to) : '';
+  return Object.hasOwn(members, member) ? { from: read.from, to: read.to, newForm: members[member] } : null;
+}
+
 /** The member expression an assignment, `++` or `--` writes to, or null when it writes something else. */
 function writeTarget(node: SyntaxNode, code: string): SyntaxNode | null {
   if (node.name === 'AssignmentExpression') {
@@ -1396,6 +1406,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     const name = code.slice(from, to);
     if (declared.has(name) || known.has(name)) continue;
     if (overlapsAny(from, to, ranges)) continue;
+    const retired = retiredRead(cursor.node, code, surface);
+    if (retired) {
+      diagnostics.push({ ...retired, severity: 'error', message: `“${code.slice(retired.from, retired.to)}” isn’t available in ${surface.label}. ${retired.newForm}` });
+      continue;
+    }
     const suggestion = nearestName(name, [...known, ...declared]);
     diagnostics.push(suggested({
       from,

@@ -85,6 +85,8 @@ export interface CodeSurface {
   readOnly?: boolean;
   /** The Guide heading of each global that has one, for its card's Read in the Guide link. */
   guide?: Readonly<Record<string, DocTarget>>;
+  /** Retired globals by name: each member read and the sentence naming its new form (Q28). */
+  retired?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 const knownNames = new WeakMap<CodeSurface, ReadonlySet<string>>();

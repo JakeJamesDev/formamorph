@@ -3,6 +3,7 @@ import type {
 } from '@/types';
 import { PROMPT_REQUEST_KINDS } from '@/lib/reasoningEffort';
 import { TOOL_CATALOG } from './toolCatalog';
+import { migrateUserToolScript } from './toolTextMigration';
 
 /** The longest Tool name endpoints accept. */
 export const TOOL_NAME_MAX = 64;
@@ -98,7 +99,8 @@ function parseHandler(raw: unknown, world: boolean): ToolHandler | string | null
   if (raw.kind === 'script') {
     if (typeof raw.code !== 'string') return null;
     const fields = parseScriptFields(raw, world);
-    return typeof fields === 'string' ? fields : { kind: 'script', code: raw.code, ...fields };
+    // A world's Tool scripts migrate with the world; a user Tool's migrate here, at every load and import.
+    return typeof fields === 'string' ? fields : { kind: 'script', code: world ? raw.code : migrateUserToolScript(raw.code), ...fields };
   }
   return null;
 }
