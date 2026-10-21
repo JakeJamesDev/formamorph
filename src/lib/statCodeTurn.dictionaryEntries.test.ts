@@ -91,10 +91,9 @@ describe('dictionaries entries', () => {
     expect(valueOf(out)).toBe(1);
   });
 
-  // Q37's accepted limit until ticket 12 removes the gate: code that never names the global gets no entries.
-  it('carries no entries into code that reaches dictionaries only through a computed name', async () => {
+  it('reads real entries through a computed global name', async () => {
     const out = await run('const books = new Function("return dict" + "ionaries")();'
-      + ' return books.Lore.id === "lore" && Object.keys(books.Lore.entries).length === 0 ? 1 : 0;');
+      + ' return books.Lore.entries["Iron Crown"].value === "The old king’s crown." && Object.keys(books.Lore.entries).length === 2 ? 1 : 0;');
     expect(valueOf(out)).toBe(1);
   });
 

@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Entity, Stat, Trait, World } from '@/types';
 import { optionsFor, type UnitHome } from '@/lib/sandboxSnapshot';
+import type { StatCodeRunOptions } from '@/lib/statCodeExecutor';
 import { testCodeSnapshotOf } from '@/lib/statCodeTestRun';
 import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import type { RunTiming } from '@/lib/statCodeTiming';
@@ -33,6 +34,10 @@ const world: RuleWorld = {
   statUpdates: [], dictionaries: [], placeholders: [],
 };
 
+/** `options` with the entry-value resolver as what it makes of a text, since each snapshot holds its own closure. */
+const comparable = ({ resolveEntryValue, ...options }: StatCodeRunOptions) =>
+  ({ ...options, resolved: resolveEntryValue?.('The tide') });
+
 const HOMES: Record<string, UnitHome> = {
   globalStat: { kind: 'globalStat', stat: world.stats[0] },
   entityStat: { kind: 'entityStat', entityId: 'tor', stat: tor.stats![0] },
@@ -56,7 +61,9 @@ describe('the Bench and Test Code read one world (ADR-0005, Q9)', () => {
           ...(timing === 'output' && { narration: SAMPLE_SENTENCE }),
           ...(timing === 'switch' && { switched: 'sample' as const }),
         };
-        expect(optionsFor(benchSnapshotOf(world, timing), unit)).toEqual(optionsFor(testCodeSnapshotOf(world, timing), unit));
+        const bench = comparable(optionsFor(benchSnapshotOf(world, timing), unit));
+        expect(bench).toEqual(comparable(optionsFor(testCodeSnapshotOf(world, timing), unit)));
+        expect(bench.resolved).toBe('The tide');
       });
     }
   }

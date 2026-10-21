@@ -192,6 +192,7 @@ interface Board {
   inPlay: CodeEntities;
   placeholders: StatCodeRunOptions['placeholders'];
   dictionaries: StatCodeRunOptions['dictionaries'];
+  resolveEntryValue?: StatCodeRunOptions['resolveEntryValue'];
   places?: SandboxPlaces;
   ownerStats: (id: string) => SandboxStats;
   placeholderDefs: readonly Placeholder[];
@@ -258,6 +259,7 @@ function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] 
     traits, inPlay, placeholderDefs, ownerStats,
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners),
+    ...(state.resolveText ? { resolveEntryValue: (value: string) => resolve(value, null) } : {}),
     ...(state.places ? { places: codePlaces(state.places, placeholderDefs, resolve) } : {}),
   };
 }
@@ -311,7 +313,8 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
     return {
       clock: state.clock, ...(read.stats.turn ? { turn: read.stats.turn } : {}), enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
-      ...(owner && { owner }), dictionaries: read.dictionaries, ...(unit.prompts && { prompts: unit.prompts }),
+      ...(owner && { owner }), dictionaries: read.dictionaries, ...(read.resolveEntryValue && { resolveEntryValue: read.resolveEntryValue }),
+      ...(unit.prompts && { prompts: unit.prompts }),
       ...(read.places && { places: read.places }),
       ...(unit.timing === 'output' && unit.narration !== undefined && {
         narration: typeof unit.narration === 'string' ? sampleNarration(unit.narration) : unit.narration,
