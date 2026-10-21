@@ -119,7 +119,7 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 - **Probes**, outside the gates:
   - **Bar (Q9):** the 5 new cases pass on 80% of runs on the cloud default endpoint, with 5 or more runs per case, and the existing code cases do not drop.
   - **Rider arm (Q10):** the Quick Reference plus the rider's names, against the Quick Reference alone.
-  - **Tool arm (Q19):** the Quick Reference plus the code test, against the Quick Reference alone. The cloud default takes no function calls, so this arm runs on a local tool-calling model in a GPU window the user agrees to. The function ships on by default only if this arm shows a gain. Otherwise it ships off.
+  - **Tool arm (Q19):** the Quick Reference plus the code test, against the Quick Reference alone. This arm can run on the cloud default since 2026-10-21, while its server runs with `--enable-auto-tool-choice --tool-call-parser gemma4`. Otherwise it runs on a local tool-calling model in a GPU window the user agrees to. The function ships on by default only if this arm shows a gain. Otherwise it ships off.
 
 ## Out of Scope
 

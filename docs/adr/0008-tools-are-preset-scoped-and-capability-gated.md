@@ -4,7 +4,7 @@
 
 ## Context
 
-The AI can call a Tool during a request to get information it lacks, such as an entity's full entry. Our probes showed tool calling works on some models (MeroMero) and not others. One hosted endpoint rejects any request that carries tools with an HTTP 400.
+The AI can call a Tool during a request to get information it lacks, such as an entity's full entry. Our probes showed tool calling works on some models (MeroMero) and not others. A hosted endpoint rejects any request that carries tools with an HTTP 400 when its server runs without tool calling.
 
 ## Decision
 

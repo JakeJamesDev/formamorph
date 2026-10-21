@@ -30,7 +30,7 @@ Spec: Q18; story 32; Further Notes (probe work, endpoints without Tool support).
 
 **World pick:** the drone world (the scripts showcase) ships `lock_target`, a During AI Output Tool with Stack Calls off. It marks the locked enemy as `**⌖ Name**` for the rest of the reply.
 
-**Cloud model can't take Tools (2026-10-17, spec Q49).** A request to the cloud default endpoint with `tools` returns HTTP 400:
+**Cloud model can't take Tools (2026-10-17, spec Q49).** Resolved 2026-10-21: the server now runs with `--enable-auto-tool-choice --tool-call-parser gemma4`. A request to the cloud default endpoint with `tools` returns HTTP 400:
 
 > "auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set
 

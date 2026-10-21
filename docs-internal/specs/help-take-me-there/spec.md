@@ -8,7 +8,7 @@ Spec session: help-take-me-there — spec
 
 A Formaquestion answer tells the player where a control lives: "open Settings, then the Endpoint tab". The player then closes or moves the help window and hunts for the screen. Nothing in the answer opens it. The Formaquestion spec named a deep link as a later effort (its Q3). This is that effort.
 
-An AI-driven jump is not an option for most players: the default cloud endpoint refuses every function call, so a navigate function would only ever fire on local models.
+An AI-driven jump is not an option for most players: the default cloud endpoint refuses every function call, so a navigate function would only ever fire on local models. (2026-10-21: the cloud endpoint now takes function calls while its server runs with `--enable-auto-tool-choice --tool-call-parser gemma4`.)
 
 ## Solution
 

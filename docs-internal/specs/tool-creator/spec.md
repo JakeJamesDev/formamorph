@@ -173,6 +173,6 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 
 - Evidence: `docs-internal/specs/narration-tool-call-probe/` — especially `involved-rescore-findings.md` (retrieve-first description, 12/12 involved coverage) and `prefill-order-findings.md` (entity order has no effect on the control).
 - **Ruled: reasoning is kept between rounds.** `reasoning-rounds-findings.md` measured both shapes on MeroMero via LM Studio: 12/12 completion and 12/12 involved coverage either way, with 21% less reasoning after the lookup when the model's own reasoning rides the assistant message. LM Studio returns 200 for `reasoning_content` and for `reasoning`, and renders either into the prompt (58 to 226 more prompt tokens than the stripped history). The prefill breakage in `prefill-order-findings.md` is a different operation: text prefilled into an open thought, not the model's closed reasoning echoed back.
-- The cloud default endpoint rejects `tool_choice: "auto"` today. Capability detection keeps Tools off it until its server enables tool calling.
+- The cloud default endpoint takes Tools since 2026-10-21, while its server runs with `--enable-auto-tool-choice --tool-call-parser gemma4`. Capability detection keeps Tools off it whenever the server runs without them.
 - Only MeroMero is proven to complete the loop. Cydonia and a non-tool model should be tried once the loop ships, to confirm that "no Tools sent" behaves well.
 - Preset export shape changes (Tools added). World and save export shapes do not.

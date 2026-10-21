@@ -83,7 +83,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q45 | The Guide contents list has one collapsible row per page. Its expander is a small plain chevron with no outline and no hover fill (user, in ticket 16) |
 | Q46 | On the mobile sheet, opening moves focus to the sheet, not to a text field, so the on-screen keyboard opens only when the player taps a field. The Android back action closes Formaquestion first whenever it is open (ticket 17) |
 | Q47 | Keyword search gets authored player keywords on every how-to section, plus word stemming (ticket 27). Ticket 20 measured 2 of 8 player-worded questions finding the right section |
-| Q48 | Lookup mode stays. The default cloud endpoint rejects tool calls, so it serves local models with tool support. On MeroMero it answered 81% completely against 63% for retrieval, at 4.6 times the input tokens (ticket 22) |
+| Q48 | Lookup mode stays. The default cloud endpoint rejects tool calls, so it serves local models with tool support. On MeroMero it answered 81% completely against 63% for retrieval, at 4.6 times the input tokens (ticket 22). **2026-10-21:** the cloud endpoint now takes tool calls while its server runs with `--enable-auto-tool-choice --tool-call-parser gemma4` |
 | Q49 | The lookup prompt starts with every search hit under the retrieval budget, not the best hit only (ticket 28) |
 | Q50 | The lookup prompt drops the contents list, and a re-probe must show the scores hold; otherwise the list comes back (ticket 28) |
 | Q51 | The surface hint uses a table of exact UI labels per surface id, not names derived from ids (ticket 29) |
