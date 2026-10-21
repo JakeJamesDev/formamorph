@@ -4,7 +4,7 @@
  * names, so each name list is one `Name` row to type over.
  */
 
-import type { AnalysisOptions, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
+import type { AnalysisOptions, CodeDictionaryNames, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import { surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
@@ -12,7 +12,7 @@ import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -134,6 +134,7 @@ interface OwnLists {
   traits?: (at: Path) => readonly VariableNameRow[];
   placeholders: (at: Path) => readonly VariableNameRow[];
   stats?: (at: Path) => readonly VariableNameRow[];
+  entries?: (at: Path) => readonly VariableNameRow[];
 }
 
 /** An entity's, the persona's or a dictionary's fields, its maps as name lists. `where` ends their empty messages. */
@@ -143,6 +144,7 @@ const ownerFields = (path: Path, entries: readonly SurfaceEntry[], lists: OwnLis
     if (entry.name === 'placeholders') return nameList('Placeholders', lists.placeholders(at), `No placeholders ${where}`, entry.info);
     if (entry.name === 'stats' && lists.stats) return nameList('Stats', lists.stats(at), `No stats ${where}`, entry.info);
     if (entry.name === 'diary') return lineCallField(path, entry);
+    if (entry.name === 'entries' && lists.entries) return nameList('Entries', lists.entries(at), `No entries ${where}`, entry.info);
     return undefined;
   });
 
@@ -312,8 +314,12 @@ export function buildVariableTree(
     stats: (at) => statNameRows(at, (entity.stats ?? []).map((name) => ({ name, trail: [] }))),
   } : typeOverLists, 'on this entity');
 
-  const dictionaryFields = (path: Path, dictionaryId: string | null) => ownerFields(path, DICTIONARY_FIELDS, {
-    placeholders: (at) => (dictionaryId === null ? typeOverPlaceholders(at) : ownedRows(dictionaryId, at, [])),
+  const entryFields = (at: Path) => fields(at, DICTIONARY_ENTRY_FIELDS);
+  const dictionaryFields = (path: Path, dictionary: CodeDictionaryNames | null) => ownerFields(path, DICTIONARY_FIELDS, {
+    placeholders: (at) => (dictionary === null ? typeOverPlaceholders(at) : ownedRows(dictionary.id, at, [])),
+    entries: (at) => (dictionary?.entries
+      ? keyedLastWins(dictionary.entries).map((entry) => ({ name: entry.name, trail: [], children: entryFields(keyed(at, entry.name)) }))
+      : templateRows(at, entryFields)),
   }, 'in this dictionary');
 
   // Any persona entity can be played, so the persona's lists hold each one's names once, its owner as the trail.
@@ -352,7 +358,7 @@ export function buildVariableTree(
   const placeholderList = names ? placeholderRows(pathMap?.top ?? [], placeholders, []) : typeOverPlaceholders(placeholders);
   const dictionaryRows = names
     ? keyedLastWins(names.placeholders?.dictionaries ?? []).map((dictionary) => ({
-      name: dictionary.name, trail: [], children: dictionaryFields(keyed(dictionaries, dictionary.name), dictionary.id),
+      name: dictionary.name, trail: [], children: dictionaryFields(keyed(dictionaries, dictionary.name), dictionary),
     }))
     : templateRows(dictionaries, (at) => dictionaryFields(at, null));
 

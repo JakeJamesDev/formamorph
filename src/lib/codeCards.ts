@@ -26,7 +26,7 @@ export type DeclarationKind = 'const' | 'let' | 'var' | 'function' | 'class' | '
 /** What a card names: a sandbox global, a member of one, an entry of one of the world's maps, a name the
  *  code declares, or a template slot. */
 export type CodeCardKind =
-  | 'global' | 'property' | 'method' | 'stat' | 'trait' | 'placeholder' | 'entity' | 'dictionary' | 'location'
+  | 'global' | 'property' | 'method' | 'stat' | 'trait' | 'placeholder' | 'entity' | 'dictionary' | 'entry' | 'location'
   | DeclarationKind | 'slot';
 
 /** The card's first line: what the name is, the path it reads as, and its type. A declared name has no type. */
@@ -120,6 +120,7 @@ function memberRootName(value: CodeValue): string {
     case 'placeholders': return 'Placeholder';
     case 'entity': case 'owner': return 'Entity';
     case 'dictionary': return 'Dictionary';
+    case 'dictionaryEntry': return 'DictionaryEntry';
     case 'persona': return 'persona';
     case 'clock': case 'listed': return value.path;
     default: return value.is;
@@ -447,6 +448,16 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
       const card = world('dictionary', keyPath('dictionaries', name.key), 'Dictionary');
       const record = options.lookup?.dictionary(name.key);
       return record ? { ...card, ...dictionaryDetails(record) } : card;
+    }
+    case 'dictionaryEntry': {
+      const card = world('entry', keyPath(`${keyPath('dictionaries', name.dictionary)}.entries`, name.key), 'DictionaryEntry');
+      const id = options.placeholders?.dictionaries?.findLast((book) => book.name === name.dictionary)
+        ?.entries?.findLast((entry) => entry.name === name.key)?.id;
+      const record = options.lookup?.dictionary(name.dictionary);
+      const entry = id === undefined ? undefined : record?.dictionary.entries.find((each) => each.id === id);
+      return entry && record
+        ? { ...card, rows: [{ label: 'Trigger Keywords', value: listText(entry.key) }], item: { kind: 'dictionary', dictionaryId: record.dictionary.id } }
+        : card;
     }
     case 'location': {
       const card = world('location', name.key, 'Location');

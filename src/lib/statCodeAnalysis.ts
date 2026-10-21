@@ -18,9 +18,10 @@ import type { Placeholder } from '@/types';
 import {
   nearestName, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
 } from '@/lib/codeSurface';
+import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -92,8 +93,14 @@ export interface CodeOwnerName {
 export interface CodePlaceholders {
   list: readonly Placeholder[];
   owners?: PlaceholderOwners;
-  /** Every dictionary in authored order. Absent, dictionary names are neither offered nor checked. */
-  dictionaries?: readonly CodeOwnerName[];
+  /** Every dictionary in authored order. Absent, dictionary names are neither offered nor checked. A book's
+   *  `entries`, absent, leaves its entry names neither offered nor checked. */
+  dictionaries?: readonly CodeDictionaryNames[];
+}
+
+/** A book's code name and its enabled entries under their code names. */
+export interface CodeDictionaryNames extends CodeOwnerName {
+  entries?: readonly SandboxDictionaryEntry[];
 }
 
 /** One trait as a template slot lists it, placed in its owner's tree. */
@@ -420,6 +427,16 @@ function mapKeyEntries(map: CodeValue, options: AnalysisOptions, dotted: boolean
       const books = options.placeholders?.dictionaries;
       return books ? mapNameEntries(books.map((book) => book.name), 'dictionary', dotted) : null;
     }
+    case 'dictionaryEntryMap': {
+      const books = options.placeholders?.dictionaries;
+      if (!books) return null;
+      // An unknown book reads as the blank book, whose entries map is empty.
+      const book = books.findLast((each) => each.name === map.dictionary);
+      const entries = book ? book.entries : [];
+      return entries && [...new Set(entries.map((entry) => entry.name))]
+        .filter((name) => !dotted || isIdentifier(name))
+        .map((name) => ({ name, detail: 'entry', info: `The “${name}” entry in the “${map.dictionary}” dictionary` }));
+    }
     default: return undefined;
   }
 }
@@ -483,6 +500,7 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'entity': case 'owner': return ENTITY_FIELDS;
     case 'persona': return PERSONA_FIELDS;
     case 'dictionary': return DICTIONARY_FIELDS;
+    case 'dictionaryEntry': return DICTIONARY_ENTRY_FIELDS;
     case 'clock': return clockFieldsAt(value.path);
     case 'listed': return options.surface.members.get(value.path) ?? null;
     default: return null;
@@ -501,6 +519,7 @@ export function isUnknownEntry(name: ResolvedCodeName, options: SurfaceAnalysisO
       case 'trait': return mapKeyEntries({ is: 'traitMap', owner: name.owner }, options, false);
       case 'entity': return mapKeyEntries({ is: 'entityMap' }, options, false);
       case 'dictionary': return mapKeyEntries({ is: 'dictionaryMap' }, options, false);
+      case 'dictionaryEntry': return mapKeyEntries({ is: 'dictionaryEntryMap', dictionary: name.dictionary }, options, false);
       case 'placeholder': return placeholderKeysInBrackets(name.owner, name.path.slice(0, -1), options, statRulesOf(options.surface));
       default: return null;
     }
