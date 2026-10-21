@@ -51,7 +51,12 @@ const world = {
     },
     { id: 'tom', name: 'Old Tom', traits: [], placeholders: [] },
   ] as Entity[],
-  dictionaries: [{ id: 'lore', name: 'Lore', entries: [], placeholders: [ph('era', 'Era', ['first'])] }] as Dictionary[],
+  dictionaries: [{
+    id: 'lore', name: 'Lore', placeholders: [ph('era', 'Era', ['first'])], entries: [
+      { id: 'crown', name: 'Iron Crown', key: ['crown'], value: 'A crown.' },
+      { id: 'sealed', name: 'Sealed', key: ['vault'], value: 'Hidden.', enabled: false },
+    ],
+  }] as Dictionary[],
 };
 
 /** The names as the stat box hands them to the editor. */
@@ -99,7 +104,7 @@ const tree = buildVariableTree(editorNames());
 const templateTree = buildVariableTree();
 const emptyTree = buildVariableTree({});
 
-const NAME_LISTS: Record<string, string> = { traits: 'Traits', placeholders: 'Placeholders', stats: 'Stats' };
+const NAME_LISTS: Record<string, string> = { traits: 'Traits', placeholders: 'Placeholders', stats: 'Stats', entries: 'Entries' };
 
 /** A surface list as its level reads: each name-keyed map is a name list under its title. */
 const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) => NAME_LISTS[entry.name] ?? entry.name);
@@ -248,6 +253,12 @@ describe('entities, the persona and dictionaries', () => {
     expect(levelAt(tree, 'Persona')).toEqual(asLevel(PERSONA_FIELDS));
     expect(levelAt(tree, 'Dictionaries', 'Lore', 'Placeholders')).toEqual(['Era']);
     expect(inserts(tree, 'Dictionaries', 'Lore', 'Placeholders', 'Era', 'value')).toBe('dictionaries.Lore.placeholders.Era.value');
+  });
+
+  it('lists a dictionary’s enabled entries under it, each with its four fields', () => {
+    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries')).toEqual(['Iron Crown']);
+    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown')).toEqual(['id', 'name', 'keys', 'value']);
+    expect(inserts(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown', 'keys')).toBe('dictionaries.Lore.entries["Iron Crown"].keys');
   });
 
   it('opens the clock to its members and its previous to the start of the turn', () => {

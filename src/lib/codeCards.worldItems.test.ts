@@ -3,6 +3,7 @@ import { codeCard, CARD_LIST_CAP, listText, placeholderValues, scopedKind, type 
 import { statBoxLookup, type CodeBoxOwner, type CodeCardWorld } from './codeWorldLookup';
 import { statCodeCompletions, type SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
+import { codeDictionaries } from './statCodePlaceholders';
 import { statCodeOwners } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import type { PlaceholderOwners } from './placeholderHomes';
@@ -51,7 +52,11 @@ const tom: Entity = { id: 'tom', name: 'Tom', persona: true, traitLinks: [{ id: 
 const fen: GameLocation = { id: 'fen', name: 'Fen', placeholderPins: [{ placeholderId: 'mood', value: 'wary', valueId: 'wary' }] } as GameLocation;
 const fauna: Dictionary = {
   id: 'fauna', name: 'Fauna', description: 'Animals of the marsh.',
-  entries: [{ id: 'e1', name: 'Heron', key: ['heron'], value: 'A grey bird.' }, { id: 'e2', name: 'Eel', key: ['eel'], value: 'A slick fish.' }],
+  entries: [
+    { id: 'e1', name: 'Heron', key: ['heron'], value: 'A grey bird.' }, { id: 'e2', name: 'Eel', key: ['eel'], value: 'A slick fish.' },
+    { id: 'e3', name: 'Marsh Hen', key: ['hen', 'rail'], value: 'A shy bird.' },
+    { id: 'e4', name: 'Bittern', key: ['bittern'], value: 'Off.', enabled: false },
+  ],
 };
 
 const placeholders = [mood, look, maraLook, beast];
@@ -74,7 +79,7 @@ function box(owner: CodeBoxOwner | null, self: Stat, withWorld = true, from: Cod
     statNames: ['Courage', 'Stamina', 'Fatigue'],
     traits: worldTraitPlaces(from, placeholders).map((place) => place.name),
     entities: entityTraitNames(from, placeholders),
-    placeholders: { list: placeholders, owners: placeholderOwners, dictionaries: [{ id: 'fauna', name: 'Fauna' }] },
+    placeholders: { list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(from.dictionaries, placeholders) },
     lookup: statBoxLookup(owners, { owner, timing: 'after', self }, withWorld ? from : undefined),
   };
 }
@@ -254,8 +259,33 @@ describe('entity, dictionary and persona cards', () => {
   it('shows a dictionary’s description, its placeholders and its entry count', () => {
     const card = cardAt('return dictionaries.Fa|una.name;', worldBox);
     expect(card?.description).toBe('Animals of the marsh.');
-    expect(rowsOf(card)).toEqual({ Placeholders: 'Beast', Entries: '2' });
+    expect(rowsOf(card)).toEqual({ Placeholders: 'Beast', Entries: '4' });
     expect(card?.item).toEqual({ kind: 'dictionary', dictionaryId: 'fauna' });
+  });
+
+  it('describes a dictionary’s entries map and an entry’s four fields', () => {
+    expect(cardAt('return dictionaries.Fauna.ent|ries;', worldBox)?.signature).toEqual({ kind: 'property', path: 'Dictionary.entries', type: 'object' });
+    for (const [field, type] of [['id', 'string'], ['name', 'string'], ['keys', 'string[]'], ['value', 'string']]) {
+      const card = cardAt(`return dictionaries.Fauna.entries["Marsh Hen"].${field}|;`, worldBox);
+      expect(card?.signature).toEqual({ kind: 'property', path: `DictionaryEntry.${field}`, type });
+      expect(card?.access).toBe('readOnly');
+    }
+  });
+
+  it('shows an entry’s keywords through brackets, and gives an unknown or switched-off entry no card', () => {
+    const card = cardAt('return dictionaries.Fauna.entries["Marsh| Hen"].value;', worldBox);
+    expect(card?.signature).toEqual({ kind: 'entry', path: 'dictionaries.Fauna.entries["Marsh Hen"]', type: 'DictionaryEntry' });
+    expect(rowsOf(card)).toEqual({ 'Trigger Keywords': 'hen, rail' });
+    expect(card?.item).toEqual({ kind: 'dictionary', dictionaryId: 'fauna' });
+    expect(cardAt('return dictionaries.Fauna.entries.Bit|tern.value;', worldBox)).toBeNull();
+    expect(cardAt('return dictionaries.Fauna.entries.No|pe.value;', worldBox)).toBeNull();
+  });
+
+  it('completes a dictionary’s entry names and an entry’s fields', () => {
+    expect(labels('return dictionaries.Fauna.entries.|', worldBox)).toEqual(['Heron', 'Eel']);
+    expect(labels('return dictionaries.Fauna.entries["|', worldBox)).toEqual(expect.arrayContaining(['Heron', 'Eel', 'Marsh Hen']));
+    expect(labels('return dictionaries.Fauna.entries.Heron.|', worldBox)).toEqual(['id', 'name', 'keys', 'value']);
+    expect(labels('return dictionaries.Fauna.|', worldBox)).toEqual(['id', 'name', 'entries', 'placeholders']);
   });
 
   it('lists who the player can play on `persona`, and how code reaches the Custom Persona', () => {

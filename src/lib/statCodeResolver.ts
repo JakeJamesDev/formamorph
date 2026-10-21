@@ -48,6 +48,9 @@ export type CodeValue =
   | { is: 'owner' }
   | { is: 'dictionaryMap' }
   | { is: 'dictionary'; key: string }
+  /** A book's `entries`, `dictionary` its code name. */
+  | { is: 'dictionaryEntryMap'; dictionary: string }
+  | { is: 'dictionaryEntry'; dictionary: string; key: string }
   | { is: 'clock'; path: 'clock' | 'clock.previous' }
   /** An exact path the surface lists members for, like `Math` or `scene.location`. */
   | { is: 'listed'; path: string };
@@ -63,6 +66,7 @@ export type ResolvedCodeName = { key: string; from: number; to: number } & (
   | { kind: 'placeholder'; owner: PlaceholderOwner; path: readonly string[] }
   | { kind: 'entity' }
   | { kind: 'dictionary' }
+  | { kind: 'dictionaryEntry'; dictionary: string }
   /** The place a `location.move("<name>")` call names. */
   | { kind: 'location' }
   | { kind: 'declared'; at: number }
@@ -219,7 +223,9 @@ export function codeResolver(
       case 'persona': return ownerMap({ route: 'persona' }, key);
       case 'owner': return ownerMap({ route: 'owner' }, key);
       case 'dictionary':
+        if (key === 'entries') return { is: 'dictionaryEntryMap', dictionary: base.key };
         return key === 'placeholders' ? { is: 'placeholders', owner: { route: 'dictionary', dictionary: base.key }, path: [] } : null;
+      case 'dictionaryEntryMap': return { is: 'dictionaryEntry', dictionary: base.dictionary, key };
       case 'clock': return base.path === 'clock' && key === 'previous' ? { is: 'clock', path: 'clock.previous' } : null;
       default: return null;
     }
@@ -289,6 +295,7 @@ export function codeResolver(
       case 'traitMap': return { ...span, kind: 'trait', owner: base.owner };
       case 'entityMap': return { ...span, kind: 'entity' };
       case 'dictionaryMap': return { ...span, kind: 'dictionary' };
+      case 'dictionaryEntryMap': return { ...span, kind: 'dictionaryEntry', dictionary: base.dictionary };
       case 'placeholders':
         // Below the first key a member wins over a child of the same name, and nothing hangs off a member.
         if (base.path.slice(1).some(isPlaceholderEntryMember)) return null;

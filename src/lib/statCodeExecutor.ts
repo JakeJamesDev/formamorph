@@ -245,12 +245,22 @@ export interface SandboxStats {
   enabled?: Readonly<Record<string, boolean>>;
 }
 
-/** One entry of the sandbox's `dictionaries`: a book's code name, and its owner node in the placeholder tree. */
+/** One entry of a book's `entries`, by its code name. */
+export interface SandboxDictionaryEntry {
+  id: string;
+  name: string;
+  keys: readonly string[];
+  value: string;
+}
+
+/** One entry of the sandbox's `dictionaries`: a book's code name, its owner node in the placeholder tree, and its
+ *  enabled entries in authored order. */
 export interface SandboxDictionary {
   name: string;
   id?: string;
   /** Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
+  entries?: readonly SandboxDictionaryEntry[];
 }
 
 /** A stat's value and max, as one turn input carries them. */
@@ -763,10 +773,10 @@ const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build) => {
     get: (target, key) => typeof key !== 'string' || key in target ? target[key]
       : strays[key] || (strays[key] = entry(key, blank, true)),
   });
-  const readWrites = () => stringify(readers
+  const readRows = () => readers
     .map(([key, unknown, rows, written, tag]) => [key, unknown, rows(), written, tag])
-    .filter((row) => row[2].length || row[3].length));
-  return [proxy, readWrites, entry];
+    .filter((row) => row[2].length || row[3].length);
+  return [proxy, () => stringify(readRows()), entry, readRows];
 }`;
 
 /** The prelude that binds `names` to what `body` returns, with the read-only entry-map factory in scope as
@@ -852,14 +862,29 @@ const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceho
   (node ? indexOf.get(node) ?? -1 : -1);
 
 /** The fields on a dictionary entry. None takes a write. */
-const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'placeholders'] as const;
+const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'entries', 'placeholders'] as const;
 
-/** The `dictionaries` prelude, the later of two books sharing a name winning. */
+/** Whether code names `dictionaries`, so its run carries the entries. Temporary: ticket 12 (Lazy Heavy Text In
+ *  The Sandbox) removes it, and a computed global name reads empty entries until then (Q37). */
+const namesDictionaries = (code: string): boolean => /\bdictionaries\b/.test(code);
+
+/** The fields on an entry of a book's `entries`. None takes a write. */
+const DICTIONARY_ENTRY_READ_ONLY_FIELDS = ['id', 'name', 'keys', 'value'] as const;
+
+/** The `dictionaries` prelude, the later of two books or two entries sharing a name winning. A book's reader rows
+ *  are its `entries` map's rows. */
 const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], { indexOf }: FlatPlaceholderMap): string => {
-  const spec = [...new Map(dictionaries.map((book) => [book.name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders) }]))];
+  const entriesOf = (book: SandboxDictionary) =>
+    [...new Map((book.entries ?? []).map(({ id, name, keys, value }) => [name, { id, keys, value }]))];
+  const spec = [...new Map(dictionaries.map((book) =>
+    [book.name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders), entries: entriesOf(book) }]))];
   return readOnlyEntryMapPrelude(`dictionaries, ${DICTIONARY_WRITES}`, spec, [
-    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}, spec, { id: '', ph: -1 }, (key, data, unknown) =>`,
-    `  [{ id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) }, () => []]);`,
+    `const blankEntry = { id: '', keys: [], value: '' };`,
+    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}, spec, { id: '', ph: -1, entries: [] }, (key, data, unknown) => {`,
+    `  const [entries, , , readEntryRows] = entryMap(${JSON.stringify(DICTIONARY_ENTRY_READ_ONLY_FIELDS)}, data.entries, blankEntry, (name, entry, stray) =>`,
+    `    [{ id: entry.id, name: stray ? '' : name, keys: freeze([...entry.keys]), value: entry.value }, () => []]);`,
+    `  return [{ id: data.id, name: unknown ? '' : key, entries, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) }, readEntryRows];`,
+    `});`,
     `return [dictionaries, readWrites];`,
   ]);
 };
@@ -875,16 +900,21 @@ interface EntryWriteRow {
   tag: unknown;
 }
 
-/** The rows in a read-only entry map's dump; a malformed row is skipped. */
-function readEntryWriteRows(dump: string): EntryWriteRow[] {
-  const parsed: unknown = JSON.parse(dump);
-  return (Array.isArray(parsed) ? parsed : []).flatMap((row) => (Array.isArray(row) && typeof row[0] === 'string'
+/** The rows of a read-only entry map's reader; a malformed row is skipped. */
+const entryWriteRows = (rows: unknown): EntryWriteRow[] =>
+  (Array.isArray(rows) ? rows : []).flatMap((row) => (Array.isArray(row) && typeof row[0] === 'string'
     ? [{ name: row[0], unknown: row[1] === true, mapRows: row[2], fields: row[3], tag: row[4] ?? null }] : []));
-}
 
-/** The read-only fields the run wrote on `dictionaries` entries, as code spelled them. */
+/** The rows in a read-only entry map's dump. */
+const readEntryWriteRows = (dump: string): EntryWriteRow[] => entryWriteRows(JSON.parse(dump));
+
+/** The read-only fields the run wrote on `dictionaries` entries and their `entries`, as code spelled them. */
 const readDictionaryWrites = (dump: string): string[] =>
-  readEntryWriteRows(dump).flatMap(({ name, fields }) => readOnlyPaths(memberPath('dictionaries', name), fields));
+  readEntryWriteRows(dump).flatMap(({ name, fields, mapRows }) => {
+    const book = memberPath('dictionaries', name);
+    return [...readOnlyPaths(book, fields),
+      ...entryWriteRows(mapRows).flatMap((row) => readOnlyPaths(memberPath(`${book}.entries`, row.name), row.fields))];
+  });
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 export const memberPath = (root: string, name: string) =>
@@ -1434,7 +1464,7 @@ export const executeStatCode = async (
       placeholdersPrelude(placeholderMap),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
-      dictionariesPrelude(dictionaries, placeholderMap),
+      dictionariesPrelude(namesDictionaries(code) ? dictionaries : dictionaries.map(({ entries: _cost, ...book }) => book), placeholderMap),
       `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
       code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,

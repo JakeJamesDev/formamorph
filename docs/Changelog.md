@@ -47,6 +47,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A world persona's Locations are now where you can start as it, and its Starting Location dropdown is gone.** Enter World lists each of them beside the world's starting locations. It picks the first that is a starting location, else the first listed. A world that named a start loads without it.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
   - **Scripts now add a diary line through the entity, with `entities.Mira.diary(line)`.** A world that calls `diary("Mira", line)` is rewritten to the new form when it loads. The Variable menu inserts a one-item call, such as `discover`, directly.
+  - **Scripts can now read a dictionary's entries by name, with each entry's Trigger Keywords and Value.** Use `dictionaries.Lore.entries["Iron Crown"].keys` or `.value`. A disabled entry isn't listed. Hover cards and the Variable menu show them.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
   - **The relationship probe measures whether narration uses an absent relative without placing them in the scene.** It runs an A/B, relationship off vs on, on the shipped prompts.
