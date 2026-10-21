@@ -20,6 +20,7 @@
 //            `### Player Character`, each owner's section appended to the Stats chip
 //   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
 //   OB0      OB, with the stat prompts as committed at --s0-ref
+//            --s0-bound N gives S0 and OB0 every schema integer a ±N range, as the schema had before 1b757d529
 // The arms below are the request at BASE_REF with one change each, built as SB is:
 //   SU       SB, with C3's user line
 //   SN       SB, with no max keys in the schema, the format or the user line
@@ -29,6 +30,7 @@
 //   SH       SG with each group as a #### sub-heading and its stats flat beneath
 //   SP       SG with each group as a plain `Name: description` line and its stats flat beneath
 //   WA..WR   ticket 05's request (ded57a32), with one wording change each (WORDINGS below)
+//   K0..KN2R the stat prompts at SCALE_REF with one scale wording each (SCALES below); K0 is the fixed -20 to 20 line
 //   FA..FDG  ticket 23's framings on the request at 9f4400ad (FRAMINGS below); a G suffix sends SG's groups
 // A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
 //
@@ -38,6 +40,7 @@
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
 // misattributed (a spurious move whose stat the gold moves on another owner), invalid rows, duplicates,
 // cap hits, wall-clock ms, and prompt + completion tokens. `player-only` regrades every arm on player cells.
+// `SIZE` reads each reported value change's size: mean, p90, max, past 20, and past a quarter of the stat's range.
 //   L        a lean request: the owners' stats as name and reading, one format line, the narration; no world or rules
 //   LT       L, with the shipped regard sentence after the narration
 //   LV       L, asking for every stat's new reading; the probe turns each into its change
@@ -83,7 +86,7 @@ import type { StatPlacement } from '@/lib/statContext';
 import type { PlayerStat, StatGroup } from '@/types';
 import {
   parseJsonReply, parseOwnerBlocks, parseOwnerLines, parsePlainLines, scoreChanges,
-  type GoldCells, type Owner, type Parsed, type Score,
+  type Change, type GoldCells, type Owner, type Parsed, type Score,
 } from './entity-stats-score';
 
 const args = process.argv.slice(2);
@@ -97,7 +100,7 @@ const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
 const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'OB', 'SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'OB0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG',
-  'XR', 'XRG', 'XL', 'XLG', 'XC', 'XCG', 'XW', 'XWG', 'XT', 'XTG', 'XA', 'XAG', 'XF', 'XFG', 'XU', 'XUG', 'XUA', 'XUAG', 'XA1', 'XA1G', 'XA2', 'XA2G', 'XA3', 'XA3G', 'XA4', 'XA4G', 'XA5', 'XA5G', 'XA6', 'XA6G', 'XF1', 'XF1G', 'XF2', 'XF2G', 'XF3', 'XF3G', 'XF4', 'XF4G', 'XN', 'XNG', 'SV', 'SVG', 'L', 'LR', 'LT', 'LV', 'LD'] as const;
+  'XR', 'XRG', 'XL', 'XLG', 'XC', 'XCG', 'XW', 'XWG', 'XT', 'XTG', 'XA', 'XAG', 'XF', 'XFG', 'XU', 'XUG', 'XUA', 'XUAG', 'XA1', 'XA1G', 'XA2', 'XA2G', 'XA3', 'XA3G', 'XA4', 'XA4G', 'XA5', 'XA5G', 'XA6', 'XA6G', 'XF1', 'XF1G', 'XF2', 'XF2G', 'XF3', 'XF3G', 'XF4', 'XF4G', 'XN', 'XNG', 'SV', 'SVG', 'L', 'LR', 'LT', 'LV', 'LD', 'K0', 'KB', 'KR', 'KM', 'KS', 'KRS', 'KD', 'KW', 'KA', 'K100', 'K5', 'KN', 'KN2', 'KN2R'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -353,7 +356,13 @@ async function promptsAt(ref: string): Promise<{ system: string; user: string; t
 // Arms A to E derive from the text pass's prompts as they stood before the owner blocks, under the names they were written against.
 const { text: { system: defaultStatUpdatesPrompt, user: defaultStatUpdatesUserPrompt } } = await promptsAt('62e87af3c');
 const s0Prompts = arms.includes('S0') || arms.includes('OB0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
-const BASE_LAYOUT_ARMS: readonly Arm[] = ['SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP'];
+const s0Bound = args.includes('--s0-bound') ? Number(argVal('--s0-bound', '20')) : undefined;
+const bounded = (node: ResponseSchemaNode, n: number): ResponseSchemaNode => (node.type === 'integer'
+  ? { type: 'integer', minimum: -n, maximum: n }
+  : { ...node, properties: Object.fromEntries(Object.entries(node.properties).map(([k, v]) => [k, bounded(v, n)])) });
+const s0Bounded = (call: Call): Call =>
+  (s0Bound === undefined || !call.schema ? call : { ...call, schema: bounded(call.schema as ResponseSchemaNode, s0Bound) });
+const BASE_LAYOUT_ARMS: readonly Arm[] =['SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP'];
 const basePrompts = arms.some((arm) => BASE_LAYOUT_ARMS.includes(arm)) ? await promptsAt(BASE_REF) : undefined;
 
 /** One wording change on the stat prompts ticket 17 started from, each a checked text swap. */
@@ -369,6 +378,38 @@ const OWNED_INTRO = ["Each character's stats sit under their name.", `Each chara
 const OWNED_LAST = ['\n\n## Format', `\n- Each stat belongs to the character it sits under. ${OWNED}\n\n## Format`] as const;
 const SPLIT_SWAPS: Array<[string | RegExp, string]> = [[MAX_KEY_FORMAT, SPLIT_MAX], ['A value or maximum that did not move gets 0.', 'A stat or maximum that did not move gets 0.']];
 const REGARD_LAST = ['\n\n## Format', `\n${REGARD_ROUTE}\n\n## Format`] as const;
+
+/** Scale wordings on the request with the stat prompts at SCALE_REF and today's unbounded schema. Every arm
+ *  but K0 starts from the bare line KB; KN2R is what shipped. */
+const SCALE_REF = '7e3a25d59';
+const RANGE_LINE = 'Each is one signed whole number between -20 and 20.';
+const SCALE_LINE = 'Each is one signed whole number.';
+const SMALL_RULE = 'Pick a small whole number scaled loosely to';
+const SCALES: Record<string, Array<[string, string]>> = {
+  K0: [],
+  KB: [],
+  KR: [[SCALE_LINE, "Each is one signed whole number, sized against the stat's range: a minor moment moves it a small share of the range, a major one a large share."]],
+  KM: [[SCALE_LINE, "Each is one signed whole number in the same units as the stat's reading."]],
+  KD: [[SCALE_LINE, 'Each is one signed whole number: negative lowers the stat, positive raises it.']],
+  KW: [[SCALE_LINE, 'Each is one signed whole number, from a small step for a minor moment to a large jump for a major one.']],
+  KA: [[SCALE_LINE, "Each is one signed whole number between minus and plus the stat's range."]],
+  // K100 and K5 test whether the range sets the step a slight shift rounds to.
+  K100: [[SCALE_LINE, 'Each is one signed whole number between -100 and 100.']],
+  K5: [[SCALE_LINE, 'Each is one signed whole number between -5 and 5.']],
+  KN: [['Pick a small whole number scaled loosely to the stat\'s range and how big the moment was, and commit to it.',
+    "Pick a whole number sized to the stat's range and how big the moment was, and commit to it. A slight but clear shift still moves the stat by a noticeable amount."]],
+  KN2: [['- A value or maximum that did not move gets 0.', '- Only a value or maximum the turn did not touch gets 0. A slight but clear shift gets a noticeable number.']],
+  KN2R: [['- A value or maximum that did not move gets 0.', "- Only a value or maximum the turn did not touch gets 0. A slight but clear shift gets a noticeable number, a small share of the stat's range."]],
+  KS: [[SMALL_RULE, 'Pick a whole number sized to']],
+  KRS: [[SMALL_RULE, 'Pick a whole number sized to'], [SCALE_LINE, "Each is one signed whole number, sized against the stat's range: a minor moment moves it a small share of the range, a major one a large share."]],
+};
+const isScale = (arm: Arm) => arm in SCALES;
+const scalePrompts = arms.some(isScale) ? await promptsAt(SCALE_REF) : undefined;
+const scaled = (arm: Arm, owners: Owner[], narration: string): Call => {
+  const call = shippedCall(owners, narration, scalePrompts);
+  const swaps: Array<[string, string]> = arm === 'K0' ? [] : [[RANGE_LINE, SCALE_LINE], ...SCALES[arm]];
+  return { ...call, system: swaps.reduce((text, [from, to]) => swap(text, from, to), call.system) };
+};
 const WORDINGS = {
   // The user line names the regard shift beside the physical changes.
   WA: { user: [[USER_LINE, WA_USER]] },
@@ -547,9 +588,10 @@ function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (arm === 'S') return [shippedCall(owners, narration)];
   if (arm === 'OB') return [shippedCall(owners, narration, SHIPPED_PROMPTS, { persona: true })];
   if (arm === 'SB') return [baseLayoutCall(owners, narration, undefined, basePrompts!)];
-  if (arm === 'S0') return [shippedCall(owners, narration, s0Prompts)];
-  if (arm === 'OB0') return [shippedCall(owners, narration, s0Prompts, { persona: true })];
+  if (arm === 'S0') return [s0Bounded(shippedCall(owners, narration, s0Prompts))];
+  if (arm === 'OB0') return [s0Bounded(shippedCall(owners, narration, s0Prompts, { persona: true }))];
   if (isWording(arm)) return [worded(arm, owners, narration)];
+  if (isScale(arm)) return [scaled(arm, owners, narration)];
   if (isFraming(arm)) return [framed(arm, owners, narration)];
   if (isAblation(arm)) return [ablated(arm, owners, narration)];
   if (arm === 'SG') return [baseLayoutCall(owners, narration, 'described', basePrompts!)];
@@ -713,7 +755,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'LV') return parseJsonReply(readingsToChanges(replies[0].raw, owners), owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D' || isLean(arm)) return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'OB0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === null || id === PERSONA_ID || id === PLAYER_ID ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'OB0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isScale(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === null || id === PERSONA_ID || id === PLAYER_ID ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
@@ -739,6 +781,8 @@ if (args.includes('--dump')) {
 
 interface Result {
   arm: Arm; case: string; run: number; score: Score; player: Score; world: Score; parsed: Parsed; replies: Reply[]; ms: number;
+  /** Each nonzero value change's size beside its stat's range. */
+  sizes: Array<{ abs: number; range: number }>;
   /** Arm E: owners with a gold move the gate left out, and owners it named with nothing to move. */
   gate?: { missed: number; extra: number };
 }
@@ -774,7 +818,13 @@ await Promise.all(Array.from({ length: pool }, async () => {
       const score = scoreChanges(parsed.changes, c.expect, c.allow, worldSetup.loose.length && arm !== 'control' && arm !== 'C3P' ? [...scope, 'world'] : scope);
       const player = scoreChanges(parsed.changes, c.expect, c.allow, ['player']);
       const loose = scoreChanges(parsed.changes, c.expect, c.allow, ['world']);
-      results.push({ arm, case: c.id, run, score, player, world: loose, parsed, replies, ms, gate });
+      const statOf = (ch: Change) => (owners.find((o) => o.key === ch.owner) ?? playerOwner).stats.find((s) => s.name === ch.stat)
+        ?? playerOwner.stats.find((s) => s.name === ch.stat);
+      const sizes = parsed.changes.filter((ch) => ch.change !== 0).map((ch) => {
+        const stat = statOf(ch);
+        return { abs: Math.abs(ch.change), range: stat ? stat.max - stat.min : NaN };
+      });
+      results.push({ arm, case: c.id, run, score, player, world: loose, parsed, replies, ms, gate, sizes });
       const caps = replies.filter((r) => r.capHit).length;
       console.log(`[${arm}] ${c.id} #${run} exact=${score.exact ? 1 : 0} hits ${score.hits}/${score.expected} sign ${score.wrongSign} spur ${score.spurious} misattr ${score.misattributed} inv ${parsed.invalid}${parsed.unreadable ? ' UNREADABLE' : ''} dup ${score.duplicates}${caps ? ` CAP×${caps}` : ''}${gate ? ` gate-missed ${gate.missed} gate-extra ${gate.extra}` : ''} · ${ms}ms`);
       if (args.includes('--show')) {
@@ -852,6 +902,21 @@ for (const arm of arms) {
   if (!xs.length) continue;
   console.log(`${arm.padEnd(8)} missed ${tally(xs.flatMap((r) => r.score.missedCells.map((c) => `${r.case}:${c}`)))}`);
   console.log(`${''.padEnd(8)} spur   ${tally(xs.flatMap((r) => r.score.spuriousCells.map((c) => `${r.case}:${c}`)))}`);
+}
+
+console.log('\nSIZE per arm (nonzero value changes: count, mean, p90, max, past 20, past a quarter of the range; narrow = range ≤ 40)');
+for (const arm of arms) {
+  const all = results.filter((r) => r.arm === arm).flatMap((r) => r.sizes);
+  if (!all.length) continue;
+  const narrow = all.filter((s) => s.range <= 40);
+  const line = (xs: typeof all) => {
+    const abs = xs.map((s) => s.abs);
+    const avg = abs.reduce((n, x) => n + x, 0) / (abs.length || 1);
+    return `n ${String(xs.length).padStart(4)}  mean ${avg.toFixed(1).padStart(5)}  p90 ${String(p90([...abs])).padStart(4)}  max ${String(Math.max(...abs, 0)).padStart(4)}`
+      + `  >20 ${String(xs.filter((s) => s.abs > 20).length).padStart(3)}  >¼range ${String(xs.filter((s) => s.abs > s.range / 4).length).padStart(3)}`;
+  };
+  console.log(`${arm.padEnd(8)} all    ${line(all)}`);
+  if (narrow.length) console.log(`${''.padEnd(8)} narrow ${line(narrow)}`);
 }
 
 console.log('\nEXACT per case');
