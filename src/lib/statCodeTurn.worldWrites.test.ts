@@ -67,6 +67,17 @@ describe('runStatCodeTurn world writes', () => {
     expect(out.worldWrites).toEqual({ location: 'back' });
   });
 
+  it('joins two scripts’ opposite verdicts on one row in run order, the later script’s last', async () => {
+    const row = {
+      id: 't1', turn: 1, timestamp: 6, day: 1, daypart: 'morning', text: 'The gate fell.',
+      custom: false, kept: true, inContext: true, pinned: false, forgotten: false,
+    };
+    const out = await runStatCodeTurn(turn({
+      stats: [], memories: [row], worldScripts: [script('memories[0].pin();'), script('memories[0].forget();')],
+    }));
+    expect(out.worldWrites?.memoryWrites).toEqual([{ id: 't1', kind: 'pin' }, { id: 't1', kind: 'forget' }]);
+  });
+
   it('joins the memory, pin and diary lines of every script in run order', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [stat({ id: 'a', scripts: [script('memories.add("First."); entities.Wick.diary("I ran."); return 1;')] })],

@@ -62,7 +62,7 @@ export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'pin', detail: '(line) => void', info: 'Adds a memory that’s sent with every request, as one you write in the Memory Manager is. It shows there under Custom. Unlike a pinned summary, it never loses its place to the memory limit.' },
 ]);
 
-/** The fields of one entry in `memories`. None takes a write. */
+/** The members of one entry in `memories`: its read-only fields, then the Memory Manager's verbs. */
 export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the memory' },
   { name: 'turn', detail: 'number', info: 'Turn number of the memory, from 1. A Custom memory has the turn before it was added.' },
@@ -75,6 +75,10 @@ export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'inContext', detail: 'boolean', info: 'True when the memory went to the AI on the last turn' },
   { name: 'pinned', detail: 'boolean', info: 'True when the memory is pinned to stay' },
   { name: 'forgotten', detail: 'boolean', info: 'True when the memory is pinned to go' },
+  { name: 'pin', detail: '() => void', info: 'Pins the memory to stay when the turn ends, as Pin This Memory in the Memory Manager does. On a Custom memory it does nothing, and the run lists it as ignored.' },
+  { name: 'forget', detail: '() => void', info: 'Pins the memory to go when the turn ends, as Forget This Memory in the Memory Manager does. On a Custom memory it does nothing, and the run lists it as ignored.' },
+  { name: 'edit', detail: '(text) => void', info: 'Rewrites the memory when the turn ends, as an edit in the Memory Manager does. A summary keeps its original and is pinned to stay.' },
+  { name: 'remove', detail: '() => void', info: 'Erases the memory when the turn ends, as Delete This Memory in the Memory Manager does. You can restore it there.' },
 ]);
 
 /** The fields of the clock object that `path` names, or null when `path` is no clock object. */
@@ -94,7 +98,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn. With a description it joins at once; without one, the AI describes it. A name an entity already has does nothing.' },
   {
     name: 'memories', detail: 'array', access: 'readOnly',
-    info: 'The story’s memories as the Memory panel lists them, oldest first. Each has its id, turn, story time, day, daypart, text, Custom flag and pins, and whether it went to the AI. Call memories.add or memories.pin to add one. It’s empty in Test Code and the Test Bench.',
+    info: 'The story’s memories as the Memory panel lists them, oldest first. Each has its id, turn, story time, day, daypart, text, Custom flag and pins, and whether it went to the AI. Call memories.add or memories.pin to add one, and pin, forget, edit or remove on an entry to change it. It’s empty in Test Code and the Test Bench.',
   },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
