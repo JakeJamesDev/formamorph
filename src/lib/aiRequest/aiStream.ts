@@ -1,6 +1,7 @@
 import type { WireMessage } from '@/types';
 import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { redactUrl } from '@/lib/redactUrl';
+import { describeResponseBody } from '@/lib/responseBody';
 import { reasoningLevelLabel } from '@/lib/reasoningEffort';
 import { REQUEST_LABELS } from '@/lib/promptGroups';
 import { isMaxOutputKind } from '@/lib/promptMaxOutput';
@@ -111,7 +112,7 @@ async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiSt
     status: response.status,
     response,
     serverError,
-    details: [...lines, '', 'Response:', raw.trim() ? raw : '(empty)'].join('\n'),
+    details: [...lines, '', 'Response:', describeResponseBody(raw)].join('\n'),
   });
 }
 

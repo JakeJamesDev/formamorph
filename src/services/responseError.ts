@@ -1,5 +1,6 @@
 import { DetailedError } from '@/lib/errorDetails';
 import { redactUrl } from '@/lib/redactUrl';
+import { describeResponseBody } from '@/lib/responseBody';
 
 /** Server error envelope: this API answers with `error`, older handlers elsewhere read `message`. */
 export interface ErrorBody {
@@ -44,7 +45,7 @@ function responseDetails(response: Response, text: string): string {
     `Status: ${[response.status, response.statusText].filter(Boolean).join(' ')}`,
     '',
     'Response:',
-    text.trim() ? text : '(empty)',
+    describeResponseBody(text),
   ].join('\n');
 }
 

@@ -84,6 +84,7 @@ const FILES = [
   'src/lib/numberInputWheel.ts',
   'src/lib/placeholderArt.ts',
   'src/lib/redactUrl.ts',
+  'src/lib/responseBody.ts',
   'src/lib/roles.ts',
   'src/lib/serverAssets.ts',
   'src/lib/serverDate.ts',

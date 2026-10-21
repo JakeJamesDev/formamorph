@@ -144,12 +144,21 @@ describe('a refused community call', () => {
   });
 
   it('falls back to the caller words and shows a body that is not JSON as sent', async () => {
-    vi.mocked(fetch).mockImplementation(async (input) => refused(String(input), '<html>502 Bad Gateway</html>', 502, 'Bad Gateway'));
+    vi.mocked(fetch).mockImplementation(async (input) => refused(String(input), 'upstream connect error', 502, 'Bad Gateway'));
     const error = await thrown(() => WorldStorageService.releaseRemoteWorld('w1'));
 
     expect(error.message).toBe('Failed to release this');
     expect(error.details).toContain('Status: 502 Bad Gateway');
-    expect(error.details).toContain('<html>502 Bad Gateway</html>');
+    expect(error.details).toContain('Response:\nupstream connect error');
+  });
+
+  it('cuts an HTML error page to its title', async () => {
+    const page = '<!DOCTYPE html><html><head><title>api.example.test | 502: Bad gateway</title></head><body><h1>x</h1></body></html>';
+    vi.mocked(fetch).mockImplementation(async (input) => refused(String(input), page, 502, 'Bad Gateway'));
+    const error = await thrown(() => WorldStorageService.releaseRemoteWorld('w1'));
+
+    expect(error.details).toContain('Response:\nHTML page "api.example.test | 502: Bad gateway"');
+    expect(error.details).not.toContain('<h1>');
   });
 
   // These sites read `message` first, so the words the player saw before details existed stay the same.

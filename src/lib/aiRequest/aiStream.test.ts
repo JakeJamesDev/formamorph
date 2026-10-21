@@ -189,11 +189,19 @@ describe('streamAiRequest', () => {
   });
 
   it('keeps a body that is not JSON as the raw response', async () => {
-    const error = await rejectionOf(new Response('<html>502 Bad Gateway</html>', { status: 502 }));
+    const error = await rejectionOf(new Response('upstream connect error', { status: 502 }));
 
     expect(error.serverError).toBeUndefined();
     expect(error.details).toContain('Status: 502');
-    expect(error.details).toContain('<html>502 Bad Gateway</html>');
+    expect(error.details).toContain('Response:\nupstream connect error');
+  });
+
+  it('cuts an HTML error page to its title', async () => {
+    const page = '<!DOCTYPE html><html><head><title>example.test | 502: Bad gateway</title></head><body><h1>Bad gateway</h1></body></html>';
+    const error = await rejectionOf(new Response(page, { status: 502 }));
+
+    expect(error.details).toContain('Response:\nHTML page "example.test | 502: Bad gateway"');
+    expect(error.details).not.toContain('<h1>');
   });
 
   it('masks a key in the endpoint query string and leaves a keyless url unchanged', async () => {

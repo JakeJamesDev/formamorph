@@ -157,7 +157,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 61: `authRequest`, the one auth header and error helper the age gate, user and Patreon services read.
     // 62: `uuid`, the one ID helper, which the age gate flow now reads.
     // 63: `filesFrom`, the file-input reset the profile image picker reads; a type-only leaf, no toast.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(63);
+    // 64: `responseBody`, the string-only leaf `responseError` reads to cut an HTML error page to its title.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(64);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

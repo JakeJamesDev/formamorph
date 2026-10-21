@@ -6,6 +6,7 @@ import { unzipSync } from 'fflate';
 import type { ImageGenOpts, ImageGenParams, ImageProvider, ImageProviderId } from './types';
 import { trimUrl, authHeaders, reachFetch } from './http';
 import { bytesToDataUrl } from '../imageOptim';
+import { describeResponseBody } from '../responseBody';
 import { ANY_PIPE, splitPromptParts } from './promptParts';
 
 /** A model the dropdown offers. NovelAI has no model-listing endpoint, so the list is maintained here. */
@@ -226,7 +227,7 @@ function errorDetail(body: string): string {
   } catch {
     // not JSON — fall through to the raw text
   }
-  return trimmed.slice(0, 200);
+  return describeResponseBody(trimmed).slice(0, 200);
 }
 
 /** Turn a failed response into the message the player sees. */
