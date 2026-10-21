@@ -1944,13 +1944,13 @@ Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a pl
 
 **Purpose:** Show what each row of a code editor's **Variable** menu inserts, its type and whether code can write it, without opening the tooltip.
 
-> ✅ **Approved.** The user approved the row from static frames in the Script Surface spec (ruling R9, ticket 15): the mark in a leading slot, the pencil-off icon and the 18rem menu. Production: every code box with a **Variable** menu.
+> ✅ **Approved.** The user approved the row from static frames in the Script Surface spec (ruling R9, ticket 15): the mark in a leading slot, the lock icon and the 18rem menu. Production: every code box with a **Variable** menu.
 
 **Density:** Compact. The menu is 18rem wide. Rows use the menu's row size and padding, and each field row stays one line.
 
 ### Composition
 
-- ✏️ **Read-only mark.** A muted pencil-off icon, 0.75rem, in a leading slot as wide as the Back row's arrow. A writable row, a row that is writable after this run, and a method leave the slot empty.
+- 🔒 **Read-only mark.** A muted lock icon, 0.75rem, in a leading slot as wide as the Back row's arrow. A writable row, a row that is writable after this run, and a method leave the slot empty.
 - 📏 **One slot per level.** A level with a read-only row gives every row the slot, drill rows and the empty marker too, so labels line up. A level with no read-only row has no slot.
 - 🔤 **Type.** The row's type sits on the right in the code font, at the tooltip's text size, in the muted color. A method shows its function type, such as `(line) => void`, and no other mark.
 - ✂️ **Long type.** A type that doesn't fit ends in an ellipsis. Its tooltip then starts with the whole type on its own line.
@@ -1977,7 +1977,7 @@ The menu is 18rem wide at every screen size, and it drills in place, so a phone 
 
 | State | Treatment |
 | --- | --- |
-| Read-only field | The pencil-off mark, the label and the type. |
+| Read-only field | The lock, the label and the type. |
 | Writable, or writable after this run | An empty slot, the label and the type. |
 | Method | The label and its function type. |
 | Drill row in a level with a mark | An empty slot, the label and a chevron. |
