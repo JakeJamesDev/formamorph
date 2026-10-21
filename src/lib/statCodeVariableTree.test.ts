@@ -6,11 +6,12 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
 import { codeDiagnostics } from './statCodeAnalysis';
+import { codeCard } from './codeCards';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from './statCodeTraits';
 import {
   TEMPLATE_NAME, buildVariableTree, timingGlobalsOf, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
@@ -379,6 +380,56 @@ describe('field info', () => {
       expect(node && node.kind !== 'empty' && { detail: node.kind === 'field' ? node.detail : entry.detail, info: node.info })
         .toEqual({ detail: entry.detail, info: entry.info });
     }
+  });
+});
+
+describe('array elements', () => {
+  // The fields only: the persona has no verbs and stands first where the player is.
+  const presentFields = [
+    'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
+  ];
+
+  it('lists the memories calls, then one memory’s fields', () => {
+    expect(levelAt(tree, 'Memories')).toEqual(['add', 'pin', 'memories[0]']);
+    expect(levelAt(tree, 'Memories', 'memories[0]')).toEqual(MEMORY_ENTRY_FIELDS.map((entry) => entry.name));
+  });
+
+  it('lists the present list first, then an entity entry’s fields, under the location and each locations row', () => {
+    for (const steps of [['Location', 'present'], ['Locations', 'Old Mill', 'present'], ['Locations', 'Dock', 'present']]) {
+      expect(levelAt(tree, ...steps)).toEqual(['present', ...presentFields]);
+    }
+    expect(inserts(tree, 'Location', 'present', 'present')).toBe('location.present');
+  });
+
+  it.each([
+    [['Memories', 'memories[0]', 'text'], 'memories[0]?.text', '0'],
+    [['Location', 'present', 'following'], 'location.present[0]?.following', '0'],
+    [['Locations', 'Old Mill', 'present', 'name'], 'locations["Old Mill"].present[0]?.name', '0'],
+  ])('inserts %j with the index to type over', (steps, insert, selection) => {
+    expect(inserts(tree, ...steps)).toBe(insert);
+    expect(selected(leaf(tree, ...steps))).toBe(selection);
+  });
+
+  it.each([['pin', 'memories[0]?.pin()'], ['forget', 'memories[0]?.forget()'], ['edit', 'memories[0]?.edit("Text")'], ['remove', 'memories[0]?.remove()']])(
+    'calls a memory’s %s complete, the index to type over', (verb, insert) => {
+      const call = leaf(tree, 'Memories', 'memories[0]', verb);
+      expect(call.insert).toBe(insert);
+      expect(selected(call)).toBe('0');
+    },
+  );
+
+  it('keeps a template’s type-over name selected over the index', () => {
+    const name = leaf(templateTree, 'Locations', TEMPLATE_NAME, 'present', 'name');
+    expect(name.insert).toBe('locations["Name"].present[0]?.name');
+    expect(selected(name)).toBe(TEMPLATE_NAME);
+  });
+
+  // The menu and the cards read one element shape, so every element leaf has the card of the field it names.
+  const elementLeaves = variableTreeLeaves(tree).filter((field) => field.insert.includes('[0]'));
+  it('has element leaves to check', () => { expect(elementLeaves.length).toBe(MEMORY_ENTRY_FIELDS.length + presentFields.length * 3); });
+  it.each(elementLeaves.map((field) => [field.insert, field]))('gives %s the card of its field', (insert, field) => {
+    const card = codeCard(insert, insert.lastIndexOf(`.${field.label}`) + 2, { surface: STAT_CODE_SURFACE });
+    expect(card).toMatchObject({ description: field.info, signature: { type: field.detail } });
   });
 });
 

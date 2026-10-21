@@ -21,7 +21,7 @@ import {
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -29,7 +29,7 @@ import {
 } from '@/lib/statCodePaths';
 import {
   codeResolver, declaredNames, keyOwner, memberKey, parseCode, statLikeNames,
-  type CodeOwnerKind, type CodeValue, type EntryRef, type PlaceholderOwner, type ResolvedCodeName, type StatOwner,
+  type ArrayElement, type CodeOwnerKind, type CodeValue, type EntryRef, type PlaceholderOwner, type ResolvedCodeName, type StatOwner,
   type TraitOwner,
 } from '@/lib/statCodeResolver';
 
@@ -484,6 +484,9 @@ function placeholderMembersAt(
   return null;
 }
 
+/** The members of one element of each array shape. */
+const ELEMENT_FIELDS: Record<ArrayElement, readonly SurfaceEntry[]> = { memory: MEMORY_ENTRY_FIELDS, entity: ENTITY_FIELDS };
+
 /** What a resolved expression carries after its dot, or null where nothing can be shown. A wrong list would
  *  claim the sandbox holds something it doesn't. */
 function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: StatRules): readonly SurfaceEntry[] | null {
@@ -507,6 +510,8 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'dictionaryEntry': return DICTIONARY_ENTRY_FIELDS;
     case 'locationEntry': return LOCATION_ENTRY_FIELDS;
     case 'clock': return clockFieldsAt(value.path);
+    case 'array': return value.path === null ? null : options.surface.members.get(value.path) ?? null;
+    case 'element': return ELEMENT_FIELDS[value.of];
     case 'listed': return options.surface.members.get(value.path) ?? null;
     default: return null;
   }
