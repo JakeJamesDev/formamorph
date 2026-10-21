@@ -19,9 +19,6 @@ export const PLAYER_STAT_HEADING = 'Player Character';
 /** The heading the global stats sit under, and their key in a schema reply. */
 export const GLOBAL_STATS_HEADING = 'Global Stats';
 
-/** The largest change, up or down, the schema lets one value or maximum take in a turn. */
-export const STAT_CHANGE_BOUND = 20;
-
 export interface StatRequestTarget {
   id: string;
   name: string;
@@ -182,19 +179,19 @@ export function textPassTargets(snapshot: StatRequestSnapshot): StatRequestTarge
   return snapshot.targets.filter((target) => !entityKeys.has(target.ownerKey));
 }
 
-const bounded = (): ResponseSchemaNode => ({ type: 'integer', minimum: -STAT_CHANGE_BOUND, maximum: STAT_CHANGE_BOUND });
+const integerNode = (): ResponseSchemaNode => ({ type: 'integer' });
 
 const fixedObject = (properties: Record<string, ResponseSchemaNode>): ResponseSchemaNode =>
   ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
 
-/** The fixed reply shape: every owner, and under it every stat's bounded change beside its bounded max
- *  change, all required. A bare signed number per key keeps the sign the model writes. */
+/** The fixed reply shape: every owner, and under it every stat's change beside its max change, all
+ *  required. A bare signed number per key keeps the sign the model writes. */
 export function statRequestSchema(snapshot: StatRequestSnapshot): ResponseSchema {
   const owners = new Map<string, Record<string, ResponseSchemaNode>>();
   for (const target of snapshot.targets) {
     const stats = owners.get(target.ownerKey) ?? {};
-    stats[target.key] = bounded();
-    stats[target.maxKey] = bounded();
+    stats[target.key] = integerNode();
+    stats[target.maxKey] = integerNode();
     owners.set(target.ownerKey, stats);
   }
   return {

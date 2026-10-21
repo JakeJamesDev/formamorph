@@ -87,9 +87,10 @@ const assertRendersTemplate = (systemPrompt: string, template: string): void => 
   }
 };
 
-/** The text prompt from its rules on, less the owner rule the recorded prompt lacks. */
+/** The text prompt from its rules on, less the owner rule the recorded prompt lacks, with the change bound it had. */
 const sharedStatTail = (template: string): string =>
-  template.slice(template.indexOf('## What to change')).replace(/^- The stats under Player Character.*\n/m, '');
+  template.slice(template.indexOf('## What to change')).replace(/^- The stats under Player Character.*\n/m, '')
+    .replace('a value-over-maximum. Put', 'a value-over-maximum; keep it between -20 and 20. Put');
 
 /** The storyboard as the run sent it, before its closing rule named the player character. */
 const recordedStoryboard = (template: string): string =>
