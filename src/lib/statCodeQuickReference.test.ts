@@ -128,7 +128,8 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   locations: LOCATION_ENTRY_FIELDS,
   location: LOCATION_MEMBERS,
   discover: [],
-  memories: [...MEMORY_ENTRY_FIELDS, ...MEMORY_MEMBERS],
+  // `pin` is a verb on the list and on each entry; the row lists it once.
+  memories: [...MEMORY_ENTRY_FIELDS, ...MEMORY_MEMBERS.filter((verb) => !MEMORY_ENTRY_FIELDS.some((member) => member.name === verb.name))],
   traits: TRAIT_ENTRY_FIELDS,
   persona: PERSONA_FIELDS,
   entities: ENTITY_FIELDS,

@@ -77,7 +77,8 @@ export interface SandboxState {
   resolveText?: ResolveText;
   /** The story clock: the hours this turn consumed, the hours elapsed, and the calendar. */
   clock: StatClock;
-  /** The Memory panel's live rows, oldest first. Absent, `memories` is empty, as in the editor. */
+  /** The Memory panel's rows as the turn began, oldest first; between turns, as they stand. Absent, `memories` is
+   *  empty, as in the editor. */
   memories?: readonly SandboxMemory[];
 }
 

@@ -14,9 +14,10 @@ import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
+import { type SandboxMemory, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
+import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
 import {
   overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, withPinWrites, type SandboxState, type ScriptTrigger,
   type StatCodeTurn, type StatCodeTurnResult,
@@ -2329,6 +2330,16 @@ const GameViewer = ({
     addSystemLogEntry(errorMessage);
   };
 
+  // A script's verdicts, edits and removals land on the fields the Memory Manager writes, so a rewind keeps them (Q18).
+  const landMemoryWrites = useCallback((writes: WorldWrites | undefined | null) => {
+    const verbs = writes?.memoryWrites;
+    if (!verbs?.length) return;
+    setMemoryPins((prev) => pinsAfter(prev, verbs));
+    setMemoryEdits((prev) => editsAfter(prev, verbs));
+    setMemoryNotes((prev) => notesAfter(prev, verbs));
+    setMemoryDeleted((prev) => deletedAfter(prev, verbs));
+  }, [setMemoryPins, setMemoryEdits, setMemoryNotes, setMemoryDeleted]);
+
   /**
    * Apply one Turn Commit: thin setters, in the order the turn's presentation depends on. The turn's own
    * locals ride in `turn` — everything else here is component state.
@@ -2455,6 +2466,7 @@ const GameViewer = ({
       const anchor = fullMessageHistoryRef.current.length;
       setMemoryNotes((prev) => withScriptPins(prev, committedTurnId, pins, anchor));
     }
+    landMemoryWrites(final.codeWrites);
 
     // Persist any characters this turn discovered, anchored to its location + turn so they roll back with
     // it. Guarded against a double-add (variant-aware name match) by a visitor added moments ago.
@@ -2649,6 +2661,7 @@ const GameViewer = ({
       };
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
+      turnMemoriesRef.current = scriptMemoriesRef.current;
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
       );
@@ -3141,6 +3154,7 @@ const GameViewer = ({
       setAiRequestType(null);
       scriptLocationRef.current = null;
       turnClockRef.current = null;
+      turnMemoriesRef.current = null;
       // Release the turn's controller (unless a newer turn already replaced it).
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -3239,6 +3253,8 @@ const GameViewer = ({
   ]);
   const scriptMemoriesRef = useRef(scriptMemoryList);
   scriptMemoriesRef.current = scriptMemoryList;
+  // The list every run of a turn reads, taken once as the turn starts (Q40). Null between turns, where the live list stands.
+  const turnMemoriesRef = useRef<SandboxMemory[] | null>(null);
   // The story hours a running turn's clock advances reached, which its later runs read (Q45). Null when the
   // turn has not advanced the clock, and between turns.
   const turnClockRef = useRef<number | null>(null);
@@ -3331,7 +3347,7 @@ const GameViewer = ({
           positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
           followers: entityFollowers,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
-          memories: scriptMemoriesRef.current,
+          memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
         };
         const turn: StatCodeTurn = {
           state,
@@ -3443,6 +3459,8 @@ const GameViewer = ({
 
   // A run outside a turn lands its memory and diary lines on the latest turn, and its pins anchored after it (Q6).
   const landOnLatestTurn = useCallback((writes: WorldWrites | undefined) => {
+    // A verdict needs no turn: a Custom line can stand before the first one.
+    landMemoryWrites(writes);
     const history = fullMessageHistoryRef.current;
     const turnId = latestTurnId(history);
     if (!writes || !turnId) return;
@@ -3456,7 +3474,7 @@ const GameViewer = ({
       return next;
     });
     if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
-  }, [setFullMessageHistory, setMemoryNotes, diaryNames]);
+  }, [setFullMessageHistory, setMemoryNotes, diaryNames, landMemoryWrites]);
   // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
   const heldWritesRef = useRef<WorldWrites | undefined>(undefined);
   const landBetweenTurns = useCallback((writes: WorldWrites | undefined) => {

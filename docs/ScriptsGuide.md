@@ -354,7 +354,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
-| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()` | `memories.length` | `memories.pin(<text>)` |
+| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
