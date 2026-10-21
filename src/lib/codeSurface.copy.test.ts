@@ -15,7 +15,7 @@ import {
   PERSONA_FIELDS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields,
 } from './statCodeSurface';
-import { SCENE_MEMBERS, WORLD_MEMBERS, toolScriptSurface } from './tools/toolScriptSurface';
+import { toolScriptSurface } from './tools/toolScriptSurface';
 import { buildVariableTree, variableTreeLeaves, type VariableNode } from './statCodeVariableTree';
 
 const param = (over: Partial<ToolParam>): ToolParam => ({
@@ -28,7 +28,7 @@ const toolSurface = toolScriptSurface([
   param({ name: 'said', description: 'Who spoke', required: false }),
   param({ name: 'ended', description: 'Who spoke.', required: false }),
   param({ name: 'kind', type: 'enum', options: ['a', 'b'], description: 'Which kind' }),
-], ['Mood']);
+]);
 
 const surfaceEntries = (surface: CodeSurface): SurfaceEntry[] => [
   ...surface.globals, ...surface.builtins, ...[...surface.members.values()].flat(),
@@ -78,7 +78,6 @@ function lines(): [string, string][] {
       ...placeholderEntryFields('Wildcard'), ...placeholderEntryFields('Object'),
       ...SANDBOX_GLOBALS, ...SANDBOX_BUILTINS, ...[...BUILTIN_MEMBERS.values()].flat(),
     ]),
-    ...named('tool members', [...WORLD_MEMBERS, ...SCENE_MEMBERS]),
     ...menu(buildVariableTree(undefined, { kind: 'entity', entity: null })),
     ...completionLines(),
   ];
@@ -149,7 +148,12 @@ describe('the lists without a badge state the access as text', () => {
 
   it('gives the Tool script’s globals their access', () => {
     const access = Object.fromEntries(toolSurface.globals.map((entry) => [entry.name, entry.access]));
-    expect(access).toEqual({ args: 'readOnly', world: 'readOnly', scene: 'readOnly', placeholders: 'readOnly', console: undefined });
+    // A map's own entries carry the access, read-only on this surface.
+    expect(access).toEqual({
+      args: 'readOnly', clock: 'readOnly', location: 'readOnly', memories: 'readOnly', notes: 'readOnly',
+      stats: undefined, locations: undefined, placeholders: undefined, traits: undefined, entities: undefined, persona: undefined,
+      dictionaries: undefined, console: undefined,
+    });
   });
 
   it('closes an optional argument’s line with its own period before the absent sentence', () => {

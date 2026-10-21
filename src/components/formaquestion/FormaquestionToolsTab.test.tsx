@@ -7,7 +7,7 @@ import { HELP_CODE_TEST } from '@/lib/formaquestion/helpCodeTest';
 import { HELP_ROLL } from '@/lib/formaquestion/helpRoll';
 import { DEFAULT_HELP_SETTINGS, HELP_CALL_LIMIT_MAX, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { helpWorld } from '@/lib/formaquestion/helpWorld';
-import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { sampleToolSnapshot } from '@/lib/tools/sampleToolSnapshot';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { helpTool, openWorld } from '@/test/helpFixtures';
 import { TOOLS_COPY } from './formaquestionSettingsTabs';

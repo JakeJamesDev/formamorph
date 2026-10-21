@@ -12,6 +12,7 @@ import {
 } from '@/lib/statCodeExecutor';
 import type { MissingName } from '@/lib/statCodeAnalysis';
 import { cardWorldNames, codeLocationsOf, type StatCodeNames } from '@/lib/statCodeBoxOptions';
+import { droppedLine, readOnlyWritesLines } from '@/lib/droppedWrites';
 import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { blueprintItemIds } from '@/lib/traitTree';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
@@ -196,10 +197,6 @@ const worldWriteLines = (
   ];
 };
 
-/** The line of a dropped kind of write, or none when no names are left. */
-const droppedLine = (lead: string, names: readonly string[] | undefined) =>
-  (names?.length ? [`${lead} Writes ignored: ${names.join(', ')}.`] : []);
-
 /** Test Code's snapshot of `world` at turn one for a `timing` run. No playthrough: no picks, no persona and no
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
@@ -263,7 +260,7 @@ export async function runTestCode(
     ...droppedLine('Unknown trait names.', outcome.unknownTraits?.filter(keep.trait(null))),
     ...droppedLine('acquired is read-only.', outcome.acquiredWrites),
     ...droppedLine('Unknown entity names.', outcome.unknownEntities?.filter(keep.entity)),
-    ...droppedLine('Read-only fields.', outcome.readOnlyWrites),
+    ...readOnlyWritesLines(outcome.readOnlyWrites),
     ...(outcome.maybeDiary ?? []).map((name) => `Diary target “${name}” may be discovered in play.`),
     ...(outcome.entities ?? []).flatMap((row) => {
       const { entity, unknownTraits, acquiredWrites } = row;

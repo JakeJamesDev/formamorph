@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import { toolSchema } from '@/lib/tools/toolSchema';
-import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { sampleToolSnapshot } from '@/lib/tools/sampleToolSnapshot';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpTool, openWorld, pastPicks } from '@/test/helpFixtures';
 import { DOCS_LOOKUP } from './docsLookup';

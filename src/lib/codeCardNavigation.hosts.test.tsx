@@ -8,7 +8,7 @@ import { ToolEditor } from '@/components/modals/ToolEditor';
 import EntityEditorModal from '@/components/modals/EntityEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { sampleToolSnapshot } from '@/lib/tools/sampleToolSnapshot';
 import type { Entity, Stat, Tool } from '@/types';
 
 /** The hosts that hide Open and Find All Uses: each sits under the World Editor's navigation, and its code box

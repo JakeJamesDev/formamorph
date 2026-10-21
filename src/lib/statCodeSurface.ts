@@ -100,6 +100,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
     name: 'memories', detail: 'array', access: 'readOnly',
     info: 'The story’s memories as the Memory panel lists them, oldest first. Each has its id, turn, story time, day, daypart, text, Custom flag and pins, and whether it went to the AI. Call memories.add or memories.pin to add one, and pin, forget, edit or remove on an entry to change it. It’s empty in Test Code and the Test Bench.',
   },
+  { name: 'notes', detail: 'string', info: 'The player’s notes. It’s empty in Test Code and the Test Bench.', access: 'readOnly' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },

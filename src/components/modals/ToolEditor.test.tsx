@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, within, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Tool } from '@/types';
-import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { sampleToolSnapshot } from '@/lib/tools/sampleToolSnapshot';
 import { ToolEditor } from './ToolEditor';
 import type { ToolEditTab } from './toolsView';
 import { TRY_IT_COLUMN_MIN_WIDTH } from './useTryItPlacement';
@@ -29,7 +29,7 @@ describe('the Script reference', () => {
     const list = within(await screen.findByLabelText('What the script can read'));
     const rowOf = (name: string) => list.getByText(name).nextElementSibling?.textContent;
     expect(rowOf('args')).toMatch(/^\{.*\} The arguments the AI sent, checked against the parameters\. Read-only\.$/);
-    expect(rowOf('scene')).toMatch(/The current scene\. Read-only\.$/);
+    expect(rowOf('location')).toMatch(/The location the turn is at, with the fields of a locations entry\. Read-only\.$/);
     // `console` is no field a write could reach, so it names no access.
     expect(rowOf('console')).toMatch(/Output shows in the browser console\.$/);
     expect(rowOf('console')).not.toMatch(/Read-only|Writable/);

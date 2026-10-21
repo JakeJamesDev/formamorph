@@ -414,7 +414,10 @@ describe('World Tool fields on a user Tool', () => {
     const user = parseTool(raw({}));
     if (!('tool' in user)) throw new Error(user.error);
     const tool = { ...user.tool, handler: { kind: 'script' as const, code: 'stats.Health.value = 1; return "wrote";' } };
-    expect(await runToolCall(tool, '{}', emptyToolSnapshot())).toEqual({ text: expect.stringContaining('stats'), failure: 'script' });
+    // The write drops and lists, and the Tool runs on (Q44).
+    expect(await runToolCall(tool, '{}', emptyToolSnapshot())).toEqual({
+      text: 'wrote', warnings: ['Read-only fields. Writes ignored: stats.Health.value.'],
+    });
   });
 });
 

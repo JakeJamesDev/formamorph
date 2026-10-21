@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { emptyToolSnapshot, sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { sampleToolSnapshot } from '@/lib/tools/sampleToolSnapshot';
 import { emptyCodeWorld, openWorld } from '@/test/helpFixtures';
 import { createHelpWorldRegistry, helpWorld, useHelpWorld, useHelpWorldSource } from './helpWorld';
 import { allSpelledTokens } from '@/test/chipTokens';

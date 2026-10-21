@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Tool, ToolParam } from '@/types';
 import { runToolCall } from './toolRunner';
-import { sampleToolSnapshot } from './toolSnapshot';
+import { sampleToolSnapshot } from './sampleToolSnapshot';
 import { TEMPLATE_SCENE_VARIABLES, toolTemplateVocabulary } from './toolTemplateVocabulary';
 
 const params: ToolParam[] = [

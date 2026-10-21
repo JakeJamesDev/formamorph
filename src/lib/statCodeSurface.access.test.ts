@@ -11,7 +11,7 @@ import { SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryField
 import type { SurfaceEntry } from './codeSurface';
 import { runToolScript } from './tools/toolScript';
 import { toolScriptSurface } from './tools/toolScriptSurface';
-import { sampleToolSnapshot } from './tools/toolSnapshot';
+import { sampleToolSnapshot } from './tools/sampleToolSnapshot';
 import { phNode } from '@/test/sandboxPlaceholders';
 import type { Stat } from '@/types';
 
@@ -88,13 +88,13 @@ describe('Tool script access matches the sandbox', () => {
     // A frozen object drops the write; reading it back says whether it landed.
     const code = `${name}.probe = 1; return ${name}.probe === 1 ? "landed" : "dropped";`;
     const out = await runToolScript(code, { size: 2 }, sampleToolSnapshot());
-    expect(out).toEqual({ text: entry.access === 'readOnly' ? 'dropped' : 'landed' });
+    expect(out).toMatchObject({ text: entry.access === 'readOnly' ? 'dropped' : 'landed' });
   });
 
   // Both run on one sandbox, so a stat-script global must not reach a Tool script.
   const toolNames = new Set(surface.globals.map((entry) => entry.name));
   const statOnly = SANDBOX_GLOBALS.map((entry) => entry.name).filter((name) => !toolNames.has(name));
-  it('has stat-script globals to hold out', () => expect(statOnly).toContain('stats'));
+  it('has stat-script globals to hold out', () => expect(statOnly.sort()).toEqual(['discover', 'owner', 'self']));
   it.each(statOnly)('%s is undefined in a Tool script', async (name) => {
     expect(await runToolScript(`return typeof ${name};`, { size: 2 }, sampleToolSnapshot())).toEqual({ text: 'undefined' });
   });

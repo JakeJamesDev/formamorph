@@ -454,6 +454,8 @@ const OWNER_STAT_WRITES = '__formamorphOwnerStatWrites';
 const ENTITY_STAT_WRITES = '__formamorphEntityStatWrites';
 // The writable fields of `self` the code assigned, in assignment order.
 const SELF_ASSIGNED = '__formamorphSelfAssigned';
+// `JSON.stringify` as it stood before user code, which may replace the global one, for the program's completion value.
+const STRINGIFY = '__formamorphStringify';
 // Read-only writes outside every map, as full paths: on a `self` that is no entry of `stats`, and on `clock`.
 const LOOSE_WRITES = '__formamorphLooseWrites';
 const LOOSE_NOTE = '__formamorphLooseNote';
@@ -1241,6 +1243,11 @@ export interface StatCodeRunOptions {
   openCast?: boolean;
   /** The Memory panel's live rows, oldest first. Absent, `memories` is empty. */
   memories?: readonly SandboxMemory[];
+  /** The player's notes. Absent, `notes` is empty. */
+  notes?: string;
+  /** A user Tool's run: the surface without writes (Q24, Q44). Every field is read-only, a write is listed in
+   *  `readOnlyWrites`, and no verb, `self`, `owner`, `discover` or `player` exists. */
+  readOnly?: boolean;
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
@@ -1248,6 +1255,82 @@ const ENTITY_WRITE = '__formamorphEntityWrite';
 const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
 const MOVE_TURN = '__formamorphMoveTurn';
+
+/** The globals a read-only run reads through its view, the surface of a user Tool (Q24). */
+const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'stats', 'traits', 'placeholders', 'dictionaries'] as const;
+
+const READ_ONLY_VIEW_OF = '__formamorphReadOnlyView';
+
+/**
+ * JS source of `(note) => view`: `view(value, path)` reads `value` with its own function members left out, and a
+ * write through it calls `note(path)` and changes nothing. An object keeps one view, so `present` holds the very
+ * entries `entities` holds; an array reads as a frozen copy of its items' views.
+ */
+const READ_ONLY_VIEW = `(note) => {
+  const { create, freeze, getPrototypeOf } = Object;
+  const { apply, ownKeys, getOwnPropertyDescriptor } = Reflect;
+  const { isArray } = Array;
+  const { stringify } = JSON;
+  const { map, filter } = Array.prototype;
+  const { hasOwnProperty } = Object.prototype;
+  const views = new WeakMap();
+  const hidden = (source, key) => apply(hasOwnProperty, source, [key]) && typeof source[key] === 'function';
+  const step = (path, key) => /^[A-Za-z_$][\\w$]*$/.test(key) ? path + '.' + key : path + '[' + stringify(key) + ']';
+  const view = (source, path) => {
+    if (source === null || typeof source !== 'object') return source;
+    const known = views.get(source);
+    if (known) return known;
+    if (isArray(source)) {
+      const items = freeze(apply(map, source, [(item, at) => view(item, path + '[' + at + ']')]));
+      views.set(source, items);
+      return items;
+    }
+    const read = (key) => (typeof key !== 'string' ? source[key] : hidden(source, key) ? undefined : view(source[key], step(path, key)));
+    const drop = (key) => { if (typeof key === 'string') note(step(path, key)); return true; };
+    const out = new Proxy(create(null), {
+      get: (target, key) => read(key),
+      has: (target, key) => key in source && !hidden(source, key),
+      ownKeys: () => apply(filter, ownKeys(source), [(key) => !hidden(source, key)]),
+      getOwnPropertyDescriptor: (target, key) => {
+        const found = getOwnPropertyDescriptor(source, key);
+        return found && !hidden(source, key) ? { value: read(key), writable: false, enumerable: found.enumerable, configurable: true } : undefined;
+      },
+      getPrototypeOf: () => getPrototypeOf(source),
+      set: (target, key) => drop(key),
+      defineProperty: (target, key) => drop(key),
+      deleteProperty: (target, key) => drop(key),
+    });
+    views.set(source, out);
+    return out;
+  };
+  return view;
+}`;
+
+/** The program's names a read-only run hides from its code: the globals its surface lacks, and the prelude's hooks. */
+const HIDDEN_GLOBALS = [
+  'self', 'owner', 'discover', MOVE_TURN, ADVANCE_CLOCK, ENTITY_WRITE, WORLD_WRITES, SELF_ASSIGNED, STRINGIFY, READ_ONLY_VIEW_OF,
+] as const;
+
+/** `code` as a read-only run runs it: the hidden names shadowed, each surface global, `args` with them when the run
+ *  has it, read through its view. The inner function lets code declare a name the outer one shadows. */
+const readOnlyCode = (code: string, withArgs: boolean): string => {
+  const viewed = [...READ_ONLY_GLOBALS, ...(withArgs ? ['args'] : [])];
+  return [
+    `return (function (${[...HIDDEN_GLOBALS, ...viewed].join(', ')}) {`,
+    `  return (function () {`,
+    code,
+    `  })();`,
+    `})(${[...HIDDEN_GLOBALS.map(() => 'undefined'), ...viewed.map((name) => `${READ_ONLY_VIEW_OF}(${name}, '${name}')`)].join(', ')});`,
+  ].join('\n');
+};
+
+/** JS source that reseeds `Math.random` with sfc32 from `seed`: QuickJS seeds from the clock, so runs in one
+ *  millisecond would repeat it. */
+const reseedRandom = (seed: readonly number[]): string => [
+  `((m, a, b, c, d) => { m.random = () => { const t = (a + b + d) | 0; d = (d + 1) | 0; a = b ^ (b >>> 9);`,
+  '  b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11); c = (c + t) | 0; return (t >>> 0) / 2 ** 32; };',
+  `  for (let i = 0; i < 15; i++) m.random(); })(Math, ${seed.join(', ')});`,
+].join('\n');
 
 /** The prelude of `discover`, `memories`, the hooks `location.move` and `clock.advance` call and the hook an entity
  *  entry's writes call. An unknown location or entity is listed as well as thrown, so a script that catches the
@@ -1489,7 +1572,7 @@ export const executeStatCode = async (
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
     narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args, openCast = false,
-    memories = [],
+    memories = [], notes = '', readOnly = false,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1538,7 +1621,8 @@ export const executeStatCode = async (
 
     // A script that names `player.` waits on the host for its answers, which only the async engine can do
     // (Q45). During AI Output keeps the sync engine: there `player` is the stub that throws (Q14).
-    const engine: SandboxEngine = !narration && namesPlayer(code) ? 'async' : 'sync';
+    // A read-only run has no `player`, so it never waits.
+    const engine: SandboxEngine = !narration && !readOnly && namesPlayer(code) ? 'async' : 'sync';
     // Set when the player closed a prompt. The call throws in the VM, but a script may catch it, so the run
     // reads this and fails as canceled whatever the program then did (Q15).
     let canceled = false;
@@ -1565,6 +1649,8 @@ export const executeStatCode = async (
     // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
     // the entities' traits.
     const program = [
+      ...(readOnly ? [reseedRandom([...crypto.getRandomValues(new Uint32Array(4))])] : []),
+      `const ${STRINGIFY} = JSON.stringify;`,
       `const ${SELF_ASSIGNED} = [];`,
       statsPrelude({ root: 'stats', reader: STAT_WRITES, entries: keyedStats, blank: blankStat, selfName: selfNameIn('stats') }),
       statsPrelude({
@@ -1602,11 +1688,14 @@ export const executeStatCode = async (
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing),
       locationsPrelude(places, standing),
       dictionariesPrelude(namesDictionaries(code) ? dictionaries : dictionaries.map(({ entries: _cost, ...book }) => book), placeholderMap),
+      // An accessor, so `notes = x` drops and lists the write as a locked field does.
+      `Object.defineProperty(globalThis, 'notes', { enumerable: true, get: () => ${JSON.stringify(notes)}, set: () => ${LOOSE_NOTE}('notes') });`,
+      ...(readOnly ? [`const ${READ_ONLY_VIEW_OF} = (${READ_ONLY_VIEW})(${LOOSE_NOTE});`] : []),
       `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
-      code,
+      readOnly ? readOnlyCode(code, !!args) : code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-      `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
-      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, JSON.stringify(${WORLD_WRITES})];`,
+      `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,
+      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES})];`,
     ].join('\n');
 
     return await runInSandbox(program, ({ vm, result, consoleOutput, timedOut }): StatCodeResult => {
@@ -1615,7 +1704,7 @@ export const executeStatCode = async (
         const dumped = vm.dump(result.error) as { name?: string; message?: string; stack?: string } | string;
         const err = typeof dumped === 'object' && dumped !== null ? dumped : { message: String(dumped) };
         // The interrupt handler surfaces as an "interrupted" InternalError — report it as the timeout.
-        if (timedOut || /interrupted/i.test(err.message || '')) {
+        if (timedOut || (err.name === 'InternalError' && /interrupted/i.test(err.message || ''))) {
           return { value: null, error: 'Execution timed out', kind: 'timeout' };
         }
         return {
