@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ArrowLeft, ChevronRight, PencilOff, Variable } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Lock, Variable } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
@@ -42,7 +42,7 @@ const ROW_TEXT = 'min-w-0 flex-1 break-words [overflow-wrap:anywhere]';
 /** The leading icon slot, Back arrow wide. A level with a read-only row gives every row one, so the labels line up. */
 const Gutter = ({ readOnly }: { readOnly: boolean }) => (
   <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-    {readOnly && <PencilOff role="img" aria-label="Read-Only" className="h-3 w-3 text-muted-foreground" />}
+    {readOnly && <Lock role="img" aria-label="Read-Only" className="h-3 w-3 text-muted-foreground" />}
   </span>
 );
 
