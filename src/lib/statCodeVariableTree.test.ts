@@ -106,7 +106,23 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Location', 'Discover', 'Memory', 'Diary']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Location', 'discover', 'Memory']);
+  });
+
+  it('inserts discover directly, with no group around the one call', () => {
+    expect(leaf(tree, 'discover')).toMatchObject({ insert: 'discover("Name")' });
+    expect(selected(leaf(tree, 'discover'))).toBe('"Name"');
+  });
+
+  // A group's one child would be a menu step that picks nothing.
+  const oneChildGroups = (nodes: readonly VariableNode[], at: string[] = []): string[] => nodes.flatMap((node) => {
+    if (node.kind === 'empty' || node.kind === 'field') return [];
+    const here = [...at, node.label];
+    const own = node.kind === 'group' && node.children.length === 1 && node.children[0].kind === 'field' ? [here.join(' › ')] : [];
+    return [...own, ...oneChildGroups(childrenOf(node), here)];
+  });
+  it.each([['the world', tree], ['a template', templateTree], ['an empty world', emptyTree]])('draws no group of one field in %s', (_case, nodes) => {
+    expect(oneChildGroups(nodes)).toEqual([]);
   });
 
   // `owner` is empty in a world stat's code, so only an owned or Blueprint stat's menu reaches it.
@@ -403,8 +419,8 @@ describe('every leaf against the sandbox', () => {
     places: { locations: [{ id: 'dock', name: 'Dock' }], location: { id: 'dock', name: 'Dock' } },
   });
 
-  // `diary` names a real entity and never the persona, so it has its own cases below.
-  const isDiary = (field: VariableField) => field.insert.startsWith('diary(');
+  // `diary` writes for a real entity and never the persona, so it has its own cases below.
+  const isDiary = (field: VariableField) => field.label === 'diary';
 
   // A pin through a path that reaches nothing is dropped, not thrown, so that is checked apart from the run.
   // Only Mira plays, so the persona's union reaches Rook's names as blanks.
@@ -428,17 +444,21 @@ describe('every leaf against the sandbox', () => {
     await expect(run(`const read = ${insert}; return 1;`)).resolves.toMatchObject({ value: 1, error: null });
   });
 
-  it('writes the diary of the world’s first entity as inserted, where Test Code plays no persona', async () => {
-    const [diary] = variableTreeLeaves(tree).filter(isDiary);
-    expect(diary.insert).toBe('diary("Mira", "Line")');
-    expect(diary.insert.slice(diary.selection?.from, diary.selection?.to)).toBe('Mira');
-    const result = await executeStatCode(`${diary.insert}; return 1;`, stats, stats[0], { entities });
-    expect(result).toMatchObject({ value: 1, error: null, worldWrites: { diary: [{ entity: 'mira', line: 'Line' }] } });
+  it('lists diary on each entity’s entry and nowhere at the top level or on the persona', () => {
+    expect(variableTreeLeaves(tree).filter(isDiary).map((field) => field.insert)).toEqual(['entities.Mira.diary("Line")', 'entities.Rook.diary("Line")', 'entities["Old Tom"].diary("Line")']);
   });
 
-  it('leaves the template’s diary name to type over, since no entity is called Name', async () => {
+  it('writes the diary of an entity the player doesn’t play as inserted, the line left to type over', async () => {
+    const diary = leaf(tree, 'Entities', 'Rook', 'diary');
+    expect(selected(diary)).toBe('"Line"');
+    expect(await run(`${diary.insert}; return 1;`)).toMatchObject({ value: 1, error: null, worldWrites: { diary: [{ entity: 'rook', line: 'Line' }] } });
+    expect((await run(`${leaf(tree, 'Entities', 'Mira', 'diary').insert}; return 1;`)).error).toMatch(/no entity named "Mira"/);
+  });
+
+  it('leaves the template’s entity name to type over, since no entity is called Name', async () => {
     const [diary] = variableTreeLeaves(templateTree).filter(isDiary);
-    expect(diary.insert.slice(diary.selection?.from, diary.selection?.to)).toBe('Name');
+    expect(diary.insert).toBe('entities["Name"].diary("Line")');
+    expect(selected(diary)).toBe('Name');
     expect((await run(`${diary.insert}; return 1;`)).error).toMatch(/no entity named "Name"/);
   });
 

@@ -45,15 +45,15 @@ describe('the on-demand script check', () => {
     const world = (code: string): RuleWorld => ({
       ...base([]), entities: [{ id: 'tor', name: 'Tor', description: '' } as Entity], scripts: [{ id: 'w', timing: 'after', code }],
     });
-    expect(await checkScripts(world('memory.add("The gate fell."); memory.pin("Tor lied."); diary("Tor", "I lied.");'))).toEqual([]);
+    expect(await checkScripts(world('memory.add("The gate fell."); memory.pin("Tor lied."); entities.Tor.diary("I lied.");'))).toEqual([]);
     const rows = async (code: string) => (await checkScripts(world(code))).map((f) => [f.ruleId, f.message]);
-    expect(await rows('diary("Mira", "Hello.");')).toEqual([[
+    expect(await rows('entities.Mira.diary("Hello.");')).toEqual([[
       SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, a name the cast lacks. Play may discover it.',
     ]]);
-    expect(await rows('diary("Mira", "Hello."); diary("Bo", "Hi.");')).toEqual([[
+    expect(await rows('entities.Mira.diary("Hello."); entities.Bo.diary("Hi.");')).toEqual([[
       SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, “Bo”, names the cast lacks. Play may discover them.',
     ]]);
-    expect(await rows('diary("Mira", "Hello."); traits.Bold.enabled = true;')).toEqual([[
+    expect(await rows('entities.Mira.diary("Hello."); traits.Bold.enabled = true;')).toEqual([[
       SCRIPT_UNKNOWN_NAME.id,
       '“World · After the AI” writes to unknown names. Writes ignored: no trait is named “Bold”. It also writes a diary for “Mira”, a name the cast lacks. Play may discover it.',
     ]]);
@@ -62,7 +62,7 @@ describe('the on-demand script check', () => {
   it('runs a persona-only entity’s trait Script outside the opening cast, as play with no persona does (ticket 04 ruling)', async () => {
     const albus: Entity = {
       id: 'albus', name: 'Albus', persona: true, personaOnly: true,
-      traits: [{ id: 'sly', name: 'Sly', statChanges: [], scripts: [{ id: 's', timing: 'after', code: 'if (owner.name !== "" || self.enabled) throw new Error("cast");\ndiary("Albus", "Hm.");' }] }],
+      traits: [{ id: 'sly', name: 'Sly', statChanges: [], scripts: [{ id: 's', timing: 'after', code: 'if (owner.name !== "" || self.enabled) throw new Error("cast");\nentities.Albus.diary("Hm.");' }] }],
     };
     expect((await checkScripts({ ...base([]), entities: [albus] })).map((f) => [f.ruleId, f.message])).toEqual([[
       SCRIPT_UNKNOWN_NAME.id, '“Sly · After the AI” of “Albus” writes a diary for “Albus”, a name the cast lacks. Play may discover it.',

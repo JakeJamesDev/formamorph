@@ -724,7 +724,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
     [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
 
 /** The fields on an entity entry that a write never reaches. */
-const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders', 'stats', 'move', 'follow', 'unfollow'] as const;
+const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders', 'stats', 'move', 'follow', 'unfollow', 'diary'] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
 export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
@@ -835,7 +835,7 @@ const entitiesPrelude = (
     `  const stats = data.owner ? ${OWNER_STATS} : statMap(key, unknown, data.stats || {});`,
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
     `  const write = (kind) => (target) => ${ENTITY_WRITE}(who, kind, target);`,
-    `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow') };`,
+    `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), diary: write('diary') };`,
     `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: data.own ? data.name || '' : unknown ? '' : key, traits, placeholders, stats, ...moves }, rows,`,
     `    who.played ? Object.keys(moves) : []];`,
     `});`,
@@ -1148,11 +1148,11 @@ export interface StatCodeRunOptions {
   prompts?: ScriptPromptHost;
   /** What `location` reads and what `location.move` can name. Absent, the run knows none. */
   places?: SandboxPlaces;
-  /** The entities play discovered, which `diary` can name beside `entities`. */
+  /** The entities play discovered, which an unknown entry's `diary` can name beside `entities`. */
   discovered?: readonly SandboxPlace[];
   /** A World Tool run's call arguments, frozen. Absent on a Script, where `args` does not exist. */
   args?: Readonly<Record<string, unknown>>;
-  /** The editor's run, which has no discovered cast: a `diary` name the cast lacks is listed in `maybeDiary`, not
+  /** The editor's run, which has no discovered cast: a `diary` on an entity the cast lacks is listed in `maybeDiary`, not
    *  thrown (Q46). Play leaves it off, so an unknown name fails. */
   openCast?: boolean;
 }
@@ -1161,10 +1161,12 @@ const WORLD_WRITES = '__formamorphWorldWrites';
 const ENTITY_WRITE = '__formamorphEntityWrite';
 const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
-/** The prelude of `location`, `discover`, `memory`, `diary` and the hook `clock.advance` calls. An unknown location or
- *  entity is listed as well as thrown, so a script that catches the throw still fails. `cast` is who `diary` can name. */
+/** The prelude of `location`, `discover`, `memory`, the hook `clock.advance` calls and the hook an entity entry's
+ *  writes call. An unknown location or entity is listed as well as thrown, so a script that catches the throw still
+ *  fails. An unknown entry's diary finds its key in `cast` by id, else by name; in an `openCast` run a miss is
+ *  listed as a maybe instead. */
 const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean): string => [
-  `const [location, discover, memory, diary, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
+  `const [location, discover, memory, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
   `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], unknown: [], maybe: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
@@ -1175,10 +1177,19 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    return hit ? hit.id : fail('The world has no ' + kind + ' named "' + String(target) + '"');`,
   `  };`,
   `  const entityWrite = (who, kind, target) => {`,
+  `    const diary = kind === 'diary';`,
+  `    const listed = diary && who.unknown ? cast.find((place) => place.id === who.name) || cast.find((place) => place.name === who.name) : undefined;`,
+  `    if (listed) return void writes.diary.push({ entity: listed.id, line: line('diary', target) });`,
+  `    if (diary && open && who.unknown) {`,
+  `      line('diary', target);`,
+  `      if (!writes.maybe.includes(who.name)) writes.maybe.push(who.name);`,
+  `      return;`,
+  `    }`,
   `    if (who.unknown) fail('The game has no entity named "' + who.name + '"');`,
-  `    if (who.played) fail('The persona moves with the player');`,
+  `    if (who.played) fail(!diary ? 'The persona moves with the player' : who.name ? 'The game has no entity named "' + who.name + '"' : 'The persona has no diary');`,
   `    const entity = who.id || who.name;`,
-  `    writes.entities.push(kind === 'move' ? { entity, kind, location: find('location', places.locations, target) } : { entity, kind });`,
+  `    if (diary) writes.diary.push({ entity, line: line('diary', target) });`,
+  `    else writes.entities.push(kind === 'move' ? { entity, kind, location: find('location', places.locations, target) } : { entity, kind });`,
   `  };`,
   `  const here = places.location || { id: '', name: '' };`,
   `  const location = Object.freeze(lock({`,
@@ -1204,30 +1215,23 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    if (!text(value)) throw new TypeError(call + ' needs a line as text');`,
   `    return text(value);`,
   `  };`,
-  `  const diary = (target, value) => {`,
-  `    const listed = typeof target === 'string' && cast.some((place) => place.id === target || place.name === target);`,
-  `    if (open && !listed && text(target)) {`,
-  `      line('diary', value);`,
-  `      if (!writes.maybe.includes(text(target))) writes.maybe.push(text(target));`,
-  `      return;`,
-  `    }`,
-  `    const entity = find('entity', cast, target);`,
-  `    writes.diary.push({ entity, line: line('diary', value) });`,
-  `  };`,
   `  const memory = Object.freeze(lock({`,
   `    add: (value) => { writes.memory.push(line('memory.add', value)); },`,
   `    pin: (value) => { writes.pins.push(line('memory.pin', value)); },`,
   `  }, ['add', 'pin'], 'memory.', note));`,
-  `  return [location, Object.freeze(discover), memory, Object.freeze(diary), advance, entityWrite, writes];`,
+  `  return [location, Object.freeze(discover), memory, advance, entityWrite, writes];`,
   `})(${JSON.stringify({ locations, location })}, ${JSON.stringify(cast)}, ${openCast}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
 ].join('\n');
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
-/** The entities of `entities` that `diary` can name: every one but the persona, by id, else by name. */
-const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity): SandboxPlace[] => entities
-  .filter((entity) => entity !== persona && !(persona.id && entity.id === persona.id) && hasEntityKey(entity.name))
-  .map((entity) => ({ id: entity.id || entity.name, name: entity.name }));
+/** Who an unknown entry's diary can name: every entity but the persona, by id, else by name, then the discovered. */
+const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity, discovered: readonly SandboxPlace[]): SandboxPlace[] => [
+  ...entities
+    .filter((entity) => entity !== persona && !(persona.id && entity.id === persona.id) && hasEntityKey(entity.name))
+    .map((entity) => ({ id: entity.id || entity.name, name: entity.name })),
+  ...discovered,
+];
 
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
@@ -1405,7 +1409,7 @@ export const executeStatCode = async (
       `const self = ${!currentStat ? selfTraitSource : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
-      worldPrelude(places, [...diaryCast(entities, persona), ...discovered], openCast),
+      worldPrelude(places, diaryCast(entities, persona, discovered), openCast),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,

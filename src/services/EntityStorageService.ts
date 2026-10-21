@@ -2,6 +2,7 @@ import { LibraryStore, type StoredRecord } from './LibraryStore';
 import { migrateEntityImages, primaryImage } from '@/lib/entityImages';
 import { describePlaceholders } from '@/lib/placeholders';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
+import { migrateEntityScriptText } from '@/lib/scriptTextMigration';
 import { migrateCarriedPlaceholders, migrateEntityGlobalTargets, migrateEntityRequirementRows, migrateEntityStatFields, migrateEntityStatScripts } from '@/lib/version';
 import { carriedPlaceholders } from '@/lib/placeholderHomes';
 import type { Entity, EntityMetadata } from '@/types';
@@ -63,10 +64,10 @@ class EntityStorageService {
 
   /** Load one character's full entity; rejects if missing. A library character never passes through
    *  `migrateWorld`, so its carried defs take the value-record conversion, its trait gates take
-   *  Requirement Rows and Global row targets, its gallery takes image objects, its stats' code boxes become scripts and
+   *  Requirement Rows and Global row targets, its gallery takes image objects, its stats' code boxes become scripts, its script text takes the current surface and
    *  its stat lists keep to the records they can hold here — the single read boundary the editor and add-to-world both go through. */
   async getEntityData(id: string): Promise<Entity> {
-    const entity = migrateEntityImages(migrateEntityStatScripts(migrateEntityStatFields(migrateEntityGlobalTargets(migrateEntityRequirementRows(await this.store.getData(id))))));
+    const entity = migrateEntityImages(migrateEntityScriptText(migrateEntityStatScripts(migrateEntityStatFields(migrateEntityGlobalTargets(migrateEntityRequirementRows(await this.store.getData(id)))))));
     return {
       ...entity,
       ...(entity.placeholders ? { placeholders: migrateCarriedPlaceholders(entity.placeholders) } : {}),

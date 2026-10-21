@@ -38,7 +38,7 @@ describe('runTestCode world writes', () => {
   });
 
   it('lists each memory line, pin and diary line', async () => {
-    const report = await run('memory.add("Tor lied."); memory.pin("The bridge is out."); diary("Tor", "I lied.");', {
+    const report = await run('memory.add("Tor lied."); memory.pin("The bridge is out."); entities.Tor.diary("I lied.");', {
       ...world, entities: [{ id: 'e-tor', name: 'Tor' }],
     });
     expect(report.error).toBeNull();
@@ -55,19 +55,19 @@ describe('runTestCode world writes', () => {
 
   // The editor has no discovered cast, so play may know a name the authored world lacks (Q46).
   it('warns on a diary for a name the authored world lacks, and does not fail', async () => {
-    const report = await run('diary("Stranger", "Hello."); diary("Tor", "I lied.");', { ...world, entities: [{ id: 'e-tor', name: 'Tor' }] });
+    const report = await run('entities.Stranger.diary("Hello."); entities.Tor.diary("I lied.");', { ...world, entities: [{ id: 'e-tor', name: 'Tor' }] });
     expect(report.error).toBeNull();
     expect(report.writes).toEqual(['diary: Tor: I lied.']);
     expect(report.dropped).toEqual(['Diary target “Stranger” may be discovered in play.']);
   });
 
   it('names a missing diary target once however often it is called', async () => {
-    const report = await run('diary("Stranger", "One."); diary("Stranger", "Two.");');
+    const report = await run('entities.Stranger.diary("One."); entities.Stranger.diary("Two.");');
     expect(report.dropped).toEqual(['Diary target “Stranger” may be discovered in play.']);
   });
 
   it('still fails a diary call that has no line', async () => {
-    const report = await run('diary("Stranger", "");');
+    const report = await run('entities.Stranger.diary("");');
     expect(report.error).toMatch(/needs a line/);
   });
 

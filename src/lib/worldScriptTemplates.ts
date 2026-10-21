@@ -57,7 +57,7 @@ memory.pin(\`{{line:text=A change took hold.}}\`);`,
     name: 'Diary Line When a Trait Turns On',
     description: 'Add a line to an entity’s diary when a trait turns on. A switch-off adds nothing.',
     code: `if (trait.name !== {{trait:trait}} || !trait.enabled) return;
-diary({{entity:entity}}, \`{{line:text=Something changed today.}}\`);`,
+entities[{{entity:entity}}].diary(\`{{line:text=Something changed today.}}\`);`,
   },
   {
     id: 'builtin-world-replace-word',

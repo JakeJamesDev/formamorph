@@ -142,6 +142,7 @@ const ownerFields = (path: Path, entries: readonly SurfaceEntry[], lists: OwnLis
     if (entry.name === 'traits' && lists.traits) return nameList('Traits', lists.traits(at), `No traits ${where}`, entry.info);
     if (entry.name === 'placeholders') return nameList('Placeholders', lists.placeholders(at), `No placeholders ${where}`, entry.info);
     if (entry.name === 'stats' && lists.stats) return nameList('Stats', lists.stats(at), `No stats ${where}`, entry.info);
+    if (entry.name === 'diary') return lineCallField(path, entry);
     return undefined;
   });
 
@@ -164,6 +165,12 @@ const callField = ({ access: _method, ...call }: VariableField, arg: string): Va
   return { ...call, insert, selection: { from, to: from + arg.length } };
 };
 
+/** A call that takes a line, `path.entry("Line")`. A type-over name in `path` stays selected; else the line is. */
+const lineCallField = (path: Path, entry: SurfaceEntry): VariableField => {
+  const call = callField(field(path, entry), '"Line"');
+  return path.selection ? { ...call, selection: path.selection } : call;
+};
+
 const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, (entry, at) => {
   if (entry.name === 'advance') return callField(field(path, entry), '30');
   return entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined;
@@ -177,13 +184,6 @@ const locationFields = (): VariableNode[] => LOCATION_MEMBERS.map((entry) =>
 const topCallField = (name: string, arg: string): VariableField => {
   const entry = SANDBOX_GLOBALS.find((global) => global.name === name);
   return callField({ kind: 'field', label: name, detail: entry?.detail ?? '', info: entry?.info ?? '', insert: name }, arg);
-};
-
-/** `diary` for `name`, the world's first entity, which stays selected to type over. */
-const diaryField = (name: string): VariableField => {
-  const call = topCallField('diary', `${JSON.stringify(name)}, "Line"`);
-  const from = 'diary("'.length;
-  return { ...call, selection: { from, to: from + JSON.stringify(name).length - 2 } };
 };
 
 const memoryFields = (): VariableNode[] => MEMORY_MEMBERS.map((entry) => callField(field(root('memory'), entry), '"Line"'));
@@ -373,7 +373,7 @@ export function buildVariableTree(
     : self === 'trait'
       ? [{ kind: 'group', label: 'This Trait', info: TRAIT_SCRIPT_SURFACE.globals.find((entry) => entry.name === 'self')?.info, children: fields(root('self'), SELF_TRAIT_FIELDS) }]
       : [{ kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) }];
-  return [
+  const top: VariableNode[] = [
     ...selfGroup,
     ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: OWNER_INFO, children: ownerChildren(owner) }] : []),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
@@ -386,9 +386,17 @@ export function buildVariableTree(
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
     { kind: 'group', label: 'Memory', info: globalInfo('memory'), children: memoryFields() },
-    { kind: 'group', label: 'Diary', info: globalInfo('diary'), children: [diaryField(names?.entities?.[0]?.name ?? 'Name')] },
     ...timingGroups(timing),
   ];
+  return top.map(leafForOneChild);
+}
+
+/** `node` with every group of one field drawn as that field, at any depth. */
+function leafForOneChild(node: VariableNode): VariableNode {
+  if (node.kind === 'names') return { ...node, rows: node.rows.map((row) => ({ ...row, children: row.children.map(leafForOneChild) })) };
+  if (node.kind !== 'group') return node;
+  const children = node.children.map(leafForOneChild);
+  return children.length === 1 && children[0].kind === 'field' ? children[0] : { ...node, children };
 }
 
 /** Every leaf under `nodes`, depth first. */

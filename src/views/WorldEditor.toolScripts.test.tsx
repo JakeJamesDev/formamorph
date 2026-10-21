@@ -48,7 +48,7 @@ const travel = tool('t-travel', 'travel', {
   timing: 'after', reply: 'Off you go.', code: 'location.move(args.place);\nclock.advance(30);\nstats.Luck.value = 9;',
 }, place);
 const roll = tool('t-roll', 'roll_luck', { code: 'return "Luck is " + stats.Luck.value;' });
-const tell = tool('t-tell', 'tell_tale', { timing: 'after', code: 'diary("Stranger", "Hello.");' });
+const tell = tool('t-tell', 'tell_tale', { timing: 'after', code: 'entities.Stranger.diary("Hello.");' });
 const filter = tool('t-filter', 'shout', { timing: 'output', code: 'narration.sentence = narration.sentence.toUpperCase();' });
 
 const WORLD: World = benchEditorWorld({
@@ -139,7 +139,7 @@ describe('a Script World Tool’s code box', () => {
     await waitFor(() => expect(boxes.get('Script')).toBeDefined());
     const box = boxes.get('Script')!;
     const globals = box.surface.globals.map((entry) => entry.name);
-    expect(globals).toEqual(expect.arrayContaining(['args', 'location', 'clock', 'discover', 'memory', 'diary', 'stats']));
+    expect(globals).toEqual(expect.arrayContaining(['args', 'location', 'clock', 'discover', 'memory', 'entities', 'stats']));
     expect(box.surface.members.get('args')?.map((entry) => entry.name)).toEqual(['place']);
     expect(box.statNames).toEqual(['Luck']);
   });
