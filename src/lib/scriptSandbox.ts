@@ -23,7 +23,7 @@ let asyncTurn: Promise<unknown> = Promise.resolve();
 
 /** A host function a program calls as a global. It may return a handle for the program to read, or a call
  *  result whose `error` the program sees thrown. On the async engine it may return a promise of either, and
- *  the program waits for it with no `await`; the run's time budget pauses while it does. */
+ *  the program waits for it with no `await`. The run's time budget pauses during every host call (Q49). */
 export type SandboxHostFunction = (vm: QuickJSContext, ...args: QuickJSHandle[]) => SandboxHostReturn | Promise<SandboxHostReturn>;
 
 export type SandboxHostReturn = QuickJSHandle | { error: QuickJSHandle } | undefined;
@@ -64,7 +64,7 @@ async function runOn<T>(
   engine: SandboxEngine,
 ): Promise<T> {
   const runtime = QuickJS.newRuntime();
-  // The budget moves out by the time a host function spends suspended, so a prompt held open never times out.
+  // The budget moves out by the time each host call takes, so a prompt held open never times out.
   let deadline = Date.now() + EXECUTION_TIMEOUT_MS;
   let timedOut = false;
   runtime.setInterruptHandler(() => (timedOut ||= Date.now() > deadline));
@@ -75,9 +75,11 @@ async function runOn<T>(
     // QuickJS has no console: collect the output and forward it to the host console.
     let consoleOutput = '';
     const logFn = vm.newFunction('log', (...args) => {
+      const started = Date.now();
       const parts = args.map((arg) => vm.dump(arg));
       consoleOutput += parts.map(String).join(' ') + '\n';
       console.log(...parts);
+      deadline += Date.now() - started;
     });
     const consoleObj = vm.newObject();
     vm.setProp(consoleObj, 'log', logFn);
@@ -97,9 +99,14 @@ async function runOn<T>(
           }
         })
         : vm.newFunction(name, (...args) => {
-          const returned = fn(vm, ...args);
-          if (returned instanceof Promise) throw new Error(`${name} returned a promise on the sync engine`);
-          return returned;
+          const started = Date.now();
+          try {
+            const returned = fn(vm, ...args);
+            if (returned instanceof Promise) throw new Error(`${name} returned a promise on the sync engine`);
+            return returned;
+          } finally {
+            deadline += Date.now() - started;
+          }
         });
       vm.setProp(vm.global, name, handle);
       handle.dispose();
