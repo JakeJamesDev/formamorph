@@ -272,7 +272,7 @@ describe('self in a world script', () => {
 
   it('keeps the card of an empty object and names no stat', () => {
     const card = cardAt('const x = se|lf;', worldScript);
-    expect(card?.description).toBe('Empty in a world script.');
+    expect(card?.description).toBe('Empty in a world script');
     expect(card?.rows).toBeUndefined();
     expect(card?.item).toBeUndefined();
   });
@@ -283,7 +283,7 @@ describe('self in a world script', () => {
   });
 
   it('keeps the surface line on owner too', () => {
-    expect(cardAt('const x = ow|ner;', worldScript)?.description).toBe('Empty in a world script.');
+    expect(cardAt('const x = ow|ner;', worldScript)?.description).toBe('Empty in a world script');
   });
 
   it('still names the stat on a stat script’s self', () => {

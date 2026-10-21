@@ -13,9 +13,11 @@ import { infoWithAccess, type CodeSurface, type SurfaceEntry } from './codeSurfa
 import {
   BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS,
   PERSONA_FIELDS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
-  placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, NARRATION_FIELDS, NARRATION_GLOBAL, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS,
+  SWITCHED_TRAIT_GLOBAL, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE, placeholderEntryFields,
 } from './statCodeSurface';
 import { toolScriptSurface } from './tools/toolScriptSurface';
+import { worldToolArgsNodes, worldToolSurface } from './tools/worldToolSurface';
 import { buildVariableTree, variableTreeLeaves, type VariableNode } from './statCodeVariableTree';
 
 const param = (over: Partial<ToolParam>): ToolParam => ({
@@ -78,7 +80,16 @@ function lines(): [string, string][] {
       ...placeholderEntryFields('Wildcard'), ...placeholderEntryFields('Object'),
       ...SANDBOX_GLOBALS, ...SANDBOX_BUILTINS, ...[...BUILTIN_MEMBERS.values()].flat(),
     ]),
+    ...named('trait script', surfaceEntries(TRAIT_SCRIPT_SURFACE)),
+    ...named('world script', surfaceEntries(WORLD_SCRIPT_SURFACE)),
+    ...named('timing', [
+      ...SELF_TRAIT_FIELDS, ...SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, NARRATION_GLOBAL, ...NARRATION_FIELDS,
+      PLAYER_GLOBAL, ...PLAYER_CALL_ENTRIES,
+    ]),
+    ...named('world tool', surfaceEntries(worldToolSurface([param({ name: 'said', required: false })], 'call'))),
     ...menu(buildVariableTree(undefined, { kind: 'entity', entity: null })),
+    ...menu(buildVariableTree(undefined, null, 'trait', { narration: true, player: true, trait: true })),
+    ...menu(worldToolArgsNodes([param({ name: 'said' })]), 'tool menu'),
     ...completionLines(),
   ];
 }
@@ -105,6 +116,15 @@ describe('every code surface info line', () => {
     expect(info).not.toContain('—');
   });
 
+  it.each(all)('%s opens with its subject, not a filler word', (_where, info) => {
+    expect(info).not.toMatch(/^(This|The script|Returns|Whether)\b/);
+  });
+
+  it.each(all)('%s keeps every sentence under 21 words', (_where, info) => {
+    const long = info.split(/(?<=[.!?])\s+/).filter((sentence) => sentence.split(/\s+/).length > 20);
+    expect(long).toEqual([]);
+  });
+
   // `fromCharCode` names JavaScript's own character codes, which are no entity.
   it('never says "character" for an entity', () => {
     expect(all.filter(([, info]) => /\bcharacters?\b(?! codes)/i.test(info)).map(([where]) => where)).toEqual([]);
@@ -113,6 +133,54 @@ describe('every code surface info line', () => {
   // The technical register's rejected words for a defined term: `holds`, `kept`, `frozen`, `dropped`, `toggle`, `lands`.
   it.each(all)('%s uses the register’s defined terms', (_where, info) => {
     expect(info).not.toMatch(/\b(holds|kept|frozen|dropped|toggles?|lands)\b/i);
+  });
+});
+
+// Q56: a data field reads as one sentence under 20 words; a verb may run to two short sentences.
+describe('the map entries and the entity members', () => {
+  const fieldSets: [string, readonly SurfaceEntry[]][] = [
+    ['locations entry', LOCATION_ENTRY_FIELDS], ['location', LOCATION_MEMBERS], ['memories entry', MEMORY_ENTRY_FIELDS],
+    ['dictionary entry', DICTIONARY_ENTRY_FIELDS], ['entity', ENTITY_FIELDS],
+  ];
+  const isVerb = (entry: SurfaceEntry) => entry.detail.startsWith('(');
+  // The owner maps carry the two-word hint after their line, which is the older pattern.
+  const isMap = (entry: SurfaceEntry) => ['traits', 'placeholders', 'stats'].includes(entry.name);
+  const fields = fieldSets.flatMap(([set, entries]) => entries.filter((entry) => !isVerb(entry) && !isMap(entry))
+    .map((entry): [string, string] => [`${set}.${entry.name}`, entry.info]));
+  const verbs = fieldSets.flatMap(([set, entries]) => entries.filter(isVerb)
+    .map((entry): [string, string] => [`${set}.${entry.name}`, entry.info]));
+
+  it('lists a field and a verb of each set', () => {
+    expect(fields.length).toBeGreaterThan(30);
+    expect(verbs.map(([where]) => where)).toEqual(expect.arrayContaining(['memories entry.pin', 'entity.move', 'entity.diary']));
+  });
+
+  // The Persona and entity member lists differ only in who they name, so the persona's fields take the bar too.
+  it.each([...fields, ...PERSONA_FIELDS.filter((entry) => !isMap(entry)).map((entry): [string, string] => [`persona.${entry.name}`, entry.info])])(
+    '%s is one sentence under 20 words', (_where, info) => {
+      expect(info.split(/(?<=[.!?])\s+/)).toHaveLength(1);
+      expect(info.split(/\s+/).length).toBeLessThan(20);
+    },
+  );
+
+  it.each(verbs)('%s runs to at most two sentences', (_where, info) => {
+    expect(info.split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('the Variable menu’s group lines', () => {
+  const infoOf = (surface: CodeSurface, name: string) => surface.globals.find((entry) => entry.name === name)?.info;
+  const groups = (nodes: readonly VariableNode[]) => new Map(nodes.flatMap((node) => (node.kind === 'empty' || !node.info ? [] : [[node.label, node.info] as const])));
+
+  it.each([
+    ['Owner', 'owner', 'stat', STAT_CODE_SURFACE], ['Owner', 'owner', 'trait', TRAIT_SCRIPT_SURFACE],
+    ['Locations', 'locations', 'stat', STAT_CODE_SURFACE], ['Location', 'location', 'stat', STAT_CODE_SURFACE],
+    ['Memories', 'memories', 'stat', STAT_CODE_SURFACE], ['Dictionaries', 'dictionaries', 'stat', STAT_CODE_SURFACE],
+    ['Entities', 'entities', 'stat', STAT_CODE_SURFACE], ['Persona', 'persona', 'stat', STAT_CODE_SURFACE],
+    ['Clock', 'clock', 'stat', STAT_CODE_SURFACE], ['notes', 'notes', 'stat', STAT_CODE_SURFACE],
+  ] as const)('%s on the %s menu reads as its card', (label, name, self, surface) => {
+    const menu = groups(buildVariableTree(undefined, { kind: 'entity', entity: null }, self));
+    expect(menu.get(label)).toBe(infoOf(surface, name));
   });
 });
 
