@@ -439,7 +439,22 @@ export function buildVariableTree(
     { kind: 'field', label: 'notes', detail: 'string', info: globalInfo('notes') ?? '', access: 'readOnly', insert: 'notes' },
     ...timingGroups(timing),
   ];
-  return top.map(leafForOneChild);
+  return top.map(verbsLast).map(leafForOneChild);
+}
+
+/** Whether a leaf is a verb: its insert ends in a call, or its detail is a function type. */
+export const isVerbLeaf = (node: VariableNode): boolean =>
+  node.kind === 'field' && (node.insert.endsWith(')') || isMethodEntry(node));
+
+/** `nodes` with the verbs after everything else, each set keeping its order. */
+const fieldsThenVerbs = (nodes: readonly VariableNode[]): VariableNode[] =>
+  [...nodes.filter((node) => !isVerbLeaf(node)), ...nodes.filter(isVerbLeaf)];
+
+/** `node` with the verbs last in every group, at any depth (R7). */
+function verbsLast(node: VariableNode): VariableNode {
+  if (node.kind === 'names') return { ...node, rows: node.rows.map((row) => ({ ...row, children: fieldsThenVerbs(row.children.map(verbsLast)) })) };
+  if (node.kind !== 'group') return node;
+  return { ...node, children: fieldsThenVerbs(node.children.map(verbsLast)) };
 }
 
 /** `node` with every group of one field drawn as that field, at any depth. */
