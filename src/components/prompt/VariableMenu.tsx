@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ArrowLeft, ChevronRight, Variable } from 'lucide-react';
+import { ArrowLeft, ChevronRight, PencilOff, Variable } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
+import { useIsCut } from '@/components/TruncatedText';
 import { MENU_ROW } from '@/components/menuRow';
 import { InsertMenuButton } from '@/components/prompt/InsertMenuButton';
 import { BreadcrumbPickerList, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
@@ -38,6 +39,32 @@ const pickerRows = (names: readonly VariableNameRow[]): BreadcrumbPickerRow<Vari
 
 const ROW_TEXT = 'min-w-0 flex-1 break-words [overflow-wrap:anywhere]';
 
+/** The leading icon slot, Back arrow wide. A level with a read-only row gives every row one, so the labels line up. */
+const Gutter = ({ readOnly }: { readOnly: boolean }) => (
+  <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+    {readOnly && <PencilOff role="img" aria-label="Read-Only" className="h-3 w-3 text-muted-foreground" />}
+  </span>
+);
+
+const isReadOnly = (row: Row): boolean => row.kind === 'field' && row.field.access === 'readOnly';
+
+/** A field row: the read-only mark, its label, and its type on the right. A cut type rides in the tooltip whole. */
+function FieldRow({ field, gutter, onPick }: { field: VariableField; gutter: boolean; onPick: () => void }) {
+  const detailRef = useRef<HTMLSpanElement | null>(null);
+  const cut = useIsCut(detailRef, field.detail);
+  const info = infoWithAccess(field);
+  return (
+    <Tip tip={cut ? `${field.detail}\n${info}` : info} side="right" labelsChild={false}>
+      {/* Named by its label alone: the mark and the type are the row's annotations, not its name. */}
+      <button type="button" aria-label={field.label} className={MENU_ROW} onClick={onPick}>
+        {gutter && <Gutter readOnly={field.access === 'readOnly'} />}
+        <span className="min-w-0 truncate">{field.label}</span>
+        <span ref={detailRef} className="ml-auto min-w-0 truncate pl-2 font-mono text-helper text-muted-foreground">{field.detail}</span>
+      </button>
+    </Tip>
+  );
+}
+
 /** The menu's levels. Mounted fresh on every open, so it always starts at the top. */
 function VariablePanel({ build, onPick, onClose }: {
   build: () => readonly VariableNode[];
@@ -49,6 +76,7 @@ function VariablePanel({ build, onPick, onClose }: {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const depth = stack.length - 1;
   const level = stack[depth];
+  const gutter = level.kind === 'rows' && level.rows.some(isReadOnly);
 
   // The rows the arrows step through. A name level's search box is one stop; its list moves itself.
   const enabledRows = () => [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input') ?? [])];
@@ -119,19 +147,14 @@ function VariablePanel({ build, onPick, onClose }: {
             <div role="group" aria-label={level.label}>
               {level.rows.map((row, index) => {
                 if (row.kind === 'empty') {
-                  return <button key={index} type="button" disabled className={MENU_ROW}>{row.message}</button>;
+                  return <button key={index} type="button" disabled className={MENU_ROW}>{gutter && <Gutter readOnly={false} />}{row.message}</button>;
                 }
                 if (row.kind === 'field') {
-                  return (
-                    <Tip key={index} tip={infoWithAccess(row.field)} side="right" labelsChild={false}>
-                      <button type="button" className={MENU_ROW} onClick={() => onPick(row.field)}>
-                        <span className={ROW_TEXT}>{row.field.label}</span>
-                      </button>
-                    </Tip>
-                  );
+                  return <FieldRow key={index} field={row.field} gutter={gutter} onPick={() => onPick(row.field)} />;
                 }
                 return (
                   <button key={index} type="button" className={MENU_ROW} onClick={() => drill(row.open())}>
+                    {gutter && <Gutter readOnly={false} />}
                     <span className={ROW_TEXT}>{row.label}</span>
                     <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   </button>
@@ -167,7 +190,7 @@ export function VariableMenu({ build, onPick }: { build: () => readonly Variable
       <PopoverContent
         portal={false}
         align="start"
-        className="w-64 overflow-hidden p-1"
+        className="w-72 overflow-hidden p-1"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => { if (picked.current) event.preventDefault(); }}
       >
