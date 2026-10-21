@@ -172,15 +172,15 @@ describe('the schema request', () => {
   const stats = [stat({ name: '**Vigor**' }), stat({ id: 'resolve', name: 'Resolve' }), stat({ id: 'vigor-2', name: 'Vigor' })];
   const json = (body: unknown) => JSON.stringify({ [GLOBAL_STATS_HEADING]: body });
 
-  it('requires every loose stat under Other Stats, each a bounded change beside a bounded max change', () => {
+  it('requires every loose stat under Other Stats, each an unbounded change beside an unbounded max change', () => {
     const { name, schema } = statRequestSchema(createStatRequest(stats));
-    const bounded = { type: 'integer', minimum: -20, maximum: 20 };
+    const change = { type: 'integer' };
     const keys = ['Vigor', 'Vigor max', 'Resolve', 'Resolve max', 'Vigor (2)', 'Vigor (2) max'];
     expect(name).toBe('stat_changes');
     expect(schema).toEqual({ type: 'object', additionalProperties: false, required: [GLOBAL_STATS_HEADING], properties: {
       [GLOBAL_STATS_HEADING]: {
         type: 'object', additionalProperties: false, required: keys,
-        properties: Object.fromEntries(keys.map((key) => [key, bounded])),
+        properties: Object.fromEntries(keys.map((key) => [key, change])),
       },
     } });
   });

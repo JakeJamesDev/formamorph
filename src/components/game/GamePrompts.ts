@@ -179,7 +179,7 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 - Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn.
 
 ## Format
-- One key per character: "Player Character" for the player's character, each In Scene character's name exactly as the block shows it, and "Global Stats" for the Global Stats block. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
+- One key per character: "Player Character" for the player's character, each In Scene character's name exactly as the block shows it, and "Global Stats" for the Global Stats block. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number.
 - Put the sign on the number: a leading minus lowers the stat.
 - A value or maximum that did not move gets 0.
 - Write the whole object on one line.`;
@@ -204,7 +204,7 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 
 ## Format
 - One line per changed stat: its exact name from the list above (written plainly - never a + or - on the name), a colon, then one signed whole number. Nothing else on the line.
-- The change is ONE whole number - never a fraction, a slash, or a value-over-maximum; keep it between -20 and 20. Put the sign on the number (a leading minus lowers the stat).
+- The change is ONE whole number - never a fraction, a slash, or a value-over-maximum. Put the sign on the number (a leading minus lowers the stat).
 - To change a stat's maximum instead of its current value, add MAX after the number.
 - If nothing changed this turn, output nothing at all. Never write a preamble, heading, or explanation.`;
 

@@ -49,6 +49,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
   - **The relationship probe measures whether narration uses an absent relative without placing them in the scene.** It runs an A/B, relationship off vs on, on the shipped prompts.
 
+#### ➖ Removed
+
+- **👤 User-facing**
+  - **Stats no longer cap the AI's change at 20 per turn.** A big reward or loss moves a wide stat, such as gold, in full. Each stat still stays inside its own minimum and maximum.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

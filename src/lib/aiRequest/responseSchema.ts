@@ -2,7 +2,7 @@ import { AiStreamError } from './aiStream';
 
 /** The JSON Schema subset a response format may use. It names no `uniqueItems`, which the cloud server rejects. */
 export type ResponseSchemaNode =
-  | { type: 'integer'; minimum: number; maximum: number }
+  | { type: 'integer'; minimum?: number; maximum?: number }
   | { type: 'object'; properties: Record<string, ResponseSchemaNode>; required: string[]; additionalProperties: false };
 
 /** A schema the reply must follow, and the name the request gives it. */
