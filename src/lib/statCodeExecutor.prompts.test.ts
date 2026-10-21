@@ -70,20 +70,20 @@ describe('executeStatCode on the async engine', () => {
     ]);
   });
 
-  it('answers confirm with a boolean, askText with the typed text, and tell and toast with nothing', async () => {
-    const { prompts, asked } = host((request) => (request.kind === 'confirm' ? true : request.kind === 'askText' ? 'Ada' : undefined));
+  it('answers confirm with a boolean, input with the typed text, and tell and toast with nothing', async () => {
+    const { prompts, asked } = host((request) => (request.kind === 'confirm' ? true : request.kind === 'input' ? 'Ada' : undefined));
     const code = `
       player.tell('Welcome');
       player.toast('Saved');
       const sure = player.confirm('Sure?');
-      const name = player.askText('Name?', 'Type a name');
+      const name = player.input('Name?', 'Type a name');
       return sure === true && name === 'Ada' ? 1 : 0;`;
     await expect(executeStatCode(code, [], makeStat({}), { prompts })).resolves.toEqual({ value: 1, error: null });
     expect(asked).toEqual([
       { kind: 'tell', text: 'Welcome' },
       { kind: 'toast', text: 'Saved' },
       { kind: 'confirm', question: 'Sure?' },
-      { kind: 'askText', question: 'Name?', placeholder: 'Type a name' },
+      { kind: 'input', question: 'Name?', placeholder: 'Type a name' },
     ]);
   });
 
@@ -124,7 +124,7 @@ describe('executeStatCode on the async engine', () => {
       `player.ask('Door?', ['Left', 5])`,
       `player.ask(7, ['Left'])`,
       `player.confirm()`,
-      `player.askText('Name?', 3)`,
+      `player.input('Name?', 3)`,
       `player.tell({ text: 'Hi' })`,
     ];
     for (const call of cases) {
@@ -135,6 +135,18 @@ describe('executeStatCode on the async engine', () => {
       expect(caught, call).toEqual({ value: 1, error: null });
     }
     expect(asked).toEqual([]);
+  });
+
+  it('has no call under the retired name', async () => {
+    const result = await executeStatCode(`return typeof player.input === 'function' && typeof player['ask' + 'Text'] === 'undefined' ? 1 : 0;`, [], makeStat({}), { prompts: host(() => undefined).prompts });
+    expect(result).toEqual({ value: 1, error: null });
+  });
+
+  it('refuses player.input in a During AI Output script, naming the call and the timing', async () => {
+    const { prompts } = host(() => 'x');
+    const narration = { sentence: 'A door.', full: 'A door.', index: 0, sent: [], buffered: [] };
+    const result = await executeStatCode(`player.input('Name?'); return 1;`, [], makeStat({}), { prompts, narration });
+    expect(result.error).toContain("player.input can't run in During AI Output");
   });
 
   it('fails a During AI Output script that calls player, on the sync engine, naming the timing', async () => {

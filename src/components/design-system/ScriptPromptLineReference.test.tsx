@@ -18,7 +18,7 @@ describe('inline prompt line reference', () => {
     await user.click(screen.getByRole('button', { name: 'Tell' }));
     expect(await screen.findByTestId('script-tell')).toHaveTextContent('A bell rings');
 
-    await user.click(screen.getByRole('button', { name: 'Ask Text' }));
+    await user.click(screen.getByRole('button', { name: 'Input' }));
     expect(await screen.findByRole('textbox', { name: /What name/ })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(await screen.findByText('The script stopped as canceled')).toBeInTheDocument();

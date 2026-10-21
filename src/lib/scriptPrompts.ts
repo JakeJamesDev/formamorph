@@ -13,7 +13,7 @@ export type ScriptPromptRequest =
   | { kind: 'toast'; text: string }
   | { kind: 'confirm'; question: string; asker?: string }
   | { kind: 'ask'; question: string; options: readonly string[]; multiple: boolean; asker?: string }
-  | { kind: 'askText'; question: string; placeholder?: string; asker?: string };
+  | { kind: 'input'; question: string; placeholder?: string; asker?: string };
 
 export type ScriptPromptKind = ScriptPromptRequest['kind'];
 
@@ -29,7 +29,7 @@ export interface ScriptPromptAnswers {
   toast: undefined;
   confirm: boolean;
   ask: number | number[];
-  askText: string;
+  input: string;
 }
 
 export type ScriptPromptAnswer<K extends ScriptPromptKind = ScriptPromptKind> = ScriptPromptAnswers[K];
@@ -82,7 +82,7 @@ function fits(request: ScriptPromptRequest, value: unknown): boolean {
       return value === undefined;
     case 'confirm':
       return typeof value === 'boolean';
-    case 'askText':
+    case 'input':
       return typeof value === 'string';
     case 'ask':
       return request.multiple ? Array.isArray(value) && value.every(index) : index(value);
@@ -90,7 +90,7 @@ function fits(request: ScriptPromptRequest, value: unknown): boolean {
 }
 
 /**
- * A store of its own. With no listener, nothing can answer, so an ask, confirm or askText cancels at once and a
+ * A store of its own. With no listener, nothing can answer, so an ask, confirm or input cancels at once and a
  * tell or toast resolves with nothing shown (Q45).
  */
 export function createScriptPromptStore(mintId: () => string = randomUUID): ScriptPromptStore {
@@ -161,7 +161,7 @@ export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandler
   };
 }
 
-/** `host` with every ask, confirm and askText stamped with `asker`; a tell or toast passes unchanged. */
+/** `host` with every ask, confirm and input stamped with `asker`; a tell or toast passes unchanged. */
 export function askedBy(host: ScriptPromptHost, asker: string): ScriptPromptHost {
   return {
     prompt(request) {

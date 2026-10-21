@@ -65,15 +65,15 @@ describe('Test Code with a prompt', () => {
     expect(screen.queryByTestId('script-prompt')).toBeNull();
   });
 
-  it('answers askText, a long ask and a multiple ask through the same line', async () => {
+  it('answers input, a long ask and a multiple ask through the same line', async () => {
     executeStatCode.mockImplementation(async (_code: string, _stats: unknown, _self: unknown, options: StatCodeRunOptions) => {
-      const name = await options.prompts!.prompt({ kind: 'askText', question: 'Your name?' });
+      const name = await options.prompts!.prompt({ kind: 'input', question: 'Your name?' });
       const road = await options.prompts!.prompt({ kind: 'ask', question: 'Which road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false });
       const packed = await options.prompts!.prompt({ kind: 'ask', question: 'Pack what?', options: ['Rope', 'Lamp'], multiple: true });
       return ran({ statWrites: [{ id: 'h', name: 'Health', value: name.length * 10 + Number(road) + (packed as number[]).length }] });
     });
     const user = userEvent.setup();
-    render(<Box initial={{ id: 's', timing: 'after', code: 'player.askText("Your name?")' }} />);
+    render(<Box initial={{ id: 's', timing: 'after', code: 'player.input("Your name?")' }} />);
     await user.click(screen.getByRole('button', { name: `Test Code ${LABEL}` }));
     await user.type(await screen.findByRole('textbox', { name: 'Your name?' }), 'Ada{Enter}');
     await user.click(await screen.findByRole('combobox', { name: 'Which road?' }));

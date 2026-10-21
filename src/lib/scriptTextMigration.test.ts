@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateDiaryCalls, migrateEntityScriptText, migrateMemoryCalls, migrateWorldScriptText, type ScriptTextRewrite } from '@/lib/scriptTextMigration';
+import { migrateDiaryCalls, migrateEntityScriptText, migrateMemoryCalls, migratePlayerInput, migrateWorldScriptText, type ScriptTextRewrite } from '@/lib/scriptTextMigration';
 import { migrateWorld } from '@/lib/version';
 import { executeStatCode } from '@/lib/statCodeExecutor';
 import type { Script, World } from '@/types';
@@ -88,6 +88,31 @@ describe('migrateMemoryCalls', () => {
   });
 });
 
+describe('migratePlayerInput', () => {
+  it.each([
+    ['a call', 'const n = player.askText("Name?");', 'const n = player.input("Name?");'],
+    ['a call with a placeholder', 'player . askText("Name?", "A name");', 'player . input("Name?", "A name");'],
+    ['two calls', 'player.askText(a); player.askText(b);', 'player.input(a); player.input(b);'],
+  ])('rewrites %s', (_case, code, expected) => {
+    expect(migratePlayerInput(code)).toBe(expected);
+  });
+
+  it.each([
+    ['a script that declares its own player', 'const player = { askText: (q) => q };\nplayer.askText("x");'],
+    ['another member', 'player.confirm("x");'],
+    ['a member of something else', 'game.player.askText("x");'],
+    ['the word in a string', 'const s = "player.askText(x)";'],
+  ])('leaves %s as written', (_case, code) => {
+    expect(migratePlayerInput(code)).toBe(code);
+  });
+
+  it('changes nothing on a second run', () => {
+    const once = migratePlayerInput('player.askText("a");');
+    expect(once).toBe('player.input("a");');
+    expect(migratePlayerInput(once)).toBe(once);
+  });
+});
+
 const script = (id: string, code: string): Script => ({ id, timing: 'after', code });
 const toolOf = (id: string, code: string) => ({
   id, name: id, description: '', params: [], emptyResult: '', offeredTo: [], handler: { kind: 'script', code, timing: 'after' },
@@ -139,6 +164,16 @@ describe('migrateWorldScriptText', () => {
     const codes = codesOf(world);
     for (const home of SCRIPT_HOMES) expect(codes[home], home).toBe('RETURN 1;');
     expect(codes.lookup).toBe('return 1;');
+  });
+
+  it('turns player.askText into player.input in every script home, and a second load changes nothing', () => {
+    const world = worldWith('return player.askText("Name?");');
+    migrateWorldScriptText(world);
+    const codes = codesOf(world);
+    for (const home of SCRIPT_HOMES) expect(codes[home], home).toBe('return player.input("Name?");');
+    const after = { ...world };
+    migrateWorldScriptText(world);
+    for (const key of Object.keys(after)) expect(world[key], key).toBe(after[key]);
   });
 
   it('runs the rewrites in order', () => {

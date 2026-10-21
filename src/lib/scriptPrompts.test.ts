@@ -32,7 +32,7 @@ describe('createScriptPromptStore', () => {
   it('keeps prompts in the order they opened and answers each by id', async () => {
     const store = createScriptPromptStore(ids());
     store.subscribe(() => {});
-    const first = store.prompt({ kind: 'askText', question: 'Name?' });
+    const first = store.prompt({ kind: 'input', question: 'Name?' });
     const second = store.prompt({ kind: 'confirm', question: 'Sure?' });
     expect(store.pending().map((prompt) => prompt.id)).toEqual(['p1', 'p2']);
     store.answer('p2', false);
@@ -61,7 +61,7 @@ describe('createScriptPromptStore', () => {
     const store = createScriptPromptStore(ids());
     await expect(store.prompt({ kind: 'ask', question: 'Door?', options: ['Left'], multiple: false })).rejects.toSatisfy(isPromptCanceled);
     await expect(store.prompt({ kind: 'confirm', question: 'Sure?' })).rejects.toSatisfy(isPromptCanceled);
-    await expect(store.prompt({ kind: 'askText', question: 'Name?' })).rejects.toSatisfy(isPromptCanceled);
+    await expect(store.prompt({ kind: 'input', question: 'Name?' })).rejects.toSatisfy(isPromptCanceled);
     await expect(store.prompt({ kind: 'tell', text: 'Hi' })).resolves.toBeUndefined();
     await expect(store.prompt({ kind: 'toast', text: 'Hi' })).resolves.toBeUndefined();
     expect(store.pending()).toEqual([]);
