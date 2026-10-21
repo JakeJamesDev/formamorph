@@ -1,0 +1,215 @@
+# Spec: Script Surface
+
+Status: ready-for-agent
+Spec session: script-surface — spec
+
+## Problem Statement
+
+A script can move the player but cannot see the world's locations: `location` is one object with an id, a name and `move`, and no `locations` global exists. A script can add to the story's memory but cannot read it: `memory` is two functions over a ledger the Memory panel already shows row by row, and its `pin` makes an always-sent line while the panel's **Pin** marks a digest to keep. `diary` is a bare function that takes an entity name, while every other entity action sits on the entity's entry. The Variable menu wraps those bare functions in groups with one item. Script authors meet a second, older surface in a user Tool, with `world.entities` as an array and `scene.present` as names, so the same world reads two ways. A player-toggled trait switch drops its memory and diary writes.
+
+## Solution
+
+The surface follows one pattern: a map by name for every kind of authored thing, and a current entry with the same shape where play has one. `locations` is the map and `location` is the current entry with `move`. Entity entries gain `location`, `following` and `diary`. `memories` is an array of the ledger's rows, each with its turn, its story-clock stamps and its standing verdict, and with the panel's actions as verbs. `memories.add` and `memories.pin` keep their meanings. `dictionaries` entries gain their book's entries. World Tool scripts read the same surface already; user Tool scripts converge on it read-only, and `world` and `scene` dissolve. Script text migrates on load, so no alias remains. The Variable menu draws a one-item group as a leaf, and hover cards follow an array element.
+
+## Rulings
+
+Settled with the user on 2026-10-21. R rulings came from the design discussion; Q rulings from the grill. Q25 is superseded by Q27; Q22 and Q23 are refined by Q24.
+
+| # | Ruling |
+|---|---|
+| R1 | `locations` is a map of the world's locations by name, as `entities` is. `location` is the current entry plus `move`, the `owner` to `entities` relationship. `location.move` stays; no `player.move`, since naming `player` moves a script onto the async engine |
+| R2 | `diary` moves onto entity entries: `entities.Mira.diary(line)` beside `move` and `follow`. The top-level `diary` goes |
+| R3 | `discover` stays a top-level function. The Variable menu draws a group with one child as a leaf, a general rule |
+| R4 | `memories` is an array of the Memory panel's rows, oldest first. Memories have order and no author name, so an array, not a map |
+| R5 | `memories.add(line)` keeps today's `memory.add`: a line on this turn's digest, judged like any digest. `memories.pin(line)` keeps today's `memory.pin`: a line that rides every request, shown under Custom. The verb is `pin` in both places; the guide says a pinned digest can still lose on the band cap while a pinned line never does |
+| R6 | An entry's time is `timestamp`, a number: story hours at that turn, the scale of `clock.elapsedHours`, never a formatted stamp. `day` and `daypart` sit beside it, flat, since a script cannot derive a daypart without the world's calendar |
+| Q1 | Script text migrates on world load: `memory.add` to `memories.add`, `memory.pin` to `memories.pin`, `diary(x, line)` to `entities[x].diary(line)`, dotted when `x` is a plain name literal. Idempotent. No runtime alias. A world exported after load carries the new form |
+| Q2 | An entry's standing verdict reads as two booleans, `pinned` and `forgotten` |
+| Q3 | Entry writes: `pin()`, `forget()`, `edit(text)`, `remove()`. `remove` is the panel's delete: tombstoned, out of context, restorable from the panel |
+| Q4 | The array holds the live digests and the Custom lines, flagged `custom`, stamped from the turn they were added on. Tombstoned rows are not in the array |
+| Q5 | Entity entries gain read-only `location`, the name of where the entity stands, and `following`, whether it follows the player. They pair with `present` on a location |
+| Q6 | This spec fixes the dropped writes of a player-toggled trait switch: its memory, pin and diary writes land as the other timings' do |
+| Q8 | No `visited` on a location entry. Nothing records visits today; it waits for a use case |
+| Q9 | `memories.add`, `memories.pin` and the entry verbs land at commit and never read back within the run, the rule of `location.move` and `entities.X.move` |
+| Q10 | A location entry's `description` is the full AI description, the precedent of the Tool surface's items |
+| Q11 | `locations.X.present` holds entity entries, the same entries `entities` holds |
+| Q12 | In the editor's Test Code run and in the Test Bench, `memories` is an empty array. Writes list in the run output |
+| Q13 | The hover-card and tree analysis gain array elements: `memories[0].text`, `memories.at(-1)` and `locations.X.present[0].name` resolve to cards |
+| Q15 | `pin()` and `forget()` on a Custom line do nothing and list as dropped writes in the run output, as a read-only write lists today. `edit(text)` and `remove()` work on one |
+| Q18 | A script's verdict, edit or removal persists through a rewind, as a player's does. No per-write turn tag in the save |
+| Q19 | `present` lists the played persona when the player stands there |
+| Q20 | `entities.X.location` reads an empty string for an entity with no runtime position, which stands at every location it is authored to list. Such an entity appears in `present` at each of them |
+| Q22 | The Tool surfaces align with Scripts rather than keeping their own shape |
+| Q23 | World Tool scripts take the `memories` writes, landing when the tool call commits, as their stat and trait writes do |
+| Q24 | World Tool scripts already run on the script surface plus `args`, so they align at no cost. User Tool scripts converge read-only: the same globals and entry shapes, no writes. Their text migrates at settings load |
+| Q26 | `scene` dissolves. `persona` is the shared global; `inScene` reads from each entity entry; `notes`, the player's notes, becomes a `notes` string global on both surfaces |
+| Q27 | Dictionary entries live under each book: `dictionaries.X.entries`, a map by entry name with `id`, `name`, `keys`, `value`. User Tools get the same `dictionaries` global. No flat `dictionary` global |
+| Q28 | The user Tool migration rewrites only forms with an exact equivalent. A leftover old path stays as written; the editor marks it unknown with a hover card naming the new form |
+
+## Surface
+
+Every entry below is read-only unless a row says it takes a write. Maps use the key rules of `entities`: a name with a space reads through brackets.
+
+### Locations
+
+| Path | Reads |
+|---|---|
+| `locations` | Every location of the world by name |
+| `locations.X.id` | Unique id |
+| `locations.X.name` | Code name |
+| `locations.X.description` | The full AI description |
+| `locations.X.summary` | The short AI summary |
+| `locations.X.starting` | Whether it is a candidate starting location |
+| `locations.X.present` | The entity entries standing there: the persona first when the player is there, then the entities in `entities` order. An entity with no runtime position appears at every location it lists |
+| `location` | The current location's entry, with every field above, plus `move(nameOrId)`. In a world with no location, `id` and `name` are empty and `present` is empty |
+
+### Entity entries
+
+New members on every entry of `entities`, on `owner` and on `persona`:
+
+| Member | Reads or does |
+|---|---|
+| `location` | The name of where the entity stands. A follower reads the player's location. Empty with no runtime position |
+| `following` | Whether the entity follows the player |
+| `description` | The full AI description |
+| `summary` | The short AI summary |
+| `aliases` | Other names for the entity |
+| `diary(line)` | Adds a line to the entity's diary for this turn, after the AI's entry. The persona has no diary; the call fails the script as the top-level `diary` did |
+
+### Memories
+
+| Path | Reads or does |
+|---|---|
+| `memories` | The Memory panel's rows, oldest first: live digests and Custom lines. Tombstoned rows are absent. Empty in Test Code and the Test Bench |
+| `memories.add(line)` | A line on this turn's digest, after the AI's summary. Judged by the selector like any digest |
+| `memories.pin(line)` | A line that rides every request, listed under Custom |
+| `memories[i].id` | The row's id |
+| `memories[i].turn` | 1-based turn number. A Custom line reads the turn it was added on |
+| `memories[i].timestamp` | Story hours at the end of that turn, the scale of `clock.elapsedHours` |
+| `memories[i].day` | Day number at that time |
+| `memories[i].daypart` | Daypart at that time, the same six values `clock.daypart` has |
+| `memories[i].text` | The text as the panel shows it, edits included |
+| `memories[i].custom` | True for a Custom line |
+| `memories[i].kept` | Whether the memory rides in the story's context as a standing verdict |
+| `memories[i].inContext` | Whether it reached the model on the last turn |
+| `memories[i].pinned` | A keep verdict stands on it |
+| `memories[i].forgotten` | A drop verdict stands on it |
+| `memories[i].pin()` | Sets a keep verdict. On a Custom line, a no-op listed as a dropped write |
+| `memories[i].forget()` | Sets a drop verdict. On a Custom line, a no-op listed as a dropped write |
+| `memories[i].edit(text)` | Rewrites the text as a player edit, the original kept behind it |
+| `memories[i].remove()` | Tombstones the row |
+
+### Dictionaries
+
+| Path | Reads |
+|---|---|
+| `dictionaries.X.entries` | The book's entries by entry name |
+| `dictionaries.X.entries.Y.id` | Unique id |
+| `dictionaries.X.entries.Y.name` | Name |
+| `dictionaries.X.entries.Y.keys` | The keywords that trigger the entry |
+| `dictionaries.X.entries.Y.value` | The entry's text |
+
+### User Tool scripts after convergence
+
+Globals: `args`, `entities`, `locations`, `location`, `memories`, `clock`, `persona`, `dictionaries`, `stats`, `traits`, `placeholders`, `notes`, `console`. Every entry has the shape the Scripts surface gives it. No verb exists on this surface: `memories.add`, `memories.pin`, the entry verbs, `location.move`, `entities.X.move`, `follow`, `unfollow` and `diary` are absent, so a call is an ordinary not-a-function error. `clock` always exists; outside a game it reads the opening. `world` and `scene` are gone.
+
+### Migrations
+
+World scripts, World Tool scripts and user Tool scripts, on load:
+
+| Old form | New form |
+|---|---|
+| `memory.add(` | `memories.add(` |
+| `memory.pin(` | `memories.pin(` |
+| `diary("Mira", line)` | `entities.Mira.diary(line)` |
+| `diary(expr, line)` | `entities[expr].diary(line)` |
+
+User Tool scripts only, on settings load:
+
+| Old form | New form |
+|---|---|
+| `world.entities` | `Object.values(entities)` |
+| `world.locations` | `Object.values(locations)` |
+| `world.dictionary` | `Object.values(dictionaries).flatMap((d) => Object.values(d.entries))` |
+| `scene.location.<member>` | `location.<member>` |
+| `scene.time.elapsed` | `clock.elapsedHours` |
+| `scene.stats.X` and `scene.stats["X"]` | `stats.X.value` and `stats["X"].value` |
+| `scene.present` | `location.present.map((e) => e.name)` |
+| `scene.inScene` | `Object.values(entities).filter((e) => e.inScene).map((e) => e.name)` |
+| `scene.notes` | `notes` |
+
+Bare `scene.location`, bare `scene.time`, `scene.traits` and `scene.persona` have no exact equivalent: the old text stays and the editor flags it with the new form (Q28). An entity item's `placeholders` read resolved text on the old surface and placeholder entries on the new one; a read of `world.entities[i].placeholders.X` is flagged, not rewritten.
+
+## User Stories
+
+1. As a world author, I want to read every location of the world from a script, so that a rule can name any place without hard-coding its id.
+2. As a world author, I want `location` to have the same fields as a `locations` entry, so that I learn one shape for the current place and every other.
+3. As a world author, I want to know which entities stand at a location, so that a script can react to who is in the room.
+4. As a world author, I want to know where an entity stands and whether it follows the player, so that a script can move or release a companion on a condition.
+5. As a world author, I want `diary` on the entity's entry beside `move` and `follow`, so that every action on an entity reads the same way.
+6. As a world author, I want to read the story's memories as a list with their text, turn and verdict, so that a script can act on what the story remembers.
+7. As a world author, I want each memory's story-clock time as a number, so that a script can compare it with `clock.elapsedHours`.
+8. As a world author, I want each memory's day and daypart, so that a script can gather the memories made at night without knowing the world's calendar.
+9. As a world author, I want to pin, forget, edit or remove a memory from a script, so that a story rule can shape what the AI keeps without the player opening the panel.
+10. As a world author, I want a pin or forget on a Custom line to be skipped and listed, so that a loop over the whole list works and the run output still tells me what it skipped.
+11. As a world author, I want `memories.add` and `memories.pin` to mean what `memory.add` and `memory.pin` meant, so that my mental model survives the rename.
+12. As a world author, I want my shipped scripts to keep working after the update, so that a world I published does not break for its players.
+13. As a world author, I want a dictionary's entries readable from a script, so that a rule can check what lore the world holds.
+14. As a world author, I want the Variable menu to insert a one-item call directly, so that I do not open a menu to reach one thing.
+15. As a world author, I want hover cards on `memories[0].text` and `location.present[0].name`, so that an array read is as documented as a map read.
+16. As a Tool author, I want a user Tool script to read the world with the same names and shapes a world script uses, so that I learn one surface for both.
+17. As a Tool author, I want my shipped user Tool scripts rewritten where the rewrite is exact and flagged where it is not, so that an update neither breaks me silently nor changes what a script means.
+18. As a player, I want a trait I toggle to land the memory and diary lines its script writes, so that a switch script works as the author tested it.
+19. As a player, I want a script's verdict on a memory to show in the Memory panel like my own, so that I can see and undo what a world did to my memories.
+20. As a help reader, I want the Scripts guide and the Tools guide to describe the new surface, so that the help window answers questions about it.
+
+## Implementation Decisions
+
+- **One snapshot feeds every read.** The Sandbox Snapshot gains the location entries with their present entities, each entity's position and follower state, the dictionary entries, the player's notes and the memories list. Play builds it once per turn from the ledger the Memory panel builds; the editor builds it from the authored world with an empty memories list. The user Tool runtime builds the same shapes from its Tool Snapshot.
+- **Entries in `present` are the entries of `entities`.** The prelude builds the entity entries first and places the same objects into each location's `present`, so identity holds and the serialized snapshot carries each entity once, by name.
+- **Memories ride the executor's write channel.** `memories.add`, `memories.pin`, verdicts, edits and removals collect into the run's world writes beside location and diary writes. The merge keeps order across scripts of one timing. The turn commit lands them on the save's existing fields: memory lines on the turn, pinned lines as notes, verdicts on the pins record, edits on the overrides, removals on the deleted set. No save field is added.
+- **The prelude stays cheap.** The memories list is serialized as the trimmed entry shape only. A long game is hundreds of rows, so the snapshot carries no original text, no override history and no relevance scores.
+- **Custom line stamps come from the anchor.** Script-pinned lines and player notes both record the history position they were added at. Turn, timestamp, day and daypart derive from that position through the same clock resolver the panel's stamp uses, so a script and the panel never disagree.
+- **Verdict no-ops are dropped writes.** The executor's existing dropped-write list, which reports read-only writes, also lists a `pin` or `forget` on a Custom line. The Test Bench and Test Code show them the same way.
+- **The switch landing consumes what it already returns.** A player-toggled switch run returns its world writes today and nothing reads them. The fix lands them through the same path as a Before-the-AI run's world writes, between turns, on the latest turn.
+- **Migration uses the rename machinery.** The world migration already rewrites retired script routes with the tree-sitter splice path; the `memory` and `diary` rewrites join that pass and stay idempotent. User Tool scripts get a matching pass at settings load, with the exact-equivalent table above and nothing else.
+- **Editor analysis gains an element kind.** The resolver learns an array value whose element shape is known: numeric index, `at`, `find` and the other element-picking calls resolve to the element's members. The Variable menu's group node draws as a leaf when it has one child.
+- **User Tool surface is the script surface minus writes.** The user Tool surface composes from the script surface's entries with every write member removed and `args` and `console` added. The Tool guide links move with it.
+- **`clock` in a user Tool always exists.** The null-while-off reading of `scene.time` goes; a Tool outside a game reads the opening clock.
+- **No export-shape change.** World and save files keep their shape. Script text inside a world changes on load and is text, not shape.
+
+## Testing Decisions
+
+A good test runs a script and asserts on the result and the writes, never on the prelude's text. The seams:
+
+- **The executor**: a script over sandbox inputs. Reads of every new global; each verb's write; the dropped-write listing for Custom lines; the user Tool sandbox refusing writes by absence. Prior art: the executor's memory-write and location tests.
+- **The Sandbox Snapshot builder**: playthrough state in, sandbox inputs out. `present` with the persona and an unplaced entity; entity `location` and `following`; memories entries with their stamps from the ledger; the editor's empty list. Prior art: the snapshot and the memory-view tests.
+- **The turn commit**: a run's world writes in, the save fields out. Verdicts, edits, removals and lines on their fields; the switch landing fix proved by reinstating the drop. Prior art: the turn-commit tests and the script-pins tests.
+- **Migration**: the world pass and the settings pass over fixtures, run twice for idempotence; a flagged form left as written. Prior art: the scripts migration tests.
+- **The editor analysis**: resolver, cards and tree as pure functions over code strings. An element path resolves to a card; a one-child group renders as a leaf. Prior art: the code-cards and variable-tree tests.
+
+Every guard proves it bites: a test that reinstates the old behavior fails.
+
+## Not In This Effort
+
+- `visited` on a location entry (Q8).
+- `player.move` (R1).
+- Runtime aliases for the old names (Q1).
+- Rewind of script verdicts, edits and removals (Q18).
+- Live read-back of writes within a run (Q9).
+- Writes from a user Tool script (Q24).
+- Semantic rewrites of user Tool text with no exact equivalent (Q28).
+
+## Test Seams
+
+- The executor: reads of the new globals, the verbs, the dropped-write list, the user Tool read-only sandbox.
+- The Sandbox Snapshot builder: present entities, entity position and following, memory entries with stamps, the empty editor run.
+- The turn commit: verdicts, edits, removals and lines on the save fields; the trait-switch landing.
+- Migration: the world pass and the user Tool settings pass.
+- The editor analysis: array elements, the one-child leaf.
+
+## Further Notes
+
+- The Scripts guide and the Tools guide change with the surface; the help vectors rebuild before release.
+- The changelog gets one entry per user-facing change: the new reads, the memories verbs, the switch fix, the user Tool convergence.
+- Backlog: `visited` on locations; a `player.move` once `player` no longer forces the async engine; a flat dictionary-entry lookup if authors ask for one.
