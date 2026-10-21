@@ -418,7 +418,7 @@ export const PLAYER_CALL_ENTRIES: readonly SurfaceEntry[] = [
   { name: 'toast', detail: '(text) => void', info: 'Shows the player a toast. It isn’t saved.' },
   { name: 'confirm', detail: '(question) => boolean', info: 'Asks a yes or no question and waits for the answer' },
   { name: 'ask', detail: '(question, options, { multiple }?) => any', info: 'Asks the player to pick from text or { label, value } options, and waits. The result is the value picked, or a list with multiple.' },
-  { name: 'askText', detail: '(question, placeholder?) => string', info: 'Asks the player for typed text and waits for the answer' },
+  { name: 'input', detail: '(question, placeholder?) => string', info: 'Asks the player for typed text and waits for the answer' },
 ];
 
 /** `player`, which every script reads except a During AI Output one. */

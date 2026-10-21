@@ -93,7 +93,7 @@ function Control({ request, answer, cancel }: { request: Asked; answer: Answer; 
   switch (request.kind) {
     case 'confirm':
       return <ActionRow onCancel={cancel}><Pills options={CONFIRM_OPTIONS} onPress={(index) => answer(index === 0)} /></ActionRow>;
-    case 'askText':
+    case 'input':
       return <TextControl request={request} answer={answer} cancel={cancel} />;
     case 'ask':
       if (request.multiple) return <ToggleControl request={request} answer={answer} cancel={cancel} />;
@@ -113,7 +113,7 @@ function ActionRow({ children, onCancel, ok }: { children: ReactNode; onCancel: 
   );
 }
 
-function TextControl({ request, answer, cancel }: { request: Extract<Asked, { kind: 'askText' }>; answer: Answer; cancel: () => void }) {
+function TextControl({ request, answer, cancel }: { request: Extract<Asked, { kind: 'input' }>; answer: Answer; cancel: () => void }) {
   const [text, setText] = useState('');
   return (
     <ActionRow onCancel={cancel} ok={{ onPress: () => answer(text) }}>

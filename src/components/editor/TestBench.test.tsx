@@ -375,9 +375,9 @@ describe('TestBench script check', () => {
     await expect(answer).resolves.toBe(1);
   });
 
-  it('answers askText, a long ask and a multiple ask of a running check through the same line', async () => {
+  it('answers input, a long ask and a multiple ask of a running check through the same line', async () => {
     const prompts = editorPromptRun();
-    const name = prompts.host.prompt({ kind: 'askText', question: 'Your name?' });
+    const name = prompts.host.prompt({ kind: 'input', question: 'Your name?' });
     renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'running', codePrompts: prompts.store } });
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: 'Your name?' }), 'Ada{Enter}');

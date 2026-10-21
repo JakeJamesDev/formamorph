@@ -58,8 +58,8 @@ describe('ScriptPromptLine', () => {
     await expect(answer).resolves.toEqual([]);
   });
 
-  it('submits askText on Enter, an empty string included', async () => {
-    const first = open({ kind: 'askText', question: 'Your name?', placeholder: 'Name' });
+  it('submits input on Enter, an empty string included', async () => {
+    const first = open({ kind: 'input', question: 'Your name?', placeholder: 'Name' });
     const field = screen.getByPlaceholderText('Name');
     expect(field).toHaveFocus();
     fireEvent.change(field, { target: { value: 'Ada' } });
@@ -67,7 +67,7 @@ describe('ScriptPromptLine', () => {
     await expect(first.answer).resolves.toBe('Ada');
 
     let empty: Promise<unknown> = Promise.resolve();
-    act(() => { empty = first.store.prompt({ kind: 'askText', question: 'A word?' }); });
+    act(() => { empty = first.store.prompt({ kind: 'input', question: 'A word?' }); });
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'A word?' }), { key: 'Enter' });
     await expect(empty).resolves.toBe('');
   });
@@ -92,7 +92,7 @@ describe('ScriptPromptLine', () => {
     expect(store.pending()).toHaveLength(1);
   });
 
-  it('shows the asking script’s name as muted text beside the question, on a confirm and an askText', async () => {
+  it('shows the asking script’s name as muted text beside the question, on a confirm and an input', async () => {
     const { store, answer } = open({ kind: 'confirm', question: 'Open the door?', asker: 'Latch · After the AI' });
     const meta = screen.getByText('Latch · After the AI');
     expect(meta).toHaveClass('text-muted-foreground');
@@ -100,7 +100,7 @@ describe('ScriptPromptLine', () => {
     act(() => { store.cancel(store.pending()[0].id); });
     await expect(answer).rejects.toBeInstanceOf(PromptCanceled);
     let text: Promise<unknown> = Promise.resolve();
-    act(() => { text = store.prompt({ kind: 'askText', question: 'A word?', asker: 'Tide' }); });
+    act(() => { text = store.prompt({ kind: 'input', question: 'A word?', asker: 'Tide' }); });
     expect(screen.getByText('Tide')).toBeInTheDocument();
     act(() => { store.cancel(store.pending()[0].id); });
     await expect(text).rejects.toBeInstanceOf(PromptCanceled);

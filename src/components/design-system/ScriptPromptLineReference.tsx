@@ -18,7 +18,7 @@ const SAMPLES: { key: ScriptPromptSampleKey; label: string }[] = [
   { key: 'ask', label: 'Ask' },
   { key: 'askLong', label: 'Long Ask' },
   { key: 'askMulti', label: 'Multiple Ask' },
-  { key: 'askText', label: 'Ask Text' },
+  { key: 'input', label: 'Input' },
   { key: 'tell', label: 'Tell' },
 ];
 

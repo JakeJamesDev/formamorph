@@ -1572,7 +1572,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
 }
 
 /** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
-const PLAYER_CALLS = ['tell', 'toast', 'confirm', 'ask', 'askText'] as const;
+const PLAYER_CALLS = ['tell', 'toast', 'confirm', 'ask', 'input'] as const;
 const OUTPUT_PLAYER = [
   `const player = Object.freeze(Object.fromEntries(${JSON.stringify(PLAYER_CALLS)}.map((call) => [call, () => {`,
   `  throw new Error('player.' + call + " can't run in ${SCRIPT_TIMING_LABEL.output}");`,
@@ -1609,9 +1609,9 @@ const PLAYER_PRELUDE = [
   `      const picked = call({ kind: 'ask', question: text('ask', 'a question', question), options: list.map((o) => o.label), multiple });`,
   `      return multiple ? picked.map((at) => list[at].value) : list[picked].value;`,
   `    },`,
-  `    askText: (question, placeholder) => call({`,
-  `      kind: 'askText', question: text('askText', 'a question', question),`,
-  `      ...(placeholder === undefined ? {} : { placeholder: text('askText', 'a placeholder', placeholder) }),`,
+  `    input: (question, placeholder) => call({`,
+  `      kind: 'input', question: text('input', 'a question', question),`,
+  `      ...(placeholder === undefined ? {} : { placeholder: text('input', 'a placeholder', placeholder) }),`,
   `    }),`,
   `  });`,
   `})(globalThis.${PROMPT_HOOK}, JSON.stringify, JSON.parse, Array.isArray);`,

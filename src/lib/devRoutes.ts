@@ -220,7 +220,7 @@ export const DEV_MODAL_TABS = {
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
   // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).
-  scriptPrompt: ['confirm', 'ask', 'askLong', 'askMulti', 'askText', 'tell', 'toast'],
+  scriptPrompt: ['confirm', 'ask', 'askLong', 'askMulti', 'input', 'tell', 'toast'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],

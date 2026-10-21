@@ -105,7 +105,7 @@ See [During AI Output](#during-ai-output) for what the rewrite changes.
 <!-- route: worldEditorStat.code -->
 
 1. Open a **Scripts** tab and select **Add Script**. Pick any timing except **During AI Output**.
-2. Call a `player` function. `player.confirm("Open the door?")` returns `true` or `false`. `player.ask("Which path?", ["Left", "Right"])` returns the pick. `player.askText("Name the dog")` returns the typed text.
+2. Call a `player` function. `player.confirm("Open the door?")` returns `true` or `false`. `player.ask("Which path?", ["Left", "Right"])` returns the pick. `player.input("Name the dog")` returns the typed text.
 3. Use the answer in the next line. There is no `await`.
 4. Select **Test Code**. The question shows under the box, as it does in play.
 
@@ -372,7 +372,7 @@ A timing adds one name to those objects. A script reads only the name its own ti
 | Name | Timing | Members | Read | Write |
 | --- | --- | --- | --- | --- |
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
-| **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `askText()` | `player.confirm(<text>)` | Calls, not writes |
+| **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
 | **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
 
 A [World Tool](#world-tools)'s script also reads `args`, the values the AI sent, such as `args.<Parameter>`. It is read-only.
@@ -904,7 +904,7 @@ When the reveal shows sentences in turn, `sent` and `buffered` split where the r
 **Test Code** reads a sample. The **Sample Sentence** field gives `sentence`. `sent` and `buffered` are empty and `index` is `0`.
 
 ### Player
-<!-- keywords: ask the player, tell the player, toast, confirm, ask, askText, prompt, dialog, choice, pick one, pick several, multiple, text field, question, answer, wait for the player, await, canceled prompt, player is not defined, message that stays in history -->
+<!-- keywords: ask the player, tell the player, toast, confirm, ask, input, prompt, dialog, choice, pick one, pick several, multiple, text field, question, answer, wait for the player, await, canceled prompt, player is not defined, message that stays in history -->
 <!-- route: worldEditorStat.code -->
 
 `player` is the human who plays, not the entity they play. `persona` stays that entity. `player` has five calls. It exists in every timing except **During AI Output**, where a call fails the script.
@@ -915,7 +915,7 @@ When the reveal shows sentences in turn, `sent` and `buffered` split where the r
 | `player.toast(text)` | Nothing | A toast. It is not saved |
 | `player.confirm(question)` | `true` or `false` | The question with two buttons |
 | `player.ask(question, options, { multiple })` | The picked value. With `multiple`, a list | Up to four options as buttons, five or more as a dropdown. With `multiple`, toggle buttons and **OK** |
-| `player.askText(question, placeholder)` | The typed text | The question with a text field and **OK** |
+| `player.input(question, placeholder)` | The typed text | The question with a text field and **OK** |
 
 `options` takes text, or `{ label, value }` pairs. The call returns the `value` of the pick. The script waits for the answer with no `await`.
 
@@ -929,7 +929,7 @@ placeholders.Route.pin(path);
 ```
 
 - **Closing a prompt fails the script.** Cancel, or Escape inside the prompt, fails it as canceled. Its writes drop, as on any error. The turn goes on, and the other scripts in the timing still apply.
-- **A prompt needs a screen.** With no game screen to answer, `ask`, `confirm` and `askText` fail as canceled at once. `tell` and `toast` do nothing.
+- **A prompt needs a screen.** With no game screen to answer, `ask`, `confirm` and `input` fail as canceled at once. `tell` and `toast` do nothing.
 - **A bad call is a TypeError.** A question that is not text, an `ask` with no options, or an option that is neither text nor `{ label, value }` throws in the script.
 - **A multiple pick with nothing chosen** returns an empty list. A single `ask` always returns one value.
 - **Prompts show one at a time.** An open prompt holds every other script that prompts, until you answer it. A script that never names `player` is not held.

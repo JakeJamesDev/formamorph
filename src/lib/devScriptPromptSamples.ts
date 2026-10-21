@@ -9,7 +9,7 @@ export const SCRIPT_PROMPT_SAMPLES = {
     options: ['Sedge Landing', 'The Salt Flats', 'Old Harbor', 'Gull Rock', 'The Narrows', 'Lantern Isle'], multiple: false,
   },
   askMulti: { kind: 'ask', question: 'What do you pack?', options: ['Rope', 'Lamp oil', 'Bread', 'A map', 'Coins'], multiple: true },
-  askText: { kind: 'askText', question: 'What name do you give the keeper?', placeholder: 'A name' },
+  input: { kind: 'input', question: 'What name do you give the keeper?', placeholder: 'A name' },
   tell: { kind: 'tell', text: 'A bell rings three times somewhere below the harbor.' },
   toast: { kind: 'toast', text: 'The tide turns.' },
 } as const satisfies Record<string, ScriptPromptRequest>;

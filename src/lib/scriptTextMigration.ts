@@ -103,8 +103,28 @@ export function migrateMemoryCalls(code: string): string {
   return declared || !edits.length ? code : spliced(code, edits);
 }
 
+/** Rewrite the retired `player.askText` to `player.input`. A script that declares `player` keeps its text. */
+export function migratePlayerInput(code: string): string {
+  if (!code.includes('askText')) return code;
+  const edits: CodeSplice[] = [];
+  let declared = false;
+  javascriptLanguage.parser.parse(code).iterate({
+    enter: (ref) => {
+      if (ref.name === 'VariableDefinition' && code.slice(ref.from, ref.to) === 'player') declared = true;
+      if (ref.name !== 'MemberExpression') return true;
+      const [object, , property] = children(ref.node);
+      if (object?.name === 'VariableName' && code.slice(object.from, object.to) === 'player'
+        && property?.name === 'PropertyName' && code.slice(property.from, property.to) === 'askText') {
+        edits.push({ from: property.from, to: property.to, insert: 'input' });
+      }
+      return true;
+    },
+  });
+  return declared || !edits.length ? code : spliced(code, edits);
+}
+
 /** Every script-text rewrite, in the order they run. */
-export const SCRIPT_TEXT_REWRITES: readonly ScriptTextRewrite[] = [migrateDiaryCalls, migrateMemoryCalls];
+export const SCRIPT_TEXT_REWRITES: readonly ScriptTextRewrite[] = [migrateDiaryCalls, migrateMemoryCalls, migratePlayerInput];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 

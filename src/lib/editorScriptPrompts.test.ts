@@ -12,9 +12,9 @@ describe('editorPromptRun', () => {
     await expect(answer).resolves.toBe(true);
   });
 
-  it('holds askText, a long ask and a multiple ask open for the line too', async () => {
+  it('holds input, a long ask and a multiple ask open for the line too', async () => {
     const run = editorPromptRun();
-    const text = run.host.prompt({ kind: 'askText', question: 'Name?' });
+    const text = run.host.prompt({ kind: 'input', question: 'Name?' });
     const long = run.host.prompt({ kind: 'ask', question: 'Road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false });
     const multi = run.host.prompt({ kind: 'ask', question: 'Pack?', options: ['A', 'B'], multiple: true });
     const [first, second, third] = run.store.pending();

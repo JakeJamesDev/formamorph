@@ -1,5 +1,5 @@
 /**
- * The prompt host of one editor run, Test Code's or the Test Bench's (Q24). A confirm, an ask or an askText waits
+ * The prompt host of one editor run, Test Code's or the Test Bench's (Q24). A confirm, an ask or an input waits
  * in the run's own store for the inline prompt line (Q49, Q53); a tell or a toast lands in the run's notes (Q54).
  */
 

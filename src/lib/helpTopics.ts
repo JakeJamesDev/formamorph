@@ -76,7 +76,7 @@ Turn order: At Game Start, Before the AI, the AI's stat changes, Regen, After th
 
 - \`narration\` in **During AI Output**. Assign \`narration.sentence\`, or return a string, to rewrite the sentence.
 - \`trait\` in **When a Trait Switches**. It is the trait that switched, and \`trait.enabled\` is its new state.
-- \`player\` in every other timing. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.askText\` show the player a message or a question. The script waits for the answer, with no \`await\`. Closing a question fails the script.
+- \`player\` in every other timing. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.input\` show the player a message or a question. The script waits for the answer, with no \`await\`. Closing a question fails the script.
 
 \`\`\`js
 const health = stats.Health.value;

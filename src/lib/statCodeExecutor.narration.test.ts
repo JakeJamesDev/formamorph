@@ -82,7 +82,7 @@ describe('executeStatCode in During AI Output', () => {
     expect(res.sentence).toBe('The door creaks.');
   });
 
-  it.each(['tell', 'toast', 'confirm', 'ask', 'askText'])('fails a script that calls player.%s, naming the timing', async (call) => {
+  it.each(['tell', 'toast', 'confirm', 'ask', 'input'])('fails a script that calls player.%s, naming the timing', async (call) => {
     const res = await executeStatCode(`player.${call}('Hello');`, [health], health, { narration: narration() });
     expect(res).toMatchObject({ value: null, kind: 'throw' });
     expect(res.error).toContain(`player.${call}`);

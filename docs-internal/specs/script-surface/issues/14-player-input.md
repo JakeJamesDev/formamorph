@@ -1,6 +1,6 @@
 # 14: Player Input
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,13 +15,23 @@ Spec: R8, Q1.
 
 ## Acceptance criteria
 
-- [ ] `player.input("Your name?")` opens the text prompt and resolves to the typed answer; `player.askText` is not defined
-- [ ] A world whose script calls `player.askText(` loads with `player.input(`; loading it again changes nothing; a script that declares `const player = …` is untouched
-- [ ] The During AI Output refusal reads "player.input can't run in During AI Output"
-- [ ] No source, guide or Design System page names `askText`; a grep in the test proves it, the changelog excluded
-- [ ] A changelog fragment with a 👤 lead, since `askText` shipped in 3.3.1
-- [ ] Four gates green
+- [x] `player.input("Your name?")` opens the text prompt and resolves to the typed answer; `player.askText` is not defined
+- [x] A world whose script calls `player.askText(` loads with `player.input(`; loading it again changes nothing; a script that declares `const player = …` is untouched
+- [x] The During AI Output refusal reads "player.input can't run in During AI Output"
+- [x] No source, guide or Design System page names `askText`; a grep in the test proves it, the changelog excluded
+- [x] A changelog fragment with a 👤 lead, since `askText` shipped in 3.3.1
+- [x] Four gates green
 
 ## Blocked by
 
 - None (can start immediately)
+
+## Landed
+
+`player.input` replaces `player.askText` in the executor prelude, the During AI Output refusal, the prompt kind, the surface entry, the Scripts guide, the help topic and the Design System sample. `migratePlayerInput` joins `SCRIPT_TEXT_REWRITES`, so world, World Tool and user Tool scripts load with the new name; a script that declares `player` is untouched. `playerInputRename.test.ts` greps source and docs for the old name, the rewrite and the changelog excluded. Changelog fragment: 👤, Scripts.
+
+**Not verified**
+
+- Four gates green: typecheck and changed-file lint passed in the review run; prepare runs the full list once.
+- No mutation check run on the rewrite registration.
+- `build:help-vectors` not run: the guide text changed, so the help vectors are stale until the next release build.
