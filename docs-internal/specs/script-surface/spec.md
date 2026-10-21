@@ -64,6 +64,9 @@ Settled with the user on 2026-10-21. R rulings came from the design discussion; 
 | Q45 | Memory verdict landing: an On Call World Tool's verdicts ride the turn's world writes and land at the turn commit, as its memory lines do; an After-timing World Tool's land with the After batch. A Custom-line `pin()` or `forget()` joins the read-only write list and both editor surfaces format it through that one path; since Q12 keeps the editor's `memories` empty, the editor half of that criterion is proved at the executor and left unticked with the reason. `edit(text)` on a digest is the panel's Save: a player-source edit plus a keep verdict; on a Custom line it rewrites the text in place with no original. Writes apply in call order across one timing's scripts, so the last verdict stands. The memories capture is taken once at turn start beside the location capture; a run between turns reads the live list (ticket 05 ruling) |
 | Q46 | Element leaves insert with optional chaining at the element, `memories[0]?.text` and `location.present[0]?.name`, with the `0` selected, so every leaf still runs as inserted in Test Code where Q12 keeps `memories` empty and `present` is often empty. The leaf reads `undefined` on an empty list and the real value in play. Q43's insert forms read this way (ticket 07 ruling) |
 | Q47 | The `present` element rows in the Variable menu list the entity entry's read fields only, under Location and under every Locations row: the persona stands first wherever the player is and has no verbs, so an inserted `present[0]?.diary(...)` would usually fail. Cards and completion still resolve the verbs on any element (ticket 07 ruling) |
+| Q48 | A book's `entries` map comes from the host on the first read of `dictionaries.X.entries`, through the same host-read primitive, so an unread book costs nothing; each entry's `value` stays lazy per field. The book list stays in the prelude. Entities, locations and memories keep their small fields in the prelude with lazy text. Ticket 12's measurements rule out the 3× bound for any prelude carrying 10,000 entries' small fields: parsing their ids and keys alone is 6× the empty run (ticket 12 ruling) |
+| Q49 | Every host call pauses the run's one-second budget on both engines, one rule in the sandbox runner, so a text read matches a prompt; the placeholder `roll()` hook pauses too (ticket 12 ruling) |
+| Q50 | Two Migrations rows move to the flagged list under Q28: `scene.present` and `scene.inScene`, since the persona-first `present` (Q19), the always-in-scene persona entry and the old unmatched participant names make no rewrite exact. `world.entities` stays rewritten to `Object.values(entities)`: only a library or Custom persona's entry is added, and Q32 already calls that form exact. A missing stat reading a stray entry's `0` where `scene.stats.Nope` read undefined is accepted, the Q33 rule. The user Tool rewrites register as their own list beside the script rewrites, the memory and diary rows included, and apply at the one Tool parse boundary that settings load, Formaquestion Tools, pack import and preset import share. The sample snapshot gains the scene's in-scene ids in this ticket so its parity run is honest (ticket 09 ruling) |
 
 ## Surface
 
@@ -153,11 +156,9 @@ User Tool scripts only, on settings load:
 | `scene.location.<member>` | `location.<member>` |
 | `scene.time.elapsed` | `clock.elapsedHours` |
 | `scene.stats.X` and `scene.stats["X"]` | `stats.X.value` and `stats["X"].value` |
-| `scene.present` | `location.present.map((e) => e.name)` |
-| `scene.inScene` | `Object.values(entities).filter((e) => e.inScene).map((e) => e.name)` |
 | `scene.notes` | `notes` |
 
-Bare `scene.location`, bare `scene.time`, `scene.traits` and `scene.persona` have no exact equivalent: the old text stays and the editor flags it with the new form (Q28). An entity item's `placeholders` read resolved text on the old surface and placeholder entries on the new one; a read of `world.entities[i].placeholders.X` is flagged, not rewritten.
+Bare `scene.location`, bare `scene.time`, `scene.traits`, `scene.persona`, `scene.present` and `scene.inScene` have no exact equivalent (Q50 moved the last two here): the old text stays and the editor flags it with the new form (Q28). An entity item's `placeholders` read resolved text on the old surface and placeholder entries on the new one; a read of `world.entities[i].placeholders.X` is flagged, not rewritten.
 
 ## User Stories
 
