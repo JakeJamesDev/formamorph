@@ -177,10 +177,10 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - A hidden category and Quick Start show no picker, so they read the preselect order and write nothing. A player who makes a first persona later still gets the global default preselected.
 - When the remembered additions and the preselected persona name one entity, the persona wins.
 - A library entity picked as the persona is removed from the added characters for that playthrough. The picker and the character list enforce this in both directions.
-- Picking a world persona preselects the starting location to the first of that entity's locations that is a starting location. The player can change it. No pick is forced.
-- A pick sets the location only while the player has not chosen a location by hand in this step. After a hand choice, no persona pick moves it. A library persona or None keeps the location, and an entity with no starting location among its locations leaves it unchanged.
+- The Starting Location step lists the flagged locations, plus every location of the picked world persona (Q28). Picking a world persona preselects the first of its locations that is flagged, else its first location. The player can change it. No pick is forced.
+- A pick sets the location only while the player has not chosen a location by hand in this step. After a hand choice, no persona pick moves it. A library persona or None keeps the location, and an entity with no locations leaves it unchanged. A location the step no longer lists drops to the new pick's own start, else Random, and clears the hand pick.
 - When the step opens on a remembered world persona, the same preselect applies. A remembered starting location for that world wins over it.
-- Quick Start with a world persona starts at that entity's first starting location, and at today's random location when the entity has none.
+- Quick Start with a world persona starts at the same preselect, and at today's random location when the entity has no locations.
 - Every picker lists None first with no heading, then "From This World", then "Your Personas". The in-game picker lists world personas too, and a switch moves the entity out of the cast or back on the next turn.
 - The pick travels to the game the same way the chosen dictionaries and added characters do.
 
@@ -305,6 +305,9 @@ Motion and timing are never asserted. UI checks use the dev-router and static DO
 - Any version bump, migration, or changelog finalization.
 
 ## Further Notes
+
+**Q28. A persona's Locations are its starts (2026-10-21).** The entity field `startingLocationId` and its **Starting Location** dropdown are removed. A world persona's `locations` list is where the player can start as it: the step lists every one of them beside the flagged starts, and preselects the first flagged one, else the first listed. An author who wants one fixed start gives the persona one location, or flags it. Reason: one field with one meaning, no Advanced-only dropdown, and both bundled personas named the location Automatic already picked. The field shipped in v3.3.3, so `migrateWorld` drops the key on load, and the Emberwatch JSON drops it in the same commit. Ticket 12.
+
 
 - **New glossary term.** Persona: the entity that fills the player slot for a playthrough, from the library or from the world's marked entities. Avoid "player character" and "user". The domain glossary should gain this entry when the work starts.
 - The decisions in this spec come from a recorded interview, questions 1 to 27. The earlier ST parity research stays the reference for how ST composes its prompt.

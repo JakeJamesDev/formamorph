@@ -501,7 +501,6 @@
       ],
       "pronouns": "he/him",
       "persona": true,
-      "startingLocationId": "12fb7d50-05f3-557d-907a-8f1310d89790",
       "traitLinks": [
         {
           "id": "8554ef4b-05c9-5714-a4a3-e4a34a4f8090",
@@ -650,7 +649,6 @@
       ],
       "pronouns": "she/her",
       "persona": true,
-      "startingLocationId": "12fb7d50-05f3-557d-907a-8f1310d89790",
       "traitLinks": [
         {
           "id": "55025f0c-4306-5970-ae19-090dd34704a1",

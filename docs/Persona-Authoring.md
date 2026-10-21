@@ -14,7 +14,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and select the entity.
 3. On the **Profile** tab, find the **Persona** control and select **Playable**.
-4. Optional: in **Starting Location**, pick where the player starts as this persona. **Automatic** uses the entity's first starting location.
+4. Optional: in **Locations**, add every place where the player can start as this persona. The first of them that is a starting location is picked first. With none flagged, the first one is.
 5. Read the entity's descriptions, and the descriptions that mention it. Make sure each one is still correct when the player is this entity. See [Playable Entities](#playable-entities).
 
 For an entity that exists only when the player picks it, select **Persona-Only** in step 3.
@@ -84,7 +84,7 @@ A **Playable** entity shows under **From This World** when a player enters your 
 | The cast | The entity leaves it for that game. It returns when the player changes persona, unless it's [Persona-Only](#persona-only-entities). |
 | Its traits | They're the persona's traits, marked **You**. See [Entity Traits](World-Editor-Traits#entity-traits). |
 | The AI | Reads that everyone in the world already knows this person, and that your text about the entity means the player |
-| Starting location | The entity's **Starting Location** is preselected. With **Automatic**, its first location that is a starting location is. The player can change it. |
+| Starting location | The entity's **Locations** join the list beside the world's starting locations. Its first location that is a starting location is preselected, else its first location. The player can change it. |
 | [Entity Openings](World-Editor-Openings#entity-openings) | The entity's Others openings leave the draw, so page one never greets the player as themselves. Its [Self Openings](World-Editor-Openings#self-openings), if any, replace the whole draw. |
 
 Only entities you select are playable. The setting is your statement that the entity reads correctly from the player's side.

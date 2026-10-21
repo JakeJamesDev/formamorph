@@ -618,6 +618,17 @@ function dropRootTraitLinks(world: Record<string, unknown>): void {
   });
 }
 
+/** Drop the retired `startingLocationId` from every entity: a persona's `locations` are its starts (Persona
+ *  Q28). Not version-gated, since 3.3.3 worlds carry the key under the current version. */
+function dropEntityStartLocations(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.entities)) return;
+  world.entities = world.entities.map((raw) => {
+    if (!raw || typeof raw !== 'object' || !('startingLocationId' in raw)) return raw;
+    const { startingLocationId: _s, ...rest } = raw as Record<string, unknown>;
+    return rest;
+  });
+}
+
 const hasStringId = (v: unknown): v is { id: string } => !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string';
 
 const groupRecords = (groups: unknown): StatGroup[] => (Array.isArray(groups) ? groups.filter(hasStringId) : []) as StatGroup[];
@@ -750,7 +761,7 @@ function migrateStatScripts(world: Record<string, unknown>): void {
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite, the stat-code route rewrite and the persona start-location drop run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -772,6 +783,7 @@ export function migrateWorld(raw: unknown): World {
   migrateExclusiveGroups(world);
   migrateRequirementRows(world);
   dropRootTraitLinks(world);
+  dropEntityStartLocations(world);
   migrateStatLists(world);
   migrateGlobalScope(world);
   normalizeContentLinks(world);

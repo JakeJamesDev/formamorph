@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
-import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStartingLocationField } from './EntityFields';
+import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import EntityStatsMirror from './EntityStatsMirror';
 import EntityTraitsMirror from './EntityTraitsMirror';
@@ -122,7 +122,6 @@ const EntityManager = ({
                   selectedIds={selectedLocationIds}
                   onLocationsChange={handleLocationsChange}
                 />
-                <EntityStartingLocationField {...groupProps} options={locationOptions} />
                 {!editingEntity.customPersona && (
                   <Hint>Set <b>Presence</b>, <b>Movement</b> and <b>Known In</b> on the full-screen <b>Locations Canvas</b></Hint>
                 )}

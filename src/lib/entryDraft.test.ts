@@ -8,13 +8,13 @@ import { cascadeOffInput } from './traitRuntime';
 import type { PersonaPickContext } from './personaPick';
 import type { Entity, GameLocation, PersonaRef, Trait } from '@/types';
 
-const entity = (id: string, locations: string[], startingLocationId?: string): Entity => ({
-  id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations, startingLocationId,
+const entity = (id: string, locations: string[]): Entity => ({
+  id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations,
 });
 const place = (id: string, isStarting = false): GameLocation => ({ id, name: id, isStarting });
 
 const context: PersonaPickContext = {
-  worldEntities: [entity('keeper', ['inn', 'dock']), entity('drifter', ['road']), entity('hermit', ['dock'], 'cellar')],
+  worldEntities: [entity('keeper', ['inn', 'dock']), entity('drifter', ['road']), entity('hermit', ['cellar']), entity('homeless', [])],
   locations: [place('inn'), place('dock', true), place('road'), place('cellar'), place('gate', true)],
 };
 const world = (entityId: string): PersonaRef => ({ source: 'world', entityId });
@@ -34,10 +34,10 @@ describe('withPersonaPick', () => {
     expect(withPersonaPick(withLocationPick(emptyEntryDraft(), null), world('keeper'), context).locationId).toBeNull();
   });
 
-  it('keeps the location for a world persona with no starting location among its locations', () => {
-    expect(withPersonaPick(emptyEntryDraft(), world('drifter'), context).locationId).toBeNull();
+  it('keeps the location for a world persona with no locations', () => {
+    expect(withPersonaPick(emptyEntryDraft(), world('homeless'), context).locationId).toBeNull();
     const fromKeeper = withPersonaPick(emptyEntryDraft(), world('keeper'), context);
-    expect(withPersonaPick(fromKeeper, world('drifter'), context).locationId).toBe('dock');
+    expect(withPersonaPick(fromKeeper, world('homeless'), context).locationId).toBe('dock');
   });
 
   it('keeps the location for a library persona and for None', () => {
@@ -46,15 +46,18 @@ describe('withPersonaPick', () => {
     expect(withPersonaPick(fromKeeper, { source: 'none' }, context).locationId).toBe('dock');
   });
 
-  it('preselects the unflagged location a world persona names', () => {
+  it("preselects a world persona's first location when none of them is flagged", () => {
     expect(withPersonaPick(emptyEntryDraft(), world('hermit'), context).locationId).toBe('cellar');
+    const fromKeeper = withPersonaPick(emptyEntryDraft(), world('keeper'), context);
+    expect(withPersonaPick(fromKeeper, world('drifter'), context).locationId).toBe('road');
   });
 
   it('drops a hand-picked unflagged location on a switch away, and a later persona pick moves it again', () => {
     const hermit = withLocationPick(withPersonaPick(emptyEntryDraft(), world('hermit'), context), 'cellar');
-    const drifter = withPersonaPick(hermit, world('drifter'), context);
-    expect(drifter).toMatchObject({ locationId: null, locationChosen: false });
-    expect(withPersonaPick(drifter, world('keeper'), context).locationId).toBe('dock');
+    const homeless = withPersonaPick(hermit, world('homeless'), context);
+    expect(homeless).toMatchObject({ locationId: null, locationChosen: false });
+    expect(withPersonaPick(homeless, world('drifter'), context)).toMatchObject({ locationId: 'road', locationChosen: false });
+    expect(withPersonaPick(hermit, world('keeper'), context).locationId).toBe('dock');
   });
 
   it('drops a library persona from the added characters', () => {

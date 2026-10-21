@@ -13,6 +13,7 @@ import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type Tr
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
 import { openingPool } from './openings';
+import { personaStartLocation } from './personaPick';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -47,6 +48,15 @@ const settledDefaults = (w: World, ownerId: string, persona: PersonaRef): string
 const names = (w: World, ids: readonly string[]) => ids.map((id) => w.traits.find((t) => t.id === id)?.name ?? id);
 
 describe('the Emberwatch default world', () => {
+  it('carries no retired startingLocationId, and both personas start at Emberwatch Keep through their locations', () => {
+    const entities = JSON.parse(raw).entities as Record<string, unknown>[];
+    expect(entities.some((e) => 'startingLocationId' in e)).toBe(false);
+    const keep = world.locations.find((l) => l.name === 'Emberwatch Keep')!.id;
+    for (const name of ['Albus', 'Sylvie Thornwhistle']) {
+      expect(personaStartLocation(entityNamed(world, name), world.locations)).toBe(keep);
+    }
+  });
+
   it('is listed as a bundled default before Open Chat', () => {
     const ids = DEFAULT_WORLDS.map((d) => d.id);
     expect(ids.indexOf('emberwatch')).toBeGreaterThanOrEqual(0);

@@ -3,8 +3,6 @@ import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SelectOptions } from "@/components/SelectOptions";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -254,10 +252,12 @@ export interface EntityLocationsFieldProps extends EntityFieldGroupProps {
   onLocationsChange?: (ids: string[]) => void;
 }
 
-/** The locations the entity belongs to. World Editor only: a library character has no world locations. */
+/** The locations the entity belongs to, and where the player can start as it under the Persona mark. World
+ *  Editor only: a library character has no world locations. */
 export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange }: EntityLocationsFieldProps) => (
   <div data-tour-anchor="entity-locations" className="space-y-2" {...fieldFrame('locations')}>
     <Label>Locations</Label>
+    {value.persona === true && <Hint>The player can start as this persona at any of these</Hint>}
     <MultiSelect
       key={value.id}
       options={options}
@@ -267,32 +267,6 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
     />
   </div>
 );
-
-const AUTOMATIC = 'automatic';
-
-/** Where a world persona begins: Automatic, then every location. Shows only while the Persona mark is on. */
-export const EntityStartingLocationField = ({ value, onChange, options }: EntityFieldGroupProps & {
-  options: MultiSelectOption[];
-}) => {
-  const { advanced } = useEditorMode();
-  if (!advanced || value.persona !== true) return null;
-  const selected = options.some((o) => o.value === value.startingLocationId) ? value.startingLocationId! : AUTOMATIC;
-  return (
-    <div className="space-y-2" {...fieldFrame('startingLocationId')}>
-      <Label htmlFor={`entity-start-${value.id}`}>Starting Location</Label>
-      <Hint>Selects where the player starts as this persona</Hint>
-      <Select value={selected} onValueChange={(v) => onChange('startingLocationId', v === AUTOMATIC ? undefined : v)}>
-        <SelectTrigger id={`entity-start-${value.id}`}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={AUTOMATIC}>Automatic</SelectItem>
-          <SelectOptions options={options} />
-        </SelectContent>
-      </Select>
-    </div>
-  );
-};
 
 /**
  * The entity's picture widget with neither piece placed: a host draws `ImageGallery` and `ImageTags` where

@@ -12,7 +12,7 @@ import { gateStates, gateTreeOf, settle, switchTrait, type SettleResult } from '
 import { scoped } from '@/lib/scope';
 import { cascadeOffInput } from '@/lib/traitRuntime';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
-import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
+import { offeredStartLocations, personaStartLocation, withoutPersona } from '@/lib/personaPick';
 import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait } from '@/types';
 
 const identity = (text: string) => text;
@@ -899,16 +899,18 @@ describe('the Persona category', () => {
 
 const worldEntities: Entity[] = [
   { id: 'warden', name: 'Harbor Warden', aiDescription: '', persona: true, locations: ['inn', 'dock'] },
-  { id: 'drifter', name: 'Road Drifter', aiDescription: '', persona: true, locations: ['road'], startingLocationId: 'road' },
+  { id: 'drifter', name: 'Road Drifter', aiDescription: '', persona: true, locations: ['road'] },
+  { id: 'stranger', name: 'Stranger', aiDescription: '', persona: true },
 ];
 const worldLocations: GameLocation[] = [
   { id: 'gate', name: 'Town Gate', description: '', isStarting: true },
   { id: 'road', name: 'Old Road', description: '' },
   { id: 'dock', name: 'Harbor Dock', description: '', isStarting: true },
 ];
-const worldPersonas = worldEntities.map((entity) => (
-  { id: entity.id, name: entity.name, startsAt: namedStartLocation(entity, worldLocations)?.name }
-));
+const worldPersonas = worldEntities.map((entity) => {
+  const start = personaStartLocation(entity, worldLocations);
+  return { id: entity.id, name: entity.name, startsAt: worldLocations.find((l) => l.id === start)?.name };
+});
 
 // The host's side of the pick rules, through the same draft functions the main menu uses.
 function WorldPersonaHarness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>>) {
@@ -933,7 +935,7 @@ describe('world personas in the Persona category', () => {
     render(<WorldPersonaHarness />);
     const picker = screen.getByRole('radiogroup', { name: 'Persona' });
     const order = [...picker.querySelectorAll('[role="radio"], h3')].map((el) => el.getAttribute('aria-label') ?? el.textContent);
-    expect(order).toEqual(['None', 'From This World', 'Harbor Warden', 'Road Drifter', 'Your Personas', 'Mara Vale', 'Quiet Cartographer']);
+    expect(order).toEqual(['None', 'From This World', 'Harbor Warden', 'Road Drifter', 'Stranger', 'Your Personas', 'Mara Vale', 'Quiet Cartographer']);
   });
 
   it('shows the category for world personas alone, with no library heading', () => {
@@ -963,15 +965,17 @@ describe('world personas in the Persona category', () => {
     expect(screen.getByRole('radio', { name: 'Town Gate' })).toBeChecked();
   });
 
-  it('says where a persona that names its start begins', () => {
+  it('says where each persona with a location begins', () => {
     render(<WorldPersonaHarness />);
     const drifter = screen.getByRole('radio', { name: 'Road Drifter' }).closest('div')!;
     expect(within(drifter).getByText('Starts at Old Road')).toBeInTheDocument();
     const warden = screen.getByRole('radio', { name: 'Harbor Warden' }).closest('div')!;
-    expect(within(warden).queryByText(/Starts at/)).not.toBeInTheDocument();
+    expect(within(warden).getByText('Starts at Harbor Dock')).toBeInTheDocument();
+    const stranger = screen.getByRole('radio', { name: 'Stranger' }).closest('div')!;
+    expect(within(stranger).queryByText(/Starts at/)).not.toBeInTheDocument();
   });
 
-  it('lists an unflagged start only while its persona is picked, and a switch away drops it', async () => {
+  it("lists a persona's unflagged location only while it is picked, and a switch away drops it", async () => {
     const user = userEvent.setup();
     render(<WorldPersonaHarness />);
     await user.click(screen.getByRole('button', { name: 'Starting Location' }));
