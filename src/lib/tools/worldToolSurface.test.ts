@@ -28,7 +28,7 @@ describe('the World Tool script surface', () => {
   it('lists every global a run really holds, args and the write surface included', async () => {
     const surface = worldToolSurface(params, 'after');
     const globals = surface.globals.map((entry) => entry.name);
-    expect(globals).toEqual(expect.arrayContaining(['args', 'location', 'clock', 'discover', 'memory', 'entities', 'stats', 'player']));
+    expect(globals).toEqual(expect.arrayContaining(['args', 'location', 'clock', 'discover', 'memories', 'entities', 'stats', 'player']));
     expect(globals).not.toContain('diary');
     // `player` exists in a run whose code names it, so its probe names a call.
     const held = globals.filter((name) => name !== 'player');
@@ -56,7 +56,7 @@ describe('the World Tool script surface', () => {
   });
 
   it('accepts every write a World Tool can make', () => {
-    expect(messages('location.move(args.place); clock.advance(5); discover("Tor"); memory.add("x"); memory.pin("y"); entities.Tor.diary("z");')).toEqual([]);
+    expect(messages('location.move(args.place); clock.advance(5); discover("Tor"); memories.add("x"); memories.pin("y"); entities.Tor.diary("z");')).toEqual([]);
   });
 
   it('gives a During AI Output Tool narration and no player, and the other timings the reverse', () => {

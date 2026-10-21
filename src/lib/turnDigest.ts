@@ -154,7 +154,7 @@ export function parsedTurnById(history: readonly ChatMessage[], turnId: string):
   return undefined;
 }
 
-/** The turn's memory as recall reads it: the digest, then the `memory.add` lines. Undefined when it has neither. */
+/** The turn's memory as recall reads it: the digest, then the `memories.add` lines. Undefined when it has neither. */
 export function turnMemory({ summary, codeMemory }: Pick<AITurnResult, 'summary' | 'codeMemory'>): string | undefined {
   if (!codeMemory?.length) return summary;
   return [summary?.trim(), ...codeMemory].filter(Boolean).join(' ');

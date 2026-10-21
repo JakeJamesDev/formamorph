@@ -41,11 +41,19 @@ describe('the on-demand script check', () => {
     expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
   });
 
+  it('reads an empty memories list (Q12)', async () => {
+    const world = (code: string): RuleWorld => ({ ...base([]), scripts: [{ id: 'w', timing: 'after', code }] });
+    expect(await checkScripts(world('if (memories.length !== 0) throw new Error("memories hold " + memories.length);'))).toEqual([]);
+    // The control: the same read throws when the list is empty, so the clean run above did read it.
+    const [found] = await checkScripts(world('if (memories.length === 0) throw new Error("empty");'));
+    expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
+  });
+
   it('runs memory and diary writes for an entity of the world clean, and does not fail a diary for one it lacks (Q2: open cast)', async () => {
     const world = (code: string): RuleWorld => ({
       ...base([]), entities: [{ id: 'tor', name: 'Tor', description: '' } as Entity], scripts: [{ id: 'w', timing: 'after', code }],
     });
-    expect(await checkScripts(world('memory.add("The gate fell."); memory.pin("Tor lied."); entities.Tor.diary("I lied.");'))).toEqual([]);
+    expect(await checkScripts(world('memories.add("The gate fell."); memories.pin("Tor lied."); entities.Tor.diary("I lied.");'))).toEqual([]);
     const rows = async (code: string) => (await checkScripts(world(code))).map((f) => [f.ruleId, f.message]);
     expect(await rows('entities.Mira.diary("Hello.");')).toEqual([[
       SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, a name the cast lacks. Play may discover it.',

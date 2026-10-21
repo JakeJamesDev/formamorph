@@ -112,7 +112,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Locations', 'Location', 'discover', 'Memory']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Locations', 'Location', 'discover', 'Memories']);
   });
 
   it('inserts discover directly, with no group around the one call', () => {
@@ -363,7 +363,7 @@ describe('field info', () => {
     [['Clock', 'previous'], CLOCK_PREVIOUS_FIELDS],
     [['Location'], LOCATION_MEMBERS],
     [['Locations', 'Old Mill'], LOCATION_ENTRY_FIELDS],
-    [['Memory'], MEMORY_MEMBERS],
+    [['Memories'], MEMORY_MEMBERS],
     [['Traits', 'Brave'], TRAIT_ENTRY_FIELDS],
     [['Entities', 'Mira'], ENTITY_FIELDS],
     [['Entities', 'Mira', 'Traits', 'Keen'], TRAIT_ENTRY_FIELDS],

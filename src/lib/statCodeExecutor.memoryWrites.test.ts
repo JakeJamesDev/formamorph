@@ -17,21 +17,21 @@ describe('executeStatCode memory writes', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('pins each line in call order, trimmed', async () => {
-    expect((await run('memory.pin(" The bridge is out. "); memory.pin("Mira owes a debt.");')).worldWrites)
+    expect((await run('memories.pin(" The bridge is out. "); memories.pin("Mira owes a debt.");')).worldWrites)
       .toEqual({ pins: ['The bridge is out.', 'Mira owes a debt.'] });
   });
 
   it('adds each turn line in call order, trimmed, apart from the pins', async () => {
-    expect((await run('memory.add(" Tor lied. "); memory.pin("Kept."); memory.add("The gate fell.");')).worldWrites)
+    expect((await run('memories.add(" Tor lied. "); memories.pin("Kept."); memories.add("The gate fell.");')).worldWrites)
       .toEqual({ memory: ['Tor lied.', 'The gate fell.'], pins: ['Kept.'] });
   });
 
   it.each([
-    ['a blank pin', 'memory.pin("  ");', /memory\.pin needs a line as text/],
-    ['a pin that is not text', 'memory.pin(5);', /memory\.pin needs a line as text/],
-    ['a blank turn line', 'memory.add("");', /memory\.add needs a line as text/],
+    ['a blank pin', 'memories.pin("  ");', /memories\.pin needs a line as text/],
+    ['a pin that is not text', 'memories.pin(5);', /memories\.pin needs a line as text/],
+    ['a blank turn line', 'memories.add("");', /memories\.add needs a line as text/],
   ])('fails the script on %s and drops its other writes', async (_case, code, message) => {
-    const res = await executeStatCode(`stats.Health.value = 50; memory.pin("Kept."); ${code}`, [health], null);
+    const res = await executeStatCode(`stats.Health.value = 50; memories.pin("Kept."); ${code}`, [health], null);
     expect(res.error).toMatch(message);
     expect(res.statWrites).toBeUndefined();
     expect(res.worldWrites).toBeUndefined();
@@ -80,7 +80,7 @@ describe('executeStatCode memory writes', () => {
       ['a blank line', 'entities.Tor.diary(" ");', /diary needs a line as text/],
       ['a blank line by id', 'entities["e-tor"].diary(" ");', /diary needs a line as text/],
     ])('fails the script on %s', async (_case, code, message) => {
-      const res = await diaryRun(`memory.pin("Kept."); ${code}`);
+      const res = await diaryRun(`memories.pin("Kept."); ${code}`);
       expect(res.error).toMatch(message);
       expect(res.worldWrites).toBeUndefined();
     });
@@ -91,7 +91,7 @@ describe('executeStatCode memory writes', () => {
     });
 
     it('fails the script on an unknown entity even when the code catches the throw', async () => {
-      const res = await diaryRun('try { entities.Stranger.diary("Hello."); } catch (e) {} memory.pin("Kept.");');
+      const res = await diaryRun('try { entities.Stranger.diary("Hello."); } catch (e) {} memories.pin("Kept.");');
       expect(res.error).toMatch(/Stranger/);
     });
 
@@ -104,8 +104,9 @@ describe('executeStatCode memory writes', () => {
     });
   });
 
-  it('keeps memory read-only', async () => {
-    const res = await executeStatCode('memory.pin = null; return typeof memory.pin === "function" ? 1 : 0;', [health], health);
+  it('keeps the memories verbs read-only', async () => {
+    const res = await executeStatCode('memories.pin = null; return typeof memories.pin === "function" ? 1 : 0;', [health], health);
     expect(res.value).toBe(1);
+    expect(res.readOnlyWrites).toEqual(['memories.pin']);
   });
 });

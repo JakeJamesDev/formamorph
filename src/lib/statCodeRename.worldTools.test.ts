@@ -72,11 +72,11 @@ describe('a rename that a World Tool script names', () => {
     const plan = planCodeRename({
       root: 'placeholders', oldName: 'Mira', newName: 'Old Mira', stats: [], otherNames: [], subject: { kind: 'entity', id: 'mira' },
       placeholders: { list: [hair], owners: new Map([['h1', { kind: 'entity', id: 'mira', name: 'Mira' }]]) }, entities: [mira],
-      worldTools: [scriptWorldTool('t', 'greet', `memory.add(entities.Mira.name + entities.Mira.placeholders.Hair.text);`)],
+      worldTools: [scriptWorldTool('t', 'greet', `memories.add(entities.Mira.name + entities.Mira.placeholders.Hair.text);`)],
     });
     expect(plan?.edits[0]).toEqual({
       home: { kind: 'tool', toolId: 't' }, name: 'greet',
-      scripts: { t: `memory.add(entities['Old Mira'].name + entities['Old Mira'].placeholders.Hair.text);` },
+      scripts: { t: `memories.add(entities['Old Mira'].name + entities['Old Mira'].placeholders.Hair.text);` },
     });
   });
 

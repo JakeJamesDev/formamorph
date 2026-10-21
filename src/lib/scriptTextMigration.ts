@@ -80,8 +80,31 @@ export function migrateDiaryCalls(code: string, context: ScriptTextContext = NO_
   return out;
 }
 
+const MEMORY_VERBS = new Set(['add', 'pin']);
+
+/** Rewrite the retired `memory.add` and `memory.pin` to `memories.add` and `memories.pin`. A script that declares
+ *  `memory` keeps its text. */
+export function migrateMemoryCalls(code: string): string {
+  if (!code.includes('memory')) return code;
+  const edits: CodeSplice[] = [];
+  let declared = false;
+  javascriptLanguage.parser.parse(code).iterate({
+    enter: (ref) => {
+      if (ref.name === 'VariableDefinition' && code.slice(ref.from, ref.to) === 'memory') declared = true;
+      if (ref.name !== 'MemberExpression') return true;
+      const [object, , property] = children(ref.node);
+      if (object?.name === 'VariableName' && code.slice(object.from, object.to) === 'memory'
+        && property?.name === 'PropertyName' && MEMORY_VERBS.has(code.slice(property.from, property.to))) {
+        edits.push({ from: object.from, to: object.to, insert: 'memories' });
+      }
+      return true;
+    },
+  });
+  return declared || !edits.length ? code : spliced(code, edits);
+}
+
 /** Every script-text rewrite, in the order they run. */
-export const SCRIPT_TEXT_REWRITES: readonly ScriptTextRewrite[] = [migrateDiaryCalls];
+export const SCRIPT_TEXT_REWRITES: readonly ScriptTextRewrite[] = [migrateDiaryCalls, migrateMemoryCalls];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 

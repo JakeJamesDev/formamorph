@@ -315,7 +315,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
         narration: typeof unit.narration === 'string' ? sampleNarration(unit.narration) : unit.narration,
       }),
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
-      ...(options.openCast && { openCast: true }),
+      ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
     };
   };
   const snapshot: SandboxSnapshot = {

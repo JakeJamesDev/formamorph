@@ -139,7 +139,7 @@ describe('a Script World Tool’s code box', () => {
     await waitFor(() => expect(boxes.get('Script')).toBeDefined());
     const box = boxes.get('Script')!;
     const globals = box.surface.globals.map((entry) => entry.name);
-    expect(globals).toEqual(expect.arrayContaining(['args', 'location', 'clock', 'discover', 'memory', 'entities', 'stats']));
+    expect(globals).toEqual(expect.arrayContaining(['args', 'location', 'clock', 'discover', 'memories', 'entities', 'stats']));
     expect(box.surface.members.get('args')?.map((entry) => entry.name)).toEqual(['place']);
     expect(box.statNames).toEqual(['Luck']);
   });

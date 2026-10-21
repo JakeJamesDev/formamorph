@@ -188,7 +188,7 @@ const topCallField = (name: string, arg: string): VariableField => {
   return callField({ kind: 'field', label: name, detail: entry?.detail ?? '', info: entry?.info ?? '', insert: name }, arg);
 };
 
-const memoryFields = (): VariableNode[] => MEMORY_MEMBERS.map((entry) => callField(field(root('memory'), entry), '"Line"'));
+const memoryFields = (): VariableNode[] => MEMORY_MEMBERS.map((entry) => callField(field(root('memories'), entry), '"Line"'));
 
 /** A placeholder entry's members by its kind. The calls insert complete; `pin` leaves its text selected. */
 function placeholderFields(path: Path, kind: PlaceholderKindNoun): VariableNode[] {
@@ -397,7 +397,7 @@ export function buildVariableTree(
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
-    { kind: 'group', label: 'Memory', info: globalInfo('memory'), children: memoryFields() },
+    { kind: 'group', label: 'Memories', info: globalInfo('memories'), children: memoryFields() },
     ...timingGroups(timing),
   ];
   return top.map(leafForOneChild);

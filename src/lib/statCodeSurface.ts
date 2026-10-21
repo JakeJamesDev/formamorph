@@ -56,10 +56,25 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 
-/** The members of `memory`: a line for this turn, and a pinned memory. */
+/** The verbs on `memories`: a line for this turn, and a pinned line. */
 export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'add', detail: '(line) => void', info: 'Adds a line to this turn’s memory, after the AI’s summary. Recall finds it on later turns when it fits. It isn’t sent with every request.' },
-  { name: 'pin', detail: '(line) => void', info: 'Adds a memory that’s sent with every request, as one you write in the Memory Manager is. It shows there under Custom.' },
+  { name: 'pin', detail: '(line) => void', info: 'Adds a memory that’s sent with every request, as one you write in the Memory Manager is. It shows there under Custom. Unlike a pinned summary, it never loses its place to the memory limit.' },
+]);
+
+/** The fields of one entry in `memories`. None takes a write. */
+export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'id', detail: 'string', info: 'Unique id of the memory' },
+  { name: 'turn', detail: 'number', info: 'Turn number of the memory, from 1. A Custom memory has the turn before it was added.' },
+  { name: 'timestamp', detail: 'number', info: 'Total story hours at the end of that turn, on the scale of clock.elapsedHours' },
+  { name: 'day', detail: 'number', info: 'Day number at the end of that turn' },
+  { name: 'daypart', detail: 'string', info: 'Daypart at the end of that turn: night, dawn, morning, midday, afternoon or evening' },
+  { name: 'text', detail: 'string', info: 'Text of the memory as the Memory panel shows it, edits included' },
+  { name: 'custom', detail: 'boolean', info: 'True for a memory listed under Custom: one the player wrote or a script pinned' },
+  { name: 'kept', detail: 'boolean', info: 'True when the story keeps the memory. Recall can still leave it out of a turn.' },
+  { name: 'inContext', detail: 'boolean', info: 'True when the memory went to the AI on the last turn' },
+  { name: 'pinned', detail: 'boolean', info: 'True when the memory is pinned to stay' },
+  { name: 'forgotten', detail: 'boolean', info: 'True when the memory is pinned to go' },
 ]);
 
 /** The fields of the clock object that `path` names, or null when `path` is no clock object. */
@@ -77,7 +92,10 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'locations', detail: 'object', info: 'Every location in the world by name, with the entities at each. Use locations["Two Words"] for a name with a space.' },
   { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at, with the fields of a locations entry. Call location.move to move it.', access: 'readOnly' },
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn. With a description it joins at once; without one, the AI describes it. A name an entity already has does nothing.' },
-  { name: 'memory', detail: shapeOf(MEMORY_MEMBERS), info: 'The story’s memory. Call memory.add or memory.pin to add to it.', access: 'readOnly' },
+  {
+    name: 'memories', detail: 'array', access: 'readOnly',
+    info: 'The story’s memories as the Memory panel lists them, oldest first. Each has its id, turn, story time, day, daypart, text, Custom flag and pins, and whether it went to the AI. Call memories.add or memories.pin to add one. It’s empty in Test Code and the Test Bench.',
+  },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },
@@ -333,7 +351,7 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   label: 'stat script',
   globals: SANDBOX_GLOBALS,
   builtins: SANDBOX_BUILTINS,
-  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS], ['memory', MEMORY_MEMBERS]]),
+  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS], ['memories', MEMORY_MEMBERS]]),
   languageNames: LANGUAGE_NAMES,
   // The Variable menu is the drill tree in `statCodeVariableTree`.
   missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',

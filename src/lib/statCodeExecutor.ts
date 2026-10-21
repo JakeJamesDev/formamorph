@@ -129,6 +129,29 @@ export interface SandboxPlaces {
   location: SandboxPlace | null;
 }
 
+/** One entry of `memories`: a Memory panel row as a script reads it. */
+export interface SandboxMemory {
+  id: string;
+  /** The play turn, 1-based; a Custom line's is the turn that closed before it was added. */
+  turn: number;
+  /** Story hours at the end of that turn. */
+  timestamp: number;
+  day: number;
+  daypart: string;
+  text: string;
+  custom: boolean;
+  kept: boolean;
+  inContext: boolean;
+  pinned: boolean;
+  forgotten: boolean;
+}
+
+/** `row` with only the fields an entry reads, so nothing else a caller holds crosses into the VM. */
+const memoryData = (row: SandboxMemory): SandboxMemory => ({
+  id: row.id, turn: row.turn, timestamp: row.timestamp, day: row.day, daypart: row.daypart, text: row.text,
+  custom: row.custom, kept: row.kept, inContext: row.inContext, pinned: row.pinned, forgotten: row.forgotten,
+});
+
 /** One `discover` call. With a description the entity is created at once; without, the discover pass
  *  describes it. */
 export interface DiscoverWrite {
@@ -144,9 +167,9 @@ export interface WorldWrites {
   minutes?: number;
   /** Once per name, in first-call order; a call with a description fills in one without. */
   discover?: DiscoverWrite[];
-  /** Every `memory.add` line, in call order. */
+  /** Every `memories.add` line, in call order. */
   memory?: string[];
-  /** Every `memory.pin` line, in call order. */
+  /** Every `memories.pin` line, in call order. */
   pins?: string[];
   /** Every `diary` line, in call order. */
   diary?: DiaryWrite[];
@@ -1211,6 +1234,8 @@ export interface StatCodeRunOptions {
   /** The editor's run, which has no discovered cast: a `diary` on an entity the cast lacks is listed in `maybeDiary`, not
    *  thrown (Q46). Play leaves it off, so an unknown name fails. */
   openCast?: boolean;
+  /** The Memory panel's live rows, oldest first. Absent, `memories` is empty. */
+  memories?: readonly SandboxMemory[];
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
@@ -1219,12 +1244,14 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
 const MOVE_TURN = '__formamorphMoveTurn';
 
-/** The prelude of `discover`, `memory`, the hooks `location.move` and `clock.advance` call and the hook an entity
+/** The prelude of `discover`, `memories`, the hooks `location.move` and `clock.advance` call and the hook an entity
  *  entry's writes call. An unknown location or entity is listed as well as thrown, so a script that catches the
  *  throw still fails. An unknown entry's diary finds its key in `cast` by id, else by name; in an `openCast` run a
- *  miss is listed as a maybe instead. */
-const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean): string => [
-  `const [${MOVE_TURN}, discover, memory, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
+ *  miss is listed as a maybe instead. `memories` is frozen: its own writes land at commit and never read back. */
+const worldPrelude = (
+  { locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean, memories: readonly SandboxMemory[],
+): string => [
+  `const [${MOVE_TURN}, discover, memories, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, rows, lock, note) => {`,
   `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], unknown: [], maybe: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
@@ -1270,12 +1297,13 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    if (!text(value)) throw new TypeError(call + ' needs a line as text');`,
   `    return text(value);`,
   `  };`,
-  `  const memory = Object.freeze(lock({`,
-  `    add: (value) => { writes.memory.push(line('memory.add', value)); },`,
-  `    pin: (value) => { writes.pins.push(line('memory.pin', value)); },`,
-  `  }, ['add', 'pin'], 'memory.', note));`,
-  `  return [move, Object.freeze(discover), memory, advance, entityWrite, writes];`,
-  `})(${JSON.stringify({ locations: locations.map(({ id, name }) => ({ id, name })), location })}, ${JSON.stringify(cast)}, ${openCast}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
+  `  const memories = rows.map((row, at) => Object.freeze(lock(row, Object.keys(row), 'memories[' + at + '].', note)));`,
+  `  const verb = (name, call) => Object.defineProperty(memories, name, { get: () => call, set: () => note('memories.' + name) });`,
+  `  verb('add', (value) => { writes.memory.push(line('memories.add', value)); });`,
+  `  verb('pin', (value) => { writes.pins.push(line('memories.pin', value)); });`,
+  `  return [move, Object.freeze(discover), Object.freeze(memories), advance, entityWrite, writes];`,
+  `})(${JSON.stringify({ locations: locations.map(({ id, name }) => ({ id, name })), location })}, ${JSON.stringify(cast)}, ${openCast},`,
+  `  JSON.parse(${JSON.stringify(JSON.stringify(memories.map(memoryData)))}), ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
 ].join('\n');
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
@@ -1443,6 +1471,7 @@ export const executeStatCode = async (
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
     narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args, openCast = false,
+    memories = [],
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1528,7 +1557,7 @@ export const executeStatCode = async (
       `const self = ${!currentStat ? selfTraitSource : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
-      worldPrelude(places, diaryCast(entities, persona, discovered), openCast),
+      worldPrelude(places, diaryCast(entities, persona, discovered), openCast, memories),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
