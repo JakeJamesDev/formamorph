@@ -96,11 +96,12 @@ export interface StatBoxSpec {
 
 /** The reader's options for one stat code box under the world's `names`. */
 export const statBoxAnalysisOptions = (
-  { placeholders, traitNames, entities, statNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames'>,
+  { placeholders, traitNames, entities, statNames, places }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames' | 'places'>,
   { selfName, owner, lookup, surface = STAT_CODE_SURFACE }: StatBoxSpec = {},
 ): SurfaceAnalysisOptions => ({
   surface,
   placeholders, traits: traitNames, entities, statNames,
+  ...(places && { locations: places.locations.map((location) => location.name) }),
   // A global box's `owner.stats` is empty; an owner given no names leaves them unchecked.
   ...(!owner ? { ownerStatNames: [] } : owner.statNames ? { ownerStatNames: owner.statNames } : {}),
   ...(owner && { owner: owner.kind }), ...(selfName && { selfName }), ...(lookup && { lookup }),

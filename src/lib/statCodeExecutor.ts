@@ -116,9 +116,16 @@ export interface SandboxPlace {
   name: string;
 }
 
+/** One `locations` entry's input. Text left out reads empty; `starting` left out reads false. */
+export interface SandboxLocation extends SandboxPlace {
+  description?: string;
+  summary?: string;
+  starting?: boolean;
+}
+
 /** The world's locations a run can name, and where the turn stands. */
 export interface SandboxPlaces {
-  locations: readonly SandboxPlace[];
+  locations: readonly SandboxLocation[];
   location: SandboxPlace | null;
 }
 
@@ -232,6 +239,15 @@ export interface SandboxEntity {
   type?: string;
   pronouns?: string;
   inScene?: boolean;
+  description?: string;
+  summary?: string;
+  aliases?: readonly string[];
+  /** The id of the location the entity stands at in play. Absent, it stands at every one of `locationIds`. */
+  locationId?: string;
+  /** The ids of the locations the entity is authored to list. */
+  locationIds?: readonly string[];
+  /** Whether the entity follows the player, which places it where the player stands. */
+  following?: boolean;
   /** The entity's owner node in the placeholder tree. Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
   /** What its `stats` reads and takes writes on. Absent, it holds no stats. */
@@ -734,7 +750,10 @@ const traitData = (entries: readonly SandboxTrait[]) =>
     [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
 
 /** The fields on an entity entry that a write never reaches. */
-const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders', 'stats', 'move', 'follow', 'unfollow', 'diary'] as const;
+const ENTITY_READ_ONLY_FIELDS = [
+  'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
+  'move', 'follow', 'unfollow', 'diary',
+] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
 export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
@@ -749,6 +768,10 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
   if (hasEntityKey(persona.name)) byName.set(persona.name, persona);
   return { byName, persona };
 }
+
+/** Whether `entity` is the played persona: the entry itself, or one with its id. */
+const isPlayed = (entity: SandboxEntity, persona: SandboxEntity): boolean =>
+  entity === persona || (!!persona.id && entity.id === persona.id);
 
 /** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
  *  `fields`, built by `build(key, data, unknown) => [values, rows, hidden?]`, where `hidden` fields are left
@@ -811,13 +834,14 @@ const OWN_OWNER_TAG = 'owner';
  *  the owner's entry holds `owner.stats`. The stat-write reader's rows are `[key, unknown, statMapRows]`. */
 const entitiesPrelude = (
   { byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap, blankStat: unknown, place: OwnerPlace,
-  statEntriesOf: (entity: SandboxEntity) => StatEntry[],
+  statEntriesOf: (entity: SandboxEntity) => StatEntry[], standing: Standing,
 ): string => {
   const data = (entity: SandboxEntity, owner: boolean) => {
-    const { id = '', type = '', pronouns = '', inScene = false, traits, placeholders } = entity;
-    const played = entity === persona || (!!persona.id && id === persona.id);
+    const { id = '', type = '', pronouns = '', inScene = false, description = '', summary = '', aliases = [], traits, placeholders } = entity;
+    const played = isPlayed(entity, persona);
     return {
-      id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
+      id, type, pronouns, inScene, location: standing.nameOf(entity, played), following: !played && !!entity.following,
+      description, summary, aliases, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
       stats: owner ? {} : statMapData(statEntriesOf(entity)), owner, played,
     };
   };
@@ -846,7 +870,9 @@ const entitiesPrelude = (
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
     `  const write = (kind) => (target) => ${ENTITY_WRITE}(who, kind, target);`,
     `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), diary: write('diary') };`,
-    `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: data.own ? data.name || '' : unknown ? '' : key, traits, placeholders, stats, ...moves }, rows,`,
+    `  const blank = { id: '', type: '', pronouns: '', inScene: false, location: '', following: false, description: '', summary: '' };`,
+    `  const aliases = Object.freeze([...(data.aliases || [])]);`,
+    `  return [{ ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, traits, placeholders, stats, ...moves }, rows,`,
     `    who.played ? Object.keys(moves) : []];`,
     `});`,
     `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
@@ -1191,12 +1217,14 @@ const WORLD_WRITES = '__formamorphWorldWrites';
 const ENTITY_WRITE = '__formamorphEntityWrite';
 const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 
-/** The prelude of `location`, `discover`, `memory`, the hook `clock.advance` calls and the hook an entity entry's
- *  writes call. An unknown location or entity is listed as well as thrown, so a script that catches the throw still
- *  fails. An unknown entry's diary finds its key in `cast` by id, else by name; in an `openCast` run a miss is
- *  listed as a maybe instead. */
+const MOVE_TURN = '__formamorphMoveTurn';
+
+/** The prelude of `discover`, `memory`, the hooks `location.move` and `clock.advance` call and the hook an entity
+ *  entry's writes call. An unknown location or entity is listed as well as thrown, so a script that catches the
+ *  throw still fails. An unknown entry's diary finds its key in `cast` by id, else by name; in an `openCast` run a
+ *  miss is listed as a maybe instead. */
 const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean): string => [
-  `const [location, discover, memory, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
+  `const [${MOVE_TURN}, discover, memory, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, lock, note) => {`,
   `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], unknown: [], maybe: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
@@ -1221,10 +1249,7 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    if (diary) writes.diary.push({ entity, line: line('diary', target) });`,
   `    else writes.entities.push(kind === 'move' ? { entity, kind, location: find('location', places.locations, target) } : { entity, kind });`,
   `  };`,
-  `  const here = places.location || { id: '', name: '' };`,
-  `  const location = Object.freeze(lock({`,
-  `    id: here.id, name: here.name, move: (target) => { writes.location = find('location', places.locations, target); },`,
-  `  }, ['id', 'name', 'move'], 'location.', note));`,
+  `  const move = (target) => { writes.location = find('location', places.locations, target); };`,
   `  const text = (value) => (typeof value === 'string' ? value.trim() : '');`,
   `  const discover = (name, description) => {`,
   `    if (!text(name)) throw new TypeError('discover needs a name as text');`,
@@ -1249,8 +1274,8 @@ const worldPrelude = ({ locations, location }: SandboxPlaces, cast: readonly San
   `    add: (value) => { writes.memory.push(line('memory.add', value)); },`,
   `    pin: (value) => { writes.pins.push(line('memory.pin', value)); },`,
   `  }, ['add', 'pin'], 'memory.', note));`,
-  `  return [location, Object.freeze(discover), memory, advance, entityWrite, writes];`,
-  `})(${JSON.stringify({ locations, location })}, ${JSON.stringify(cast)}, ${openCast}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
+  `  return [move, Object.freeze(discover), memory, advance, entityWrite, writes];`,
+  `})(${JSON.stringify({ locations: locations.map(({ id, name }) => ({ id, name })), location })}, ${JSON.stringify(cast)}, ${openCast}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
 ].join('\n');
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
@@ -1262,6 +1287,69 @@ const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity, d
     .map((entity) => ({ id: entity.id || entity.name, name: entity.name })),
   ...discovered,
 ];
+
+/** Where the entities stand: the name each one's `location` reads, and who each location's `present` lists. */
+interface Standing {
+  nameOf(entity: SandboxEntity, played: boolean): string;
+  /** Whether `present` starts with the persona, and the `entities` keys that follow it. */
+  presentAt(locationId: string): { persona: boolean; keys: string[] };
+}
+
+/** Where `keyed` stand among `places`. A follower and the persona stand where the player does; an entity with no
+ *  position stands at every location it lists. */
+function standingOf({ locations, location: here }: SandboxPlaces, { byName, persona }: KeyedEntities): Standing {
+  const nameById = new Map(locations.map((place) => [place.id, place.name]));
+  const standsAt = (entity: SandboxEntity, locationId: string) => {
+    if (entity.following) return here?.id === locationId;
+    return entity.locationId ? entity.locationId === locationId : !!entity.locationIds?.includes(locationId);
+  };
+  return {
+    nameOf: (entity, isPersona) => {
+      // The empty persona is no entity, so it stands nowhere.
+      if (isPersona) return entity.id ? here?.name ?? '' : '';
+      if (entity.following) return here?.name ?? '';
+      return entity.locationId ? nameById.get(entity.locationId) ?? '' : '';
+    },
+    presentAt: (locationId) => ({
+      persona: !!persona.id && here?.id === locationId,
+      keys: [...byName].filter(([, entity]) => !isPlayed(entity, persona) && standsAt(entity, locationId)).map(([name]) => name),
+    }),
+  };
+}
+
+/** The `locations` and `location` prelude, after the entities prelude: `present` holds its entries. The later of
+ *  two locations sharing a name wins the key. */
+const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing: Standing): string => {
+  const data = (place: SandboxLocation, prefix: string) => ({
+    id: place.id, name: place.name, description: place.description ?? '', summary: place.summary ?? '', starting: !!place.starting,
+    ...standing.presentAt(place.id), prefix,
+  });
+  const current = here ? locations.find((place) => place.id === here.id) ?? here : null;
+  const blank = { ...data({ id: '', name: '' }, ''), persona: false, keys: [] };
+  const spec = {
+    locations: [...new Map(locations.filter((place) => hasEntityKey(place.name)).map((place) => [place.name, place]))]
+      .map(([name, place]) => [name, data(place, `${memberPath('locations', name)}.`)]),
+    here: current ? data(current, 'location.') : { ...blank, prefix: 'location.' },
+    blank,
+  };
+  return [
+    `const [locations, location] = ((spec, move, lock, note, entities, persona) => {`,
+    `  const entry = (data, extra) => {`,
+    `    const present = Object.freeze([...(data.persona ? [persona] : []), ...data.keys.map((key) => entities[key])]);`,
+    `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present, ...extra };`,
+    `    return Object.freeze(lock(out, Object.keys(out), data.prefix, note));`,
+    `  };`,
+    `  const map = Object.create(null);`,
+    `  for (const [key, data] of spec.locations) map[key] = entry(data, {});`,
+    `  const strays = Object.create(null);`,
+    `  const stray = (key) => entry({ ...spec.blank, prefix: (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'locations.' + key : 'locations[' + JSON.stringify(key) + ']') + '.' }, {});`,
+    `  const locations = new Proxy(Object.freeze(map), {`,
+    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key] : strays[key] || (strays[key] = stray(key)),`,
+    `  });`,
+    `  return [locations, entry(spec.here, { move })];`,
+    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${MOVE_TURN}, ${LOCK_FIELDS}, ${LOOSE_NOTE}, entities, persona);`,
+  ].join('\n');
+};
 
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
@@ -1369,6 +1457,7 @@ export const executeStatCode = async (
     ]);
     const keyed = keyedEntities(entities, persona);
     const place = ownerPlace(keyed, owner);
+    const standing = standingOf(places, keyed);
     const statsData = marshalStats({ stats, turn, enabled });
     const keyedStats = keyedStatEntries(statsData);
     const ownerStatsData = owner?.stats ? marshalStats(owner.stats) : [];
@@ -1463,7 +1552,8 @@ export const executeStatCode = async (
       ...(args ? [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args))}));`] : []),
       placeholdersPrelude(placeholderMap),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
+      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing),
+      locationsPrelude(places, standing),
       dictionariesPrelude(namesDictionaries(code) ? dictionaries : dictionaries.map(({ entries: _cost, ...book }) => book), placeholderMap),
       `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
       code,

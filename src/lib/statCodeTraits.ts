@@ -27,6 +27,8 @@ export interface StatCodeOwners {
   entities?: readonly Entity[];
   /** The library entities in the playthrough as authored: the library persona, then the added characters. */
   library?: readonly Entity[];
+  /** The characters play discovered after the opening, as stored. Absent ⇒ none. */
+  discovered?: readonly Entity[];
   /** Ids of the entities in the turn's scene. Absent ⇒ none; the played persona is always in it. */
   inSceneIds?: readonly string[];
 }
@@ -140,13 +142,15 @@ function codeEntity(
   };
 }
 
-/** Every entity in play, the played persona among them: the world's cast and persona, then the library's. */
+/** Every entity in play, the played persona among them: the world's cast and persona, the library's, then the
+ *  characters play discovered. */
 export function codeEntities(ownerTraits: StatCodeOwners, placeholders: readonly Placeholder[]): CodeEntities {
   const ref = ownerTraits.world.persona;
   const world = (ownerTraits.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
   const id = playedPersonaId(ownerTraits);
   const gates = gatesOf(ownerTraits);
-  const entities = [...world, ...ownerTraits.library ?? []].map((e) => codeEntity(ownerTraits, placeholders, e, gates, id));
+  const entities = [...world, ...ownerTraits.library ?? [], ...ownerTraits.discovered ?? []]
+    .map((e) => codeEntity(ownerTraits, placeholders, e, gates, id));
   return { entities, persona: entities.find((e) => e.id === id) ?? NO_PERSONA };
 }
 

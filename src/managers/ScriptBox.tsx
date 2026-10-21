@@ -222,6 +222,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
           placeholders={analysis.placeholders}
           traits={traitPlaces}
           entities={analysis.entities}
+          locations={analysis.locations}
           lookup={analysis.lookup}
           navigation={navigation}
           revealLine={reveal?.line}

@@ -31,6 +31,10 @@ export function activeOwnedTraitIds(states: Readonly<OwnedTraitStates>): Record<
 export const addedCharacters = (discovered: readonly DiscoveredEntity[]): Entity[] =>
   discovered.filter((d) => d.sourceTurnId === INITIAL_SOURCE_TURN_ID).map((d) => d.entity);
 
+/** The characters play discovered after the opening, as stored. */
+export const laterDiscovered = (discovered: readonly DiscoveredEntity[]): Entity[] =>
+  discovered.filter((d) => d.sourceTurnId !== INITIAL_SOURCE_TURN_ID).map((d) => d.entity);
+
 /** The library entities a playthrough holds, whose nodes sit last in the one tree: the library persona, then
  *  the added characters, with their owned trait requirements bound to the world. */
 export const inPlayLibrary = (

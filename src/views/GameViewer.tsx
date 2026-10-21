@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold } from '@/lib/openingState';
-import { ownerPins, inPlayOwners, libraryUnder } from '@/lib/ownedTraitsInPlay';
+import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
 import { metFromScene, metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
@@ -3301,7 +3301,7 @@ const GameViewer = ({
             traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
           }, world),
           ownerTraits: {
-            ...held, world, entities: codeEntities.world, library: libraryIn(world),
+            ...held, world, entities: codeEntities.world, library: libraryIn(world), discovered: laterDiscovered(discoveredEntities),
             inSceneIds: liveScene().inSceneIds,
           },
           placeholders: {
@@ -3315,11 +3315,10 @@ const GameViewer = ({
             }).world,
           },
           owners,
-          places: {
-            locations: locations.map(({ id, name }) => ({ id, name })),
-            location: here && { id: here.id, name: here.name },
-          },
-          discovered: discoveredEntities.map(({ entity }) => ({ id: entity.id, name: entity.name })),
+          places: { locations, location: here && { id: here.id, name: here.name } },
+          positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
+          followers: entityFollowers,
+          resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
         };
         const turn: StatCodeTurn = {
           state,
@@ -3410,7 +3409,7 @@ const GameViewer = ({
       }
     },
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation, discoveredEntities,
-      setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
+      entityPositions, entityFollowers, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
   );
 
   // Runs one timing's scripts over this turn and lays the result: a turn with no stat response runs it directly.

@@ -121,6 +121,7 @@ function memberRootName(value: CodeValue): string {
     case 'entity': case 'owner': return 'Entity';
     case 'dictionary': return 'Dictionary';
     case 'dictionaryEntry': return 'DictionaryEntry';
+    case 'locationEntry': return 'Location';
     case 'persona': return 'persona';
     case 'clock': case 'listed': return value.path;
     default: return value.is;

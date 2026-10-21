@@ -21,7 +21,7 @@ import {
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -139,6 +139,8 @@ export interface AnalysisOptions {
   /** The world's entities, in authored order. Absent, entity and persona trait names are neither offered nor
    *  checked. A library entity can carry another name, so an unknown one is only a warning. */
   entities?: readonly CodeEntityNames[];
+  /** The world's location code names, in authored order. Absent, location names are not offered. */
+  locations?: readonly string[];
   /** The global stat names, in authored order: what `stats` keys in every box. Absent, stat names are neither
    *  offered nor checked. */
   statNames?: readonly string[];
@@ -437,6 +439,8 @@ function mapKeyEntries(map: CodeValue, options: AnalysisOptions, dotted: boolean
         .filter((name) => !dotted || isIdentifier(name))
         .map((name) => ({ name, detail: 'entry', info: `The “${name}” entry in the “${map.dictionary}” dictionary` }));
     }
+    case 'locationMap': return options.locations ? [...new Set(options.locations)].filter((name) => !dotted || isIdentifier(name))
+      .map((name) => ({ name, detail: 'location', info: `The “${name}” location in this world` })) : null;
     default: return undefined;
   }
 }
@@ -501,6 +505,7 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'persona': return PERSONA_FIELDS;
     case 'dictionary': return DICTIONARY_FIELDS;
     case 'dictionaryEntry': return DICTIONARY_ENTRY_FIELDS;
+    case 'locationEntry': return LOCATION_ENTRY_FIELDS;
     case 'clock': return clockFieldsAt(value.path);
     case 'listed': return options.surface.members.get(value.path) ?? null;
     default: return null;

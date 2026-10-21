@@ -6,7 +6,7 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
@@ -67,6 +67,7 @@ function editorNames(): VariableTreeNames {
     traits: worldTraitPlaces({ traits: world.traits, traitGroups: [] }, list),
     entities: entityTraitNames({ traits: world.traits, traitGroups: [], entities: world.entities }, list),
     placeholders: { list, owners: placeholderOwners(world), dictionaries: codeDictionaries(world.dictionaries, list) },
+    locations: ['Dock', 'Old Mill'],
   };
 }
 
@@ -111,7 +112,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Location', 'discover', 'Memory']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Locations', 'Location', 'discover', 'Memory']);
   });
 
   it('inserts discover directly, with no group around the one call', () => {
@@ -361,6 +362,7 @@ describe('field info', () => {
     [['Clock'], CLOCK_MEMBERS],
     [['Clock', 'previous'], CLOCK_PREVIOUS_FIELDS],
     [['Location'], LOCATION_MEMBERS],
+    [['Locations', 'Old Mill'], LOCATION_ENTRY_FIELDS],
     [['Memory'], MEMORY_MEMBERS],
     [['Traits', 'Brave'], TRAIT_ENTRY_FIELDS],
     [['Entities', 'Mira'], ENTITY_FIELDS],
@@ -427,7 +429,7 @@ describe('every leaf against the sandbox', () => {
     persona: entities.find((entity) => entity.id === 'mira'),
     dictionaries: sandboxDictionaries(names.placeholders!.dictionaries ?? [], placeholders.owners),
     // Test Code stands at the world's starting location.
-    places: { locations: [{ id: 'dock', name: 'Dock' }], location: { id: 'dock', name: 'Dock' } },
+    places: { locations: [{ id: 'dock', name: 'Dock' }, { id: 'mill', name: 'Old Mill' }], location: { id: 'dock', name: 'Dock' } },
   });
 
   // `diary` writes for a real entity and never the persona, so it has its own cases below.

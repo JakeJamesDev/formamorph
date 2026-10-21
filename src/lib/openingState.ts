@@ -8,7 +8,7 @@ import { ownedTraitStatesFrom } from './ownedTraitState';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { startingLocations } from './startingLocation';
 import { playStatWorld } from './statLinks';
-import type { SandboxState } from './statCodeTurn';
+import type { ResolveText, SandboxState } from './statCodeTurn';
 import type { UnitHome } from './sandboxSnapshot';
 import { atStartValues, statStartValue } from './statDescriptorGeometry';
 import { activeStatEnabled, inAuthoredOrder, traitOrderIndex } from './traitEffects';
@@ -18,7 +18,8 @@ import {
 } from './traitRuntime';
 import type { PersonaPick } from './persona';
 import type { OwnerId } from './scope';
-import type { Entity, EntityStatValues, OwnedTraitPicks, Trait, World } from '@/types';
+import { resolveEntityText, type PlaceholderMode } from './placeholders';
+import type { Entity, EntityStatValues, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
 
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
@@ -47,7 +48,14 @@ export interface OpeningFold {
   traitState: TraitRuntimeState;
 }
 
-/** The state a new game opens with. Pure: the same inputs give the same state. */
+/** Authored text resolved as turn one would: an unrolled chip draws once, and every text after it reads that roll. */
+function turnOneText(placeholders: Placeholder[]): ResolveText {
+  const rolls: { world: Record<string, string>; unique: Record<string, string> } = { world: {}, unique: {} };
+  const setRoll = (scope: PlaceholderMode, key: string, value: string) => { rolls[scope][key] = value; };
+  return (text, owner) => resolveEntityText(owner, text, { placeholders, rolls, setRoll });
+}
+
+/** The state a new game opens with. Pure: the same inputs give the same state, its unrolled chips aside. */
 export function openingFold(world: OpeningFoldWorld, picks: OpeningPicks = NO_OPENING_PICKS, persona?: OpeningPersona): OpeningFold {
   const ref = persona?.ref ?? { source: 'none' as const };
   const traits = world.traits ?? [];
@@ -90,11 +98,8 @@ export function openingFold(world: OpeningFoldWorld, picks: OpeningPicks = NO_OP
     placeholders: {
       placeholders: allPlaceholders(world), owners: placeholderOwners(world), dictionaries: world.dictionaries ?? [], rolls: {},
     },
-    places: {
-      locations: locations.map(({ id, name }) => ({ id, name })),
-      location: start && { id: start.id, name: start.name },
-    },
-    discovered: [],
+    places: { locations, location: start && { id: start.id, name: start.name } },
+    resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];

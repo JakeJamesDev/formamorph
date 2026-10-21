@@ -349,14 +349,15 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
-| `location` | `id`, `name`, `move()` | `location.name` | `location.move("<Location>")` |
+| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present` | `locations.<Location>.present` | Read-only |
+| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
 | `memory` | `add()`, `pin()` | — | `memory.pin(<text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `entries`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
 | `console` | `log()` | — | `console.log(<text>)` |

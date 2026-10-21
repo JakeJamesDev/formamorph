@@ -96,3 +96,20 @@ describe('Find All Uses for a location', () => {
     expect(rows(lookup.uses({ kind: 'location', locationId: 'gate' }))).toEqual(['Calm after 2']);
   });
 });
+
+describe('the cards of a locations read', () => {
+  it('gives a locations key the location’s card', () => {
+    expect(cardAt('const l = locations["North G|ate"];')?.item).toEqual({ kind: 'location', locationId: 'gate' });
+    expect(cardAt('const l = locations.In|n;')?.item).toEqual({ kind: 'location', locationId: 'inn' });
+  });
+
+  it.each(['description', 'summary', 'starting', 'present'])('describes the %s field of an entry and of location', (field) => {
+    const caret = `${field.slice(0, 2)}|${field.slice(2)}`;
+    expect(cardAt(`const v = locations.Inn.${caret};`)?.signature).toMatchObject({ path: `Location.${field}` });
+    expect(cardAt(`const v = location.${caret};`)?.signature).toMatchObject({ path: `location.${field}` });
+  });
+
+  it.each(['location', 'following', 'description', 'summary', 'aliases'])('describes the %s field of an entity entry', (field) => {
+    expect(cardAt(`const v = entities.Tor.${field.slice(0, 2)}|${field.slice(2)};`)?.signature).toMatchObject({ path: `Entity.${field}` });
+  });
+});
