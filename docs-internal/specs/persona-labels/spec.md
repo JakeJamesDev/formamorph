@@ -1,8 +1,8 @@
 # Persona Labels
 
-Status: ready-for-agent
+Status: done
 Spec session: persona-labels — spec
-Status note: 2026-10-20. Rulings Q1–Q20 settled. Tickets 01–07 ready-for-agent; 01, 05 and 07 can start now.
+Status note: 2026-10-20. Tickets 01–07 done. Last landing 1019f6786. Closed without gates.
 
 The app names the character the player plays in five ways: `(You)`, a colored **You**, **You** as an owner, **Player Name**, and **PC**. This effort settles on two names. Players see their persona's name with a **You** pill after it. Authors see the word **Persona**. **Player** means only the person at the keyboard.
 
