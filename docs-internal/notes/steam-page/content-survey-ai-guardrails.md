@@ -7,7 +7,7 @@ The survey asks what guardrails keep the live-generated AI from producing illega
 
 Every sentence below maps to something the build does today, except the bracketed lines, which need the user's confirmation.
 
-Ruling 2026-10-21: Community Creations does not ship in the Steam build. Steam Workshop is the only community-content source there. The age gate, content reports, upload terms, and account sign-in are not part of the Steam build's answer.
+Ruling 2026-10-21: Community Creations does not ship in the Steam build. Steam Workshop is the only community-content source there. The age gate, content reports, upload terms, and account sign-in are not part of the Steam build's answer. The Steam build also drops the GitHub and Patreon links, so no outbound links or external payment paths remain for the build review.
 
 ▶ Resume here: confirm the bracketed CONFIRM lines. The prompt content rule is decided and still unbuilt.
 
