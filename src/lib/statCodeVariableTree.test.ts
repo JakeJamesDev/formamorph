@@ -14,7 +14,7 @@ import { codeDiagnostics } from './statCodeAnalysis';
 import { codeCard } from './codeCards';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from './statCodeTraits';
 import {
-  TEMPLATE_NAME, buildVariableTree, timingGlobalsOf, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
+  TEMPLATE_NAME, buildVariableTree, isVerbLeaf, readOnlyTree, timingGlobalsOf, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
 } from './statCodeVariableTree';
 
 const ph = (id: string, name: string, values: readonly string[], over: Partial<Placeholder> = {}): Placeholder =>
@@ -277,6 +277,50 @@ const miraNames = () => {
   return entityTraitNames({ traits: world.traits, traitGroups: [], entities }, allPlaceholders(world)).find((entity) => entity.id === 'mira')!;
 };
 
+describe('verbs last in a group (R7)', () => {
+  /** Every group, at any depth, with a verb before a non-verb among its children. */
+  const misordered = (nodes: readonly VariableNode[], at: string[] = []): string[] => nodes.flatMap((node) => {
+    if (node.kind === 'empty' || node.kind === 'field') return [];
+    const here = [...at, node.label];
+    const level = childrenOf(node);
+    const firstVerb = level.findIndex(isVerbLeaf);
+    const bad = node.kind === 'group' && firstVerb >= 0 && level.slice(firstVerb).some((child) => !isVerbLeaf(child)) ? [here.join(' › ')] : [];
+    return [...bad, ...misordered(level, here)];
+  });
+
+  const owner = { kind: 'entity', entity: null } as const;
+  const timing = { narration: true, player: true, trait: true };
+  const worldTree = buildVariableTree(editorNames(), owner, 'stat', timing);
+  const toolTree = readOnlyTree(buildVariableTree(editorNames(), null, 'empty', timing));
+
+  it.each([['a world script', worldTree], ['a template', buildVariableTree(undefined, owner, 'stat', timing)]])(
+    'puts no verb before a field in %s',
+    (_case, nodes) => {
+      expect(variableTreeLeaves(nodes).filter(isVerbLeaf).length).toBeGreaterThan(0);
+      expect(misordered(nodes)).toEqual([]);
+    },
+  );
+
+  // Q24: a Tool script's menu drops every verb, so its order is the fields' alone.
+  it('keeps a user Tool script’s read-only menu in order, with no verb left in it', () => {
+    expect(variableTreeLeaves(toolTree).some(isVerbLeaf)).toBe(false);
+    expect(misordered(toolTree)).toEqual([]);
+  });
+
+  it('reads an entity’s fields, then move, follow, unfollow, diary', () => {
+    expect(levelAt(tree, 'Entities', 'Mira').slice(-4)).toEqual(['move', 'follow', 'unfollow', 'diary']);
+  });
+
+  it('reads the memory entry’s eleven fields, then pin, forget, edit, remove', () => {
+    const level = levelAt(tree, 'Memories', 'memories[0]');
+    const verbs = ['pin', 'forget', 'edit', 'remove'];
+    const names = MEMORY_ENTRY_FIELDS.map((entry) => entry.name);
+    expect(level).toEqual([...names.filter((name) => !verbs.includes(name)), ...verbs]);
+    expect(level.length - verbs.length).toBe(11);
+  });
+
+});
+
 describe('the owner’s group', () => {
   const entityOwner = buildVariableTree(editorNames(), { kind: 'entity', entity: miraNames() });
   const blueprintOwner = buildVariableTree(editorNames(), { kind: 'blueprint', statNames: ['Grit', 'Gold Lust'] });
@@ -389,8 +433,8 @@ describe('array elements', () => {
     'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
   ];
 
-  it('lists the memories calls, then one memory’s fields', () => {
-    expect(levelAt(tree, 'Memories')).toEqual(['add', 'pin', 'memories[0]']);
+  it('lists the memory element’s group, then the memories calls, with the verbs last', () => {
+    expect(levelAt(tree, 'Memories')).toEqual(['memories[0]', 'add', 'pin']);
     expect(levelAt(tree, 'Memories', 'memories[0]')).toEqual(MEMORY_ENTRY_FIELDS.map((entry) => entry.name));
   });
 
