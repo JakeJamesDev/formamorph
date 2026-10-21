@@ -55,6 +55,7 @@ export const GRAPH_COVERED = {
   'electron/modelScan.test.mjs': 'reads only its own temp folder',
   'scripts/typecheck.test.mjs': 'reads only its own temp folder',
   'scripts/versionSiteImages.test.mjs': 'reads only its own temp folder',
+  'scripts/moveReach.test.mjs': 'reads its own temp folder and walks src/lib/uuid.ts, whose closure it never asserts',
   'testing/baseline/harness/planning-parser-probe.test.ts': 'reads files only under PARSER_PROBE=1',
   'src/test/preRefreshWorlds.ts': 'reads the worlds from one fixed commit, which no change alters',
   'electron/modelDownload.cjs': 'reads only the paths its caller passes',
@@ -63,6 +64,7 @@ export const GRAPH_COVERED = {
   'scripts/typecheck.mjs': 'checks only the folder its caller passes; runs git only in mainCheckoutRoot, which no test calls',
   'scripts/versionSiteImages.mjs': 'reads only the folder its caller passes',
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',
+  'scripts/moveReach.mjs': 'reads only the probe file its caller passes; the compiler walks the files the probe names',
   'scripts/testSelection.mjs': 'runs git only in the helpers the gate scripts call',
   'vite.config.js': 'a change to it runs the full suite',
 };
