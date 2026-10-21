@@ -291,4 +291,10 @@ describe('novelaiProvider', () => {
     await expect(novelaiProvider(params, { endpointUrl: ENDPOINT, apiToken: 't' }))
       .rejects.toThrow(/500[\s\S]*upstream exploded/);
   });
+
+  it('names an HTML error page by its title, not its markup', async () => {
+    stubFail(502, '<!DOCTYPE html><html><head><title>image.example.test | 502: Bad gateway</title></head><body><h1>x</h1></body></html>');
+    await expect(novelaiProvider(params, { endpointUrl: ENDPOINT, apiToken: 't' }))
+      .rejects.toThrow(/^[^<]*\(HTML page "image\.example\.test \| 502: Bad gateway"\)[^<]*$/);
+  });
 });

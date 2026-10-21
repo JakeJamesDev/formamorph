@@ -20,6 +20,7 @@ import { closeBugReport } from '@/lib/bugReportStore';
 import { saveFeedbackDraft } from '@/lib/feedbackDraft';
 import { toastError } from '@/lib/linkToast';
 
+const FENCED = '```\nNode #4: missing\n```';
 const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
 const bodyValue = () => (document.getElementById('feedbackBody') as HTMLTextAreaElement).value;
 
@@ -58,7 +59,7 @@ describe('Report Bug in Error Details', () => {
     await reportBug();
 
     expect(titleValue()).toBe('ComfyUI rejected the workflow');
-    expect(bodyValue()).toBe('Node #4: missing');
+    expect(bodyValue()).toBe(FENCED);
     expect(screen.queryByRole('dialog', { name: 'Error Details' })).toBeNull();
   });
 
@@ -71,7 +72,7 @@ describe('Report Bug in Error Details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send Report' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(sent.body).toBe('Node #4: missing');
+    expect(sent.body).toBe(FENCED);
     expect(sent.diagnostics).toEqual(expect.objectContaining({ platform: 'Browser' }));
   });
 
@@ -88,7 +89,7 @@ describe('Report Bug in Error Details', () => {
     // The toast may be gone by now; the report itself keeps the details.
     render(<FeedbackDialog open onOpenChange={() => {}} />);
     expect(titleValue()).toBe('ComfyUI rejected the workflow');
-    expect(bodyValue()).toBe('Node #4: missing');
+    expect(bodyValue()).toBe(FENCED);
   });
 
   it('cuts details past the body limit and ends them with a note that Copy has the full text', async () => {
@@ -98,8 +99,17 @@ describe('Report Bug in Error Details', () => {
 
     const body = bodyValue();
     expect(body.length).toBeLessThanOrEqual(4000);
-    expect(body.startsWith('xxxx')).toBe(true);
-    expect(body).toMatch(/“Copy” in “Error Details” has the full text\.\]$/);
+    expect(body.length).toBeGreaterThan(3900);
+    expect(body.startsWith('```\nxxxx')).toBe(true);
+    expect(body).toMatch(/x\n```\n\n\[The details are cut[^\]]*“Copy” in “Error Details” has the full text\.\]$/);
+  });
+
+  it('fences the details with more backticks than they hold, so markup in them shows as written', async () => {
+    await openDetails(new DetailedError('Odd body', 'Response:\n# not a heading\n```js\nx\n```'));
+    fireEvent.click(screen.getByRole('button', { name: 'Report Bug' }));
+    await screen.findByRole('dialog', { name: 'Send Feedback' });
+
+    expect(bodyValue()).toBe('````\nResponse:\n# not a heading\n```js\nx\n```\n````');
   });
 
   it('cuts a title past the title limit', async () => {

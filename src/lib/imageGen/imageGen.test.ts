@@ -109,6 +109,14 @@ describe('a1111Provider', () => {
     await expect(a1111Provider(params, { endpointUrl: 'http://x', apiToken: '' })).rejects.toThrow('HTTP 500');
   });
 
+  it('cuts an HTML error page in the details to its title', async () => {
+    const page = '<!DOCTYPE html><html><head><title>500 Internal Server Error</title></head><body><h1>x</h1></body></html>';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => page }));
+    const rejection = expect(a1111Provider(params, { endpointUrl: 'http://x', apiToken: '' })).rejects;
+    await rejection.toMatchObject({ details: expect.stringContaining('Response:\nHTML page "500 Internal Server Error"') });
+    await rejection.toMatchObject({ details: expect.not.stringContaining('<h1>') });
+  });
+
   it('interrupts the server when the run is aborted', async () => {
     const controller = new AbortController();
     const fetchMock = vi.fn().mockImplementation((url: string) => {

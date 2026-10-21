@@ -1,5 +1,6 @@
 // Small HTTP helpers shared by the image providers (A1111/Forge, ComfyUI, OpenAI-compatible).
 import { redactUrl } from '@/lib/redactUrl';
+import { describeResponseBody } from '@/lib/responseBody';
 import { DetailedError } from '../errorDetails';
 import { isDesktop } from './desktop';
 import type { ImageProviderId } from './types';
@@ -47,7 +48,7 @@ export function refusalDetails(method: string, url: string, res: { status: numbe
     `Status: ${[res.status, res.statusText].filter(Boolean).join(' ')}`,
     '',
     'Response:',
-    body.trim() ? body : '(empty)',
+    describeResponseBody(body),
   ].join('\n');
 }
 
