@@ -13,7 +13,7 @@ The surface follows one pattern: a map by name for every kind of authored thing,
 
 ## Rulings
 
-Settled with the user on 2026-10-21. R rulings came from the design discussion; Q rulings from the grill. Q25 is superseded by Q27; Q22 and Q23 are refined by Q24.
+Settled with the user on 2026-10-21. R rulings came from the design discussion; Q rulings from the grill. Q25 is superseded by Q27; Q22 and Q23 are refined by Q24. R7 to R9 were added after the first twelve tickets landed, as tickets 13 to 15.
 
 | # | Ruling |
 |---|---|
@@ -74,6 +74,9 @@ Settled with the user on 2026-10-21. R rulings came from the design discussion; 
 | Q55 | `world.dictionary` is never rewritten; it stays flagged with "Use “dictionaries”." The map form keys by entry name, so an empty-named entry has no key and of same-named entries only the later survives (Q33), and imported lorebooks often have both; the old array listed every enabled entry and settings load cannot see the world to check. `world.entities` and `world.locations` stay under Q52, since an unnamed or same-named entity or location is rare. Accepted under earlier rulings: aliases resolve chips (Q30); a switched-off stat reads its value where `scene.stats.X` was absent (Q33 class); reads that threw before now return values, and a script that threw had no text to keep; a destructured local blocks the `notes` rewrite as any declared name does (ticket 09 ruling) |
 | Q56 | Card copy bar: a field entry is one sentence under 20 words. A verb entry may run to two short sentences, each under 20 words, since the second carries behavior the author needs at the call: the Custom-line no-op, the restore path, the unknown-name error, the persona's missing diary. No sentence anywhere is over 20 words (ticket 11 ruling) |
 | Q57 | The Tools guide keeps one migration section that prints the old forms beside their new spellings and the flagged ones, since a Tool author needs to see what load rewrote and what the editor flags. The no-old-names check exempts that one section; every other guide section stays clean (ticket 10 ruling) |
+| R7 | In every Variable menu group, the fields come first and the verbs last, each set in its existing order. One rule in the tree builder covers entities, `location`, `clock`, `memories[0]`, the Memory group and every other group with a method (user, 2026-10-21) |
+| R8 | `player.askText` becomes `player.input`, the name most game engines use for a typed answer. It shipped in 3.3.1, so the load-time rewrite pass turns `player.askText(` into `player.input(` in every script; the async-engine gate on `player.` is unaffected. The card, the guide, the Design System entry for the inline prompt line and the copy test follow (user, 2026-10-21) |
+| R9 | A Variable menu row shows its type and its access, not the label alone: the row's `detail` in muted mono on the right, as the Tool editor's reference list prints it, and a small lock glyph on a read-only row, the hover card's access badge reduced to one mark. A writable row carries no glyph; a method is told by its type, such as `(line) => void`. The row's tooltip keeps the help line. The combined row is a pattern call: the ticket shows a static frame from the design-system showcase for the user's approval before it builds (user, 2026-10-21) |
 
 ## Surface
 
