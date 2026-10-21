@@ -189,8 +189,8 @@ const worldWriteLines = (
     ...(location === undefined ? [] : [`location.move: ${placeName(location)}`]),
     ...(minutes === undefined ? [] : [`clock.advance: ${minutes} minutes`]),
     ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
-    ...memory.map((line) => `memory.add: ${line}`),
-    ...pins.map((line) => `memory.pin: ${line}`),
+    ...memory.map((line) => `memories.add: ${line}`),
+    ...pins.map((line) => `memories.pin: ${line}`),
     ...diary.map(({ entity, line }) => `diary: ${entityName(entity)}: ${line}`),
     ...entityWrites.map((write) => `${memberPath('entities', entityName(write.entity))}.${write.kind === 'move' ? `move: ${placeName(write.location)}` : `${write.kind}()`}`),
   ];

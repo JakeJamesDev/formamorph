@@ -31,6 +31,12 @@ describe('runTestCode world writes', () => {
     expect(report.value).toBe(1);
   });
 
+  it('reads an empty memories list (Q12)', async () => {
+    const report = await runTestCode('return Array.isArray(memories) ? memories.length : -1;', 'after', STAT_HOME, world);
+    expect(report.error).toBeNull();
+    expect(report.value).toBe(0);
+  });
+
   it('lists a move, an advance and each discovery', async () => {
     const report = await run('location.move("North Gate"); clock.advance(20); clock.advance(10); discover("Tor"); discover("Mira", "The innkeeper.");');
     expect(report.error).toBeNull();
@@ -38,11 +44,11 @@ describe('runTestCode world writes', () => {
   });
 
   it('lists each memory line, pin and diary line', async () => {
-    const report = await run('memory.add("Tor lied."); memory.pin("The bridge is out."); entities.Tor.diary("I lied.");', {
+    const report = await run('memories.add("Tor lied."); memories.pin("The bridge is out."); entities.Tor.diary("I lied.");', {
       ...world, entities: [{ id: 'e-tor', name: 'Tor' }],
     });
     expect(report.error).toBeNull();
-    expect(report.writes).toEqual(['memory.add: Tor lied.', 'memory.pin: The bridge is out.', 'diary: Tor: I lied.']);
+    expect(report.writes).toEqual(['memories.add: Tor lied.', 'memories.pin: The bridge is out.', 'diary: Tor: I lied.']);
   });
 
   it('lists each entity write as one line', async () => {
@@ -78,7 +84,7 @@ describe('runTestCode world writes', () => {
   });
 
   it('reports no reply for a run given no arguments', async () => {
-    const report = await run('memory.add("Noted.");');
+    const report = await run('memories.add("Noted.");');
     expect(report.reply).toBeUndefined();
   });
 

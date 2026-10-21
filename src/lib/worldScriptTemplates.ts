@@ -48,7 +48,7 @@ if (clock.daypart === {{when:daypart=night}} && value !== undefined) target.pin(
     description: 'Pin a memory line when a trait turns on. The line is sent with every request. A switch-off pins nothing.',
     // The line sits in a template literal in the generated code, so an apostrophe or quote in it is safe.
     code: `if (trait.name !== {{trait:trait}} || !trait.enabled) return;
-memory.pin(\`{{line:text=A change took hold.}}\`);`,
+memories.pin(\`{{line:text=A change took hold.}}\`);`,
   },
   {
     id: 'builtin-world-diary-on-trait',

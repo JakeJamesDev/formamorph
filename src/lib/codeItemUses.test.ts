@@ -127,7 +127,7 @@ describe('Find All Uses for other kinds', () => {
 
   it('lists a World Tool’s uses at the Tool’s line, reading its script with args and no self', () => {
     const at: CodeCardWorld = {
-      ...world, worldTools: [scriptWorldTool('travel-id', 'travel', 'const where = args.place;\nif (traits.Brave.enabled) memory.add("Bold.");', 'after')],
+      ...world, worldTools: [scriptWorldTool('travel-id', 'travel', 'const where = args.place;\nif (traits.Brave.enabled) memories.add("Bold.");', 'after')],
     };
     const owners = statCodeOwners({ ...at, placeholders });
     const uses = statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, at).uses({ kind: 'trait', traitId: 'brave' });

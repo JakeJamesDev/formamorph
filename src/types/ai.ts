@@ -184,7 +184,7 @@ export interface AITurnResult {
    *  this turn. Written for each participant as turns age out; a character's full diary is these across
    *  turns. Absent on pre-diary saves. */
   diaries?: Record<string, string>;
-  /** The lines scripts added to this turn's memory with `memory.add`, in call order. Read after `summary`. */
+  /** The lines scripts added to this turn's memory with `memories.add`, in call order. Read after `summary`. */
   codeMemory?: string[];
   /** The lines scripts added to entities' diaries with `diary`, by entity name, in call order. Read after
    *  that name's `diaries` entry. */

@@ -1,4 +1,4 @@
-// The memories `memory.pin` adds: Memory Manager notes whose id names their turn, so a turn that leaves the
+// The memories `memories.pin` adds: Memory Manager notes whose id names their turn, so a turn that leaves the
 // history takes its pins with it (Q16, Q36).
 
 import type { ChatMessage } from '@/types';

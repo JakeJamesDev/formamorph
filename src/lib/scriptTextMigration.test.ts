@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateDiaryCalls, migrateEntityScriptText, migrateWorldScriptText, type ScriptTextRewrite } from '@/lib/scriptTextMigration';
+import { migrateDiaryCalls, migrateEntityScriptText, migrateMemoryCalls, migrateWorldScriptText, type ScriptTextRewrite } from '@/lib/scriptTextMigration';
 import { migrateWorld } from '@/lib/version';
 import { executeStatCode } from '@/lib/statCodeExecutor';
 import type { Script, World } from '@/types';
@@ -50,6 +50,41 @@ describe('migrateDiaryCalls', () => {
     const code = migrateDiaryCalls('const who = "Old Tom";\ndiary("Mira", "a");\ndiary(who, "b");');
     const res = await executeStatCode(code, [], null, { entities });
     expect(res.worldWrites).toEqual({ diary: [{ entity: 'e-mira', line: 'a' }, { entity: 'e-tom', line: 'b' }] });
+  });
+});
+
+describe('migrateMemoryCalls', () => {
+  it.each([
+    ['an add', 'memory.add("Tor lied.");', 'memories.add("Tor lied.");'],
+    ['a pin', 'if (x) memory.pin(line);', 'if (x) memories.pin(line);'],
+    ['both, with a call in the line', 'memory.add(a); memory.pin(memory.add.name);', 'memories.add(a); memories.pin(memories.add.name);'],
+    ['a spaced dot', 'memory . add("x");', 'memories . add("x");'],
+    ['a bare read of a verb', 'const add = memory.add;', 'const add = memories.add;'],
+  ])('rewrites %s', (_case, code, expected) => {
+    expect(migrateMemoryCalls(code)).toBe(expected);
+  });
+
+  it.each([
+    ['a script that declares its own memory', 'const memory = { add: (x) => x };\nmemory.add(1);'],
+    ['a parameter named memory', 'function f(memory) { memory.add(1); }'],
+    ['another member', 'memory.clear();'],
+    ['a member of something else', 'notes.memory.add("x");'],
+    ['a bracketed member', 'memory["add"]("x");'],
+    ['the word in a string', 'const s = "memory.add(x)";'],
+    ['a bare read', 'const m = memory;'],
+  ])('leaves %s as written', (_case, code) => {
+    expect(migrateMemoryCalls(code)).toBe(code);
+  });
+
+  it('changes nothing on a second run', () => {
+    const once = migrateMemoryCalls('memory.add("a");\nmemory.pin("b");');
+    expect(once).toBe('memories.add("a");\nmemories.pin("b");');
+    expect(migrateMemoryCalls(once)).toBe(once);
+  });
+
+  it('runs the rewritten calls as the old ones ran', async () => {
+    const res = await executeStatCode(migrateMemoryCalls('memory.add(" Tor lied. "); memory.pin("Kept.");'), [], null);
+    expect(res.worldWrites).toEqual({ memory: ['Tor lied.'], pins: ['Kept.'] });
   });
 });
 
@@ -151,6 +186,16 @@ describe('migrateWorld', () => {
     expect(lookup).toBe(code);
     expect(Object.keys(codes)).toEqual(expect.arrayContaining(['stat', 'trait', 'world', 'tool', 'entityStat', 'entityTrait']));
     for (const [home, text] of Object.entries(codes)) expect(text, home).toBe('entities.Mira.diary("She hid the key.");\nentities[name].diary(x);');
+    const again = migrateWorld(JSON.parse(JSON.stringify(migrated))) as unknown as Record<string, unknown>;
+    expect(codesOf(again)).toEqual({ lookup, ...codes });
+  });
+
+  it('rewrites the old memory calls in every script, and a second load changes nothing', () => {
+    const code = 'memory.add("Tor lied.");\nmemory.pin(line);';
+    const migrated = migrateWorld(worldWith(code)) as unknown as Record<string, unknown>;
+    const { lookup, ...codes } = codesOf(migrated);
+    expect(Object.keys(codes)).toEqual(expect.arrayContaining(['stat', 'trait', 'world', 'tool', 'entityStat', 'entityTrait']));
+    for (const [home, text] of Object.entries(codes)) expect(text, home).toBe('memories.add("Tor lied.");\nmemories.pin(line);');
     const again = migrateWorld(JSON.parse(JSON.stringify(migrated))) as unknown as Record<string, unknown>;
     expect(codesOf(again)).toEqual({ lookup, ...codes });
   });

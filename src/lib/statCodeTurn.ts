@@ -4,7 +4,7 @@ import type {
 } from '@/types';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
-  type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax, type SandboxPlace, type WorldWrites,
+  type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
 import { statCodeNamed } from './statCodeNames';
@@ -77,6 +77,8 @@ export interface SandboxState {
   resolveText?: ResolveText;
   /** The story clock: the hours this turn consumed, the hours elapsed, and the calendar. */
   clock: StatClock;
+  /** The Memory panel's live rows, oldest first. Absent, `memories` is empty, as in the editor. */
+  memories?: readonly SandboxMemory[];
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */

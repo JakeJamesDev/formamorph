@@ -21,7 +21,8 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   locations: scripts('location'),
   location: scripts('location'),
   discover: scripts('discover'),
-  memory: scripts('memory'),
+  // The Memory section covers the list and its verbs.
+  memories: scripts('memory'),
   traits: scripts('traits'),
   placeholders: scripts('placeholders'),
   entities: scripts('entities'),

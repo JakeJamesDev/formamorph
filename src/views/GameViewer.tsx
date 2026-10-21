@@ -177,6 +177,7 @@ import {
 import { buildStamper, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
+import { buildMemoryLedger, scriptMemories } from "../lib/memoryView";
 import { buildRelevanceScores, EMBED_BATCH_BOUND_MS, EMBED_BOUND_MS, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
 import { selectSemanticRehydrations } from "../lib/semanticRehydration";
@@ -679,6 +680,8 @@ const GameViewer = ({
     setMemoryDeleted,
     memoryNotes,
     setMemoryNotes,
+    contextMemoryIds,
+    rehydratedMemoryIds,
     sceneImages,
     setSceneImages,
     actionAttachments,
@@ -3227,6 +3230,15 @@ const GameViewer = ({
   // Where a running turn stands for its scripts' `location`, ahead of the render that commits a move. Null
   // between turns, where the live location stands.
   const scriptLocationRef = useRef<GameLocation | null>(null);
+  // The Memory panel's rows as a script's `memories` reads them, from the ledger the panel builds.
+  const scriptMemoryList = useMemo(() => scriptMemories(buildMemoryLedger({
+    history: fullMessageHistory, overrides: memoryOverrides, pins: memoryPins, selection: milestoneSelection,
+    verbatimFloor: narrationVerbatimTurns, context: { bandIds: contextMemoryIds, rehydratedIds: rehydratedMemoryIds },
+  }), fullMessageHistory, calendar), [
+    fullMessageHistory, memoryOverrides, memoryPins, milestoneSelection, narrationVerbatimTurns, contextMemoryIds, rehydratedMemoryIds, calendar,
+  ]);
+  const scriptMemoriesRef = useRef(scriptMemoryList);
+  scriptMemoriesRef.current = scriptMemoryList;
   // The story hours a running turn's clock advances reached, which its later runs read (Q45). Null when the
   // turn has not advanced the clock, and between turns.
   const turnClockRef = useRef<number | null>(null);
@@ -3319,6 +3331,7 @@ const GameViewer = ({
           positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
           followers: entityFollowers,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
+          memories: scriptMemoriesRef.current,
         };
         const turn: StatCodeTurn = {
           state,
@@ -4312,7 +4325,7 @@ const GameViewer = ({
         const digest = await sendAiRequestRef.current({ ...buildDigestRequestRef.current(target), signal: queueSignal });
         const trimmed = (digest ?? "").trim();
         if (!trimmed || queueSignal.aborted || !mounted.current) return false;
-        // The fresh digest replaces the AI's text only; the turn's `memory.add` lines still follow it.
+        // The fresh digest replaces the AI's text only; the turn's `memories.add` lines still follow it.
         const codeMemory = parsedTurnById(fullMessageHistoryRef.current, turnId)?.codeMemory;
         const text = turnMemory({ summary: trimmed, codeMemory }) ?? trimmed;
         setMemoryEdits((prev) => ({ ...prev, [turnId]: { text, source: 'ai' } }));

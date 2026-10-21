@@ -313,7 +313,7 @@ A **World Tool** is a Tool that the world holds, on the **Tools** tab in the **L
 | **During AI Output** | On each narration sentence after the call, for the rest of the turn | The **Reply**, or "Done." when it's blank | The sentence, then the stats with the After the AI scripts |
 | **After the AI** | With the After the AI scripts | The **Reply**, or "Done." when it's blank | When the turn ends |
 
-The script reads and writes everything a world script does: stats, traits, placeholders, the [location](#location), the [clock](#passing-time), [discover](#discover), [memory](#memory) and the [diary](#diary). A During AI Output Tool also reads `narration` and rewrites the sentence, as a [During AI Output](#during-ai-output) script does.
+The script reads and writes everything a world script does: stats, traits, placeholders, the [location](#location), the [clock](#passing-time), [discover](#discover), [memories](#memory) and the [diary](#diary). A During AI Output Tool also reads `narration` and rewrites the sentence, as a [During AI Output](#during-ai-output) script does.
 
 - **`args` holds one member for each parameter the AI sent.** An optional parameter the AI left out is missing. `args` is read-only.
 - **A call lasts one turn.** Nothing armed carries into the next turn or the save.
@@ -354,7 +354,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
-| `memory` | `add()`, `pin()` | — | `memory.pin(<text>)` |
+| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()` | `memories.length` | `memories.pin(<text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
@@ -1001,15 +1001,15 @@ if (stats.Energy.value <= 0) location.move("Camp");
 ### Memory
 <!-- keywords: remember, add memory, pin memory, recall, story so far, long-term memory, note -->
 
-`memory` adds to the story's memory. Each call takes one line of text.
+`memories` lists the story's memories as the Memory panel does, oldest first, and adds to them. Each call takes one line of text.
 
-- **`memory.add(<text>)`** adds a line to this turn's memory, after the AI's summary of the turn. The AI still writes its summary. Recall finds both on later turns when they fit. The line isn't sent with every request.
-- **`memory.pin(<text>)`** adds a memory that is sent with every request, as one you write in the Memory Manager is. It shows there under **Custom**, where the player can edit or delete it.
+- **`memories.add(<text>)`** adds a line to this turn's memory, after the AI's summary of the turn. The AI still writes its summary. Recall finds both on later turns when they fit. The line isn't sent with every request.
+- **`memories.pin(<text>)`** adds a memory that is sent with every request, as one you write in the Memory Manager is. It shows there under **Custom**, where the player can edit or delete it.
 - **Both go away when the turn does.** A regenerate or a stopped turn drops them.
 
 ```js
 // The vault opened, so the story keeps the fact for good.
-if (stats.Keys.value >= 3) memory.pin("The vault under the chapel is open.");
+if (stats.Keys.value >= 3) memories.pin("The vault under the chapel is open.");
 ```
 
 ### Diary

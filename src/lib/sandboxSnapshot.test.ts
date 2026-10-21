@@ -98,6 +98,18 @@ describe('the options a snapshot assembles', () => {
     });
   });
 
+  it('hands every unit the state’s memories, and none when the state holds none', async () => {
+    const memories = [{
+      id: 't1', turn: 1, timestamp: 2, day: 1, daypart: 'morning', text: 'Tor lied.', custom: false, kept: true, inContext: true, pinned: false, forgotten: false,
+    }];
+    const played = snapshotOf({ ...state, memories });
+    for (const home of Object.values(HOMES)) expect(optionsFor(played, unitAt(home, 'after')).memories).toBe(memories);
+    expect(optionsFor(snapshot, unitAt(HOMES['world script'], 'after')).memories).toBeUndefined();
+    const read = { home: HOMES['global stat'], timing: 'after' as const, code: 'return memories.length;' };
+    expect((await played.run(read)).value).toBe(1);
+    expect((await snapshot.run(read)).value).toBe(0);
+  });
+
   it('reads an untouched turn when built with no turn readings', () => {
     const options = optionsFor(snapshotOf(state), unitAt(HOMES['entity stat'], 'after'));
     expect(options.turn).toBeUndefined();
