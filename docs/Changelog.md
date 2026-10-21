@@ -43,8 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **You Pill:**
     - **Your persona now carries a You pill after its name in the side panel, the Traits tab and Enter World.** It replaces the "(You)" text and the colored "You" word, including in the Stats panel picker.
     - **A requirement on your persona's traits now reads your persona's name with the You pill.** In the World Editor, the owner list and the condition read **Persona** instead of **You**. Worlds and saves don't change.
-  - **Persona:**
-    - **The Player Name chip is now called Persona Name in the World Editor and the wiki.** Type `{{user}}` or search "player name" to find it. It still reads "you" or "the player" with no persona.
+  - **The Player Name chip is now called Persona Name in the World Editor and the wiki.** Type `{{user}}` or search "player name" to find it. It still reads "you" or "the player" with no persona.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
@@ -53,8 +52,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **Persona:**
-    - **The Test Bench's Openings preview now names the persona you pick, or says no persona under None.** Code cards mark an entity you can play as **Persona: Playable**. The author-note ⓘ line in Settings says "your persona".
+  - **The Test Bench's Openings preview now names the persona you pick, or says no persona under None.** Code cards mark an entity you can play as **Persona: Playable**. The author-note ⓘ line in Settings says "your persona".
   - **On NanoGPT, Native Reasoning now knows which models think and which strengths they take.** Short prompts such as Choices give a thinking model room and no longer fail with "The model reached its token limit before it wrote an answer."
   - **The token-limit error now names the prompt that failed.** Error Details show it on a Prompt line. For a prompt with a Max Output setting, they also tell you to raise it.
   - **Summaries and Diary now ship with Native Reasoning off, so turns finish sooner on a thinking model.** Prompts you already set keep your setting.
