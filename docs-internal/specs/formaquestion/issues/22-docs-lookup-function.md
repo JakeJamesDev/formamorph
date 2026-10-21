@@ -61,7 +61,7 @@ Recommended model rationale: a function-call loop with model-dependent behavior 
 - 🤝 The function reads an id written loosely: other letter case, `Page: Heading`, a section name alone when one page has it, a page name alone, a list. Small models write ids this way.
 - 🧹 The text a model writes before a call is dropped from the answer, as the tool loop does for Tools.
 
-**The default cloud endpoint cannot run lookup mode.** It answers every `tool_choice` form (absent, `auto`, `required`, named) with HTTP 400: the server runs without a tool-call parser. Its capability record says no, so it gets retrieval mode with no failed request. The numbers below are from a local model.
+**The default cloud endpoint cannot run lookup mode.** It answers every `tool_choice` form (absent, `auto`, `required`, named) with HTTP 400: the server runs without a tool-call parser. Its capability record says no, so it gets retrieval mode with no failed request. The numbers below are from a local model. (2026-10-21: the server now runs with `--enable-auto-tool-choice --tool-call-parser gemma4`, and every `tool_choice` form returns tool calls.)
 
 **Probe numbers.** MeroMero v2 31B (`g4-meromero-v2-31b-i1`, Q4_K_M, LM Studio, context 8,192), 18 questions, 3 runs per arm, one batch of 162 question runs, the app's pins, 0 failed. Arms: retrieval mode, lookup mode, and the no-docs control.
 

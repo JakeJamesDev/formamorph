@@ -603,7 +603,7 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 - **read_guide**, **roll** and **test_script** are part of the app. You can't edit, copy or delete them.
 - The **Tools** switch under **Settings** → **Output** does not apply to Formaquestion.
 
-A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function. The default cloud endpoint takes no function calls.
+A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function.
 
 #### How to Let Your AI Read More of the Guide
 <!-- keywords: lookup mode, read more sections, local model, function calls, read_guide, deeper answers, search the guide itself, tool calls, bigger context -->
