@@ -176,6 +176,7 @@ The lookup Tools return an empty `matches` list when nothing matches. Matching i
 **New Tool** and **Edit** open the editor. It has three tabs, with **Try It** next to them. In a narrow editor, **Try It** is a fourth tab. **Cancel** closes it without a save.
 
 ### Definition
+<!-- route: settingsToolEdit.definition -->
 
 | Field | What it holds |
 |---|---|
@@ -183,6 +184,7 @@ The lookup Tools return an empty `matches` list when nothing matches. Matching i
 | **Description** | What the Tool does and when to call it. **Add Outline** adds the headings **Purpose:**, **Use when:**, **Input:** and **Output:** that are not there yet. |
 
 ### Parameters
+<!-- route: settingsToolEdit.parameters -->
 
 Each parameter is one value the AI passes. A Tool with no parameters takes no arguments.
 
@@ -197,6 +199,7 @@ Each parameter is one value the AI passes. A Tool with no parameters takes no ar
 **Remove Parameter** deletes a parameter.
 
 ### Handler
+<!-- route: settingsToolEdit.handler -->
 
 The **Handler** tab sets the Tool Handler: the part that runs when the AI calls the Tool.
 
@@ -210,7 +213,7 @@ The **Handler** tab sets the Tool Handler: the part that runs when the AI calls 
 
 - **Lookup Settings.** **Search** picks **Entities**, **Locations** or **Dictionary Entries**. **By Parameter** picks the parameter to search by. **Returns** picks **Full Description** or **Summary**, for entities and locations.
 - **Template Settings.** **Template** is the text to return. Insert a parameter chip where the AI's value goes.
-- **Script Settings.** **Script** is JavaScript. It reads `args`, `world`, `scene` and `placeholders`, and returns text, or any other value as JSON. The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value. The **Variable** menu opens level by level on **Arguments**, **Scene**, **Entities**, **Locations**, **Dictionary** and **Placeholders**, then your world's names, then their fields. Select a field to insert its full path. A script runs in a sandbox and stops after one second.
+- **Script Settings.** **Script** is JavaScript. It reads `args` and the same names a world script reads, and returns text, or any other value as JSON. The script can't write: see [What a Script Can Read](#what-a-script-can-read). The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value. The **Variable** menu opens level by level on **Arguments** and the other names, then your world's names, then their fields. Select a field to insert its full path. A script runs in a sandbox and stops after one second.
 
 On a World Tool, **Script Settings** also has **Timing**, and **Reply** and **Stack Calls** for the two later timings. See [How to Make a Tool That Changes the Story](#how-to-make-a-tool-that-changes-the-story).
 
@@ -220,24 +223,56 @@ When you switch the **Handler Type**, the editor keeps the settings of the other
 
 This section is for your own Tools. A World Tool's script reads what a world script reads, plus `args`. See [World Tools](ScriptsGuide#world-tools).
 
-A script reads four values. Each one is frozen: a script reads it and cannot change it.
+A script reads `args` and the same globals a world script reads. Each entry has the shape that the [Scripts Guide](ScriptsGuide) gives it. Every value is read-only.
+
+| Name | What it holds | Scripts Guide |
+| --- | --- | --- |
+| `args` | The values the AI sent | [Args](#args) |
+| `entities` | Every entity in the game, discovered ones included, with `location`, `following`, `description`, `summary` and `aliases` | [Entities](ScriptsGuide#entities) |
+| `locations` | Every location by name, with `present` | [Location](ScriptsGuide#location) |
+| `location` | The entry of the current location | [Location](ScriptsGuide#location) |
+| `memories` | The Memory panel's rows, oldest first | [Memory](ScriptsGuide#memory) |
+| `dictionaries` | Every dictionary, with `entries` | [Dictionaries](ScriptsGuide#dictionaries) |
+| `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](ScriptsGuide#stats), [Traits](ScriptsGuide#traits), [Placeholders](ScriptsGuide#placeholders), [Persona](ScriptsGuide#persona) |
+| `clock` | The story clock. It reads the opening outside a game | [The Story Clock](ScriptsGuide#the-story-clock) |
+| `notes` | The player's notes as one text | [Notes](ScriptsGuide#notes) |
+| `console` | `log()` | None |
+
+A Tool script has none of the calls that write. A call to `memories.add`, `memories.pin`, an entry verb, `location.move`, `entities.<Entity>.move`, `follow`, `unfollow` or `diary` is a "not a function" error. A write to a field is ignored and the read keeps its value. The Tool does not fail, and **Try It** lists the write as ignored. `self`, `owner`, `trait`, `narration`, `player`, `discover` and `clock.advance` are not available.
+
+In the World Editor and outside a game, `memories` is an empty list and `clock` reads the opening. The sample world in Settings keeps a played state with a persona, notes, three memories and day 3 evening.
 
 #### Args
 
 `args` holds the values the AI sent, one member for each parameter that has a name. An optional parameter is missing when the AI leaves it out. A **One of a List** parameter holds one of its options.
 
-#### World
+#### Moving an Old Script to the New Names
 
-`world` holds the world's `entities`, `locations` and `dictionary`. `world.entities` includes the entities the game discovered during play. `world.dictionary` lists the enabled dictionary entries only.
+`world` and `scene` are gone. When Settings loads, the app rewrites each old form that has an exact new one:
 
-#### Scene
+| Old form | New form |
+| --- | --- |
+| `world.entities` | `Object.values(entities)` |
+| `world.locations` | `Object.values(locations)` |
+| `scene.location.<field>` | `location.<field>` |
+| `scene.time.elapsed` | `clock.elapsedHours` |
+| `scene.stats.<Stat>` | `stats.<Stat>.value` |
+| `scene.notes` | `notes` |
 
-`scene` holds the state of the current scene: `location`, `present`, `inScene`, `stats`, `traits`, `persona`, `notes` and `time`. `scene.location` is `null` when the scene has no location. `scene.time` is `null` while the story clock is off.
+A form with no exact new one stays as written. The editor underlines it and names the new form in the hover text:
 
-#### Placeholders
+| Old form | New form |
+| --- | --- |
+| `world.dictionary` | `dictionaries` |
+| `scene.location` alone, `scene.traits` | `location`, `traits` |
+| `scene.time` alone | `clock` |
+| `scene.persona` | `persona.name` |
+| `scene.present` | `location.present` |
+| `scene.inScene` | `inScene` on each `entities` entry |
 
-`placeholders` holds the resolved text of each shared placeholder, by name. A name with a space needs brackets: `placeholders["Place Name"]`.
+The rewrite leaves a `world.entities` or `world.locations` read as it is when the script returns, stringifies or spreads an item from it, or reads `.placeholders` off one. An item has a new shape: a location has `starting` and full `present` entries, and an entity has more fields. Check such a script by hand. The rewrite never changes `world.dictionary`. The new `entries` map keys by entry name, so an entry with no name has no key, and of entries with one name only the later one stays.
 
+The same load also rewrites `memory.add(` to `memories.add(`, `memory.pin(` to `memories.pin(`, and `diary("Mira", line)` to `entities.Mira.diary(line)`. A `diary` call with a computed first argument becomes `entities[expr].diary(line)`.
 ## Try It
 <!-- keywords: try it tab, fourth tab, narrow editor, small window, side column -->
 <!-- route: settingsToolEdit.tryIt -->

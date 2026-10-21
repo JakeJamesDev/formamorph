@@ -1,6 +1,6 @@
 # 10: Guides
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,10 +15,10 @@ Spec: R5, story 20; Further Notes.
 
 ## Acceptance criteria
 
-- [ ] Every global and entry field in the spec's Surface section appears in a guide with a help line; a test or a scripted check lists the spec's paths against the guide text
-- [ ] No guide page names `memory.add`, `memory.pin`, a top-level `diary(`, `world.entities` or `scene.`; the changelog is excluded from the check
-- [ ] The help vectors are rebuilt and a help query about reading memories from a script finds the new section
-- [ ] Four gates green
+- [x] Every global and entry field in the spec's Surface section appears in a guide with a help line; a test or a scripted check lists the spec's paths against the guide text (`scriptSurfaceGuides.test.ts`, rows built from the surface lists; proved to bite by deleting the `following` row)
+- [x] No guide page names `memory.add`, `memory.pin`, a top-level `diary(`, `world.entities` or `scene.`; the changelog is excluded from the check (same test; Q57 exempts the one Tools migration section)
+- [x] The help vectors are rebuilt and a help query about reading memories from a script finds the new section (embedded three queries; `ScriptsGuide#memory` ranks 1st to 5th by cosine)
+- [ ] Four gates green (review gates, typecheck and changed-file lint, green; prepare runs the rest)
 
 ## Blocked by
 
@@ -31,3 +31,14 @@ Spec: R5, story 20; Further Notes.
 - 07 (Array Elements In Cards And Tree)
 - 08 (User Tool Convergence)
 - 09 (User Tool Text Migration)
+
+## Landed
+
+**Not verified**
+- Four gates green: prepare runs the full list after landing review; only the review gates ran before it.
+- The help query was checked by cosine over the shipped vectors, not in the Formaquestion window.
+
+**For you**
+- Read the new Location, Memory (band-cap note), Dictionaries › Entries sections in `docs/ScriptsGuide.md` for voice.
+- Read "Moving an Old Script to the New Names" in `docs/Tools.md`: it is the one section that prints retired forms (ruling Q57).
+- Ask the help window how to read memories from a script; stale vectors are rebuilt, so it should cite the Memory section.
