@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { planTurn } from './planTurn';
-import { commitEntityMoves, computeTurnCommit, withCodeWrites } from './computeTurnCommit';
+import { commitEntityMoves, computeTurnCommit, withCodeLines, withCodeWrites } from './computeTurnCommit';
 import {
   carryFollowers, entityMoveSubjects, moveWithPlayer, peeledCharacters, runtimePositions, turnPeelOff, withRuntimePositions, type FollowerState, type PeelOff,
 } from '@/lib/entityFollowing';
@@ -918,5 +918,21 @@ describe('withCodeWrites — the After the AI writes', () => {
     const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
     const commit = computeTurnCommit({ result, plan, context: context() });
     expect(commit && withCodeWrites(commit, undefined, context())).toBe(commit);
+  });
+});
+
+describe('withCodeLines — lines landed on a stored turn', () => {
+  const stored = { narration: 'Rain starts.', choices: [], stat_changes: [], turnId: 't2', summary: 'The gate fell.' };
+  const names = { 'e-tor': 'Tor', 'e-mira': 'Mira' };
+
+  it('adds memory and diary lines after the ones the turn holds, by entity name', () => {
+    const turn = { ...stored, codeMemory: ['Tor lied.'], codeDiaries: { Tor: ['I lied.'] } };
+    expect(withCodeLines(turn, { memory: ['Mira ran.'], diary: [{ entity: 'e-mira', line: 'I ran.' }, { entity: 'e-tor', line: 'I hid.' }] }, names))
+      .toEqual({ ...turn, codeMemory: ['Tor lied.', 'Mira ran.'], codeDiaries: { Tor: ['I lied.', 'I hid.'], Mira: ['I ran.'] } });
+  });
+
+  it('hands back the same turn for writes with no line', () => {
+    expect(withCodeLines(stored, { pins: ['Kept.'], minutes: 30 }, names)).toBe(stored);
+    expect(withCodeLines(stored, undefined, names)).toBe(stored);
   });
 });

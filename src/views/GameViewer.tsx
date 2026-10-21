@@ -16,7 +16,7 @@ import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
-import { pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
+import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import {
   overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, withPinWrites, type SandboxState, type ScriptTrigger,
   type StatCodeTurn, type StatCodeTurnResult,
@@ -159,7 +159,7 @@ import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { createPendingRequests } from "../lib/turnPipeline/pendingRequests";
 import {
-  commitEntityMoves, computeTurnCommit, entityMovesOf, withCodeWrites, type TurnCommit, type TurnCommitContext,
+  commitEntityMoves, computeTurnCommit, entityMovesOf, withCodeLines, withCodeWrites, type TurnCommit, type TurnCommitContext,
 } from "../lib/turnPipeline/computeTurnCommit";
 import {
   entityMoveOffers, entityMoveSubjects, hasEntityOffer, joinEntityMoves, movedPositions, moveWithPlayer,
@@ -757,6 +757,11 @@ const GameViewer = ({
   const allEntities = useMemo(
     () => [...entities, ...discoveredAsEntities(discoveredEntities)],
     [entities, discoveredEntities],
+  );
+  // The names a script's diary lines land under, by entity id.
+  const diaryNames = useMemo(
+    () => Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
+    [traitLibrary, allEntities],
   );
   // An entity is met once the scene lists it by its revealed name.
   useEffect(() => {
@@ -3108,7 +3113,7 @@ const GameViewer = ({
         calendar,
         codeWrites: turnWorldWrites,
         heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
-        diaryNames: Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
+        diaryNames,
         toolCalls: worldToolTurn.calls(),
         peel,
       };
@@ -3424,6 +3429,35 @@ const GameViewer = ({
     [prepareStatCode],
   );
 
+  // A run outside a turn lands its memory and diary lines on the latest turn, and its pins anchored after it (Q6).
+  const landOnLatestTurn = useCallback((writes: WorldWrites | undefined) => {
+    const history = fullMessageHistoryRef.current;
+    const turnId = latestTurnId(history);
+    if (!writes || !turnId) return;
+    setFullMessageHistory((prev) => {
+      const at = prev.findLastIndex((message) => message.role === "assistant");
+      const turn = at < 0 ? null : parseTurnContent(prev[at].content);
+      const landed = turn?.turnId === turnId ? withCodeLines(turn, writes, diaryNames) : turn;
+      if (!turn || landed === turn) return prev;
+      const next = [...prev];
+      next[at] = { role: "assistant", content: JSON.stringify(landed) };
+      return next;
+    });
+    if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
+  }, [setFullMessageHistory, setMemoryNotes, diaryNames]);
+  // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
+  const heldWritesRef = useRef<WorldWrites | undefined>(undefined);
+  const landBetweenTurns = useCallback((writes: WorldWrites | undefined) => {
+    if (abortControllerRef.current) heldWritesRef.current = mergeWorldWrites(heldWritesRef.current, writes);
+    else landOnLatestTurn(writes);
+  }, [landOnLatestTurn]);
+  useEffect(() => {
+    if (isWaitingForAI || abortControllerRef.current || !heldWritesRef.current) return;
+    const held = heldWritesRef.current;
+    heldWritesRef.current = undefined;
+    landOnLatestTurn(held);
+  }, [isWaitingForAI, fullMessageHistory, landOnLatestTurn]);
+
   // The When a Trait Switches runs of every trait an in-play action switched, over the state the action left;
   // their writes land at once (Q12, Q47). A run's own switches fire inside the run.
   const fireSwitchScripts = useCallback(
@@ -3441,12 +3475,12 @@ const GameViewer = ({
       try {
         const turn = fromWorld === world ? prepared.turn : { ...prepared.turn, switchedFrom: fromWorld };
         const result = await runSwitchScripts(turn, events);
-        if (result && mounted.current) prepared.finish(result);
+        if (result && mounted.current) landBetweenTurns(prepared.finish(result).world);
       } catch (error) {
         console.error("Error processing stat code:", error);
       }
     },
-    [prepareStatCode, gameTime, calendar, mounted],
+    [prepareStatCode, gameTime, calendar, mounted, landBetweenTurns],
   );
 
   // The runs before the AI, over a turn's starting stats: on an opening that runs the start scripts, the start

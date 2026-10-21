@@ -291,16 +291,27 @@ export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefin
   }
   if (entities !== turn.entities) turn = { ...turn, entities };
 
+  turn = withCodeLines(turn, writes, context.diaryNames);
+  return { ...commit, turn, discoveries, suggestedLocation, codeMove, turnHours, clock, codeWrites };
+}
+
+/**
+ * `turn` with the memory and diary lines of `writes` after the ones it holds, diary lines keyed by the entity
+ * names `diaryNames` gives. The same turn when `writes` adds no line.
+ */
+export function withCodeLines(
+  turn: AITurnResult, writes: WorldWrites | undefined, diaryNames?: Readonly<Record<string, string>>,
+): AITurnResult {
   // Memory and diary lines go in their own fields, so the digest and diary passes still run for the turn (Q37).
-  if (codeWrites?.memory) turn = { ...turn, codeMemory: codeWrites.memory };
-  if (codeWrites?.diary) {
-    const codeDiaries: Record<string, string[]> = {};
-    for (const { entity, line } of codeWrites.diary) {
-      const name = context.diaryNames?.[entity] ?? entity;
+  let out = turn;
+  if (writes?.memory?.length) out = { ...out, codeMemory: [...turn.codeMemory ?? [], ...writes.memory] };
+  if (writes?.diary?.length) {
+    const codeDiaries: Record<string, string[]> = { ...turn.codeDiaries };
+    for (const { entity, line } of writes.diary) {
+      const name = diaryNames?.[entity] ?? entity;
       codeDiaries[name] = [...codeDiaries[name] ?? [], line];
     }
-    turn = { ...turn, codeDiaries };
+    out = { ...out, codeDiaries };
   }
-
-  return { ...commit, turn, discoveries, suggestedLocation, codeMove, turnHours, clock, codeWrites };
+  return out;
 }

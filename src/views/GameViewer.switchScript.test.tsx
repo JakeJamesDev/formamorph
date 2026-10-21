@@ -4,7 +4,9 @@ import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
-import type { PlayerStat, Script, Trait, World } from '@/types';
+import { parseTurnContent } from '@/lib/turnDigest';
+import type { MemoryNote } from '@/lib/memoryOverrides';
+import type { ChatMessage, Entity, PlayerStat, Script, Trait, World } from '@/types';
 
 /** When a Trait Switches on a mounted game: the player's toggle fires it both ways; setup and a load do not. */
 
@@ -27,12 +29,16 @@ let stats: PlayerStat[] = [];
 let traitsOn: string[] = [];
 let logLines: string[] = [];
 let showTraits = () => {};
+let history: ChatMessage[] = [];
+let notes: MemoryNote[] = [];
 function Probe() {
   const play = useGameplay();
   stats = play.globalStats;
   traitsOn = play.globalTraits.filter((t) => !play.disabledTraitIds.includes(t.id)).map((t) => t.id).sort();
   logLines = play.logEntries.map(({ text }) => text);
   showTraits = () => play.setActiveTab('traits');
+  history = play.fullMessageHistory;
+  notes = play.memoryNotes;
   return null;
 }
 
@@ -153,6 +159,82 @@ describe('When a Trait Switches in play', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
       await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave', 'calm', 'keen', 'lucky', 'sharp']));
       expect(vigorNow()).toBe(90);
+    });
+  });
+
+  describe('the run’s memory, pin and diary lines', () => {
+    const mira: Entity = { id: 'mira', name: 'Mira' };
+    const noting: Script = {
+      id: 'note', timing: 'switch',
+      code: 'if (trait.enabled) { memory.add("Brave stood up."); memory.pin("Brave is sworn."); diary("Mira", "He stood up."); }',
+    };
+    const notingWorld = (): World => ({ ...harborWorld({ stats: [vigor], entities: [mira] }), traits: [brave], scripts: [noting] });
+    const latestTurn = () => parseTurnContent(history.findLast((m) => m.role === 'assistant')?.content ?? '');
+    const pinned = () => notes.map((note) => note.text);
+
+    it('land on the latest turn when the player toggles the trait', { timeout: 30_000 }, async () => {
+      renderGameViewer(notingWorld(), { inGameplay: <Probe /> });
+      await playTurn();
+      await clickBrave();
+      await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']));
+      expect(notes[0].id).toContain(latestTurn()?.turnId);
+      expect(latestTurn()?.codeMemory).toEqual(['Brave stood up.']);
+      expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
+    });
+
+    it('land on the turn whose settle switched the trait off', { timeout: 30_000 }, async () => {
+      // Brave needs Vigor at 40 or more; the before box drops Vigor to 10, so the turn's settle switches Brave off.
+      const gated: Trait = { ...brave, requires: [{ all: [{ kind: 'stat', id: 'vigor', operator: '>=', value: 40, unit: 'raw' }] }] };
+      const drop = { ...vigor, scripts: [{ id: 'drop', timing: 'before' as const, code: 'return 10;' }] };
+      const onOff: Script = { ...noting, code: noting.code.replace('if (trait.enabled)', 'if (!trait.enabled)') };
+      renderGameViewer({ ...notingWorld(), stats: [drop], traits: [gated], scripts: [onOff] }, { inGameplay: <Probe />, initialTraits: ['brave'] });
+      await playTurn();
+      await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']));
+      expect(traitsOn).toEqual([]);
+      expect(notes[0].id).toContain(latestTurn()?.turnId);
+      expect(latestTurn()?.codeMemory).toEqual(['Brave stood up.']);
+      expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
+    });
+
+    it('land on the turn once it ends, for a toggle while the turn runs', { timeout: 30_000 }, async () => {
+      renderGameViewer(notingWorld(), { inGameplay: <Probe /> });
+      await playTurn();
+      // The second turn's narration waits until the toggle has run.
+      let release = () => {};
+      const held = new Promise<void>((resolve) => { release = resolve; });
+      const answer = vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        const system = (JSON.parse(init.body as string) as { messages: { role: string; content: string }[] }).messages
+          .find((m) => m.role === 'system')?.content ?? '';
+        if (system.includes('stat tracker')) return sseResponse(sseReply('No changes'));
+        if (system.includes('player choice writer')) return sseResponse(sseReply('1. Wait\n2. Go'));
+        await held;
+        return sseResponse(sseReply('The ferry docks.'));
+      });
+      vi.stubGlobal('fetch', answer);
+      fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I wait.' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => expect(history.filter((m) => m.role === 'user')).toHaveLength(2));
+      await clickBrave();
+      await waitFor(() => expect(traitsOn).toEqual(['brave']));
+      release();
+      await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']), { timeout: 8000 });
+      const turns = history.filter((m) => m.role === 'assistant');
+      expect(turns).toHaveLength(2);
+      expect(notes[0].id).toContain(latestTurn()?.turnId);
+      expect(latestTurn()?.narration).toContain('The ferry docks.');
+      expect(latestTurn()?.codeMemory).toEqual(['Brave stood up.']);
+      expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
+    });
+
+    it('land once, with the batch, for a switch a Before the AI script makes', { timeout: 30_000 }, async () => {
+      const rouse: Script = { id: 'rouse', timing: 'before', code: 'traits.Brave.enabled = true;' };
+      renderGameViewer({ ...notingWorld(), scripts: [rouse, noting] }, { inGameplay: <Probe /> });
+      await playTurn();
+      await waitFor(() => expect(traitsOn).toEqual(['brave']));
+      expect(latestTurn()?.codeMemory).toEqual(['Brave stood up.']);
+      expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
+      expect(pinned()).toEqual(['Brave is sworn.']);
     });
   });
 
