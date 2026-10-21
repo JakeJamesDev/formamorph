@@ -1940,6 +1940,53 @@ Every label is AP title case, and both parts of a hyphenated label are capitaliz
 
 Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a placeholder, a Read-Only name and a declared name, then a pinned card with its list and an empty list, in both themes. The controls only report what they do.
 
+## Pattern: Variable Menu Rows
+
+**Purpose:** Show what each row of a code editor's **Variable** menu inserts, its type and whether code can write it, without opening the tooltip.
+
+> ✅ **Approved.** The user approved the row from static frames in the Script Surface spec (ruling R9, ticket 15): the mark in a leading slot, the pencil-off icon and the 18rem menu. Production: every code box with a **Variable** menu.
+
+**Density:** Compact. The menu is 18rem wide. Rows use the menu's row size and padding, and each field row stays one line.
+
+### Composition
+
+- ✏️ **Read-only mark.** A muted pencil-off icon, 0.75rem, in a leading slot as wide as the Back row's arrow. A writable row, a row that is writable after this run, and a method leave the slot empty.
+- 📏 **One slot per level.** A level with a read-only row gives every row the slot, drill rows and the empty marker too, so labels line up. A level with no read-only row has no slot.
+- 🔤 **Type.** The row's type sits on the right in the code font, at the tooltip's text size, in the muted color. A method shows its function type, such as `(line) => void`, and no other mark.
+- ✂️ **Long type.** A type that doesn't fit ends in an ellipsis. Its tooltip then starts with the whole type on its own line.
+- 💬 **Tooltip.** The help line, then the access sentence.
+- 📇 **Name levels.** The entity, stat and other name lists show no type and no mark.
+- 🔊 **Name.** A field row's accessible name is its label alone. The mark carries the image name **Read-Only**.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Rows, slot and type | `FieldRow` and `Gutter` in [`VariableMenu.tsx`](../src/components/prompt/VariableMenu.tsx) |
+| Each row's type and access | `VariableField` in [`statCodeVariableTree.ts`](../src/lib/statCodeVariableTree.ts) |
+| Menu row | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
+| Isolated reference | [`VariableMenuReference.tsx`](../src/components/design-system/VariableMenuReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=variable-menu`. The reference builds a world script's real tree with no world, so each name list is one type-over row. A pick only reports what it would insert.
+
+### Responsive behavior
+
+The menu is 18rem wide at every screen size, and it drills in place, so a phone shows the same rows. A long label and a long type each end in an ellipsis, so a row never wraps.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Read-only field | The pencil-off mark, the label and the type. |
+| Writable, or writable after this run | An empty slot, the label and the type. |
+| Method | The label and its function type. |
+| Drill row in a level with a mark | An empty slot, the label and a chevron. |
+| Long type | The type cut with an ellipsis; the tooltip leads with the whole type. |
+
+### Writing review
+
+The rows reuse the surface's names and types, and the tooltip reuses its help lines. The mark's name, **Read-Only**, matches the hover card's badge. This review is local; it does not certify STE compliance.
+
 ## Pattern: You Pill
 
 **Purpose:** Mark the played persona, so the player finds their own entity at a glance.

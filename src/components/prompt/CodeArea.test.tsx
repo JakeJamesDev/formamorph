@@ -769,6 +769,49 @@ describe('CodeArea', () => {
       expect(await screen.findByText(`${regen.info}. Writable.`, { selector: 'div' })).toBeVisible();
     });
 
+    it('shows each field’s type, marks a read-only field, and gives a method its function type', async () => {
+      const user = userEvent.setup();
+      render(<Harness names={worldNames()} surface={scriptSurface(WORLD_SCRIPT_SURFACE, 'before')} />);
+      await editor();
+      const row = (name: string) => screen.getByRole('button', { name });
+      const mark = (name: string) => within(row(name)).queryByRole('img', { name: 'Read-Only' });
+
+      await pick(user, 'Stats', 'Health');
+      expect(row('value')).toHaveTextContent(/^value\s*number$/);
+      expect(mark('value')).toBeNull();
+      expect(row('id')).toHaveTextContent(/^id\s*string$/);
+      expect(mark('id')).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+      await pick(user, 'Entities', 'Mira');
+      expect(row('diary')).toHaveTextContent('(line) => void');
+      expect(mark('diary')).toBeNull();
+      expect(mark('name')).toBeInTheDocument();
+    });
+
+    it('adds a cut type to the head of its row’s tooltip, whole', async () => {
+      const user = userEvent.setup();
+      const detail = '(nameOrId, description, options) => void';
+      const variables = () => [{ kind: 'field' as const, label: 'move', detail, info: 'Moves it.', insert: 'move()' }];
+      // jsdom lays nothing out, so the row's type is given the overflow a narrow menu gives it.
+      const spies = [
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(400),
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(120),
+      ];
+      try {
+        render(<TooltipProvider><Harness surface={SCRIPT} extra={{ variables }} /></TooltipProvider>);
+        await editor();
+        await user.click(screen.getByLabelText('Variable'));
+
+        await user.hover(screen.getByRole('button', { name: 'move' }));
+        // The tip keeps its line break, so the match does too.
+        const tip = await screen.findByText(`${detail}\nMoves it.`, { selector: 'div', normalizer: (text) => text });
+        expect(tip).toBeVisible();
+      } finally {
+        spies.forEach((spy) => spy.mockRestore());
+      }
+    });
+
     it('keeps an empty group, with its one marker row disabled', async () => {
       const user = userEvent.setup();
       render(<Harness statNames={['Health']} />);

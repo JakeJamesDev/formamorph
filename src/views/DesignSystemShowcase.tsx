@@ -11,6 +11,7 @@ import { LandingPulseReference } from '@/components/design-system/LandingPulseRe
 import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
 import { ChipOptionsReference } from '@/components/design-system/ChipOptionsReference';
 import { CodeCardReference } from '@/components/design-system/CodeCardReference';
+import { VariableMenuReference } from '@/components/design-system/VariableMenuReference';
 import { YouMarkReference } from '@/components/design-system/YouMarkReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
@@ -446,6 +447,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Code Hover Card',
     description: 'The card a code editor shows for a name, and its Find All Uses list',
     Component: CodeCardReference,
+  },
+  {
+    id: 'variable-menu',
+    label: 'Variable Menu Rows',
+    description: 'The code Variable menu’s rows: type, read-only mark and method',
+    Component: VariableMenuReference,
   },
   {
     id: 'you-mark',
