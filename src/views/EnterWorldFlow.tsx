@@ -29,7 +29,7 @@ import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { playLibraryStats } from '@/lib/portableStats';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
-  hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona, readWorldPersona,
+  hasPersonaChoice, offeredPersonas, offeredStartLocations, personaStartLocation, preselectPersona, readWorldPersona,
   rememberWorldPersona, withoutPersona, worldPersonaRules, type PersonaPickContext,
 } from '@/lib/personaPick';
 import { personaOption, withPersonaEntry } from '@/lib/persona';
@@ -264,7 +264,10 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   /** The world's entities the author marked as playable. */
   const worldPersonaOptions = useMemo<PersonaOption[]>(
     () => resolvedWorldEntities.filter((entity) => entity.persona === true)
-      .map((entity) => ({ ...personaOption(resolveEntityText)(entity), startsAt: namedStartLocation(entity, locations)?.name })),
+      .map((entity) => {
+        const start = personaStartLocation(entity, locations);
+        return { ...personaOption(resolveEntityText)(entity), startsAt: locations.find((l) => l.id === start)?.name };
+      }),
     [resolvedWorldEntities, resolveEntityText, locations],
   );
   /** The Custom Persona entity, which stands in None's place. */

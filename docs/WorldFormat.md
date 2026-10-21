@@ -329,7 +329,7 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `backgroundImage` | | [Image](#media-fields) | The background |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
-| `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `startingLocationId` joins the choices |
+| `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `locations` join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
 | `canvasPosition` | | `{ "x", "y" }` | Editor-only. The location's place on the Locations canvas, relative to its parent. Absent = automatic |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the player is here. A child location does not get its parent's pins |
@@ -363,7 +363,6 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `persona` | | Boolean | The **Persona** mark. See [Persona Marks](#persona-marks) |
 | `personaOnly` | | Boolean | The entity exists only while the player plays it |
 | `customPersona` | | Boolean | The **Custom Persona** mark |
-| `startingLocationId` | | String | The **Starting Location** preselected when the player plays this entity. Absent = Automatic: the first of its `locations` marked `isStarting` |
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |

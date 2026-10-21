@@ -1314,3 +1314,16 @@ describe('migrateWorld — stat Blueprints and links', () => {
     expect(out.find((g) => g.id === 'bp2')).toEqual({ id: 'bp2', name: 'Blueprints', parentId: 'bp', order: 2 });
   });
 });
+
+describe('migrateWorld — persona start locations', () => {
+  it('drops the retired startingLocationId from every entity, and leaves the rest of each alone', () => {
+    const raw = {
+      version: APP_VERSION,
+      entities: [{ id: 'a', name: 'A', persona: true, locations: ['x'], startingLocationId: 'x' }, { id: 'b', name: 'B' }],
+    };
+    const [a, b] = migrateWorld(raw).entities;
+    expect(a).not.toHaveProperty('startingLocationId');
+    expect(a).toMatchObject({ id: 'a', name: 'A', persona: true, locations: ['x'] });
+    expect(b).toMatchObject({ id: 'b', name: 'B' });
+  });
+});

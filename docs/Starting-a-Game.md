@@ -136,7 +136,7 @@ The list shows **Random** first, then each starting location with its descriptio
 | A location | That location |
 | **Random** | Any starting location, at random |
 
-When you play one of the world's own entities, its starting location is picked for you. You can pick another. After you pick a location yourself, a persona change no longer moves it.
+When you play one of the world's own entities, its locations join the list, and its starting location is picked for you. You can pick another. After you pick a location yourself, a persona change no longer moves it.
 
 ## Library Additions
 <!-- keywords: bring my character, extra npc, companion, mods, custom content, lorebook order, remember for next time, tag meaning, include my own -->

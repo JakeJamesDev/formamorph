@@ -360,9 +360,6 @@ export interface Entity {
    *  never in the cast (see lib/owners). At most one per world, at the root. Excludes the Persona marks and
    *  implies persona-only. */
   customPersona?: boolean;
-  /** Where a world persona begins, flagged as a starting location or not. Absent = Automatic: the first of
-   *  its locations that is a starting location. Read only for a world entity with the Persona mark. */
-  startingLocationId?: string;
   type?: string;
   /** Shown to the player in game. */
   playerDescription?: string;
@@ -386,7 +383,8 @@ export interface Entity {
   sound?: MediaAsset;
   model?: MediaAsset;
   /** Ids of the locations this entity belongs to. The entity is present at every one of them
-   *  simultaneously. Read it through `lib/entityPresence`, which inverts it into per-location rosters. */
+   *  simultaneously. Read it through `lib/entityPresence`, which inverts it into per-location rosters. Under
+   *  the Persona mark they are also where the player can start as it (see `lib/personaPick`). */
   locations?: string[];
   /** `random`: one individual, placed at one of `locations` at random in each new game. Absent = present at
    *  every listed location at once. The persona ignores it. */

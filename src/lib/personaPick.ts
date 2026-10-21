@@ -89,17 +89,15 @@ export function preselectPersona({ rules, remembered, globalDefault, available }
   return NONE;
 }
 
-/** The location the persona names for itself, while the world still has it. */
-export function namedStartLocation<L extends GameLocation>(entity: Entity, locations: readonly L[]): L | undefined {
-  return entity.startingLocationId ? locations.find((l) => l.id === entity.startingLocationId) : undefined;
-}
+/** The persona's locations the world still has, in the entity's order. */
+const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] =>
+  (entity.locations ?? []).filter((id) => locations.some((l) => l.id === id));
 
-/** Where a world persona begins: the location it names, else the first of its locations that is a starting
+/** Where a world persona begins: the first of its locations that is a starting location, else its first
  *  location, else null. */
 export function personaStartLocation(entity: Entity, locations: readonly GameLocation[]): string | null {
-  const named = namedStartLocation(entity, locations);
-  if (named) return named.id;
-  return entity.locations?.find((id) => locations.some((l) => l.id === id && l.isStarting)) ?? null;
+  const own = personaLocations(entity, locations);
+  return own.find((id) => locations.some((l) => l.id === id && l.isStarting)) ?? own[0] ?? null;
 }
 
 /** What a persona pick reads to preselect a starting location. */
@@ -111,18 +109,18 @@ export interface PersonaPickContext {
 const worldPersona = (ref: PersonaRef, worldEntities: readonly Entity[]) =>
   ref.source === 'world' ? worldEntities.find((e) => e.id === ref.entityId) : undefined;
 
-/** The locations the Starting Location step lists, in world order: the flagged ones, plus the one the picked
- *  world persona names. */
+/** The locations the Starting Location step lists, in world order: the flagged ones, plus every location of
+ *  the picked world persona. */
 export function offeredStartLocations<L extends GameLocation>(
   ref: PersonaRef, { worldEntities, locations }: { worldEntities: readonly Entity[]; locations: readonly L[] },
 ): L[] {
-  const persona = worldPersona(ref, worldEntities);
-  return locations.filter((l) => l.isStarting || l.id === persona?.startingLocationId);
+  const own = new Set(worldPersona(ref, worldEntities)?.locations ?? []);
+  return locations.filter((l) => l.isStarting || own.has(l.id));
 }
 
 /** The starting location after a persona pick. A location the step no longer lists drops to the new persona's
- *  own pick, else Random. Otherwise a world persona preselects its own starting location until the player
- *  picks a location by hand, and every other pick keeps the current one. */
+ *  own start, else Random. Otherwise a world persona preselects its own start until the player picks a
+ *  location by hand, and every other pick keeps the current one. */
 export function locationForPersonaPick({ ref, current, locationChosen, ...context }: {
   ref: PersonaRef;
   current: string | null;

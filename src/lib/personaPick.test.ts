@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, namedStartLocation, offeredPersonas, samePersonaRef,
+  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, offeredPersonas, samePersonaRef,
   offeredStartLocations, personaStartLocation, preselectPersona, readDefaultPersona, readWorldPersona,
   rememberWorldPersona, setDefaultPersona, withoutPersona, worldAllowedPersonas, worldStartPersona, type PersonaChoices,
   type PersonaRules,
@@ -134,8 +134,8 @@ describe('worldAllowedPersonas and worldStartPersona', () => {
   });
 });
 
-const entity = (id: string, locations?: string[], startingLocationId?: string): Entity => ({
-  id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations, startingLocationId,
+const entity = (id: string, locations?: string[]): Entity => ({
+  id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations,
 });
 const place = (id: string, isStarting = false): GameLocation => ({ id, name: id, description: '', isStarting });
 // Flagged: dock, gate. Unflagged: inn, cellar.
@@ -147,39 +147,35 @@ describe('personaStartLocation', () => {
     expect(personaStartLocation(entity('w', ['inn', 'gate', 'dock']), places)).toBe('gate');
   });
 
-  it('gives null for an entity with no starting location among its locations', () => {
-    expect(personaStartLocation(entity('w', ['inn']), places)).toBeNull();
+  it('takes the first location when none of them is flagged', () => {
+    expect(personaStartLocation(entity('w', ['cellar', 'inn']), places)).toBe('cellar');
+  });
+
+  it('skips a location the world no longer has', () => {
+    expect(personaStartLocation(entity('w', ['gone', 'inn']), places)).toBe('inn');
+    expect(personaStartLocation(entity('w', ['gone']), places)).toBeNull();
+  });
+
+  it('gives null for an entity with no locations', () => {
+    expect(personaStartLocation(entity('w', []), places)).toBeNull();
     expect(personaStartLocation(entity('w'), places)).toBeNull();
-  });
-
-  it('prefers the location the persona names, flagged or not', () => {
-    expect(personaStartLocation(entity('w', ['dock'], 'cellar'), places)).toBe('cellar');
-    expect(personaStartLocation(entity('w', ['dock'], 'gate'), places)).toBe('gate');
-  });
-
-  it('falls back to the first flagged rule when the named location is gone', () => {
-    expect(personaStartLocation(entity('w', ['dock'], 'gone'), places)).toBe('dock');
-  });
-});
-
-describe('namedStartLocation', () => {
-  it('gives the location the persona names, or nothing on Automatic or a deleted one', () => {
-    expect(namedStartLocation(entity('w', [], 'cellar'), places)?.id).toBe('cellar');
-    expect(namedStartLocation(entity('w', []), places)).toBeUndefined();
-    expect(namedStartLocation(entity('w', [], 'gone'), places)).toBeUndefined();
   });
 });
 
 describe('offeredStartLocations', () => {
-  const context = { worldEntities: [entity('hermit', [], 'cellar'), entity('guard', [], 'gate'), entity('plain')], locations: places };
+  const context = {
+    worldEntities: [entity('hermit', ['cellar']), entity('guard', ['gate']), entity('roamer', ['cellar', 'inn']), entity('plain')],
+    locations: places,
+  };
 
   it('offers the flagged locations in world order', () => {
     expect(ids(offeredStartLocations(NONE, context))).toEqual(['dock', 'gate']);
     expect(ids(offeredStartLocations(world('plain'), context))).toEqual(['dock', 'gate']);
   });
 
-  it('adds an unflagged location while the persona that names it is picked', () => {
+  it("adds the picked persona's unflagged locations, in world order", () => {
     expect(ids(offeredStartLocations(world('hermit'), context))).toEqual(['dock', 'cellar', 'gate']);
+    expect(ids(offeredStartLocations(world('roamer'), context))).toEqual(['inn', 'dock', 'cellar', 'gate']);
     expect(ids(offeredStartLocations(world('guard'), context))).toEqual(['dock', 'gate']);
   });
 
@@ -190,8 +186,8 @@ describe('offeredStartLocations', () => {
 
 describe('locationForPersonaPick', () => {
   const entities = [
-    entity('w', ['inn', 'dock']), entity('homeless', ['inn']),
-    entity('hermit', ['dock'], 'cellar'), entity('guard', ['dock'], 'gate'),
+    entity('w', ['inn', 'dock']), entity('homeless'),
+    entity('hermit', ['cellar']), entity('guard', ['gate', 'dock']),
   ];
   const pick = (ref: PersonaRef, current: string | null, locationChosen = false) =>
     locationForPersonaPick({ ref, current, locationChosen, worldEntities: entities, locations: places });
@@ -199,10 +195,10 @@ describe('locationForPersonaPick', () => {
   it("moves the location to the world persona's first starting location", () => {
     expect(pick(world('w'), null)).toEqual({ locationId: 'dock', locationChosen: false });
     expect(pick(world('w'), 'gate').locationId).toBe('dock');
+    expect(pick(world('guard'), null).locationId).toBe('gate');
   });
 
-  it('prefers the location the persona names over the first flagged rule', () => {
-    expect(pick(world('guard'), null).locationId).toBe('gate');
+  it("moves to the persona's first location when none of them is flagged", () => {
     expect(pick(world('hermit'), 'gate').locationId).toBe('cellar');
   });
 
@@ -216,12 +212,12 @@ describe('locationForPersonaPick', () => {
     expect(pick(NONE, null).locationId).toBeNull();
   });
 
-  it('keeps the location for a world persona with no starting location among its locations', () => {
+  it('keeps the location for a world persona with no locations', () => {
     expect(pick(world('homeless'), 'gate').locationId).toBe('gate');
     expect(pick(world('homeless'), null).locationId).toBeNull();
   });
 
-  it("drops an unflagged location on a switch to a persona that does not name it, to that persona's automatic pick", () => {
+  it("drops a location the new pick's list lacks, to that persona's own start", () => {
     expect(pick(world('w'), 'cellar')).toEqual({ locationId: 'dock', locationChosen: false });
     expect(pick(world('homeless'), 'cellar')).toEqual({ locationId: null, locationChosen: false });
     expect(pick(NONE, 'cellar')).toEqual({ locationId: null, locationChosen: false });
@@ -232,8 +228,9 @@ describe('locationForPersonaPick', () => {
     expect(pick(lib('a'), 'cellar', true)).toEqual({ locationId: null, locationChosen: false });
   });
 
-  it('keeps an unflagged location while its own persona is picked again', () => {
+  it("keeps a hand-picked unflagged location that is the persona's own", () => {
     expect(pick(world('hermit'), 'cellar', true)).toEqual({ locationId: 'cellar', locationChosen: true });
+    expect(pick(world('w'), 'inn', true)).toEqual({ locationId: 'inn', locationChosen: true });
   });
 });
 
