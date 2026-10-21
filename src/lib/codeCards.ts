@@ -16,7 +16,7 @@ import { REGEN_UNIT_LABELS, regenPer, regenUnitOf } from '@/lib/regenUnits';
 import { statMin, statStartValue } from '@/lib/statDescriptorGeometry';
 import { isUnknownEntry, memberEntries, placeholderAt, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { isIdentifier } from '@/lib/statCodePaths';
-import { parseCode, resolveCodeName, type CodeMapOwner, type CodeValue, type PlaceholderOwner } from '@/lib/statCodeResolver';
+import { parseCode, resolveCodeName, type ArrayElement, type CodeMapOwner, type CodeValue, type PlaceholderOwner } from '@/lib/statCodeResolver';
 import { DAYPART_OPTIONS, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder, Stat, TraitMode } from '@/types';
 
@@ -109,6 +109,9 @@ function ownerPrefix(owner: CodeMapOwner): string {
   }
 }
 
+/** The type an element of each array shape has. */
+const ELEMENT_ROOT: Record<ArrayElement, string> = { memory: 'Memory', entity: 'Entity' };
+
 /** What a member's path starts with: the type an entry of a map has, or the exact path of a one-off object. */
 function memberRootName(value: CodeValue): string {
   switch (value.is) {
@@ -124,6 +127,8 @@ function memberRootName(value: CodeValue): string {
     case 'locationEntry': return 'Location';
     case 'persona': return 'persona';
     case 'clock': case 'listed': return value.path;
+    case 'array': return value.path ?? 'Array';
+    case 'element': return ELEMENT_ROOT[value.of];
     default: return value.is;
   }
 }

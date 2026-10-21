@@ -6,13 +6,13 @@
 
 import type { AnalysisOptions, CodeDictionaryNames, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
-import { surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
+import { isMethodEntry, surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
 import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -87,12 +87,20 @@ export const TEMPLATE_NAME = 'Name';
 interface Path {
   text: string;
   selection?: VariableSelection;
+  /** Set on an array element, so a field read on an empty list gives `undefined`. */
+  optional?: true;
 }
 
 const root = (text: string): Path => ({ text });
 
 /** `path` one key deeper: dot form for a plain identifier, bracket form otherwise. */
 const keyed = (path: Path, name: string): Path => ({ text: path.text + memberStep(name), selection: path.selection });
+
+/** `path`'s first element, its index selected to type over unless an earlier name is. */
+function indexed(path: Path): Path {
+  const from = path.text.length + 1;
+  return { text: `${path.text}[0]`, selection: path.selection ?? { from, to: from + 1 }, optional: true };
+}
 
 /** `path` one key deeper by the template's type-over name, which is selected unless an earlier one is. */
 function typeOver(path: Path): Path {
@@ -104,7 +112,7 @@ function typeOver(path: Path): Path {
 }
 
 const field = (path: Path, entry: SurfaceEntry, call = ''): VariableField => ({
-  kind: 'field', label: entry.name, detail: entry.detail, info: entry.info, insert: `${path.text}.${entry.name}${call}`,
+  kind: 'field', label: entry.name, detail: entry.detail, info: entry.info, insert: `${path.text}${path.optional ? '?.' : '.'}${entry.name}${call}`,
   ...(entry.access ? { access: entry.access } : {}),
   ...(path.selection ? { selection: path.selection } : {}),
 });
@@ -178,9 +186,22 @@ const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, 
   return entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined;
 });
 
+// The persona has no verbs and stands first where the player is, so an element lists the fields only.
+const PRESENT_ELEMENT_FIELDS = ENTITY_FIELDS.filter((entry) => !isMethodEntry(entry));
+
+/** `present`: the list itself, then an entity entry's fields on its first element. */
+const presentGroup = (path: Path, entry: SurfaceEntry, at: Path): VariableGroup =>
+  group(entry, [field(path, entry), ...fields(indexed(at), PRESENT_ELEMENT_FIELDS)]);
+
+/** A locations entry's fields, `present` opening to its element's. */
+const locationEntryFields = (path: Path): VariableNode[] =>
+  fields(path, LOCATION_ENTRY_FIELDS, (entry, at) => (entry.name === 'present' ? presentGroup(path, entry, at) : undefined));
+
 // A move to where the turn stands runs as inserted in any turn with a location.
-const locationFields = (): VariableNode[] => LOCATION_MEMBERS.map((entry) =>
-  (entry.name === 'move' ? callField(field(root('location'), entry), 'location.name') : field(root('location'), entry)));
+const locationFields = (): VariableNode[] => fields(root('location'), LOCATION_MEMBERS, (entry, at) => {
+  if (entry.name === 'move') return callField(field(root('location'), entry), 'location.name');
+  return entry.name === 'present' ? presentGroup(root('location'), entry, at) : undefined;
+});
 
 /** A call at the top level, `name(arg)`. */
 const topCallField = (name: string, arg: string): VariableField => {
@@ -188,7 +209,23 @@ const topCallField = (name: string, arg: string): VariableField => {
   return callField({ kind: 'field', label: name, detail: entry?.detail ?? '', info: entry?.info ?? '', insert: name }, arg);
 };
 
-const memoryFields = (): VariableNode[] => MEMORY_MEMBERS.map((entry) => callField(field(root('memories'), entry), '"Line"'));
+const MEMORY_ELEMENT_INFO = 'One memory in the list, by its place from 0, with the fields of a memories entry';
+
+/** A memory's verb, called complete with the index left selected: `memories[0]?.edit("Text")`. */
+const memoryVerb = (path: Path, entry: SurfaceEntry): VariableField =>
+  ({ ...callField(field(path, entry), entry.detail.startsWith('()') ? '' : '"Text"'), selection: path.selection });
+
+/** The list's calls, then one memory's fields and verbs. */
+const memoryFields = (): VariableNode[] => {
+  const element = indexed(root('memories'));
+  return [
+    ...MEMORY_MEMBERS.map((entry) => callField(field(root('memories'), entry), '"Line"')),
+    {
+      kind: 'group', label: 'memories[0]', info: MEMORY_ELEMENT_INFO,
+      children: fields(element, MEMORY_ENTRY_FIELDS, (entry) => (isMethodEntry(entry) ? memoryVerb(element, entry) : undefined)),
+    },
+  ];
+};
 
 /** A placeholder entry's members by its kind. The calls insert complete; `pin` leaves its text selected. */
 function placeholderFields(path: Path, kind: PlaceholderKindNoun): VariableNode[] {
@@ -364,8 +401,8 @@ export function buildVariableTree(
     : templateRows(dictionaries, (at) => dictionaryFields(at, null));
   const locationRows = names
     ? keyedLastWins((names.locations ?? []).map((name) => ({ name })))
-      .map(({ name }) => ({ name, trail: [], children: fields(keyed(locations, name), LOCATION_ENTRY_FIELDS) }))
-    : templateRows(locations, (at) => fields(at, LOCATION_ENTRY_FIELDS));
+      .map(({ name }) => ({ name, trail: [], children: locationEntryFields(keyed(locations, name)) }))
+    : templateRows(locations, locationEntryFields);
 
   // A Blueprint group holds stats only, so its Owner has no traits or placeholders.
   const ownerChildren = (at: VariableTreeOwner): VariableNode[] => {
