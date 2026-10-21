@@ -76,6 +76,12 @@ describe('buildEntityCardData', () => {
     expect(card.name).toBe('Bram');
   });
 
+  it('reads a 3.3.3 card’s stat scripts with diary on the entity entry', () => {
+    const stats = [{ id: 's', name: 'Mood', type: 'number', description: '', min: 0, max: 1, regen: 0, descriptors: [],
+      scripts: [{ id: 'a', timing: 'after', code: 'diary("Tor", "Hm.");' }] }];
+    expect(parseEntityCardData({ formamorphKind: 'entity', name: 'X', stats }).stats![0].scripts![0].code).toBe('entities.Tor.diary("Hm.");');
+  });
+
   it('round-trips aliases, dropping empty/blank ones', () => {
     const card = buildEntityCardData({ id: 'z', name: 'Synthia', aliases: ['Matron', 'Em'] });
     expect(card.aliases).toEqual(['Matron', 'Em']);

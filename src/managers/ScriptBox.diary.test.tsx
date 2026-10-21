@@ -30,7 +30,7 @@ function Box({ initial }: { initial: Script }) {
 describe('Test Code with a diary line', () => {
   it('lists a known target as a write and warns on an unknown one, with no error', async () => {
     const user = userEvent.setup();
-    render(<Box initial={{ id: 's', timing: 'after', code: 'diary("Tor", "I lied.");\ndiary("Stranger", "Hello.");' }} />);
+    render(<Box initial={{ id: 's', timing: 'after', code: 'entities.Tor.diary("I lied.");\nentities.Stranger.diary("Hello.");' }} />);
     await user.click(screen.getByRole('button', { name: `Test Code ${LABEL}` }));
 
     expect(await screen.findByText('diary: Tor: I lied.')).toBeInTheDocument();

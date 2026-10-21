@@ -86,7 +86,7 @@ return line ? "Pinned." : "Nothing to pin.";`,
     name: 'Add a Diary Line',
     description: 'Add the line the AI sent to an entity’s diary, after the AI’s own entry.',
     code: `const line = String(args[{{line:param(string)=line}}] ?? "").trim();
-if (line) diary({{entity:entity}}, line);`,
+if (line) entities[{{entity:entity}}].diary(line);`,
   },
   {
     id: 'builtin-tool-highlight-name',

@@ -128,7 +128,6 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   location: LOCATION_MEMBERS,
   discover: [],
   memory: MEMORY_MEMBERS,
-  diary: [],
   traits: TRAIT_ENTRY_FIELDS,
   persona: PERSONA_FIELDS,
   entities: ENTITY_FIELDS,

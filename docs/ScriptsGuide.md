@@ -349,15 +349,14 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `location` | `id`, `name`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
 | `memory` | `add()`, `pin()` | — | `memory.pin(<text>)` |
-| `diary` | — | — | `diary("<Entity>", <text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
 | `console` | `log()` | — | `console.log(<text>)` |
@@ -1015,14 +1014,14 @@ if (stats.Keys.value >= 3) memory.pin("The vault under the chapel is open.");
 ### Diary
 <!-- keywords: character diary, journal, entity memory, what they remember, first person -->
 
-`diary("<Entity>", <text>)` adds a line to an entity's diary for this turn, by name or id, after the AI's entry. The AI still writes its entry. A diary line reads in the entity's own voice.
+`entities.<Entity>.diary(<text>)` adds a line to an entity's diary for this turn, after the AI's entry. The call also finds an entity by id: `entities["<id>"].diary(<text>)`. The AI still writes its entry. A diary line reads in the entity's own voice.
 
 - **Any entity in play is a target**, from your world or discovered during play.
-- **A name the game has no entity for stops the script with an error.** The persona has no diary, so its name stops the script too.
+- **An entity the game doesn't have stops the script with an error.** The persona has no diary, so `persona.diary` stops the script too.
 - **The line goes away when the turn does.** A regenerate or a stopped turn drops it.
 
 ```js
-if (traits.Betrayed.enabled) diary("Mira", "I trusted them, and they sold me out.");
+if (traits.Betrayed.enabled) entities.Mira.diary("I trusted them, and they sold me out.");
 ```
 
 ### Code Beats the AI

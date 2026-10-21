@@ -13,6 +13,7 @@ import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
 import { migrateStatCodeRoutes } from './statCodeRoutes';
+import { migrateWorldScriptText } from './scriptTextMigration';
 import { migrateStatBoxes, migrateStatLinkBoxes, type OriginalOf } from './scripts';
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
 import { blueprintItemIds, offeredWorldTraits } from './traitTree';
@@ -788,6 +789,7 @@ export function migrateWorld(raw: unknown): World {
   migrateGlobalScope(world);
   normalizeContentLinks(world);
   migrateStatScripts(world);
+  migrateWorldScriptText(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

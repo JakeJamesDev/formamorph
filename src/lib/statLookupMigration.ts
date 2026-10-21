@@ -14,7 +14,8 @@ type Lookup = { by: 'name'; literal: string } | { by: 'id' };
 /** Statement lists a deleted declaration can leave without breaking the syntax around it. */
 const STATEMENT_LISTS = new Set(['Script', 'Block', 'SwitchBody']);
 
-function children(node: SyntaxNode): SyntaxNode[] {
+/** A syntax node's children, in order. */
+export function children(node: SyntaxNode): SyntaxNode[] {
   const out: SyntaxNode[] = [];
   for (let child = node.firstChild; child; child = child.nextSibling) out.push(child);
   return out;

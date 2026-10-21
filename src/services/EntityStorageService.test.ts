@@ -45,6 +45,19 @@ describe('EntityStorageService', () => {
     expect((await EntityStorageService.getEntityData('e1')).name).toBe('Mara');
   });
 
+  it('reads a 3.3.3 character’s diary calls in the entry form, by its own id too', async () => {
+    const code = 'diary("e1", "Mine."); diary(who, "Theirs.");';
+    const stored = {
+      id: 'e1', name: 'Mara',
+      stats: [{ id: 's', name: 'Mood', type: 'number', description: '', min: 0, max: 1, regen: 0, descriptors: [], scripts: [{ id: 'a', timing: 'after', code }] }],
+      traits: [{ id: 't', name: 'Shy', statChanges: [], scripts: [{ id: 'b', timing: 'after', code }] }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    const migrated = 'entities.Mara.diary("Mine."); entities[who].diary("Theirs.");';
+    expect([read.stats![0].scripts![0].code, read.traits![0].scripts![0].code]).toEqual([migrated, migrated]);
+  });
+
   it('reads a 3.2.x character’s flat trait gates as one row per entry, owned traits and link overrides', async () => {
     const paladin = { kind: 'trait' as const, id: 'w-paladin', name: 'Paladin' };
     // The flat list is what 3.2.x stored; the record type no longer allows it.

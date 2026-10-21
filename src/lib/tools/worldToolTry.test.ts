@@ -65,7 +65,7 @@ describe('tryWorldToolScript', () => {
   });
 
   it('warns on a diary target the authored world lacks without failing the run', async () => {
-    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'diary("Stranger", "Hello.");' }), '{}', world);
+    const result = await tryWorldToolScript(tool({ timing: 'after', code: 'entities.Stranger.diary("Hello.");' }), '{}', world);
     expect(result.failure).toBeUndefined();
     expect(result.warnings).toEqual(['Diary target “Stranger” may be discovered in play.']);
   });

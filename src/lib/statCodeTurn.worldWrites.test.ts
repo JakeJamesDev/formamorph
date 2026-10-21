@@ -69,19 +69,19 @@ describe('runStatCodeTurn world writes', () => {
 
   it('joins the memory, pin and diary lines of every script in run order', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', scripts: [script('memory.add("First."); diary("Wick", "I ran."); return 1;')] })],
-      worldScripts: [script('memory.add("Second."); memory.pin("Kept."); diary("Wick", "I hid.");')],
-      discovered: [{ id: 'd-wick', name: 'Wick' }],
+      stats: [stat({ id: 'a', scripts: [script('memory.add("First."); entities.Wick.diary("I ran."); return 1;')] })],
+      worldScripts: [script('memory.add("Second."); memory.pin("Kept."); entities.Wick.diary("I hid.");')],
+      ownerTraits: { ...inForce(), entities: [{ id: 'e-wick', name: 'Wick', traits: [] }] },
     }));
     expect(out.worldWrites).toEqual({
       memory: ['Second.', 'First.'], pins: ['Kept.'],
-      diary: [{ entity: 'd-wick', line: 'I hid.' }, { entity: 'd-wick', line: 'I ran.' }],
+      diary: [{ entity: 'e-wick', line: 'I hid.' }, { entity: 'e-wick', line: 'I ran.' }],
     });
   });
 
   it('fails a diary for an entity the turn does not have, and keeps the other scripts\' lines', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', scripts: [script('memory.add("Lost."); diary("Wick", "Hi."); return 1;')] })],
+      stats: [stat({ id: 'a', scripts: [script('memory.add("Lost."); entities.Wick.diary("Hi."); return 1;')] })],
       worldScripts: [script('memory.add("Kept.");')],
     }));
     expect(out.worldWrites).toEqual({ memory: ['Kept.'] });

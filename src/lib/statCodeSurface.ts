@@ -63,7 +63,6 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at. Call location.move to move it.', access: 'readOnly' },
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn. With a description it joins at once; without one, the AI describes it. A name an entity already has does nothing.' },
   { name: 'memory', detail: shapeOf(MEMORY_MEMBERS), info: 'The story’s memory. Call memory.add or memory.pin to add to it.', access: 'readOnly' },
-  { name: 'diary', detail: '(nameOrId, line) => void', info: 'Adds a line to an entity’s diary for this turn, after the AI’s entry. A name the game has no entity for stops the script with an error. The persona has no diary.' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },
@@ -188,6 +187,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the entity to a location of the world when the turn ends, and stops it following the player. A name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes the entity follow the player when the turn ends, at the player’s location' },
   { name: 'unfollow', detail: '() => void', info: 'Stops the entity following the player when the turn ends, and leaves it at the player’s location. An entity that isn’t following stays where it is.' },
+  { name: 'diary', detail: '(line) => void', info: 'Adds a line to the entity’s diary for this turn, after the AI’s entry. An entity the game doesn’t have stops the script with an error. The persona has no diary.' },
 ], OWNER_MAPS);
 
 /** The members of one entry in `dictionaries`. None takes a write. */
