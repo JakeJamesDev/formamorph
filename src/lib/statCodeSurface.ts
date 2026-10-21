@@ -35,10 +35,24 @@ export const CLOCK_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'advance', detail: '(minutes) => void', info: 'Sets how long this turn takes, in story minutes, in place of the AI’s measure. Calls in one turn add up. The clock reads the same for the rest of the script.' },
 ]);
 
-/** The members of `location`: where the turn stands, and the move. */
+/** The members of one entry in `locations`. None takes a write. */
+export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'id', detail: 'string', info: 'Unique id of the location' },
+  { name: 'name', detail: 'string', info: 'Code name of the location' },
+  { name: 'description', detail: 'string', info: 'Full AI description of the location, its placeholders filled in' },
+  { name: 'summary', detail: 'string', info: 'Short AI summary of the location, its placeholders filled in' },
+  { name: 'starting', detail: 'boolean', info: 'True when the game can start at the location' },
+  { name: 'present', detail: 'array', info: 'The entities at the location, each an entry of entities. The persona comes first when the player is there.' },
+]);
+
+/** The members of `location`: the fields of a `locations` entry for where the turn stands, and the move. */
 export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the location the turn is at, or empty in a world with no location' },
   { name: 'name', detail: 'string', info: 'Code name of the location the turn is at, or empty in a world with no location' },
+  { name: 'description', detail: 'string', info: 'Full AI description of the location the turn is at, its placeholders filled in' },
+  { name: 'summary', detail: 'string', info: 'Short AI summary of the location the turn is at, its placeholders filled in' },
+  { name: 'starting', detail: 'boolean', info: 'True when the game can start at the location the turn is at' },
+  { name: 'present', detail: 'array', info: 'The entities at the location the turn is at, each an entry of entities, the persona first. It’s empty in a world with no location.' },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 
@@ -60,7 +74,8 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat. Use owner.stats["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The global stats by name, in every stat’s code. An entity’s own are on owner.stats. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock', access: 'readOnly' },
-  { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at. Call location.move to move it.', access: 'readOnly' },
+  { name: 'locations', detail: 'object', info: 'Every location in the world by name, with the entities at each. Use locations["Two Words"] for a name with a space.' },
+  { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at, with the fields of a locations entry. Call location.move to move it.', access: 'readOnly' },
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn. With a description it joins at once; without one, the AI describes it. A name an entity already has does nothing.' },
   { name: 'memory', detail: shapeOf(MEMORY_MEMBERS), info: 'The story’s memory. Call memory.add or memory.pin to add to it.', access: 'readOnly' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
@@ -167,6 +182,11 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'type', detail: 'string', info: 'Type text of the persona, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the persona, or empty when it has none' },
   { name: 'inScene', detail: 'boolean', info: 'True when the persona plays. False when the player plays no entity.' },
+  { name: 'location', detail: 'string', info: 'Code name of the location the player is at, or empty in a world with no location' },
+  { name: 'following', detail: 'boolean', info: 'Always false. The persona moves with the player.' },
+  { name: 'description', detail: 'string', info: 'Full AI description of the persona, its placeholders filled in' },
+  { name: 'summary', detail: 'string', info: 'Short AI summary of the persona, its placeholders filled in' },
+  { name: 'aliases', detail: 'array', info: 'Other names of the persona, its placeholders filled in' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name. Empty when the player plays no entity.' },
   { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each with the fields of a stats entry. Empty when the player plays no entity. Entries take writes to value, min, max and regen.' },
@@ -181,6 +201,11 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'type', detail: 'string', info: 'Type text of the entity, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the entity, or empty when it has none' },
   { name: 'inScene', detail: 'boolean', info: 'True when the entity is in this turn’s scene' },
+  { name: 'location', detail: 'string', info: 'Code name of the location the entity is at. A follower is where the player is. It’s empty when the entity is at every location it lists.' },
+  { name: 'following', detail: 'boolean', info: 'True when the entity follows the player' },
+  { name: 'description', detail: 'string', info: 'Full AI description of the entity, its placeholders filled in' },
+  { name: 'summary', detail: 'string', info: 'Short AI summary of the entity, its placeholders filled in' },
+  { name: 'aliases', detail: 'array', info: 'Other names of the entity, its placeholders filled in' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max and regen. Use entities.Mira.stats["Two Words"] for a name with a space.' },

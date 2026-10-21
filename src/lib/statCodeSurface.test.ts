@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { phMap, phNode } from '@/test/sandboxPlaceholders';
 import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DICTIONARY_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DICTIONARY_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import { runStatCodeTurn } from './statCodeTurn';
@@ -72,6 +72,13 @@ describe('the described surface against the sandbox that provides it', () => {
         .resolves.toEqual({ value: 1, error: null });
     },
   );
+
+  it('describes every field on a locations entry, and no field it does not', async () => {
+    const expected = LOCATION_ENTRY_FIELDS.map(entry => entry.name).sort().join(',');
+    const places = { locations: [{ id: 'l1', name: 'Mill' }], location: null };
+    await expect(executeStatCode(`return Object.keys(locations.Mill).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`, stats, stats[0], { places }))
+      .resolves.toEqual({ value: 1, error: null });
+  });
 
   // Retired routes; the load rewrite moves released code off them.
   it.each(['deltaHours', 'elapsedHours', 'day', 'daypart', 'startDay', 'startDaypart', 'currentStatId'])(

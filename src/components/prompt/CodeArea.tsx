@@ -85,6 +85,8 @@ interface CodeAreaProps {
   traits?: readonly CodeTraitPlace[];
   /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
+  /** The world's location code names, completed after `locations` and listed by the Variable menu. */
+  locations?: readonly string[];
   /** The Variable menu's tree where the surface has no stat maps, built on each open. Absent there, no menu. With stat
    *  maps, these groups come before the stat tree's. */
   variables?: () => readonly VariableNode[];
@@ -300,12 +302,12 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, owner, placeholders, traits, entities, surface, variables } = latest.current;
+    const { slots: template, statNames, owner, placeholders, traits, entities, locations, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
     // A box that gives a menu beside stat maps, such as a World Tool's arguments, lists it first.
     return [
       ...variables?.() ?? [],
-      ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
+      ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities, locations }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
     ];
   }, []);
 
@@ -328,6 +330,7 @@ export function CodeArea(props: CodeAreaProps) {
         placeholders: latest.current.placeholders,
         traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
+        locations: latest.current.locations,
         lookup: () => latest.current.lookup,
         navigation: () => {
           const navigation = latest.current.navigation;
@@ -363,6 +366,7 @@ export function CodeArea(props: CodeAreaProps) {
   const traitNames = useMemo(() => props.traits?.map((trait) => trait.name), [props.traits]);
   useEffect(() => { session?.setTraits(traitNames); }, [session, traitNames]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
+  useEffect(() => { session?.setLocations(props.locations); }, [session, props.locations]);
   const { revealLine, autoFocus } = props;
   useEffect(() => {
     if (session && autoFocus) session.focus();

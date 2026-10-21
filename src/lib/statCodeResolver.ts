@@ -51,6 +51,8 @@ export type CodeValue =
   /** A book's `entries`, `dictionary` its code name. */
   | { is: 'dictionaryEntryMap'; dictionary: string }
   | { is: 'dictionaryEntry'; dictionary: string; key: string }
+  | { is: 'locationMap' }
+  | { is: 'locationEntry'; key: string }
   | { is: 'clock'; path: 'clock' | 'clock.previous' }
   /** An exact path the surface lists members for, like `Math` or `scene.location`. */
   | { is: 'listed'; path: string };
@@ -67,7 +69,7 @@ export type ResolvedCodeName = { key: string; from: number; to: number } & (
   | { kind: 'entity' }
   | { kind: 'dictionary' }
   | { kind: 'dictionaryEntry'; dictionary: string }
-  /** The place a `location.move("<name>")` call names. */
+  /** A `locations` key, or the place a `location.move("<name>")` call names. */
   | { kind: 'location' }
   | { kind: 'declared'; at: number }
   | { kind: 'slot' }
@@ -198,6 +200,7 @@ export function codeResolver(
         case 'persona': return { is: 'persona' };
         case 'owner': return { is: 'owner' };
         case 'dictionaries': return { is: 'dictionaryMap' };
+        case 'locations': return { is: 'locationMap' };
         case 'clock': return { is: 'clock', path: 'clock' };
         case 'trait': return { is: 'switchedTrait' };
       }
@@ -219,6 +222,7 @@ export function codeResolver(
       case 'placeholders': return { ...base, path: [...base.path, key] };
       case 'entityMap': return { is: 'entity', key };
       case 'dictionaryMap': return { is: 'dictionary', key };
+      case 'locationMap': return { is: 'locationEntry', key };
       case 'entity': return ownerMap({ route: 'entity', entity: base.key }, key);
       case 'persona': return ownerMap({ route: 'persona' }, key);
       case 'owner': return ownerMap({ route: 'owner' }, key);
@@ -296,6 +300,7 @@ export function codeResolver(
       case 'entityMap': return { ...span, kind: 'entity' };
       case 'dictionaryMap': return { ...span, kind: 'dictionary' };
       case 'dictionaryEntryMap': return { ...span, kind: 'dictionaryEntry', dictionary: base.dictionary };
+      case 'locationMap': return { ...span, kind: 'location' };
       case 'placeholders':
         // Below the first key a member wins over a child of the same name, and nothing hangs off a member.
         if (base.path.slice(1).some(isPlaceholderEntryMember)) return null;

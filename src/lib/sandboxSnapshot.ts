@@ -3,7 +3,7 @@
  * `snapshotOf`, then call `run` per Script unit and `switchesOf` per result. Owner entries, `self`, the cast, the
  * placeholders, the dictionaries, the places and the switched trait are assembled here and nowhere else.
  */
-import type { Placeholder, Stat, Trait } from '@/types';
+import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import {
   executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
   type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
@@ -21,7 +21,7 @@ import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
 import type { ScriptPromptHost } from './scriptPrompts';
-import type { SandboxState } from './statCodeTurn';
+import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
 
 /** The trait a trait home names. */
 export type HomeTrait = Pick<Trait, 'id' | 'name'>;
@@ -148,10 +148,30 @@ const withBooksInPlay = (set: StatCodePlaceholderSet): StatCodePlaceholderSet =>
   return inPlay ? { ...set, dictionaries: set.dictionaries?.filter((book) => inPlay.has(book.id)) } : set;
 };
 
-/** `places` under the code names scripts reach them by. */
-function codePlaces({ locations, location }: SandboxPlaces, placeholders: readonly Placeholder[]): SandboxPlaces {
-  const coded = (place: SandboxPlace): SandboxPlace => ({ id: place.id, name: statCodeName(place.name, placeholders) });
-  return { locations: locations.map(coded), location: location && coded(location) };
+const AS_AUTHORED: ResolveText = (text) => text;
+
+/** `places` under the code names scripts reach them by, their text resolved. */
+function codePlaces({ locations, location }: StatePlaces, placeholders: readonly Placeholder[], resolve: ResolveText): SandboxPlaces {
+  const named = (place: SandboxPlace): SandboxPlace => ({ id: place.id, name: statCodeName(place.name, placeholders) });
+  return {
+    locations: locations.map((place) => ({
+      ...named(place), description: resolve(place.aiDescription ?? '', null), summary: resolve(place.aiSummary ?? '', null), starting: !!place.isStarting,
+    })),
+    location: location && named(location),
+  };
+}
+
+/** The fields `entity` adds from play: its text resolved, where it stands, and whether it follows. */
+function playFields(
+  entity: Entity, { positions, followers }: Pick<SandboxState, 'positions' | 'followers'>, resolve: ResolveText,
+): Partial<CodeEntity> {
+  const at = positions?.[entity.id];
+  return {
+    description: resolve(entity.aiDescription ?? '', entity), summary: resolve(entity.aiSummary ?? '', entity),
+    aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
+    ...(at ? { locationId: at } : {}), locationIds: entity.locations ?? [],
+    ...(followers?.includes(entity.id) ? { following: true } : {}),
+  };
 }
 
 /** The entities with the fields `fieldsOf` gives each one laid on, `persona` still one of them. */
@@ -171,7 +191,6 @@ interface Board {
   placeholders: StatCodeRunOptions['placeholders'];
   dictionaries: StatCodeRunOptions['dictionaries'];
   places?: SandboxPlaces;
-  discovered?: readonly SandboxPlace[];
   ownerStats: (id: string) => SandboxStats;
   placeholderDefs: readonly Placeholder[];
 }
@@ -219,10 +238,14 @@ function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] 
     ({ stats: statCodeNamed(stats, placeholderDefs), ...(inputs ? { turn: inputs } : {}), enabled });
   const owned = new Map((state.owners ?? []).map((owner) => [owner.id, scopeStats(owner.stats, owner.enabled, turn && (turn.owners?.[owner.id] ?? {}))]));
   const ownerStats = (id: string): SandboxStats => owned.get(id) ?? { stats: [], ...(turn ? { turn: {} } : {}), enabled: {} };
+  const resolve = state.resolveText ?? AS_AUTHORED;
+  const { entities = [], library = [], discovered = [] } = state.ownerTraits;
+  const authored = new Map([...entities, ...library, ...discovered].map((entity) => [entity.id, entity]));
   const withFields = withEntityFields(cast, (id) => {
     const node = sandbox?.owners.get(id);
     const stats = owned.get(id);
-    return { ...(node ? { placeholders: node } : {}), ...(stats ? { stats } : {}) };
+    const entity = authored.get(id);
+    return { ...(node ? { placeholders: node } : {}), ...(stats ? { stats } : {}), ...(entity ? playFields(entity, state, resolve) : {}) };
   });
   const inPlay = pendingPersona ? { ...withFields, persona: pendingPersonaOf(state, withFields, sandbox?.owners, ownerStats) } : withFields;
   const assumed = assumedStats.map((name): Stat => ({ id: randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT }));
@@ -233,8 +256,7 @@ function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] 
     traits, inPlay, placeholderDefs, ownerStats,
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners),
-    ...(state.places ? { places: codePlaces(state.places, placeholderDefs) } : {}),
-    ...(state.discovered ? { discovered: codePlaces({ locations: state.discovered, location: null }, placeholderDefs).locations } : {}),
+    ...(state.places ? { places: codePlaces(state.places, placeholderDefs, resolve) } : {}),
   };
 }
 
@@ -288,7 +310,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       clock: state.clock, ...(read.stats.turn ? { turn: read.stats.turn } : {}), enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
       ...(owner && { owner }), dictionaries: read.dictionaries, ...(unit.prompts && { prompts: unit.prompts }),
-      ...(read.places && { places: read.places }), ...(read.discovered && { discovered: read.discovered }),
+      ...(read.places && { places: read.places }),
       ...(unit.timing === 'output' && unit.narration !== undefined && {
         narration: typeof unit.narration === 'string' ? sampleNarration(unit.narration) : unit.narration,
       }),

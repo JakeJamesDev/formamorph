@@ -17,6 +17,8 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   stats: scripts('stats'),
   owner: scripts('owner'),
   clock: scripts('the-story-clock'),
+  // The Location section covers both until the Guide gains its own Locations heading.
+  locations: scripts('location'),
   location: scripts('location'),
   discover: scripts('discover'),
   memory: scripts('memory'),

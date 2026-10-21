@@ -1,9 +1,10 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, EntityStatValues, OwnedTraitStates, Placeholder, PlayerStat, Script, Trait,
+  CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, OwnedTraitStates, Placeholder,
+  PlayerStat, Script, Trait,
 } from '@/types';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
-  type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax, type SandboxPlace, type SandboxPlaces, type WorldWrites,
+  type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
 import { statCodeNamed } from './statCodeNames';
@@ -40,6 +41,15 @@ export interface StatCodeTraitResult {
   logTraits?: (string | null)[];
 }
 
+/** The world's locations as authored, and where the turn stands. */
+export interface StatePlaces {
+  locations: readonly Pick<GameLocation, 'id' | 'name' | 'aiDescription' | 'aiSummary' | 'isStarting'>[];
+  location: SandboxPlace | null;
+}
+
+/** Authored text as the AI reads it: chips resolved, an entity's own against that entity. */
+export type ResolveText = (text: string, owner: Entity | null) => string;
+
 /** The world a script runs against, as the turn found it: everything but what this turn alone brings. */
 export interface SandboxState {
   /** Every global stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are
@@ -57,10 +67,14 @@ export interface SandboxState {
   ownerTraits: StatCodeOwners;
   /** What `placeholders`, each owner entry's `placeholders` and `dictionaries` read. Absent, all are empty. */
   placeholders?: StatCodePlaceholderSet;
-  /** The world's locations, authored names and all, and where the turn stands. Absent, code names none. */
-  places?: SandboxPlaces;
-  /** The entities play discovered, which `diary` can name. Absent ⇒ none. */
-  discovered?: readonly SandboxPlace[];
+  /** The world's locations, authored names and text and all, and where the turn stands. Absent, code names none. */
+  places?: StatePlaces;
+  /** Where each entity with a runtime position stands, by entity id. Absent ⇒ none has one. */
+  positions?: Readonly<EntityPositions>;
+  /** The ids of the entities following the player. Absent ⇒ none. */
+  followers?: readonly string[];
+  /** Absent, text reads as authored. */
+  resolveText?: ResolveText;
   /** The story clock: the hours this turn consumed, the hours elapsed, and the calendar. */
   clock: StatClock;
 }

@@ -468,10 +468,12 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('entities.Ash.traits.Loyal switched on'));
     // Turn one's cast entries, built by the opening fold as play builds them (Q3).
     const unheld = { enabled: false, acquired: false, available: true, group: '', mode: 'optional', playerToggle: false };
+    // No authored text and no location, so each entity reads blank text and stands nowhere.
+    const unplaced = { description: '', summary: '', aliases: [], locationIds: [] };
     expect(executeStatCode.mock.calls[0][3].entities).toEqual([
-      { id: 'e1', name: 'Mira', type: '', pronouns: '', inScene: false, traits: [{ id: 't4', name: 'Scarred', ...unheld }] },
+      { id: 'e1', name: 'Mira', type: '', pronouns: '', inScene: false, ...unplaced, traits: [{ id: 't4', name: 'Scarred', ...unheld }] },
       {
-        id: 'e2', name: 'Ash', type: '', pronouns: '', inScene: false, traits: [{ id: 't5', name: 'Loyal', ...unheld }],
+        id: 'e2', name: 'Ash', type: '', pronouns: '', inScene: false, ...unplaced, traits: [{ id: 't5', name: 'Loyal', ...unheld }],
         stats: { stats: [{ ...ashStock, starting: 4, ...BASES }], enabled: { a1: false } },
       },
     ]);

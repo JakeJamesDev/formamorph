@@ -17,6 +17,7 @@ const brave = trait('brave', 'Brave');
 const calm = trait('calm', 'Calm');
 const grim = trait('grim', 'Grim');
 const bram: Entity = { id: 'bram', name: 'Bram', traits: [grim] };
+const sela: Entity = { id: 'sela', name: 'Sela' };
 const persona: PersonaRef = { source: 'none' };
 const clock = { deltaHours: 2, elapsedHours: 7 };
 
@@ -25,11 +26,10 @@ const state: SandboxState = {
   stats: [hp], enabled: { hp: true }, clock,
   owners: [{ id: 'bram', stats: [grit], enabled: { grit: false } }],
   ownerTraits: {
-    acquired: [brave], disabledTraitIds: [], appliedValues: {}, ownedTraits: { bram: { chosen: ['grim'] } }, entities: [bram], library: [],
+    acquired: [brave], disabledTraitIds: [], appliedValues: {}, ownedTraits: { bram: { chosen: ['grim'] } }, entities: [bram], library: [], discovered: [sela],
     world: { traits: [brave, calm], groups: [], entities: [bram], persona, ...inPlayOwners({ traits: [brave, calm], traitGroups: [], entities: [bram] }, persona, []) },
   },
   places: { locations: [{ id: 'dock', name: 'Dock' }], location: { id: 'dock', name: 'Dock' } },
-  discovered: [{ id: 'sela', name: 'Sela' }],
 };
 const turn = {
   global: { hp: { delta: { regen: { value: 1 } } } },
@@ -49,7 +49,7 @@ const HOMES: Record<string, UnitHome> = {
 };
 
 const bramEntry = {
-  id: 'bram', name: 'Bram', inScene: false,
+  id: 'bram', name: 'Bram', inScene: false, description: '', summary: '', aliases: [], locationIds: [],
   traits: [expect.objectContaining({ id: 'grim', name: 'Grim', enabled: true, acquired: true })],
   stats: { stats: [expect.objectContaining({ id: 'grit', value: 3 })], turn: turn.owners.bram, enabled: { grit: false } },
 };
@@ -84,11 +84,12 @@ describe('the options a snapshot assembles', () => {
       expect(options.clock).toBe(clock);
       expect(options.enabled).toEqual({ hp: true });
       expect(options.turn).toEqual(turn.global);
-      expect(options.entities).toEqual([expect.objectContaining(bramEntry)]);
+      expect(options.entities).toEqual([expect.objectContaining(bramEntry), expect.objectContaining({ id: 'sela', name: 'Sela', traits: [] })]);
       expect(options.persona).toEqual(expect.objectContaining({ id: '', name: '' }));
       expect(options.traits?.map((t) => [t.name, t.enabled])).toEqual([['Brave', true], ['Calm', false]]);
-      expect(options.places).toEqual(state.places);
-      expect(options.discovered).toEqual([{ id: 'sela', name: 'Sela' }]);
+      expect(options.places).toEqual({
+        locations: [{ id: 'dock', name: 'Dock', description: '', summary: '', starting: false }], location: { id: 'dock', name: 'Dock' },
+      });
       expect(options.args).toEqual(name === 'World Tool' ? { n: 1 } : undefined);
       expect(options.narration).toEqual(timing === 'output' ? narration : undefined);
       expect(options.switchedTrait).toEqual(timing === 'switch'

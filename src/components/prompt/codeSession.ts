@@ -272,6 +272,8 @@ export interface CodeSession {
   /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
   setTraits: (traits: readonly string[] | undefined) => void;
   setEntities: (entities: readonly CodeEntityNames[] | undefined) => void;
+  /** The world's location code names, for completions after `locations`. */
+  setLocations: (locations: readonly string[] | undefined) => void;
   /** Move the caret to the start of the code on `line` (from 1), center it, and focus the editor. */
   revealLine: (line: number) => void;
   focus: () => void;
@@ -300,6 +302,8 @@ export interface CodeSessionOptions {
   traits?: readonly string[];
   /** The world's entities and their trait names. Absent, entity and persona trait names are neither offered nor checked. */
   entities?: readonly CodeEntityNames[];
+  /** The world's location code names. Absent, location names are not offered. */
+  locations?: readonly string[];
   /** The box's world lookup, read when a card opens. Absent, cards show no World Details. */
   lookup?: () => CodeWorldLookup | undefined;
   /** Where a card's Open and Find All Uses go, read when a card opens. Absent, cards show neither. */
@@ -347,10 +351,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
   let entities: readonly CodeEntityNames[] | undefined = options.entities;
+  let locations: readonly string[] | undefined = options.locations;
 
   /** What the analysis reads the code against, as it stands now. */
   const analysisOptions = (): SurfaceAnalysisOptions => ({
-    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities, lookup: options.lookup?.(),
+    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities, locations, lookup: options.lookup?.(),
   });
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
@@ -565,6 +570,9 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       if (next === entities) return;
       entities = next;
       relint();
+    },
+    setLocations(next) {
+      locations = next;
     },
     setSurface(next) {
       if (next === surface) return;

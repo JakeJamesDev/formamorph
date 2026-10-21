@@ -467,6 +467,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
           statNames={'statNames' in worldAnalysis ? worldAnalysis.statNames : undefined}
           placeholders={'placeholders' in worldAnalysis ? worldAnalysis.placeholders : undefined}
           entities={'entities' in worldAnalysis ? worldAnalysis.entities : undefined}
+          locations={'locations' in worldAnalysis ? worldAnalysis.locations : undefined}
           traits={worldCode?.names.traitPlaces}
           owner={null}
           lookup={'lookup' in worldAnalysis ? worldAnalysis.lookup : undefined}

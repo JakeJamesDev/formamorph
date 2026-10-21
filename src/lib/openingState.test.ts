@@ -67,8 +67,8 @@ describe('openingStateOf', () => {
     expect(state.clock).toEqual({ deltaHours: 0, elapsedHours: 0 });
     expect(state.placeholders).toMatchObject({ rolls: {} });
     expect(state.placeholders?.pins).toBeUndefined();
-    expect(state.places).toEqual({ locations: [{ id: 'town', name: 'Town' }, { id: 'gate', name: 'Gate' }], location: { id: 'gate', name: 'Gate' } });
-    expect(state.discovered).toEqual([]);
+    expect(state.places).toEqual({ locations: world.locations, location: { id: 'gate', name: 'Gate' } });
+    expect(state.ownerTraits.discovered).toBeUndefined();
   });
 
   it('seeds and plays a library persona, and seeds the added library characters', () => {
