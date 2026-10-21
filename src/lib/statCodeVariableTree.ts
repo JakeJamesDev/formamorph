@@ -14,7 +14,7 @@ import {
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
-  STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
+  STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
@@ -321,8 +321,9 @@ function timingGroups(globals: TimingGlobals): VariableNode[] {
   ];
 }
 
-/** The Owner group's header. */
-const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat.';
+/** The Owner group's line is the `owner` card's line on the surface the menu serves. */
+const ownerInfo = (self: 'stat' | 'trait' | 'empty'): string | undefined =>
+  (self === 'trait' ? TRAIT_SCRIPT_SURFACE : STAT_CODE_SURFACE).globals.find((entry) => entry.name === 'owner')?.info;
 
 /**
  * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the
@@ -423,7 +424,7 @@ export function buildVariableTree(
       : [{ kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) }];
   const top: VariableNode[] = [
     ...selfGroup,
-    ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: OWNER_INFO, children: ownerChildren(owner) }] : []),
+    ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: ownerInfo(self), children: ownerChildren(owner) }] : []),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
     nameList('Traits', traitList, 'No traits in this world', globalInfo('traits')),
     nameList('Entities', entityRows, 'No entities in this world', globalInfo('entities')),

@@ -35,7 +35,7 @@ const USER_TOOL_GLOBAL: Readonly<Record<string, Partial<SurfaceEntry>>> = {
   clock: { detail: shapeOf(fieldsOnly(CLOCK_MEMBERS)), info: 'The story clock. In the World Editor and with no world open, it reads the opening.' },
   location: { detail: shapeOf(fieldsOnly(LOCATION_MEMBERS)), info: 'The location the turn is at, with the fields of a locations entry' },
   memories: {
-    info: 'The story’s memories as the Memory panel lists them, oldest first. Each has its id, turn, story time, day, daypart, text, Custom flag and pins, and whether it went to the AI. It’s empty in the World Editor and with no world open.',
+    info: 'The story’s memories as the Memory panel lists them, oldest first. Each entry has its id, turn, day, daypart, text, Custom flag and pins. It’s empty in the World Editor and with no world open.',
   },
   notes: { info: 'The player’s notes. It’s empty in the World Editor and with no world open.' },
 };
