@@ -90,6 +90,11 @@ describe('a user Tool script reads its Tool Snapshot on the script surface', () 
     const code = 'return [clock.elapsedHours, memories.length, memories[0].text, persona.name, notes.length > 0];';
     expect(await read(code, sampleToolSnapshot())).toEqual([58, 3, 'Wren sold Bell a lantern of salt glass at the Landing.', 'Traveler', true]);
   });
+
+  it('reads who the sample scene has in it', async () => {
+    const code = 'return Object.values(entities).filter((e) => e.inScene).map((e) => e.name);';
+    expect(await read(code, sampleToolSnapshot())).toEqual(['Wren', 'Traveler']);
+  });
 });
 
 describe('a world script reads the player’s notes', () => {

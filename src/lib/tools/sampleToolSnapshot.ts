@@ -23,7 +23,8 @@ function sampleHistory(): ChatMessage[] {
   ]);
 }
 
-/** The sample world as a game in progress (Q44): its persona, notes, clock and memories, as the sample scene has them. */
+/** The sample world as a game in progress (Q44): its persona, who is in the scene, notes, clock and memories, as the
+ *  sample scene has them. */
 function sampleScriptSource(scene: ChipScene, history: ChatMessage[]): ToolScriptSource {
   const persona = samplePersona();
   const opening = openingStateOf(sampleWorld(), NO_OPENING_PICKS, { ref: { source: 'library', entityId: persona.id }, libraryEntity: persona });
@@ -31,6 +32,7 @@ function sampleScriptSource(scene: ChipScene, history: ChatMessage[]): ToolScrip
   return {
     state: {
       ...opening, notes: scene.notes,
+      ownerTraits: { ...opening.ownerTraits, inSceneIds: scene.inSceneIds },
       clock: { deltaHours: 0, elapsedHours: scene.time?.elapsed ?? 0 },
       memories: scriptMemories(ledger, history),
     },

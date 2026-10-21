@@ -42,6 +42,25 @@ const USER_TOOL_GLOBAL: Readonly<Record<string, Partial<SurfaceEntry>>> = {
 
 const ARGS_INFO = 'The arguments the AI sent, checked against the parameters';
 
+/** The new form of each `world` and `scene` read, for the mark on one that load left as written (Q51). */
+const RETIRED_READS: CodeSurface['retired'] = {
+  world: {
+    entities: 'Use “entities”.',
+    locations: 'Use “locations”.',
+    dictionary: 'Use “dictionaries”.',
+  },
+  scene: {
+    location: 'Use “location”.',
+    time: 'Use “clock”.',
+    stats: 'Use “stats”.',
+    traits: 'Use “traits”.',
+    persona: 'Use “persona.name”.',
+    present: 'Use “location.present”.',
+    inScene: 'Use “inScene” on each “entities” entry.',
+    notes: 'Use “notes”.',
+  },
+};
+
 /** The surface of a script for a user Tool with `params`. */
 export function toolScriptSurface(params: readonly ToolParam[]): CodeSurface {
   const argEntries = namedParams(params).map(argEntry);
@@ -57,5 +76,6 @@ export function toolScriptSurface(params: readonly ToolParam[]): CodeSurface {
     missingReturn: 'This script never returns, so the Tool sends its empty result.',
     readOnly: true,
     guide: TOOL_GUIDE_LINKS,
+    retired: RETIRED_READS,
   };
 }

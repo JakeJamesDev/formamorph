@@ -76,8 +76,9 @@ describe('args', () => {
 
 describe('diagnostics read the surface', () => {
   it('marks the retired globals unknown', () => {
-    expect(messages('return world.entities;')).toEqual(['“world” isn’t available in a Tool script.']);
-    expect(messages('return scene.present;')).toEqual(['“scene” isn’t available in a Tool script.']);
+    expect(messages('return world.entities;')).toEqual(['“world.entities” isn’t available in a Tool script. Use “entities”.']);
+    expect(messages('return scene.present;')).toEqual(['“scene.present” isn’t available in a Tool script. Use “location.present”.']);
+    expect(messages('return world;')).toEqual(['“world” isn’t available in a Tool script.']);
   });
 
   it('accepts a script that reads the script surface and warns when it returns nothing', () => {

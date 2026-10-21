@@ -68,7 +68,7 @@ function diaryPass(code: string, context: ScriptTextContext): string {
   return declared || !edits.length ? code : spliced(code, edits);
 }
 
-const NO_CONTEXT: ScriptTextContext = { entityNames: new Map() };
+export const NO_CONTEXT: ScriptTextContext = { entityNames: new Map() };
 
 /** Rewrite the retired top-level `diary(who, line)` to the entity entry's `entities[who].diary(line)`. A literal that
  *  is an entity's id reads as that entity's name; a plain name literal reads dotted; anything else is bracketed. A
