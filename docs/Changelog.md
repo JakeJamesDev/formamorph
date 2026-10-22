@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.4.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Entity Avatars:**
+    - **The World Overview holds several Avatars, and each world entity picks one in its Avatar dropdown.** Upload a file or copy one from your library, then rename or delete it. A delete names the entities that use it.
+
 ---
 
 <details>

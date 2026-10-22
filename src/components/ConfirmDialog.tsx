@@ -12,6 +12,7 @@ import {
 } from "./ui/alert-dialog"
 import { buttonVariants } from "./ui/button"
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot"
+import type { SurfaceIdName } from "@/components/ui/surface"
 
 /**
  * Yes/no confirmation prompt wrapping the Radix `AlertDialog`. Works controlled (`open`/`onOpenChange`)
@@ -29,6 +30,7 @@ export function ConfirmDialog({
   onCloseAutoFocus,
   confirmLabel = "Confirm",
   destructive = false,
+  surface,
 }: {
   title?: ReactNode
   description?: ReactNode
@@ -44,6 +46,8 @@ export function ConfirmDialog({
   confirmLabel?: string
   /** Draws the confirm button in the destructive style, for a delete. */
   destructive?: boolean
+  /** The surface id this prompt reports while it is open. */
+  surface?: SurfaceIdName
 }) {
   const handleConfirm = () => {
     onConfirm?.()
@@ -60,7 +64,7 @@ export function ConfirmDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       {children && <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>}
-      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
+      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus} surface={surface}>
         <AlertDialogHeader>
           <AlertDialogTitle className={shown.icon ? "flex items-center gap-2" : undefined}>
             {shown.icon}{shown.title}

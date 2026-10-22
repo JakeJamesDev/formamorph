@@ -89,15 +89,17 @@ export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: 
 }
 
 /**
- * Body slider names available to bind in the world editor, one group per model: the world's own model
- * first (its embedded custom VRM, else the bundled default), then every other library model. Loading is
+ * Body slider names available to bind in the world editor, one group per model: the world's store Avatars
+ * first, then its embedded custom VRM (else the bundled default), then every other library model. Loading is
  * lazy — call `load()` when the picker opens — and cached, so the stat editor stays fast until then.
  *
  * Names are model-agnostic (a binding is the bare morph name); the grouping is display only.
  */
 export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolean; load: () => void } {
   // Off world, an owned stat's editor never opens this picker; the hook still runs.
-  const customUrl = useGameDataOptional()?.worldOverview?.customPlayerVRM?.data || undefined;
+  const overview = useGameDataOptional()?.worldOverview;
+  const customUrl = overview?.customPlayerVRM?.data || undefined;
+  const store = overview?.vrmStore;
   const [sources, setSources] = useState<MorphSource[]>([]);
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);
@@ -108,7 +110,13 @@ export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolea
     setLoading(true);
     (async () => {
       const built: MorphSource[] = [];
-      // The world's own model leads: a custom VRM if it has one.
+      // The world's store Avatars lead, one group each under its display name.
+      for (const vrm of Object.values(store ?? {})) {
+        if (!vrm.file.data) continue;
+        const morphs = await morphsForCustom(vrm.file.data);
+        if (morphs.length) built.push({ heading: vrm.name, morphs });
+      }
+      // Then the world's legacy custom VRM, if it has one.
       if (customUrl) {
         const morphs = await morphsForCustom(customUrl);
         if (morphs.length) built.push({ heading: "This World's Model", morphs });
@@ -127,13 +135,13 @@ export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolea
       setSources(built);
       setLoading(false);
     })();
-  }, [customUrl]);
+  }, [customUrl, store]);
 
-  // A changed custom VRM invalidates the loaded set; allow a reload on the next picker open.
+  // A changed custom VRM or store invalidates the loaded set; allow a reload on the next picker open.
   useEffect(() => {
     loadedRef.current = false;
     setSources([]);
-  }, [customUrl]);
+  }, [customUrl, store]);
 
   return { sources, loading, load };
 }

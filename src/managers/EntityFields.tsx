@@ -19,7 +19,11 @@ import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, type Pe
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
 import type { Entity, Placeholder } from '@/types';
+import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
 import { WorldInput } from '@/components/editor/WorldField';
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectOptions } from "@/components/SelectOptions";
+import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { fieldFrame } from '@/lib/historyField';
 
 /** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
@@ -317,6 +321,38 @@ export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => 
   );
 };
 
+export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars in the World Overview.';
+
+/** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
+export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
+  const { advanced } = useEditorMode();
+  const store = useGameDataOptional()?.worldOverview?.vrmStore;
+  if (!advanced) return null;
+  const none = vrmPickValue(undefined);
+  const options = [
+    { value: none, label: 'None' },
+    { value: vrmPickValue({ kind: 'default' }), label: "User's Default" },
+    ...Object.entries(store ?? {}).map(([id, vrm]) => ({ value: vrmPickValue({ kind: 'world', id }), label: vrm.name || 'Unnamed' })),
+  ];
+  const stored = vrmPickValue(value.vrmPick);
+  // A pick of an id the store lacks reads as None.
+  const selected = options.some((o) => o.value === stored) ? stored : none;
+  return (
+    <div className="space-y-2" {...fieldFrame('vrmPick')}>
+      <Label htmlFor={`entity-vrm-${value.id}`}>Avatar</Label>
+      <Hint>{ENTITY_VRM_HINT}</Hint>
+      <Select value={selected} onValueChange={(v) => onChange('vrmPick', vrmPickFromValue(v))}>
+        <SelectTrigger id={`entity-vrm-${value.id}`} className="w-64 max-w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectOptions options={options} />
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
+
 /**
  * The Profile tab of both entity editors: the picture and its tags in one grid with the identity fields and
  * the Persona mark, then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
@@ -342,5 +378,6 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
     </EntityImageWidget>
     {locations}
     <EntityModelField {...props} />
+    {home === 'world' && <EntityVrmPickField {...props} />}
   </>
 );

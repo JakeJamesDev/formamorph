@@ -408,6 +408,7 @@ function useProvideGameData() {
       // Same allowlist rule. The switch is spread only when it is actually a boolean: absent means on.
       ...(Array.isArray(overview.openings) ? { openings: overview.openings } : {}),
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
+      ...(overview.vrmStore ? { vrmStore: overview.vrmStore } : {}),
       ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {}),
       // Any and the player's default are the absent values.
       ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),

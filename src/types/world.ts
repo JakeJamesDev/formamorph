@@ -382,6 +382,8 @@ export interface Entity {
   imageTags?: string;
   sound?: MediaAsset;
   model?: MediaAsset;
+  /** The entity's Avatar. Absent = none. */
+  vrmPick?: VrmPick;
   /** Ids of the locations this entity belongs to. The entity is present at every one of them
    *  simultaneously. Read it through `lib/entityPresence`, which inverts it into per-location rosters. Under
    *  the Persona mark they are also where the player can start as it (see `lib/personaPick`). */
@@ -654,6 +656,15 @@ export interface WorldPromptOverrides {
   statUpdatesPromptEnabled?: boolean;
 }
 
+/** One Avatar in a world's store: its display name and the embedded file. */
+export interface WorldVrm {
+  name: string;
+  file: MediaAsset;
+}
+
+/** Which Avatar an entity shows: the player's default, or one from the world's store. Absent = none. */
+export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string };
+
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
 export interface WorldOverview {
   name: string;
@@ -666,6 +677,8 @@ export interface WorldOverview {
   tags: string[];
   /** v1.2.0: optional per-world custom player VRM model. */
   customPlayerVRM?: MediaAsset | null;
+  /** The world's Avatars, keyed by id. Entities refer to one through `Entity.vrmPick`. */
+  vrmStore?: Record<string, WorldVrm>;
   /** Optional markdown shown to the player on entering gameplay (per-world "Show Readme" toggle). */
   readme?: string;
   /** Optional markdown shown over the first enter-world setup screen, before any choice is made. Shares

@@ -3,11 +3,15 @@ import { CodeRenameDialog } from '@/components/editor/CodeRenameOffer';
 import { ReplaceAllConfirm } from '@/components/editor/EditorFindBar';
 import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
 import { ReplaceImageDialog } from '@/managers/ImageTagsField';
+import { DeleteVrmConfirm } from '@/managers/WorldVrmStoreSection';
 import type { CodeRenamePlan } from '@/lib/statCodeRename';
+import type { Entity } from '@/types';
 
 const swatch = (color: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="${color}"/></svg>`)}`;
 const IMAGES = [swatch('#7c9a6b'), swatch('#9a6b7c')];
+
+const AVATAR_USERS: Entity[] = [{ id: 'dev-wren', name: 'Wren' }, { id: 'dev-marsh', name: 'Marsh Warden' }];
 
 const PLAN: CodeRenamePlan = {
   root: 'stats',
@@ -32,6 +36,9 @@ export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
   if (modal === 'codeRename') return <CodeRenameDialog open plan={PLAN} onApply={close} onSettle={close} />;
   if (modal === 'savedElsewhere' || modal === 'deletedElsewhere') {
     return <ChangedElsewhereDialog change={modal === 'savedElsewhere' ? 'saved' : 'deleted'} onLeave={close} onKeepMine={close} />;
+  }
+  if (modal === 'deleteWorldAvatar') {
+    return <DeleteVrmConfirm open name="Fen Walker" users={AVATAR_USERS} onConfirm={close} onOpenChange={(open) => { if (!open) close(); }} />;
   }
   if (modal === 'replaceAll') {
     return (

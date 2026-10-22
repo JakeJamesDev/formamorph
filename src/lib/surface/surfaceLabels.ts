@@ -47,6 +47,7 @@ const ENTRIES: [string, string][] = [
   ['imageReplace', 'Replace Which Image'],
   ['codeRename', 'Update Code References'],
   ['replaceAll', 'Replace All'],
+  ['deleteWorldAvatar', 'Delete Avatar'],
   ['savedElsewhere', 'World Saved in Another Tab'],
   ['deletedElsewhere', 'World Deleted in Another Tab'],
   ['settings', 'Settings'],
