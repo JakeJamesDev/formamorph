@@ -824,7 +824,7 @@ export const MiddlePanel = ({
       <span className="text-meta text-muted-foreground">{commandChoices ? 'Choices preview (/choices test)' : 'Markdown preview (/markdown test)'}</span>
       <Tip tip="Dismiss preview">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </Button>
       </Tip>
     </div>

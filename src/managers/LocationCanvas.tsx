@@ -326,7 +326,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
         </Tip>
         <Tip tip="Close">
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </Tip>
       </div>

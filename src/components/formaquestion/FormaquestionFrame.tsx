@@ -88,7 +88,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
               sheet ? 'h-12 w-12' : 'h-8 w-8',
             )}
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </Tip>
       </div>

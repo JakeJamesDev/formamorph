@@ -141,7 +141,7 @@ export default function EntityPickCard({
         {entity && (
           <Tip tip="Close Entity">
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onPickingChange(null)}>
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </Tip>
         )}

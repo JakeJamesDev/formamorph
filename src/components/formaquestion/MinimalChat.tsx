@@ -65,7 +65,7 @@ export function Pill({ move, large, headToggle, menu, onClose, fade }: {
       <FormaquestionMenu {...menu} onOpenChange={fade?.onMenuOpenChange} large={large} round />
       <Tip tip={large ? 'Close' : 'Close (F1)'}>
         <button type="button" aria-label="Close Formaquestion" onClick={onClose} className={cn(PILL_BUTTON, large ? 'h-12 w-12' : 'h-8 w-8')}>
-          <X aria-hidden className="h-4 w-4" />
+          <X aria-hidden className="h-5 w-5" />
         </button>
       </Tip>
     </div>

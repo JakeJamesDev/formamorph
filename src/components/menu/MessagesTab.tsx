@@ -218,7 +218,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                   onClick={() => dismiss(message)}
                   aria-label={`Dismiss ${message.subject}`}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               )}
             </div>
