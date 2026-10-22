@@ -21,47 +21,39 @@ const stats = [
   statFixture('Luck', 10, { order: 2 }),
 ];
 
-/** The headings the panel draws, in document order. */
-const headings = () => screen.queryAllByRole('button', { expanded: true }).concat(screen.queryAllByRole('button', { expanded: false }))
-  .filter((b) => ['Body', 'Mind', 'Reflexes'].includes(b.textContent ?? ''))
-  .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
-  .map((b) => b.textContent);
+/** The group subheaders the panel draws, in document order. */
+const subheaders = () => screen.queryAllByText(/^(Body|Mind|Reflexes|Body › Reflexes)$/).map((el) => el.textContent);
 const statNames = () => screen.getAllByText(/^(Vigor|Grit|Calm|Luck)$/).map((el) => el.textContent);
+const card = (name: string) => screen.getByRole('button', { name });
 
 describe('RightPanel — stat groups', () => {
-  it('shows the global stats under collapsible group headings, nested as authored', () => {
+  it('shows the global stats under flat group subheaders, ungrouped first, each group before its subgroups', () => {
     renderRightPanel({}, { world: { statGroups }, stats });
-    expect(headings()).toEqual(['Body', 'Reflexes']);
-    expect(statNames()).toEqual(['Grit', 'Vigor', 'Luck']);
-    expect(screen.getByRole('button', { name: 'Body' })).toHaveAttribute('aria-expanded', 'true');
+    expect(subheaders()).toEqual(['Body', 'Body › Reflexes']);
+    expect(statNames()).toEqual(['Luck', 'Vigor', 'Grit']);
+    expect(screen.queryByRole('button', { name: 'Body' })).toBeNull();
   });
 
-  it('leaves out a group with no visible stat, and its heading with it', () => {
+  it('leaves out a group with no visible stat, and its subheader with it', () => {
     renderRightPanel({}, { world: { statGroups }, stats });
-    expect(screen.queryByRole('button', { name: 'Mind' })).toBeNull();
+    expect(screen.queryByText('Mind')).toBeNull();
     expect(screen.queryByText('Calm')).toBeNull();
   });
 
-  it('collapses a group to its heading and opens it again', () => {
+  it('folds the Global card to its header and opens it again', () => {
     renderRightPanel({}, { world: { statGroups }, stats });
-    fireEvent.click(screen.getByRole('button', { name: 'Body' }));
-    expect(screen.getByRole('button', { name: 'Body' })).toHaveAttribute('aria-expanded', 'false');
-    expect(statNames()).toEqual(['Luck']);
-    expect(screen.queryByRole('button', { name: 'Reflexes' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Body' }));
-    expect(statNames()).toEqual(['Grit', 'Vigor', 'Luck']);
+    expect(card('Global')).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(card('Global'));
+    expect(card('Global')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryAllByText(/^(Vigor|Grit|Luck)$/)).toHaveLength(0);
+    fireEvent.click(card('Global'));
+    expect(statNames()).toEqual(['Luck', 'Vigor', 'Grit']);
   });
 
-  it('collapses an inner group alone and leaves its parent open', () => {
-    renderRightPanel({}, { world: { statGroups }, stats });
-    fireEvent.click(screen.getByRole('button', { name: 'Reflexes' }));
-    expect(statNames()).toEqual(['Vigor', 'Luck']);
-  });
-
-  it('draws a world with no groups as the plain list it always was', () => {
+  it('draws a world with no groups as a plain list in the Global card', () => {
     renderRightPanel({}, { stats: [statFixture('Vigor', 50), statFixture('Luck', 10)] });
     expect(statNames()).toEqual(['Vigor', 'Luck']);
-    expect(screen.queryAllByRole('button', { expanded: true })).toHaveLength(0);
+    expect(subheaders()).toEqual([]);
   });
 
   it('follows the world\'s grouping when a save holds an older copy of the stat', () => {
@@ -70,8 +62,8 @@ describe('RightPanel — stat groups', () => {
       world: { statGroups }, stats,
       seed: (g: Gameplay) => g.setGlobalStats(frozen),
     });
-    expect(headings()).toEqual(['Body', 'Reflexes']);
-    expect(statNames()).toEqual(['Grit', 'Vigor', 'Luck']);
+    expect(subheaders()).toEqual(['Body', 'Body › Reflexes']);
+    expect(statNames()).toEqual(['Luck', 'Vigor', 'Grit']);
   });
 
   describe('an entity\'s stats', () => {
@@ -95,29 +87,30 @@ describe('RightPanel — stat groups', () => {
       seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(scene); g.setSelectedEntityId('bram'); },
     };
 
-    it('nests the picked entity\'s rows under its own groups, in the entity section', () => {
+    it('lays the picked entity\'s rows out under its own group subheaders, in the entity card', () => {
       renderRightPanel({}, stage);
       const section = screen.getByTestId('entity-stats');
-      expect(within(section).getByRole('button', { name: 'Bond' })).toHaveAttribute('aria-expanded', 'true');
-      expect(within(section).getAllByText(/^(Trust|Hunger)$/).map((el) => el.textContent)).toEqual(['Trust', 'Hunger']);
+      expect(within(section).getByText('Bond').parentElement).toHaveTextContent('Trust');
+      expect(within(section).getAllByText(/^(Trust|Hunger)$/).map((el) => el.textContent)).toEqual(['Hunger', 'Trust']);
     });
 
     it('leaves out an entity group whose stats are all hidden', () => {
       renderRightPanel({}, stage);
-      expect(screen.queryByRole('button', { name: 'Quiet' })).toBeNull();
+      expect(screen.queryByText('Quiet')).toBeNull();
     });
 
     it('keeps the entity\'s groups apart from the world\'s player groups', () => {
       renderRightPanel({}, { ...stage, world: { entities: [bram], statGroups } as never });
-      const section = screen.getByTestId('entity-stats');
-      expect(within(section).queryByRole('button', { name: 'Body' })).toBeNull();
+      expect(within(screen.getByTestId('entity-stats')).queryByText('Body')).toBeNull();
     });
 
-    it('collapses an entity group on its own, without touching the player\'s', () => {
+    it('folds the entity card on its own, without touching the Global card', () => {
       renderRightPanel({}, { ...stage, world: { entities: [bram], statGroups } as never, stats });
-      fireEvent.click(within(screen.getByTestId('entity-stats')).getByRole('button', { name: 'Bond' }));
-      expect(within(screen.getByTestId('entity-stats')).queryByText('Trust')).toBeNull();
-      expect(screen.getByRole('button', { name: 'Body' })).toHaveAttribute('aria-expanded', 'true');
+      const section = screen.getByTestId('entity-stats');
+      fireEvent.click(within(section).getByRole('button', { name: 'Bram' }));
+      expect(within(section).queryByText('Trust')).toBeNull();
+      expect(card('Global')).toHaveAttribute('aria-expanded', 'true');
+      expect(statNames()).toEqual(['Luck', 'Vigor', 'Grit']);
     });
   });
 });

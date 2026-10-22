@@ -24,6 +24,7 @@ import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 import { YouMark } from './YouMark';
+import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
 export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidden'>;
@@ -254,12 +255,12 @@ export const TraitsTab = ({
     blocks.map((block) => (
       <div key={block.key}>
         {block.subheader && (
-          <p className="mb-0.5 mt-1.5 flex items-center gap-1 pl-1 text-meta font-medium text-muted-foreground">
+          <PanelSubheader>
             {/* The glyph and the You pill sit on the node's own heading, not on every group below it. */}
             {block.entityNode && entityIcon}
             {/* One span, so the pill keeps its own gap from the name instead of adding the row's. */}
             <span>{block.subheader}{block.entityNode && isPlayer(block.entityId) && youMark}</span>
-          </p>
+          </PanelSubheader>
         )}
         {block.traits.map((trait) => row(trait, block, isOff(trait.id, ownerOf(block))))}
       </div>
@@ -296,54 +297,42 @@ export const TraitsTab = ({
             const disabledOpen = filtering || openDisabled.has(section.key);
             const played = isPlayer(section.entityId);
             return (
-              <div
+              <PanelOwnerCard
                 key={section.key}
                 role="group"
                 aria-label={section.name ?? 'Traits'}
-                className="rounded-lg bg-muted/40 p-1.5"
-              >
-                {section.name !== null && (
-                  <button
-                    type="button"
-                    onClick={() => flipSection(section.key)}
-                    // A filter holds every matching section open, so the header would otherwise flip a
-                    // state nothing on screen reflects — and spring it on the player when they clear it.
-                    disabled={filtering}
-                    aria-expanded={isOpen}
-                    aria-label={`${section.name}${played ? ', You' : ''}, ${view.enabledCount} enabled`}
-                    className="flex w-full items-center gap-2 rounded-md bg-primary/10 px-2 py-1 text-left text-primary"
-                  >
-                    {section.entityId && entityIcon}
-                    <span className="flex-1 font-semibold">{section.name}{played && youMark}</span>
-                    {view.enabledCount === 0 ? (
-                      <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground">0</Badge>
-                    ) : (
-                      <Badge>{view.enabledCount}</Badge>
-                    )}
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', !isOpen && '-rotate-90')} />
-                  </button>
+                name={section.name}
+                entity={!!section.entityId}
+                you={played}
+                badge={view.enabledCount === 0 ? (
+                  <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground">0</Badge>
+                ) : (
+                  <Badge>{view.enabledCount}</Badge>
                 )}
-                {isOpen && (
-                  <div className="pt-1">
-                    {rows(view.enabled)}
-                    {view.disabledCount > 0 && (
-                      <div className="mt-1 rounded border border-dashed border-border p-1">
-                        <button
-                          type="button"
-                          onClick={() => flipDisabled(section.key)}
-                          disabled={filtering}
-                          aria-expanded={disabledOpen}
-                          className="flex w-full items-center gap-1 text-label text-muted-foreground"
-                        >
-                          <ChevronDown className={cn('h-3 w-3 transition-transform', !disabledOpen && '-rotate-90')} />
-                          Disabled ({view.disabledCount})
-                        </button>
-                        {disabledOpen && <div className="pt-1">{rows(view.disabled)}</div>}
-                      </div>
-                    )}
+                open={isOpen}
+                onToggle={() => flipSection(section.key)}
+                // A filter holds every matching section open, so the header would otherwise flip a
+                // state nothing on screen reflects — and spring it on the player when they clear it.
+                disabled={filtering}
+                toggleLabel={`${section.name}${played ? ', You' : ''}, ${view.enabledCount} enabled`}
+              >
+                {rows(view.enabled)}
+                {view.disabledCount > 0 && (
+                  <div className="mt-1 rounded border border-dashed border-border p-1">
+                    <button
+                      type="button"
+                      onClick={() => flipDisabled(section.key)}
+                      disabled={filtering}
+                      aria-expanded={disabledOpen}
+                      className="flex w-full items-center gap-1 text-label text-muted-foreground"
+                    >
+                      <ChevronDown className={cn('h-3 w-3 transition-transform', !disabledOpen && '-rotate-90')} />
+                      Disabled ({view.disabledCount})
+                    </button>
+                    {disabledOpen && <div className="pt-1">{rows(view.disabled)}</div>}
                   </div>
                 )}
-              </div>
+              </PanelOwnerCard>
             );
           })}
           {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
