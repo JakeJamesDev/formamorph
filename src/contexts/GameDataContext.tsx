@@ -639,6 +639,7 @@ function useProvideGameData() {
       const writeBack = await planOwnedWriteBack({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
         traits: data.traits, traitGroups: data.traitGroups ?? [], stats: data.stats, statGroups: data.statGroups ?? [],
+        vrmStore: worldOverview.vrmStore,
       });
       const stamped = (stamps: LinkStamp[]) => (stamps.length
         ? { ...data, entities: stampLinks(data.entities, stamps), dictionaries: stampLinks(data.dictionaries, stamps) }

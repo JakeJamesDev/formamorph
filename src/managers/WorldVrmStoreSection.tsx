@@ -14,6 +14,8 @@ import { blobToDataUrl } from '@/lib/imageSource';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { fieldFrame } from '@/lib/historyField';
 import { addWorldVrm, deleteWorldVrm, entitiesUsingWorldVrm, renameWorldVrm, vrmDisplayName } from '@/lib/worldVrmStore';
+import { blobHash } from '@/lib/blobHash';
+import { libraryFileName } from '@/lib/libraryVrm';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, ModelMetadata } from '@/types';
 
@@ -75,9 +77,6 @@ const VrmRow = ({ id, name, onRename, onDelete }: {
   );
 };
 
-/** A library model's file name: its display name, with the extension its format calls for. */
-const libraryFileName = (model: ModelMetadata) => `${model.name}.${model.license?.metaVersion === null ? 'glb' : 'vrm'}`;
-
 /** The world's Avatar store: add by upload or library copy, rename, delete. Advanced only, in the World Overview. */
 export const WorldVrmStoreSection = () => {
   const { worldOverview, updateWorldOverview, entities, setEntities } = useGameData();
@@ -97,8 +96,8 @@ export const WorldVrmStoreSection = () => {
       .catch(() => { /* An unreadable library offers no copies; upload still works. */ });
   }, [mounted]);
 
-  const add = (name: string, file: MediaAsset) => {
-    const next = addWorldVrm(storeRef.current, name, file).store;
+  const add = (name: string, file: MediaAsset, hash: string) => {
+    const next = addWorldVrm(storeRef.current, name, file, hash).store;
     storeRef.current = next;
     updateWorldOverview({ vrmStore: next });
   };
@@ -107,11 +106,11 @@ export const WorldVrmStoreSection = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    blobToDataUrl(file)
-      .then((data) => {
+    Promise.all([blobToDataUrl(file), blobHash(file)])
+      .then(([data, hash]) => {
         if (!mounted.current) return;
         // Browsers report an empty MIME for .vrm, so the filename is the format hint.
-        add(vrmDisplayName(file.name), { data, type: file.type || 'model/vrm', name: file.name, size: file.size });
+        add(vrmDisplayName(file.name), { data, type: file.type || 'model/vrm', name: file.name, size: file.size }, hash);
       })
       .catch((error: unknown) => toastError(error, { headline: 'Error reading file. Please try again.' }));
   };
@@ -120,10 +119,10 @@ export const WorldVrmStoreSection = () => {
     const model = library.find((m) => m.id === modelId);
     if (!model) return;
     try {
-      const { blob, type } = await ModelStorageService.getModelData(modelId);
-      const data = await blobToDataUrl(blob);
+      const { blob, type, hash } = await ModelStorageService.getModelData(modelId);
+      const [data, fileHash] = await Promise.all([blobToDataUrl(blob), hash ?? blobHash(blob)]);
       if (!mounted.current) return;
-      add(model.name, { data, type: type || 'model/vrm', name: libraryFileName(model), size: blob.size });
+      add(model.name, { data, type: type || 'model/vrm', name: libraryFileName(model.name, model.license), size: blob.size }, fileHash);
     } catch (error) {
       toastError(error, { headline: 'Error copying the Avatar. Please try again.' });
     }

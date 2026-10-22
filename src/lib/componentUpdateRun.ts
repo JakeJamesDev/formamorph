@@ -13,7 +13,11 @@ import { contentLinkState } from '@/lib/contentLink';
 import type { LibraryKind } from '@/lib/librarySources';
 import WorldStorageService from '@/services/WorldStorageService';
 import { traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
-import type { ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { loadLibraryVrms, storeHashes } from '@/lib/libraryVrm';
+import { libraryPickIds, placeLibraryPicks, type LibraryVrm } from '@/lib/vrmPickMatch';
+import type {
+  ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview, WorldVrmStore,
+} from '@/types';
 
 /**
  * A world whose content is held in memory rather than in storage.
@@ -37,6 +41,10 @@ export interface LiveWorld {
   statGroups?: StatGroup[];
   /** The world's placeholder folders, which name the blueprints an updated entity's copies bind to. */
   placeholderGroups?: PlaceholderGroup[];
+  /** The world's Avatar store as it stands now, after any write earlier in the same review. An updated
+   *  entity's library Avatar is embedded in it. */
+  getVrmStore?: () => WorldVrmStore | undefined;
+  setVrmStore?: (store: WorldVrmStore | undefined) => void;
   writeItem: (item: LinkableContent) => void;
   addPlaceholder: (placeholder: Placeholder) => void;
 }
@@ -115,6 +123,15 @@ function revisedCopy(
   return applyLibraryUpdate(copy, sourceData, source, worldShared, traitWorld);
 }
 
+/** The copy with a library Avatar pick placed in `store`. Anything else comes back as it is, store included. */
+function placeInStore(
+  item: LinkableContent, store: WorldVrmStore | undefined, hashes: ReadonlyMap<string, string>, vrms: ReadonlyMap<string, LibraryVrm>,
+): { item: LinkableContent; store: WorldVrmStore | undefined } {
+  if ('entries' in item || item.vrmPick?.kind !== 'library') return { item, store };
+  const placed = placeLibraryPicks([item], store, hashes, vrms);
+  return { item: placed.entities[0], store: placed.store };
+}
+
 /**
  * Apply one row's action to the world it names.
  *
@@ -129,15 +146,27 @@ export async function applyUpdate(
   live?: LiveWorld[],
 ): Promise<void> {
   const world = liveWorldFor(live, row);
+  // An update brings the source's library Avatar, which the world embeds in its own store.
+  const vrms = action === 'update' && sourceData && !('entries' in sourceData)
+    ? await loadLibraryVrms(libraryPickIds([sourceData]))
+    : new Map<string, LibraryVrm>();
   if (world) {
     const copy = liveCopyFor(world, row);
     if (!copy) throw new Error(`"${row.itemName}" is no longer in ${row.worldName}.`);
     const revised = revisedCopy(copy, action, source, sourceData, world.placeholders, traitWorldOf(world));
-    world.writeItem(revised.item);
+    const hashes = vrms.size ? await storeHashes(world.getVrmStore?.()) : new Map<string, string>();
+    const store = world.getVrmStore?.();
+    const placed = placeInStore(revised.item, store, hashes, vrms);
+    world.writeItem(placed.item);
+    if (placed.store !== store) world.setVrmStore?.(placed.store);
     revised.toAdd.forEach(world.addPlaceholder);
     return;
   }
 
+  const stored = vrms.size
+    ? (await WorldStorageService.getWorldData(row.worldId) as { worldOverview?: WorldOverview }).worldOverview?.vrmStore
+    : undefined;
+  const hashes = await storeHashes(stored);
   await WorldStorageService.updateWorldContent(row.worldId, (data) => {
     const listKey = row.kind === 'dictionary' ? 'dictionaries' : 'entities';
     const list = (data[listKey] ?? []) as LinkableContent[];
@@ -145,12 +174,15 @@ export async function applyUpdate(
     if (index < 0) throw new Error(`"${row.itemName}" is no longer in ${row.worldName}.`);
     const shared = (data.placeholders ?? []) as Placeholder[];
     const revised = revisedCopy(list[index], action, source, sourceData, shared, traitWorldOf(data as Parameters<typeof traitWorldOf>[0]));
+    const overview = data.worldOverview as WorldOverview | undefined;
+    const placed = placeInStore(revised.item, overview?.vrmStore, hashes, vrms);
     const next = [...list];
-    next[index] = revised.item;
+    next[index] = placed.item;
     return {
       ...data,
       [listKey]: next,
       ...(revised.toAdd.length ? { placeholders: [...shared, ...revised.toAdd] } : {}),
+      ...(overview && placed.store !== overview.vrmStore ? { worldOverview: { ...overview, vrmStore: placed.store } } : {}),
     };
   });
 }

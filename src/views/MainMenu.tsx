@@ -10,7 +10,7 @@ import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
-import { findSavesUsingModel } from '@/lib/modelUsage';
+import { clearLibraryModelPicks, deleteModelDescription, findModelUsage, type ModelUsage } from '@/lib/libraryVrmDelete';
 import { DEFAULT_AVATAR_URL, clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
@@ -196,15 +196,6 @@ const IMPORT_TARGET: Record<MainMenuCardTab, TargetAttribute> = {
   entities: targetAttribute('mainMenu.entities', 'import-entity'),
   dictionaries: targetAttribute('mainMenu.dictionaries', 'import-dictionary'),
   models: targetAttribute('mainMenu.models', 'import-avatar'),
-};
-
-/** Name the affected saves in a prompt, capping the list so a big library doesn't produce a wall of text. */
-const listSaves = (names: string[]): string => {
-  const shown = names.slice(0, 3).map((name) => `"${name}"`);
-  const rest = names.length - shown.length;
-  if (rest > 0) return `${shown.join(', ')} and ${rest} more`;
-  if (shown.length === 1) return shown[0];
-  return `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
 };
 
 
@@ -572,8 +563,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [modelToDelete, setModelToDelete] = useState<string | null>(null);
   const [previewModelId, setPreviewModelId] = useState<string | null>(null);
-  // Saves whose character wears the model queued for deletion; null while the scan is still running.
-  const [modelUsage, setModelUsage] = useState<string[] | null>(null);
+  // The saves and library entities that use the model queued for deletion; null while the scan runs.
+  const [modelUsage, setModelUsage] = useState<ModelUsage | null>(null);
   const [editingEntityId, setEditingEntityId] = useState<string | null>(null);
   // A blank character being authored but not yet saved (New Entity → editor, persisted only on Save).
   const [draftEntity, setDraftEntity] = useState<Entity | null>(null);
@@ -922,7 +913,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   useEffect(() => {
     if (!modelToDelete) { setModelUsage(null); return; }
     let cancelled = false;
-    findSavesUsingModel(modelToDelete).then((names) => { if (!cancelled) setModelUsage(names); });
+    findModelUsage(modelToDelete).then((usage) => { if (!cancelled) setModelUsage(usage); });
     return () => { cancelled = true; };
   }, [modelToDelete]);
 
@@ -2762,17 +2753,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         open={!!modelToDelete}
         onOpenChange={(open) => !open && setModelToDelete(null)}
         title="Delete Player Avatar"
-        description={
-          modelUsage === null
-            ? 'Checking which saves use this player avatar…'
-            : modelUsage.length === 0
-              ? 'Are you sure you want to delete this player avatar? This action cannot be undone.'
-              : `${modelUsage.length === 1 ? 'One save uses' : `${modelUsage.length} saves use`} this player avatar — ${listSaves(modelUsage)}. ${modelUsage.length === 1 ? 'It' : 'They'} will fall back to the default avatar. This action cannot be undone.`
-        }
+        description={deleteModelDescription(modelUsage)}
         onConfirm={async () => {
           try {
             await ModelStorageService.deleteModel(modelToDelete!);
             setModels(prev => prev.filter(m => m.id !== modelToDelete));
+            await clearLibraryModelPicks(modelToDelete!)
+              .catch((error: unknown) => toastError(error, 'Could not clear the Avatar from your library entities.'));
           } catch (error) {
             // The library refuses to drop its last avatar; tell the player why rather than failing silently.
             toastError(error, 'Could not delete that player avatar.');

@@ -36,7 +36,15 @@ import { adoptOwnedTraits } from '@/lib/portableTraits';
 import { blueprintChipsRemovedNotice, dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
 import { blueprintIds } from '@/lib/placeholderBlueprints';
 import { bindCarriedBlueprints, blueprintBindWorld } from '@/lib/blueprintTravel';
-import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { embedLibraryPicks, loadLibraryVrms, loadVrmLookup, storeHashes } from '@/lib/libraryVrm';
+import { libraryPickIds, placeLibraryPicks, type LibraryVrm } from '@/lib/vrmPickMatch';
+import type {
+  Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldVrmStore,
+} from '@/types';
+
+const NO_VRMS: ReadonlyMap<string, LibraryVrm> = new Map();
+const NO_HASHES: ReadonlyMap<string, string> = new Map();
 
 const HELP_TOPIC = 'library.linkedContent';
 
@@ -83,6 +91,9 @@ interface LibraryLinkingOptions {
   addBookToWorld: (book: Dictionary) => void;
   addPlaceholder: (placeholder: Placeholder) => void;
   addLocation: (location: GameLocation) => void;
+  /** The world's Avatar store, which copies' Avatar picks name and library Avatars are embedded in. */
+  vrmStore: WorldVrmStore | undefined;
+  setVrmStore: (store: WorldVrmStore | undefined) => void;
   /** Tell the world which library items the author owns, so an edit to a copy of one stays Linked. */
   setOwnedLibraryIds: (ids: Iterable<string>) => void;
   /** Reopen the library picker on the picks the author already made, for Back out of the connection step. */
@@ -97,6 +108,13 @@ interface PendingAdd {
   kind: LibraryKind;
   item: LinkableContent;
   source?: LibrarySource;
+  /** The library Avatars the item picks, read for embedding, and the store's hashes they match against. */
+  vrms?: VrmPlacement;
+}
+
+interface VrmPlacement {
+  vrms: ReadonlyMap<string, LibraryVrm>;
+  hashes: ReadonlyMap<string, string>;
 }
 
 /** The connection step in flight: adding new content, or repairing a copy the world already holds. */
@@ -140,6 +158,19 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   const latest = useRef(options);
   useEffect(() => { latest.current = options; });
+  const mounted = useMountedRef();
+
+  // The store as the last write left it: a review or an add writes it several times before the world re-renders.
+  const liveStore = useRef(options.vrmStore);
+  const renderedStore = useRef(options.vrmStore);
+  if (renderedStore.current !== options.vrmStore) {
+    renderedStore.current = options.vrmStore;
+    liveStore.current = options.vrmStore;
+  }
+  const setVrmStore = useCallback((store: WorldVrmStore | undefined) => {
+    liveStore.current = store;
+    latest.current.setVrmStore(store);
+  }, []);
 
   // The editor's own world, so an update review reads and writes its copy in memory rather than reaching
   // for what the last world save left in storage.
@@ -154,6 +185,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     traitGroups: options.traitGroups,
     stats: options.stats,
     statGroups: options.statGroups,
+    getVrmStore: () => liveStore.current,
+    setVrmStore,
     writeItem: (item) => (kindOf(item) === 'dictionary'
       ? updateDictionary(item as Dictionary)
       : updateEntity(item as Entity)),
@@ -190,7 +223,19 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       stats: current.stats, statGroups: current.statGroups,
     }, sources);
     if (!next.updated && !next.unlinked) return;
-    if (next.entities !== current.entities) current.setEntities(next.entities);
+    // An updated copy brings its item's library Avatar, which the world embeds in its own store.
+    let entities = next.entities;
+    if (libraryPickIds(entities).length) {
+      const store = liveStore.current;
+      const embedded = await embedLibraryPicks(entities, store).catch((error: unknown) => {
+        toastError(error, 'Could not read your Avatar library.');
+        return null;
+      });
+      if (!embedded || !mounted.current) return;
+      if (embedded.store !== store) setVrmStore(embedded.store);
+      entities = embedded.entities;
+    }
+    if (entities !== current.entities) current.setEntities(entities);
     if (next.dictionaries !== current.dictionaries) current.setDictionaries(next.dictionaries);
     // A reference the source has newly introduced arrives as a placeholder of its own; Save Connections is
     // where the author points it at one they already have.
@@ -210,7 +255,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         ? `Formamorph unlinked “${name}” because its library item is gone.`
         : `Formamorph unlinked ${fresh.length} copies whose library items are gone.`);
     }
-  }, []);
+  }, [mounted, setVrmStore]);
 
   // Which library items this world follows, as a value an effect can watch. Keyed on the set rather than
   // run once on mount: the world may still be loading when the editor mounts, and a copy linked later
@@ -245,7 +290,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   const saveToLibrary = useCallback(async (item: LinkableContent) => {
     try {
       const { traits, traitGroups, entities, stats, statGroups } = latest.current;
-      const source = await saveCopyToLibrary(item, placeholders, locations, undefined, { traits, traitGroups, entities, stats, statGroups });
+      const source = await saveCopyToLibrary(item, placeholders, locations, undefined, { traits, traitGroups, entities, stats, statGroups }, liveStore.current);
       applyLink(item, source, false);
       toast.success(`“${source.name}” saved to your library.`);
     } catch (error) {
@@ -278,6 +323,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const blueprints = blueprintIds(blueprintWorld);
     const bindWorld = blueprintBindWorld(blueprintWorld);
     let dropped = 0;
+    const storeBefore = liveStore.current;
+    let vrmStore = storeBefore;
     for (const entry of pending) {
       const shared = [...current.worldPlaceholders, ...gained];
       if (entry.kind === 'dictionary') {
@@ -287,7 +334,10 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         dropped += kept.dropped;
         current.addBookToWorld(withConnections(kept.book, adopted.connections));
       } else {
-        const bound = bindCarriedBlueprints(entry.item as Entity, bindWorld);
+        // A library Avatar is embedded in the world store once, and the pick names the store entry.
+        const picked = placeLibraryPicks([entry.item as Entity], vrmStore, entry.vrms?.hashes ?? NO_HASHES, entry.vrms?.vrms ?? NO_VRMS);
+        vrmStore = picked.store;
+        const bound = bindCarriedBlueprints(picked.entities[0], bindWorld);
         const adopted = adoptEntityPlaceholders(bound.entity, shared, plan.placeholders);
         gained.push(...adopted.toAdd);
         const kept = dropEntityBlueprintChips(adopted.entity, blueprints);
@@ -307,14 +357,27 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       if (entry.source) notePendingLink(entry.source.id);
     }
     gained.forEach(current.addPlaceholder);
+    if (vrmStore !== storeBefore) setVrmStore(vrmStore);
     if (dropped) toast.info(blueprintChipsRemovedNotice(dropped, 'import'));
-  }, [notePendingLink]);
+  }, [notePendingLink, setVrmStore]);
 
   /**
    * Start adding copies. Content whose references this world already answers goes straight in; anything
    * else waits on the connection step, which is where the author says what each reference means here.
    */
-  const beginAdd = useCallback((pending: PendingAdd[]) => {
+  const beginAdd = useCallback(async (arriving: PendingAdd[]) => {
+    const ids = libraryPickIds(arriving.flatMap((entry) => (entry.kind === 'entity' ? [entry.item as Entity] : [])));
+    let pending = arriving;
+    if (ids.length) {
+      try {
+        const [vrms, hashes] = await Promise.all([loadLibraryVrms(ids), storeHashes(liveStore.current)]);
+        if (!mounted.current) return;
+        pending = arriving.map((entry) => ({ ...entry, vrms: { vrms, hashes } }));
+      } catch (error) {
+        toastError(error, 'Could not read your Avatar library.');
+        return;
+      }
+    }
     const current = latest.current;
     const world = { placeholders: current.worldPlaceholders, locations: current.locations };
     // Keyed by the source's own id, so two copies from one world share a row and land on one answer.
@@ -331,7 +394,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       ...Object.fromEntries(rows.flatMap((row) => (prev[row.key] ? [[row.key, prev[row.key]]] : []))),
     }));
     setConnect({ rows, pending });
-  }, [commitAdds]);
+  }, [commitAdds, mounted]);
 
   /** Reconnect a copy the world already holds, after the Placeholder it pointed at went away. */
   const repairConnections = useCallback(async (copy: LinkableContent) => {
@@ -403,12 +466,14 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   }, [updateDictionary, updateEntity]);
 
   /** Reconnect an independent copy. Nothing is overwritten: content that differs links as a replacement. */
-  const linkToPicked = useCallback((pick: LibraryPick) => {
+  const linkToPicked = useCallback(async (pick: LibraryPick) => {
     const item = linkPickerFor;
     setLinkPickerFor(null);
     if (!item) return;
-    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld));
-  }, [applyLink, linkPickerFor, traitWorld]);
+    const vrm = await loadVrmLookup(liveStore.current);
+    if (!mounted.current) return;
+    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld, vrm));
+  }, [applyLink, linkPickerFor, mounted, traitWorld]);
 
   /**
    * Everything the selected item's split button needs, for the state that item is in.

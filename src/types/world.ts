@@ -660,7 +660,13 @@ export interface WorldPromptOverrides {
 export interface WorldVrm {
   name: string;
   file: MediaAsset;
+  /** The file's content hash, which matches it to a library Avatar. Absent on entries added before it; read
+   *  through `lib/libraryVrm`, which computes it. */
+  hash?: string;
 }
+
+/** A world's Avatars, keyed by id. */
+export type WorldVrmStore = Record<string, WorldVrm>;
 
 /** Which Avatar an entity shows: the player's default, one from the world's store, or one from the player's
  *  Avatar library (library entities). Absent = none. */
@@ -933,6 +939,8 @@ export interface EntityMetadata extends CommunityLink {
   tags?: string[];
   /** The entity carries the Persona mark, so the tab's Personas filter shows it. */
   persona?: boolean;
+  /** The library Avatar the entity picks, so a library delete can name its users. */
+  vrmLibraryId?: string;
   /** Imported attribution and tags kept outside world content. */
   libraryDetails?: LibraryDetails;
 }

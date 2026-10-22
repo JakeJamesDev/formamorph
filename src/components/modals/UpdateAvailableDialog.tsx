@@ -18,8 +18,10 @@ import {
 import { applyUpdate, liveCopyFor, liveWorldFor, type LiveWorld } from '@/lib/componentUpdateRun';
 import { CONTENT_LINK_LABELS } from '@/lib/contentLink';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
+import { loadVrmLookup } from '@/lib/libraryVrm';
+import { useMountedRef } from '@/lib/useMountedRef';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { Dictionary, Entity } from '@/types';
+import type { Dictionary, Entity, WorldOverview } from '@/types';
 
 /** A row's key. A world can hold the same library item twice, so the copy is part of the identity. */
 const rowKey = (row: UpdateRow) => `${row.worldId}:${row.itemId}`;
@@ -199,6 +201,7 @@ export function UpdateAvailableDialog({
   const [diffs, setDiffs] = useState<Record<string, ContentDiff | null | undefined>>({});
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [applying, setApplying] = useState(false);
+  const mounted = useMountedRef();
 
   // Each review starts fresh: the defaults its rows' states imply, and nothing read or attempted yet.
   useEffect(() => {
@@ -220,8 +223,10 @@ export function UpdateAvailableDialog({
     setDiffs((held) => ({ ...held, [key]: undefined }));
     try {
       const world = liveWorldFor(live, row);
-      const copy = world ? liveCopyFor(world, row) : await readStoredCopy(row);
-      setDiffs((held) => ({ ...held, [key]: copy ? diffContent(copy, sourceData) : null }));
+      const { copy, vrmStore } = world ? { copy: liveCopyFor(world, row), vrmStore: world.getVrmStore?.() } : await readStoredCopy(row);
+      const vrm = await loadVrmLookup(vrmStore);
+      if (!mounted.current) return;
+      setDiffs((held) => ({ ...held, [key]: copy ? diffContent(copy, sourceData, vrm) : null }));
     } catch {
       setDiffs((held) => ({ ...held, [key]: null }));
     }
@@ -328,10 +333,10 @@ export function UpdateAvailableDialog({
 }
 
 /** One stored world's copy, for a comparison. */
-async function readStoredCopy(row: UpdateRow): Promise<LinkableContent | undefined> {
+async function readStoredCopy(row: UpdateRow): Promise<{ copy: LinkableContent | undefined; vrmStore: WorldOverview['vrmStore'] }> {
   const data = await WorldStorageService.getWorldData(row.worldId) as {
-    entities?: Entity[]; dictionaries?: Dictionary[];
+    entities?: Entity[]; dictionaries?: Dictionary[]; worldOverview?: WorldOverview;
   };
   const list = row.kind === 'dictionary' ? data.dictionaries : data.entities;
-  return list?.find((item) => item.id === row.itemId);
+  return { copy: list?.find((item) => item.id === row.itemId), vrmStore: data.worldOverview?.vrmStore };
 }
