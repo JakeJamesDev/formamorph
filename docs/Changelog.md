@@ -28,7 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **One member of an entity listed in several places can now follow you, and so can entities added in play.** The original stays at every listed location. One member follows at a time; once it stays behind, another can come.
     - **In the bundled worlds, the AI now knows who is one Connection away from you.** Every location that a Connection leaves turns on **Nearby Through Connections**.
   - **Entity Relationships:**
-    - **Entities can list their relationships in the World Editor, and the AI reads each one as a sentence.** On an entity's **Profile** tab, pick another entity and type its role, such as mother. The AI reads "Kate is Tera's mother" once per prompt.
+    - **Entities can list their relationships in the World Editor, and the AI reads each one as a sentence.** On an entity's **Profile** tab, pick another entity and type its role, such as mother. The AI reads "Kate is Tera's mother" once per prompt. When two entities list each other, the AI reads one: the persona's if either is.
     - **Absent relatives of anyone in the scene join Entities Known Here, so the AI knows who they are.** When Tera is present, Entities Known Here lists her mother Kate with her summary. The AI doesn't put Kate in the scene.
     - **Relationships can now target Persona, and the AI knows the played persona's relationships in every scene.** Pick **Persona** in the list, and "Kate is Rowan's mother" uses the name of the persona the player picks. A persona the player doesn't pick sends none of its relationships.
 
