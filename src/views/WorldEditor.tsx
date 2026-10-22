@@ -660,6 +660,8 @@ const WorldEditorInner = ({
     entities, dictionaries, placeholders, worldPlaceholders, placeholderGroups, locations, traits, traitGroups, stats, statGroups,
     updateEntity, updateDictionary, setEntities, setDictionaries,
     addEntityToWorld, addBookToWorld, addPlaceholder, addLocation, setOwnedLibraryIds,
+    vrmStore: worldOverview?.vrmStore,
+    setVrmStore: (vrmStore) => updateWorldOverview({ vrmStore }),
     reopenPicker: (kind) => {
       setResumePicker(true);
       if (kind === 'dictionary') setShowAddDictionary(true); else setShowAddEntity(true);

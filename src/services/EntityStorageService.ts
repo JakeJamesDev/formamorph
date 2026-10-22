@@ -37,6 +37,7 @@ class EntityStorageService {
         author: record.libraryDetails?.author,
         libraryDetails: record.libraryDetails,
         ...(record.data?.persona ? { persona: true } : {}),
+        ...(record.data?.vrmPick?.kind === 'library' ? { vrmLibraryId: record.data.vrmPick.id } : {}),
         createdAt: record.createdAt,
         lastAccessed: record.lastAccessed,
         // The community link travels with the metadata: the library grid never shows it, but the download

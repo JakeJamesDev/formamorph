@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Entity Avatars:**
     - **The World Overview holds several Avatars, and each world entity picks one in its Avatar dropdown.** Upload a file or copy one from your library, then rename or delete it. A delete names the entities that use it.
     - **Mark one library Avatar as your default from its tile menu, and User's Default shows it.** The tile gets a **Default** badge. With no default, User's Default shows the bundled Avatar.
+    - **Library entities pick an Avatar from your Avatar library, and a library persona shows it while you play.** Adding one to a world copies its Avatar into the world once. Deleting a library Avatar names the library entities that use it, and they show no Avatar.
 
 #### ➖ Removed
 

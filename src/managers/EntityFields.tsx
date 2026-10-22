@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
@@ -26,6 +26,8 @@ import { SelectOptions } from "@/components/SelectOptions";
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { fieldFrame } from '@/lib/historyField';
+import { useMountedRef } from '@/lib/useMountedRef';
+import ModelStorageService from '@/services/ModelStorageService';
 
 /** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
 export interface EntityFieldGroupProps {
@@ -372,6 +374,42 @@ export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) =
   );
 };
 
+export const LIBRARY_ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars on the Avatars tab.';
+
+/** A library entity's Avatar: none, the player's default, or one from the player's Avatar library. */
+export const LibraryEntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
+  const [library, setLibrary] = useState<{ id: string; name: string }[]>([]);
+  const mounted = useMountedRef();
+  useEffect(() => {
+    ModelStorageService.getModelMetadata()
+      .then((models) => { if (mounted.current) setLibrary(models); })
+      .catch(() => { /* An unreadable library offers None and User's Default only. */ });
+  }, [mounted]);
+  const none = vrmPickValue(undefined);
+  const options = [
+    { value: none, label: 'None' },
+    { value: vrmPickValue({ kind: 'default' }), label: "User's Default" },
+    ...library.map((model) => ({ value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed' })),
+  ];
+  const stored = vrmPickValue(value.vrmPick);
+  // A library id this device lacks reads as None, as a missing store id does.
+  const selected = options.some((o) => o.value === stored) ? stored : none;
+  return (
+    <div className="space-y-2" {...fieldFrame('vrmPick')}>
+      <Label htmlFor={`entity-vrm-${value.id}`}>Avatar</Label>
+      <Hint>{LIBRARY_ENTITY_VRM_HINT}</Hint>
+      <Select value={selected} onValueChange={(v) => onChange('vrmPick', vrmPickFromValue(v))}>
+        <SelectTrigger id={`entity-vrm-${value.id}`} className="w-64 max-w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectOptions options={options} />
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
+
 /**
  * The Profile tab of both entity editors: the picture and its tags in one grid with the identity fields and
  * the Persona mark, then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
@@ -397,6 +435,6 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
     </EntityImageWidget>
     {locations}
     <EntityModelField {...props} />
-    {home === 'world' && <EntityVrmPickField {...props} />}
+    {home === 'world' ? <EntityVrmPickField {...props} /> : <LibraryEntityVrmPickField {...props} />}
   </>
 );

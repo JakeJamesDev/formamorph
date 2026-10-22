@@ -3,7 +3,8 @@ import { toastError } from '@/lib/linkToast';
 import { planWriteBack, type LibrarySource, type LinkStamp, type WorldContent } from '@/lib/linkedContent';
 import { kindOf, loadLinkedSources, replaceLibraryItemContent, toLibraryItem } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
-import type { GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { loadVrmLookup, withLibraryPick } from '@/lib/libraryVrm';
+import type { GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup, WorldVrmStore } from '@/types';
 
 /** What a world save hands over: its content, the combined placeholder pool its chips point at, its
  *  locations, which an entity's membership is named against, and its traits, which owned trait requirements
@@ -16,6 +17,8 @@ export interface WorldToWriteBack extends WorldContent {
   /** The world's stats, which a stat Condition's global item is read against. */
   stats?: Stat[];
   statGroups?: StatGroup[];
+  /** The world's Avatar store, which a copy's Avatar pick names. */
+  vrmStore?: WorldVrmStore;
 }
 
 /** Writes each planned copy to its item, and returns the link records of the writes that landed. */
@@ -41,7 +44,8 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
     toastError(error, { headline: 'Could not read your library, so nothing was written to it.' });
     return NOTHING_TO_WRITE;
   }
-  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world));
+  const vrm = await loadVrmLookup(world.vrmStore);
+  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world), vrm);
   if (!plan.length) return NOTHING_TO_WRITE;
   const revision = new Date().toISOString();
   const planned = plan.map((step) => ({
@@ -52,7 +56,7 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
     const written: LinkStamp[] = [];
     for (const { copy, source, content, stamp } of planned) {
       try {
-        await replaceLibraryItemContent(kindOf(copy), source.id, content, revision);
+        await replaceLibraryItemContent(kindOf(copy), source.id, await withLibraryPick(content, world.vrmStore), revision);
         written.push(stamp);
       } catch (error) {
         toastError(error, { headline: `Could not write “${source.name}” to your library: ${error instanceof Error ? error.message : String(error)}` });

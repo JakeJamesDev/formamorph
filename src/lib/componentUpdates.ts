@@ -9,7 +9,8 @@
 import type { ContentLinkState } from '@/lib/contentLink';
 import { withoutWorldFields, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
-import type { ContentLink, Dictionary, DictionaryEntry } from '@/types';
+import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
+import type { ContentLink, Dictionary, DictionaryEntry, VrmPick } from '@/types';
 
 /** What one world does with the update offered to its copy. */
 export type UpdateAction = 'update' | 'keep' | 'unlink';
@@ -97,6 +98,7 @@ const FIELD_LABELS: Record<string, string> = {
   description: 'Description',
   enabled: 'Enabled',
   thumbnail: 'Cover Art',
+  vrmPick: 'Avatar',
 };
 
 /** A field name nobody labeled, as words: `aiSummary` reads AI Summary, `scanDepth` reads Scan Depth. */
@@ -204,6 +206,8 @@ function pairEntries(current: DictionaryEntry[], incoming: DictionaryEntry[]): {
   return { added, removed, changed, unchanged };
 }
 
+const NO_LOOKUP: VrmLookup = { world: new Map(), library: new Map() };
+
 /**
  * What this world's copy holds against what the source offers.
  *
@@ -211,7 +215,7 @@ function pairEntries(current: DictionaryEntry[], incoming: DictionaryEntry[]): {
  * are the world's own and are never the source's to change, so two copies differing only there compare
  * equal.
  */
-export function diffContent(copy: LinkableContent, source: LinkableContent): ContentDiff {
+export function diffContent(copy: LinkableContent, source: LinkableContent, vrm: VrmLookup = NO_LOOKUP): ContentDiff {
   const held = withoutWorldFields(copy) as Record<string, unknown>;
   const offered = withoutWorldFields(source) as Record<string, unknown>;
   const fields = [...new Set([...Object.keys(held), ...Object.keys(offered)])]
@@ -221,13 +225,17 @@ export function diffContent(copy: LinkableContent, source: LinkableContent): Con
   const changed: FieldChange[] = [];
   const unchanged: FieldChange[] = [];
   for (const field of fields) {
+    // The pick names an Avatar by id, in the world's form on one side and the library's on the other.
+    const pick = field === 'vrmPick';
     const row = {
       field,
       label: fieldLabel(field),
-      current: formatValue(field, held[field]),
-      incoming: formatValue(field, offered[field]),
+      current: pick ? pickLabel(held[field] as VrmPick | undefined, vrm) : formatValue(field, held[field]),
+      incoming: pick ? pickLabel(offered[field] as VrmPick | undefined, vrm) : formatValue(field, offered[field]),
     };
-    const same = JSON.stringify(held[field] ?? null) === JSON.stringify(offered[field] ?? null);
+    const same = pick
+      ? pickToken(held[field] as VrmPick | undefined, vrm) === pickToken(offered[field] as VrmPick | undefined, vrm)
+      : JSON.stringify(held[field] ?? null) === JSON.stringify(offered[field] ?? null);
     (same ? unchanged : changed).push(row);
   }
 

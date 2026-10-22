@@ -277,6 +277,30 @@ class ModelStorageService {
     return match ? toMetadata(match) : null;
   }
 
+  /** Each model's name and content hash by id. A record stored before hashing gets its hash now, and keeps it. */
+  async getModelHashes(): Promise<Map<string, { name: string; hash: string }>> {
+    await this.ensureMigrated();
+    const records = await this.allRecords();
+    const hashed = await Promise.all(records.filter((record) => record.data?.blob).map(async (record) => {
+      let hash = record.data.hash;
+      if (!hash) {
+        hash = await blobHash(record.data.blob);
+        await this.updateDataIfPresent(record.id, { ...record.data, hash });
+      }
+      return [record.id, { name: record.name, hash }] as const;
+    }));
+    return new Map(hashed);
+  }
+
+  /** The id of the model holding `blob`'s bytes: an existing record with the same hash, else a new one. */
+  async importModelBlob(blob: Blob, fileName: string): Promise<string> {
+    const [hash, held] = await Promise.all([blobHash(blob), this.getModelHashes()]);
+    const duplicate = [...held].find(([, model]) => model.hash === hash);
+    if (duplicate) return duplicate[0];
+    const file = new File([blob], fileName, { type: blob.type });
+    return (await this.addModel(file)).id;
+  }
+
   /**
    * Hashes that mark a model as the default Avatar: the seeded library record's, and the running build's
    * bundled file's. They differ when an older build seeded the library, and either can be missing.
