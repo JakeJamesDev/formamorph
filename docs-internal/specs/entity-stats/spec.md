@@ -205,6 +205,7 @@ Rulings from the grill, numbered as asked.
 
   A rerun through the app's request layer (`buildAiRequestSpec`, default settings) matched Q86 and Q88 within noise. Both lean versions still miss. The branch is at `f23f3940`, with the probe port, not landed.
 - **Q89** (user ruling) Ticket 26 closes as wontfix. FB (Q78) stays the default Stat Updates prompt. The branch `ticket/entity-stats-26` stays unlanded until the user decides about its worktree.
+- **Q90** (user ruling, 2026-10-21, refines Q13, Q48, Q49 and Q54) The stat panel's dropdown lists an absent entity only once some turn revealed its name. An unrevealed absent entity is left out, so the list no longer fills with Unknown entries or counts the world's hidden entities. The shared pick stays listed when absent and unrevealed, by its last alias or Unknown.
 
 Derived from Q7 and confirmed with the summary:
 
@@ -350,7 +351,7 @@ Derived from Q7 and confirmed with the summary:
 - The entity Stats tab reuses the shared list toolbar and the entity Traits mirror's layout: stacked over the list in the World Editor, with details sliding in over it.
 - The Stats tab's tree shows entity nodes for entities that own stats, stat groups or stat Links, placed through `statPlacement`, as the Traits tab does (Q79). Cross-owner drags keep ids and are refused, with a note, when they would break a reader (Q80). A Blueprint dropped on an entity node links it.
 - A drag into Blueprints, in the Stats or Traits tree, is refused while something outside Blueprints reads the item (Q81–Q83).
-- The in-game stat panel renders the player's stats, then a section for the selected entity. The selection is lifted so that the entity view and the panel's dropdown share it. The dropdown lists present entities first, then absent entities with a visible stat, then (None). An unrevealed entity shows the scene's alias, or Unknown.
+- The in-game stat panel renders the player's stats, then a section for the selected entity. The selection is lifted so that the entity view and the panel's dropdown share it. The dropdown lists present entities first, then absent entities with a visible stat and a revealed name (Q90), then (None). An unrevealed entity shows the scene's alias, or Unknown.
 - Stat groups render as collapsible headings in the panel, reusing the stat row.
 
 ### Prompts
