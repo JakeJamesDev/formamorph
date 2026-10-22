@@ -43,6 +43,7 @@ export function LibraryTileContextMenu({
   onCheckUpdates,
   onPublish,
   onDelete,
+  canDelete,
   itemActions,
 }: {
   children: ReactElement;
@@ -59,6 +60,8 @@ export function LibraryTileContextMenu({
   onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
+  /** False while the item can't be deleted yet, which shows Delete disabled. */
+  canDelete?: (id: string) => boolean;
   /** The tab's own menu items for this item, above Delete. */
   itemActions?: (id: string) => ReactNode;
 }) {
@@ -173,6 +176,7 @@ export function LibraryTileContextMenu({
             {onDelete && (
               <ContextMenuItem
                 className="text-destructive focus:text-destructive"
+                disabled={canDelete ? !canDelete(id) : false}
                 onSelect={() => onDelete(id)}
               >
                 <Trash2 className="h-4 w-4 shrink-0" /> Delete

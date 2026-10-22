@@ -277,7 +277,8 @@ const CommunityCreationsBrowser = ({
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
     pendingDownload, retryDownload, dismissPendingDownload,
     worldUpdateReview, applyWorldUpdate, cancelWorldUpdate,
-  } = useDownloadCoordinator(worlds, setWorlds, (_id, data) => promptWorld(data));
+  } = useDownloadCoordinator(worlds, setWorlds, (_id, data, onProgress) =>
+    promptWorld(data, (done, total) => onProgress(total > 0 ? done / total : 0)));
 
   // Hold the failure report through the dialog's fade-out, as the copy-vs-overwrite decision does.
   const shownPending = useClosingSnapshot(!!pendingDownload, pendingDownload);

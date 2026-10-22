@@ -1,6 +1,7 @@
 import SortableWorldCard from '@/components/SortableWorldCard';
 import { PlaceBadges } from '@/components/PlaceBadges';
 import { placementsBy } from '@/lib/contests';
+import { useWorldOptimizeProgress } from '@/lib/worldOptimizeProgress';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ServerEvent } from '@/types';
 
@@ -26,6 +27,7 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
   // A blank tile has no download link to match against the archive, so it is badged with nothing.
   const loading = !!world.isLoading;
   const placements = loading ? [] : placementsBy(world, contests);
+  const progress = useWorldOptimizeProgress(world.id);
 
   return (
     <SortableWorldCard
@@ -34,6 +36,7 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
       fill={fill}
       compact={compact}
       loading={loading}
+      progress={progress}
       // The grid tile is all thumbnail, so the badge rides over it; the detailed card has a body to put
       // the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
       // positioned box, and a box around nothing is still a box.

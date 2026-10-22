@@ -102,6 +102,19 @@ describe('Publish', () => {
     expect(onPublish).toHaveBeenCalledWith('model-1');
   });
 
+  it('shows Delete disabled while the item cannot be deleted, and deletes nothing', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    showItem({ onDelete, canDelete: () => false });
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Sedge tile' }));
+    const item = screen.getByRole('menuitem', { name: 'Delete' });
+    expect(item).toHaveAttribute('data-disabled');
+    await user.click(item);
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
   it('is absent on a tab that cannot publish, which still keeps Delete', () => {
     showItem({ onDelete: vi.fn() });
 

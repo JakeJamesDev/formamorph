@@ -45,6 +45,21 @@ import { FolderFace } from '@/components/library/FolderFace';
 import { folderRegion, type FolderRegion } from '@/lib/folderRegion';
 import { LibraryTileContextMenu } from '@/components/library/LibraryTileContextMenu';
 import { useFolderZoom } from '@/components/library/useFolderZoom';
+import { pulseLanding } from '@/lib/landingPulse';
+
+// How often a fresh tile is checked for being in view, only while one is waiting.
+const FRESH_CHECK_MS = 400;
+
+/** Whether the tile is on screen and nothing covers its center: no dialog over it, not scrolled out of its frame. */
+function tileInView(node: HTMLElement): boolean {
+  if (typeof document.elementFromPoint !== 'function') return false;
+  const box = node.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return false;
+  const hit = document.elementFromPoint(x, y);
+  return !!hit && node.contains(hit);
+}
 
 /** The scroll-viewport clamp alone; a grid drag moves in both axes, so no vertical-list clamp. */
 const GRID_MODIFIERS = [restrictToFirstScrollableAncestor];
@@ -230,6 +245,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * @param onCheckUpdates - Checks one item for source updates, offered on the tabs worlds can follow
  * @param onPublish - Publishes one item, offered in the context menu on the tabs that can publish
  * @param onDelete - Deletes one item, offered as the context menu's last entry
+ * @param canDelete - False while an item can't be deleted yet; its Delete shows disabled
  * @param itemActions - The tab's own context menu items for one item, drawn above Delete
  * @param toolbar - Controls for this tab's view, drawn above the grid
  * @param filter - Shows only the items it passes, and folders holding one. The view packs them in the saved
@@ -253,6 +269,7 @@ export function LibraryTileGrid<T>({
   onCheckUpdates,
   onPublish,
   onDelete,
+  canDelete,
   itemActions,
   toolbar,
   filter,
@@ -279,6 +296,7 @@ export function LibraryTileGrid<T>({
   onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
+  canDelete?: (id: string) => boolean;
   itemActions?: (id: string) => React.ReactNode;
   toolbar?: React.ReactNode;
   filter?: (item: T) => boolean;
@@ -377,6 +395,24 @@ export function LibraryTileGrid<T>({
     (id: string) => spanAt(tiles.size(id), baseCols),
     [tiles, baseCols],
   );
+
+  // A tile new since the player last looked pulses once, the first time it is actually in view.
+  const { isFresh, markSeen, group: groupById } = tiles;
+  useEffect(() => {
+    const waiting = renderedIds.filter((id) => !groupById(id) && isFresh(id));
+    if (waiting.length === 0) return;
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      for (const id of waiting) {
+        const node = tileNodes.current.get(id);
+        if (!node || !tileInView(node)) continue;
+        pulseLanding(node);
+        markSeen(id);
+      }
+    };
+    const timer = window.setInterval(check, FRESH_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [renderedIds, groupById, isFresh, markSeen]);
 
   // Where every tile lives at this width: the arrangement the player left, seeded through the packer at
   // a width they have never used, with anything homeless dropped into the first free block.
@@ -838,6 +874,7 @@ export function LibraryTileGrid<T>({
         onCheckUpdates={onCheckUpdates}
         onPublish={onPublish}
         onDelete={onDelete}
+        canDelete={canDelete}
         itemActions={itemActions}
       >
           <div

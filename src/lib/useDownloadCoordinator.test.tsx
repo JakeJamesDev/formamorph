@@ -57,6 +57,8 @@ vi.mock('react-toastify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }
 import { toast } from 'react-toastify';
 import { toastTexts } from '@/test/toastText';
 import { useDownloadCoordinator } from './useDownloadCoordinator';
+import { isWorldOptimizing } from './worldOptimizeProgress';
+import type { World } from '@/types';
 
 // Drive the hook with a stateful `worlds` list so we can observe add vs replace.
 const useHarness = (initial: WorldRecord[]) => {
@@ -152,6 +154,55 @@ describe('useDownloadCoordinator', () => {
 
     await waitFor(() => expect(result.current.worlds).toHaveLength(1));
     expect(storedAuthor()).toBe('');
+  });
+
+  describe('optimizing images after the store', () => {
+    type Report = (fraction: number) => void;
+    const useOptimizingHarness = (onStored: (id: string, data: World, report: Report) => Promise<World | null>) => {
+      const [worlds, setWorlds] = useState<WorldRecord[]>([]);
+      return { worlds, coord: useDownloadCoordinator(worlds, setWorlds, onStored) };
+    };
+
+    it('holds the library tile until the re-encoded copy is written back', async () => {
+      let report: Report = () => {};
+      let choose: (w: World) => void = () => {};
+      let finishWrite: () => void = () => {};
+      const onStored = (_id: string, _data: World, r: Report) => {
+        report = r;
+        return new Promise<World | null>((resolve) => { choose = resolve; });
+      };
+      const { result } = renderHook(() => useOptimizingHarness(onStored));
+
+      let run: Promise<void> = Promise.resolve();
+      act(() => { run = result.current.coord.handleDownloadWorld(remote); });
+      await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+      expect(isWorldOptimizing('downloaded-fixed')).toBe(false);
+
+      act(() => report(0.5));
+      expect(isWorldOptimizing('downloaded-fixed')).toBe(true);
+      expect(result.current.coord.downloadProgress['remote-1']).toBe(0.5);
+
+      // The encode is done, but the stored copy is still the old one until this write lands.
+      storeWorld.mockImplementationOnce(() => new Promise<void>((resolve) => { finishWrite = resolve; }));
+      await act(async () => { choose({ worldOverview: {} } as World); });
+      await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(2));
+      expect(isWorldOptimizing('downloaded-fixed')).toBe(true);
+
+      await act(async () => { finishWrite(); await run; });
+      expect(isWorldOptimizing('downloaded-fixed')).toBe(false);
+    });
+
+    it('releases the tile when the run fails', async () => {
+      const onStored = async (_id: string, _data: World, report: Report) => {
+        report(0);
+        throw new Error('encode failed');
+      };
+      const { result } = renderHook(() => useOptimizingHarness(onStored));
+
+      await act(async () => { await result.current.coord.handleDownloadWorld(remote); });
+
+      expect(isWorldOptimizing('downloaded-fixed')).toBe(false);
+    });
   });
 
   it('overwriteWorld replaces the existing copy in place (same id, no duplicate)', async () => {

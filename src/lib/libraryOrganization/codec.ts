@@ -126,6 +126,29 @@ export function loadTabOrganization(tab: MainMenuCardTab): LibraryTabOrganizatio
   return { order, groups, sizes, placements: readPlacements(raw.placements) };
 }
 
+/** Where each tab keeps the ids the player has already seen a tile for, so a newcomer can be pointed out once. */
+export const SEEN_STORAGE_KEYS: Record<MainMenuCardTab, string> = {
+  worlds: 'FORMAMORPH_worldTilesSeen',
+  entities: 'FORMAMORPH_entityTilesSeen',
+  dictionaries: 'FORMAMORPH_dictionaryTilesSeen',
+  models: 'FORMAMORPH_modelTilesSeen',
+};
+
+/** The ids one tab has shown, or null when the tab has never recorded any. */
+export function loadSeenTiles(tab: MainMenuCardTab): string[] | null {
+  const raw = readJson(SEEN_STORAGE_KEYS[tab]);
+  return Array.isArray(raw) ? stringList(raw) : null;
+}
+
+/** Write the ids one tab has shown. A full or blocked storage only means a tile may be pointed out again. */
+export function saveSeenTiles(tab: MainMenuCardTab, ids: string[]): void {
+  try {
+    localStorage.setItem(SEEN_STORAGE_KEYS[tab], JSON.stringify(ids));
+  } catch {
+    // The in-memory set still stops a repeat for as long as the page lives.
+  }
+}
+
 /** Write one tab's arrangement. A full or blocked storage costs the arrangement, never the session. */
 export function saveTabOrganization(tab: MainMenuCardTab, org: LibraryTabOrganization): void {
   try {

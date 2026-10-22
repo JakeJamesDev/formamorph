@@ -36,8 +36,20 @@ function post(message: { worldId: string; deleted?: true }): void {
   once.close();
 }
 
-/** Tells the other tabs that `worldId` was written to world storage. */
-export const announceWorldSaved = (worldId: string): void => post({ worldId });
+// This tab's own saves, for views that must pick up a world stored behind them.
+const savedHere = new Set<(worldId: string) => void>();
+
+/** Tells this tab's save listeners and the other tabs that `worldId` was written to world storage. */
+export const announceWorldSaved = (worldId: string): void => {
+  for (const listener of [...savedHere]) listener(worldId);
+  post({ worldId });
+};
+
+/** Calls `listener` with each world id this tab writes. Returns the unsubscribe. */
+export function onWorldSavedHere(listener: (worldId: string) => void): () => void {
+  savedHere.add(listener);
+  return () => { savedHere.delete(listener); };
+}
 
 /** Tells the other tabs that `worldId` was deleted from world storage. */
 export const announceWorldDeleted = (worldId: string): void => post({ worldId, deleted: true });

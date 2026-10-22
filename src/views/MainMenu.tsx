@@ -56,6 +56,8 @@ import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
 import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
+import { isWorldOptimizing, useOptimizingWorldIds } from '@/lib/worldOptimizeProgress';
+import { onWorldSavedHere } from '@/lib/worldChangeSignal';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
 import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
 import { WorldUpdateReviewDialog } from '@/components/modals/WorldUpdateReviewDialog';
@@ -806,6 +808,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   }, []);
 
+  // A world stored behind the menu, such as a download that lands after Community Creations closes, joins
+  // the grid. Saves of worlds the grid already holds are edits, which their own surfaces resync.
+  const worldIdsRef = useRef(new Set<string>());
+  worldIdsRef.current = new Set(worlds.map((world) => world.id as string));
+  useEffect(() => onWorldSavedHere((worldId) => {
+    if (!worldIdsRef.current.has(worldId)) void refreshWorlds();
+  }), [refreshWorlds]);
+
   // Always the newest reader of the editor's store, for the resync below to call after the store has settled.
   const getWorldDataRef = useRef(getWorldData);
   getWorldDataRef.current = getWorldData;
@@ -985,6 +995,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   ].join('\n\n----\n\n');
 
   const handleWorldSelection = async (worldId: string) => {
+    // Its stored copy is about to be rewritten with the re-encoded images.
+    if (isWorldOptimizing(worldId)) return;
     try {
       const worldData = await WorldStorageService.getWorldData(worldId);
       const selectedWorld = worlds.find(w => w.id === worldId);
@@ -1669,6 +1681,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const dictionaryIds = useMemo(() => dictionaries.map((dictionary) => dictionary.id), [dictionaries]);
   const modelIds = useMemo(() => models.map((model) => model.id), [models]);
   const worldTiles = useLibraryTiles('worlds', worldIds, !isLoadingWorlds);
+  // Read here, not at the menu, so a run that ends re-renders the tile menus that disable Delete.
+  const optimizingWorldIds = useOptimizingWorldIds();
   const entityTiles = useLibraryTiles('entities', entityIds, !isLoadingEntities);
   const dictionaryTiles = useLibraryTiles('dictionaries', dictionaryIds, !isLoadingDictionaries);
   const modelTiles = useLibraryTiles('models', modelIds, !isLoadingModels);
@@ -2183,6 +2197,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           // Withheld while the tiles are blank: the menu entry is the one that can't be taken back, and
           // it would be aimed at a card with no name on it. The rest of the menu writes ids, which are real.
           onDelete={isLoadingWorlds ? undefined : setWorldToDelete}
+          canDelete={(id) => !optimizingWorldIds.has(id)}
         />
       )}
 
@@ -2680,6 +2695,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         title="Delete World"
         description="Are you sure you want to delete this world? This action cannot be undone."
         onConfirm={async () => {
+          // A run that finishes would write the world straight back.
+          if (isWorldOptimizing(worldToDelete!)) return;
           try {
             await WorldStorageService.deleteWorld(worldToDelete!);
             setWorlds(prev => prev.filter(w => w.id !== worldToDelete));
