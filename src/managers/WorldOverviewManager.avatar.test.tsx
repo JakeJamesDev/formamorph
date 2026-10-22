@@ -28,6 +28,8 @@ vi.mock('../components/modals/ModelDetailsPanel', () => ({
 
 // Unrelated to the avatar and settings-bound; the rest of the Overview tab renders for real.
 vi.mock('../components/GenerateImageButton', () => ({ GenerateImageButton: () => <div /> }));
+// The Avatar store needs the world's history and the model library; its own suite covers it.
+vi.mock('./WorldVrmStoreSection', () => ({ WorldVrmStoreSection: () => null }));
 
 const readVrmMeta = vi.fn();
 vi.mock('../lib/vrmMeta', () => ({ readVrmMeta: (blob: Blob) => readVrmMeta(blob) }));

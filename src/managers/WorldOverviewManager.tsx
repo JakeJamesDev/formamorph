@@ -24,6 +24,7 @@ import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas, VrmLicense } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { WorldVrmStoreSection } from './WorldVrmStoreSection';
 
 /**
  * The world's custom player VRM in the same details view the model library uses. The world stores the model
@@ -302,6 +303,7 @@ const WorldOverviewManager = () => {
           )}
         </div>
       )}
+      {advanced && <WorldVrmStoreSection />}
       {advanced && <PersonaRulesFields />}
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>

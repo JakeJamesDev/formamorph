@@ -43,6 +43,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     systemPrompt: "System Prompt",
     use3DModel: "3D Player Avatar",
     customPlayerVRM: "Custom Player Avatar",
+    vrmStore: "Avatars",
     readme: "Readme",
     introReadme: "Intro Readme",
     promptOverrides: "Prompt Overrides",
@@ -70,6 +71,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     canvasPosition: "Position",
   },
   connections: { aToB: "Travel Hint", bToA: "Travel Hint" },
+  entities: { vrmPick: "Avatar" },
   statUpdates: { prompt: "Prompt", stats: "Stats" },
   // A book's own fields fall through to "*"; these are its entries'.
   dictionaries: {

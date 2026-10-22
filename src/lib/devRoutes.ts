@@ -86,7 +86,9 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  on canned text, the question a generated image with no free slot asks, the offer to carry a rename into
  *  stat code, and the Replace All confirm. In the app each opens only partway through an edit. Every answer
  *  closes it and writes nothing. `savedElsewhere` and `deletedElsewhere` open the World Editor and raise
- *  the question another tab's save or delete of the open world asks. Either answer closes it and writes nothing. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
+ *  the question another tab's save or delete of the open world asks. Either answer closes it and writes nothing.
+ *  `deleteWorldAvatar` opens the World Editor and raises an Avatar store delete on canned entities, which
+ *  writes nothing; add `tab=overview&mode=advanced` to show the World Overview's Avatars section under it. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
   narration endpoint and the seen-key say, so it is reachable on a build that overrides the default endpoint.
  *  `persona` is in game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel
  *  mounts only on the Status tab, so open that tab first. `likePrompt` is in game (GameViewer) and shows the
@@ -107,7 +109,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  Chip Options over it, on a canned Entities chip. `scriptPrompt` is in game (GameViewer) and fires one
  *  canned `player.*` request through the live prompt store once the game has a turn; `tab=…` picks the shape
  *  (`devScriptPromptSamples.ts`). Pair it with `fixture=…`. `DEV_PANE_MODALS` follow. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', ...DEV_PANE_MODALS] as const;
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', ...DEV_PANE_MODALS] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */
