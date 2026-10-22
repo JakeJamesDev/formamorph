@@ -436,7 +436,7 @@ export default function EditorFindBar({
             <ChevronDown className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={close} aria-label={docked ? 'Close Search' : 'Close Find'}>
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
 

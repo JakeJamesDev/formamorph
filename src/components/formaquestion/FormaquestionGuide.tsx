@@ -58,7 +58,7 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
               onClick={morph.close}
               className="inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
-              <X aria-hidden className="h-4 w-4" />
+              <X aria-hidden className="h-5 w-5" />
             </button>
           </Tip>
         </div>

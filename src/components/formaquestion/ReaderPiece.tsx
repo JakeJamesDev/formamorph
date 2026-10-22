@@ -31,7 +31,7 @@ export function ReaderPiece({ guide, sectionId, size, onOpen, onClose }: {
             onClick={onClose}
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <X aria-hidden className="h-4 w-4" />
+            <X aria-hidden className="h-5 w-5" />
           </button>
         </Tip>
       </div>

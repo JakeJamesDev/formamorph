@@ -60,7 +60,7 @@ export function TestBench({
           onClick={onClose}
           aria-label="Close Test Bench"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </Button>
       </div>
       <Tabs
