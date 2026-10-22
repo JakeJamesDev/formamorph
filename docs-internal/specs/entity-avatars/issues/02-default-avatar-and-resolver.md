@@ -1,6 +1,6 @@
 # 02: Default Avatar and Resolver
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,8 +15,16 @@ One pure resolver turns an entity, in context, into its Avatar source: a world s
 
 ## Acceptance criteria
 
-- [ ] Setting, clearing and the badge work on the Avatar library tile; the key is device-local and never exported.
-- [ ] User's Default resolves to the device default, else the bundled file, including after the library copy of the bundled Avatar is deleted.
-- [ ] Resolver tests cover every cell of the spec's precedence table, an entity pick over the fallback, a deleted store id, an unresolvable library id, and the save's chosen Avatar touching only the played entity.
-- [ ] Each guard is proven by reinstating the bug (for example, swap the library persona and Custom Persona order and watch a test fail).
-- [ ] Frame `.scratch/frames/02-default-badge.png`, light and dark, 1280 wide.
+- [x] Setting, clearing and the badge work on the Avatar library tile; the key is device-local and never exported. `MainMenu.defaultAvatar.test.tsx`; the key lives only in `localStorage` (`FORMAMORPH_defaultAvatar`).
+- [x] User's Default resolves to the device default, else the bundled file, including after the library copy of the bundled Avatar is deleted. `vrmResolver.test.ts` › User's Default.
+- [x] Resolver tests cover every cell of the spec's precedence table, an entity pick over the fallback, a deleted store id, an unresolvable library id, and the save's chosen Avatar touching only the played entity. `vrmResolver.test.ts`, 32 cases.
+- [x] Each guard is proven by reinstating the bug (for example, swap the library persona and Custom Persona order and watch a test fail). Reinstated: persona order swap, chosen Avatar on NPCs, dangling-id outcomes swapped, legacy branch off, inherited store key, badge off. Each turned tests red.
+- [x] Frame `.scratch/frames/02-default-badge.png`, light and dark, 1280 wide. Stored as `02-default-badge-light.png` and `02-default-badge-dark.png` (1280 layout; the pane scales the image down).
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Open the Avatars tab, right-click a tile, pick **Set as Default Avatar**, and check the **Default** badge sits well next to a **GLB** badge: `.scratch/entity-avatars-02/frames/02-default-badge-light.png`, `.scratch/entity-avatars-02/frames/02-default-badge-dark.png`.
