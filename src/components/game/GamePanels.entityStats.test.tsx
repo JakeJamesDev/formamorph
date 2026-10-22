@@ -97,9 +97,9 @@ describe('RightPanel — entity stats', () => {
     expect(await optionLabels()).toContain('Odette');
   });
 
-  it('lists an absent entity no turn revealed as Unknown', async () => {
+  it('leaves out an absent entity no turn revealed', async () => {
     renderRightPanel({}, { ...stage, turns: [{ ...turns[1] }, { ...turns[1], turnId: 't3' }] });
-    expect(await optionLabels()).toEqual(['Bram', 'a thin runner', 'Unknown', '(None)']);
+    expect(await optionLabels()).toEqual(['Bram', 'a thin runner', '(None)']);
   });
 
   it('shows a picked absent entity with its stats', async () => {

@@ -87,6 +87,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A stat now opens at its authored value everywhere, and an authored zero stays zero.** Play, the Test Bench, Test Code, the trait picker, code cards, new Link Base Values and older saves agree. No change shows on turn one. A value outside the range opens at the nearest edge.
   - **Test Code and the Test Bench now check a Script against the same turn-one world as play.** They read `clock` by timing and a switched-off stat as off. Test Code's `entities` holds a new game's cast, without persona-only entities. An unknown `diary` name warns. A trait Script whose entity is gone reads `self` as not held.
   - **Error Details and bug reports now show a server's HTML error page as one line: its title and Ray ID.** A report from **Report Bug** keeps its details in a code block, so markup in them shows as written.
+  - **The Stats panel picker now lists an absent entity only once the story has named it.** Absent entities you haven't met no longer show as Unknown.
 
 ---
 

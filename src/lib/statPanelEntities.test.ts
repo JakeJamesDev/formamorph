@@ -59,17 +59,18 @@ describe('statPanelOptions', () => {
     expect(options({ scene: [{ name: 'Bram', revealed: false }] })[0].label).toBe('Unknown');
   });
 
-  it('names an absent entity only when some turn revealed it', () => {
+  it('lists an absent entity only once some turn revealed its name', () => {
     const list = options({ history: [[seen('Odette')], [{ name: 'Wick', alias: 'a thin runner', revealed: false }]] });
-    expect(list.map((o) => o.label)).toEqual(['Unknown', 'Odette', 'a thin runner']);
+    expect(list.map((o) => o.label)).toEqual(['Odette']);
   });
 
-  it('uses the last alias of an absent entity that never got a name', () => {
+  it('keeps a picked absent entity that never got a name, by its last alias', () => {
     const list = options({
       entities: [bram],
+      keep: 'bram',
       history: [[{ name: 'Bram', alias: 'a hooded man', revealed: false }], [{ name: 'Bram', alias: 'the ferryman', revealed: false }]],
     });
-    expect(list[0].label).toBe('the ferryman');
+    expect(list.map((o) => o.label)).toEqual(['the ferryman']);
   });
 
   it('keeps the name once revealed even when a later scene shows it unrevealed', () => {
@@ -78,8 +79,8 @@ describe('statPanelOptions', () => {
   });
 
   it('numbers labels only when two collide', () => {
-    const list = options({ history: [[{ name: 'Bram', revealed: false }, { name: 'Wick', revealed: false }, seen('Odette')]] });
-    expect(list.map((o) => o.label)).toEqual(['Unknown', 'Odette', 'Unknown (2)']);
+    const list = options({ scene: [{ name: 'Bram', revealed: false }, { name: 'Wick', revealed: false }, seen('Odette')] });
+    expect(list.map((o) => o.label)).toEqual(['Unknown', 'Unknown (2)', 'Odette']);
   });
 
   it('lists an entity once when the scene names it twice', () => {
