@@ -431,9 +431,18 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
     await stop();
     // Keep the device diagnostics: which backend a failed load ran on is exactly what an out-of-VRAM error
     // can't tell you on its own.
-    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e), loadProgress: null, ...NO_ENGINE, ...device });
+    setState({ status: 'error', modelPath, modelId: null, port, error: describeLoadError(String((e && e.message) || e)), loadProgress: null, ...NO_ENGINE, ...device });
   }
   return getState();
+}
+
+/** Restates node-llama-cpp's context-fit error in the names the Local Model settings use. */
+function describeLoadError(message) {
+  const m = /^A context size of (\d+)(?: with (\d+) sequences)? is too large for the available VRAM( and RAM)?/.exec(message);
+  if (!m) return message;
+  const parallel = m[2] ? ` with ${m[2]} Parallel Requests` : '';
+  const memory = m[3] ? "this computer's VRAM and RAM" : "this GPU's VRAM";
+  return `Context Size ${m[1]}${parallel} doesn't fit in ${memory}. Lower Context Size${m[2] ? ' or Parallel Requests' : ''}.`;
 }
 
 /** Tear everything down and return to `stopped`. Safe to call when already stopped. */
@@ -479,4 +488,4 @@ async function listDevices({ rawIndex } = {}) {
   return { gpuBackend: backend.gpu === false ? 'cpu' : backend.gpu, gpuDeviceNames };
 }
 
-module.exports = { start, stop, getState, onStatus, stoppedState, listDevices, splitMessages, IMAGES_DROPPED_HEADER };
+module.exports = { start, stop, getState, onStatus, stoppedState, listDevices, splitMessages, describeLoadError, IMAGES_DROPPED_HEADER };
