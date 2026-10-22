@@ -177,6 +177,23 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - Publishing world Avatars as separate community listings.
 - Removing the read path for the legacy fallback. It stays for files in the wild.
 
+## Ticket Rulings
+
+- **T01-1:** the store is keyed by id with a display name and an embedded file. An entity pick has two stored forms, user's default and world store id. An absent pick means none, so None writes no field. Ticket 06 adds the library-id form.
+- **T01-2:** the World Overview Avatar section and the entity Avatar dropdown are Advanced only, like the 3D Model field and the old uploader.
+- **T01-3:** the dropdown sits next to the 3D Model field for every world entity (NPCs, world personas, the Custom Persona). The library entity editor gets it in ticket 06.
+- **T01-4:** the morph-binding picker lists each store Avatar by display name, then the old world Avatar until ticket 03 removes it, then the library Avatars as today.
+- **T01-5:** each store row has an inline name field that commits on blur as one history step. A new Avatar's name defaults to the filename without extension, or to the library record's name for a library copy.
+
+- **T02-1:** ticket 02 adds the library-id form to the pick type, because the resolver reads it. No editor or store writes it until ticket 06.
+- **T02-2:** the resolver takes the legacy fallback as a pick: a world store id, or user's default when the flag is on with no old Avatar. Ticket 03 decides where it is stored.
+- **T02-3:** the save's chosen Avatar is a world or library id plus a legacy mark. Without the mark, it replaces User's Default wherever the played side lands on User's Default (the played entity's pick, the Custom Persona's pick, or a fallback of User's Default). With the mark (Q24), it replaces the whole played-side result, even a result of none. Ticket 03 sets the mark during the remap.
+- **T02-4:** a store id missing from the store resolves to none. In the played precedence, any source that resolves to none falls through to the next.
+- **T02-5:** an unresolvable library id (an entity pick, the save's chosen Avatar, or the device default) resolves to the bundled file and does not fall through.
+- **T02-6:** the resolver returns a world id, a library id, the bundled file, or nothing. It has two entry points: one for any entity in context, and one for the played side alone, which the You row uses when there is no played entity.
+- **T02-7:** Set Default Avatar and its badge are player-visible, so ticket 02 adds a changelog fragment. Deleting the default Avatar leaves the device key in place, and it resolves to the bundled file.
+- **T02-8:** a save's chosen Avatar that names a store id missing from the store counts as no chosen Avatar. With the legacy mark, normal precedence applies. Without it, User's Default resolves to the device default.
+
 ## Further Notes
 
 - Glossary: **Avatar** in `CONTEXT.md` still says "chosen for a world". It needs an update to "chosen for an entity" once this lands. Add **User's Default** as a term.
