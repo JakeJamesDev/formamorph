@@ -44,7 +44,7 @@ const WORLD = {
   id: 'w1',
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   stats: [], locations: [], entities: [], traits: [], statUpdates: [],
 } as unknown as World;
@@ -198,7 +198,7 @@ describe('WorldEditor — exit without saving, after a rename rewrote stat code'
     id: 'w2',
     worldOverview: {
       name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-      systemPrompt: '', use3DModel: true, tags: [],
+      systemPrompt: '', tags: [],
     },
     stats: [{
       id: 's1', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 5, regen: 0,

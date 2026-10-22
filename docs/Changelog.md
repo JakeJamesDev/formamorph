@@ -21,6 +21,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Overview holds several Avatars, and each world entity picks one in its Avatar dropdown.** Upload a file or copy one from your library, then rename or delete it. A delete names the entities that use it.
     - **Mark one library Avatar as your default from its tile menu, and User's Default shows it.** The tile gets a **Default** badge. With no default, User's Default shows the bundled Avatar.
 
+#### ➖ Removed
+
+- **👤 User-facing**
+  - **Entity Avatars:**
+    - **The 3D Player Avatar checkbox and the Custom Player Avatar uploader leave the World Overview.** An older world that had the checkbox on still shows the same Avatar. Its old Avatar now sits in the world's Avatars.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

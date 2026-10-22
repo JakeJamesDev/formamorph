@@ -7,7 +7,7 @@ const bare: EnterFlowWorld = {
   startingLocationCount: 1,
   hasLibraryAdditions: false,
   hasWorldPersonas: false,
-  use3DModel: false,
+  showsAvatar: false,
 };
 
 const world = (over: Partial<EnterFlowWorld> = {}): EnterFlowWorld => ({ ...bare, ...over });
@@ -36,12 +36,12 @@ describe('buildEnterFlow', () => {
   });
 
   it('skips every step, Introduction included, on Quick Start', () => {
-    expect(buildEnterFlow(world({ introReadme: '# Welcome', traitCount: 2, use3DModel: true }), 'quickStart'))
+    expect(buildEnterFlow(world({ introReadme: '# Welcome', traitCount: 2, showsAvatar: true }), 'quickStart'))
       .toEqual([]);
   });
 
   it('skips every step, Introduction included, when a save is loaded', () => {
-    expect(buildEnterFlow(world({ introReadme: '# Welcome', traitCount: 2, use3DModel: true }), 'saveLoad'))
+    expect(buildEnterFlow(world({ introReadme: '# Welcome', traitCount: 2, showsAvatar: true }), 'saveLoad'))
       .toEqual([]);
   });
 
@@ -51,7 +51,7 @@ describe('buildEnterFlow', () => {
       traitCount: 1,
       startingLocationCount: 2,
       hasLibraryAdditions: true,
-      use3DModel: true,
+      showsAvatar: true,
     });
     expect(buildEnterFlow(full, 'newGame'))
       .toEqual(['intro', 'workspace', 'avatar']);

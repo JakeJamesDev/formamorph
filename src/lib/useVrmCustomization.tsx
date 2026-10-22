@@ -72,7 +72,7 @@ export interface VrmCustomization {
   /** The rendered slider/picker controls, gated to the model's detected capabilities. */
   controls: ReactNode;
   /** The composed choices, for a caller that finalizes a character (CharacterCustomization). */
-  characterData: Omit<CharacterData, 'playerModelId'>;
+  characterData: Omit<CharacterData, 'chosenVrm'>;
 }
 
 /**
@@ -166,7 +166,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
     animate,
   };
 
-  const characterData: Omit<CharacterData, 'playerModelId'> = {
+  const characterData: Omit<CharacterData, 'chosenVrm'> = {
     bodyMorphs,
     hairColor: colorTouched.hair ? hairColor : undefined,
     eyeColor: colorTouched.eye ? eyeColor : undefined,

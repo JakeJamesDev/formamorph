@@ -30,7 +30,7 @@ describe('measureEdits', () => {
   });
 
   it('counts a toggle as one discrete action', () => {
-    expect(units(edit('worldOverview', overview, { ...overview, use3DModel: true }))).toBe(DISCRETE_UNITS);
+    expect(units(edit('worldOverview', overview, { ...overview, openingsEnabled: false }))).toBe(DISCRETE_UNITS);
   });
 
   it('counts an added tag and a removed tag as one action each', () => {
@@ -72,7 +72,7 @@ describe('measureEdits', () => {
 describe('measureChange', () => {
   it('counts only the text of a write that joins its Step', () => {
     const edits = [
-      ...edit('worldOverview', overview, { ...overview, name: 'Sedge Landings', use3DModel: true }),
+      ...edit('worldOverview', overview, { ...overview, name: 'Sedge Landings', openingsEnabled: false }),
     ];
     expect(measureChange({ edits, merged: false })).toBe(1 + DISCRETE_UNITS);
     expect(measureChange({ edits, merged: true })).toBe(1);

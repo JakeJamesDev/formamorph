@@ -31,7 +31,7 @@ const world = (id: string, over: Partial<World> = {}): World => ({
   id, version: '3.0.0',
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   stats: [stat('hunger'), stat('thirst'), stat('warmth')],
   locations: [location('harbor', 'Harbor Steps')],

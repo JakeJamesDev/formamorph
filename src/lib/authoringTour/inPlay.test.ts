@@ -10,7 +10,7 @@ const WORLD_TEXT = 'Brinewell is a quiet fishing village.';
 const world: TourWorld = {
   worldOverview: {
     name: 'Brinewell', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: WORLD_TEXT, use3DModel: false, tags: [],
+    systemPrompt: WORLD_TEXT, tags: [],
   },
   stats: [{ id: 'sea', name: 'Sea Change', min: 0, max: 100, value: 10, description: 'How far the sea has claimed you.' }],
   locations: [{ id: 'well', name: 'The Tidewell', isStarting: true }],

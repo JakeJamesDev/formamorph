@@ -23,7 +23,7 @@ vi.mock('@/lib/useLibraryEntity', () => ({ useLibraryEntity: (id: string | null)
 const trust: Stat = { id: 'bp-trust', name: 'Trust', type: 'number', description: '', min: 0, max: 10, value: 5, regen: 0, descriptors: [], groupId: 'bp' };
 const world = {
   id: 'w',
-  worldOverview: { name: 'w', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: true, tags: [] },
+  worldOverview: { name: 'w', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [] },
   stats: [trust],
   statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
   entities: [], locations: [], traits: [], statUpdates: [],

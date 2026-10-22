@@ -292,7 +292,7 @@ describe('the assembled first prompt', () => {
     const w = world({
       worldOverview: {
         name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '',
-        use3DModel: false, tags: [],
+        tags: [],
         openings: [{ id: 'o0', text: 'Benched.', kind: 'action' }, { id: 'o1', text: cue, kind: 'action' }],
         openingWeights: { o0: 0 },
       },

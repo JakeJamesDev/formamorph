@@ -1,15 +1,19 @@
 import { getAllSaveRecords } from '@/components/modals/dbUtils';
 import type { GameState, SaveRecord } from '@/types';
+import type { LegacyCharacterData } from './legacyVrm';
 
 /**
  * Which saves have a character wearing a given library model, so deleting it can say what it will affect.
  *
- * Only saves can hold a reference: `CharacterData.playerModelId` names a library id, whereas a world's
- * `customPlayerVRM` embeds its own bytes and points at nothing.
+ * A save names one through its chosen Avatar, or through the old `playerModelId` until a game load remaps it.
+ * World store entries embed their own bytes and point at nothing.
  */
 
-const wears = (state: GameState | undefined, modelId: string): boolean =>
-  state?.characterData?.playerModelId === modelId;
+const wears = (state: GameState | undefined, modelId: string): boolean => {
+  const data = state?.characterData as LegacyCharacterData | null | undefined;
+  const pick = data?.chosenVrm?.pick;
+  return pick ? pick.kind === 'library' && pick.id === modelId : data?.playerModelId === modelId;
+};
 
 /** A save is a match if any of its snapshots names the model — a rollback would put it back on screen. */
 const saveUses = (save: SaveRecord, modelId: string): boolean =>

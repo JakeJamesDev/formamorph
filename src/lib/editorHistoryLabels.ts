@@ -41,8 +41,6 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     thumbnail: "Thumbnail",
     bgm: "Background Music",
     systemPrompt: "System Prompt",
-    use3DModel: "3D Player Avatar",
-    customPlayerVRM: "Custom Player Avatar",
     vrmStore: "Avatars",
     readme: "Readme",
     introReadme: "Intro Readme",

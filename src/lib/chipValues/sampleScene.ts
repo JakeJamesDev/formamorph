@@ -14,7 +14,6 @@ const overview: WorldOverview = {
   thumbnail: null,
   bgm: null,
   systemPrompt: 'A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in salvage and rumor, and nobody asks where either came from.',
-  use3DModel: false,
   tags: [],
 };
 

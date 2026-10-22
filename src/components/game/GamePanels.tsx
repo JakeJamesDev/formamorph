@@ -9,7 +9,8 @@ import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
 import { narrationOf } from '@/lib/aiResponse';
-import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
+import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
+import { usePlayedVrm } from '@/lib/usePlayedVrm';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
@@ -135,7 +136,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     // Aliased to the viewed-page values so paging back shows that turn's appearance + scene (they equal
     // the live values on the latest page). Body morphs still ride live `bodyMorphValues`, which the
     // GameViewer effect derives from the viewed stats.
-    viewCharacterData: characterData,
+    viewCharacterData,
     bodyMorphValues,
     viewVisibleEntities: visibleEntities,
     viewEntityFollowers: entityFollowers,
@@ -171,7 +172,11 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     setVisibleEntities((prev) => prev.filter((se) => se.name !== name));
     setPendingRemoval(null);
   };
-  const { url: playerModelUrl, resolving: modelResolving } = usePlayerModelUrl(characterData?.playerModelId);
+  const playedVrm = usePlayedVrm(persona, viewCharacterData);
+  const { url: playerModelUrl, resolving: urlResolving } = useVrmSourceUrl(playedVrm.source);
+  const modelResolving = playedVrm.resolving || urlResolving;
+  // The player view needs customization to apply and a played side that shows an Avatar.
+  const characterData = viewCharacterData && (playedVrm.resolving || playedVrm.source) ? viewCharacterData : null;
   // First present entity with something to show — an image, or failing that a 3D model — displayed in the
   // model section's Entities view (the portrait shows whether or not the name is revealed yet).
   const firstShowable = firstShowableEntity(visibleEntities, entities, hasEntityVisual);

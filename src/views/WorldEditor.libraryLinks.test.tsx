@@ -655,7 +655,7 @@ describe('Adding an entity that brings openings', () => {
   const OFF_WORLD = (): World => benchEditorWorld({
     worldOverview: {
       name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-      systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
+      systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
       openingsEnabled: false,
     },
   } as Partial<World>);

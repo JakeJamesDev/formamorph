@@ -169,32 +169,34 @@ describe('migrateSave (shared import + load path)', () => {
       currentState: { playerTraits: [], playerStats: [], characterData: current ? { playerModelId: current } : null },
       stateHistory: history.map((h) => ({ playerTraits: [], playerStats: [], characterData: h ? { playerModelId: h } : null })),
     } as unknown as SaveObject);
+    /** The old id this migration rewrites; the game-load remap turns it into the chosen Avatar later. */
+    const modelId = (state: { characterData: unknown }) => (state.characterData as { playerModelId?: string } | null)?.playerModelId;
 
     it("rewrites the 'default' sentinel to the seeded model's library id", () => {
       const out = migrateSave(envelope('default'));
-      expect(out.currentState.characterData?.playerModelId).toBe(DEFAULT_AVATAR_ID);
+      expect(modelId(out.currentState)).toBe(DEFAULT_AVATAR_ID);
     });
 
     it('rewrites the sentinel in every history snapshot, not just the current one', () => {
       const out = migrateSave(envelope('default', ['default', 'other-model']));
-      expect(out.stateHistory.map((s) => s.characterData?.playerModelId))
+      expect(out.stateHistory.map(modelId))
         .toEqual([DEFAULT_AVATAR_ID, 'other-model']);
     });
 
     it("rewrites the pre-rename 'default-model' id onto the current default", () => {
       const out = migrateSave(envelope('default-model', ['default-model']));
-      expect(out.currentState.characterData?.playerModelId).toBe(DEFAULT_AVATAR_ID);
-      expect(out.stateHistory.map((s) => s.characterData?.playerModelId)).toEqual([DEFAULT_AVATAR_ID]);
+      expect(modelId(out.currentState)).toBe(DEFAULT_AVATAR_ID);
+      expect(out.stateHistory.map(modelId)).toEqual([DEFAULT_AVATAR_ID]);
     });
 
     it('leaves a real library id alone', () => {
       const out = migrateSave(envelope('some-uploaded-model'));
-      expect(out.currentState.characterData?.playerModelId).toBe('some-uploaded-model');
+      expect(modelId(out.currentState)).toBe('some-uploaded-model');
     });
 
     it("leaves the 'world' selection alone", () => {
       const out = migrateSave(envelope('world'));
-      expect(out.currentState.characterData?.playerModelId).toBe('world');
+      expect(modelId(out.currentState)).toBe('world');
     });
 
     it('tolerates a save with no character data', () => {
@@ -205,7 +207,7 @@ describe('migrateSave (shared import + load path)', () => {
     it('is idempotent — a migrated save is unchanged by a second pass', () => {
       const once = migrateSave(envelope('default'));
       const twice = migrateSave(once);
-      expect(twice.currentState.characterData?.playerModelId).toBe(DEFAULT_AVATAR_ID);
+      expect(modelId(twice.currentState)).toBe(DEFAULT_AVATAR_ID);
     });
   });
 

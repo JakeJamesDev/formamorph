@@ -16,7 +16,7 @@ const world = (id: string, overview: Record<string, unknown>): World => ({
   id,
   worldOverview: {
     name: id, description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [], ...overview,
+    systemPrompt: '', tags: [], ...overview,
   },
   stats: [], locations: [], entities: [], traits: [], statUpdates: [],
 } as unknown as World);
@@ -519,7 +519,7 @@ describe('discardChanges', () => {
       id: 'new',
       worldOverview: {
         name: '', description: '', author: '', thumbnail: null, bgm: null,
-        systemPrompt: '', use3DModel: true, tags: [],
+        systemPrompt: '', tags: [],
       },
       stats: [], locations: [], entities: [], traits: [], statUpdates: [],
       dictionaries: [{ id: 'seed', name: 'Default', enabled: true, entries: [] }],
@@ -549,7 +549,7 @@ describe('discardChanges', () => {
       id: 'w',
       worldOverview: {
         name: 'Legacy', description: '', author: '', thumbnail: null, bgm: null,
-        systemPrompt: '', use3DModel: true, tags: [],
+        systemPrompt: '', tags: [],
       },
       stats: [], locations: [], traits: [], statUpdates: [],
       entities: [{ id: 'e1', name: 'Sedge', inGameDescription: 'Seen', detailedDescription: 'Known' }],

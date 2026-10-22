@@ -53,7 +53,7 @@ describe('downscaleWorldImages', () => {
     version: '2.0.0',
     worldOverview: {
       name: 'W', description: '', author: '', thumbnail: 'BIG-thumb', bgm: null,
-      systemPrompt: '', use3DModel: false, tags: [],
+      systemPrompt: '', tags: [],
     },
     stats: [],
     locations: [

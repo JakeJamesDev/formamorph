@@ -26,7 +26,7 @@ export function harborWorld({ stats = [], entities = [] }: { stats?: PlayerStat[
     id: 'w1',
     worldOverview: {
       name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-      systemPrompt: '', use3DModel: false, tags: [],
+      systemPrompt: '', tags: [],
     },
     stats, locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }], entities, traits: [], statUpdates: [],
   } as unknown as World;

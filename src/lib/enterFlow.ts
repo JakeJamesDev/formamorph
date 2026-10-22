@@ -26,7 +26,8 @@ export interface EnterFlowWorld {
   hasLibraryAdditions: boolean;
   /** The world has entities the player can play as. */
   hasWorldPersonas: boolean;
-  use3DModel: boolean;
+  /** The played side shows an Avatar: the world has a legacy Avatar fallback. */
+  showsAvatar: boolean;
 }
 
 /**
@@ -43,7 +44,7 @@ export function buildEnterFlow(world: EnterFlowWorld, mode: EnterMode): EnterSte
     || world.hasLibraryAdditions
     || world.hasWorldPersonas
   ) steps.push('workspace');
-  if (world.use3DModel) steps.push('avatar');
+  if (world.showsAvatar) steps.push('avatar');
   return steps;
 }
 

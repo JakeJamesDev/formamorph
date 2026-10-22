@@ -19,7 +19,7 @@ const action = (id: string, text = `Opening ${id}.`): Opening => ({ id, text, ki
 
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: 'W', description: '', author: '', thumbnail: null, bgm: null,
-  systemPrompt: '', use3DModel: false, tags: [], ...over,
+  systemPrompt: '', tags: [], ...over,
 });
 
 /** How often each opening comes up over many seeded draws. */

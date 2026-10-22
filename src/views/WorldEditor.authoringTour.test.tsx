@@ -47,7 +47,7 @@ const getWorldMetadata = vi.mocked(WorldStorageService.getWorldMetadata);
 const NEW_WORLD: World = benchEditorWorld({
   worldOverview: {
     name: NEW_WORLD_NAME, description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: false, tags: [],
+    systemPrompt: '', tags: [],
   },
 } as unknown as Partial<World>);
 
@@ -57,7 +57,7 @@ const NAMED_WORLD: World = benchEditorWorld({
 
 const UNNAMED_WORLD: World = benchEditorWorld({
   worldOverview: {
-    name: '', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: false, tags: [],
+    name: '', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [],
   },
 } as unknown as Partial<World>);
 

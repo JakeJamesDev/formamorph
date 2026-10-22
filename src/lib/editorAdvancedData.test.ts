@@ -7,7 +7,7 @@ import { phValues } from '@/test/placeholderValues';
 import { boxScripts } from '@/test/scriptFixtures';
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '',
-  use3DModel: false, tags: [], ...over,
+  tags: [], ...over,
 });
 
 /** A world holding nothing Simple mode hides — every case below is this plus one hidden thing. */

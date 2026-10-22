@@ -12,7 +12,6 @@ const MORPHS: Record<string, string[]> = {
   'data:heron': ['HeronNeck'],
   'data:reed': ['ReedHeight'],
   'data:bare': [],
-  'data:old': ['OldBelly'],
   'blob:lib': ['LibraryChest'],
 };
 vi.mock('./vrmMorphLoader', () => ({ loadBodyMorphNames: async (url: string) => MORPHS[url] ?? [] }));
@@ -38,15 +37,13 @@ const loadedHeadings = async () => {
 };
 
 describe('the stat morph-binding picker', () => {
-  it('lists every store Avatar by display name, then the old world Avatar, then the library', async () => {
+  it('lists every store Avatar by display name, then the library', async () => {
     overview.current = {
       vrmStore: { a: { name: 'Heron', file: file('data:heron') }, b: { name: 'Reed', file: file('data:reed') } },
-      customPlayerVRM: file('data:old'),
     };
     expect(await loadedHeadings()).toEqual([
       ['Heron', ['HeronNeck']],
       ['Reed', ['ReedHeight']],
-      ["This World's Model", ['OldBelly']],
       ['Fen Walker', ['LibraryChest']],
     ]);
   });

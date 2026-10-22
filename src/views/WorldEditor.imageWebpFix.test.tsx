@@ -184,7 +184,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
   const SPREAD = benchEditorWorld({
     worldOverview: {
       name: 'Sedge Landing', description: '', author: '', thumbnail: PNG, bgm: null,
-      systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
+      systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
     },
     entities: [{
       id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',

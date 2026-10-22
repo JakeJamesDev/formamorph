@@ -8,7 +8,7 @@ import type { Entity, GameLocation, Opening, PersonaRef, WorldOverview } from '@
 const action = (id: string): Opening => ({ id, text: `Opening ${id}.`, kind: 'action' });
 
 const overview: WorldOverview = {
-  name: 'W', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: false, tags: [],
+  name: 'W', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [],
 };
 
 const entity = (id: string, over: Partial<Entity> = {}): Entity => ({

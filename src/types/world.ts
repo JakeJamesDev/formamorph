@@ -666,7 +666,7 @@ export interface WorldVrm {
  *  Avatar library (library entities). Absent = none. */
 export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string } | { kind: 'library'; id: string };
 
-/** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
+/** World-level metadata and global settings (system prompt, media, Avatars) shared across all saves. */
 export interface WorldOverview {
   name: string;
   description: string;
@@ -674,12 +674,12 @@ export interface WorldOverview {
   thumbnail: Base64Data | null;
   bgm: Base64Data | null;
   systemPrompt: string;
-  use3DModel: boolean;
   tags: string[];
-  /** v1.2.0: optional per-world custom player VRM model. */
-  customPlayerVRM?: MediaAsset | null;
   /** The world's Avatars, keyed by id. Entities refer to one through `Entity.vrmPick`. */
   vrmStore?: Record<string, WorldVrm>;
+  /** The played side's last resort, set only by the migration of a world whose old 3D Player Avatar flag
+   *  was on (see lib/legacyVrm). Never shown in the editor. */
+  legacyVrmFallback?: VrmPick;
   /** Optional markdown shown to the player on entering gameplay (per-world "Show Readme" toggle). */
   readme?: string;
   /** Optional markdown shown over the first enter-world setup screen, before any choice is made. Shares

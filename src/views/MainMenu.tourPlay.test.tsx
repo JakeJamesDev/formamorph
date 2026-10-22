@@ -27,7 +27,7 @@ const TOUR_WORLD: StoredWorldRecord = {
   data: {
     version: __APP_VERSION__,
     worldOverview: {
-      name: 'Brinewell', description: '', author: '', systemPrompt: 'A cold coast.', use3DModel: false, tags: [],
+      name: 'Brinewell', description: '', author: '', systemPrompt: 'A cold coast.', tags: [],
       introReadme: '# Welcome to Brinewell\nThe tide is coming in.',
     },
     stats: [], entities: [], statUpdates: [], dictionaries: [],

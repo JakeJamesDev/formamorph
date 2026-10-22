@@ -36,7 +36,7 @@ const FILE = { data: 'data:model/vrm;base64,Z2xURgIA', type: 'model/vrm', name: 
 const WORLD: World = benchEditorWorld({
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
+    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
     vrmStore: { heron: { name: 'Heron', file: FILE }, reed: { name: 'Reed', file: FILE } },
   },
   entities: [
