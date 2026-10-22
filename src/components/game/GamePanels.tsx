@@ -87,6 +87,7 @@ import { StatRow } from './StatRow';
 import { rowDelta } from '@/lib/useStatDeltas';
 import type { OwnerId } from '@/lib/scope';
 import { StatGroupSections } from './StatGroupSections';
+import { PanelOwnerCard } from './PanelOwnerCard';
 import { statPanelLayout } from '@/lib/statGroupTree';
 import { PersonaRow } from './PersonaRow';
 import { YouMark } from './YouMark';
@@ -1452,52 +1453,64 @@ export const RightPanel = ({
             </div>
           )}
           <ScrollArea className="min-h-0 flex-grow mb-4 relative">
-            {visibleStats.length > 0 && (
-              <section aria-label="Global stats" data-testid="global-stats">
-                <h3 className="truncate px-2 pb-1 text-label font-medium">Global</h3>
-                <StatGroupSections
-                  nodes={playerLayout}
-                  idOf={({ stat }) => stat.id}
-                  nameOf={resolvePH}
-                  renderStat={({ stat, index }) => {
-                    const key = stat.name.toLowerCase();
-                    return (
-                      <StatRow
-                        stat={stat}
-                        {...rowDelta(statDeltas, null, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
-                        page={currentPage}
-                        isViewingPast={isViewingPast}
-                        snap={snapStats}
-                        editable={isEditMode && !isViewingPast}
-                        reserveDescriptorLine={anyDescriptors}
-                        onCommitValue={(value) => {
-                          const newStats = [...globalStats];
-                          newStats[index] = { ...stat, value };
-                          commitManualStatEdit(newStats);
-                        }}
-                      />
-                    );
-                  }}
-                />
-              </section>
-            )}
-            {playedRows.map((owner) => (
-              <section key={owner.entity.id} aria-label={`${owner.entity.name} stats`} data-testid="persona-stats" className="mt-2">
-                <h3 className="flex items-center px-2 pb-1 text-label font-medium">
-                  <span className="min-w-0 truncate">{owner.entity.name}</span>
-                  <YouMark />
-                </h3>
-                {ownerStatRows(owner)}
-              </section>
-            ))}
-            {entitiesShowStats && shownEntity && entitySection && (
-              <section aria-label={`${shownEntity.label} stats`} data-testid="entity-stats" className="mt-2 border-t border-border pt-2">
-                <h3 className="truncate px-2 pb-1 text-label font-medium">{shownEntity.label}</h3>
-                {entitySection.rows.length === 0 ? (
-                  <p role="status" className="py-4 text-center text-muted-foreground">No stats to show.</p>
-                ) : ownerStatRows(entitySection)}
-              </section>
-            )}
+            <div className="space-y-2 pb-2">
+              {visibleStats.length > 0 && (
+                <PanelOwnerCard role="region" aria-label="Global stats" data-testid="global-stats" name="Global">
+                  <StatGroupSections
+                    nodes={playerLayout}
+                    idOf={({ stat }) => stat.id}
+                    nameOf={resolvePH}
+                    renderStat={({ stat, index }) => {
+                      const key = stat.name.toLowerCase();
+                      return (
+                        <StatRow
+                          stat={stat}
+                          {...rowDelta(statDeltas, null, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
+                          page={currentPage}
+                          isViewingPast={isViewingPast}
+                          snap={snapStats}
+                          editable={isEditMode && !isViewingPast}
+                          reserveDescriptorLine={anyDescriptors}
+                          onCommitValue={(value) => {
+                            const newStats = [...globalStats];
+                            newStats[index] = { ...stat, value };
+                            commitManualStatEdit(newStats);
+                          }}
+                        />
+                      );
+                    }}
+                  />
+                </PanelOwnerCard>
+              )}
+              {playedRows.map((owner) => (
+                <PanelOwnerCard
+                  key={owner.entity.id}
+                  role="region"
+                  aria-label={`${owner.entity.name} stats`}
+                  data-testid="persona-stats"
+                  name={owner.entity.name}
+                  entity
+                  you
+                >
+                  {ownerStatRows(owner)}
+                </PanelOwnerCard>
+              ))}
+              {entitiesShowStats && shownEntity && entitySection && (
+                <PanelOwnerCard
+                  // Keyed by entity, so a new pick opens its card.
+                  key={shownEntity.id}
+                  role="region"
+                  aria-label={`${shownEntity.label} stats`}
+                  data-testid="entity-stats"
+                  name={shownEntity.label}
+                  entity
+                >
+                  {entitySection.rows.length === 0 ? (
+                    <p role="status" className="py-4 text-center text-muted-foreground">No stats to show.</p>
+                  ) : ownerStatRows(entitySection)}
+                </PanelOwnerCard>
+              )}
+            </div>
             <StatsActions
               className="absolute bottom-2 right-2"
               past={isViewingPast}

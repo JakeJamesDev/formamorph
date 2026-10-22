@@ -97,3 +97,33 @@ export function statPanelLayout<T>(
   const loose = items.filter((item) => !placed.has(idOf(item))).map((item): StatLayoutNode<T> => ({ kind: 'stat', item }));
   return [...build(buildStatTree(groups, authored)), ...loose];
 }
+
+/** A run of stats under one group heading. */
+export interface StatPanelBlock<T> {
+  key: string;
+  /** Path of group names ("Body › Reflexes"); null for the stats outside any group. */
+  path: string[] | null;
+  items: T[];
+}
+
+/**
+ * A layout flattened the way the Traits tab draws its groups: the stats outside any group first, then each
+ * group's own stats under its path, its subgroups after it. A group with no stat of its own adds no block.
+ */
+export function statPanelBlocks<T>(nodes: readonly StatLayoutNode<T>[]): StatPanelBlock<T>[] {
+  const stats = (list: readonly StatLayoutNode<T>[]) => list.flatMap((n) => (n.kind === 'stat' ? [n.item] : []));
+  const blocks: StatPanelBlock<T>[] = [];
+  const walk = (list: readonly StatLayoutNode<T>[], path: string[]) => {
+    for (const node of list) {
+      if (node.kind !== 'group') continue;
+      const at = [...path, node.group.name];
+      const own = stats(node.children);
+      if (own.length) blocks.push({ key: node.group.id, path: at, items: own });
+      walk(node.children, at);
+    }
+  };
+  const root = stats(nodes);
+  if (root.length) blocks.push({ key: 'root', path: null, items: root });
+  walk(nodes, []);
+  return blocks;
+}

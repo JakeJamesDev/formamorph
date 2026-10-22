@@ -33,9 +33,8 @@ describe('RightPanel — linked stats', () => {
   it('lays a linked stat out where the entity placed its link, with that entity\'s own value', () => {
     renderRightPanel({}, stage('bram'));
     const section = screen.getByTestId('entity-stats');
-    const bond = within(section).getByRole('button', { name: 'Bond' });
-    expect(bond).toHaveAttribute('aria-expanded', 'true');
-    expect(bond.parentElement!.parentElement).toHaveTextContent('Trust');
+    // The subheader's block holds the rows under it.
+    expect(within(section).getByText('Bond').parentElement).toHaveTextContent('Trust');
     expect(within(section).getByText('40 / 100')).toBeInTheDocument();
   });
 
@@ -48,6 +47,6 @@ describe('RightPanel — linked stats', () => {
     renderRightPanel({}, stage('bram'));
     const outside = screen.getAllByText(/^Trust$/).filter((el) => !screen.getByTestId('entity-stats').contains(el));
     expect(outside).toEqual([]);
-    expect(screen.queryByRole('button', { name: 'Blueprints' })).toBeNull();
+    expect(screen.queryByText('Blueprints')).toBeNull();
   });
 });

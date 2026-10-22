@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  applyStatDrop, buildStatTree, duplicateStatNode, newStatGroup, removeStatGroup, statPanelLayout, statRootCount,
+  applyStatDrop, buildStatTree, duplicateStatNode, newStatGroup, removeStatGroup, statPanelBlocks, statPanelLayout, statRootCount,
   statsInTreeOrder,
 } from './statGroupTree';
 import type { Stat, StatGroup } from '@/types';
@@ -174,6 +174,38 @@ describe('statPanelLayout', () => {
   it('is a plain list in authored order for a world with no groups', () => {
     const flat = [stat('a'), stat('b')];
     expect(shape(statPanelLayout([], flat, flat, (s) => s.id))).toEqual(['a', 'b']);
+  });
+});
+
+describe('statPanelBlocks', () => {
+  const groups = [
+    group('body', { name: 'Body', order: 0 }), group('mind', { name: 'Mind', order: 1 }),
+    group('inner', { name: 'Reflexes', parentId: 'body', order: 0 }),
+  ];
+  const authored = [
+    stat('vigor', { groupId: 'body', order: 1 }), stat('grit', { groupId: 'inner', order: 0 }),
+    stat('calm', { groupId: 'mind', order: 0 }), stat('luck', { order: 2 }),
+  ];
+  const blocks = (visible: Stat[]) => statPanelBlocks(statPanelLayout(groups, authored, visible, (s) => s.id))
+    .map((b) => ({ path: b.path?.join(' › ') ?? null, ids: ids(b.items) }));
+
+  it('puts ungrouped stats first, then each group\'s own stats before its subgroups, under full paths', () => {
+    expect(blocks(authored)).toEqual([
+      { path: null, ids: ['luck'] },
+      { path: 'Body', ids: ['vigor'] },
+      { path: 'Body › Reflexes', ids: ['grit'] },
+      { path: 'Mind', ids: ['calm'] },
+    ]);
+  });
+
+  it('gives a group with stats only in a subgroup no block of its own', () => {
+    expect(blocks(authored.filter((s) => s.id === 'grit'))).toEqual([{ path: 'Body › Reflexes', ids: ['grit'] }]);
+  });
+
+  it('is one unnamed block for a world with no groups', () => {
+    const flat = [stat('a'), stat('b')];
+    expect(statPanelBlocks(statPanelLayout([], flat, flat, (s) => s.id)).map((b) => [b.path, ids(b.items)]))
+      .toEqual([[null, ['a', 'b']]]);
   });
 });
 
