@@ -6,7 +6,7 @@ import { CONTINUE_CHOICE } from '@/lib/choices';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { defaultSystemPrompt } from './GamePrompts';
 import openChat from '@/defaultworlds/open-chat.json';
-import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type Gameplay, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
+import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, worldFixture, type Gameplay, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 
@@ -162,14 +162,15 @@ describe('MiddlePanel — the audio row', () => {
 });
 
 describe('LeftPanel', () => {
-  it('draws the player model for a world that has one', () => {
+  it('draws the player model for a world that has one', async () => {
     renderLeftPanel({}, {
+      world: { worldOverview: { ...worldFixture().worldOverview, legacyVrmFallback: { kind: 'default' } } },
       seed: (gameplay) => gameplay.setCharacterData({
-        bodyMorphs: { Belly: 0.25 }, currentHairStyle: 'long', hairLength: 0.5,
+        bodyMorphs: { Belly: 0.25 }, currentHairStyle: 'long', hairLength: 0.5, chosenVrm: null,
       }),
     });
 
-    expect(screen.getByTestId('vrm-viewer')).toBeInTheDocument();
+    expect(await screen.findByTestId('vrm-viewer')).toBeInTheDocument();
     expect(lastVrmViewerProps()?.bodyMorphValues).toMatchObject({ Belly: 0.25 });
   });
 

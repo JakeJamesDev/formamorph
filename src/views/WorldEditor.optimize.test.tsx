@@ -52,7 +52,7 @@ vi.mock('@/lib/useDownscalePrompt', async (importOriginal) => {
 const WORLD = benchEditorWorld({
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: PNG, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: PNG }],
   entities: [{ id: 'resident', name: 'Odd Wick', images: [{ data: PNG }], locations: ['harbor'] }],

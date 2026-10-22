@@ -35,7 +35,7 @@ vi.mock('react-toastify', () => ({
 const WORLD: World = benchEditorWorld({
   worldOverview: {
     name: 'Sedge Landing', description: 'A fen town.', author: 'Wren', thumbnail: null, bgm: null,
-    systemPrompt: 'Narrate the fen.', use3DModel: true, tags: [],
+    systemPrompt: 'Narrate the fen.', tags: [],
     introReadme: 'Before you choose, brackish water.',
     readme: 'Once you land, peat-smoke everywhere.',
     promptOverrides: { systemPrompt: 'Narrate in lamplight.', systemPromptEnabled: true },
@@ -44,7 +44,7 @@ const WORLD: World = benchEditorWorld({
 
 /** Both column labels, so a label that moves between the columns fails rather than passing twice. */
 const FIELD_LABELS = new RegExp(
-  '^(World Name|Author|Tags|Thumbnail|3D Player Avatar|Custom Player Avatar|Allowed Personas|Starts On|Background Music'
+  '^(World Name|Author|Tags|Thumbnail|Avatars|Allowed Personas|Starts On|Background Music'
   + '|Player-Facing Description|Readme|AI-Facing Description|Custom Prompts)$',
 );
 
@@ -107,12 +107,11 @@ beforeEach(() => {
 });
 
 describe('the World Editor Overview columns', () => {
-  it('reads the listing fields, then the avatar, then the music down the left column', async () => {
+  it('reads the listing fields, then the Avatars, then the music down the left column', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     expect(leftLabels()).toEqual([
-      'World Name', 'Author', 'Tags', 'Thumbnail', '3D Player Avatar', 'Custom Player Avatar',
-      'Allowed Personas', 'Starts On', 'Background Music',
+      'World Name', 'Author', 'Tags', 'Thumbnail', 'Avatars', 'Allowed Personas', 'Starts On', 'Background Music',
     ]);
   });
 
@@ -124,12 +123,10 @@ describe('the World Editor Overview columns', () => {
     ]);
   });
 
-  it('drops the avatar upload and the persona rules from the left column in Simple mode, keeping the order', async () => {
+  it('drops the Avatars and the persona rules from the left column in Simple mode, keeping the order', async () => {
     renderWorldEditorBench(WORLD, 'simple');
     await screen.findByLabelText('World Name');
-    expect(leftLabels()).toEqual([
-      'World Name', 'Author', 'Tags', 'Thumbnail', '3D Player Avatar', 'Background Music',
-    ]);
+    expect(leftLabels()).toEqual(['World Name', 'Author', 'Tags', 'Thumbnail', 'Background Music']);
   });
 
   it('drops Custom Prompts from the right column in Simple mode, keeping the order', async () => {
@@ -164,12 +161,6 @@ describe('the World Editor Overview columns', () => {
     expect(box?.querySelector('#image-upload-thumbnail')).not.toBeNull();
   });
 
-  it('names the avatar checkbox and explains it in a hint beside it', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    const box = await screen.findByRole('checkbox', { name: /3D Player Avatar/ });
-    const row = box.closest('div');
-    expect(within(row as HTMLElement).getByText('The player can customize it')).toBeInTheDocument();
-  });
 });
 
 describe('the Overview persona rules', () => {

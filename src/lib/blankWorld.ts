@@ -13,7 +13,6 @@ export function newBlankWorld(): World {
       name: NEW_WORLD_NAME,
       description: 'A blank world ready for editing',
       thumbnail: null,
-      use3DModel: false,
       bgm: null,
       systemPrompt: '',
       author: '',

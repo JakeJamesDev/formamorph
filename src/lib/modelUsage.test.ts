@@ -54,6 +54,24 @@ describe('findSavesUsingModel', () => {
     await expect(findSavesUsingModel('model-a')).resolves.toEqual([]);
   });
 
+  it('matches a chosen library Avatar, legacy or not, and never a world store id', async () => {
+    const chosen = (name: string, pick: { kind: 'world' | 'library'; id: string }, legacy?: true) =>
+      ({ id: name, name, currentState: { characterData: { chosenVrm: { pick, legacy } } }, stateHistory: [] }) as unknown as SaveRecord;
+    vi.mocked(getAllSaveRecords).mockResolvedValue([
+      chosen('Picked', { kind: 'library', id: 'model-a' }),
+      chosen('Old Pick', { kind: 'library', id: 'model-a' }, true),
+      chosen('World Entry', { kind: 'world', id: 'model-a' }),
+    ]);
+    await expect(findSavesUsingModel('model-a')).resolves.toEqual(['Picked', 'Old Pick']);
+  });
+
+  it('reads the chosen Avatar over a leftover old id', async () => {
+    const both = { id: 'b', name: 'Both', stateHistory: [],
+      currentState: { characterData: { playerModelId: 'model-a', chosenVrm: { pick: { kind: 'library', id: 'model-b' } } } } } as unknown as SaveRecord;
+    vi.mocked(getAllSaveRecords).mockResolvedValue([both]);
+    await expect(findSavesUsingModel('model-a')).resolves.toEqual([]);
+  });
+
   it('reports no usage rather than throwing when the save database cannot be read', async () => {
     // A delete must not be blocked by an unreadable save DB; the warning just loses its detail.
     vi.mocked(getAllSaveRecords).mockRejectedValue(new Error('IndexedDB unavailable'));

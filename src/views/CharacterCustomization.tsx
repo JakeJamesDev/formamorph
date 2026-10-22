@@ -10,11 +10,10 @@ import { MobileControlsDrawer } from "@/components/MobileControlsDrawer"
 import { useIsMobile } from "@/lib/useIsMobile"
 import { cn } from "@/lib/utils"
 import VRMViewer from './VRMViewer';
-import { useGameData } from '../contexts/GameDataContext';
 import type { CharacterData, ModelMetadata } from '@/types';
 import ModelStorageService from '@/services/ModelStorageService';
 import { filesFrom } from '@/lib/importFiles';
-import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
+import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
@@ -29,7 +28,6 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   /** Cancel the whole enter-world flow (shown as Abort when there's no previous step to go back to). */
   onAbort?: () => void;
 }) => {
-  const { worldOverview } = useGameData();
   // This screen replaces the menu rather than layering over it, so the Android back button cannot see it
   // and would offer to close the app instead. Whichever way out the flow gave us is the back step.
   useBackStop(onBack ?? onAbort);
@@ -38,9 +36,9 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   const { setCaps, vrmViewerRef, viewerProps, controls, characterData } = useVrmCustomization();
 
   // Player model selection + local model library (per-browser, persisted in IndexedDB).
-  const [selectedModelId, setSelectedModelId] = useState<string>(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_AVATAR_ID);
+  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_AVATAR_ID);
   const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>([]);
-  const { url: resolvedModelUrl, resolving: resolvingModel } = usePlayerModelUrl(selectedModelId);
+  const { url: resolvedModelUrl, resolving: resolvingModel } = useVrmSourceUrl({ kind: 'library', id: selectedModelId });
   const refreshLibrary = () => ModelStorageService.getModelMetadata().then(setLibraryModels);
   // Seed the bundled default before listing, so the picker isn't blank if this screen is reached before
   // MainMenu has seeded (its default selection is DEFAULT_AVATAR_ID, which must exist to show as selected).
@@ -70,12 +68,12 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
       toastError(err, 'Could not delete that player avatar.');
       return;
     }
-    if (selectedModelId === id) setSelectedModelId(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_AVATAR_ID);
+    if (selectedModelId === id) setSelectedModelId(DEFAULT_AVATAR_ID);
     await refreshLibrary();
   };
 
   const handleFinalize = () => {
-    onCharacterCustomized({ ...characterData, playerModelId: selectedModelId });
+    onCharacterCustomized({ ...characterData, chosenVrm: { pick: { kind: 'library', id: selectedModelId } } });
   };
 
   // Portrait/narrow: the controls move into a bottom drawer that hovers over the viewer, so the model gets the
@@ -126,7 +124,6 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
               <SelectContent>
                 {/* No hardcoded "Default" entry: the bundled model is seeded into the library, so it lists
                     itself below. Two entries for one file would be the same model twice. */}
-                {worldOverview?.customPlayerVRM && <SelectItem value="world">World Avatar</SelectItem>}
                 {libraryModels.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
@@ -174,24 +171,6 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
       </Card>
     </div>
   );
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const defaultCharacterData = {
-  bodyMorphs: {},
-  // No colors → the model keeps its own when customization is skipped.
-  currentHairStyle: '',
-  hairLength: 0,
-  hairTypes: {
-    ponytail: {
-      shapekey: 'Hair',
-      canChangeLength: true
-    },
-    bobcut: {
-      shapekey: 'Hair001',
-      canChangeLength: false
-    }
-  }
 };
 
 export default CharacterCustomization;

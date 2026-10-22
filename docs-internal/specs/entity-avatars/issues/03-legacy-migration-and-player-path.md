@@ -1,6 +1,6 @@
 # 03: Legacy Migration and Player Path
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,12 +15,21 @@ At game load, where the world is known, a save's chosen Avatar of unset or "the 
 
 ## Acceptance criteria
 
-- [ ] Migration tests: missing flag, `false`, `true` without an old Avatar, `true` with one, a world with a Custom Persona, persona entities left unassigned, a second run (idempotent), and the same store id across two loads.
-- [ ] Save tests at game load: chosen Avatar unset, "the world's", a library id, and Q24's legacy library pick.
-- [ ] A world with the flag `true` and an old Avatar shows it under None, a library persona, and a world persona with pick none.
-- [ ] The editor no longer shows the checkbox or the old uploader; the fallback is dropped once a Custom Persona has a non-none pick (worldEditorBench).
-- [ ] Every reader of the old world Avatar field reads the store or the resolver instead (morph names, customization, model usage).
-- [ ] Changelog fragment in `docs-internal/changelog.d/`.
-- [ ] Export-shape reminder in the landing: the editor-facing flag and the old world Avatar field go, the world gains the fallback, and saves remap the chosen Avatar.
+- [x] Migration tests: missing flag, `false`, `true` without an old Avatar, `true` with one, a world with a Custom Persona, persona entities left unassigned, a second run (idempotent), and the same store id across two loads. (`legacyVrm.test.ts` "the legacy Avatar migration"; the missing-flag guard bites when the old `true` default comes back.)
+- [x] Save tests at game load: chosen Avatar unset, "the world's", a library id, and Q24's legacy library pick. (`legacyVrm.test.ts` "remapping a save at game load"; `GameplayContext.legacyAvatar.test.tsx` through `loadGame`, with seeding.)
+- [x] A world with the flag `true` and an old Avatar shows it under None, a library persona, and a world persona with pick none. (Resolver on the migrated world, all three, in `legacyVrm.test.ts`; the viewer's model URL under None and a world persona in `GamePanels.legacyAvatar.test.tsx`.)
+- [x] The editor no longer shows the checkbox or the old uploader; the fallback is dropped once a Custom Persona has a non-none pick (worldEditorBench). (`WorldEditor.legacyAvatar.test.tsx`: pick and role-change paths, one undo Step, delete of the reserved entry.)
+- [x] Every reader of the old world Avatar field reads the store or the resolver instead (morph names, customization, model usage). (No `customPlayerVRM` or `use3DModel` reader left outside the migration; `useBodyMorphNames`, `CharacterCustomization`, `modelUsage` tests.)
+- [x] Changelog fragment in `docs-internal/changelog.d/`. (`entity-avatars-03.md`.)
+- [x] Export-shape reminder in the landing: the editor-facing flag and the old world Avatar field go, the world gains the fallback, and saves remap the chosen Avatar. (In the landing report.)
 
 For you: open an old world that had a custom Avatar and confirm it looks the same in play.
+
+## Landed
+
+**Not verified**
+- Nothing in the play view in a browser: the player Avatar view is checked through the GamePanels harness only.
+
+**For you**
+- For you: open an old world that had a custom Avatar and confirm it looks the same in play.
+- The World Overview's store rows have no Preview or Export: the old uploader's preview and export left with it.

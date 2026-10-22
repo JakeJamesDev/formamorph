@@ -21,7 +21,7 @@ const link = (id: string, extra: Partial<StatLink> = {}): StatLink =>
 const world = {
   id: 'w',
   worldOverview: {
-    name: 'w', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: true, tags: [],
+    name: 'w', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [],
   },
   stats: [stat('health', 'Health'), stat('bp-trust', 'Trust', { groupId: 'bp', value: 5 })],
   statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],

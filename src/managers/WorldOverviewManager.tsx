@@ -1,88 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
-import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/typography";
-import { toastError } from '@/lib/linkToast';
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
-import { ModelDetailsPanel } from '../components/modals/ModelDetailsPanel';
-import { readVrmMeta } from '../lib/vrmMeta';
-import { downloadBlob } from '@/lib/downloadBlob';
-import { ActionIcon } from '@/lib/actionIcons';
 import { useEditorMode } from '@/lib/editorMode';
 import { ALLOWED_PERSONAS, limitsToWorld, worldPersonaRules } from '@/lib/personaPick';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectOptions } from "@/components/SelectOptions";
-import type { AllowedPersonas, VrmLicense } from '@/types';
+import type { AllowedPersonas } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
 import { WorldVrmStoreSection } from './WorldVrmStoreSection';
-
-/**
- * The world's custom player VRM in the same details view the model library uses. The world stores the model
- * inline as a data URL rather than as a library record, so the bytes are decoded here and its license is read
- * from the file itself. Its own component so the work happens only while the preview is open.
- */
-const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fileName?: string; open: boolean; onClose: () => void }) => {
-  const [url, setUrl] = useState<string | undefined>();
-  const [blob, setBlob] = useState<Blob | null>(null);
-  const [meta, setMeta] = useState<{ license?: VrmLicense; size?: number }>({});
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | undefined;
-    fetch(data)
-      .then((r) => r.blob())
-      .then(async (loaded) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(loaded);
-        setUrl(objectUrl);
-        setBlob(loaded);
-        const { license } = await readVrmMeta(loaded);
-        if (!cancelled) setMeta({ license, size: loaded.size });
-      })
-      .catch(() => { if (!cancelled) setFailed(true); });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setBlob(null);
-    };
-  }, [data]);
-
-  /** Save the stored bytes back out untouched, so the file's own metadata and license travel with it. */
-  const handleExport = () => {
-    if (!blob) return;
-    // The uploaded filename is the best name available; falling back, a file with no VRM data is a plain glTF.
-    const fallback = `Player Avatar.${meta.license?.metaVersion === null ? 'glb' : 'vrm'}`;
-    downloadBlob(blob, fileName || fallback);
-  };
-
-  return (
-    <ModelDetailsPanel
-      open={open}
-      name="Player Avatar"
-      url={url}
-      license={meta.license}
-      size={meta.size}
-      failed={failed}
-      onClose={onClose}
-      footer={
-        <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-          <ActionIcon.export className="mr-2 h-4 w-4" /> Export
-        </Button>
-      }
-    />
-  );
-};
 
 const ALLOWED_PERSONAS_LABELS: Record<AllowedPersonas, string> = { any: 'Any', world: 'World Only' };
 
@@ -161,42 +96,10 @@ const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
   const { advanced } = useEditorMode();
   const tagOptions = useDanbooruTags();
-  const vrmInputRef = useRef<HTMLInputElement>(null);
-  const [vrmPreviewOpen, setVrmPreviewOpen] = useState(false);
-  // Mounted on first open and kept mounted from then on: decoding a VRM's tens of megabytes shouldn't happen
-  // just because the tab is showing, but unmounting on close would cut the dialog's close animation short.
-  const [vrmPreviewMounted, setVrmPreviewMounted] = useState(false);
-
-  const handleVRMChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          updateWorldOverview({
-            // Keep the filename: browsers report an empty MIME for .vrm, so it's the only format hint, and
-            // it's the name the avatar is exported back out under.
-            customPlayerVRM: { data: e.target?.result as string, type: file.type || 'model/vrm', name: file.name },
-          });
-        } catch (error) {
-          console.error('Error processing VRM:', error);
-          toastError(error, { headline: 'Error processing player avatar. Please try again.' });
-        }
-      };
-      reader.onerror = () => {
-        toastError(reader.error, { headline: 'Error reading file. Please try again.' });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleVRMClick = () => {
-    vrmInputRef.current?.click();
-  };
 
   return (
-    // The listing fields first, then the avatar setting, then the music: the library card's name, author,
-    // tags and picture read as one block.
+    // The listing fields first, then the Avatars, then the music: the library card's name, author, tags and
+    // picture read as one block.
     <div className="space-y-4">
       <div className="space-y-2" data-tour-anchor="world-name" {...fieldFrame('name')}>
         <Label htmlFor="worldName">World Name</Label>
@@ -247,62 +150,6 @@ const WorldOverviewManager = () => {
           />
         </div>
       </div>
-      {/* A checkbox row carries its hint inline after the caption, as the trait panel's does. */}
-      <div className="flex items-center gap-2" {...fieldFrame('use3DModel')}>
-        <Checkbox
-          id="use3DModel"
-          checked={worldOverview.use3DModel}
-          onCheckedChange={(checked) => updateWorldOverview({ use3DModel: checked === true })}
-        />
-        <Label htmlFor="use3DModel">3D Player Avatar</Label>
-        <Hint as="span">The player can customize it</Hint>
-      </div>
-      {/* Advanced only: a Simple-mode world keeps whatever avatar it carries and the bundled one otherwise,
-          the way it keeps a prompt it does not offer to edit. */}
-      {advanced && worldOverview.use3DModel && (
-        <div className="space-y-2">
-          <Label htmlFor="customVRM">Custom Player Avatar</Label>
-          <Hint>Overrides the default 3D player model</Hint>
-          <input
-            ref={vrmInputRef}
-            id="customVRM"
-            type="file"
-            accept=".vrm,.glb"
-            onChange={handleVRMChange}
-            className="hidden"
-          />
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleVRMClick}
-              className="flex-1"
-            >
-              {worldOverview.customPlayerVRM ? "Change Player Avatar" : "Add Player Avatar"}
-            </Button>
-            {worldOverview.customPlayerVRM && (
-              <>
-                <Button variant="outline" onClick={() => { setVrmPreviewMounted(true); setVrmPreviewOpen(true); }}>
-                  Preview
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => updateWorldOverview({ customPlayerVRM: null })}
-                >
-                  Remove
-                </Button>
-              </>
-            )}
-          </div>
-          {worldOverview.customPlayerVRM?.data && vrmPreviewMounted && (
-            <PlayerVrmPreview
-              data={worldOverview.customPlayerVRM.data}
-              fileName={worldOverview.customPlayerVRM.name}
-              open={vrmPreviewOpen}
-              onClose={() => setVrmPreviewOpen(false)}
-            />
-          )}
-        </div>
-      )}
       {advanced && <WorldVrmStoreSection />}
       {advanced && <PersonaRulesFields />}
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>

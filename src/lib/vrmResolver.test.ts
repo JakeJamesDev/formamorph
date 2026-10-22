@@ -142,7 +142,7 @@ describe('resolveEntityVrm', () => {
 });
 
 describe("the save's chosen Avatar", () => {
-  const chosen = { pick: lib('lib-b'), legacy: false };
+  const chosen = { pick: lib('lib-b') };
 
   it("replaces User's Default for the played entity only", () => {
     const hero = entity('hero', userDefault);
@@ -166,11 +166,11 @@ describe("the save's chosen Avatar", () => {
   });
 
   it('falls back to the device default when it names a store id that is gone', () => {
-    expect(resolvePlayedVrm(ctx({ legacyFallback: userDefault, chosen: { pick: world('gone'), legacy: false } }))).toEqual(lib('lib-default'));
+    expect(resolvePlayedVrm(ctx({ legacyFallback: userDefault, chosen: { pick: world('gone') } }))).toEqual(lib('lib-default'));
   });
 
   describe('from a legacy save', () => {
-    const legacy = { pick: lib('lib-b'), legacy: true };
+    const legacy = { pick: lib('lib-b'), legacy: true as const };
 
     it('replaces the whole played-side result', () => {
       const hero = entity('hero', world('knight'));

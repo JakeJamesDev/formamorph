@@ -46,7 +46,6 @@ export function seedWorldData(worldData: Record<string, unknown>, seed: DefaultW
       thumbnail: '',
       bgm: null,
       systemPrompt: '',
-      use3DModel: true,
     },
   });
 }

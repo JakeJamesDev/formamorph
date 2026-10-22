@@ -64,7 +64,7 @@ export const benchEditorWorld = (over: Partial<World>): World => ({
   id: 'w1',
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
+    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
   },
   stats: [],
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],

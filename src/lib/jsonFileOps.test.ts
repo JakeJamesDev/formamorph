@@ -4,6 +4,7 @@ import { jsonParts, runJsonFileOp } from './jsonFileOps';
 import { measurePublishBytes } from './publishLimits';
 import { worldPublishPayload } from './publishPayload';
 import { APP_VERSION, migrateWorld } from './version';
+import { LEGACY_VRM_ID } from './legacyVrm';
 import type { World } from '@/types';
 
 describe('runJsonFileOp', () => {
@@ -55,7 +56,7 @@ describe('parseWorld', () => {
     const fixed = (w: World) => ({ ...w, dictionaries: w.dictionaries?.map((d) => ({ ...d, id: 'fixed' })) });
     expect(fixed(world)).toEqual(fixed(migrateWorld(JSON.parse(text))));
     expect(world.version).toBe(APP_VERSION);
-    expect(world.worldOverview.customPlayerVRM).toEqual({ data: legacy.customPlayerVRM, type: 'model/vrm' });
+    expect(world.worldOverview.vrmStore?.[LEGACY_VRM_ID]?.file).toEqual({ data: legacy.customPlayerVRM, type: 'model/vrm' });
   });
 
   it('rejects a file that is not JSON', async () => {

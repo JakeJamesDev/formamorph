@@ -133,11 +133,16 @@ export interface CharacterData {
   currentHairStyle: string;
   hairLength: number;
   hairTypes?: Record<string, HairTypeDef>;
-  /**
-   * Which VRM the player picked: a local model-library id, `'default'` (bundled model),
-   * or unset/`'world'` (the world's `customPlayerVRM`, else the bundled default).
-   */
-  playerModelId?: string;
+  /** The Avatar the player chose for this save. Null = no choice. Absent only on a save made before
+   *  per-entity Avatars, which the game-load remap converts (see lib/legacyVrm). */
+  chosenVrm?: ChosenVrm | null;
+}
+
+/** A save's chosen Avatar: a world store entry or a library record. `legacy` marks a choice a save made
+ *  before per-entity Avatars, which replaces the whole played-side result. */
+export interface ChosenVrm {
+  pick: { kind: 'world' | 'library'; id: string };
+  legacy?: true;
 }
 
 /** The stored payload of a library VRM: the file itself plus what we know about it. The `id`, display name,

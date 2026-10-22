@@ -15,7 +15,7 @@ const location = (id: string, name: string): GameLocation => ({ id, name });
 const baseWorld = (): WorldSlices => ({
   worldOverview: {
     name: "Sedge Landing", description: "", author: "", thumbnail: null, bgm: null, systemPrompt: "",
-    use3DModel: true, tags: [],
+    tags: [],
   },
   stats: [stat("hunger", "Hunger"), stat("thirst", "Thirst"), stat("mood", "Mood")],
   locations: [location("docks", "Docks"), location("market", "Market")],

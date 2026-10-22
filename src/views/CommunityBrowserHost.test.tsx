@@ -67,7 +67,7 @@ const worldData = (name: string): World => ({
   id: 'downloaded',
   worldOverview: {
     name, description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   stats: [], locations: [], entities: [], traits: [], statUpdates: [],
 } as unknown as World);

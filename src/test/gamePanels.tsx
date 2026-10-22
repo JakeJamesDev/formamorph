@@ -104,7 +104,7 @@ export function worldFixture(overrides: Partial<World> = {}): World {
     id: 'test-world',
     worldOverview: {
       name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-      systemPrompt: '<NOTES>', use3DModel: true, tags: [],
+      systemPrompt: '<NOTES>', tags: [],
     },
     stats: [], locations: [], entities: [], traits: [], statUpdates: [],
     ...overrides,

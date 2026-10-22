@@ -10,7 +10,7 @@ import { renderHook, act } from '@testing-library/react';
 
 const overview = (promptOverrides?: WorldOverview['promptOverrides']): WorldOverview => ({
   name: 'W', description: '', author: '', thumbnail: null, bgm: null,
-  systemPrompt: '', use3DModel: false, tags: [], ...(promptOverrides ? { promptOverrides } : {}),
+  systemPrompt: '', tags: [], ...(promptOverrides ? { promptOverrides } : {}),
 });
 
 const PRESET = 'the player preset prompt';

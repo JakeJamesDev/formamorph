@@ -66,7 +66,9 @@ import type {
   TraitsPanelView,
   CascadeOffTraitIds,
   OwnedTraitStates,
+  WorldOverview,
 } from '@/types';
+import { remapChosenVrm } from '../lib/legacyVrm';
 
 // Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
 // leaks into consumers' dependency arrays and can drive a render loop while viewing a past page.
@@ -528,14 +530,17 @@ function useProvideGameplay() {
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success.
    *  `worldEntities` given, the owned trait state and stat values of an entity the playthrough no longer holds
-   *  are dropped, and each authored entity's missing stats are backfilled. */
+   *  are dropped, and each authored entity's missing stats are backfilled. `vrmStore` is the world's Avatar
+   *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. */
   const loadGame = useCallback(async (
     saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (PlaceableEntity & Pick<Entity, 'stats'>)[],
+    vrmStore?: WorldOverview['vrmStore'],
   ) => {
     const locationIds = locations.map((l) => l.id);
     /** The state with every stat the world has since added, global and each entity's, no entity stat
-     *  carrying stored code bounds, and each position checked against the world. */
-    const backfilled = (state: GameState, persona?: PersonaRef) => {
+     *  carrying stored code bounds, each position checked against the world, and its chosen Avatar remapped. */
+    const backfilled = (raw: GameState, persona?: PersonaRef) => {
+      const state = raw.characterData ? { ...raw, characterData: remapChosenVrm(raw.characterData, vrmStore) } : raw;
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
       if (!worldEntities) return players;
       const cast = positionedCast(worldEntities, persona);

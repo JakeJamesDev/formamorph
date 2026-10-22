@@ -37,7 +37,7 @@ const world = (over: Partial<World> = {}): World => ({
   id: 'w-intent', version: '3.0.0',
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   stats: [stat('hunger', 'Hunger'), stat('thirst', 'Thirst')],
   locations: [{ id: 'harbor', name: 'Harbor Steps' } as GameLocation],
@@ -281,8 +281,8 @@ describe('Steps that match intent', () => {
 
   it('labels a world setting by its field', async () => {
     const { ctx, history } = await open();
-    await act1(() => ctx().updateWorldOverview({ use3DModel: false }));
-    expect(labels(history())).toEqual(['Edit World: 3D Player Avatar']);
+    await act1(() => ctx().updateWorldOverview({ openingsEnabled: false }));
+    expect(labels(history())).toEqual(['Edit World: Openings']);
   });
 
   it('labels an entity edit through its function by the one field it changed, and runs the function once', async () => {

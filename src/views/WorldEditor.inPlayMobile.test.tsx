@@ -33,7 +33,7 @@ vi.mock('react-toastify', () => ({
 const NEW_WORLD = benchEditorWorld({
   worldOverview: {
     name: 'New World', description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: false, tags: [],
+    systemPrompt: '', tags: [],
   },
 } as unknown as Partial<World>);
 

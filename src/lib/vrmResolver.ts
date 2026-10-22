@@ -1,4 +1,6 @@
-import type { Entity, VrmPick, WorldVrm } from '@/types';
+import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrm } from '@/types';
+import type { ResolvedPersona } from '@/lib/persona';
+import { customPersonaEntity } from '@/lib/blueprints';
 
 /** A pick that names one Avatar: a world store entry or a library record. */
 type NamedVrm = Exclude<VrmPick, { kind: 'default' }>;
@@ -13,12 +15,6 @@ export type PlayedVrmAs =
   | { source: 'library'; entity: PickedEntity }
   | { source: 'world'; entity: PickedEntity }
   | { source: 'none' };
-
-/** The save's chosen Avatar. A `legacy` choice is one a save made before per-entity Avatars. */
-export interface ChosenVrm {
-  pick: NamedVrm;
-  legacy: boolean;
-}
 
 /** Everything the resolver reads besides the entity. */
 export interface VrmContext {
@@ -79,4 +75,28 @@ export function resolvePlayedVrm(ctx: VrmContext): VrmSource | undefined {
 export function resolveEntityVrm(entity: PickedEntity, ctx: VrmContext): VrmSource | undefined {
   if (entity.id === playedEntityId(ctx)) return resolvePlayedVrm(ctx);
   return resolvePick(entity.vrmPick, ctx, () => deviceDefault(ctx));
+}
+
+/** The resolver's context for a playthrough: who is played, the world's store and fallback, the save's choice. */
+export function playVrmContext(args: {
+  persona: ResolvedPersona | null;
+  entities: readonly Entity[];
+  overview: Pick<WorldOverview, 'vrmStore' | 'legacyVrmFallback'>;
+  characterData: CharacterData | null;
+  libraryIds: ReadonlySet<string>;
+  deviceDefault: string | undefined;
+}): VrmContext {
+  const { persona, entities, overview, characterData } = args;
+  const played: PlayedVrmAs = persona?.source === 'library' ? { source: 'library', entity: persona.entity }
+    : persona?.source === 'world' ? { source: 'world', entity: persona.entity }
+    : { source: 'none' };
+  return {
+    store: overview.vrmStore,
+    libraryIds: args.libraryIds,
+    deviceDefault: args.deviceDefault,
+    played,
+    customPersona: customPersonaEntity(entities),
+    chosen: characterData?.chosenVrm ?? undefined,
+    legacyFallback: overview.legacyVrmFallback,
+  };
 }

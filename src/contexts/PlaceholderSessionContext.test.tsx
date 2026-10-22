@@ -20,7 +20,7 @@ const tok = (id: string, placementId: string) => encodePlaceholderToken({ id, mo
 const world = (placeholders = [TOWN, HAIR]) => ({
   id: 'w1',
   version: '2.9.2',
-  worldOverview: { name: 'Test', description: '', author: '', systemPrompt: '', use3DModel: false, tags: [] },
+  worldOverview: { name: 'Test', description: '', author: '', systemPrompt: '', tags: [] },
   placeholders,
   stats: [],
   locations: [{ id: 'l1', name: `${tok(TOWN.id, 'p1')} Square`, isStarting: true }],

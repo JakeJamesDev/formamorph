@@ -28,7 +28,7 @@ const road: Connection = { id: 'road', a: 'village', b: 'shore', aToB: {}, bToA:
 const world = (): World => ({
   id: 'w-canvas', version: '3.0.0',
   worldOverview: {
-    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: true, tags: [],
+    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [],
   },
   stats: [], locations: [village, tavern, house, shore], connections: [road], entities: [], traits: [], statUpdates: [],
 } as unknown as World);

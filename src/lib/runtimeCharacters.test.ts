@@ -210,7 +210,7 @@ describe('discoveredAsEntities', () => {
 });
 
 describe('pickedAtStart', () => {
-  const world = { name: 'W', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: false, tags: [],
+  const world = { name: 'W', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [],
     openings: [{ id: 'w1', text: 'The world opens.', kind: 'action' as const }] };
   const bard: Entity = { id: 'bard', name: 'Bard', openings: [{ id: 'b1', text: 'The bard tunes up.', kind: 'narration' }] };
   // A character met later in play, given an opening so the rebuild has a wrong row it could pick up.

@@ -41,7 +41,7 @@ const world = (avatar = false): StoredWorldRecord => ({
   id: 'entry-world', name: 'Entry World',
   data: {
     version: __APP_VERSION__,
-    worldOverview: { name: 'Entry World', description: '', author: '', systemPrompt: '', use3DModel: avatar, tags: [] },
+    worldOverview: { name: 'Entry World', description: '', author: '', systemPrompt: '', tags: [], ...(avatar ? { legacyVrmFallback: { kind: 'default' } } : {}) },
     stats: [], entities: [], statUpdates: [],
     traits: [
       { id: 'default', name: 'Default trait', isDefault: true, statChanges: [] },

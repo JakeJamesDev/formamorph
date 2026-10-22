@@ -34,7 +34,7 @@ const WORLD = {
   id: 'w1',
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   stats: [], locations: [], entities: [], traits: [], statUpdates: [],
 } as unknown as World;

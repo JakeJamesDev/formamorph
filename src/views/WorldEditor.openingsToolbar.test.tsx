@@ -25,7 +25,7 @@ vi.mock('react-toastify', () => ({
 const WORLD: World = benchEditorWorld({
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
+    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
     openings: [
       { id: 'w1', text: 'You wake in the reed-beds.', kind: 'narration' },
       { id: 'w2', text: 'The ferry bell rings.', kind: 'narration' },

@@ -11,7 +11,7 @@ const LOOSE = { matchCase: false, wholeWord: false };
 
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: '', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '',
-  use3DModel: false, tags: [], ...over,
+  tags: [], ...over,
 });
 
 /** A sources bag whose updaters record what they were handed. */

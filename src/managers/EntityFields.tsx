@@ -24,6 +24,7 @@ import { WorldInput } from '@/components/editor/WorldField';
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectOptions } from "@/components/SelectOptions";
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { fieldFrame } from '@/lib/historyField';
 
 /** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
@@ -116,6 +117,18 @@ const PERSONA_ROLES: Record<EntityHome, { value: PersonaRole; label: string; hin
   ],
 };
 
+/** Run an entity edit; when it leaves the Custom Persona with a pick, drop the legacy fallback in the same Step. */
+const useSpendFallback = () => {
+  const gameData = useGameDataOptional();
+  const history = useWorldHistoryMovesOptional();
+  return (label: string, customPersonaPicks: boolean, run: () => void) => {
+    if (!customPersonaPicks || !gameData?.worldOverview.legacyVrmFallback) return run();
+    const both = () => { run(); gameData.updateWorldOverview({ legacyVrmFallback: undefined }); };
+    if (history) void history.batch(label, both);
+    else both();
+  };
+};
+
 // The world's four go across only once the column clears the widest label on each; two-up below that.
 const ROLE_GRID: Record<EntityHome, string> = { world: 'h-auto grid-cols-2 [@container(min-width:32rem)]:grid-cols-4', library: 'grid-cols-2' };
 
@@ -127,13 +140,14 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
   customPersonaEntityName?: string;
 }) => {
   const { advanced } = useEditorMode();
+  const spendFallback = useSpendFallback();
   const [pending, setPending] = useState<{ role: PersonaRole; line: string } | null>(null);
   if (!advanced) return null;
   const roles = PERSONA_ROLES[home];
   const role = personaRole(value);
-  const apply = (next: PersonaRole) => {
+  const apply = (next: PersonaRole) => spendFallback('Set Persona', next === 'custom' && !!value.vrmPick, () => {
     for (const [field, v] of Object.entries(personaRolePatch(next))) onChange(field, v);
-  };
+  });
   const pick = (next: PersonaRole) => {
     const line = role === 'custom' ? unmarkLine(customPersonaCounts(value)) : null;
     if (line) setPending({ role: next, line });
@@ -326,8 +340,13 @@ export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars 
 /** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
 export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
   const { advanced } = useEditorMode();
+  const spendFallback = useSpendFallback();
   const store = useGameDataOptional()?.worldOverview?.vrmStore;
   if (!advanced) return null;
+  const pick = (v: string) => {
+    const next = vrmPickFromValue(v);
+    spendFallback('Set Avatar', !!next && !!value.customPersona, () => onChange('vrmPick', next));
+  };
   const none = vrmPickValue(undefined);
   const options = [
     { value: none, label: 'None' },
@@ -341,7 +360,7 @@ export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) =
     <div className="space-y-2" {...fieldFrame('vrmPick')}>
       <Label htmlFor={`entity-vrm-${value.id}`}>Avatar</Label>
       <Hint>{ENTITY_VRM_HINT}</Hint>
-      <Select value={selected} onValueChange={(v) => onChange('vrmPick', vrmPickFromValue(v))}>
+      <Select value={selected} onValueChange={pick}>
         <SelectTrigger id={`entity-vrm-${value.id}`} className="w-64 max-w-full">
           <SelectValue />
         </SelectTrigger>

@@ -1003,7 +1003,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const selectedWorld = worlds.find(w => w.id === worldId);
 
       if (worldData && selectedWorld) {
-        // Cache the migrated world (not the raw one) so downstream reuse — duplicate, use3DModel checks —
+        // Cache the migrated world (not the raw one) so downstream reuse — duplicate, Avatar checks —
         // sees the current shape instead of the legacy input.
         const { world: migrated } = loadWorldData(worldData as World, true, { stored: true });
         setSelectedWorld({

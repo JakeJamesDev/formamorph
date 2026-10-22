@@ -10,7 +10,8 @@ import { ownerPins, inPlayOwners, playedEntityId } from '@/lib/ownedTraitsInPlay
 import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { toastError } from '@/lib/linkToast';
-import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
+import CharacterCustomization from './CharacterCustomization';
+import { seededCharacterData } from '@/lib/legacyVrm';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
@@ -362,7 +363,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       setSelectedCastPicks(castPicks);
       setSelectedDictionaries(dicts);
       setSelectedPersona(persona);
-      if (selectedWorld!.data.worldOverview?.use3DModel) {
+      if (selectedWorld!.data.worldOverview?.legacyVrmFallback) {
         showEnterStep('avatar');
       } else {
         entryStarted.current = true;
@@ -407,7 +408,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,
-    use3DModel: !!selectedWorld?.data.worldOverview?.use3DModel,
+    showsAvatar: !!selectedWorld?.data.worldOverview?.legacyVrmFallback,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
     cancelEntryResolution();
@@ -474,7 +475,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     cancelEntryResolution();
     entryStarted.current = true;
     setEntryDraft(draft);
-    const characterData = currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null;
+    const characterData = seededCharacterData(null, !!currentWorldData.worldOverview?.legacyVrmFallback);
     loadPersonaPick(persona).then(
       (pick) => {
         // A library persona starts on its own owned defaults.
@@ -588,7 +589,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
             : undefined}
           onCancel={abandonEnterFlow}
           onContinue={() => advanceEntry('workspace')}
-          continueLabel={selectedWorld.data.worldOverview?.use3DModel ? 'Continue to Avatar' : 'Start game'}
+          continueLabel={selectedWorld.data.worldOverview?.legacyVrmFallback ? 'Continue to Avatar' : 'Start game'}
           resolving={resolvingEntry}
         />
       )}

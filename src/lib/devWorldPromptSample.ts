@@ -18,7 +18,6 @@ export function devWorldPromptOverview(): WorldOverview {
     thumbnail: null,
     bgm: null,
     systemPrompt: '',
-    use3DModel: false,
     tags: [],
     promptOverrides: {
       systemPrompt: defaultSystemPrompt

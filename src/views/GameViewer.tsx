@@ -131,6 +131,7 @@ import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
+import { useSeedAvatarOnSaveLoad } from "@/lib/usePlayedVrm";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { variableForToken, tokenVariant } from "../lib/promptVariables";
@@ -1142,9 +1143,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, codeEntities.world);
+      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore);
     })();
-  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame]);
+  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -4547,6 +4548,7 @@ const GameViewer = ({
   );
   const settleHistory = useMemo(() => ({ states: gameStates, commit: setGameStates }), [gameStates, setGameStates]);
   useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle, settleHistory);
+  useSeedAvatarOnSaveLoad(saveLoads, !personaPending, persona);
   // The per-turn settle writes log lines and leaves the banner alone, as a stat-code switch does (Q26).
   const commitTurnSettle = useCallback(
     (result: GatedTraitResult) => {
@@ -4637,7 +4639,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world);
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore);
         return;
       }
 
@@ -5105,7 +5107,7 @@ const GameViewer = ({
         const { world: migrated } = loadWorldData(world, false, { stored: true });
         return await loadGame(
           id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
-          Array.isArray(migrated.entities) ? migrated.entities : [],
+          Array.isArray(migrated.entities) ? migrated.entities : [], migrated.worldOverview?.vrmStore,
         );
       } catch (error) {
         console.error('Cross-world load failed:', error);
@@ -5113,7 +5115,7 @@ const GameViewer = ({
         return false;
       }
     }
-    return loadGame(id, locations, stats, codeEntities.world);
+    return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore);
   };
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal

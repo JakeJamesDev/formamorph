@@ -135,7 +135,9 @@ export const WorldVrmStoreSection = () => {
     if (!id) return;
     const run = () => {
       const next = deleteWorldVrm(store, entities, id);
-      updateWorldOverview({ vrmStore: next.store });
+      const fallback = worldOverview.legacyVrmFallback;
+      const spent = fallback?.kind === 'world' && fallback.id === id;
+      updateWorldOverview({ vrmStore: next.store, ...(spent ? { legacyVrmFallback: undefined } : {}) });
       setEntities(next.entities);
     };
     if (history) void history.batch('Delete Avatar', run);

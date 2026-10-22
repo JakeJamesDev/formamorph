@@ -17,7 +17,7 @@ const world = (id: string, name = 'Sedge Landing') => ({
   id, version: '3.0.0',
   worldOverview: {
     name, description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: '', tags: [],
   },
   stats: [], locations: [], traits: [], statUpdates: [], entities: [],
 } as unknown as World);

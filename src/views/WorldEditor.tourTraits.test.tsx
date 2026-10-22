@@ -42,7 +42,7 @@ const storeWorld = vi.mocked(WorldStorageService.storeWorld);
 const WORLD: World = benchEditorWorld({
   worldOverview: {
     name: 'New World', description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: false, tags: [],
+    systemPrompt: '', tags: [],
   },
   traitGroups: [],
   // A New World overview carries no readme or openings, which the overview type calls required.

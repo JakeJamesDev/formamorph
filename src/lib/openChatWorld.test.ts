@@ -58,7 +58,7 @@ describe('the Open Chat default world', () => {
   it('opens setup on the intro readme, before the trait picks', () => {
     const steps = buildEnterFlow({
       introReadme: world.worldOverview.introReadme, traitCount: world.traits.length,
-      startingLocationCount: world.locations.length, hasLibraryAdditions: false, hasWorldPersonas: false, use3DModel: false,
+      startingLocationCount: world.locations.length, hasLibraryAdditions: false, hasWorldPersonas: false, showsAvatar: false,
     }, 'newGame');
     expect(steps).toEqual(['intro', 'workspace']);
   });

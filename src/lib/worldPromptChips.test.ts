@@ -28,7 +28,7 @@ const MOOD_CHIP = encodePlaceholderToken({ id: MOOD.id, mode: 'unique', placemen
 
 const overview = (promptOverrides: WorldOverview['promptOverrides']): WorldOverview => ({
   name: 'W', description: '', author: '', thumbnail: null, bgm: null,
-  systemPrompt: '', use3DModel: false, tags: [], promptOverrides,
+  systemPrompt: '', tags: [], promptOverrides,
 });
 
 const WORLD = overview({
