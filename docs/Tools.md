@@ -254,7 +254,7 @@ In the World Editor and outside a game, `memories` is an empty list and `clock` 
 | --- | --- |
 | `world.entities` | `Object.values(entities)` |
 | `world.locations` | `Object.values(locations)` |
-| `scene.location.<field>` | `location.<field>` |
+| `scene.location.id`, `scene.location.name` | `location.id`, `location.name` |
 | `scene.time.elapsed` | `clock.elapsedHours` |
 | `scene.stats.<Stat>` | `stats.<Stat>.value` |
 | `scene.notes` | `notes` |
@@ -264,7 +264,7 @@ A form with no exact new one stays as written. The editor underlines it and name
 | Old form | New form |
 | --- | --- |
 | `world.dictionary` | `dictionaries` |
-| `scene.location` alone, `scene.traits` | `location`, `traits` |
+| `scene.location` alone or any other field of it, `scene.traits` | `location`, `traits` |
 | `scene.time` alone | `clock` |
 | `scene.persona` | `persona.name` |
 | `scene.present` | `location.present` |

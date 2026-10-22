@@ -53,11 +53,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Scripts Guide and the Tools guide now document the new script names and how old Tool scripts move.** Read the locations, memories and dictionary entries sections. Help answers from the new text.
     - **The Variable menu now lists each group's fields first and its calls last.** Entities, memories, **Clock**, **Location** and placeholders keep each set in its old order, so `move` or `pin` sits at the bottom.
     - **The Variable menu now shows each row's type, and marks the rows that scripts can only read.** A lock marks a read-only row. A call shows its form, such as `(line) => void`. The menu is wider.
+    - **Scripts now add a diary line through the entity, with `entities.Mira.diary(line)`.** A world that calls `diary("Mira", line)` is rewritten to the new form when it loads. The Variable menu inserts a one-item call, such as `discover`, directly.
+    - **Scripts can now read a dictionary's entries by name, with each entry's Trigger Keywords and Value.** Use `dictionaries.Lore.entries["Iron Crown"].keys` or `.value`. A disabled entry isn't listed. Hover cards and the Variable menu show them.
   - **The Player Name chip is now called Persona Name in the World Editor and the wiki.** Type `{{user}}` or search "player name" to find it. It still reads "you" or "the player" with no persona.
   - **A world persona's Locations are now where you can start as it, and its Starting Location dropdown is gone.** Enter World lists each of them beside the world's starting locations. It picks the first that is a starting location, else the first listed. A world that named a start loads without it.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
-  - **Scripts now add a diary line through the entity, with `entities.Mira.diary(line)`.** A world that calls `diary("Mira", line)` is rewritten to the new form when it loads. The Variable menu inserts a one-item call, such as `discover`, directly.
-  - **Scripts can now read a dictionary's entries by name, with each entry's Trigger Keywords and Value.** Use `dictionaries.Lore.entries["Iron Crown"].keys` or `.value`. A disabled entry isn't listed. Hover cards and the Variable menu show them.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
   - **The relationship probe measures whether narration uses an absent relative without placing them in the scene.** It runs an A/B, relationship off vs on, on the shipped prompts.
@@ -72,6 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Scripts:**
     - **Script and Tool script hover cards now read in one voice.** Card lines open with their subject, the Variable menu's **Owner** line matches its card, and each memory and entity field is one sentence.
+    - **A trait you toggle keeps the memory, pinned memory and diary lines its When a Trait Switches script writes.** They land on the latest turn, and a rewind past that turn removes them.
     - **A script asks the player for typed text with `player.input`, renamed from `player.askText`.** Worlds and Tools that call the old name load with the new one.
   - **The Test Bench's Openings preview now names the persona you pick, or says no persona under None.** Code cards mark an entity you can play as **Persona: Playable**. The author-note ⓘ line in Settings says "your persona".
   - **On NanoGPT, Native Reasoning now knows which models think and which strengths they take.** Short prompts such as Choices give a thinking model room and no longer fail with "The model reached its token limit before it wrote an answer."
@@ -84,7 +85,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The default prompts now call their entity sections Entities and tell the AI what each section holds.** A Known Here entity reads as elsewhere right now. People in the scene may speak of it.
   - **A stat now opens at its authored value everywhere, and an authored zero stays zero.** Play, the Test Bench, Test Code, the trait picker, code cards, new Link Base Values and older saves agree. No change shows on turn one. A value outside the range opens at the nearest edge.
   - **Test Code and the Test Bench now check a Script against the same turn-one world as play.** They read `clock` by timing and a switched-off stat as off. Test Code's `entities` holds a new game's cast, without persona-only entities. An unknown `diary` name warns. A trait Script whose entity is gone reads `self` as not held.
-  - **A trait you toggle keeps the memory, pinned memory and diary lines its When a Trait Switches script writes.** They land on the latest turn, and a rewind past that turn removes them.
   - **Error Details and bug reports now show a server's HTML error page as one line: its title and Ray ID.** A report from **Report Bug** keeps its details in a code block, so markup in them shows as written.
 
 ---

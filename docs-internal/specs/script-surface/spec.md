@@ -1,6 +1,7 @@
 # Spec: Script Surface
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-21. Tickets 01–15 done; the last landing is 9b2f1fc2b. Review: spec text corrected (Q60, the Migrations table, the turn row) and one Tools guide row fixed in the close. Gates on 2026-10-21: lint red on one error in a gitignored worlds-wip file outside the effort; test 26892 passed with one failure, the guide test pinning the corrected row, fixed in the close and green on rerun.
 Spec session: script-surface — spec
 
 ## Problem Statement
@@ -78,7 +79,8 @@ Settled with the user on 2026-10-21. R rulings came from the design discussion; 
 | R8 | `player.askText` becomes `player.input`, the name most game engines use for a typed answer. It shipped in 3.3.1, so the load-time rewrite pass turns `player.askText(` into `player.input(` in every script; the async-engine gate on `player.` is unaffected. The card, the guide, the Design System entry for the inline prompt line and the copy test follow (user, 2026-10-21) |
 | R9 | A Variable menu row shows its type and its access, not the label alone: the row's `detail` in muted mono on the right, as the Tool editor's reference list prints it, and a small lock glyph on a read-only row, the hover card's access badge reduced to one mark. A writable row carries no glyph; a method is told by its type, such as `(line) => void`. The row's tooltip keeps the help line. The combined row is a pattern call: the ticket shows a static frame from the design-system showcase for the user's approval before it builds (user, 2026-10-21) |
 | Q58 | The approval frame for R9 comes from the real menu: the row change made in the worktree, the menu opened in a script box through the dev-router on the entity entry group and the `memories[0]` group, framed in both themes. The showcase has no Variable menu reference and an unapproved pattern stays out of its registry; the Design System entry and a showcase reference follow approval. A field writable after this run gets no glyph, since it is a write; its tooltip keeps "Writable after this run." (ticket 15 ruling) |
-| Q59 | The approved row pattern, from the frame: the access mark sits in a leading gutter, the read-only mark is the pencil-off icon rather than a lock, and the menu widens to 18rem to hold the type column. R9's lock reads as this (user, via ticket 15) |
+| Q59 | The approved row pattern, from the frame: the access mark sits in a leading gutter, the read-only mark was the pencil-off icon at the frame, and the menu widens to 18rem to hold the type column (user, via ticket 15) |
+| Q60 | After seeing the landed menu the user chose the lock over pencil-off for the read-only mark; the follow-up commit "Use the Lock for Read-Only Variable Menu Rows" and the Design System entry carry it. R9's lock stands (user, 2026-10-21) |
 
 ## Surface
 
@@ -118,7 +120,7 @@ New members on every entry of `entities`, on `owner` and on `persona`:
 | `memories.add(line)` | A line on this turn's digest, after the AI's summary. Judged by the selector like any digest |
 | `memories.pin(line)` | A line that rides every request, listed under Custom |
 | `memories[i].id` | The row's id |
-| `memories[i].turn` | 1-based turn number. A Custom line reads the turn it was added on |
+| `memories[i].turn` | 1-based play turn number. A Custom line reads the turn that closed before it was added (Q38) |
 | `memories[i].timestamp` | Story hours at the end of that turn, the scale of `clock.elapsedHours` |
 | `memories[i].day` | Day number at that time |
 | `memories[i].daypart` | Daypart at that time, the same six values `clock.daypart` has |
@@ -157,6 +159,7 @@ World scripts, World Tool scripts and user Tool scripts, on load:
 | `memory.pin(` | `memories.pin(` |
 | `diary("Mira", line)` | `entities.Mira.diary(line)` |
 | `diary(expr, line)` | `entities[expr].diary(line)` |
+| `player.askText(` | `player.input(` (R8) |
 
 User Tool scripts only, on settings load:
 
@@ -164,7 +167,7 @@ User Tool scripts only, on settings load:
 |---|---|
 | `world.entities` | `Object.values(entities)` |
 | `world.locations` | `Object.values(locations)` |
-| `scene.location.<member>` | `location.<member>` |
+| `scene.location.id`, `scene.location.name` | `location.id`, `location.name`; every other member is flagged (ticket 09 as built) |
 | `scene.time.elapsed` | `clock.elapsedHours` |
 | `scene.stats.X` and `scene.stats["X"]` | `stats.X.value` and `stats["X"].value` |
 | `scene.notes` | `notes` |
