@@ -116,6 +116,27 @@ describe('relationship lines in the Entities chip', () => {
     for (const token of ['<ENTITIES>', '<ENTITIES|sublocations>']) expect(values(token), token).not.toContain('relationship');
   });
 
+  it('prints one row of a mirrored pair, the one held earlier in the world', () => {
+    const brother = holding(guard, ['merchant', 'brother']);
+    const sister = holding(merchant, ['guard', 'sister']);
+    for (const [cast, kept, dropped] of [
+      [[brother, sister, watchman, wanderer], LINE, "Guard is Merchant's sister"],
+      [[sister, brother, watchman, wanderer], "Guard is Merchant's sister", LINE],
+    ] as const) {
+      const values = chipValues(scene([...cast], { inSceneIds: ['guard', 'merchant'] }));
+      for (const token of ['<ENTITIES>', '<ENTITIES|sublocations>', '<ENTITIES|inscene>']) {
+        expect(values(token), token).not.toContain(dropped);
+      }
+      expect(values('<ENTITIES>')! + values('<ENTITIES|sublocations>')!).toContain(kept);
+      expect(values('<ENTITIES|inscene>')!.match(/relationship/g)).toHaveLength(1);
+    }
+  });
+
+  it('prints both rows of a pair when the earlier one has a blank label', () => {
+    const values = chipValues(scene([holding(guard, ['merchant', ' ']), holding(merchant, ['guard', 'sister']), watchman, wanderer]));
+    expect(values('<ENTITIES>')! + values('<ENTITIES|sublocations>')!).toContain("Guard is Merchant's sister");
+  });
+
   it('renders a world with empty relationship lists byte-equal to one without', () => {
     const bare = chipValues(scene([guard, merchant, watchman, wanderer, herald], { inSceneIds: ['guard', 'wanderer'] }));
     const empty = chipValues(scene([guard, merchant, watchman, wanderer, herald].map((e) => ({ ...e, relationships: [] })), {
@@ -316,6 +337,16 @@ describe('You and the persona rules', () => {
       persona: { entity: mara, source: 'world' }, playedEntities: [mara],
     }));
     expect(asMara('<PERSONA>')).toContain("relationship: Mara is Rowan's rival");
+  });
+
+  it.each(PICKS)('prints the persona’s row of a mirrored pair, under %s', (pick) => {
+    // Kate comes first in the world, so only the persona rule keeps the persona's row.
+    const player = pick === 'world' ? 'rowan' : 'custom';
+    const cast = [holding(kate, you('son')), ...base, rowan, mara, custom]
+      .map((e) => (e.id === player ? holding(e, ['kate', 'mother']) : e));
+    const persona = chipValues(played(cast, pick, { presentIds: [], inSceneIds: [] }))('<PERSONA>')!;
+    expect(persona).toContain(`relationship: Kate is ${PLAYED_NAME[pick]}'s mother`);
+    expect(persona).not.toContain("Kate's son");
   });
 
   it('prints one line when a You row and a row to the played persona meet, the named row winning', () => {

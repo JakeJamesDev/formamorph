@@ -40,22 +40,28 @@ export type RelationshipLines = Readonly<Record<string, readonly string[]>>;
  * Where each relationship prints over one roster chain, as "<target> is <owner>'s <label>": on the owner's
  * block when `listed` holds the owner, else on the target's block when it holds the target, else nowhere. So a
  * sentence prints once across the chain. A sentence that touches `personaId` prints on its block alone. Both ends
- * must be in `entities`, and a blank label prints nothing.
+ * must be in `entities`, and a blank label prints nothing. Of two rows that mirror each other, only the one held
+ * earlier in `entities` prints, so the persona's wins in a `relationshipCast`.
  */
 export function relationshipLines(entities: readonly Entity[], listed: readonly string[], personaId?: string): RelationshipLines {
   if (!entities.some((e) => e.relationships?.length)) return {};
   const byId = new Map(entities.map((e) => [e.id, e]));
+  const order = new Map(entities.map((e, i) => [e.id, i]));
+  const rows = entities.flatMap((owner) => (owner.relationships ?? []).flatMap(({ targetId, label }) => {
+    const target = byId.get(targetId);
+    const role = label.trim();
+    return target && role ? [{ owner, target, role }] : [];
+  }));
+  const pair = (from: Entity, to: Entity) => `${from.id}\0${to.id}`;
+  const held = new Set(rows.map(({ owner, target }) => pair(owner, target)));
+  const yields = (owner: Entity, target: Entity) => held.has(pair(target, owner)) && order.get(target.id)! < order.get(owner.id)!;
   const shown = new Set(listed);
   const lines: Record<string, string[]> = {};
-  for (const owner of entities) {
-    for (const { targetId, label } of owner.relationships ?? []) {
-      const target = byId.get(targetId);
-      const role = label.trim();
-      if (!target || !role) continue;
-      const printsOn = personaId !== undefined && (owner.id === personaId || target.id === personaId) ? personaId
-        : shown.has(owner.id) ? owner.id : shown.has(target.id) ? target.id : null;
-      if (printsOn) (lines[printsOn] ??= []).push(`${target.name} is ${owner.name}'s ${role}`);
-    }
+  for (const { owner, target, role } of rows) {
+    if (yields(owner, target)) continue;
+    const printsOn = personaId !== undefined && (owner.id === personaId || target.id === personaId) ? personaId
+      : shown.has(owner.id) ? owner.id : shown.has(target.id) ? target.id : null;
+    if (printsOn) (lines[printsOn] ??= []).push(`${target.name} is ${owner.name}'s ${role}`);
   }
   return lines;
 }
