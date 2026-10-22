@@ -57,13 +57,15 @@ describe('Formaquestion Prompts full screen', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Edit full screen' })));
   });
 
-  it('offers the exit toggle on an Options view and puts focus on its rail row', async () => {
+  it('exits from the corner on an Options view and puts focus on its rail row', async () => {
     const user = userEvent.setup();
     renderMine();
     await user.click(screen.getByRole('button', { name: 'Edit full screen' }));
     await user.click(rail().getByRole('button', { name: 'Answer Options' }));
+    // The window's corner button is the one way out; the view itself carries no toggle.
+    expect(within(screen.getByTestId('help-answer-options')).queryByRole('button', { name: /full screen/ })).toBeNull();
 
-    await user.click(within(screen.getByTestId('help-answer-options')).getByRole('button', { name: 'Exit full screen' }));
+    await user.click(within(screen.getByRole('dialog', { name: 'Prompts' })).getByRole('button', { name: 'Exit full screen' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Prompts' })).toBeNull());
     // Docked, the Options view has no toggle: the row that names it takes focus instead.

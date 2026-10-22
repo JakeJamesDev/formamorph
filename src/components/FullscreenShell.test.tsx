@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { FullscreenShell } from './FullscreenShell';
+import { dialogCornerButton } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '../..', p), 'utf8');
@@ -21,11 +23,22 @@ const openMorph = (): MorphFullscreen => ({
 });
 
 describe('FullscreenShell', () => {
-  it('offers no close button of its own', () => {
-    render(<FullscreenShell morph={openMorph()} title="Stat code">body</FullscreenShell>);
-    // The toolbar's full-screen toggle is the way out. A second control in the corner doing the same thing
-    // reads as a different one — and it was the only way to leave the overlay that the field did not own.
-    expect(screen.queryByRole('button', { name: /close/i })).toBeNull();
+  it('exits from the dialog-close slot, at its touch size', () => {
+    const close = vi.fn();
+    render(<FullscreenShell morph={{ ...openMorph(), close }} title="Stat code">body</FullscreenShell>);
+    const exit = screen.getByRole('button', { name: 'Exit full screen' });
+    expect(exit.className).toBe(cn(dialogCornerButton, 'z-[5]'));
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    fireEvent.click(exit);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('closes, named for the window, when the window is the whole surface', () => {
+    const close = vi.fn();
+    render(<FullscreenShell morph={{ ...openMorph(), close }} title="Guide" closes>body</FullscreenShell>);
+    expect(screen.queryByRole('button', { name: 'Exit full screen' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Guide' }));
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it('names the window without spending a row on it by default', () => {

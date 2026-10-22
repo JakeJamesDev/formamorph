@@ -8,6 +8,7 @@ import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
 import { PanelShell } from '@/components/PanelShell';
+import { FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
@@ -851,6 +852,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
         label={copy.label}
         actions={presetActions}
         testId="mascot-preset-row"
+        className={morph.contentInOverlay ? FULLSCREEN_CORNER_CLEAR : undefined}
         select={(
           <Select value={selected.id} onValueChange={control.select}>
             <SelectTrigger aria-label={copy.label} className="min-w-0 flex-1">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, type LucideIcon } from 'lucide-react';
+import { Columns2, Maximize2, Redo2, Square, Undo2, Braces, type LucideIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,7 +10,7 @@ import { InsertMenuButton } from '@/components/prompt/InsertMenuButton';
 import { VariableMenu } from '@/components/prompt/VariableMenu';
 import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
-import { FullscreenShell } from '@/components/FullscreenShell';
+import { FullscreenShell, FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
 import { buildVariableTree, readOnlyTree, timingGlobalsOf, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
@@ -189,11 +189,13 @@ function CodeAreaBody({
     </div>
   );
 
+  const canSplit = showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2;
+
   return (
     <div ref={measureRef} className={cn('flex flex-col gap-1 min-h-0', className)}>
       {/* Same three-part chrome as PromptField: what you insert on the left, the field's own history and
           view controls on the right, one rule between them. */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className={cn('flex items-center gap-1 flex-shrink-0', fullscreen && FULLSCREEN_CORNER_CLEAR)}>
         <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           {label && <Label className="leading-none">{label}</Label>}
           {info}
@@ -221,8 +223,8 @@ function CodeAreaBody({
               <Redo2 className="h-4 w-4" />
             </button>
           </Tip>
-          <span className="mx-0.5 w-hairline self-stretch bg-border" />
-          {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+          {(canSplit || !fullscreen) && <span className="mx-0.5 w-hairline self-stretch bg-border" />}
+          {canSplit && (
             <Tip tip={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}>
               <button
                 type="button"
@@ -233,15 +235,17 @@ function CodeAreaBody({
               </button>
             </Tip>
           )}
-          <Tip tip={fullscreen ? 'Exit full screen' : 'Edit full screen'}>
-            <button
-              type="button"
-              className={TOOLBAR_BTN}
-              onMouseDown={(event) => { event.preventDefault(); onToggleFullscreen(); }}
-            >
-              {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
-          </Tip>
+          {!fullscreen && (
+            <Tip tip="Edit full screen">
+              <button
+                type="button"
+                className={TOOLBAR_BTN}
+                onMouseDown={(event) => { event.preventDefault(); onToggleFullscreen(); }}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
+            </Tip>
+          )}
         </div>
       </div>
       {!showTabs ? editSurface : split ? (

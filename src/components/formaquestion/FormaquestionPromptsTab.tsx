@@ -2,6 +2,7 @@ import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'react-toastify';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
 import { PanelShell } from '@/components/PanelShell';
+import { FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import PromptField from '@/components/prompt/PromptField';
 import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
@@ -122,6 +123,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         label={PROMPTS_COPY.preset.label}
         actions={presetActions}
         testId="help-preset-header-row"
+        className={morph.contentInOverlay ? FULLSCREEN_CORNER_CLEAR : undefined}
         target={targetAttribute('formaquestionSettings.prompts', 'preset')}
         select={(
           <Select value={active.id} onValueChange={(value) => (value === ADD_PRESET ? setPending({ kind: 'add' }) : setStore(selectHelpPreset(store, value)))}>
@@ -181,7 +183,6 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
               readOnly={readOnly}
               readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
               onRequestEdit={() => duplicate(copyName)}
-              onExitFullscreen={morph.contentInOverlay ? morph.toggle : undefined}
               onChange={(change) => setStore(editHelpOptions(store, active.id, key, change))}
             />
           ) : (
