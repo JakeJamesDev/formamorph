@@ -1,4 +1,4 @@
-import { createKeyedRecordStore, readStorageJson, writeStorageJson } from './keyedStorage';
+import { createKeyedRecordStore, createStoredString } from './keyedStorage';
 import type { AllowedPersonas, Entity, GameLocation, PersonaRef, StartPersona, WorldOverview } from '@/types';
 
 /** Every Allowed Personas value, in the order the World Editor shows them. */
@@ -166,19 +166,8 @@ export function rememberWorldPersona(worldId: string, ref: PersonaRef): void {
 }
 
 /** The global default persona's library id. Device-local, never exported. */
-export function readDefaultPersona(): string | undefined {
-  const stored = readStorageJson('local', DEFAULT_PERSONA_KEY);
-  return typeof stored === 'string' && stored ? stored : undefined;
-}
+const defaultPersona = createStoredString('local', DEFAULT_PERSONA_KEY);
 
-export function setDefaultPersona(entityId: string): void {
-  writeStorageJson('local', DEFAULT_PERSONA_KEY, entityId);
-}
-
-export function clearDefaultPersona(): void {
-  try {
-    localStorage.removeItem(DEFAULT_PERSONA_KEY);
-  } catch {
-    // Blocked storage holds no default to clear.
-  }
-}
+export const readDefaultPersona = (): string | undefined => defaultPersona.read();
+export const setDefaultPersona = (entityId: string): void => defaultPersona.write(entityId);
+export const clearDefaultPersona = (): void => defaultPersona.clear();

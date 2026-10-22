@@ -1,3 +1,5 @@
+import { createStoredString } from './keyedStorage';
+
 /** The bundled default player avatar. Single source of truth for VRMViewer's fallback avatar, the headless
  *  morph-name loader, and the copy seeded into the avatar library, so they all read the same file. */
 export const DEFAULT_AVATAR_URL = './default-avatar.vrm';
@@ -17,3 +19,10 @@ export const LEGACY_DEFAULT_AVATAR_SENTINEL = 'default';
 /** 2.5.0–2.9.2 id, back when the library called these models. `migrateSave` rewrites it in saves and
  *  `ModelStorageService` rekeys the stored record. */
 export const LEGACY_DEFAULT_AVATAR_ID = 'default-model';
+
+/** The player's default Avatar, a library id: what User's Default shows. Device-local, never exported. */
+const userDefaultAvatar = createStoredString('local', 'FORMAMORPH_defaultAvatar');
+
+export const readUserDefaultAvatar = (): string | undefined => userDefaultAvatar.read();
+export const setUserDefaultAvatar = (modelId: string): void => userDefaultAvatar.write(modelId);
+export const clearUserDefaultAvatar = (): void => userDefaultAvatar.clear();

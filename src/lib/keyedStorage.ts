@@ -31,6 +31,30 @@ export function writeStorageJson(kind: StorageKind, key: string, value: unknown)
   }
 }
 
+/** One non-empty string under a fixed key, such as a library id the player marked as their default. */
+export interface StoredString {
+  read(): string | undefined;
+  write(value: string): void;
+  clear(): void;
+}
+
+export function createStoredString(kind: StorageKind, key: string): StoredString {
+  return {
+    read: () => {
+      const stored = readStorageJson(kind, key);
+      return typeof stored === 'string' && stored ? stored : undefined;
+    },
+    write: (value) => writeStorageJson(kind, key, value),
+    clear: () => {
+      try {
+        backing(kind).removeItem(key);
+      } catch {
+        // Blocked storage holds nothing to clear.
+      }
+    },
+  };
+}
+
 /** One stored record of per-id entries. `read` hands back whatever is stored — the store narrows it. */
 export interface KeyedRecordStore {
   read(id: string): unknown;

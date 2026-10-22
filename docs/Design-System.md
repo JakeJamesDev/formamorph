@@ -477,7 +477,7 @@ The reference preserves production density and panel placement. Dense labels can
 - Action rows never fold. They carry an icon to stay apart from set rows.
 - Separators divide kinds, not topics.
 - Arranging sections, such as Tile Size and grouping, come first.
-- The item's own actions form the final section. Check for Updates, Publish, and the default-persona action are item actions.
+- The item's own actions form the final section. Check for Updates, Publish, and the default-persona and default-Avatar actions are item actions.
 - Each item action carries an icon. Delete is last in the final section.
 - A context-dependent action section sits where the fixed action section sits. It keeps its icons.
 
@@ -500,7 +500,7 @@ The reference preserves production density and panel placement. Dense labels can
 | --- | --- |
 | Full tile-triggered composition | `LibraryTileContextMenu` in [`LibraryTileContextMenu.tsx`](../src/components/library/LibraryTileContextMenu.tsx) |
 | Main Menu host, Group membership, and tile preferences | `LibraryTileGrid` in [`LibraryTileGrid.tsx`](../src/components/library/LibraryTileGrid.tsx) and `useLibraryTiles` in [`useLibraryTiles.ts`](../src/lib/useLibraryTiles.ts) |
-| Default-persona action and its card badge | `DefaultPersonaMenuItem` and `DefaultPersonaBadge` in [`DefaultPersona.tsx`](../src/components/library/DefaultPersona.tsx) |
+| Default-persona and default-Avatar actions and their card badge | `DefaultPersonaMenuItem`, `DefaultAvatarMenuItem` and `DefaultBadge` in [`LibraryDefault.tsx`](../src/components/library/LibraryDefault.tsx) |
 | Menu primitives, checkmarks, focus, dismissal, and touch hold | [`context-menu.tsx`](../src/components/ui/context-menu.tsx) |
 | Destructive confirmation and cancellation | `ConfirmDialog` in [`ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx), controlled by [`MainMenu.tsx`](../src/views/MainMenu.tsx) |
 | Isolated reference | [`MainMenuContextMenuReference.tsx`](../src/components/design-system/MainMenuContextMenuReference.tsx) |

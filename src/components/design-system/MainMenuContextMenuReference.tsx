@@ -4,7 +4,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { LibraryTileContextMenu, type LibraryTileMenuModel } from '@/components/library/LibraryTileContextMenu';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
-import { DefaultPersonaBadge, DefaultPersonaMenuItem } from '@/components/library/DefaultPersona';
+import { DefaultBadge, DefaultPersonaMenuItem } from '@/components/library/LibraryDefault';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { addToGroup, createGroupFromItem, disbandGroup, emptyTabOrganization, groupOf, removeFromGroup, setTileSize, tileSize, type LibraryGroup } from '@/lib/libraryOrganization';
@@ -103,7 +103,7 @@ export function MainMenuContextMenuReference() {
               layout="grid"
               aspect="portrait"
               placeholder={<EntityPlaceholderArt id={SAMPLE_ID} name={SAMPLE_NAME} />}
-              badge={isDefault ? <DefaultPersonaBadge /> : undefined}
+              badge={isDefault ? <DefaultBadge /> : undefined}
             />
           </LibraryTileContextMenu>
         )}

@@ -11,7 +11,7 @@ import { useSurfaceTab } from '@/components/ui/surface';
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
-import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
+import { DEFAULT_AVATAR_URL, clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { withImportedWorldTools } from '@/lib/tools/worldTools';
@@ -22,7 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
-import { DefaultPersonaBadge, DefaultPersonaMenuItem } from '@/components/library/DefaultPersona';
+import { DefaultAvatarMenuItem, DefaultBadge, DefaultPersonaMenuItem } from '@/components/library/LibraryDefault';
 import { AvatarThumbnailMenuItems } from '@/components/library/AvatarThumbnail';
 import { useAvatarThumbnails } from '@/lib/useAvatarThumbnails';
 import { ActionIcon } from '@/lib/actionIcons';
@@ -378,6 +378,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [showIntroReadme, setShowIntroReadme] = useState(false);
   // The global default persona: a library entity id, device-local.
   const [defaultPersona, setDefaultPersonaId] = useState(readDefaultPersona);
+  const [defaultAvatar, setDefaultAvatarId] = useState(readUserDefaultAvatar);
   const entryFlow = useRef<EnterWorldFlowHandle>(null);
   // Unpinned: the code notice reads stat names outside any entry draft.
   const { stats } = useResolvedAuthoredWorld();
@@ -2029,6 +2030,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </span>
               </Tip>
             ) : undefined;
+            const isDefault = model.id === defaultAvatar;
+            const badge = isDefault || glb ? <div className="flex gap-1">{isDefault && <DefaultBadge />}{glb}</div> : undefined;
+            const note = isDefault || glb ? <span className="flex items-center gap-1">{isDefault && 'Default Avatar'}{glb}</span> : undefined;
             return (
               <SortableWorldCard
                 world={{ id: model.id, name: model.name, description: creditLine(model.license?.authors), thumbnail: model.thumbnail }}
@@ -2039,8 +2043,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 placeholder={<EntityPlaceholderArt id={model.id} name={model.name} />}
                 omitEmptyDescription
                 omitEmptyTags
-                badge={glb}
-                note={glb}
+                badge={badge}
+                note={note}
                 onSelect={setPreviewModelId}
               />
             );
@@ -2052,7 +2056,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           itemActions={(id) => {
             const model = models.find((m) => m.id === id);
             return model ? (
-              <AvatarThumbnailMenuItems model={model} onChange={(source) => { void setModelThumbnailSource(id, source); }} />
+              <>
+                <DefaultAvatarMenuItem
+                  isDefault={id === defaultAvatar}
+                  onSet={() => { setUserDefaultAvatar(id); setDefaultAvatarId(id); }}
+                  onClear={() => { clearUserDefaultAvatar(); setDefaultAvatarId(undefined); }}
+                />
+                <AvatarThumbnailMenuItems model={model} onChange={(source) => { void setModelThumbnailSource(id, source); }} />
+              </>
             ) : null;
           }}
           onDelete={setModelToDelete}
@@ -2103,7 +2114,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               compact={compact}
               placeholder={<EntityPlaceholderArt id={entity.id} sourceId={entity.sourceId} name={entity.name} />}
               onSelect={setEditingEntityId}
-              badge={entity.id === defaultPersona && entity.persona ? <DefaultPersonaBadge /> : undefined}
+              badge={entity.id === defaultPersona && entity.persona ? <DefaultBadge /> : undefined}
               note={entity.id === defaultPersona && entity.persona ? 'Default persona' : undefined}
             />
           )}

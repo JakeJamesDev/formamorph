@@ -662,8 +662,9 @@ export interface WorldVrm {
   file: MediaAsset;
 }
 
-/** Which Avatar an entity shows: the player's default, or one from the world's store. Absent = none. */
-export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string };
+/** Which Avatar an entity shows: the player's default, one from the world's store, or one from the player's
+ *  Avatar library (library entities). Absent = none. */
+export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string } | { kind: 'library'; id: string };
 
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
 export interface WorldOverview {
