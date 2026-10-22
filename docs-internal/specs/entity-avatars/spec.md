@@ -193,6 +193,19 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **T02-6:** the resolver returns a world id, a library id, the bundled file, or nothing. It has two entry points: one for any entity in context, and one for the played side alone, which the You row uses when there is no played entity.
 - **T02-7:** Set Default Avatar and its badge are player-visible, so ticket 02 adds a changelog fragment. Deleting the default Avatar leaves the device key in place, and it resolves to the bundled file.
 - **T02-8:** a save's chosen Avatar that names a store id missing from the store counts as no chosen Avatar. With the legacy mark, normal precedence applies. Without it, User's Default resolves to the device default.
+- **T06-1:** a world store pick and a library pick name the same Avatar when their content hashes match. Each store entry records its file's content hash. No store entry records a library id, because a world never refers to a device-local library id. Link state, write-back and the review diff compare picks this way. Picks of none and User's Default compare as they are.
+- **T06-2:** adding or syncing a library entity reuses a store entry with the same hash, else embeds a new one named after the library record.
+- **T06-3:** world to library (Save to Library, write-back): a store pick maps to the library record with the same hash. With no such record, the store file is imported into the Avatar library (the same hash-reuse rule as ticket 07's import) and the pick points at it.
+- **T06-4:** deleting a library Avatar clears the picks on the library entities that use it and bumps their revision. A linked world copy sees the change in the normal review flow, as "Avatar: <name> → None", and the store entry stays.
+- **T06-5:** the review diff shows the pick as one row labeled "Avatar". Its values are None, User's Default, or the Avatar's display name.
+- **T06-6:** ticket 03 owns wiring the played persona, library source included, into the resolver. Ticket 06 owns the library pick and the resolver-level test for library persona precedence.
+- **T03-1:** an old world Avatar on a world whose flag is missing or `false` still moves into the store under the reserved id, with no fallback. No entity uses it, but the file survives a re-save, and Q24's legacy saves can still show it.
+- **T03-2:** the fallback is stored as its own overview field holding a pick, and the reserved store id is `legacy-player-avatar`. The migration runs unconditionally, converts the old flag and the old world Avatar, and deletes both. A world that already holds the fallback field and no flag keeps its fallback, so the step stays idempotent.
+- **T03-3:** until ticket 05 lands, the Enter World avatar step and new-game seeding gate on "the world has a legacy fallback", which equals the old `true`. Ticket 05 replaces this gate.
+- **T03-4:** ticket 03 drops the picker's "World Avatar" option. Ticket 05 reshapes the rest of the picker.
+- **T03-5:** the save's chosen Avatar replaces the old model-id field and holds a world or library pick plus the legacy mark. The game-load remap turns an unset or "the world's" value into the reserved id with the mark (or nothing when the store lacks it), and an old library id into a library pick with the mark. Library-delete checks read both forms. The chosen Avatar also has an explicit no-choice form: absent marks a save made before this change, which is remapped once, and the remap and the seeding helper write the no-choice form.
+- **T03-6:** deleting the reserved store entry in the editor also clears the fallback.
+- **T03-7:** ticket 06 owns the store entry's content-hash field (T06-1). An entry without a hash, such as the one the migration creates, gets its hash computed lazily.
 
 ## Further Notes
 
