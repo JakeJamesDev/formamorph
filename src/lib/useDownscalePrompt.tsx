@@ -210,6 +210,8 @@ export function useDownscalePrompt() {
         cancelLabel: 'Keep as-is',
       }));
       if (mode === 'off') return null;
+      // The run starts now, before the first image lands, so a caller's progress shows from the choice on.
+      onProgress?.(0, countWorldImages(world));
       try {
         const optimized = onProgress
           ? await applyWorldOptimize(world, mode, onProgress, signal)

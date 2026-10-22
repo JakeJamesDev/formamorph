@@ -20,6 +20,7 @@ import {
 import type { UpdateAction } from "@/lib/componentUpdates";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { World } from "@/types";
+import { endWorldOptimize, reportWorldOptimize } from "@/lib/worldOptimizeProgress";
 
 /** One add-on the player ticked. The name travels with the id so a row the world has since stopped
  *  offering can still be named in the report rather than shown as a listing id. */
@@ -122,7 +123,7 @@ export function useDownloadCoordinator(
   setWorlds: Dispatch<SetStateAction<WorldRecord[]>>,
   // Optional post-store hook (e.g. offer to downscale oversized images). Returns a replacement world to
   // re-store in place, or null to leave the stored copy as-is.
-  onStored?: (id: string, data: World) => Promise<World | null>,
+  onStored?: (id: string, data: World, onProgress: (fraction: number) => void) => Promise<World | null>,
 ) {
   // In-flight downloads keyed by remote world id → fraction 0..1, or -1 when total size is unknown.
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
@@ -330,12 +331,23 @@ export function useDownloadCoordinator(
     await WorldStorageService.storeWorld({ id: run.localId, ...meta, data: linked });
 
     // Offer to downscale oversized images; if accepted, overwrite the just-stored copy in place.
+    // The run holds the library tile until the re-encoded copy is written back, not just until it is made.
     let finalData = linked;
     if (onStored) {
-      const w = await onStored(run.localId, linked);
-      if (w) {
-        finalData = w;
-        await WorldStorageService.storeWorld({ id: run.localId, ...meta, data: finalData });
+      const listing = listingId(world);
+      try {
+        const w = await onStored(run.localId, linked, (fraction) => {
+          reportWorldOptimize(run.localId, fraction);
+          setDownloadProgress((p) => ({ ...p, [listing]: fraction }));
+        });
+        if (w) {
+          finalData = w;
+          await WorldStorageService.storeWorld({ id: run.localId, ...meta, data: finalData });
+        }
+      } finally {
+        endWorldOptimize(run.localId);
+        // Back to the unsized bar for whatever the download still has to do, such as add-ons.
+        setDownloadProgress((p) => (listing in p ? { ...p, [listing]: -1 } : p));
       }
     }
 

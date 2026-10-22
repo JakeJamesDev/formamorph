@@ -150,6 +150,71 @@ export function filteredPlacements(
   return Object.fromEntries(packed.map((tile) => [tile.id, { row: tile.row, col: tile.col }]));
 }
 
+/**
+ * The spot that reads last on the board: on the last row, right of its last tile, when the rest of that row
+ * has room; else the left end of a new row below everything.
+ */
+function afterLastTile(board: Board, id: string, span: number): PackedTile {
+  if (board.taken.length === 0) return { id, row: 0, col: 0, span };
+  const lastRow = Math.max(...board.taken.map((tile) => tile.row));
+  const rightEdge = Math.max(...board.taken.filter((tile) => tile.row === lastRow).map((tile) => tile.col + tile.span));
+  for (let col = rightEdge; col <= board.columns - span; col++) {
+    const tile = { id, row: lastRow, col, span };
+    if (fits(board, tile)) return tile;
+  }
+  const bottom = Math.max(...board.taken.map((tile) => tile.row + tile.span));
+  return { id, row: bottom, col: 0, span };
+}
+
+/**
+ * Give items that just arrived a saved home at the end of the board at every arranged width, and put them
+ * last in the order. Saving the home is what keeps them there: an item with no home fills the first hole.
+ *
+ * The bottom is read from the board as drawn, and the drawn homes of the other top-level tiles are saved
+ * with it. Nothing on screen moves, and no homeless tile can be fitted above the newcomer later.
+ *
+ * Only items the arrangement has never recorded count: none in the order, a folder, or any width's map.
+ * So a repeat call changes nothing, and a wrong arrival list can never re-home a tile the player has.
+ *
+ * @param topLevel - The main grid's tiles, newcomers included
+ * @param newcomers - Items that arrived since the player last loaded this tab
+ */
+export function withNewcomersAtEnd(
+  org: LibraryTabOrganization,
+  topLevel: string[],
+  newcomers: string[],
+): LibraryTabOrganization {
+  const recorded = new Set([
+    ...org.order,
+    ...Object.values(org.groups).flatMap((group) => group.members),
+    ...Object.values(org.placements).flatMap((places) => Object.keys(places)),
+  ]);
+  const fresh = newcomers.filter((id) => !recorded.has(id));
+  if (fresh.length === 0) return org;
+  const freshSet = new Set(fresh);
+  const others = topLevel.filter((id) => !freshSet.has(id));
+
+  const placements: Record<number, PlacementMap> = { ...org.placements };
+  for (const [width, stored] of Object.entries(org.placements)) {
+    const cols = Number(width);
+    const span = (id: string) => spanAt(org.sizes[id] ?? 'medium', cols);
+    const drawn = resolvePlacements(org, others, cols);
+    const board: Board = {
+      columns: cols,
+      taken: others.map((id) => ({ id, row: drawn[id].row, col: drawn[id].col, span: span(id) })),
+    };
+    const added: PlacementMap = {};
+    for (const id of fresh) {
+      const tile = afterLastTile(board, id, span(id));
+      board.taken.push(tile);
+      added[id] = { row: tile.row, col: tile.col };
+    }
+    // Folder members keep their own homes; only this grid's tiles are written.
+    placements[cols] = { ...stored, ...drawn, ...added };
+  }
+  return { ...org, placements, order: [...org.order, ...fresh] };
+}
+
 /** The organization with one width's map replaced; every other width is left alone. */
 export function withPlacements(
   org: LibraryTabOrganization,

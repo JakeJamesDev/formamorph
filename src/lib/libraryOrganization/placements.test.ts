@@ -6,6 +6,7 @@ import {
   resolvePlacements,
   rowMajor,
   spanAt,
+  withNewcomersAtEnd,
   withPlacements,
 } from './placements';
 import { setTileSize } from './operations';
@@ -272,5 +273,83 @@ describe('setTileSize with a grid to fit into', () => {
     expect(next.placements[8].a).toEqual({ row: 0, col: 0 });
     expect(next.placements[8].c).toEqual({ row: 0, col: 4 });
     expect(next.placements[8].b).toEqual({ row: 2, col: 4 });
+  });
+});
+
+describe('withNewcomersAtEnd', () => {
+  // The row-0 gap at columns 2-3 is the player's; `c` below keeps it alive.
+  const stored = homes([['a', 0, 0], ['b', 0, 4], ['c', 2, 2]]);
+  const arranged = org({ order: ['a', 'b', 'c'], placements: { 8: stored, 4: homes([['a', 0, 0], ['b', 0, 2]]) } });
+
+  it('saves each newcomer a home right of the last tile on the last row, past the holes, at every arranged width', () => {
+    const next = withNewcomersAtEnd(arranged, ['a', 'b', 'c', 'fresh', 'later'], ['fresh', 'later']);
+
+    expect(next.placements[8]).toEqual({ ...stored, fresh: { row: 2, col: 4 }, later: { row: 2, col: 6 } });
+    // `c` has no home at width 4; it is saved where it is drawn. Its row has room for one newcomer,
+    // so the second starts a new row at the left.
+    expect(next.placements[4]).toEqual({
+      ...arranged.placements[4],
+      c: { row: 2, col: 0 },
+      fresh: { row: 2, col: 2 },
+      later: { row: 4, col: 0 },
+    });
+    expect(next.order).toEqual(['a', 'b', 'c', 'fresh', 'later']);
+  });
+
+  it('keeps the saved home through every later read of the board', () => {
+    const next = withNewcomersAtEnd(arranged, ['a', 'b', 'c', 'fresh'], ['fresh']);
+
+    expect(resolvePlacements(next, ['a', 'b', 'c', 'fresh'], 8).fresh).toEqual({ row: 2, col: 4 });
+  });
+
+  it('changes nothing for an item the order already holds', () => {
+    expect(withNewcomersAtEnd(arranged, ['a', 'b', 'c'], ['c'])).toBe(arranged);
+  });
+});
+
+describe('withNewcomersAtEnd never moves a tile the player has', () => {
+  /** Every existing tile's drawn home must be the same before and after `fresh` arrives. */
+  const expectUnmoved = (before: LibraryTabOrganization, existing: string[], fresh: string, columns: number) => {
+    const after = withNewcomersAtEnd(before, [...existing, fresh], [fresh]);
+    const was = resolvePlacements(before, existing, columns);
+    const now = resolvePlacements(after, [...existing, fresh], columns);
+    for (const id of existing) expect(now[id]).toEqual(was[id]);
+    // And the newcomer reads last on the board.
+    expect(rowMajor(now, [...existing, fresh]).at(-1)).toBe(fresh);
+  };
+
+  it('at a width whose map holds only a folder\'s members', () => {
+    // A rearrange inside the folder stored this width; the main grid never was.
+    const state = org({
+      order: ['a', 'b', 'g'],
+      groups: { g: { id: 'g', name: 'G', members: ['m1', 'm2'], settings: {} } },
+      placements: { 8: homes([['m1', 0, 0], ['m2', 0, 2]]) },
+    });
+
+    expectUnmoved(state, ['a', 'b', 'g'], 'x', 8);
+  });
+
+  it('beside an existing tile that never had a home', () => {
+    // `h` was imported before the update and never dragged; the board has no hole for it.
+    const state = org({ order: ['a', 'b'], placements: { 4: homes([['a', 0, 0], ['b', 0, 2]]) } });
+
+    expectUnmoved(state, ['a', 'b', 'h'], 'x', 4);
+  });
+
+  it('on a board with dead rows, read in the cells it is drawn in', () => {
+    const state = org({ order: ['a', 'b'], placements: { 8: homes([['a', 0, 0], ['b', 6, 0]]) } });
+
+    expectUnmoved(state, ['a', 'b'], 'x', 8);
+  });
+
+  it('leaves alone an arrival the arrangement already records anywhere', () => {
+    // A wrong arrival list, such as one seeded from a failed load, names tiles the player already has.
+    const state = org({
+      order: ['a'],
+      groups: { g: { id: 'g', name: 'G', members: ['m1'], settings: {} } },
+      placements: { 8: homes([['a', 0, 0], ['sized', 0, 2]]) },
+    });
+
+    expect(withNewcomersAtEnd(state, ['a', 'g', 'sized'], ['a', 'm1', 'sized'])).toBe(state);
   });
 });

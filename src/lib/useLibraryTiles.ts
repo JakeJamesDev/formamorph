@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { randomUUID } from '@/lib/uuid';
 import type { MainMenuCardTab } from '@/views/mainMenuTabs';
 import {
@@ -8,16 +8,19 @@ import {
   disbandGroup,
   groupItems,
   groupOf,
+  loadSeenTiles,
   loadTabOrganization,
   pruneOrganization,
   removeFromGroup,
   renameGroup,
+  saveSeenTiles,
   saveTabOrganization,
   setDrawnOrder,
   setGroupPromptPreset,
   setTileSize,
   tileSize,
   topLevelIds,
+  withNewcomersAtEnd,
   type LibraryGroup,
   type LibraryTabOrganization,
   type LibraryTileSize,
@@ -59,6 +62,10 @@ export interface LibraryTiles {
     container?: string | null,
   ) => void;
   setPromptPreset: (groupId: string, presetId: string | null) => void;
+  /** Whether an item arrived since the player last saw this tab, so its tile is still to be pointed out. */
+  isFresh: (itemId: string) => boolean;
+  /** Record that the player has seen an item's tile. */
+  markSeen: (itemId: string) => void;
 }
 
 /**
@@ -91,6 +98,43 @@ export function useLibraryTiles(
   useEffect(() => {
     saveTabOrganization(tab, organization);
   }, [tab, organization]);
+
+  // Null until the tab has a record. The first full load seeds it, so an existing library never lights up.
+  const [seen, setSeen] = useState<Set<string> | null>(() => {
+    const stored = loadSeenTiles(tab);
+    return stored && new Set(stored);
+  });
+  const itemIdsRef = useRef(itemIds);
+  itemIdsRef.current = itemIds;
+
+  useEffect(() => {
+    // Never seeded from an empty list, for the same reason the prune skips one: a failed load looks empty,
+    // and seeding from it would make the whole library arrive on the next launch.
+    if (!ready || seen || itemIds.length === 0) return;
+    setSeen(new Set(itemIds));
+    saveSeenTiles(tab, itemIds);
+  }, [ready, seen, itemIds, tab]);
+
+  useEffect(() => {
+    if (!ready || !seen) return;
+    const arrived = itemIds.filter((id) => !seen.has(id));
+    if (arrived.length === 0) return;
+    // Saved on arrival, so the spot outlasts the pulse; a repeat for the same items changes nothing.
+    setOrganization((prev) => withNewcomersAtEnd(prev, topLevelIds(prev, itemIds), arrived));
+  }, [ready, seen, itemIds]);
+
+  const isFresh = useCallback((itemId: string) => ready && !!seen && !seen.has(itemId), [ready, seen]);
+  const markSeen = useCallback((itemId: string) => {
+    setSeen((prev) => {
+      if (!prev || prev.has(itemId)) return prev;
+      // Only ids the tab still holds are kept, so deleted items never pile up.
+      const held = new Set(itemIdsRef.current);
+      const next = new Set([...prev].filter((id) => held.has(id)));
+      next.add(itemId);
+      saveSeenTiles(tab, [...next]);
+      return next;
+    });
+  }, [tab]);
 
   const topLevel = useMemo(() => topLevelIds(organization, itemIds), [organization, itemIds]);
   const groups = useMemo(
@@ -136,5 +180,7 @@ export function useLibraryTiles(
       (groupId, presetId) => setOrganization((prev) => setGroupPromptPreset(prev, groupId, presetId)),
       [],
     ),
+    isFresh,
+    markSeen,
   };
 }

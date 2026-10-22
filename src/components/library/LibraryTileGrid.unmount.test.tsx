@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
-import { emptyTabOrganization, saveTabOrganization } from '@/lib/libraryOrganization';
+import { emptyTabOrganization, saveSeenTiles, saveTabOrganization } from '@/lib/libraryOrganization';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { LibraryTileGrid } from './LibraryTileGrid';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -8,12 +8,16 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 const MEMBERS = ['m1', 'm2'];
 const items = ['loose', ...MEMBERS].map((id) => ({ id, name: `Item ${id}` }));
 
-const seed = () => saveTabOrganization('worlds', {
-  ...emptyTabOrganization(),
-  order: ['loose', 'gF'],
-  groups: { gF: { id: 'gF', name: 'Packed Folder', members: MEMBERS, settings: {} } },
-  placements: { 8: { loose: { row: 0, col: 0 }, gF: { row: 0, col: 2 }, m1: { row: 0, col: 0 }, m2: { row: 0, col: 2 } } },
-});
+// A library already seen once, so mounting writes no storage. jsdom queues a `storage` event on a timer.
+const seed = () => {
+  saveTabOrganization('worlds', {
+    ...emptyTabOrganization(),
+    order: ['loose', 'gF'],
+    groups: { gF: { id: 'gF', name: 'Packed Folder', members: MEMBERS, settings: {} } },
+    placements: { 8: { loose: { row: 0, col: 0 }, gF: { row: 0, col: 2 }, m1: { row: 0, col: 0 }, m2: { row: 0, col: 2 } } },
+  });
+  saveSeenTiles('worlds', items.map((item) => item.id));
+};
 
 function Grid() {
   const tiles = useLibraryTiles('worlds', items.map((item) => item.id), true);

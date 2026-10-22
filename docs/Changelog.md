@@ -59,6 +59,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Player Name chip is now called Persona Name in the World Editor and the wiki.** Type `{{user}}` or search "player name" to find it. It still reads "you" or "the player" with no persona.
   - **A world persona's Locations are now where you can start as it, and its Starting Location dropdown is gone.** Enter World lists each of them beside the world's starting locations. It picks the first that is a starting location, else the first listed. A world that named a start loads without it.
   - **Image presets can now keep weights and NovelAI syntax in your entity and location tags.** Turn off **Clean Up Tags** in the image preset. Scene images and AI-generated tags then keep `{tag}`, `1.5::tag ::` and `source#hug` as written.
+  - **A new tile in your library now pulses once, the first time it is on screen.** It shows a world you just downloaded or made. Tiles you already had don't pulse after the update.
+  - **A downloaded world's library tile now shows its image optimizing, and the world opens once that finishes.** You can't delete it until then either. The world's card in Community Creations shows the same bar.
 - **🛠️ Developer tooling**
   - **A new probe measures the entity location request against the player's location request on the Emberwatch cast.** It reports reply accuracy, false and missed moves, and how long the fan-out adds to the stage.
   - **The relationship probe measures whether narration uses an absent relative without placing them in the scene.** It runs an A/B, relationship off vs on, on the shipped prompts.
@@ -90,6 +92,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Stats panel picker now lists an absent entity only once the story has named it.** Absent entities you haven't met no longer show as Unknown.
   - **Close buttons on dialogs and panels are now easier to tap on mobile.** A dialog's close button takes a 44-pixel tap area, and every close icon is a little larger. Nothing else moves.
   - **Full-screen fields, panels, the Locations map and the Guide now exit from one button in the top-right corner.** The button sits in the same place as a dialog's close button and has the same 44-pixel tap area.
+  - **A new item in your library now lands after your last tile, not in a gap between your tiles.** It goes right of the last tile on the bottom row, or starts a new row when that row is full. Every tile you placed stays where it was.
+  - **A downloaded world now shows in your library even when you close Community Creations before the download finishes.** You no longer have to reopen Community Creations to see it.
 
 ---
 

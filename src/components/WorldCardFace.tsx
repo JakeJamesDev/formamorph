@@ -4,6 +4,7 @@ import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tip } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 import { THUMB_FRAME, cardLayoutFor, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
 
 export interface WorldCardFaceOwnProps {
@@ -25,6 +26,8 @@ export interface WorldCardFaceOwnProps {
   compact?: boolean;
   /** Draw this tile's own shape with its content still loading: shimmer where the card's parts go. */
   loading?: boolean;
+  /** A 0-1 run the world is in the middle of. The card shows it and cannot be opened until it ends. */
+  progress?: number;
 }
 
 /** The face sets its own class and click, so a frame prop may not carry either. */
@@ -38,10 +41,16 @@ export type WorldCardFaceProps = WorldCardFaceOwnProps
  *  grid thumbnail's top-left, and `note` is the same thing said as a line in the detailed layout, which has
  *  no thumbnail to overlay. The remaining props go to the frame, which is where a board attaches its drag. */
 export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(function WorldCardFace(
-  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, omitEmptyDescription, omitEmptyTags, fill, compact, loading, ...frame },
+  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, omitEmptyDescription, omitEmptyTags, fill, compact, loading, progress, ...frame },
   ref,
 ) {
-  const select = loading ? undefined : onSelect;
+  const busy = progress !== undefined;
+  const select = loading || busy ? undefined : onSelect;
+  const progressOverlay = busy && (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
+      <Progress value={progress * 100} aria-label="Optimizing images" className="h-2 w-3/4" />
+    </div>
+  );
 
   // Detailed layout: the shared card shell, with portrait art beside the info and landscape art above it.
   if (layout === 'detailed') {
@@ -66,6 +75,7 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
         // has no byline to print, and the shell drops the line entirely when it gets nothing.
         author={world.author ? `By ${world.author}` : undefined}
         note={note}
+        thumbnailOverlay={progressOverlay || undefined}
         thumbnail={world.thumbnail
           ? (
             <img
@@ -122,6 +132,7 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
         <div className={cn(mediaSize, 'bg-muted')}>{placeholder}</div>
       )}
       {badge && <div className="absolute top-1 left-1 z-10 max-w-[calc(100%-0.5rem)]">{badge}</div>}
+      {progressOverlay}
       {!compact && (
         <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
           {loading
