@@ -82,7 +82,7 @@ describe('the Tools guide', () => {
     const rows = tableRows(migration);
     const oldForms = migration.split('\n').filter((line) => line.startsWith('| `')).map((line) => line.split('|')[1].trim());
     for (const form of [
-      '`world.entities`', '`world.locations`', '`scene.location.<field>`', '`scene.time.elapsed`', '`scene.stats.<Stat>`', '`scene.notes`',
+      '`world.entities`', '`world.locations`', '`scene.location.id`, `scene.location.name`', '`scene.time.elapsed`', '`scene.stats.<Stat>`', '`scene.notes`',
       '`world.dictionary`', '`scene.persona`', '`scene.present`', '`scene.inScene`',
     ]) expect(oldForms, form).toContain(form);
     expect(rows.size).toBeGreaterThan(0);

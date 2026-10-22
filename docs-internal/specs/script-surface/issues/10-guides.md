@@ -1,6 +1,6 @@
 # 10: Guides
 
-Status: ready-for-human
+Status: done
 Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
