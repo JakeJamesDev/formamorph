@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
-import { Columns2, Maximize2, Minimize2, Square } from 'lucide-react';
+import { Columns2, Maximize2, Square } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HintInfo } from '@/components/SettingsRows';
@@ -199,14 +199,14 @@ export function RequestAnatomyPanel({
               </button>
             </Tip>
           )}
-          {onRequestFullscreen && (
-            <Tip tip={fullscreen ? 'Exit full screen' : 'View full screen'}>
+          {onRequestFullscreen && !fullscreen && (
+            <Tip tip="View full screen">
               <button
                 type="button"
                 onClick={onRequestFullscreen}
                 className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
               >
-                {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                <Maximize2 className="h-4 w-4" />
               </button>
             </Tip>
           )}

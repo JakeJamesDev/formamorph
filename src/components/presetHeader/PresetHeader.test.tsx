@@ -145,13 +145,13 @@ describe('PresetHeader', () => {
     expect(await screen.findByText('Make an editable copy', { selector: 'div' })).toBeInTheDocument();
   });
 
-  it('ends the file group with the full-screen toggle, named for the way it goes, on a built-in preset too', async () => {
+  it('ends the file group with the way into full screen, on a built-in preset too, and drops it once there', async () => {
     const toggle = vi.fn();
     renderHeader(true, { ...handlers(), fullscreen: { active: false, toggle } });
     expect(rowNames()).toEqual(['select', 'Duplicate', 'Import', 'Export', 'View full screen']);
     fireEvent.click(rowButton('View full screen'));
     expect(toggle).toHaveBeenCalledOnce();
-    expect(presetHeaderActions(true, { fullscreen: { active: true, toggle } }).map((a) => a.label)).toEqual(['Exit full screen']);
+    expect(presetHeaderActions(true, { fullscreen: { active: true, toggle } })).toEqual([]);
   });
 
   it('returns focus to the ⋯ button when a confirm opened from the menu is canceled', async () => {

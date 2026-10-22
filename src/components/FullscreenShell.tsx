@@ -1,7 +1,12 @@
 import { useRef, type ReactNode } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeight } from '@/components/ui/dialog';
+import { Minimize2, X } from 'lucide-react';
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, dialogCornerButton, dialogFullHeight } from '@/components/ui/dialog';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
+
+/** Keeps a row that reaches the window's top edge clear of the corner button. */
+export const FULLSCREEN_CORNER_CLEAR = 'pr-9';
 
 /**
  * The window an editor opens into when it goes full screen.
@@ -10,11 +15,10 @@ import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
  * copies disagreeing on the header, the close button and the animation. Everything specific to one of
  * them arrives as `title` and `children`.
  *
- * There is no close button: the full-screen toggle in the field's own toolbar is the way back out, and a
- * second control in the corner meaning the same thing reads as a different one. Escape still works, since
- * the dialog primitive owns it.
+ * The way out is the shell's own button, in the corner every dialog keeps its close in. The surfaces drop
+ * their toggle while in here, and the row that reaches the top edge takes `FULLSCREEN_CORNER_CLEAR`.
  */
-export function FullscreenShell({ morph, title, showTitle = false, returnFocus, worldWindow = false, className, children }: {
+export function FullscreenShell({ morph, title, showTitle = false, returnFocus, worldWindow = false, closes = false, className, children }: {
   morph: MorphFullscreen;
   /** Always the window's accessible name; rendered as a header row only with `showTitle`. */
   title: string;
@@ -29,6 +33,8 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
   returnFocus?: () => HTMLElement | null | undefined;
   /** The window edits the world, so the World Editor's undo and redo chords stay live in it. */
   worldWindow?: boolean;
+  /** The window is the whole surface, not a bigger view of one, so its corner button closes it. */
+  closes?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -77,11 +83,17 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
           {/* The title is always here, only sometimes seen: a dialog without one is unnamed to a screen
               reader, and `sr-only` keeps that promise without spending the row. At the size of a field
               caption when shown, not a dialog heading — it names a box inside the app. */}
-          <DialogHeader className={cn(!showTitle && 'sr-only')}>
+          {/* Centered on mobile, so the gutter goes on both sides there. */}
+          <DialogHeader className={cn(FULLSCREEN_CORNER_CLEAR, 'max-sm:pl-9', !showTitle && 'sr-only')}>
             <DialogTitle className="text-label">{title}</DialogTitle>
           </DialogHeader>
           {children}
         </div>
+        <Tip tip={closes ? 'Close (Esc)' : 'Exit full screen'}>
+          <DialogClose aria-label={closes ? `Close ${title}` : 'Exit full screen'} className={cn(dialogCornerButton, 'z-[5]')}>
+            {closes ? <X aria-hidden className="h-5 w-5" /> : <Minimize2 aria-hidden className="h-5 w-5" />}
+          </DialogClose>
+        </Tip>
         {/* The solid sheet over the contents. The widget beneath it is laid out at full size and never
             animates; the traveling box shows only this panel, and the reveal is the sheet fading away
             once the box has landed. `inset-0` deliberately covers the box's padding too. */}

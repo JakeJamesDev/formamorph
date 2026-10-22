@@ -89,6 +89,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Error Details and bug reports now show a server's HTML error page as one line: its title and Ray ID.** A report from **Report Bug** keeps its details in a code block, so markup in them shows as written.
   - **The Stats panel picker now lists an absent entity only once the story has named it.** Absent entities you haven't met no longer show as Unknown.
   - **Close buttons on dialogs and panels are now easier to tap on mobile.** A dialog's close button takes a 44-pixel tap area, and every close icon is a little larger. Nothing else moves.
+  - **Full-screen fields, panels, the Locations map and the Guide now exit from one button in the top-right corner.** The button sits in the same place as a dialog's close button and has the same 44-pixel tap area.
 
 ---
 

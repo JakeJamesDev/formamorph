@@ -28,6 +28,7 @@ export const REF_SAFE_COMPOSED_CHILDREN = [
   // `asChild` — which is how a tip and a popover share one button.
   'PopoverTrigger',
   'ContextMenuTrigger', // src/components/ui/context-menu.tsx chains the handlers it wraps
+  'DialogClose', // src/components/ui/dialog.tsx — Radix's Close itself
   // lucide-react icons forward refs
   'ChevronDown',
   // Radix's own Slot — merging the ref it is handed into its child is the whole job.

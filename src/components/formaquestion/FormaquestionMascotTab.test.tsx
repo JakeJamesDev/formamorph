@@ -1102,7 +1102,7 @@ describe('full screen', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View full screen' })));
   });
 
-  it('runs from the ⋯ menu below md, and Exit returns focus to the ⋯ button', async () => {
+  it('opens from the ⋯ menu below md, and the corner exit returns focus to the ⋯ button', async () => {
     // Below md the breakpoint hides the icon row; jsdom applies no CSS, so visibility follows that class.
     Object.defineProperty(HTMLElement.prototype, 'checkVisibility', {
       configurable: true,
@@ -1116,7 +1116,10 @@ describe('full screen', () => {
       };
       await fromMenu('View full screen');
       await screen.findByRole('dialog', { name: 'Mascot' });
-      await fromMenu('Exit full screen');
+      fireEvent.click(screen.getByRole('button', { name: 'Preset Actions' }));
+      expect(within(await screen.findByRole('menu')).queryByRole('menuitem', { name: /full screen/ })).toBeNull();
+      await userEvent.keyboard('{Escape}');
+      fireEvent.click(within(mascotWindow()).getByRole('button', { name: 'Exit full screen' }));
       await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
       await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Preset Actions' })));
     } finally {

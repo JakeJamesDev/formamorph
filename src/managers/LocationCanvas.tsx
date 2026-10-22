@@ -11,7 +11,7 @@ import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2,
-  LayoutGrid, Magnet, Maximize2, Megaphone, Minimize2, Minus, Pencil, Redo2, Spline, SquareCheck, Star,
+  LayoutGrid, Magnet, Maximize2, Megaphone, Minus, Pencil, Redo2, Spline, SquareCheck, Star,
   Trash2, Undo2, X,
 } from 'lucide-react';
 import EntityPickCard, { type PickState } from '@/managers/EntityPickCard';
@@ -633,8 +633,9 @@ const CanvasToolbar = ({
   onRedo: () => void;
 }) => (
   // Scrolls sideways rather than spilling off a narrow window: every tool stays reachable at any width, and
-  // the row keeps its own height so the search box beneath it has a fixed place to sit.
-  <Panel position="top-center" className="!m-2 max-w-[calc(100%-1rem)] overflow-x-auto">
+  // the row keeps its own height so the search box beneath it has a fixed place to sit. Centered, it keeps
+  // the window's corner button clear on both sides.
+  <Panel position="top-center" className="!m-2 max-w-[calc(100%-4.5rem)] overflow-x-auto">
     <div
       role="toolbar"
       aria-label="Canvas Tools"
@@ -1448,12 +1449,11 @@ const CanvasInner = ({
         {/* The embedded canvas's whole chrome: the zoom controls, and the way to the big one. Everything
             heavier belongs to full screen, so the quick view stays a view. */}
         <CanvasControls>
-          <CanvasControlButton
-            tip={fullscreen ? 'Exit Full Screen' : 'Edit Full Screen'}
-            onClick={onToggleFullscreen}
-          >
-            {fullscreen ? <Minimize2 /> : <Maximize2 />}
-          </CanvasControlButton>
+          {!fullscreen && (
+            <CanvasControlButton tip="Edit Full Screen" onClick={onToggleFullscreen}>
+              <Maximize2 />
+            </CanvasControlButton>
+          )}
         </CanvasControls>
         <TopLevelDrop />
         {/* The window's own orientation aids and power tools. The pane is a view of a map the author can
@@ -1489,7 +1489,8 @@ const CanvasInner = ({
         {((selectedConnection && !picking) || (fullscreen && entities && updateEntity)) && (
           <Panel
             position="top-right"
-            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'max-sm:!mt-28 max-sm:max-h-[40%]')}
+            // Full screen drops the column under the window's corner button.
+            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
             {selectedConnection && !picking && (
               <ConnectionInspector

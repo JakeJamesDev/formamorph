@@ -28,8 +28,8 @@ function returnTarget(root: HTMLElement | null): HTMLElement | undefined {
  * A whole panel, either in place or filling the screen. Fullscreen belongs to the panel rather than to one
  * field, so the panel's header, navigation and footer come with it.
  *
- * The caller owns the morph and hands its toggles `morph.contentInOverlay` as their fullscreen flag and
- * `morph.toggle` as their request. Toggling re-parents the panel into the overlay, so its controls are
+ * The caller owns the morph and hands its toggles `morph.contentInOverlay` as their fullscreen flag, which
+ * hides them in the window, and `morph.toggle` as their request. Toggling re-parents the panel into the overlay, so its controls are
  * rebuilt from their values: controlled state is safe, but a field's own undo stack starts fresh on either
  * side of the toggle.
  */
@@ -37,7 +37,7 @@ export function PanelShell({ morph, sourceRef, title, showTitle = true, children
   morph: MorphFullscreen;
   /** The window's name: the tab it grows out of. */
   title: string;
-  /** False keeps the title as the accessible name and spends no row on it; the panel's own toggle is the way out. */
+  /** False keeps the title as the accessible name and spends no row on it; the panel's top row then clears the corner. */
   showTitle?: boolean;
   /** The panel the shell sits in. The window grows out of it, and focus returns to a toggle inside it. */
   sourceRef: RefObject<HTMLElement | null>;

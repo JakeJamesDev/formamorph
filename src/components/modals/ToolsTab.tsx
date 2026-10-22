@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
-import { Copy, Maximize2, Minimize2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, Maximize2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import type { AIRequestType, Tool, ToolEnabledMap, ToolParam } from '@/types';
@@ -195,10 +195,10 @@ export function ToolsTab({
   const select = (selectedId: string | null) => onViewChange({ ...view, selectedId });
 
   // Named like the prompt panel's toggle: the full-screen shell hands focus back by this label.
-  const fullscreenButton = onToggleFullscreen && (
-    <Tip tip={fullscreen ? 'Exit full screen' : 'View full screen'}>
-      <button type="button" aria-label={fullscreen ? 'Exit full screen' : 'View full screen'} onClick={onToggleFullscreen} className={cn(iconButton, 'p-1.5')}>
-        {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+  const fullscreenButton = onToggleFullscreen && !fullscreen && (
+    <Tip tip="View full screen">
+      <button type="button" aria-label="View full screen" onClick={onToggleFullscreen} className={cn(iconButton, 'p-1.5')}>
+        <Maximize2 className="h-4 w-4" />
       </button>
     </Tip>
   );

@@ -16,14 +16,14 @@ import {
   Bold, Italic, Strikethrough, Highlighter, Heading1, Heading2, Heading3, Heading4,
   List, ListOrdered, ListChecks, Link2, Image, Table, SquareCode, Minus, Subscript, Superscript,
   Quote, Code, Undo2, Redo2, ChevronDown, Dices,
-  Maximize2, Minimize2, Columns2, Square,
+  Maximize2, Columns2, Square,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FullscreenShell } from '@/components/FullscreenShell';
+import { FullscreenShell, FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { ReadOnlyNotice } from './ReadOnlyNotice';
 import { CHIP_BASE } from '@/components/Chip';
@@ -770,10 +770,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     ? <span className="flex items-center gap-1.5"><Label className="leading-none">{label}</Label>{info}</span>
     : <Label className="leading-none">{label}</Label>;
 
+  const canSplit = showTabs && splitAvailable(effectiveWidth, fullscreen);
+  // Only in its own window does the field reach the top edge, under the shell's corner button.
+  const cornerClear = fullscreen && !hostedFullscreen && FULLSCREEN_CORNER_CLEAR;
+  // What renders above the chrome; see `body`.
+  const chromeOnTop = !(readOnly && readOnlyReason) && !(markdown && (label || hint));
+
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
     // intrinsic width shoves the buttons off the side of a mobile screen instead of wrapping.
-    <div className="flex items-center gap-1 flex-shrink-0">
+    <div className={cn('flex items-center gap-1 flex-shrink-0', chromeOnTop && cornerClear)}>
       <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
         {label && !markdown && caption}
         {/* Markdown actions address the field's flat text, which a caret inside an open value is not in. */}
@@ -806,8 +812,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           </>
         )}
         <HistoryButtons disabled={editingDisabled} />
-        <span className="mx-0.5 w-hairline self-stretch bg-border" />
-        {showTabs && splitAvailable(effectiveWidth, fullscreen) && (
+        {(canSplit || !fullscreen) && <span className="mx-0.5 w-hairline self-stretch bg-border" />}
+        {canSplit && (
           <Tip tip={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}>
             <button
               type="button"
@@ -820,15 +826,17 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           </Tip>
         )}
         {/* The tip is also the name the fullscreen shell hands focus back by, so the two cannot drift. */}
-        <Tip tip={fullscreen ? 'Exit full screen' : 'Edit full screen'}>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-        </Tip>
+        {!fullscreen && (
+          <Tip tip="Edit full screen">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </button>
+          </Tip>
+        )}
       </div>
     </div>
   );
@@ -885,7 +893,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // A read-only editor looks broken rather than protected — the caret simply does nothing — and that reads
   // worst at full screen, where the field is the whole window. Say why, and offer the way out.
   const readOnlyNotice = readOnly && readOnlyReason && (
-    <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} />
+    <div className={cn('flex-shrink-0', cornerClear)}>
+      <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} />
+    </div>
   );
 
   const body = (
@@ -908,6 +918,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <div className={cn(
           'flex items-center justify-between gap-2 flex-shrink-0',
           fullscreen && 'max-sm:justify-center',
+          cornerClear && [cornerClear, 'max-sm:pl-9'],
         )}>
           {caption}
           {labelAside}
@@ -915,7 +926,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       )}
       {/* Label, help, control: a markdown field's help follows its own caption row, and a plain field's
           follows the chrome row that carries its caption. Either way it lands before the editor. */}
-      {markdown && hint && <Hint className="flex-shrink-0">{hint}</Hint>}
+      {markdown && hint && <Hint className={cn('flex-shrink-0', !label && !readOnlyNotice && cornerClear)}>{hint}</Hint>}
       {chrome}
       {!markdown && hint && <Hint className="flex-shrink-0">{hint}</Hint>}
       {panes}

@@ -1,8 +1,9 @@
-import { BookOpen, ExternalLink, X } from 'lucide-react';
-import { FullscreenShell } from '@/components/FullscreenShell';
+import { BookOpen, ExternalLink } from 'lucide-react';
+import { FullscreenShell, FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import type { Guide } from '@/lib/formaquestion/guide';
+import { cn } from '@/lib/utils';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
 import type { GuideView, GuideViewChange } from './formaquestionTabs';
 import { BackRow, Reader, GuideUnavailable } from './GuideParts';
@@ -35,8 +36,8 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
   const { openSection } = useGuideActions(guide, onViewChange);
   const open = guide && view.sectionId ? guide.section(view.sectionId) ?? null : null;
   return (
-    <FullscreenShell morph={morph} title="Guide" className="gap-2">
-      <header className="flex shrink-0 items-center gap-2">
+    <FullscreenShell morph={morph} title="Guide" closes className="gap-2">
+      <header className={cn('flex shrink-0 items-center gap-2', FULLSCREEN_CORNER_CLEAR)}>
         <BookOpen aria-hidden className="h-4 w-4 text-muted-foreground" />
         <span aria-hidden className="text-label font-semibold">Guide</span>
         <ReaderHistoryButtons history={view.history} fullScreen={{ shown: view.sectionId }} onStep={onStep} />
@@ -49,16 +50,6 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
               className="inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <ExternalLink aria-hidden className="h-4 w-4" />
-            </button>
-          </Tip>
-          <Tip tip="Close (Esc)">
-            <button
-              type="button"
-              aria-label="Close Guide"
-              onClick={morph.close}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            >
-              <X aria-hidden className="h-5 w-5" />
             </button>
           </Tip>
         </div>
