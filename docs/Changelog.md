@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.3.3 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.3** — the latest released version.
+> ✅ **3.0.0 – 3.4.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.4.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.3** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.4.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.4.0 — Released 2026-10-22</strong> — Entities that follow you, move between locations and stand at random starts — entity relationships the AI reads — scripts that read locations, memories and dictionaries — NovelAI character prompts — the You pill (click to expand)</summary>
 
 ### Major Changes
 
@@ -19,18 +24,18 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Entity Presence:**
     - **An entity can stand at one random location from its list in each new game.** Set **One, at Random** under **Entities Here** on a location's **Presence** tab. Saves keep where it stands.
-    - **Pick an entity on the full-screen Locations Canvas to place it and set where the AI knows of it.** Click a location to add or remove it. In **Known In** mode, a pick covers every location inside it. The card also sets **Presence** and **Movement**, and warns when a moving entity can't reach one of its locations.
     - **The AI can know of an entity anywhere inside the locations you pick, without placing it there.** Set it under **Known Here** on a location's **Presence** tab. **Nearby Through Connections** lets entities one Connection away reach the AI as nearby.
-    - **An entity set to Can Follow the Player now comes with you when you invite it, and keeps following.** It travels with you on every move, Map travel too, until it stays behind. Each such entity adds one short AI request per turn. **Entity Movement** turns the requests off.
-    - **An entity set to Moves Between Its Locations now walks between them, one Connection at a time.** The AI moves it when the story sends it to one of its locations. It comes along with you only into its own locations, and it never keeps following.
+    - **An entity set to Can Follow the Player comes with you when you invite it, and keeps following.** It travels with you on every move, Map travel too, until it stays behind. Each such entity adds one short AI request per turn. **Entity Movement** turns the requests off.
+    - **An entity set to Moves Between Its Locations walks between them, one Connection at a time.** The AI moves it when the story sends it to one of its locations. It comes along with you only into its own locations, and it never keeps following.
+    - **Pick an entity on the full-screen Locations Canvas to place it and set where the AI knows of it.** Click a location to add or remove it. In **Known In** mode, a pick covers every location inside it. The card also sets **Presence** and **Movement**, and warns when a moving entity can't reach one of its locations.
     - **The Entities tab marks who follows you, and the Map shows where the entities you've met are now.** A footprints icon marks each follower. Each Map location shows a count of the met entities there, and its tip names them. Entities you haven't met never show.
     - **Scripts can now move any entity, make it follow the player, or send it away.** Call `entities.<Entity>.move()`, `.follow()` or `.unfollow()`. The writes apply when the turn ends, after the AI's answers, and a moved **Free** entity keeps its position.
-    - **One member of an entity listed in several places can now follow you, and so can entities added in play.** The original stays at every listed location. One member follows at a time; once it stays behind, another can come.
+    - **One member of an entity listed in several places can follow you, and so can entities added in play.** The original stays at every listed location. One member follows at a time; once it stays behind, another can come.
     - **In the bundled worlds, the AI now knows who is one Connection away from you.** Every location that a Connection leaves turns on **Nearby Through Connections**.
   - **Entity Relationships:**
     - **Entities can list their relationships in the World Editor, and the AI reads each one as a sentence.** On an entity's **Profile** tab, pick another entity and type its role, such as mother. The AI reads "Kate is Tera's mother" once per prompt. When two entities list each other, the AI reads one: the persona's if either is.
     - **Absent relatives of anyone in the scene join Entities Known Here, so the AI knows who they are.** When Tera is present, Entities Known Here lists her mother Kate with her summary. The AI doesn't put Kate in the scene.
-    - **Relationships can now target Persona, and the AI knows the played persona's relationships in every scene.** Pick **Persona** in the list, and "Kate is Rowan's mother" uses the name of the persona the player picks. A persona the player doesn't pick sends none of its relationships.
+    - **Relationships can target Persona, and the AI knows the played persona's relationships in every scene.** Pick **Persona** in the list, and "Kate is Rowan's mother" uses the name of the persona the player picks. A persona the player doesn't pick sends none of its relationships.
 
 ### Minor Changes
 
@@ -47,14 +52,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can now read every location and who stands at each one.** `locations.<Location>.present` lists the entities there, the persona first. `location` has the same fields. Each entity reads its `location`, `following`, `description`, `summary` and `aliases`.
     - **Scripts can now read the story's memories as the Memory panel lists them, with `memories`.** Each memory has its turn, story time, daypart, text and pins. `memory.add` and `memory.pin` are now `memories.add` and `memories.pin`, and worlds are rewritten when they load.
     - **Scripts can now pin, forget, edit or remove a memory, as the Memory Manager does.** Call `memories[0].forget()` or another verb on an entry. The change lands when the turn ends and shows in the Memory Manager. A pin or forget on a Custom memory is ignored and listed.
-    - **Script hover cards now explain one memory or one entity in a list, as in `memories[0].text`.** Cards also work in `find` and `filter` callbacks and `for` loops. The Variable menu lists a memory's fields and a `present` entity's fields.
-    - **Your own Tools' scripts now read the world as a Script does, with the same names and no writes.** Use `entities`, `locations`, `memories`, `stats` and the other Script names. `world` and `scene` are gone. Scripts and Tools also read the player's notes as `notes`. Try It lists each write a Tool ignores.
-    - **Formamorph now rewrites your own Tools' scripts that read `world` or `scene` to the new names when it loads them.** It rewrites only where the result stays the same. The editor marks every other old read and names what to use instead. It rewrites imported Tool packs too.
-    - **The Scripts Guide and the Tools guide now document the new script names and how old Tool scripts move.** Read the locations, memories and dictionary entries sections. Help answers from the new text.
-    - **The Variable menu now lists each group's fields first and its calls last.** Entities, memories, **Clock**, **Location** and placeholders keep each set in its old order, so `move` or `pin` sits at the bottom.
-    - **The Variable menu now shows each row's type, and marks the rows that scripts can only read.** A lock marks a read-only row. A call shows its form, such as `(line) => void`. The menu is wider.
     - **Scripts now add a diary line through the entity, with `entities.Mira.diary(line)`.** A world that calls `diary("Mira", line)` is rewritten to the new form when it loads. The Variable menu inserts a one-item call, such as `discover`, directly.
     - **Scripts can now read a dictionary's entries by name, with each entry's Trigger Keywords and Value.** Use `dictionaries.Lore.entries["Iron Crown"].keys` or `.value`. A disabled entry isn't listed. Hover cards and the Variable menu show them.
+    - **Your own Tools' scripts now read the world as a Script does, with the same names and no writes.** Use `entities`, `locations`, `memories`, `stats` and the other Script names. `world` and `scene` are gone. Scripts and Tools also read the player's notes as `notes`. Try It lists each write a Tool ignores.
+    - **Formamorph now rewrites your own Tools' scripts that read `world` or `scene` to the new names when it loads them.** It rewrites only where the result stays the same. The editor marks every other old read and names what to use instead. It rewrites imported Tool packs too.
+    - **Script hover cards now explain one memory or one entity in a list, as in `memories[0].text`.** Cards also work in `find` and `filter` callbacks and `for` loops. The Variable menu lists a memory's fields and a `present` entity's fields.
+    - **The Variable menu now lists each group's fields first and its calls last.** Entities, memories, **Clock**, **Location** and placeholders keep each set in its old order, so `move` or `pin` sits at the bottom.
+    - **The Variable menu now shows each row's type, and marks the rows that scripts can only read.** A lock marks a read-only row. A call shows its form, such as `(line) => void`. The menu is wider.
+    - **The Scripts Guide and the Tools guide now document the new script names and how old Tool scripts move.** Read the locations, memories and dictionary entries sections. Help answers from the new text.
   - **The Stats tab in the game's side panel now lays out stats the way the Traits tab lays out traits.** Each owner's stats sit in a card that folds. Groups show as headings, with ungrouped stats first.
   - **The Player Name chip is now called Persona Name in the World Editor and the wiki.** Type `{{user}}` or search "player name" to find it. It still reads "you" or "the player" with no persona.
   - **A world persona's Locations are now where you can start as it, and its Starting Location dropdown is gone.** Enter World lists each of them beside the world's starting locations. It picks the first that is a starting location, else the first listed. A world that named a start loads without it.
@@ -74,9 +79,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Scripts:**
-    - **Script and Tool script hover cards now read in one voice.** Card lines open with their subject, the Variable menu's **Owner** line matches its card, and each memory and entity field is one sentence.
-    - **A trait you toggle keeps the memory, pinned memory and diary lines its When a Trait Switches script writes.** They land on the latest turn, and a rewind past that turn removes them.
     - **A script asks the player for typed text with `player.input`, renamed from `player.askText`.** Worlds and Tools that call the old name load with the new one.
+    - **A trait you toggle keeps the memory, pinned memory and diary lines its When a Trait Switches script writes.** They land on the latest turn, and a rewind past that turn removes them.
+    - **Script and Tool script hover cards now read in one voice.** Card lines open with their subject, the Variable menu's **Owner** line matches its card, and each memory and entity field is one sentence.
   - **The Test Bench's Openings preview now names the persona you pick, or says no persona under None.** Code cards mark an entity you can play as **Persona: Playable**. The author-note ⓘ line in Settings says "your persona".
   - **On NanoGPT, Native Reasoning now knows which models think and which strengths they take.** Short prompts such as Choices give a thinking model room and no longer fail with "The model reached its token limit before it wrote an answer."
   - **The token-limit error now names the prompt that failed.** Error Details show it on a Prompt line. For a prompt with a Max Output setting, they also tell you to raise it.
@@ -94,6 +99,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Full-screen fields, panels, the Locations map and the Guide now exit from one button in the top-right corner.** The button sits in the same place as a dialog's close button and has the same 44-pixel tap area.
   - **A new item in your library now lands after your last tile, not in a gap between your tiles.** It goes right of the last tile on the bottom row, or starts a new row when that row is full. Every tile you placed stays where it was.
   - **A downloaded world now shows in your library even when you close Community Creations before the download finishes.** You no longer have to reopen Community Creations to see it.
+
+</details>
 
 ---
 
