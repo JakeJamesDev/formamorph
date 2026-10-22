@@ -163,3 +163,26 @@ describe('llmEngine splitMessages', () => {
     expect(out.droppedImages).toBe(0);
   });
 });
+
+describe('describeLoadError', () => {
+  const { describeLoadError } = llmEngine;
+
+  it('names the Parallel Requests setting instead of sequences', () => {
+    expect(describeLoadError('A context size of 8192 with 2 sequences is too large for the available VRAM'))
+      .toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this GPU's VRAM. Lower Context Size or Parallel Requests.");
+  });
+
+  it('leaves Parallel Requests out when there is one sequence', () => {
+    expect(describeLoadError('A context size of 4096 is too large for the available VRAM'))
+      .toBe("Context Size 4096 doesn't fit in this GPU's VRAM. Lower Context Size.");
+  });
+
+  it('keeps the VRAM and RAM variant apart', () => {
+    expect(describeLoadError('A context size of 2048 with 4 sequences is too large for the available VRAM and RAM (including swap)'))
+      .toBe("Context Size 2048 with 4 Parallel Requests doesn't fit in this computer's VRAM and RAM. Lower Context Size or Parallel Requests.");
+  });
+
+  it('passes other errors through', () => {
+    expect(describeLoadError('disk full')).toBe('disk full');
+  });
+});
