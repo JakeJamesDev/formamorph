@@ -76,7 +76,7 @@ export async function startDevServer(repoRoot, pinned = 0) {
 
 // Each enter step's primary button is labeled with the NEXT step's name, so whichever advance label is present
 // gets clicked. "Got It" first: the contest popup overlays the enter dialog.
-const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Avatar", "Start game", "Start", "Continue", "Random", "Skip"];
+const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Avatar", "Start Game", "Start", "Continue", "Random", "Skip"];
 
 /** Import `worldPath` through the hidden file input, enter it with the default picks, and wait for the game
  *  screen's `window.__baseline`. Throws with what is on screen when the game never mounts. */

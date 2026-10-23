@@ -75,7 +75,7 @@ let engine = null;
 const ENGINE_CONTEXT_SIZE = 8192;
 
 async function startEngine(model) {
-  engine ??= require_(path.join(REPO_ROOT, "electron", "llmEngine.cjs"));
+  engine ??= require_(path.join(argVal("--engine-root") ? path.resolve(argVal("--engine-root")) : REPO_ROOT, "electron", "llmEngine.cjs"));
   const port = model.enginePort ?? ENGINE_PORT;
   console.log(`  loading ${path.basename(model.modelPath)} into the built-in engine (port ${port})…`);
   await engine.start({ modelPath: model.modelPath, port, contextSize: model.contextSize ?? ENGINE_CONTEXT_SIZE });
