@@ -33,21 +33,26 @@ const withoutVrm = <T extends PortableEntity>(entity: T, pick: VrmPick | undefin
 
 /**
  * The entity ready to share: a library or world pick carries its Avatar's file in `vrm`. A pick whose Avatar
- * can't be found exports as none; User's Default exports as it is. An entity that already carries an embedded
- * Avatar, such as downloaded listing content, keeps it.
+ * can't be found exports as none; User's Default exports as it is. An embedded Avatar, such as downloaded listing
+ * content, goes out only when the pick names that same file or nothing on this device.
  */
 export async function withCarriedVrm<T extends PortableEntity>(entity: T, store?: WorldVrmStore): Promise<T> {
   const pick = entity.vrmPick;
   if (pick?.kind !== 'library' && pick?.kind !== 'world') return withoutVrm(entity, pick);
+  const picked = await resolvePick(pick, store);
   const held = readCarriedVrm(entity.vrm);
-  if (held) return { ...entity, vrm: { ...held, hash: held.hash || await assetHash(held.file) } };
-  if (pick.kind === 'world') {
-    const entry = store?.[pick.id];
-    if (!entry) return withoutVrm(entity, undefined);
-    return { ...entity, vrm: { name: entry.name, file: entry.file, hash: entry.hash ?? await assetHash(entry.file) } };
+  if (held) {
+    const hash = held.hash || await assetHash(held.file);
+    if (!picked || picked.hash === hash) return { ...entity, vrm: { ...held, hash } };
   }
-  const vrm = (await loadLibraryVrms([pick.id])).get(pick.id);
-  return vrm ? { ...entity, vrm } : withoutVrm(entity, undefined);
+  return picked ? { ...entity, vrm: picked } : withoutVrm(entity, undefined);
+}
+
+/** The Avatar a library or world pick names on this device, if it still exists. */
+async function resolvePick(pick: Extract<VrmPick, { kind: 'library' | 'world' }>, store?: WorldVrmStore): Promise<CarriedVrm | undefined> {
+  if (pick.kind === 'library') return (await loadLibraryVrms([pick.id])).get(pick.id);
+  const entry = store?.[pick.id];
+  return entry && { name: entry.name, file: entry.file, hash: entry.hash ?? await assetHash(entry.file) };
 }
 
 /**
