@@ -56,8 +56,10 @@ interface VRMViewerProps {
   eyeColor?: string;
   skinColor?: string;
   hairTypes?: Record<string, HairTypeDef>;
-  currentHairStyle: string;
-  hairLength: number;
+  /** Absent, every hair mesh keeps the visibility its file gives it. */
+  currentHairStyle?: string;
+  /** Absent, the hair's LENGTH morph keeps its file value. */
+  hairLength?: number;
   modelUrl?: string;
   animationFiles?: string[];
   /** Colors to apply to extra (non-channel) materials, keyed by material name. */
@@ -325,13 +327,13 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     const hairMeshes = getHairMeshes(gltf);
     // Multiple hair meshes = selectable styles; show only the chosen one. If the selection matches none
     // (e.g. skipped customization or a model swap), show the first so the avatar is never left bald.
-    if (hairMeshes.length > 1) {
+    if (currentHairStyle !== undefined && hairMeshes.length > 1) {
       const matches = hairMeshes.some(c => c.name === currentHairStyle);
       hairMeshes.forEach((c, i) => { c.visible = matches ? c.name === currentHairStyle : i === 0; });
     }
     // Apply hair length to the active hair mesh (or the only one) if it exposes a LENGTH morph.
     const active = hairMeshes.find(c => c.name === currentHairStyle) || hairMeshes[0];
-    if (active) applyHairLength(active, hairLength);
+    if (active && hairLength !== undefined) applyHairLength(active, hairLength);
   };
 
   // Apply `fn` to a target's materials: a channel keyword ('hair'|'skin'|'eye') or an exact extra-material name.

@@ -31,11 +31,15 @@ const turns: TurnFixture[] = [
   { narration: 'The golem takes a blow.', turnId: 't2', scene, entityStats: at(60) },
 ];
 
-const show = (entity: object, page?: number) => renderInGame(
+const show = (entity: object, page?: number, preferImage = false) => renderInGame(
   <LeftPanel entities={[entity] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />,
   {
     world: { entities: [entity] } as never, turns, page,
-    seed: (g) => { g.setEntityStats(at(60)); g.setVisibleEntities(scene); },
+    seed: (g) => {
+      g.setEntityStats(at(60));
+      g.setVisibleEntities(scene);
+      if (preferImage) g.setEntityVisualPreference({ golem: 'image' });
+    },
   },
 );
 const morphsOf = (viewer: HTMLElement) => JSON.parse(viewer.dataset.morphs!) as Record<string, number>;
@@ -52,8 +56,8 @@ describe('LeftPanel — entity stat morphs', () => {
   });
 
   it("drives the model dialog from the same stats when a picture leads the view", async () => {
-    show({ ...golem, image: PICTURE });
-    await userEvent.click(screen.getByRole('button', { name: 'View 3D model' }));
+    show({ ...golem, image: PICTURE }, undefined, true);
+    await userEvent.click(screen.getByRole('button', { name: 'View 3D Model' }));
     const viewers = await screen.findAllByTestId('model-viewer');
     expect(viewers.map(morphsOf)).toEqual([{ Cracks: 0.6 }]);
   });

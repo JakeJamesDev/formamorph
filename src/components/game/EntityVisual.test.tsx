@@ -30,30 +30,31 @@ describe('hasEntityVisual', () => {
   });
 });
 
+const AVATAR = <div data-testid="avatar-viewer" />;
+
 describe('EntityVisual', () => {
-  it('shows the image with a button to the model when the entity has both', async () => {
+  it('shows the model with a button to the image when the entity has both', async () => {
     render(<EntityVisual entity={entity({ images: [{ data: IMAGE }], model: MODEL })} />);
 
-    expect(screen.getByAltText('Sedge')).toBeInTheDocument();
-    // Inline would cover the image; the model waits behind the button until asked for.
-    expect(screen.queryByTestId('model-viewer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('model-viewer')).toHaveTextContent('statue.glb');
+    expect(screen.queryByAltText('Sedge')).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'View 3D model' }));
-    expect(await screen.findByTestId('model-viewer')).toHaveTextContent('statue.glb');
+    await userEvent.click(screen.getByRole('button', { name: 'View Image' }));
+    expect(await screen.findAllByAltText('Sedge')).not.toHaveLength(0);
   });
 
-  it('offers no model button for an image-only entity', () => {
+  it('offers no corner button for an image-only entity', () => {
     render(<EntityVisual entity={entity({ images: [{ data: IMAGE }] })} />);
     expect(screen.getByAltText('Sedge')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'View 3D model' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^View / })).not.toBeInTheDocument();
   });
 
   it('renders the model in place of the image when that is all the entity has', () => {
     render(<EntityVisual entity={entity({ model: MODEL })} />);
 
     expect(screen.getByTestId('model-viewer')).toBeInTheDocument();
-    // Nothing for a corner button to sit on, so the model is orbited where it stands.
-    expect(screen.queryByRole('button', { name: 'View 3D model' })).not.toBeInTheDocument();
+    // Nothing else to open, so the model is orbited where it stands.
+    expect(screen.queryByRole('button', { name: /^View / })).not.toBeInTheDocument();
   });
 
   it('renders nothing for an entity with no visual at all', () => {
@@ -62,38 +63,74 @@ describe('EntityVisual', () => {
   });
 });
 
+describe('EntityVisual — Avatar', () => {
+  const all = () => entity({ images: [{ data: IMAGE }], model: MODEL });
+
+  it('opens on the Avatar before the model and the image, with a button for each of those', () => {
+    render(<EntityVisual entity={all()} avatar={AVATAR} />);
+
+    expect(screen.getByTestId('avatar-viewer')).toBeInTheDocument();
+    expect(screen.queryByTestId('model-viewer')).not.toBeInTheDocument();
+    expect(screen.queryByAltText('Sedge')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View 3D Model' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View Image' })).toBeInTheDocument();
+  });
+
+  it('shows the Avatar alone when that is all the entity has', () => {
+    render(<EntityVisual entity={entity({})} avatar={AVATAR} onPreferenceChange={() => {}} />);
+    expect(screen.getByTestId('avatar-viewer')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^View / })).not.toBeInTheDocument();
+  });
+
+  it('lets a stored preference open on the image instead, with the Avatar behind its button', async () => {
+    const onChange = vi.fn();
+    render(<EntityVisual entity={all()} avatar={AVATAR} preference="image" onPreferenceChange={onChange} />);
+
+    expect(screen.getByAltText('Sedge')).toBeInTheDocument();
+    expect(screen.queryByTestId('avatar-viewer')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'View Avatar' }));
+    expect(await screen.findByTestId('avatar-viewer')).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: /Display by Default/ }));
+    expect(onChange).toHaveBeenCalledWith('avatar');
+  });
+
+  it('falls back to the default order when the preferred visual is gone', () => {
+    render(<EntityVisual entity={entity({ images: [{ data: IMAGE }] })} avatar={AVATAR} preference="model" onPreferenceChange={() => {}} />);
+    expect(screen.getByTestId('avatar-viewer')).toBeInTheDocument();
+  });
+});
+
 describe('EntityVisual — display by default', () => {
   const both = () => entity({ images: [{ data: IMAGE }], model: MODEL });
 
-  it('opens on the model, offering the image behind the corner button, once model is preferred', () => {
-    render(<EntityVisual entity={both()} preference="model" onPreferenceChange={() => {}} />);
+  it('opens on the image, offering the model behind the corner button, once image is preferred', () => {
+    render(<EntityVisual entity={both()} preference="image" onPreferenceChange={() => {}} />);
 
-    expect(screen.getByTestId('model-viewer')).toBeInTheDocument();
-    expect(screen.queryByAltText('Sedge')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'View image' })).toBeInTheDocument();
+    expect(screen.getByAltText('Sedge')).toBeInTheDocument();
+    expect(screen.queryByTestId('model-viewer')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View 3D Model' })).toBeInTheDocument();
   });
 
-  it('makes the model the default from the model dialog', async () => {
+  it('makes the image the default from the zoom viewer', async () => {
     const onChange = vi.fn();
     render(<EntityVisual entity={both()} onPreferenceChange={onChange} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'View 3D model' }));
+    await userEvent.click(screen.getByRole('button', { name: 'View Image' }));
     const toggle = await screen.findByRole('button', { name: /Display by Default/ });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
     await userEvent.click(toggle);
-    expect(onChange).toHaveBeenCalledWith('model');
+    expect(onChange).toHaveBeenCalledWith('image');
   });
 
-  it('sends the player back to the image from the zoom viewer, the reverse control', async () => {
+  it('sends the player back to the model from the model dialog, the reverse control', async () => {
     const onChange = vi.fn();
-    render(<EntityVisual entity={both()} preference="model" onPreferenceChange={onChange} />);
+    render(<EntityVisual entity={both()} preference="image" onPreferenceChange={onChange} />);
 
-    // The model dialog is unreachable while the model is the default — the zoom viewer is what undoes it,
-    // which is why the corner button has to keep the image within reach.
-    await userEvent.click(screen.getByRole('button', { name: 'View image' }));
+    await userEvent.click(screen.getByRole('button', { name: 'View 3D Model' }));
     await userEvent.click(await screen.findByRole('button', { name: /Display by Default/ }));
-    expect(onChange).toHaveBeenCalledWith('image');
+    expect(onChange).toHaveBeenCalledWith('model');
   });
 
   it('clears an image preference rather than re-setting it', async () => {
@@ -110,15 +147,15 @@ describe('EntityVisual — display by default', () => {
 
   it('offers no preference control when there is no save to write it to', async () => {
     render(<EntityVisual entity={both()} />);
-    await userEvent.click(screen.getByRole('button', { name: 'View 3D model' }));
+    await userEvent.click(screen.getByRole('button', { name: 'View Image' }));
 
-    expect(await screen.findByTestId('model-viewer')).toBeInTheDocument();
+    expect(await screen.findAllByAltText('Sedge')).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: /Display by Default/ })).not.toBeInTheDocument();
   });
 
   it('ignores a preference for an entity that has only one of the two', () => {
     render(<EntityVisual entity={entity({ images: [{ data: IMAGE }] })} preference="model" onPreferenceChange={() => {}} />);
-    // Nothing to switch to — a stale preference must not blank the picture.
+    // Nothing to switch to: a stale preference must not blank the picture.
     expect(screen.getByAltText('Sedge')).toBeInTheDocument();
   });
 });
