@@ -11,23 +11,32 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PIN = JSON.parse(readFileSync(path.join(HERE, '..', 'scripts', 'llamaServerPin.json'), 'utf8')).tag;
 
+const readFixture = (name) => JSON.parse(readFileSync(path.join(HERE, 'fixtures', 'llama-server', `${name}.json`), 'utf8'));
+
 /** The recorded run for `tag` (default: the pinned one). */
-export function loadFixture(tag = PIN) {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', 'llama-server', `${tag}.json`), 'utf8'));
-}
+export const loadFixture = (tag = PIN) => readFixture(tag);
+
+/** One turn of a thinking model at `tag`, recorded with `--thinking`. */
+export const loadThinkingFixture = (tag = PIN) => readFixture(`${tag}-thinking`);
 
 const argValue = (args, flag) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : null;
 };
 
+/** True for the CPU fallback's router start. */
+export const isCpuStart = (args) => argValue(args, '--device') === 'none';
+
 /**
  * `scenarioFor(args)` names the recorded scenario a router start replays: `loaded`, `kvFail` or `cpu`.
  * `listDevices` overrides the recorded `--list-devices` text. `stepMs` paces the replayed events.
+ * `holdReply` keeps each chat reply open (a stream after its first frame); `chatHangups` gets each one the
+ * caller ends.
  */
-export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (args.includes('none') ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2 } = {}) {
+export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2, holdReply = false } = {}) {
   const calls = [];
   const chatRequests = [];
+  const chatHangups = [];
   const routers = [];
   let nextPid = 40000;
 
@@ -107,10 +116,14 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
       if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
         const payload = await body(req);
         chatRequests.push(payload);
+        // A reply still decoding: a stream's first frame, or nothing yet, until the caller hangs up.
+        if (holdReply) req.socket.once('close', () => chatHangups.push(payload));
         if (payload.stream) {
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-          return res.end(fill(scenario.chatStream ?? fixture.scenarios.loaded.chatStream));
+          const frames = fill(scenario.chatStream ?? fixture.scenarios.loaded.chatStream);
+          return holdReply ? res.write(`${frames.split('\n\n')[0]}\n\n`) : res.end(frames);
         }
+        if (holdReply) return;
         return json(res, 200, fill(scenario.chat ?? fixture.scenarios.loaded.chat));
       }
       return json(res, 404, { error: { message: 'not found' } });
@@ -140,6 +153,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     spawn,
     calls,
     chatRequests,
+    chatHangups,
     routers,
     /** Router starts so far, newest last (list-devices runs excluded). */
     routerCalls: () => calls.filter((c) => !c.args.includes('--list-devices')),

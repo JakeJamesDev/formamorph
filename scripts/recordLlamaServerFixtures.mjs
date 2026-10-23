@@ -1,6 +1,7 @@
 // Records the fake llama-server's fixtures from a real run of the pinned build: --list-devices, a load that
-// answers one chat turn, and a load that fails on the KV cache. Rerun after every pin bump.
-// Usage: node scripts/recordLlamaServerFixtures.mjs <model.gguf>
+// answers one chat turn, and a load that fails on the KV cache. `--thinking` records one turn of a thinking
+// model into <tag>-thinking.json. Rerun both after every pin bump.
+// Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>]
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -15,6 +16,16 @@ const ROOT = path.resolve(HERE, '..');
 const OUT_DIR = path.join(ROOT, 'electron', 'fixtures', 'llama-server');
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** The chat turn each scenario records, by its `chat` name. */
+const CHATS = {
+  plain: { messages: [{ role: 'user', content: 'Say hi in three words.' }], maxTokens: 12, template: false },
+  thinking: {
+    messages: [{ role: 'system', content: 'Answer briefly.' }, { role: 'user', content: 'What is 2+2? One word.' }],
+    maxTokens: 600,
+    template: true,
+  },
+};
 
 /** Runs one router scenario and returns its stdout split at the load request and at the load's outcome. */
 async function scenario({ bin, modelPath, settings, chat }) {
@@ -68,7 +79,10 @@ async function scenario({ bin, modelPath, settings, chat }) {
 
   const result = { args, models, loadReply, outcome };
   if (outcome === 'loaded' && chat) {
-    const body = { model: modelId, messages: [{ role: 'user', content: 'Say hi in three words.' }], max_tokens: 12, temperature: 0, seed: 1 };
+    const { messages, maxTokens, template } = CHATS[chat];
+    const body = { model: modelId, messages, max_tokens: maxTokens, temperature: 0, seed: 1 };
+    // The rendered prompt shows whether the template's generation prompt opens the thought itself.
+    if (template) result.applyTemplate = await (await fetch(`${base}/apply-template`, { method: 'POST', body: JSON.stringify({ model: modelId, messages }) })).json();
     result.chat = await (await fetch(`${base}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body) })).json();
     result.chatStream = await (await fetch(`${base}/v1/chat/completions`, { method: 'POST', body: JSON.stringify({ ...body, stream: true }) })).text();
     await fetch(`${base}/models/unload`, { method: 'POST', body: JSON.stringify({ model: modelId }) });
@@ -103,11 +117,24 @@ async function scenario({ bin, modelPath, settings, chat }) {
   });
 }
 
-const modelPath = process.argv[2];
-if (!modelPath) { console.error('Usage: node scripts/recordLlamaServerFixtures.mjs <model.gguf>'); process.exit(1); }
+const thinkingAt = process.argv.indexOf('--thinking');
+const thinkingModel = thinkingAt >= 0 ? process.argv[thinkingAt + 1] : null;
+const modelPath = thinkingAt === 2 ? null : process.argv[2];
+if (!modelPath && !thinkingModel) { console.error('Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>]'); process.exit(1); }
 const bin = ls.binaryPath();
 if (!bin) { console.error('No bundled llama-server. Run npm run llama-server:fetch first.'); process.exit(1); }
 const tag = JSON.parse(await (await import('node:fs/promises')).readFile(path.join(HERE, 'llamaServerPin.json'), 'utf8')).tag;
+
+// A thinking model whose template opens the thought in its generation prompt: one turn, kept apart.
+if (thinkingModel) {
+  const settings = { contextSize: 4096, gpuLayers: ls.GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 1 };
+  const thinking = await scenario({ bin, modelPath: thinkingModel, settings, chat: 'thinking' });
+  await mkdir(OUT_DIR, { recursive: true });
+  const file = path.join(OUT_DIR, `${tag}-thinking.json`);
+  await writeFile(file, `${JSON.stringify({ tag, model: path.basename(thinkingModel), applyTemplate: thinking.applyTemplate, chat: thinking.chat, chatStream: thinking.chatStream }, null, 1)}\n`);
+  console.log(`Recorded ${path.relative(ROOT, file)}: ${thinking.outcome}`);
+  if (!modelPath) process.exit(0);
+}
 
 const listDevices = await new Promise((resolve) => {
   let out = '';
@@ -117,10 +144,10 @@ const listDevices = await new Promise((resolve) => {
   c.once('close', () => resolve(out));
 });
 const settings = { contextSize: 4096, gpuLayers: ls.GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2 };
-const loaded = await scenario({ bin, modelPath, settings, chat: true });
+const loaded = await scenario({ bin, modelPath, settings, chat: 'plain' });
 // Far past any VRAM, with fit off so the server tries it as asked.
 const kvFail = await scenario({ bin, modelPath, settings: { ...settings, contextSize: 1048576, gpuLayers: ls.GPU_LAYERS_MAX, parallelRequests: 1 } });
-const cpu = await scenario({ bin, modelPath, settings: { ...settings, cpu: true }, chat: false });
+const cpu = await scenario({ bin, modelPath, settings: { ...settings, cpu: true } });
 
 await mkdir(OUT_DIR, { recursive: true });
 const file = path.join(OUT_DIR, `${tag}.json`);

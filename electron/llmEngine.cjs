@@ -14,6 +14,7 @@ const os = require('node:os');
 const path = require('node:path');
 const llamaServer = require('./llamaServer.cjs');
 const { selectEngineDevice } = require('./engineDevice.cjs');
+const { shapeChatBody } = require('./chatShape.cjs');
 
 const { errorText } = llamaServer;
 
@@ -275,8 +276,9 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     readBody(req).then((text) => {
       let body;
       try { body = JSON.parse(text || '{}'); } catch { return sendJson(res, 400, { error: { message: 'The request body is not JSON.' } }); }
-      // The router routes by model name; ours is the only one it serves.
-      const data = JSON.stringify({ ...body, model: l.modelId });
+      const shaped = shapeChatBody(body, { modelId: l.modelId, keepImages: Boolean(l.projector) });
+      if (shaped.droppedImages > 0) res.setHeader(IMAGES_DROPPED_HEADER, String(shaped.droppedImages));
+      const data = JSON.stringify(shaped.body);
       const up = http.request({
         host: '127.0.0.1', port: l.server.port, method: 'POST', path: '/v1/chat/completions',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
@@ -337,7 +339,8 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     // The options this model is (being) loaded with, so the renderer can compare against pending settings.
     const applied = { ...settings, maxContextSize: null, engineVramMB: null };
     // This start: its settings, work folder, device, router (`server`), front server, and teardown state.
-    const l = { modelId, settings, aborted: false, server: null, front: null, lost: null };
+    // `projector` is the vision projector file, or null: without one, image parts are dropped.
+    const l = { modelId, settings, projector: null, aborted: false, server: null, front: null, lost: null };
     l.workDir = path.join(workRoot, `formamorph-engine-${process.pid}-${++starts}`);
     l.presetPath = path.join(l.workDir, 'preset.ini');
     // An empty cache, so the router lists no Hugging Face downloads beside our model.
