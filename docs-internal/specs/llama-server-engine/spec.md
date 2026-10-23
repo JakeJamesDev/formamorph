@@ -87,7 +87,8 @@ The desktop engine runs llama.cpp's own `llama-server`, the same runtime LM Stud
 - The work lives on `engine/llama-server` in its own worktree. Ticket worktrees branch from it and land on it, not on main. Main merges into it after each release. It merges to main once, when the merge bar is met.
 
 **Binaries**
-- The installer bundles `llama-server` builds from llama.cpp's GitHub releases: Windows Vulkan x64 (it carries the CPU backends too), macOS arm64 and x64 (Metal), and Linux Vulkan + CPU. CUDA is not bundled.
+- The installer bundles `llama-server` builds from llama.cpp's GitHub releases: Windows Vulkan x64 (it carries the CPU backends too), macOS arm64 and x64 (Metal), and Linux x64 as two builds, Vulkan and CPU, so the engine can fall back to the CPU one. Windows and Linux arm64 are not bundled, and neither is CUDA.
+- The pin is one literal tag committed in the repo, such as `b11829`. The build never resolves "latest", because every llama.cpp release is flagged prerelease.
 - One pinned llama.cpp build tag names the version. The build fetches exactly that tag. The `release` skill gains a step that checks for a newer build and bumps the pin, followed by the parser tests and the load matrix.
 - node-llama-cpp and its prebuilt packages leave the dependencies and the packaging rules.
 
