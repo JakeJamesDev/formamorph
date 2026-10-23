@@ -26,11 +26,14 @@ export function pickToken(pick: VrmPick | undefined, lookup: VrmLookup): string 
   return pick.kind === 'world' && !lookup.world.has(pick.id) ? undefined : `${pick.kind}:${pick.id}`;
 }
 
+/** How a library pick this device lacks reads. */
+export const MISSING_AVATAR = 'Missing Avatar';
+
 /** A pick as a reader names it. */
 export function pickLabel(pick: VrmPick | undefined, lookup: VrmLookup): string {
   if (!pick) return 'None';
   if (pick.kind === 'default') return "User's Default";
-  return lookup[pick.kind].get(pick.id)?.name || (pick.kind === 'world' ? 'None' : 'Missing Avatar');
+  return lookup[pick.kind].get(pick.id)?.name || (pick.kind === 'world' ? 'None' : MISSING_AVATAR);
 }
 
 /** A library Avatar ready to embed in a world. */
