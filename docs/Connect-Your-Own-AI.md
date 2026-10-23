@@ -127,6 +127,17 @@ The desktop app has the AI engine built in, so there is nothing extra to install
 
 The **Local model** dialog has three views: **Installed**, **Recommended** and **Options**. **Recommended** groups models as **≤4 GB**, **≤8 GB**, **≤16 GB** and **No Limit**.
 
+### Vision Models and Images
+<!-- keywords: vision model cannot see images, local model ignores images, mmproj, projector file, vision badge, images dropped -->
+
+A local vision model needs a projector file to see images. The engine finds it by name when it loads the model.
+
+- Name the file `mmproj-` plus the model's file name, and keep it in the model's folder.
+- A folder with one model and one `mmproj` file also pairs them.
+- **Recommended** vision models show a **Vision** badge and download their projector with them.
+
+A model with no projector drops images, and the turn still answers.
+
 The desktop app also connects to a local server or a hosted service. The steps are the same as above. The browser and Android builds have no **Built-In Engine**.
 
 ## The Set Up Your AI Dialog

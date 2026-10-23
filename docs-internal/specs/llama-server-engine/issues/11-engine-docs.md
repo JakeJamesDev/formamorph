@@ -18,6 +18,6 @@ Player docs for the new engine (spec: Solution; Q15).
 
 ## Acceptance criteria
 
-- [ ] Settings help covers every new and changed engine setting; `copy-sweep` passes on it.
-- [ ] The help vectors are rebuilt, and a Formaquestion query for each new setting returns its section.
-- [ ] The changelog leads for this effort name the Unified KV Cache default and the Flash Attention change.
+- [x] Settings help covers every new and changed engine setting; `copy-sweep` passes on it.
+- [x] The help vectors are rebuilt, and a Formaquestion query for each new setting returns its section.
+- [x] The changelog leads for this effort name the Unified KV Cache default and the Flash Attention change.
