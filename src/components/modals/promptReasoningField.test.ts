@@ -122,6 +122,17 @@ describe('promptReasoningFieldProps', () => {
     expect(props?.room).toBeNull();
   });
 
+  it('marks the field inert under the endpoint-wide master off, its own setting untouched', () => {
+    const setting: PromptReasoningSetting = { enabled: true, level: 'high' };
+    const props = (global: { enabled: boolean; level: 'auto' }, reasoning: Partial<ReasoningCapability> = { dialect: 'openai', levels: ['low', 'high'] }) =>
+      promptReasoningFieldProps(input({ kind: 'director', reasoning, setting, global }));
+    expect(props({ enabled: false, level: 'auto' })?.globalOff).toBe(true);
+    expect(props({ enabled: false, level: 'auto' })?.setting).toEqual(setting);
+    expect(props({ enabled: true, level: 'auto' })?.globalOff).toBe(false);
+    // An endpoint that refuses off keeps the prompt's own control: its strength still goes out.
+    expect(props({ enabled: false, level: 'auto' }, { dialect: 'moonshot-k3', levels: ['low', 'high'], offAllowed: false })?.globalOff).toBe(false);
+  });
+
   it('reads the kept strength for a prompt set to Global on an endpoint that refuses off', () => {
     const props = promptReasoningFieldProps(input({
       reasoning: { dialect: 'moonshot-k3', levels: ['low', 'high'], offAllowed: false },

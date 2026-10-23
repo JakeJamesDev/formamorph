@@ -189,7 +189,7 @@ Useful for world authoring and debugging.`,
     label: 'Native Reasoning',
     description: 'Sets whether reasoning models think, and how hard',
     // The caveat that used to close all eight effort levels, said once for the whole control.
-    info: 'Some models think privately before they answer. Uncheck to stop that. The dropdown sets how much effort they spend, and **Model Default** sends no hint. Every prompt set to **Global** follows this row. Models without native reasoning ignore it.',
+    info: 'Some models think privately before they answer. Uncheck to stop that on every prompt. Each prompt keeps its own setting for when you check it again. The dropdown sets how much effort they spend, and **Model Default** sends no hint. Every prompt set to **Global** uses this strength. Models without native reasoning ignore it.',
   },
 
   // ── Output · Tools ──────────────────────────────────────────────────────────
@@ -586,7 +586,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   promptNativeReasoning: {
     label: 'Native Reasoning',
     description: 'Sets whether this prompt reasons, and how hard',
-    info: 'Uncheck and this prompt does no reasoning. **Global** follows the **Native Reasoning** row under Settings → Output, its switch included. **Model Default** sends no hint. Only applies to models with native reasoning.',
+    info: 'Uncheck and this prompt does no reasoning. The **Native Reasoning** row under Settings → Output turns reasoning off on every prompt, and **Global** uses its strength. **Model Default** sends no hint. Only applies to models with native reasoning.',
   },
   promptEndpoint: {
     label: 'Endpoint',
@@ -794,6 +794,7 @@ export const SETTINGS_OPTIONS = {
 export const REASONING_NOTES = {
   never: 'This model doesn’t support reasoning, so there’s nothing to configure',
   always: 'This model always reasons, so it can’t be switched off',
+  globalOff: 'Off on every prompt while Native Reasoning under Settings → Output is unchecked',
 } as const;
 
 export const TOOLS_NOTES = {

@@ -49,7 +49,8 @@ export function MaxOutputControl({ custom, value, shipped, disabled, onCustomCha
  * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
  * engine ignores the effort field, so it shows the slider alone (`level` false).
  */
-export function PromptReasoningField({ setting, onChange, options, budget, room, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning', switchLabel }: PromptReasoningFieldProps) {
+export function PromptReasoningField({ setting, onChange, options, budget, room, level, lockedOn, globalOff, disabled: readOnly, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning', switchLabel }: PromptReasoningFieldProps) {
+  const disabled = readOnly || globalOff;
   const inert = disabled || !(setting.enabled || lockedOn);
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
     kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
@@ -82,6 +83,7 @@ export function PromptReasoningField({ setting, onChange, options, budget, room,
         room={room ? roomReadout(room) : undefined}
       />
       {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
+      {globalOff && <p className="text-helper text-muted-foreground">{REASONING_NOTES.globalOff}</p>}
       {level && budget && (
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">

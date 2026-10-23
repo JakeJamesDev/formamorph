@@ -334,6 +334,7 @@ void _everyKindListed;
 /**
  * True when the app would let a model reason on some call: a Thinking mode, or any prompt whose effective
  * choice (its stored setting, or its shipped default) is not `none` once the endpoint-wide level is folded in.
+ * The endpoint-wide switch turned off counts too, so its `none` reaches the wire rather than nothing.
  * When false, callers send no reasoning field at all and skip capability resolution. Read from the effective
  * choice, not the stored map, since the shipped tiers switch several prompts on without storing anything.
  */
@@ -342,7 +343,7 @@ export function isReasoningEngaged(
   globalEffort: ReasoningEffort,
   promptReasoning: Record<string, PromptReasoning>,
 ): boolean {
-  return mode !== 'off'
+  return mode !== 'off' || globalEffort === 'none'
     || PROMPT_REQUEST_KINDS.some((kind) => resolvePromptReasoning(kind, promptReasoning, globalEffort, mode) !== 'none');
 }
 
@@ -353,8 +354,10 @@ export function defaultPromptReasoning(kind: AIRequestType): PromptReasoning {
 
 /**
  * Resolves the effective reasoning effort for one request: the prompt's stored choice (or its shipped default),
- * with `global` folding in the endpoint-wide level. Inline narration resolves to `none` (see
- * `nativeReasoningSuppressed`). The result is fed to `reasoningEffortBody`, which applies the endpoint guard.
+ * with `global` folding in the endpoint-wide level. The endpoint-wide switch off (`none`) is a master off: every
+ * prompt resolves to `none` and keeps its own choice for when the switch comes back on. Inline narration resolves
+ * to `none` (see `nativeReasoningSuppressed`). The result is fed to `reasoningEffortBody`, which applies the
+ * endpoint guard.
  */
 export function resolvePromptReasoning(
   kind: AIRequestType,
@@ -362,7 +365,7 @@ export function resolvePromptReasoning(
   globalEffort: ReasoningEffort,
   mode: ThinkingMode,
 ): ReasoningEffort {
-  if (nativeReasoningSuppressed(mode, kind) || REASONING_OFF_KINDS.includes(kind)) return 'none';
+  if (globalEffort === 'none' || nativeReasoningSuppressed(mode, kind) || REASONING_OFF_KINDS.includes(kind)) return 'none';
   return promptChoice(kind, prefs, globalEffort);
 }
 

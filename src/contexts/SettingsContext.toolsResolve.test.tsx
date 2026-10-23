@@ -46,8 +46,9 @@ beforeEach(() => {
     }],
   };
   localStorage.setItem('FORMAMORPH_textEndpointPresets', textEndpointPresetCodec.serialize(endpoints));
-  // Native reasoning ships on, which asks on its own; every case here has it off.
-  localStorage.setItem('FORMAMORPH_reasoningEffort', JSON.stringify({ enabled: false, level: 'auto' }));
+  // Reasoning engaged anywhere asks on its own, and the Output switch off counts (its `none` goes out). Every
+  // case here leaves the switch on with every prompt off, so reasoning is engaged nowhere.
+  localStorage.setItem('FORMAMORPH_reasoningEffort', JSON.stringify({ enabled: true, level: 'auto' }));
   window.matchMedia = ((query: string) => ({
     matches: false, media: query, onchange: null,
     addListener: vi.fn(), removeListener: vi.fn(),
