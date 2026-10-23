@@ -84,18 +84,6 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
     }
   };
 
-  const handleModelDelete = async (id: string) => {
-    try {
-      await ModelStorageService.deleteModel(id);
-    } catch (err) {
-      // The library refuses to drop its last avatar; surface why rather than failing the click silently.
-      toastError(err, 'Could not delete that player avatar.');
-      return;
-    }
-    if (selectedModelId === id) setSelectedModelId(DEFAULT_AVATAR_ID);
-    await refreshLibrary();
-  };
-
   const handleFinalize = () => {
     onCharacterCustomized({ ...characterData, chosenVrm: locked ? null : { pick: { kind: 'library', id: selectedModelId } } });
   };
@@ -159,11 +147,6 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
                 Add .vrm
               </Label>
               <Input id="model-upload" type="file" accept=".vrm,.glb" onChange={handleModelUpload} disabled={listing} className="hidden" />
-              {libraryModels?.some((m) => m.id === selectedModelId) && (
-                <Button variant="outline" size="sm" onClick={() => handleModelDelete(selectedModelId)}>
-                  Delete
-                </Button>
-              )}
             </div>
           </div>
           )}
