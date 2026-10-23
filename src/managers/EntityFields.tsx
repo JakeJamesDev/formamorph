@@ -20,6 +20,7 @@ import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
 import type { Entity, Placeholder } from '@/types';
 import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
+import { pickLabel } from '@/lib/vrmPickMatch';
 import { WorldInput } from '@/components/editor/WorldField';
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectOptions } from "@/components/SelectOptions";
@@ -378,7 +379,7 @@ export const LIBRARY_ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add 
 
 /** A library entity's Avatar: none, the player's default, or one from the player's Avatar library. */
 export const LibraryEntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
-  const [library, setLibrary] = useState<{ id: string; name: string }[]>([]);
+  const [library, setLibrary] = useState<{ id: string; name: string }[] | undefined>();
   const mounted = useMountedRef();
   useEffect(() => {
     ModelStorageService.getModelMetadata()
@@ -389,10 +390,13 @@ export const LibraryEntityVrmPickField = ({ value, onChange }: EntityFieldGroupP
   const options = [
     { value: none, label: 'None' },
     { value: vrmPickValue({ kind: 'default' }), label: "User's Default" },
-    ...library.map((model) => ({ value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed' })),
+    ...(library ?? []).map((model) => ({ value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed' })),
   ];
   const stored = vrmPickValue(value.vrmPick);
-  // A library id this device lacks reads as None, as a missing store id does.
+  // Once the library is read, a library id it lacks keeps its own option, named as the link review names it.
+  if (library && value.vrmPick?.kind === 'library' && !options.some((o) => o.value === stored)) {
+    options.push({ value: stored, label: pickLabel(value.vrmPick, { world: new Map(), library: new Map() }) });
+  }
   const selected = options.some((o) => o.value === stored) ? stored : none;
   return (
     <div className="space-y-2" {...fieldFrame('vrmPick')}>

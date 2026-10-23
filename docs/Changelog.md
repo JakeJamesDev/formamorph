@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In play, one entity view shows each entity's Avatar, 3D model or image, and replaces the separate Avatar tab.** It shows the Avatar first, then the model, then the image, unless you pick another with **Display by Default**. Select an entity to see it. On mobile, the **View** tab holds it.
     - **Exported character cards and published entities carry the entity's Avatar, and importing one adds it to your Avatar library.** Importing the same Avatar twice keeps one copy. Publish counts the Avatar toward the 25 MB entity limit before upload.
     - **The World Editor's Import Entity adds a card's Avatar to your library only when you confirm the import.** Cancel the import, and your Avatar library stays as it was.
+    - **A library entity's Avatar dropdown shows Missing Avatar when its Avatar isn't on this device, as the link review does.** Pick another option to replace it.
 
 #### ➖ Removed
 

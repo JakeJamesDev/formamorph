@@ -211,6 +211,19 @@ describe('the entity Avatar dropdown', () => {
     expect(bench.ctx().entities[0]).not.toHaveProperty('vrmPick');
   });
 
+  it('reads a store id the store lacks as None, with no extra option', () => {
+    const lost = benchEditorWorld({
+      worldOverview: WORLD.worldOverview,
+      entities: [{ id: 'n1', name: 'Newcomer', aiDescription: 'Just arrived.', locations: ['harbor'], vrmPick: { kind: 'world', id: 'gone' } }],
+    });
+    renderWorldEditorBench(lost, 'advanced');
+    selectEntity('Newcomer');
+    const trigger = screen.getByRole('combobox', { name: 'Avatar' });
+    expect(trigger).toHaveTextContent('None');
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['None', "User's Default", 'Heron', 'Reed']);
+  });
+
   it('writes each form of the pick', () => {
     const bench = renderWorldEditorBench(WORLD, 'advanced');
     selectEntity('Odd Wick');

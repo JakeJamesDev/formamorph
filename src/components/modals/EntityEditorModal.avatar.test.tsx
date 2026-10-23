@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import EntityEditorModal from './EntityEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import EntityStorageService from '@/services/EntityStorageService';
+import { pickLabel } from '@/lib/vrmPickMatch';
 import type { Entity } from '@/types';
 
 /** The library entity editor's Avatar dropdown: None, User's Default, and the player's library Avatars. */
@@ -69,6 +70,34 @@ describe('library entity Avatar', () => {
     await waitFor(() => expect(EntityStorageService.storeEntity).toHaveBeenCalled());
     const saved = vi.mocked(EntityStorageService.storeEntity).mock.calls[0][0];
     expect(saved.data.vrmPick).toEqual({ kind: 'library', id: 'crane' });
+  });
+
+  it('shows a library id this device lacks as Missing Avatar, as the link review does', async () => {
+    const pick = { kind: 'library', id: 'gone' } as const;
+    open({ id: 'e1', name: 'Wren', vrmPick: pick } as Entity);
+    const trigger = await screen.findByRole('combobox', { name: 'Avatar' });
+    await waitFor(() => expect(trigger).toHaveTextContent('Missing Avatar'));
+    expect(pickLabel(pick, { world: new Map(), library: new Map() })).toBe('Missing Avatar');
+
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(screen.getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['None', "User's Default", 'Grey Heron', 'Crane', 'Missing Avatar']);
+  });
+
+  it.each([
+    ['None', undefined],
+    ["User's Default", { kind: 'default' }],
+    ['Crane', { kind: 'library', id: 'crane' }],
+  ])('replaces a missing pick with %s', async (name, expected) => {
+    open({ id: 'e1', name: 'Wren', vrmPick: { kind: 'library', id: 'gone' } } as Entity);
+    const trigger = await screen.findByRole('combobox', { name: 'Avatar' });
+    await waitFor(() => expect(trigger).toHaveTextContent('Missing Avatar'));
+
+    pickOption(trigger, name);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(EntityStorageService.storeEntity).toHaveBeenCalled());
+    expect(vi.mocked(EntityStorageService.storeEntity).mock.calls[0][0].data.vrmPick).toEqual(expected);
   });
 
   it('saves None as no pick', async () => {
