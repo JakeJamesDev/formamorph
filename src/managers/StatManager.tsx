@@ -17,13 +17,12 @@ import {
 } from "@/components/ui/select";
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
-import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
+import { statCodeName } from "@/lib/statCodeNames";
 import { useScriptWorldNames } from "@/lib/useScriptWorldNames";
 import { useRenameField } from "@/lib/useCodeRename";
-import type { ScriptBoxContext, ScriptBoxOwner } from "./ScriptBox";
 import { ScriptsSection } from "./ScriptsSection";
+import { statPanelBoxContext } from "./scriptBoxBuilders";
 import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
-import { blueprintGroupStats } from "@/lib/statLinks";
 import { statBoxLookups } from "@/lib/codeWorldLookup";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
@@ -66,9 +65,6 @@ export interface StatLinkEdit {
   reset: (field: keyof StatLinkFields) => void;
   header: ReactNode;
 }
-
-/** The named stats' code names, in order. */
-const namesOf = (stats: readonly Stat[]) => stats.map((entry) => entry.name).filter((name): name is string => !!name);
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -131,22 +127,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
-  // The code names of the stats beside this one, which `owner.stats` reads when an entity owns them.
-  const codeNamedStats = useMemo(() => statCodeNamed(stats, placeholders), [stats, placeholders]);
-  const selfCodeName = statCodeName(editingStat.name, placeholders);
-  // Whose code this is: an entity's own stat runs under that entity, a Blueprint stat under each owner, a world stat under none.
-  const isBlueprint = !store && !!world && !world.playStats.some((s) => s.id === stat.id);
-  const owner = useMemo<ScriptBoxOwner | null>(
-    () => (store ? { kind: 'entity', entityId: store.ownerId } : isBlueprint ? { kind: 'blueprint' } : null),
-    [store, isBlueprint],
-  );
-  // `owner.stats` is the entity's own, or a Blueprint group's.
-  const ownerStats = useMemo(() => {
-    if (store) return codeNamedStats;
-    if (!isBlueprint || !world) return [];
-    return statCodeNamed(blueprintGroupStats({ stats: world.stats, statGroups: world.statGroups }, stat), placeholders);
-  }, [store, isBlueprint, codeNamedStats, world, stat, placeholders]);
-  const ownerStatNames = useMemo(() => namesOf(ownerStats), [ownerStats]);
   // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
   const nameRename = useRenameField({
     root: 'stats',
@@ -160,15 +140,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const rename = link ? undefined : nameRename;
   // Cards read the authored world, so the library, which has none, gets no lookup.
   const boxLookups = useMemo(() => world && statBoxLookups(world), [world]);
-  const lookup = useMemo(() => {
-    if (!boxLookups) return undefined;
-    const self: Stat = { ...stat, ...editingStat, id: stat.id, name: selfCodeName };
-    return (timing: ScriptTiming) => boxLookups({ owner, timing, self });
-  }, [boxLookups, stat, editingStat, selfCodeName, owner]);
   // One surface for every box: what completes in one is what runs in each.
-  const codeContext = useMemo<ScriptBoxContext>(() => ({
-    selfName: selfCodeName, owner, names, world: foldWorld, ownerStats, ownerStatNames, placeholderPlaces, lookup,
-  }), [selfCodeName, owner, names, foldWorld, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
+  const { self: codeSelf, context: codeContext } = useMemo(() => statPanelBoxContext({
+    stat, editingStat, store, world, lookups: boxLookups, shared: { names, placeholderPlaces, world: foldWorld },
+  }), [stat, editingStat, store, world, boxLookups, names, placeholderPlaces, foldWorld]);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />
@@ -574,7 +549,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
         scripts={editingStat.scripts ?? []}
         onChange={(scripts) => apply({ scripts })}
         ownerName={statName}
-        self={{ kind: 'stat', stat: { ...editingStat, id: stat.id } }}
+        self={codeSelf}
         context={codeContext}
         reveal={reveal}
         addTarget={targetAttribute('worldEditorStat.code', 'add-script')}

@@ -37,6 +37,13 @@ vi.mock('@/components/library/LibraryTileGrid', async (importOriginal) => {
   return { ...real, LibraryTileGrid };
 });
 
+/** Click Finalize Character once the library's models load: the button stays disabled until then. */
+async function finalize() {
+  const button = await screen.findByRole('button', { name: 'Finalize Character' });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+}
+
 const world = (avatar = false): StoredWorldRecord => ({
   id: 'entry-world', name: 'Entry World',
   data: {
@@ -287,7 +294,7 @@ describe('the retained entry draft', () => {
     expect(onStartGame).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Finalize Character' })).not.toBeInTheDocument();
     fireEvent.click(within(intro).getByRole('button', { name: 'Close' }));
-    if (avatar) fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
+    if (avatar) await finalize();
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
     expect(onStartGame.mock.calls[0][4]).toEqual([expect.objectContaining({ id: 'shared', name: 'World book' })]);
   });
@@ -448,7 +455,7 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable Disabled book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
+    await finalize();
     expect(onStartGame).toHaveBeenCalledWith(['default'], expect.any(Object), true, 'hill', [],
       [expect.objectContaining({ name: 'Companion' })], NO_PERSONA, {});
   });
@@ -466,7 +473,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
+    await finalize();
     expect(onStartGame).toHaveBeenCalledOnce();
     const order = () => within(screen.getByRole('list', { name: 'Dictionary Order' }))
       .getAllByRole('listitem').map((item) => item.textContent);
