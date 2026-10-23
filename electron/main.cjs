@@ -12,6 +12,7 @@ const { collect: collectVram } = require('./vramCollect.cjs');
 const llmEngine = require('./llmEngineProxy.cjs');
 const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
 const llamaServer = require('./llamaServer.cjs');
+const { overflowPolicy, DEFAULT_POLICY: DEFAULT_OVERFLOW_POLICY } = require('./contextOverflow.cjs');
 const { binaryPath: llamaServerBinary, listServerDevices, deviceListing } = llamaServer;
 const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef, projectorFileName } = require('./modelScan.cjs');
@@ -49,7 +50,8 @@ let mainWindow = null;
 // Must match the renderer's DEFAULT_LOCAL_GPU_LAYERS so a fresh boot doesn't trigger a needless reload.
 // gpuDevice is a device *name* (or 'auto'/'all'), which the engine resolves against `--list-devices` at each
 // start — an index saved across a driver change would point at a different card.
-let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false, gpuDevice: ENGINE_DEVICE_AUTO };
+// contextOverflow applies to the next request with no reload (llm-set-context-overflow).
+let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false, gpuDevice: ENGINE_DEVICE_AUTO, contextOverflow: DEFAULT_OVERFLOW_POLICY };
 
 // Every GPU llama-server can see, for the device picker. `--list-devices` initializes every backend, so it is
 // read once and cached; each engine start reads its own copy and refreshes this one through its status.
@@ -330,6 +332,7 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     vCacheType: llamaServer.cacheType(opts.vCacheType ?? engineOptions.vCacheType),
     kvCacheInRam: typeof opts.kvCacheInRam === 'boolean' ? opts.kvCacheInRam : engineOptions.kvCacheInRam,
     gpuDevice: typeof opts.gpuDevice === 'string' ? opts.gpuDevice : engineOptions.gpuDevice,
+    contextOverflow: engineOptions.contextOverflow,
   };
   // A quantized V cache needs Flash Attention; without it the stored V type is not usable.
   next.vCacheType = llamaServer.effectiveVCacheType(next.vCacheType, next.flashAttention);
@@ -349,6 +352,13 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     return llmEngine.start(await startOptions(loaded));
   }
   return llmEngine.getState();
+});
+
+// Context Overflow for the next chat request: kept for later starts and pushed to a running engine.
+ipcMain.handle('llm-set-context-overflow', async (_event, policy) => {
+  engineOptions = { ...engineOptions, contextOverflow: overflowPolicy(policy) };
+  await llmEngine.setContextOverflow(engineOptions.contextOverflow);
+  return engineOptions.contextOverflow;
 });
 
 // Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick }. An empty

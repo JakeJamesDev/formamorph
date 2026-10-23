@@ -546,6 +546,15 @@ A lower value needs **Flash Attention** on.`,
 
 Use it when a model fits in VRAM but a long **Context Size** doesn't.`,
   },
+  localContextOverflow: {
+    label: 'Context Overflow',
+    description: 'Chooses what happens when the story is longer than the context',
+    info: `- **Truncate Middle** keeps the system prompt and your first message, and drops messages from the middle
+- **Rolling Window** keeps the system prompt and drops the oldest messages first
+- **Stop at Limit** drops nothing and stops the request with an error
+
+The model never sees part of a message.`,
+  },
   localAutoLoad: {
     label: 'Auto-Load',
     description: 'Loads a model without waiting to be asked',

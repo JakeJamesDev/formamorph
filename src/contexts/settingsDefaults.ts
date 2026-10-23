@@ -53,6 +53,15 @@ export const DEFAULT_LOCAL_K_CACHE_TYPE: LocalCacheType = 'f16';
 export const DEFAULT_LOCAL_V_CACHE_TYPE: LocalCacheType = 'f16';
 // Off keeps the context on the GPU (llama-server -nkvo left out); on moves it to system RAM.
 export const DEFAULT_LOCAL_KV_CACHE_IN_RAM = false;
+// What the engine does with a request longer than the context: LM Studio's three policies. Applies to the
+// next request with no reload. Mirrors POLICIES in electron/contextOverflow.cjs.
+export type LocalContextOverflow = 'truncateMiddle' | 'rollingWindow' | 'stopAtLimit';
+export const LOCAL_CONTEXT_OVERFLOW_POLICIES: { value: LocalContextOverflow; label: string }[] = [
+  { value: 'truncateMiddle', label: 'Truncate Middle' },
+  { value: 'rollingWindow', label: 'Rolling Window' },
+  { value: 'stopAtLimit', label: 'Stop at Limit' },
+];
+export const DEFAULT_LOCAL_CONTEXT_OVERFLOW: LocalContextOverflow = 'truncateMiddle';
 // Which GPU the bundled engine runs on, as a device *name* so the choice survives a driver update that
 // reorders the adapters. AUTO picks the discrete card and ignores an integrated one — see
 // electron/engineDevice.cjs for the policy; the value is only ever resolved to an index in main.
