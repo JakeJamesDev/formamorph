@@ -27,10 +27,9 @@ Player docs for the new engine (spec: Solution; Q15).
 Committed by hand as 4e2e245f7, outside the ticket flow: the session ran without the project's agent files, so it skipped the gates, the code review and prepare. The spec session restored this Status and wrote this section from the session's report.
 
 **Not verified**
-- The four gates. Only vitest on `src/lib/docs`, `src/lib/formaquestion` and `scripts` ran (90 files, 1520 pass), plus the changelog format and copy sweep.
-- The code review against Base.
-- The vision query ("my vision model cannot see images") after the heading and keyword change.
-- The in-app copy in `settingsCopy.ts` was not re-checked.
+- The semantic side of help search. Keyword search returns each new setting's section first (7 queries); the vision queries land on the Desktop Engine section, which holds the vision subsection.
+
+**Fixed after landing** (spec session): the four gates ran green on the branch (typecheck 36 s, lint 33 s, test 289 s, build 23 s). The two-axis review moved two misplaced paragraphs, filed the Flash Attention entry under Fixed, said that Rolling Window keeps the system prompt and that quantized V options are unavailable while Flash Attention is off, and dropped an idiom. Vectors rebuilt.
 
 **For you**
 - Read the new Settings help sections: Engine Memory and Context, Flash Attention, Context Overflow, and projector pairing in Connect Your Own AI.

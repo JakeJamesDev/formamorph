@@ -26,10 +26,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Exported character cards and published entities carry the entity's Avatar, and importing one adds it to your Avatar library.** Importing the same Avatar twice keeps one copy. Publish counts the Avatar toward the 25 MB entity limit before upload.
   - **Local Model:**
     - **Unified KV Cache is on by default, so parallel requests share one context.** Turn it off in **Advanced** to give every request the full Context Size.
-    - **Flash Attention off now really turns it off, and it is on by default.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
     - **K Cache Type, V Cache Type and KV Cache in RAM give you more control over the context's memory.** Q8_0 or Q4_0 shrink the context, and KV Cache in RAM moves it out of VRAM. Find them in **Advanced**.
     - **Local vision models see the images in your story when their projector sits beside the model.** Recommended vision models download theirs with them and show a **Vision** badge. A text-only model still drops images.
-    - **Context Overflow chooses what happens when a story is longer than Context Size.** Truncate Middle keeps the system prompt and your first message. Rolling Window drops the oldest messages. Stop at Limit shows an error. Find it in **Advanced**.
+    - **Context Overflow chooses what happens when a story is longer than Context Size.** Truncate Middle keeps the system prompt and your first message. Rolling Window keeps the system prompt and drops the oldest messages. Stop at Limit shows an error. Find it in **Advanced**.
 - **⚙️ Backend**
   - **Llama Server Engine:**
     - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.
@@ -47,6 +46,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Turning off Flash Attention in the Local Model panel now turns it off when the model loads.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
   - **The bundled model's out-of-VRAM error names your Context Size and Parallel Requests settings.** It said "sequences" before and gave no next step. Now it tells you which setting to lower.
   - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.
 
