@@ -223,11 +223,11 @@ From ticket intent questions.
 - **T06-1.** The V-type / Flash Attention rule blocks rather than changes another setting. With Flash Attention off, the quantized V options are disabled with a hint. With a quantized V cache, the Flash Attention box is disabled with a hint. Neither setting changes the other.
 - **T06-2.** The main process coerces a stored or IPC value of quantized V with Flash Attention off to F16, so a stale value can't produce a failing load.
 - **T06-3.** K and V types use the panel's existing select; KV Cache in RAM is a check row. Stored as `f16` / `q8_0` / `q4_0` (anything else reads as `f16`) and a boolean.
-- **T07-1.** The fitted prompt leaves room for the request's `max_tokens` when it sets one: prompt ≤ slot context − `max_tokens`.
+- **T07-1.** The fitted prompt leaves room for the request's `max_tokens` when it sets one: prompt ≤ slot context − `max_tokens`. The reserve is capped at half the slot, so the prompt always gets at least half, and an answer that reaches the context edge ends with `finish_reason: "length"` as today.
 - **T07-2.** Rolling Window keeps the merged system prompt and drops the oldest user/assistant turns, so the world is never the first thing lost.
 - **T07-3.** When the messages a policy must keep still don't fit, the proxy returns the same context-length stop as Stop at Limit.
 - **T07-4.** The context-length stop is an HTTP 400 whose message uses the panel's names, says how far over the story is, and names Context Size and Context Overflow as the fix. The app shows it like any endpoint error.
-- **T07-5.** Context Overflow applies to the next request with no reload, so it sits with the "next turn" settings and the reload diff ignores it. This overrides "they apply on reload" for this one row.
+- **T07-5.** Context Overflow applies to the next request with no reload, so it sits with the "next turn" settings and the reload diff ignores it. This overrides "they apply on reload" for this one row. Being live, it has no applied value in the engine status.
 - **T08-1.** A model pairs with `mmproj-<model file name>` in its own folder. Failing that, a folder with exactly one model and exactly one `*mmproj*.gguf` pairs them. Otherwise the model has no projector. Catalog downloads save the projector under the exact name.
 - **T08-2.** Projector files never show as models: not in Installed, the model picker, or the model list.
 - **T08-3.** Catalog vision entries are only those whose own repo ships a projector (HauhauCS Gemma4 12B, Qwen3.6 35B-A3B Anko). No cross-repo projector for a finetune.
