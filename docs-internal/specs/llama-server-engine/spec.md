@@ -1,7 +1,7 @@
 # Llama Server Engine
 
 Status: done
-Status note: 2026-10-23, tickets 01–13 done, last landing 720794622. Closed with gaps: tickets 14–16 (cache RAM limit, reload diff after V coercion, share buffer set). Spec text corrected. Gates green on 2026-10-23 (lint, test).
+Status note: 2026-10-23, tickets 01–13 done, last landing 720794622. Closed with gaps: tickets 14–16 (cache RAM limit, reload diff after V coercion, share buffer set); 14 wontfix and T04-3 amended after the close (T14, T16), 15–16 reopened. Spec text corrected. Gates green on 2026-10-23 (lint, test).
 Target branch: engine/llama-server
 Spec session: llama-server-engine — spec
 
@@ -114,7 +114,7 @@ The desktop engine runs llama.cpp's own `llama-server`, the same runtime LM Stud
 | V Cache Type (new) | `-ctv f16 / q8_0 / q4_0` | Default F16. A quantized V requires Flash Attention on |
 | KV Cache in RAM (new) | `-nkvo` when on | Default off (KV on the GPU) |
 | Image input (new) | `mmproj = <file>` in the preset section | Only when a projector is found |
-| Prompt cache | Slot prompt reuse on, `--cache-ram` set low | The server's default holds 8 GB of host RAM |
+| Prompt cache | Slot prompt reuse on, `--cache-ram` left at the server default (8192 MiB) | Matches LM Studio (ruling T14) |
 
 - Each new setting follows the existing engine-setting path: a default beside the others, a validated persisted value, the `setOptions` IPC, the main process's boot options and reload diff, and the applied value in the engine status. The renderer's boot default and the main process's boot options stay equal, so a fresh start doesn't reload.
 - The new rows sit in the Local Model panel under **Advanced**, next to the other engine rows. They apply on reload, except Context Overflow (T07-5). A quantized V cache type turns Flash Attention on or blocks the choice while it is off. The exact control is a design-system decision.
@@ -219,7 +219,7 @@ From ticket intent questions.
 - **T03-3.** If the opening `<think>` tag is missing, the proxy restores it per request from the router's `/apply-template`: when the rendered prompt ends with an open think tag, the tag goes in front of the first content.
 - **T04-1.** The engine always passes `-lv 4`, since the buffer-size and "MiB free" lines only print at that level, and reads them for every GPU Layers mode. Output is drained continuously and never kept whole.
 - **T04-2.** The attributed process is the router's model instance, found once per load by a parent-process lookup. nvidia-smi never lists the router.
-- **T04-3.** The share sums the model, KV and compute buffers on non-host devices, across every device the instance uses. A hybrid model's recurrent-state (`RS`) buffer counts with the KV. Free-at-load and total sum the devices the instance used. Host buffers are left out. On the CPU backend the share is null. Measured: 3024.75 MiB against a 3042 MiB nvidia-smi delta.
+- **T04-3.** The share sums the model, KV, compute and output buffers on non-host devices, across every device the instance uses. A hybrid model's recurrent-state (`RS`) buffer counts with the KV. Free-at-load and total sum the devices the instance used. Host buffers are left out. On the CPU backend the share is null. Measured: 3024.75 MiB against a 3042 MiB nvidia-smi delta.
 - **T04-4.** The "~" mark and the fallback order in the viewer stay as they are.
 - **T06-1.** The V-type / Flash Attention rule blocks rather than changes another setting. With Flash Attention off, the quantized V options are disabled with a hint. With a quantized V cache, the Flash Attention box is disabled with a hint. Neither setting changes the other.
 - **T06-2.** The main process coerces a stored or IPC value of quantized V with Flash Attention off to F16, so a stale value can't produce a failing load.
@@ -235,6 +235,8 @@ From ticket intent questions.
 - **T08-4.** A model and its projector download as one job with one progress bar and shared pause and resume. A model already on disk fetches only its missing projector.
 - **T08-5.** Deleting a model in the app's folder also deletes its exactly named projector, and nothing else.
 - **T08-6.** A "Vision" badge, styled like the existing "Reasoning" badge, marks paired models in Installed and vision entries in Recommended.
+- **T14.** `--cache-ram` stays at the server default (8192 MiB), as LM Studio leaves it. Ticket 14 is wontfix.
+- **T16.** The share counts the output buffer too; T04-3 is amended to match the code. Ticket 16 adds the test.
 
 ## Further Notes
 

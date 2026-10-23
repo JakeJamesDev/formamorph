@@ -1,6 +1,6 @@
 # 14: Cache RAM Limit
 
-Status: needs-triage
+Status: wontfix
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -11,7 +11,7 @@ Sonnet at low: one server argument and its test, once the value is chosen.
 
 The engine passes `--cache-ram` so a load doesn't reserve the server's default 8 GB of host RAM for prompt cache (spec: Settings → server arguments, "Prompt cache: slot prompt reuse on, `--cache-ram` set low"). Found by the close review: `serverArgs` never passes it.
 
-Needs a value from the user before it can start: "low" isn't a number.
+Ruled wontfix (T14): LM Studio keeps the server default of 8192 MiB, and so do we.
 
 ## Acceptance criteria
 
