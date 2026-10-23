@@ -17,7 +17,7 @@ import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
 import type { StatOwner, TraitOwner } from './statCodeResolver';
-import { overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource, type WorldToolsSource } from './statCodeTargets';
+import { blueprintTraitRunners, overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource, type WorldToolsSource } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, gateTrees } from './traitGates';
 
@@ -137,6 +137,8 @@ export interface CodeBox {
   timing: ScriptTiming;
   /** The box's stat under its code name, as the editor holds it now. */
   self: Stat;
+  /** A trait box's trait. A Blueprint trait's owners are the entities whose links run its scripts. */
+  traitId?: string;
 }
 
 /** A trait box's `self` in a lookup that takes a stat: nothing reads it as one, since a trait's `self` card is
@@ -306,6 +308,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
   // An owner runs a Blueprint box unless its Link overrides that box.
   let running: readonly (CodeOwner & { entity: Entity })[] | undefined;
   const runningOwners = () => (running ??= (() => {
+    if (box.traitId !== undefined) return world ? blueprintTraitRunners(owners, world, box.traitId) : [];
     const original = owners.statWorld.stats.find((stat) => stat.id === box.self.id);
     if (!original) return [];
     return owners.all.flatMap((owner) => {

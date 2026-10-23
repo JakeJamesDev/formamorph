@@ -7,7 +7,7 @@
  * Every authored entity counts as in the game, and `persona` may be any entity that can be played (Q11).
  */
 
-import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink, Tool, Trait, TraitGroup } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink, Tool, Trait, TraitGroup, TraitLink } from '@/types';
 import { canBePlayer } from './owners';
 import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
@@ -238,6 +238,23 @@ export function worldToolBoxes(world: WorldToolsSource): WorldToolBox[] {
   });
 }
 
+/** Whether `link` brings `trait`: the trait itself, or a group above it. */
+const bringsTrait = (link: TraitLink, trait: Trait, traitGroups: TraitGroup[]): boolean =>
+  trait.id === link.originalId || (trait.groupId != null && isDescendantGroup(traitGroups, link.originalId, trait.groupId));
+
+/** The owners that run the Blueprint trait `traitId`'s scripts: each whose link brings it and leaves them alone. */
+export function blueprintTraitRunners(owners: CodeOwners, world: TraitCodeWorld, traitId: string): EntityOwner[] {
+  const original = world.traits.find((trait) => trait.id === traitId);
+  if (!original) return [];
+  const traitGroups = [...world.traitGroups];
+  return owners.all.flatMap((owner) => {
+    const { entity } = owner;
+    const runs = entity?.traitLinks?.some((link) => bringsTrait(link, original, traitGroups)
+      && !linkTraitState(original, link).overridden.includes('scripts'));
+    return entity && runs ? [{ ...owner, entity }] : [];
+  });
+}
+
 /**
  * Every filled trait script in the world once: the world's traits', each entity's own traits' and the scripts
  * its links override. A link that leaves a Blueprint trait's scripts alone adds a run to that trait's box.
@@ -263,8 +280,7 @@ export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld, pick: 
       home: { kind: 'entityTrait', entityId: entity.id, traitId: trait.id }, ...script, script, trait, entity, owner: run.owner, runs: [run],
     })));
     const linked = (entity.traitLinks ?? []).flatMap((link) => world.traits
-      .filter((trait) => trait.id === link.originalId
-        || (trait.groupId != null && isDescendantGroup(lists.traitGroups, link.originalId, trait.groupId)))
+      .filter((trait) => bringsTrait(link, trait, lists.traitGroups))
       .flatMap((original) => {
         if (!linkTraitState(original, link).overridden.includes('scripts')) {
           for (const script of pick(original)) runsOf.get(script.id)?.push(run);

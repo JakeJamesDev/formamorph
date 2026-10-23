@@ -19,12 +19,12 @@ const world: StatCodeWorld = {
   stats: [], statGroups: [], traits: [], traitGroups: [], entities: [{ id: 'e-tor', name: 'Tor' }], entityGroups: [], placeholders: [],
   placeholderGroups: [], dictionaries: [],
 };
-const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [] };
+const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [], home: { kind: 'world' } };
 const LABEL = 'World · After the AI';
 
 function Box({ initial }: { initial: Script }) {
   const [script, setScript] = useState(initial);
-  return <ScriptBox script={script} label={LABEL} self={{ kind: 'world' }} context={context} onChange={(code) => setScript({ ...script, code })} />;
+  return <ScriptBox script={script} label={LABEL} context={context} onChange={(code) => setScript({ ...script, code })} />;
 }
 
 describe('Test Code with a diary line', () => {

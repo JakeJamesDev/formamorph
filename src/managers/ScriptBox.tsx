@@ -24,7 +24,7 @@ import type { Entity, Script, ScriptTiming, Stat } from "@/types";
 
 export type { CodeBoxOwner as ScriptBoxOwner } from "@/lib/codeWorldLookup";
 
-/** Everything a home's boxes complete against and run under, derived once by the panel that holds them. */
+/** Everything a home's boxes complete against and run under, as `useScriptBoxContext` builds it. */
 export interface ScriptBoxContext {
   /** Whose code the boxes hold. Null for a global stat or trait. */
   owner: CodeBoxOwner | null;
@@ -43,24 +43,13 @@ export interface ScriptBoxContext {
   placeholderPlaces: CodeTraitPlace[];
   /** Each box's card lookup. Absent in the library, which has no world. */
   lookup?: (timing: ScriptTiming) => CodeWorldLookup;
+  /** Where the box's Script lives, which Test Code runs it from. */
+  home: UnitHome;
 }
 
-/** What `self` is in a box: the stat as the panel holds it mid-edit, a trait, or nothing on a world script. */
-export type ScriptSelf = { kind: 'stat'; stat: Partial<Stat> & Pick<Stat, 'id'> } | { kind: 'trait'; id: string } | { kind: 'world' };
-
-/** The home a box's Script runs from. A Blueprint stat runs on `ownerStats`, its group's stats. */
-function boxHome(self: ScriptSelf, selfName: string, owner: CodeBoxOwner | null, ownerStats: Stat[]): UnitHome {
-  const entityId = owner?.kind === 'entity' ? owner.entityId : null;
-  if (self.kind === 'world') return { kind: 'world' };
-  if (self.kind === 'trait') {
-    const trait = { id: self.id, name: selfName };
-    return owner?.kind === 'blueprint' ? { kind: 'blueprintTrait', trait } : { kind: 'trait', trait, entityId };
-  }
-  // A half-filled stat still runs: the executor defaults every number it marshals.
-  const stat = { ...self.stat, name: selfName } as Stat;
-  if (owner?.kind === 'blueprint') return { kind: 'blueprintStat', stat, groupStats: ownerStats };
-  return entityId ? { kind: 'entityStat', entityId, stat } : { kind: 'globalStat', stat };
-}
+/** What `self` is in a box: a stat, a trait, or nothing on a world script. */
+const selfKindOf = (home: UnitHome): keyof typeof SCRIPT_SURFACES =>
+  ('stat' in home ? 'stat' : 'trait' in home ? 'trait' : 'world');
 
 /** `world` with an entity Owner holding the stats the panel holds, so a library entity, which no world has,
  *  still runs with its `owner.stats`. */
@@ -81,11 +70,10 @@ function withOwnerStats(world: OpeningFoldWorld, owner: CodeBoxOwner | null, own
  * A run here is handed no turn, so `previous` reads as the stat itself and every `delta` reads zero, which
  * is what the before box reads in play too.
  */
-export function ScriptBox({ script, label, self, onChange, context, reveal, autoFocus, frame }: {
+export function ScriptBox({ script, label, onChange, context, reveal, autoFocus, frame }: {
   script: Script;
   /** The script's name, or its owner and timing. Each box's controls carry it. */
   label: string;
-  self: ScriptSelf;
   onChange: (code: string) => void;
   context: ScriptBoxContext;
   /** A Find All Uses row bound for this box. */
@@ -114,11 +102,12 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const mounted = useMountedRef();
 
   const { timing, code: value } = script;
-  const isStat = self.kind === 'stat';
+  const { selfName, names, world, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup, home } = context;
+  const selfKind = selfKindOf(home);
+  const isStat = selfKind === 'stat';
   const isOutput = timing === 'output';
   // Stat and world scripts have a Templates menu; a trait's has none.
-  const hasTemplates = self.kind !== 'trait';
-  const { selfName, names, world, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup } = context;
+  const hasTemplates = selfKind !== 'trait';
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // An entity stat's own traits, which a template's trait slot lists under Owner. A Blueprint's owners vary, so none.
   const ownerTraits = useMemo(
@@ -127,9 +116,9 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   );
   // The one build of this box's options: the editor and Test Code's problem count both read these.
   const analysis = useMemo(() => statBoxAnalysisOptions(names, {
-    selfName, surface: scriptSurface(SCRIPT_SURFACES[self.kind], timing),
+    selfName, surface: scriptSurface(SCRIPT_SURFACES[selfKind], timing),
     ...(owner && { owner: { kind: owner.kind, statNames: ownerStatNames } }), lookup: lookup?.(timing),
-  }), [names, selfName, self.kind, owner, ownerStatNames, lookup, timing]);
+  }), [names, selfName, selfKind, owner, ownerStatNames, lookup, timing]);
   const navigation = useCodeCardNavigation();
 
   // What the Variable menu's Owner group lists. An entity the editor has no names for, as in the library, still lists its stats.
@@ -180,7 +169,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
     const run = prompts.open();
     try {
       // A switch is reported here and never applied.
-      const report = await runTestCode(value, timing, boxHome(self, selfName, owner, ownerStats), withOwnerStats(world, owner, ownerStats), {
+      const report = await runTestCode(value, timing, home, withOwnerStats(world, owner, ownerStats), {
         ...(isOutput && { sentence: sample }), prompts: run.host,
       });
       // An edit or an unmount mid-run closed this run, and its report is stale.
@@ -247,8 +236,8 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
           traitPlaces={traitPlaces}
           entities={entities}
           locations={names.places?.locations}
-          {...(self.kind === 'stat'
-            ? { owner: owner?.kind, ownerStats, currentStatId: self.stat.id, ownerTraits }
+          {...('stat' in home
+            ? { owner: owner?.kind, ownerStats, currentStatId: home.stat.id, ownerTraits }
             : { kind: 'worldScript' as const })}
         />
       )}

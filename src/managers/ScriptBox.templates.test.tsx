@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { Script, Stat } from '@/types';
 import { statCodeNames, type StatCodeWorld } from '@/lib/statCodeTestRun';
-import { ScriptBox, type ScriptBoxContext, type ScriptSelf } from './ScriptBox';
+import type { UnitHome } from '@/lib/sandboxSnapshot';
+import { ScriptBox, type ScriptBoxContext } from './ScriptBox';
 
 /** The Templates button on each kind of box, end to end through the dialog. */
 
@@ -28,19 +29,21 @@ const world: StatCodeWorld = {
   placeholders: [], placeholderGroups: [], dictionaries: [],
   locations: [{ id: 'gate', name: 'North Gate' }, { id: 'inn', name: 'Inn', isStarting: true }],
 };
-const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [] };
+const context = (home: UnitHome): ScriptBoxContext => ({
+  owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [], home,
+});
 const LABEL = 'Box · After the AI';
 
 /** A box that keeps its own code, as its panel does. */
-function Box({ self }: { self: ScriptSelf }) {
+function Box({ home }: { home: UnitHome }) {
   const [script, setScript] = useState<Script>({ id: 's', timing: 'after', code: '' });
-  return <ScriptBox script={script} label={LABEL} self={self} context={context} onChange={(code) => setScript({ ...script, code })} />;
+  return <ScriptBox script={script} label={LABEL} context={context(home)} onChange={(code) => setScript({ ...script, code })} />;
 }
 
 describe('the Templates button', () => {
   it('opens a world script box’s menu, which fills a location from the world', async () => {
     const user = userEvent.setup();
-    render(<Box self={{ kind: 'world' }} />);
+    render(<Box home={{ kind: 'world' }} />);
     await user.click(screen.getByRole('button', { name: `Templates ${LABEL}` }));
     await user.click(await screen.findByRole('button', { name: 'Leave When a Stat Runs Out' }));
     await user.click(screen.getByRole('combobox', { name: 'Stat' }));
@@ -56,14 +59,14 @@ describe('the Templates button', () => {
 
   it('lists stat templates, not world ones, in a stat box', async () => {
     const user = userEvent.setup();
-    render(<Box self={{ kind: 'stat', stat: stat('h', 'Health') }} />);
+    render(<Box home={{ kind: 'globalStat', stat: stat('h', 'Health') }} />);
     await user.click(screen.getByRole('button', { name: `Templates ${LABEL}` }));
     expect(await screen.findByRole('button', { name: 'Hourly Change' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Leave When a Stat Runs Out' })).toBeNull();
   });
 
   it('is absent from a trait box', () => {
-    render(<Box self={{ kind: 'trait', id: 't' }} />);
+    render(<Box home={{ kind: 'trait', trait: { id: 't', name: '' }, entityId: null }} />);
     expect(screen.queryByRole('button', { name: `Templates ${LABEL}` })).toBeNull();
   });
 });

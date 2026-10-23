@@ -18,7 +18,7 @@ vi.mock('@/components/prompt/CodeArea', () => ({
 const world: StatCodeWorld = {
   stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [],
 };
-const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [] };
+const context: ScriptBoxContext = { owner: null, names: statCodeNames(world), world, ownerStats: [], selfName: '', placeholderPlaces: [], home: { kind: 'world' } };
 const SCRIPT_KEYS = new Set<string>(['name', 'timing', 'code', 'order']);
 
 /** A row drawn from a code box: the script's fields plus everything a box adds. */
@@ -29,7 +29,7 @@ const boxed = {
 
 const renderRow = () => {
   const onChange = vi.fn<(patch: ScriptPatch) => void>();
-  render(<ScriptRow script={boxed} ownerName="Health" self={{ kind: 'world' }} context={context} onChange={onChange} onRemove={vi.fn()} />);
+  render(<ScriptRow script={boxed} ownerName="Health" context={context} onChange={onChange} onRemove={vi.fn()} />);
   return onChange;
 };
 

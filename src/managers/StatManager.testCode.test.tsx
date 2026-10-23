@@ -6,7 +6,8 @@ import type { CodeTemplate } from '@/lib/statCodeTemplates';
 import type { CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { encodePlaceholderToken } from '@/lib/placeholders';
-import StatManager from './StatManager';
+import StatManager, { type StatEditorStore } from './StatManager';
+import { offWorldOf } from '@/lib/scriptBoxHome';
 import { boxScripts } from '@/test/scriptFixtures';
 
 /** Running the code and reading it are two different answers about the same text, and the panel has to
@@ -48,7 +49,7 @@ const worldExtra = vi.hoisted(() => ({ current: {} as Record<string, unknown> })
 const noWorld = vi.hoisted(() => ({ current: false }));
 vi.mock('@/contexts/GameDataContext', () => {
   const world = () => ({
-    updateStat, stats, playStats: stats, placeholders: [beast], worldPlaceholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
+    updateStat, stats, statGroups: [], playStats: stats, placeholders: [beast], worldPlaceholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
     ...worldExtra.current,
   });
   return { useGameData: world, useGameDataOptional: () => (noWorld.current ? null : world()) };
@@ -118,6 +119,13 @@ const withBoxes = (stat: Stat): Stat => {
   const missing = (['before', 'after'] as const).filter((timing) => !scripts.some((script) => script.timing === timing));
   return { ...stat, scripts: [...scripts, ...missing.map((timing) => ({ id: timing, timing, code: '' }))] };
 };
+
+/** Ash holding `held` in the world, and the store his Stats tab hands the panel: the stats the world holds. */
+function ashHolding(held: Stat[]): StatEditorStore {
+  const ash = { ...entities[1], stats: held };
+  worldExtra.current = { ...worldExtra.current, entities: [entities[0], ash], playEntities: [entities[0], ash] };
+  return { stats: held, updateStat, ownerId: ash.id, offWorld: offWorldOf(ash) };
+}
 
 /** The code editor lives on the panel's Scripts tab, so every case here opens there. The tab an author picks
  *  belongs to the editor, which is why it arrives as a prop rather than being clicked to. */
@@ -214,7 +222,7 @@ describe('whose code a box holds', () => {
   });
 
   it('gives an entity stat its entity as owner, with its own stats, and still lists the world’s under Stats', () => {
-    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub, grit])} />);
     for (const box of ['Before the AI', 'After the AI'] as const) {
       expect([box, ownerOf(box)]).toEqual([box, {
         kind: 'entity',
@@ -230,7 +238,7 @@ describe('whose code a box holds', () => {
     expect(lookupOf('After the AI').self()).toMatchObject({ stat: { id: 's1', name: 'Warmth' }, scope: 'global', owners: [] });
     expect(lookupOf('After the AI').owner()).toEqual({ kind: 'empty' });
 
-    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub, grit])} />);
     for (const box of ['Before the AI', 'After the AI'] as const) {
       expect([box, lookupOf(box).self()]).toEqual([box, expect.objectContaining({ stat: expect.objectContaining({ id: 'o1' }), owners: ['Ash'], entityId: 'e2' })]);
       expect([box, lookupOf(box).owner()]).toEqual([box, {
@@ -246,7 +254,7 @@ describe('whose code a box holds', () => {
   it('gives the library’s boxes no lookup', () => {
     noWorld.current = true;
     try {
-      render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+      render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub, grit])} />);
       for (const box of ['Before the AI', 'After the AI'] as const) {
         expect([box, propsOf(box).lookup]).toEqual([box, undefined]);
       }
@@ -309,7 +317,7 @@ describe('what Test Code reports', () => {
     executeStatCode.mockResolvedValue({ value: 1, error: null });
     const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
     const grit = { ...hub, id: 'o2', name: 'Grit' } as Stat;
-    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub, grit])} />);
 
     // Grit is the owner's and Damp is the world's, so each route finds its own name. Warmth is the world's, not the owner's.
     await testCode(user, 'owner.stats.Grit.value = stats.Damp.value;\nreturn 1;');
@@ -538,7 +546,7 @@ describe('what Test Code reports', () => {
   it('runs an entity stat’s box over the world’s stats and its entity as owner, and lists its writes to its own stats', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: null, error: null, ownerStatWrites: [{ ownerId: 'e2', writes: [{ id: 'o2', name: 'Grit', value: 5 }] }] });
-    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub, grit])} />);
 
     await testCode(user, 'owner.stats.Grit.value += 1;');
 
@@ -549,6 +557,24 @@ describe('what Test Code reports', () => {
     expect(options.owner).toMatchObject({ id: 'e2', name: 'Ash', stats: { stats: [hub, grit] } });
     expect(grit).toMatchObject({ value: 4, max: 8 });
     expect(updateStat.mock.calls.map(([saved]) => saved.id)).not.toContain('o2');
+  });
+
+  it('runs a library entity stat’s box with its entity as owner and no card lookup', async () => {
+    noWorld.current = true;
+    try {
+      const user = userEvent.setup();
+      executeStatCode.mockResolvedValue({ value: null, error: null, ownerStatWrites: [{ ownerId: 'e2', writes: [{ id: 'o2', name: 'Grit', value: 5 }] }] });
+      render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub, grit])} />);
+
+      await testCode(user, 'owner.stats.Grit.value += 1;');
+
+      await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Grit.value = 5'));
+      expect(propsOf('After the AI').lookup).toBeUndefined();
+      const [, , , options] = executeStatCode.mock.calls[0];
+      expect(options.owner).toMatchObject({ id: 'e2', stats: { stats: [hub, grit] } });
+    } finally {
+      noWorld.current = false;
+    }
   });
 
   it('runs a Blueprint stat’s box over the world’s stats and an owner that holds its group’s stats only', async () => {
@@ -622,6 +648,7 @@ describe('what Test Code reports', () => {
 
 describe('a box tests itself', () => {
   beforeEach(() => {
+    worldExtra.current = {};
     executeStatCode.mockReset();
     updateStat.mockReset();
     userTemplates.length = 0;
@@ -743,7 +770,7 @@ describe('a box tests itself', () => {
   it('lists an entity stat’s own traits under Owner in a trait slot, and inserts them through `owner.traits`', async () => {
     const user = userEvent.setup();
     const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
-    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub], updateStat, ownerId: 'e2' }} />);
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={ashHolding([hub])} />);
 
     await user.click(screen.getByRole('button', { name: templatesButton('After the AI') }));
     await user.click(await screen.findByRole('button', { name: 'Trait by Threshold' }));

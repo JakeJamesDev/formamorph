@@ -95,7 +95,7 @@ export function itemUses(
     const options = statBoxAnalysisOptions(names, {
       selfName, surface: scriptSurface(TRAIT_SCRIPT_SURFACE, box.timing),
       ...(owner && { owner: { kind: owner.kind, ...(derived.kind !== 'blueprintTrait' && { statNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [] }) } }),
-      lookup: lookupOf({ owner, timing: box.timing, self }),
+      lookup: lookupOf({ owner, timing: box.timing, self, traitId: box.trait.id }),
     });
     return boxUses(owners, box, matchingOffsets(box.code, options, matches));
   });

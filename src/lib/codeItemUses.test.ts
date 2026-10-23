@@ -106,6 +106,19 @@ describe('Find All Uses for other kinds', () => {
     expect(rows(usesOf({ kind: 'entity', entityId: 'bram' }))).toEqual(['Bram › Grit before 1', 'Bram › Echo after 1']);
   });
 
+  it('matches owner.traits in a Blueprint trait’s script through each owner that links it, as a Blueprint stat’s does', () => {
+    const feral = trait('feral', 'Feral', { groupId: 'tbp', scripts: boxScripts({ after: 'const t = owner.traits.Calm;' }) });
+    const linker: Entity = {
+      ...mara, traitLinks: [{ id: 'l-feral', originalId: 'feral', kind: 'trait', originalName: 'Feral', groupId: null }],
+    };
+    const traitWorld: CodeCardWorld = {
+      ...world, traits: [brave, feral], traitGroups: [{ id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' }], entities: [linker],
+    };
+    const owners = statCodeOwners({ ...traitWorld, placeholders });
+    const uses = statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, traitWorld).uses({ kind: 'trait', traitId: 'calm', entityId: 'mara' });
+    expect(rows(uses)).toContain('Feral after 1');
+  });
+
   it('matches a dictionary by its id', () => {
     expect(rows(usesOf({ kind: 'dictionary', dictionaryId: 'fauna' }))).toEqual(['Courage after 4']);
     expect(usesOf({ kind: 'dictionary', dictionaryId: 'missing' })).toEqual([]);

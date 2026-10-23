@@ -18,12 +18,11 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName } from "@/lib/statCodeNames";
-import { useScriptWorldNames } from "@/lib/useScriptWorldNames";
 import { useRenameField } from "@/lib/useCodeRename";
 import { ScriptsSection } from "./ScriptsSection";
-import { statPanelBoxContext } from "./scriptBoxBuilders";
+import { useScriptBoxContext } from "./useScriptBoxContext";
 import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
-import { statBoxLookups } from "@/lib/codeWorldLookup";
+import { statPanelHome, type ScriptBoxWorld } from "@/lib/scriptBoxHome";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
@@ -55,11 +54,16 @@ export interface StatEditorStore {
   ownerId: string;
   /** The owner whose model the Body Sliders picker lists. Absent = the world's player models. */
   morphOwner?: MorphOwner;
+  /** What the script boxes read with no world loaded, as in the library: the entity and its links' stats. */
+  offWorld?: ScriptBoxWorld;
 }
 
 /** A link's edit of the stat it brings: which fields it overrides, which of those the Blueprint changed since,
  *  and the field Reset. The name stays the Blueprint's. `header` sits above the fields. */
 export interface StatLinkEdit {
+  linkId: string;
+  /** The stat the link brings, whose id its scripts run under. */
+  originalId: string;
   overridden: readonly (keyof StatLinkFields)[];
   stale: readonly (keyof StatLinkFields)[];
   reset: (field: keyof StatLinkFields) => void;
@@ -95,7 +99,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   link?: StatLinkEdit;
 }) => {
   const { placeholders, placeholderOwners, placementLetters } = useStatEditorWorld();
-  const { names, placeholderPlaces, world: foldWorld } = useScriptWorldNames();
   // A store carries an owner's own stats; only a world stat reads the world, which an owned stat's editor may not have.
   const world = useGameDataOptional();
   if (!store && !world) throw new Error('StatManager needs a store or a world');
@@ -138,12 +141,15 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   });
   // A link's name stays the Blueprint's, so its field never renames.
   const rename = link ? undefined : nameRename;
-  // Cards read the authored world, so the library, which has none, gets no lookup.
-  const boxLookups = useMemo(() => world && statBoxLookups(world), [world]);
-  // One surface for every box: what completes in one is what runs in each.
-  const { self: codeSelf, context: codeContext } = useMemo(() => statPanelBoxContext({
-    stat, editingStat, store, world, lookups: boxLookups, shared: { names, placeholderPlaces, world: foldWorld },
-  }), [stat, editingStat, store, world, boxLookups, names, placeholderPlaces, foldWorld]);
+  // A linked stat's scripts run as the stat it brings, under the original id.
+  const ownerId = store?.ownerId;
+  const linkId = link?.linkId;
+  const originalId = link?.originalId;
+  const scriptHome = useMemo(
+    () => statPanelHome(stat.id, ownerId, linkId && originalId ? { linkId, originalId } : undefined),
+    [ownerId, linkId, originalId, stat.id],
+  );
+  const codeContext = useScriptBoxContext(scriptHome, store?.offWorld);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />
@@ -549,7 +555,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
         scripts={editingStat.scripts ?? []}
         onChange={(scripts) => apply({ scripts })}
         ownerName={statName}
-        self={codeSelf}
         context={codeContext}
         reveal={reveal}
         addTarget={targetAttribute('worldEditorStat.code', 'add-script')}

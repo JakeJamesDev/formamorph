@@ -11,18 +11,17 @@ import { newScript, noFocus, SCRIPT_ROW_ATTRIBUTE, scriptRow } from "@/lib/scrip
 import type { TargetAttribute } from "@/lib/surface/surfaceTargets";
 import type { CodeUseReveal } from "@/lib/codeUseReveal";
 import type { Script, ScriptTiming } from "@/types";
-import { ScriptBox, type ScriptBoxContext, type ScriptSelf } from "./ScriptBox";
+import { ScriptBox, type ScriptBoxContext } from "./ScriptBox";
 
 /**
  * One script: its name, its timing, a remove action and its code box. The owner's Scripts section and the World
  * Editor's Scripts tab both draw this row, so an author edits the same box from either place. A change reports
  * only the field it edits; a cleared name reports the name absent, so the fallback shows and nothing exports.
  */
-export function ScriptRow({ script, ownerName, self, context, onChange, onRemove, reveal, autoFocus }: {
+export function ScriptRow({ script, ownerName, context, onChange, onRemove, reveal, autoFocus }: {
   script: Script;
   /** The home's name as the author reads it, for a blank name's fallback. */
   ownerName: string;
-  self: ScriptSelf;
   context: ScriptBoxContext;
   onChange: (patch: ScriptPatch) => void;
   onRemove: () => void;
@@ -68,7 +67,6 @@ export function ScriptRow({ script, ownerName, self, context, onChange, onRemove
         frame={fieldFrame('scripts', script.id, 'code')}
         script={script}
         label={label}
-        self={self}
         onChange={(code) => onChange({ code })}
         context={context}
         reveal={reveal}
@@ -91,13 +89,12 @@ export function ScriptRow({ script, ownerName, self, context, onChange, onRemove
  * A home's scripts as rows, then Add Script. The timing select is the only way to move a script between timings
  * (Q4). A blank name shows the owner and timing in its place (Q6).
  */
-export function ScriptsSection({ scripts, onChange, ownerName, self, context, reveal, addTarget, focusId }: {
+export function ScriptsSection({ scripts, onChange, ownerName, context, reveal, addTarget, focusId }: {
   scripts: readonly Script[];
   /** Absent once the list is empty. */
   onChange: (next: Script[] | undefined) => void;
   /** The home's name as the author reads it, for a blank name's fallback. */
   ownerName: string;
-  self: ScriptSelf;
   context: ScriptBoxContext;
   /** A Find All Uses row bound for one of these scripts. */
   reveal?: CodeUseReveal | null;
@@ -125,7 +122,6 @@ export function ScriptsSection({ scripts, onChange, ownerName, self, context, re
           key={script.id}
           script={script}
           ownerName={ownerName}
-          self={self}
           context={context}
           onChange={(patch) => {
             const next = patchScript(scripts, script.id, patch);

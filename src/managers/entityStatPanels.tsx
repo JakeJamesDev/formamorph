@@ -8,6 +8,7 @@ import {
   type EntityStatRows, type StatLinkWorld,
 } from '@/lib/statLinks';
 import { ancestors, parentLookup } from '@/lib/ancestors';
+import { offWorldOf } from '@/lib/scriptBoxHome';
 import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
 import type { StatPanelTab } from '@/views/statPanelTabs';
 import StatManager, { type StatEditorStore } from './StatManager';
@@ -48,7 +49,10 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
   detach: (linkId: string) => string | null;
 } {
   const morphOwner = { name: labelPlaceholders(entity.name, placeholders), model: entity.model };
-  const store: StatEditorStore = { stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), ownerId: entity.id, morphOwner };
+  const offWorld = offWorldOf(entity, world);
+  const store: StatEditorStore = {
+    stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), ownerId: entity.id, morphOwner, offWorld,
+  };
   const pathOf = (originalId: string) => {
     const item = world.stats.find((s) => s.id === originalId) ?? world.statGroups.find((g) => g.id === originalId);
     return item ? originalPath(world.statGroups, item).join(' › ') : '';
@@ -77,8 +81,10 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
         stat={rows.stats.find((s) => s.id === id)!}
         tab={tab}
         onTabChange={onTabChange}
-        store={{ stats: resolved, updateStat: (next) => edit((e) => editStatLink(world, e, link.id, originalId, next)), ownerId: entity.id, morphOwner }}
+        store={{ ...store, updateStat: (next) => edit((e) => editStatLink(world, e, link.id, originalId, next)) }}
         link={{
+          linkId: link.id,
+          originalId,
           overridden,
           stale,
           reset: (field) => edit((e) => resetStatLinkFieldOn(e, link.id, originalId, field)),

@@ -27,6 +27,7 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { TraitScripts } from './TraitScripts';
+import { offWorldOf, traitPanelHome } from '@/lib/scriptBoxHome';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import type {
   Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
@@ -38,6 +39,7 @@ import { fieldFrame } from '@/lib/historyField';
  *  since, and where a whole-trait write and a field reset go. */
 export interface TraitLinkEdit {
   ownerId: string;
+  linkId: string;
   overridden: readonly (keyof TraitLinkFields)[];
   stale: readonly (keyof TraitLinkFields)[];
   write: (next: Trait) => void;
@@ -162,9 +164,17 @@ const TraitManager = ({
   focusField?: FocusFieldHint | null;
 }) => {
   const {
-    updateTrait, editEntity, stats, statGroups, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities,
+    updateTrait, editEntity, stats, statGroups, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities, entityRoot,
   } = useTraitStore();
   const ownerId = owner?.id;
+  // A linked trait's scripts run as the trait it brings, on the link's owner.
+  const linkOwnerId = link?.ownerId;
+  const linkId = link?.linkId;
+  const scriptHome = useMemo(
+    () => traitPanelHome(trait.id, ownerId, linkOwnerId && linkId ? { ownerId: linkOwnerId, linkId } : undefined),
+    [linkOwnerId, linkId, ownerId, trait.id],
+  );
+  const scriptOffWorld = useMemo(() => entityRoot && offWorldOf(entityRoot.owner, entityRoot.world), [entityRoot]);
   // A link or an owned trait previews as its owner's text: the owner's name, copies and pins.
   const traitOwner = link ? entities.find((e) => e.id === link.ownerId) : owner;
   const traitOwnerId = traitOwner?.id;
@@ -468,7 +478,8 @@ const TraitManager = ({
   const scriptsPanel = (
     <TraitScripts
       trait={editingTrait}
-      owner={traitOwner}
+      home={scriptHome}
+      offWorld={scriptOffWorld ?? undefined}
       ownerName={statLabel(editingTrait.name)}
       onChange={(scripts) => apply({ scripts })}
       reset={resetControl('scripts', 'Scripts')}
