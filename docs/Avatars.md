@@ -89,7 +89,6 @@ Drag the viewer to turn the Avatar. Scroll to zoom.
 | **Finalize Character** | Starts the game with this Avatar |
 | **Player Avatar** | The Avatar you wear. It shows only when your persona uses **User's Default**. It lists the Avatars in your library and starts on your default. When the author picked an Avatar, that one shows and you can't change it. |
 | **Add .vrm** | Adds a `.vrm` or `.glb` file to your library and selects it |
-| **Delete** | Deletes the selected Avatar from your library. Shows for a library Avatar only. |
 | **Animate character** | Plays the idle animations. Clear it to stop the Avatar. |
 | **Hair** | A hair style, when the model has more than one, and **Hair Length** |
 | **Initial Body Features** | One slider for each body shape the model has. The world's stats can change these during the game. |
