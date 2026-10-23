@@ -1,7 +1,7 @@
 # Entity Avatars
 
 Status: done
-Status note: 2026-10-22. Tickets 01–08 are done; 09 and 10 are needs-triage. Last landing is ba0f3d786. Closed with gaps: 09 (stale export embed), 10 (raw-load remap); the step-delete gap was fixed in 5bb09f6ef. Closed red: lint fails in worlds-wip/cb-3.3.2-live.ts, outside the effort; test green.
+Status note: 2026-10-22. Tickets 01–08 are done; 09 and 10 are needs-triage. Last landing is ba0f3d786. Closed with gaps: 09 (stale export embed), 10 (raw-load remap); the step-delete gap was fixed in 5bb09f6ef. Closed red: lint fails in worlds-wip/cb-3.3.2-live.ts, outside the effort; test green. Follow-up tickets 09–14 are open.
 Spec session: entity-avatars — spec
 
 ## Problem Statement
@@ -72,7 +72,7 @@ Avatars move from the world to the entity.
 47. As a player of an old world, I want its persona entities to look the same as NPCs as they did before, so that the migration doesn't change their portraits.
 48. As a player of an old world with no checkbox value, I want no Avatar, so that worlds that never chose one stay without one.
 49. As a player of a bundled world, I want no Avatar to appear after the update, so that worlds that had it off stay off.
-50. As a player with an old save that used the world's Avatar or a library Avatar, I want the save to keep showing it, so that loading an old save changes nothing.
+50. As a player with an old save from a world whose 3D Player Avatar flag was on, I want the save to keep showing the world's Avatar or the library Avatar it chose, so that loading an old save changes nothing.
 51. As an author of an old world, I want the hidden fallback to go away once my Custom Persona has an Avatar, so that my world holds one rule, not two.
 52. As an author, I want the old **3D Player Avatar** checkbox gone, so that the editor offers only the per-entity way.
 53. As a player of a community world, I want shared worlds to carry their Avatars, so that downloads show what the author made.
@@ -226,6 +226,19 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **T07-4:** downloading an entity listing to the device as a card carries its embedded Avatar through unchanged.
 - **T07-5:** publish already refuses over-limit uploads before sending. Ticket 07 embeds the Avatar before the payload is measured and adds tests for both limits. It adds no new UI.
 - **T07-6:** a pick of none or User's Default exports as it is, with no embedded file.
+
+## Post-Close Rulings
+
+- **Q25:** an old save from a world with no flag value shows no Avatar, even when it held customization. Story 50 covers only worlds whose flag was on.
+- **Q26:** a library Avatar id this device lacks reads "Missing Avatar" in the dropdown and in the link review. Play still shows the bundled file (ticket 11).
+- **Q27:** copy calls the library Avatar marked by the tile menu the "Default Avatar", matching Default Persona. User's Default stays the name of the dropdown option.
+- **Q28:** importing a card adds its Avatar to the library only when the import is confirmed. Canceling the World Editor's import review leaves the library unchanged (ticket 12).
+- **Q29:** World Overview store rows regain a 3D preview and Export, and their history rows name the Avatar (ticket 13).
+- **Q30:** the mobile entity-view tab keeps the label "View".
+- **Q31:** the close review's Standards findings go into one behavior-neutral cleanup (ticket 14).
+- **Q32:** the lint error in the WIP world script was fixed outside this effort.
+- **T09-1:** export resolves the pick first and embeds that Avatar. It falls back to a held embedded file only when the pick resolves to nothing.
+- **T10-1:** the raw-load fallback runs the chosen-Avatar remap only. The stat backfill on that branch stays out of scope.
 
 ## Further Notes
 
