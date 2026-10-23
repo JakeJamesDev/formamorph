@@ -1,0 +1,149 @@
+// A fake `llama-server` for engine tests: an injected spawn that replays a real run recorded at the pinned tag
+// (fixtures/llama-server/<tag>.json, from scripts/recordLlamaServerFixtures.mjs) and answers the router's HTTP
+// routes on the port the engine gave it. Add a scenario by recording it, not by writing router output.
+import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
+import { PassThrough } from 'node:stream';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PIN = JSON.parse(readFileSync(path.join(HERE, '..', 'scripts', 'llamaServerPin.json'), 'utf8')).tag;
+
+/** The recorded run for `tag` (default: the pinned one). */
+export function loadFixture(tag = PIN) {
+  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', 'llama-server', `${tag}.json`), 'utf8'));
+}
+
+const argValue = (args, flag) => {
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : null;
+};
+
+/**
+ * `scenarioFor(args)` names the recorded scenario a router start replays: `loaded`, `kvFail` or `cpu`.
+ * `listDevices` overrides the recorded `--list-devices` text. `stepMs` paces the replayed events.
+ */
+export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (args.includes('none') ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2 } = {}) {
+  const calls = [];
+  const chatRequests = [];
+  const routers = [];
+  let nextPid = 40000;
+
+  function spawn(command, commandArgs, opts = {}) {
+    // A POSIX start wraps the server in its supervising shell: `sh -c <script> <bin> <args…>`.
+    const wrapped = command === '/bin/sh' && commandArgs[0] === '-c';
+    const bin = wrapped ? commandArgs[2] : command;
+    const args = wrapped ? commandArgs.slice(3) : commandArgs;
+    calls.push({ bin, args: [...args], env: opts.env ?? null, wrapped });
+    const child = new EventEmitter();
+    child.pid = nextPid++;
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.alive = true;
+    const exit = (code, signal = null) => {
+      if (!child.alive) return;
+      child.alive = false;
+      child.stdout.end();
+      child.stderr.end();
+      child.emit('exit', code, signal);
+      child.emit('close', code, signal);
+    };
+
+    if (args.includes('--list-devices')) {
+      child.kill = () => exit(null, 'SIGTERM');
+      setImmediate(() => { child.stdout.write(listDevices); exit(0); });
+      return child;
+    }
+
+    const scenario = fixture.scenarios[scenarioFor(args)];
+    const port = Number(argValue(args, '--port'));
+    const ini = readFileSync(argValue(args, '--models-preset'), 'utf8');
+    const modelId = /^\[(.+)\]$/m.exec(ini)[1];
+    const fill = (v) => JSON.parse(JSON.stringify(v).split('<modelId>').join(modelId));
+    const line = (l) => { if (child.alive) child.stdout.write(`${l.split('<modelId>').join(modelId)}\n`); };
+    const sseClients = new Set();
+    const send = (event) => { for (const res of sseClients) res.write(`data: ${JSON.stringify(fill(event))}\n\n`); };
+    const timers = new Set();
+    const later = (ms, fn) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); };
+    const router = { child, args, modelId, loaded: false };
+    routers.push(router);
+
+    const replay = (events, lines) => {
+      // The instance's log lines land before its last event, as in the recording.
+      events.forEach((e, i) => later(stepMs * (i + 1), () => {
+        if (i === events.length - 1) lines.forEach(line);
+        if (e.data?.status === 'loaded') router.loaded = true;
+        send(e);
+      }));
+    };
+
+    const body = (req) => new Promise((resolve) => { let t = ''; req.on('data', (c) => { t += c; }); req.on('end', () => resolve(t ? JSON.parse(t) : {})); });
+    const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+
+    const server = http.createServer(async (req, res) => {
+      const url = new URL(req.url, 'http://localhost');
+      if (req.method === 'GET' && url.pathname === '/models') return json(res, 200, fill(scenario.models));
+      if (req.method === 'GET' && url.pathname === '/models/sse') {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        res.flushHeaders();
+        sseClients.add(res);
+        req.on('close', () => sseClients.delete(res));
+        return;
+      }
+      if (req.method === 'POST' && url.pathname === '/models/load') {
+        await body(req);
+        json(res, 200, fill(scenario.loadReply));
+        return replay(scenario.loadEvents, scenario.load);
+      }
+      if (req.method === 'POST' && url.pathname === '/models/unload') {
+        await body(req);
+        json(res, 200, { success: true });
+        router.loaded = false;
+        const unloaded = fixture.scenarios.loaded.afterEvents.find((e) => e.data?.status === 'unloaded');
+        return later(stepMs, () => send(unloaded));
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
+        const payload = await body(req);
+        chatRequests.push(payload);
+        if (payload.stream) {
+          res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+          return res.end(fill(scenario.chatStream ?? fixture.scenarios.loaded.chatStream));
+        }
+        return json(res, 200, fill(scenario.chat ?? fixture.scenarios.loaded.chat));
+      }
+      return json(res, 404, { error: { message: 'not found' } });
+    });
+
+    const shutdown = () => {
+      for (const t of timers) clearTimeout(t);
+      for (const res of sseClients) res.destroy();
+      server.closeAllConnections?.();
+      server.close();
+      // The router's end ends its instance too, which a loaded router counts as gone.
+      router.loaded = false;
+    };
+    child.kill = () => { shutdown(); exit(null, 'SIGTERM'); return true; };
+    /** Exit unasked, as a crash would. */
+    child.crash = (code = 3) => { shutdown(); exit(code); };
+    /** The model instance dies while the router stays up: the router reports it as the recorded failed exit. */
+    router.crashInstance = () => {
+      router.loaded = false;
+      send(fixture.scenarios.kvFail.loadEvents.at(-1));
+    };
+    server.listen(port, '127.0.0.1', () => scenario.boot.forEach(line));
+    return child;
+  }
+
+  return {
+    spawn,
+    calls,
+    chatRequests,
+    routers,
+    /** Router starts so far, newest last (list-devices runs excluded). */
+    routerCalls: () => calls.filter((c) => !c.args.includes('--list-devices')),
+    /** Processes still running: routers plus a loaded model instance each. */
+    liveProcesses: () => routers.reduce((n, r) => n + (r.child.alive ? 1 : 0) + (r.loaded ? 1 : 0), 0),
+  };
+}

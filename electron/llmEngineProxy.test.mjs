@@ -44,14 +44,6 @@ describe('engine proxy over a real child process', () => {
     expect(proxy.getState()).toEqual(s);
   });
 
-  it('carries the device pin across to the child and back in its state', async () => {
-    proxy = makeProxy();
-    const s = await proxy.start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 1, gpuDeviceOrigin: 'manual' });
-    expect(s.gpuDeviceIndex).toBe(1);
-    expect(s.gpuDeviceOrigin).toBe('manual');
-    expect(proxy.getState().gpuDeviceIndex).toBe(1);
-  });
-
   it('hands out copies of the mirror, so a caller cannot corrupt it', async () => {
     proxy = makeProxy();
     await proxy.start({ port: 1234 });
@@ -184,9 +176,8 @@ describe('engine proxy over a real child process', () => {
   });
 
   it('answers a device enumeration without adopting it as the engine state', async () => {
-    // A stub child, because a real enumeration initializes a Vulkan backend — the one thing these tests
-    // must not do. What is under test is the parent half: a reply whose value is not a state must not
-    // land in the mirror the renderer reads.
+    // A stub child, because a real enumeration runs the bundled llama-server. What is under test is the
+    // parent half: a reply whose value is not a state must not land in the mirror the renderer reads.
     const sent = [];
     let deliver = null;
     proxy = createEngineProxy({

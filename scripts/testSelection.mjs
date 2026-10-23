@@ -64,6 +64,10 @@ export const GRAPH_COVERED = {
   'electron/modelMove.cjs': 'reads only the paths its caller passes',
   'electron/modelScan.cjs': 'reads only the paths its caller passes',
   'scripts/fetchLlamaServer.mjs': 'reads only llamaServerPin.json and the folders its caller passes',
+  'electron/llmEngine.cjs': 'writes and reads only its work folder under the root its caller passes',
+  'electron/llamaServer.cjs': 'checks only for the bundled binary, which tests replace',
+  'electron/llmEngine.test.mjs': 'reads only its own temp folder',
+  'electron/llamaServer.test.mjs': 'reads only its own temp folder',
   'scripts/typecheck.mjs':'checks only the folder its caller passes; runs git only in mainCheckoutRoot, which no test calls',
   'scripts/versionSiteImages.mjs': 'reads only the folder its caller passes',
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',
@@ -97,6 +101,9 @@ export const PATH_TRIGGERS = {
   'testing/baseline/help-recall-blind-cases.json': ['testing/baseline/harness/help-recall-cases.ts'],
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
+  // The fake llama-server replays the run recorded at the pinned tag.
+  'electron/fixtures/llama-server/*.json': ['electron/fakeLlamaServer.mjs'],
+  'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs'],
   // The pin load test runs the generator as a child process.
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
   'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],

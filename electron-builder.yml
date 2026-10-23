@@ -12,6 +12,9 @@ publish:
 files:
   - dist/**/*
   - electron/**/*
+  # The fake llama-server and its recorded runs are test-only.
+  - '!electron/fixtures/**'
+  - '!electron/fakeLlamaServer.mjs'
   # Drop the node-llama-cpp CUDA backends (~537MB): the prebuilts need CUDA redistributables that don't ship
   # with them and aren't on normal systems, AND the prebuilt fails to initialize even with matching redist
   # (0 devices) — a liability that only balloons the download. Vulkan runs on every GPU incl. NVIDIA, so it's

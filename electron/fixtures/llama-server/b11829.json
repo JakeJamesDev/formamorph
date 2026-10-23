@@ -1,0 +1,922 @@
+{
+ "tag": "b11829",
+ "listDevices": "Available devices:\r\n  Vulkan0: NVIDIA GeForce RTX 4090 (24138 MiB, 23370 MiB free)\r\n",
+ "scenarios": {
+  "loaded": {
+   "args": [
+    "--models-preset",
+    "<preset>",
+    "--offline",
+    "--no-models-autoload",
+    "--models-max",
+    "1",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "56631",
+    "--log-jsonl",
+    "-c",
+    "4096",
+    "-ngl",
+    "auto",
+    "--fit",
+    "on",
+    "-fa",
+    "on",
+    "-np",
+    "2"
+   ],
+   "models": {
+    "data": [
+     {
+      "id": "<modelId>",
+      "aliases": [],
+      "tags": [],
+      "object": "model",
+      "owned_by": "llamacpp",
+      "created": 1792739853,
+      "status": {
+       "value": "unloaded",
+       "args": [
+        "<bin>",
+        "--host",
+        "127.0.0.1",
+        "--log-colors",
+        "off",
+        "--log-jsonl",
+        "--offline",
+        "--port",
+        "0",
+        "--alias",
+        "<modelId>",
+        "--ctx-size",
+        "4096",
+        "--flash-attn",
+        "on",
+        "--fit",
+        "on",
+        "--model",
+        "<model>",
+        "--n-gpu-layers",
+        "auto",
+        "--parallel",
+        "2"
+       ],
+       "preset": "[<modelId>]\nlog-colors = off\nlog-jsonl = 1\noffline = 1\nctx-size = 4096\nflash-attn = on\nfit = on\nmodel = <model>\nn-gpu-layers = auto\nparallel = 2\n\n"
+      },
+      "architecture": {
+       "input_modalities": [
+        "text"
+       ],
+       "output_modalities": [
+        "text"
+       ]
+      },
+      "source": "preset",
+      "can_remove": false,
+      "context_length": 131072
+     }
+    ],
+    "object": "list"
+   },
+   "loadReply": {
+    "success": true
+   },
+   "outcome": "loaded",
+   "chat": {
+    "choices": [
+     {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+       "role": "assistant",
+       "content": "Hi there."
+      }
+     }
+    ],
+    "created": 1792739856,
+    "model": "<modelId>",
+    "system_fingerprint": "b11829-184f65360",
+    "object": "chat.completion",
+    "usage": {
+     "completion_tokens": 4,
+     "prompt_tokens": 15,
+     "total_tokens": 19,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     }
+    },
+    "id": "chatcmpl-AgKMvwFa5s9ktXUt7KW5JqxdtdHnlYL7",
+    "timings": {
+     "cache_n": 0,
+     "prompt_n": 15,
+     "prompt_ms": 19.715,
+     "prompt_per_token_ms": 1.3143333333333334,
+     "prompt_per_second": 760.841998478316,
+     "predicted_n": 4,
+     "predicted_ms": 19.066,
+     "predicted_per_token_ms": 6.355333333333333,
+     "predicted_per_second": 157.3481590265394
+    }
+   },
+   "chatStream": "data: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null}}],\"created\":1792739856,\"id\":\"chatcmpl-TfkLtd2IZuYpTyHCVbYnSo6qecrRAJ6o\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b11829-184f65360\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"content\":\"Hi\"}}],\"created\":1792739856,\"id\":\"chatcmpl-TfkLtd2IZuYpTyHCVbYnSo6qecrRAJ6o\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b11829-184f65360\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"content\":\" there\"}}],\"created\":1792739856,\"id\":\"chatcmpl-TfkLtd2IZuYpTyHCVbYnSo6qecrRAJ6o\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b11829-184f65360\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"content\":\".\"}}],\"created\":1792739856,\"id\":\"chatcmpl-TfkLtd2IZuYpTyHCVbYnSo6qecrRAJ6o\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b11829-184f65360\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"delta\":{}}],\"created\":1792739856,\"id\":\"chatcmpl-TfkLtd2IZuYpTyHCVbYnSo6qecrRAJ6o\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b11829-184f65360\",\"object\":\"chat.completion.chunk\",\"timings\":{\"cache_n\":14,\"prompt_n\":1,\"prompt_ms\":5.778,\"prompt_per_token_ms\":5.778,\"prompt_per_second\":173.07026652821045,\"predicted_n\":4,\"predicted_ms\":15.732,\"predicted_per_token_ms\":5.244,\"predicted_per_second\":190.69412662090008}}\n\ndata: [DONE]\n\n",
+   "boot": [
+    "{\"type\":\"log\",\"time\":185833,\"level\":\"info\",\"msg\":\"srv  llama_server: initializing ...\\n\"}\r",
+    "{\"type\":\"log\",\"time\":185841,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":223649,\"level\":\"info\",\"msg\":\"srv    operator(): Available models (1):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":223655,\"level\":\"info\",\"msg\":\"srv    operator():   [    preset] <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":223755,\"level\":\"warn\",\"msg\":\"srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":223764,\"level\":\"warn\",\"msg\":\"srv  llama_server: security: router mode enabled - do not expose to untrusted environments\\n\"}\r",
+    "{\"type\":\"log\",\"time\":223769,\"level\":\"info\",\"msg\":\"srv  llama_server: starting server in router mode. models will be automatically loaded on-demand\\n\"}\r",
+    "{\"type\":\"log\",\"time\":227388,\"level\":\"info\",\"msg\":\"srv  llama_server: listening on http://127.0.0.1:56631\\n\"}\r"
+   ],
+   "load": [
+    "{\"type\":\"log\",\"time\":300701,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with name=<modelId> on port 50874\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300739,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with args:\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300744,\"level\":\"info\",\"msg\":\"srv          load:   <bin>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300744,\"level\":\"info\",\"msg\":\"srv          load:   --host\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300744,\"level\":\"info\",\"msg\":\"srv          load:   127.0.0.1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300745,\"level\":\"info\",\"msg\":\"srv          load:   --log-colors\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300745,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300745,\"level\":\"info\",\"msg\":\"srv          load:   --log-jsonl\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300745,\"level\":\"info\",\"msg\":\"srv          load:   --offline\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300746,\"level\":\"info\",\"msg\":\"srv          load:   --port\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300746,\"level\":\"info\",\"msg\":\"srv          load:   50874\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300746,\"level\":\"info\",\"msg\":\"srv          load:   --alias\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300746,\"level\":\"info\",\"msg\":\"srv          load:   <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300747,\"level\":\"info\",\"msg\":\"srv          load:   --ctx-size\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300747,\"level\":\"info\",\"msg\":\"srv          load:   4096\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300747,\"level\":\"info\",\"msg\":\"srv          load:   --flash-attn\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300747,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300747,\"level\":\"info\",\"msg\":\"srv          load:   --fit\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300747,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300748,\"level\":\"info\",\"msg\":\"srv          load:   --model\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300748,\"level\":\"info\",\"msg\":\"srv          load:   <model>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300748,\"level\":\"info\",\"msg\":\"srv          load:   --n-gpu-layers\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300748,\"level\":\"info\",\"msg\":\"srv          load:   auto\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300748,\"level\":\"info\",\"msg\":\"srv          load:   --parallel\\n\"}\r",
+    "{\"type\":\"log\",\"time\":300748,\"level\":\"info\",\"msg\":\"srv          load:   2\\n\"}\r",
+    "{\"type\":\"log\",\"time\":541584,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":168623,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: initializing ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":541587,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":168629,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":541589,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":168878,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":541589,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":172423,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: loading model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":744076,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"fit_memory_breakdown\\\",\\\"data\\\":{\\\"unit\\\":\\\"MiB\\\",\\\"rows\\\":[{\\\"kind\\\":\\\"device\\\",\\\"name\\\":\\\"Vulkan0\\\",\\\"description\\\":\\\"RTX 4090\\\",\\\"total\\\":24138,\\\"free\\\":23365,\\\"self\\\":3022,\\\"model\\\":2430,\\\"context\\\":512,\\\"compute\\\":80,\\\"unaccounted\\\":-2250},{\\\"kind\\\":\\\"host\\\",\\\"name\\\":\\\"Host\\\",\\\"self\\\":237,\\\"model\\\":211,\\\"context\\\":0,\\\"compute\\\":26}]}}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2406759,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2043675,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn          init: llama threadpool init, n_threads = 24\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2457195,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2104723,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: initializing, n_slots = 2, n_ctx_slot = 2048, kv_unified = 'false'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2457198,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2106449,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: model loaded\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2457199,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2106454,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: listening on http://127.0.0.1:50874\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2457199,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2106757,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): child server monitoring thread started, waiting for EOF on stdin...\\\\n\\\"}\\r\\n\"}\r"
+   ],
+   "after": [
+    "{\"type\":\"log\",\"time\":2820708,\"level\":\"info\",\"msg\":\"srv  proxy_reques: proxying request to model <modelId> on port 50874\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863043,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2482211,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863049,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2482240,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task 0 | processing task, is_child = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863051,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2521045,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 | prompt eval time =      19.71 ms /    15 tokens (    1.31 ms per token,   760.84 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863051,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2521053,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |        eval time =      19.07 ms /     4 tokens (    6.36 ms per token,   157.35 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863051,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2521063,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |       total time =      38.78 ms /    19 tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863052,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2521064,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |    graphs reused =          3\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863052,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2521065,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2863053,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2521089,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot      release: id  0 | task 0 | stop processing: n_tokens = 18, truncated = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2866417,\"level\":\"info\",\"msg\":\"srv  proxy_reques: proxying request to model <modelId> on port 50874\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2901927,\"level\":\"info\",\"msg\":\"srv        unload: stopping model instance name=<modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913244,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2537786,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 1.000 (> 0.100 thold), f_keep = 0.833\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913250,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2537875,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task 5 | processing task, is_child = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913251,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2537885,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 5 | need to evaluate at least 1 token for each active slot (n_past = 15, task.n_tokens() = 15)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913252,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2537885,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 5 | n_past was set to 14\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913253,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2559408,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 | prompt eval time =       5.78 ms /     1 tokens (    5.78 ms per token,   173.07 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913253,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2559413,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |        eval time =      15.73 ms /     4 tokens (    5.24 ms per token,   190.69 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913254,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2559413,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |       total time =      21.51 ms /     5 tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913254,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2559414,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |    graphs reused =          7\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913255,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2559415,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |   graph reallocs =          0    /     0        (same size) / (changed size)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913255,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2559427,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot      release: id  0 | task 5 | stop processing: n_tokens = 18, truncated = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2913263,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2573265,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): exit command received, exiting...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2963546,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2573578,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): operator(): cleaning up before exit...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2963553,\"level\":\"none\",\"msg\":\"[50874] {\\\"type\\\":\\\"fit_memory_breakdown\\\",\\\"data\\\":{\\\"unit\\\":\\\"MiB\\\",\\\"rows\\\":[{\\\"kind\\\":\\\"device\\\",\\\"name\\\":\\\"Vulkan0\\\",\\\"description\\\":\\\"RTX 4090\\\",\\\"total\\\":24138,\\\"free\\\":20334,\\\"self\\\":3022,\\\"model\\\":2430,\\\"context\\\":512,\\\"compute\\\":80,\\\"unaccounted\\\":780},{\\\"kind\\\":\\\"host\\\",\\\"name\\\":\\\"Host\\\",\\\"self\\\":237,\\\"model\\\":211,\\\"context\\\":0,\\\"compute\\\":26}]}}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":3367520,\"level\":\"info\",\"msg\":\"srv           run: instance name=<modelId> exited with status 0\\n\"}\r"
+   ],
+   "loadEvents": [
+    {
+     "model": "<modelId>",
+     "event": "model_status",
+     "data": {
+      "status": "loading"
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.1966627985239029
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.3799818158149719
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.5717634558677673
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.7581738829612732
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.914547860622406
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 1
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loaded",
+      "info": {
+       "id": "<modelId>",
+       "aliases": [
+        "<modelId>"
+       ],
+       "tags": [],
+       "object": "model",
+       "architecture": {
+        "input_modalities": [
+         "text"
+        ],
+        "output_modalities": [
+         "text"
+        ]
+       },
+       "created": 1792739855,
+       "owned_by": "llamacpp",
+       "meta": {
+        "vocab_type": 2,
+        "n_vocab": 128256,
+        "n_ctx": 2048,
+        "n_ctx_train": 131072,
+        "n_embd": 3072,
+        "n_params": 4512746560,
+        "size": 2770446592,
+        "ftype": "Q4_K - Medium"
+       }
+      }
+     }
+    }
+   ],
+   "afterEvents": [
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "unloaded",
+      "exit_code": 0
+     }
+    }
+   ]
+  },
+  "kvFail": {
+   "args": [
+    "--models-preset",
+    "<preset>",
+    "--offline",
+    "--no-models-autoload",
+    "--models-max",
+    "1",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "55662",
+    "--log-jsonl",
+    "-c",
+    "1048576",
+    "-ngl",
+    "all",
+    "--fit",
+    "off",
+    "-fa",
+    "on",
+    "-np",
+    "1"
+   ],
+   "models": {
+    "data": [
+     {
+      "id": "<modelId>",
+      "aliases": [],
+      "tags": [],
+      "object": "model",
+      "owned_by": "llamacpp",
+      "created": 1792739857,
+      "status": {
+       "value": "unloaded",
+       "args": [
+        "<bin>",
+        "--host",
+        "127.0.0.1",
+        "--log-colors",
+        "off",
+        "--log-jsonl",
+        "--offline",
+        "--port",
+        "0",
+        "--alias",
+        "<modelId>",
+        "--ctx-size",
+        "1048576",
+        "--flash-attn",
+        "on",
+        "--fit",
+        "off",
+        "--model",
+        "<model>",
+        "--n-gpu-layers",
+        "all",
+        "--parallel",
+        "1"
+       ],
+       "preset": "[<modelId>]\nlog-colors = off\nlog-jsonl = 1\noffline = 1\nctx-size = 1048576\nflash-attn = on\nfit = off\nmodel = <model>\nn-gpu-layers = all\nparallel = 1\n\n"
+      },
+      "architecture": {
+       "input_modalities": [
+        "text"
+       ],
+       "output_modalities": [
+        "text"
+       ]
+      },
+      "source": "preset",
+      "can_remove": false,
+      "context_length": 131072
+     }
+    ],
+    "object": "list"
+   },
+   "loadReply": {
+    "success": true
+   },
+   "outcome": "unloaded",
+   "boot": [
+    "{\"type\":\"log\",\"time\":196421,\"level\":\"info\",\"msg\":\"srv  llama_server: initializing ...\\n\"}\r",
+    "{\"type\":\"log\",\"time\":196428,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":233304,\"level\":\"info\",\"msg\":\"srv    operator(): Available models (1):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":233312,\"level\":\"info\",\"msg\":\"srv    operator():   [    preset] <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":233418,\"level\":\"warn\",\"msg\":\"srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":233428,\"level\":\"warn\",\"msg\":\"srv  llama_server: security: router mode enabled - do not expose to untrusted environments\\n\"}\r",
+    "{\"type\":\"log\",\"time\":233432,\"level\":\"info\",\"msg\":\"srv  llama_server: starting server in router mode. models will be automatically loaded on-demand\\n\"}\r",
+    "{\"type\":\"log\",\"time\":237159,\"level\":\"info\",\"msg\":\"srv  llama_server: listening on http://127.0.0.1:55662\\n\"}\r"
+   ],
+   "load": [
+    "{\"type\":\"log\",\"time\":271700,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with name=<modelId> on port 55665\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271750,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with args:\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271759,\"level\":\"info\",\"msg\":\"srv          load:   <bin>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271760,\"level\":\"info\",\"msg\":\"srv          load:   --host\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271760,\"level\":\"info\",\"msg\":\"srv          load:   127.0.0.1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271761,\"level\":\"info\",\"msg\":\"srv          load:   --log-colors\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271761,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271762,\"level\":\"info\",\"msg\":\"srv          load:   --log-jsonl\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271762,\"level\":\"info\",\"msg\":\"srv          load:   --offline\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271762,\"level\":\"info\",\"msg\":\"srv          load:   --port\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271763,\"level\":\"info\",\"msg\":\"srv          load:   55665\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271763,\"level\":\"info\",\"msg\":\"srv          load:   --alias\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271763,\"level\":\"info\",\"msg\":\"srv          load:   <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271764,\"level\":\"info\",\"msg\":\"srv          load:   --ctx-size\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271764,\"level\":\"info\",\"msg\":\"srv          load:   1048576\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271764,\"level\":\"info\",\"msg\":\"srv          load:   --flash-attn\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271765,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271765,\"level\":\"info\",\"msg\":\"srv          load:   --fit\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271765,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271766,\"level\":\"info\",\"msg\":\"srv          load:   --model\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271766,\"level\":\"info\",\"msg\":\"srv          load:   <model>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271766,\"level\":\"info\",\"msg\":\"srv          load:   --n-gpu-layers\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271767,\"level\":\"info\",\"msg\":\"srv          load:   all\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271767,\"level\":\"info\",\"msg\":\"srv          load:   --parallel\\n\"}\r",
+    "{\"type\":\"log\",\"time\":271767,\"level\":\"info\",\"msg\":\"srv          load:   1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":551191,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":194665,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: initializing ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":551194,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":194677,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":551195,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":195043,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":551195,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":198273,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: loading model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2119749,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1792751,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"llama_context: n_ctx_seq (1048576) > n_ctx_train (131072) -- possible training context overflow\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5405323,\"level\":\"none\",\"msg\":\"[55665] ggml_vulkan: Device memory allocation of size 2147483648 failed.\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5405330,\"level\":\"none\",\"msg\":\"[55665] ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5405331,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":5075652,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"ggml_backend_buft_alloc_buffer_n_default: failed to allocate Vulkan0 buffer of size 2147483648\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6414459,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6079442,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"llama_init_from_model: failed to initialize the context: failed to allocate buffer for kv cache\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6414466,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6079453,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"cmn  common_init_: failed to create context with model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6414466,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6079454,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"cmn  common_init_: failed to create context with model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6414467,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6079459,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"srv    load_model: failed to create_context with model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6414467,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6079468,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): operator(): cleaning up before exit...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6414469,\"level\":\"none\",\"msg\":\"[55665] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6081347,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"srv  llama_server: exiting due to model loading error\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6919472,\"level\":\"info\",\"msg\":\"srv           run: instance name=<modelId> exited with status 1\\n\"}\r"
+   ],
+   "after": [],
+   "loadEvents": [
+    {
+     "model": "<modelId>",
+     "event": "model_status",
+     "data": {
+      "status": "loading"
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.1966627985239029
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.3626527786254883
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.5513207912445068
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.7402815222740173
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.9202961325645447
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 1
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "unloaded",
+      "exit_code": 1
+     }
+    }
+   ],
+   "afterEvents": []
+  },
+  "cpu": {
+   "args": [
+    "--models-preset",
+    "<preset>",
+    "--offline",
+    "--no-models-autoload",
+    "--models-max",
+    "1",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "59827",
+    "--log-jsonl",
+    "-c",
+    "4096",
+    "--device",
+    "none",
+    "-ngl",
+    "0",
+    "--fit",
+    "off",
+    "-fa",
+    "on",
+    "-np",
+    "2"
+   ],
+   "models": {
+    "data": [
+     {
+      "id": "<modelId>",
+      "aliases": [],
+      "tags": [],
+      "object": "model",
+      "owned_by": "llamacpp",
+      "created": 1792739864,
+      "status": {
+       "value": "unloaded",
+       "args": [
+        "<bin>",
+        "--host",
+        "127.0.0.1",
+        "--log-colors",
+        "off",
+        "--log-jsonl",
+        "--offline",
+        "--port",
+        "0",
+        "--alias",
+        "<modelId>",
+        "--ctx-size",
+        "4096",
+        "--device",
+        "none",
+        "--flash-attn",
+        "on",
+        "--fit",
+        "off",
+        "--model",
+        "<model>",
+        "--n-gpu-layers",
+        "0",
+        "--parallel",
+        "2"
+       ],
+       "preset": "[<modelId>]\nlog-colors = off\nlog-jsonl = 1\noffline = 1\nctx-size = 4096\ndevice = none\nflash-attn = on\nfit = off\nmodel = <model>\nn-gpu-layers = 0\nparallel = 2\n\n"
+      },
+      "architecture": {
+       "input_modalities": [
+        "text"
+       ],
+       "output_modalities": [
+        "text"
+       ]
+      },
+      "source": "preset",
+      "can_remove": false,
+      "context_length": 131072
+     }
+    ],
+    "object": "list"
+   },
+   "loadReply": {
+    "success": true
+   },
+   "outcome": "loaded",
+   "boot": [
+    "{\"type\":\"log\",\"time\":193324,\"level\":\"info\",\"msg\":\"srv  llama_server: initializing ...\\n\"}\r",
+    "{\"type\":\"log\",\"time\":193331,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":230585,\"level\":\"info\",\"msg\":\"srv    operator(): Available models (1):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":230593,\"level\":\"info\",\"msg\":\"srv    operator():   [    preset] <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":230704,\"level\":\"warn\",\"msg\":\"srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":230715,\"level\":\"warn\",\"msg\":\"srv  llama_server: security: router mode enabled - do not expose to untrusted environments\\n\"}\r",
+    "{\"type\":\"log\",\"time\":230719,\"level\":\"info\",\"msg\":\"srv  llama_server: starting server in router mode. models will be automatically loaded on-demand\\n\"}\r",
+    "{\"type\":\"log\",\"time\":234364,\"level\":\"info\",\"msg\":\"srv  llama_server: listening on http://127.0.0.1:59827\\n\"}\r"
+   ],
+   "load": [
+    "{\"type\":\"log\",\"time\":267214,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with name=<modelId> on port 59830\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267279,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with args:\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267288,\"level\":\"info\",\"msg\":\"srv          load:   <bin>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267289,\"level\":\"info\",\"msg\":\"srv          load:   --host\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267289,\"level\":\"info\",\"msg\":\"srv          load:   127.0.0.1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267289,\"level\":\"info\",\"msg\":\"srv          load:   --log-colors\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267289,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267290,\"level\":\"info\",\"msg\":\"srv          load:   --log-jsonl\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267290,\"level\":\"info\",\"msg\":\"srv          load:   --offline\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267290,\"level\":\"info\",\"msg\":\"srv          load:   --port\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267290,\"level\":\"info\",\"msg\":\"srv          load:   59830\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267291,\"level\":\"info\",\"msg\":\"srv          load:   --alias\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267291,\"level\":\"info\",\"msg\":\"srv          load:   <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267291,\"level\":\"info\",\"msg\":\"srv          load:   --ctx-size\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267292,\"level\":\"info\",\"msg\":\"srv          load:   4096\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267292,\"level\":\"info\",\"msg\":\"srv          load:   --device\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267292,\"level\":\"info\",\"msg\":\"srv          load:   none\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267292,\"level\":\"info\",\"msg\":\"srv          load:   --flash-attn\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267292,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267293,\"level\":\"info\",\"msg\":\"srv          load:   --fit\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267293,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267293,\"level\":\"info\",\"msg\":\"srv          load:   --model\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267293,\"level\":\"info\",\"msg\":\"srv          load:   <model>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267293,\"level\":\"info\",\"msg\":\"srv          load:   --n-gpu-layers\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267294,\"level\":\"info\",\"msg\":\"srv          load:   0\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267294,\"level\":\"info\",\"msg\":\"srv          load:   --parallel\\n\"}\r",
+    "{\"type\":\"log\",\"time\":267294,\"level\":\"info\",\"msg\":\"srv          load:   2\\n\"}\r",
+    "{\"type\":\"log\",\"time\":547884,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":193261,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: initializing ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":547890,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":193269,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":547890,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":193516,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":547891,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":198237,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: loading model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2115998,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1774651,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn          init: llama threadpool init, n_threads = 24\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2623891,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2270684,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: initializing, n_slots = 2, n_ctx_slot = 2048, kv_unified = 'false'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2623897,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2273915,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: model loaded\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2623898,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2273923,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: listening on http://127.0.0.1:59830\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":2623898,\"level\":\"none\",\"msg\":\"[59830] {\\\"type\\\":\\\"log\\\",\\\"time\\\":2274310,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): child server monitoring thread started, waiting for EOF on stdin...\\\\n\\\"}\\r\\n\"}\r"
+   ],
+   "after": [],
+   "loadEvents": [
+    {
+     "model": "<modelId>",
+     "event": "model_status",
+     "data": {
+      "status": "loading"
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.4564700722694397
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.5797383189201355
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.6991744041442871
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.825636088848114
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.9482656717300415
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 1
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loaded",
+      "info": {
+       "id": "<modelId>",
+       "aliases": [
+        "<modelId>"
+       ],
+       "tags": [],
+       "object": "model",
+       "architecture": {
+        "input_modalities": [
+         "text"
+        ],
+        "output_modalities": [
+         "text"
+        ]
+       },
+       "created": 1792739867,
+       "owned_by": "llamacpp",
+       "meta": {
+        "vocab_type": 2,
+        "n_vocab": 128256,
+        "n_ctx": 2048,
+        "n_ctx_train": 131072,
+        "n_embd": 3072,
+        "n_params": 4512746560,
+        "size": 2770446592,
+        "ftype": "Q4_K - Medium"
+       }
+      }
+     }
+    }
+   ],
+   "afterEvents": []
+  }
+ }
+}

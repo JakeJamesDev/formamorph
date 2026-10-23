@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **⚙️ Backend**
   - **Llama Server Engine:**
     - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds. The engine still runs node-llama-cpp.
+    - **The desktop engine now runs models through the bundled llama-server instead of node-llama-cpp.** Every engine setting maps to a server flag. A failed GPU load retries once on the CPU, and the server exits with the app, even on a crash.
 
 #### ➖ Removed
 
