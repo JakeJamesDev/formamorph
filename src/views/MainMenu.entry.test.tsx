@@ -139,7 +139,7 @@ describe('the retained entry draft', () => {
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
     await enter();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][4]).toEqual([
       expect.objectContaining({ name: 'Library book', id: expect.not.stringMatching(/^shared$/) }),
@@ -162,7 +162,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][0]).toEqual([]);
     expect(onStartGame.mock.calls[0][3]).toBe('hill');
@@ -179,7 +179,7 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}));
     cleanup();
     onStartGame.mockClear();
@@ -216,7 +216,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}));
   });
 
@@ -241,7 +241,7 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame.mock.calls[0][4]).toEqual([expect.objectContaining({ id: 'shared' })]));
   });
 
@@ -301,14 +301,14 @@ describe('the retained entry draft', () => {
     expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
   });
 
-  it('starts Quick Start with a group short of its minimum, which disables Start game in setup', async () => {
+  it('starts Quick Start with a group short of its minimum, which disables Start Game in setup', async () => {
     const w = world();
     w.data.traitGroups = [{ id: 'group', name: 'Other traits', parentId: null, minPicks: 1 }];
     await WorldStorageService.storeWorld(w);
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
     await enter();
-    expect(screen.getByRole('button', { name: 'Start game' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Start Game' })).toBeDisabled();
     cleanup();
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
@@ -330,7 +330,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
     fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
 
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame).toHaveBeenCalledWith(
@@ -365,7 +365,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Wolf/ }, { timeout: 3000 }));
     expect(await screen.findByRole('checkbox', { name: 'Loyal' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /Oath/ })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     const copy = (onStartGame.mock.calls[0][5] as { id: string; name: string; traits: { requires?: { id: string }[] }[] }[])
       .find((e) => e.name === 'Wolf')!;
@@ -400,7 +400,7 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).toBeChecked();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search Library Additions' }), { target: { value: 'World book' } });
     expect(screen.queryByText('Library book')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
     expect(onStartGame).toHaveBeenCalledWith(['extra'], null, true, 'hill', [
       expect.objectContaining({
@@ -584,7 +584,7 @@ describe('the retained entry draft', () => {
     let finish!: (value: typeof book) => void;
     const load = vi.spyOn(DictionaryStorageService, 'getDictionaryData')
       .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const start = screen.getByRole('button', { name: 'Start game' });
+    const start = screen.getByRole('button', { name: 'Start Game' });
     act(() => { fireEvent.click(start); fireEvent.click(start); });
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('button', { name: 'Loading…' })).toBeDisabled();
@@ -595,7 +595,7 @@ describe('the retained entry draft', () => {
     await act(async () => finish(book));
     expect(onStartGame).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Enter Entry World' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
   });
 
@@ -609,7 +609,7 @@ describe('the retained entry draft', () => {
     await EntityStorageService.deleteEntity('companion');
     await DictionaryStorageService.deleteDictionary('shared');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame).toHaveBeenCalledWith(
       ['default'], null, true, null,
@@ -634,7 +634,7 @@ describe('the retained entry draft', () => {
       ? vi.spyOn(EntityStorageService, 'getEntityData').mockRejectedValueOnce(new Error('IndexedDB unavailable'))
       : vi.spyOn(DictionaryStorageService, 'getDictionaryData').mockRejectedValueOnce(new Error('IndexedDB unavailable'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain(
       'Formamorph could not prepare those library additions. Try again.View Details →',
     ));
@@ -647,7 +647,7 @@ describe('the retained entry draft', () => {
     expect(onStartGame).not.toHaveBeenCalled();
 
     resolution.mockRestore();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
   });
 });
@@ -671,7 +671,7 @@ describe('the persona at world entry', () => {
     await enter();
     expect(screen.getByRole('heading', { name: 'Persona' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Self' })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][6]).toEqual({
       ref: libraryRef('self'), libraryEntity: expect.objectContaining({ id: 'self', name: 'Self' }),
@@ -686,7 +686,7 @@ describe('the persona at world entry', () => {
     renderMainMenu({ onStartGame });
     await enter();
     fireEvent.click(screen.getByRole('radio', { name: 'None' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
     expect(readWorldPersona('entry-world')).toEqual({ source: 'none' });
@@ -701,7 +701,7 @@ describe('the persona at world entry', () => {
     await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     expect(screen.queryByRole('checkbox', { name: 'Include Self' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][5]).toEqual([expect.objectContaining({ name: 'Companion' })]);
     expect(onStartGame.mock.calls[0][6].ref).toEqual(libraryRef('self'));
@@ -725,7 +725,7 @@ describe('the persona at world entry', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'Quiet.' } });
     // The marked entity's page wears the entered name and the You mark.
     expect(nav().getByRole('button', { name: /^Ash/ })).toHaveTextContent('You');
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     const ref: PersonaRef = { source: 'none', name: 'Ash', description: 'Quiet.' };
     expect(onStartGame.mock.calls[0][6]).toEqual({ ref });
@@ -737,7 +737,7 @@ describe('the persona at world entry', () => {
     renderMainMenu({ onStartGame });
     await enter();
     expect(screen.queryByRole('button', { name: 'Persona' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
     expect(readWorldPersona('entry-world')).toBeUndefined();
@@ -814,7 +814,7 @@ describe('a world persona at world entry', () => {
     await enter();
     expect(screen.getByRole('heading', { name: 'From This World' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: 'Harbor Keeper' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][3]).toBe('hill');
     expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
@@ -827,7 +827,7 @@ describe('a world persona at world entry', () => {
     renderMainMenu({ onStartGame });
     await enter();
     expect(screen.getByRole('radio', { name: 'Harbor Keeper' })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][3]).toBe('hill');
   });
@@ -933,7 +933,7 @@ describe("an entity's owned traits at world entry", () => {
     expect(screen.getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Tamed' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Wild' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][0]).toEqual(['default']);
     expect(onStartGame.mock.calls[0][7]).toEqual({ wolf: ['wild'] });
@@ -973,7 +973,7 @@ describe("an entity's owned traits at world entry", () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
     fireEvent.click(nav().getByRole('button', { name: 'Persona' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Ash' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][7]).toEqual({ ash: ['guard'] });
   });

@@ -13,7 +13,7 @@ A new game starts at **Enter World**. One dialog holds every choice before page 
 2. Select **Enter World**.
 3. If the world has an **Introduction**, read it and close it.
 4. In the **Enter World** dialog, select each category in the list on the left and make your picks. The categories are in [The Enter World Dialog](#the-enter-world-dialog).
-5. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**, and the avatar step comes next.
+5. Select **Start Game**. In a world with a 3D model, the button reads **Continue to Avatar**, and the avatar step comes next.
 
 A world with nothing to choose skips the **Enter World** dialog.
 
@@ -36,7 +36,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 2. Select the traits you want. A round button allows one pick in its group; a checkbox allows several.
 3. Do the same for each category under **Starting Traits**. The category list shows how many traits you picked out of those shown, such as **1/3**.
 
-**Start game** stays off until every group has its minimum picks. A group that is short shows *Choose 1 more trait*.
+**Start Game** stays off until every group has its minimum picks. A group that is short shows *Choose 1 more trait*.
 
 ## How to Pick a Starting Location
 <!-- keywords: choose, spawn, begin, random, place, starting area, first room, initial zone, start point, where do i start, home town, origin -->

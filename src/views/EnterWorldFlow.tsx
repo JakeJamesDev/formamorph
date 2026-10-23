@@ -42,9 +42,11 @@ import EntityStorageService from '../services/EntityStorageService';
 import { LibraryRecordNotFoundError } from '../services/LibraryStore';
 import type { WorldRecord } from '@/components/WorldDetails';
 import ReadmeModal from '@/components/game/ReadmeModal';
-import { buildEnterFlow, navigableSteps, type EnterMode, type EnterStep, type NavigableStep } from '@/lib/enterFlow';
+import {
+  buildEnterFlow, entryVrmPick, navigableSteps, type EnterMode, type EnterStep, type NavigableStep,
+} from '@/lib/enterFlow';
 import type {
-  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef,
+  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick,
 } from '@/types';
 
 export type StartGame = (
@@ -89,7 +91,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const isMountedRef = useMountedRef();
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, statGroups: rawStatGroups, locations: rawLocations, placeholders,
-    dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups,
+    dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups, worldOverview,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
 
@@ -126,6 +128,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const [selectedPersona, setSelectedPersona] = useState<PersonaPick>({ ref: { source: 'none' } });
   // The cast's owned picks as the game starts with them, keyed by the added characters' copy ids.
   const [selectedCastPicks, setSelectedCastPicks] = useState<OwnedTraitPicks>({});
+  // The Avatar the step opens on: User's Default offers the picker, any other pick shows as set.
+  const [selectedVrm, setSelectedVrm] = useState<VrmPick>();
 
   // The raw world's traits, whose names carried requirements were stored under and bind to, and its blueprints.
   const rawTraitWorld = useMemo(
@@ -149,6 +153,14 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     });
     return () => { cancelled = true; };
   }, [castKey, libraryCastData, isMountedRef]);
+  // Where the persona's Avatar lands. A library persona reads its pick from the loaded record.
+  const entryVrm = (persona: PersonaRef, libraryPersona?: Entity) => entryVrmPick({
+    persona,
+    libraryPersona: libraryPersona ?? (persona.source === 'library' ? libraryCastData.get(persona.entityId) : undefined),
+    entities: worldEntities,
+    overview: worldOverview,
+  });
+  const showsDraftVrm = !!entryVrm(draftPersona);
   const libraryCast = useMemo(
     () => castKey.split('|').flatMap((id) => libraryCastData.get(id) ?? [])
       .map((e) => bindLibraryEntity(e, rawTraitWorld)),
@@ -363,7 +375,9 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       setSelectedCastPicks(castPicks);
       setSelectedDictionaries(dicts);
       setSelectedPersona(persona);
-      if (selectedWorld!.data.worldOverview?.legacyVrmFallback) {
+      const vrm = entryVrm(persona.ref, persona.libraryEntity);
+      setSelectedVrm(vrm);
+      if (vrm) {
         showEnterStep('avatar');
       } else {
         entryStarted.current = true;
@@ -408,7 +422,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,
-    showsAvatar: !!selectedWorld?.data.worldOverview?.legacyVrmFallback,
+    showsAvatar: showsDraftVrm,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
     cancelEntryResolution();
@@ -462,8 +476,6 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   };
 
   const quickStart = () => {
-    // For uploaded worlds, use the worldData from context
-    const currentWorldData = selectedWorld!.data;
     // Skip the setup steps but honor the author's default trait choices.
     const persona = personaPreselect(selectedWorld!.id);
     // A world persona starts at its own starting location; any other start stays random.
@@ -475,7 +487,6 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     cancelEntryResolution();
     entryStarted.current = true;
     setEntryDraft(draft);
-    const characterData = seededCharacterData(null, !!currentWorldData.worldOverview?.legacyVrmFallback);
     loadPersonaPick(persona).then(
       (pick) => {
         // A library persona starts on its own owned defaults.
@@ -485,6 +496,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
             ? [bindLibraryEntity(pick.libraryEntity, rawTraitWorld)]
             : [],
         };
+        const characterData = seededCharacterData(null, !!entryVrm(pick.ref, pick.libraryEntity));
         onStartGame(
           draft.traitIds, characterData, true, draft.locationId, null, null, pick,
           castOwnedTraits(withLibraryDefaults(draft, cast), cast),
@@ -503,6 +515,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   if (showCharacterCustomization && !showIntroReadme) {
     return (
       <CharacterCustomization
+        vrm={selectedVrm}
         onCharacterCustomized={(customizedData) => {
           if (entryStarted.current) return;
           entryStarted.current = true;
@@ -589,7 +602,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
             : undefined}
           onCancel={abandonEnterFlow}
           onContinue={() => advanceEntry('workspace')}
-          continueLabel={selectedWorld.data.worldOverview?.legacyVrmFallback ? 'Continue to Avatar' : 'Start game'}
+          continueLabel={showsDraftVrm ? 'Continue to Avatar' : 'Start Game'}
           resolving={resolvingEntry}
         />
       )}

@@ -79,7 +79,7 @@ describe('Authoring Tour Play', () => {
     fireEvent.click(within(intro).getByRole('button', { name: 'Close' }));
     const setup = await screen.findByRole('dialog', { name: 'Enter Brinewell' });
     expect(within(setup).getByRole('checkbox', { name: 'Tide-Touched' })).toBeChecked();
-    fireEvent.click(within(setup).getByRole('button', { name: 'Start game' }));
+    fireEvent.click(within(setup).getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][0]).toEqual(['touched']);
   });

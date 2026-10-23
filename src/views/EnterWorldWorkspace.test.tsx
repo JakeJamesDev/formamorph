@@ -154,7 +154,7 @@ function Harness({ initialDictionaryItems = dictionaryItems, ...props }: Partial
       onIntroduction={vi.fn()}
       onCancel={vi.fn()}
       onContinue={vi.fn()}
-      continueLabel="Start game"
+      continueLabel="Start Game"
       {...props}
     />
   );
@@ -578,7 +578,7 @@ describe('Begin and group minimums', () => {
   it('stays disabled while any group is short, on any page, and enables once every group meets its minimum', async () => {
     const user = userEvent.setup();
     render(<Harness traitGroups={counted} />);
-    const begin = screen.getByRole('button', { name: 'Start game' });
+    const begin = screen.getByRole('button', { name: 'Start Game' });
     expect(begin).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: /^Practice/ }));
@@ -600,7 +600,7 @@ describe('Begin and group minimums', () => {
     render(<Harness traitGroups={[...groups, omens]} traits={[...traits, ...unseen]} />);
     expect(screen.queryByRole('button', { name: /^Omens/ })).toBeNull();
     expect(within(screen.getByRole('button', { name: /^Practice/ })).getByLabelText('0 of 1 selected')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start game' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Start Game' })).toBeDisabled();
   });
 });
 
@@ -1141,7 +1141,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     };
     const user = userEvent.setup();
     render(<CastHarness cast={{ ...castWorld, entities: [bonded, bob] }} />);
-    const begin = screen.getByRole('button', { name: 'Start game' });
+    const begin = screen.getByRole('button', { name: 'Start Game' });
     expect(begin).toBeDisabled();
     await user.click(within(nav()).getByRole('button', { name: /^Bond/ }));
     await user.click(screen.getByRole('checkbox', { name: 'Wild' }));

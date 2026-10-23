@@ -23,7 +23,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 3. Open the **Library Additions** category. See [Library Additions](Starting-a-Game#library-additions).
 4. Select the entities and dictionaries from your library that this game should have.
 5. To start future games in this world with the same picks, select **Remember Additions**.
-6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
+6. Select **Start Game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Remove a Cast Member
 <!-- keywords: delete, character, npc, get rid of, kick out, drop, wrong name listed, not a real person, clean up list, false positive, dismiss, bogus entry, trash button missing -->
@@ -127,7 +127,7 @@ The game picks up entities written with **names**. It can't pick up entities wri
 ## How a Game Opens
 <!-- keywords: first message, intro scene, alternate greetings, random beginning, reroll the start, same start every time, why this beginning, starts with filled input -->
 
-At **Start game**, the game draws one opening. **Quick Start** draws the same way. The [World Editor](World-Editor-Openings) page explains how authors write them.
+At **Start Game**, the game draws one opening. **Quick Start** draws the same way. The [World Editor](World-Editor-Openings) page explains how authors write them.
 
 | At Enter World you pick | The draw uses |
 |---|---|

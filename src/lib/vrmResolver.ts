@@ -33,11 +33,14 @@ export interface VrmContext {
 const bundled: VrmSource = { kind: 'bundled' };
 
 /** A library id that is gone resolves like a missing default; a store id that is gone resolves to none. */
-function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: () => VrmSource): VrmSource | undefined {
-  if (!pick) return undefined;
-  if (pick.kind === 'default') return userDefault();
+export function namedVrmSource(pick: NamedVrm, ctx: Pick<VrmContext, 'store' | 'libraryIds'>): VrmSource | undefined {
   if (pick.kind === 'world') return ctx.store && Object.hasOwn(ctx.store, pick.id) ? { kind: 'world', id: pick.id } : undefined;
   return ctx.libraryIds.has(pick.id) ? { kind: 'library', id: pick.id } : bundled;
+}
+
+function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: () => VrmSource): VrmSource | undefined {
+  if (!pick) return undefined;
+  return pick.kind === 'default' ? userDefault() : namedVrmSource(pick, ctx);
 }
 
 const deviceDefault = (ctx: VrmContext): VrmSource =>
@@ -59,15 +62,27 @@ export function resolvePlayedVrm(ctx: VrmContext): VrmSource | undefined {
     const legacy = resolvePick(ctx.chosen.pick, ctx, () => deviceDefault(ctx));
     if (legacy) return legacy;
   }
-  const { played, customPersona, legacyFallback } = ctx;
-  const order = played.source === 'library' ? [played.entity.vrmPick, customPersona?.vrmPick, legacyFallback]
-    : played.source === 'world' ? [played.entity.vrmPick, legacyFallback]
-    : [customPersona?.vrmPick, legacyFallback];
-  for (const pick of order) {
+  for (const pick of playedOrder(ctx)) {
     const source = resolvePick(pick, ctx, () => playedDefault(ctx));
     if (source) return source;
   }
   return undefined;
+}
+
+/** What the played side's precedence reads, apart from the library and the save. */
+export type PlayedVrmSources = Pick<VrmContext, 'store' | 'played' | 'customPersona' | 'legacyFallback'>;
+
+/** The played side's picks in precedence order, by persona source. */
+function playedOrder({ played, customPersona, legacyFallback }: PlayedVrmSources): (VrmPick | undefined)[] {
+  return played.source === 'library' ? [played.entity.vrmPick, customPersona?.vrmPick, legacyFallback]
+    : played.source === 'world' ? [played.entity.vrmPick, legacyFallback]
+    : [customPersona?.vrmPick, legacyFallback];
+}
+
+/** The pick the played side lands on, the save's chosen Avatar aside: the first by persona that is not none.
+ *  Only a store id that is gone falls through, so the library list is not needed. */
+export function playedVrmPick(sources: PlayedVrmSources): VrmPick | undefined {
+  return playedOrder(sources).find((pick) => pick && (pick.kind !== 'world' || namedVrmSource(pick, { ...sources, libraryIds: new Set() })));
 }
 
 /** The Avatar `entity` shows in context. The played entity resolves through the played side; any other entity

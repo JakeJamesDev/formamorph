@@ -117,7 +117,7 @@ test('a new author walks the whole tour by its examples and plays the world', as
   const setup = page.getByRole('dialog', { name: /^Enter / });
   await expect(introduction.or(setup).first()).toBeVisible();
   if (await introduction.isVisible()) await introduction.getByRole('button', { name: 'Close' }).click();
-  await setup.getByRole('button', { name: 'Start game' }).click();
+  await setup.getByRole('button', { name: 'Start Game' }).click();
   await expect(setup).toBeHidden();
 
   await page.getByRole('tab', { name: 'Location', exact: true }).click();
