@@ -4,6 +4,8 @@ import { benchEditorWorld, openAddFromLibrary, renderWorldEditorBench } from '@/
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import { blobHash } from '@/lib/blobHash';
 import { blobToDataUrl } from '@/lib/imageSource';
+import { buildEntityCardData } from '@/lib/entityFile';
+import { embedEntityCard } from '@/lib/entityCard';
 import type { Entity, World, WorldVrm } from '@/types';
 
 /**
@@ -145,6 +147,82 @@ describe('Add from Library', () => {
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(ctx().entities.find((e) => e.name === 'Tall Marn')).not.toHaveProperty('vrmPick');
     expect(ctx().worldOverview.vrmStore ?? {}).toEqual({});
+  });
+});
+
+function fakeWebp(): Uint8Array {
+  const payload = [1, 2, 3, 4];
+  const out = new Uint8Array(12 + 8 + payload.length);
+  const view = new DataView(out.buffer);
+  const put4 = (s: string, at: number) => { for (let i = 0; i < 4; i++) out[at + i] = s.charCodeAt(i); };
+  put4('RIFF', 0);
+  view.setUint32(4, out.length - 8, true);
+  put4('WEBP', 8);
+  put4('VP8 ', 12);
+  view.setUint32(16, payload.length, true);
+  out.set(payload, 20);
+  return out;
+}
+
+/** A character card whose entity picks an Avatar on the author's device and carries its file. */
+const cardCarrying = async (name: string, blob: Blob) => {
+  const vrm = { ...await storeEntry(name, blob), hash: '' };
+  const data = buildEntityCardData({ id: 'author-e', name: 'Kestrel', vrmPick: { kind: 'library', id: 'authors-record' }, vrm });
+  const bytes = embedEntityCard(fakeWebp(), JSON.stringify(data), { w: 4, h: 4 });
+  const file = new File([bytes], 'card.webp', { type: 'image/webp' });
+  Object.defineProperty(file, 'arrayBuffer', { value: async () => bytes.buffer });
+  return file;
+};
+
+/** Pick a card through the Entities tab's Import Entity… row and wait for its review. */
+const importCard = async (file: File) => {
+  openTab(/Entities/);
+  fireEvent.click(screen.getByRole('button', { name: 'Add to Entities' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import Entity…' }));
+  fireEvent.change(document.querySelector('input[type="file"][accept=".json,.png,.webp"]')!, { target: { files: [file] } });
+  return within(await screen.findByRole('dialog', { name: 'Import Entity' }));
+};
+
+describe('Importing a card', () => {
+  it('leaves the Avatar library unchanged when the review is canceled', async () => {
+    renderWorldEditorBench(worldWith(), 'advanced');
+    const review = await importCard(await cardCarrying('Crane', CRANE));
+
+    fireEvent.click(review.getByRole('button', { name: 'Cancel' }));
+    await awaitLibraryLookup();
+
+    expect(library.imported).toBe(0);
+    expect([...library.models.keys()]).toEqual(['heron']);
+  });
+
+  it('adds the Avatar on confirm and embeds it in the world store', async () => {
+    const { ctx } = renderWorldEditorBench(worldWith(), 'advanced');
+    const review = await importCard(await cardCarrying('Crane', CRANE));
+    expect(library.imported).toBe(0);
+
+    fireEvent.click(review.getByRole('button', { name: 'Add Entity' }));
+
+    await waitFor(() => expect(ctx().entities).toHaveLength(2));
+    expect(library.imported).toBe(1);
+    const store = ctx().worldOverview.vrmStore ?? {};
+    const [id, entry] = Object.entries(store)[0];
+    expect(Object.keys(store)).toHaveLength(1);
+    expect(entry.hash).toBe(library.models.get('imported-1')!.hash);
+    expect(ctx().entities.find((e) => e.name === 'Kestrel')?.vrmPick).toEqual({ kind: 'world', id });
+    // The review keeps the link by default, so the library copy picks the added record.
+    expect([...library.entities.values()].find((e) => e.name === 'Kestrel')?.data.vrmPick).toEqual({ kind: 'library', id: 'imported-1' });
+  });
+
+  it('reuses the library record that holds the same file on confirm', async () => {
+    const { ctx } = renderWorldEditorBench(worldWith(), 'advanced');
+    const review = await importCard(await cardCarrying('Heron', HERON));
+
+    fireEvent.click(review.getByRole('button', { name: 'Add Entity' }));
+
+    await waitFor(() => expect(ctx().entities).toHaveLength(2));
+    expect(library.imported).toBe(0);
+    expect([...library.models.keys()]).toEqual(['heron']);
+    expect(Object.values(ctx().worldOverview.vrmStore ?? {}).map((e) => e.name)).toEqual(['Grey Heron']);
   });
 });
 

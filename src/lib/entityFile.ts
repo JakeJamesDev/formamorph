@@ -135,11 +135,20 @@ export function buildEntityCardData(
   };
 }
 
-/** The parsed entity with the card's Avatar pick adopted into the Avatar library. */
-const adoptCardVrm = (entity: Entity, raw: unknown): Promise<Entity> => {
+/** A card's Avatar pick and carried file as read, not yet adopted into the Avatar library. */
+export interface CardVrmFields {
+  vrmPick?: unknown;
+  vrm?: unknown;
+}
+
+const cardVrmFields = (raw: unknown): CardVrmFields => {
   const { vrmPick, vrm } = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
-  return adoptCarriedVrm<Entity>({ ...entity, vrmPick, vrm });
+  return { vrmPick, vrm };
 };
+
+/** The parsed entity with the card's Avatar pick adopted into the Avatar library. */
+export const adoptCardVrm = (entity: Entity, fields: CardVrmFields): Promise<Entity> =>
+  adoptCarriedVrm<Entity>({ ...entity, ...fields });
 
 /**
  * Parse an embedded card payload into a NEW entity (fresh id, so importing the same card twice never collides).
@@ -423,16 +432,18 @@ export async function importEntityCard(file: File): Promise<Entity> {
   } catch {
     throw new Error('This character card is corrupted.');
   }
-  return adoptCardVrm(parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp')), raw);
+  return adoptCardVrm(parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp')), cardVrmFields(raw));
 }
 
 /**
  * Import a WebP, SillyTavern PNG, or SillyTavern JSON card with optional lorebook and library metadata.
- * Image cards use their pixels as the portrait; JSON cards keep their avatar URL.
+ * Image cards use their pixels as the portrait; JSON cards keep their avatar URL. A Formamorph card adopts its
+ * Avatar into the Avatar library, unless `deferVrm` asks for its fields back in `vrm` for `adoptCardVrm` later.
  */
 export async function importCharacterFile(
   file: File,
-): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks; libraryDetails?: LibraryDetails }> {
+  { deferVrm = false }: { deferVrm?: boolean } = {},
+): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks; libraryDetails?: LibraryDetails; vrm?: CardVrmFields }> {
   if (file.type === 'application/json' || /\.json$/i.test(file.name)) {
     const tavern = readTavernJson(await file.text());
     if (!tavern) throw new Error("This JSON isn't a SillyTavern character card.");
@@ -448,8 +459,11 @@ export async function importCharacterFile(
     } catch {
       throw new Error('This character card is corrupted.');
     }
-    const entity = await adoptCardVrm(parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp')), raw);
-    return { entity, book: null, links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) };
+    const parsed = parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp'));
+    const read = { book: null, links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) };
+    return deferVrm
+      ? { entity: parsed, vrm: cardVrmFields(raw), ...read }
+      : { entity: await adoptCardVrm(parsed, cardVrmFields(raw)), ...read };
   }
 
   const tavern = readTavernCard(bytes);

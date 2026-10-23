@@ -13,7 +13,7 @@ import { readLibraryDetails } from '@/lib/contentAuthor';
 import { contentLinkStatusLine } from '@/lib/contentLink';
 import { isHelpSeen } from '@/lib/helpSeenStore';
 import { withEntityLocations } from '@/lib/entityPresence';
-import { importCharacterFile } from '@/lib/entityFile';
+import { adoptCardVrm, importCharacterFile, type CardVrmFields } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
@@ -149,6 +149,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   const [importReview, setImportReview] = useState<{
     kind: LibraryKind; item: LinkableContent;
     libraryDetails?: Awaited<ReturnType<typeof importCharacterFile>>['libraryDetails'];
+    /** A card's Avatar, held until the review is confirmed. */
+    vrm?: CardVrmFields;
   } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [connect, setConnect] = useState<ConnectFlow | null>(null);
@@ -536,8 +538,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         const item = parseDictionaryImport(raw, file.name.replace(/\.[^.]+$/, ''));
         setImportReview({ kind, item, libraryDetails: readLibraryDetails(raw) });
       } else {
-        const { entity: item, libraryDetails } = await importCharacterFile(file);
-        setImportReview({ kind, item, libraryDetails });
+        const { entity: item, libraryDetails, vrm } = await importCharacterFile(file, { deferVrm: true });
+        setImportReview({ kind, item, libraryDetails, vrm });
       }
     } catch (error) {
       toastError(error, 'Could not read this file.');
@@ -549,7 +551,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const review = importReview;
     setImportReview(null);
     if (!review) return;
-    const { kind, item, libraryDetails } = review;
+    const { kind, libraryDetails, vrm } = review;
+    let { item } = review;
+    if (vrm) {
+      try {
+        item = await adoptCardVrm(item as Entity, vrm);
+      } catch (error) {
+        toastError(error, 'Could not add the Avatar to your library.');
+        return;
+      }
+      if (!mounted.current) return;
+    }
     let entry: PendingAdd = { kind, item };
     if (link) {
       try {
@@ -561,7 +573,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       }
     }
     beginAdd([entry]);
-  }, [beginAdd, importReview, locations, placeholders]);
+  }, [beginAdd, importReview, locations, mounted, placeholders]);
 
   /** The world was saved or rolled back, so nothing is waiting on it any more. */
   const clearPendingLinks = useCallback(() => setPendingIds([]), []);
