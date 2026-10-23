@@ -18,3 +18,5 @@ node-llama-cpp leaves the app (spec: Binaries; Q1). Remove the dependency, its p
 - [ ] The packaged-build smoke test from ticket 09 passes again after the removal.
 - [ ] The installer size before and after is in the landing.
 - [ ] Changelog fragment in `docs-internal/changelog.d/`.
+
+For you: at the merge to main, add step 4d from the spec folder's `release-step-4d.md` to the release skill, right before "## 5. Gates". The skill folder is untracked, so the ticket can't carry it.
