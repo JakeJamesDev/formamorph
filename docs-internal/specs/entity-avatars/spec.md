@@ -219,6 +219,12 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **T04-5:** the played entity's row behaves like any other row. The fallback You row only selects and never opens a popup.
 - **T04-6:** the stat panel's default pick counts an Avatar as a visual, so both use the same visual test. With no pick, the stat panel stays scene-first, because the played entity's stats already sit in the player rows. So at game start the view can show the played entity while the stat panel shows a scene entity. They agree once the player picks anyone, and selecting the fallback You row returns the stat panel to its scene default.
 - **T04-7:** an NPC Avatar renders as its file is authored: no color overrides, and hair and morph values that leave the mesh unchanged. Only its own stats' morph bindings move it.
+- **T07-1:** a card or listing carries its pick plus an embedded Avatar (name, file, hash) when the pick names a specific Avatar. Import adds the file to the library with hash reuse and rewrites the pick to that library id. A library pick that can't be resolved at export goes out as no pick.
+- **T07-2:** the World Editor's card export of a world entity embeds its store Avatar the same way, so any Avatar an author put on an entity travels with the file (Q23 reopened).
+- **T07-3:** every entity import dedupes by hash into the library: Main Menu card import (single and batch), World Editor card import, and community entity downloads. A World Editor import then embeds into the store per T06-2.
+- **T07-4:** downloading an entity listing to the device as a card carries its embedded Avatar through unchanged.
+- **T07-5:** publish already refuses over-limit uploads before sending. Ticket 07 embeds the Avatar before the payload is measured and adds tests for both limits. It adds no new UI.
+- **T07-6:** a pick of none or User's Default exports as it is, with no embedded file.
 
 ## Further Notes
 
