@@ -26,7 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Exported character cards and published entities carry the entity's Avatar, and importing one adds it to your Avatar library.** Importing the same Avatar twice keeps one copy. Publish counts the Avatar toward the 25 MB entity limit before upload.
 - **⚙️ Backend**
   - **Llama Server Engine:**
-    - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds. The engine still runs node-llama-cpp.
+    - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.
     - **The desktop engine now runs models through the bundled llama-server instead of node-llama-cpp.** Every engine setting maps to a server flag. A failed GPU load retries once on the CPU, and the server exits with the app, even on a crash.
 
 #### ➖ Removed
