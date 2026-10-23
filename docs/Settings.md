@@ -264,6 +264,8 @@ On the desktop app, the **Built-In Engine** preset shows the engine's own panel 
 | **Max Output Tokens** | Caps how long each answer can be. An answer at the cap ends at its last full sentence. |
 | **Top-p**, **Top-k**, **Min-p**, **Repetition Penalty** | **Advanced** on the panel. Sampling limits on which words the model picks. |
 
+Sampling changes apply on the next turn. The other changes need **Save & Reload Model**. **Reset to Defaults** sets the panel back.
+
 ### Engine Memory and Context
 <!-- keywords: flash attention off, kv cache, kv cache in ram, offload kv to cpu, ram instead of vram, quantize cache, q8_0, q4_0, parallel requests, unified kv, longer context fits, story too long -->
 
@@ -271,13 +273,13 @@ On the desktop app, the **Built-In Engine** preset shows the engine's own panel 
 |---|---|
 | **Parallel Requests** | **Advanced** on the panel. How many requests the model answers at the same time. With **Unified KV Cache** on, they share one context. With it off, each gets the full **Context Size** and uses more GPU memory. |
 | **Unified KV Cache** | **Advanced** on the panel. On by default. Parallel requests share one context, so extra requests add no GPU memory. A long request leaves less room for the others. Turn it off to give each request the full **Context Size**. |
-| **K Cache Type**, **V Cache Type** | **Advanced** on the panel. **F16** is full precision. **Q8_0** and **Q4_0** shrink the context, so a longer **Context Size** fits, at a small cost in quality. A quantized **V Cache Type** needs **Flash Attention** on. |
+| **K Cache Type**, **V Cache Type** | **Advanced** on the panel. **F16** is full precision. **Q8_0** and **Q4_0** shrink the context, so a longer **Context Size** fits, at a small cost in quality. A quantized **V Cache Type** needs **Flash Attention** on: while it is off, **Q8_0** and **Q4_0** are unavailable for **V Cache Type**. |
 | **KV Cache in RAM** | **Advanced** on the panel. Keeps the context in system RAM to free GPU memory. Replies can come slower. Use it when the model fits but a long **Context Size** does not. |
 
 ### Flash Attention
 <!-- keywords: flash attention, turn flash attention off, old gpu, quantized v cache needs flash attention, fa -->
 
-**Flash Attention** is in **Advanced** on the panel. It is on by default. It uses less GPU memory and is often faster. Off turns it off for real, so an old GPU that cannot run it still loads models. A quantized **V Cache Type** needs it on.
+**Flash Attention** is in **Advanced** on the panel. It is on by default. It uses less GPU memory and is often faster. Turn it off when an old GPU cannot run it. A quantized **V Cache Type** needs it on.
 
 ### Context Overflow
 <!-- keywords: context overflow, story longer than context, truncate middle, rolling window, stop at limit, context length error, too long -->
@@ -285,12 +287,10 @@ On the desktop app, the **Built-In Engine** preset shows the engine's own panel 
 **Context Overflow** is in **Advanced** on the panel. It sets what happens when the story is longer than **Context Size**.
 
 - **Truncate Middle** (default) keeps the system prompt and your first message, and drops messages from the middle.
-- **Rolling Window** drops the oldest messages first.
+- **Rolling Window** keeps the system prompt and drops the oldest messages first.
 - **Stop at Limit** stops the request with an error.
 
-It never cuts a message in half. A change applies on the next turn.
-
-Sampling changes apply on the next turn. The other changes need **Save & Reload Model**. **Reset to Defaults** sets the panel back.
+It never cuts a message in half. A change applies on the next turn, with no reload.
 
 ### Image
 <!-- route: settingsEndpoints.image -->
