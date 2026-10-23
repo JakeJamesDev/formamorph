@@ -59,9 +59,9 @@ const modelEndpoint = (cfg, model) =>
   model.modelPath ? engineUrl(model.enginePort ?? ENGINE_PORT) : (model.endpointUrl ?? cfg.endpointUrl);
 const modelToken = (cfg, model) => (model.modelPath ? "" : model.apiToken ?? cfg.apiToken ?? "");
 
-// The built-in engine is a plain Node module (no Electron): it loads a GGUF via node-llama-cpp and serves an
+// The built-in engine is a plain Node module (no Electron): it runs a GGUF on the bundled llama-server and serves an
 // OpenAI-compatible endpoint on 127.0.0.1. Driving it here is the only way to screen a catalog model the way
-// the desktop build actually runs it — notably the `<think>` re-wrapping, which an external server does not
+// the desktop build actually runs it — notably the `<think>` tag restore, which an external server does not
 // do (a reasoning model's answer otherwise arrives as bare chain-of-thought). Single model at a time: always
 // stopEngine() before starting the next.
 const require_ = createRequire(import.meta.url);

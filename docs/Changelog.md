@@ -42,6 +42,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Entity Avatars:**
     - **The 3D Player Avatar checkbox and the Custom Player Avatar uploader leave the World Overview.** An older world that had the checkbox on still shows the same Avatar. Its old Avatar now sits in the world's Avatars.
     - **The Enter World avatar step no longer has a Delete button.** Delete an Avatar from its tile menu on the library's **Avatars** tab, which names the saves and entities that use it.
+- **⚙️ Backend**
+  - **Llama Server Engine:**
+    - **The desktop build no longer ships node-llama-cpp.** Its dependency, its prebuilt packages and its packaging rules are gone, and the Windows payload is 4 MB smaller.
 
 #### 🔧 Fixed
 

@@ -1,4 +1,4 @@
-// Shapes a chat request into the prompt node-llama-cpp builds; fields other than `messages` pass through.
+// Shapes a chat request's messages for llama-server's chat template; fields other than `messages` pass through.
 
 /** A message's content, and how many image parts it dropped. Text parts join unless an image survives. */
 function shapeContent(content, keepImages) {

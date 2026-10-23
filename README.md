@@ -22,7 +22,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 - 🛠️ **World editor** — stats, entities, locations, traits, stat-updates, and a lore **dictionary**, all in a live editor
 - 🎭 **Character customization** — recolor a **3D VRM avatar** in real time (hair, skin & eye color, hairstyle), plus any body morphs the model itself provides; bring your own `.vrm` or use the bundled one
 - 🤖 **Bring your own AI** — any OpenAI-compatible chat-completions API; streaming responses
-- 🧠 **Run a model locally (desktop)** — the desktop app can download and run a **GGUF** model on your own machine (a bundled **node-llama-cpp** engine serving a local endpoint), with a built-in model manager, VRAM-tier picker, and resumable downloads — no external API needed
+- 🧠 **Run a model locally (desktop)** — the desktop app can download and run a **GGUF** model on your own machine (a bundled **llama.cpp** `llama-server` engine serving a local endpoint), with a built-in model manager, VRAM-tier picker, and resumable downloads — no external API needed
 - 🧮 **Scripts** — derive stats, rewrite narration and ask the player with sandboxed JS (see the [Scripts Guide](docs/ScriptsGuide.md))
 - 🔊 **Audio** — in-browser text-to-speech (Kokoro), plus per-location ambient sound and background music
 - 💾 **Saves** — multiple save slots with state rollback, stored locally in IndexedDB
