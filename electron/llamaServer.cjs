@@ -89,8 +89,8 @@ function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, 
     '--host', '127.0.0.1',
     '--port', String(port),
     '--log-jsonl',
-    // Thought text stays in `content`, as the app reads it.
-    '--reasoning-format', 'none',
+    // Each template's thoughts go to `reasoning_content`, never into `content`.
+    '--reasoning-format', 'deepseek',
     // Verbosity 4 is the lowest that prints the device and buffer-size lines the VRAM viewer reads.
     '-lv', '4',
   ];

@@ -101,8 +101,8 @@ export const PATH_TRIGGERS = {
   'testing/baseline/help-recall-blind-cases.json': ['testing/baseline/harness/help-recall-cases.ts'],
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
-  // The fake llama-server replays the run recorded at the pinned tag.
-  'electron/fixtures/llama-server/*.json': ['electron/fakeLlamaServer.mjs'],
+  // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.
+  'electron/fixtures/llama-server/*.json': ['electron/fakeLlamaServer.mjs', 'src/lib/aiRequest/aiStream.llamaServer.test.ts'],
   'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs'],
   // The pin load test runs the generator as a child process.
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],

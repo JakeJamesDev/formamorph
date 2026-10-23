@@ -1,7 +1,8 @@
 // Records the fake llama-server's fixtures from a real run of the pinned build: --list-devices, a load that
 // answers one chat turn, a load that fails on the KV cache, a CPU load and a fit-off load. `--thinking` records
-// one turn of a thinking model into <tag>-thinking.json. Rerun both after every pin bump.
-// Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>]
+// one turn of a Qwen-style thinking model into <tag>-thinking.json, `--gemma` one of a Gemma 4 model into
+// <tag>-gemma.json. Rerun all after every pin bump.
+// Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>]
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -24,6 +25,13 @@ const CHATS = {
     messages: [{ role: 'system', content: 'Answer briefly.' }, { role: 'user', content: 'What is 2+2? One word.' }],
     maxTokens: 600,
     template: true,
+  },
+  // Gemma 4 thinks only when the request turns it on.
+  gemma: {
+    messages: [{ role: 'system', content: 'Answer briefly.' }, { role: 'user', content: 'What is 2+2? One word.' }],
+    maxTokens: 600,
+    template: true,
+    extra: { chat_template_kwargs: { enable_thinking: true } },
   },
 };
 
@@ -79,10 +87,10 @@ async function scenario({ bin, modelPath, settings, chat }) {
 
   const result = { args, models, loadReply, outcome };
   if (outcome === 'loaded' && chat) {
-    const { messages, maxTokens, template } = CHATS[chat];
-    const body = { model: modelId, messages, max_tokens: maxTokens, temperature: 0, seed: 1 };
+    const { messages, maxTokens, template, extra } = CHATS[chat];
+    const body = { model: modelId, messages, max_tokens: maxTokens, temperature: 0, seed: 1, ...extra };
     // The rendered prompt shows whether the template's generation prompt opens the thought itself.
-    if (template) result.applyTemplate = await (await fetch(`${base}/apply-template`, { method: 'POST', body: JSON.stringify({ model: modelId, messages }) })).json();
+    if (template) result.applyTemplate = await (await fetch(`${base}/apply-template`, { method: 'POST', body: JSON.stringify({ model: modelId, messages, ...extra }) })).json();
     result.chat = await (await fetch(`${base}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body) })).json();
     result.chatStream = await (await fetch(`${base}/v1/chat/completions`, { method: 'POST', body: JSON.stringify({ ...body, stream: true }) })).text();
     await fetch(`${base}/models/unload`, { method: 'POST', body: JSON.stringify({ model: modelId }) });
@@ -117,24 +125,29 @@ async function scenario({ bin, modelPath, settings, chat }) {
   });
 }
 
-const thinkingAt = process.argv.indexOf('--thinking');
-const thinkingModel = thinkingAt >= 0 ? process.argv[thinkingAt + 1] : null;
-const modelPath = thinkingAt === 2 ? null : process.argv[2];
-if (!modelPath && !thinkingModel) { console.error('Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>]'); process.exit(1); }
+const flagModel = (flag) => {
+  const at = process.argv.indexOf(flag);
+  return at >= 0 ? process.argv[at + 1] : null;
+};
+const thinkingModel = flagModel('--thinking');
+const gemmaModel = flagModel('--gemma');
+const modelPath = process.argv[2]?.startsWith('--') ? null : process.argv[2];
+if (!modelPath && !thinkingModel && !gemmaModel) { console.error('Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>]'); process.exit(1); }
 const bin = ls.binaryPath();
 if (!bin) { console.error('No bundled llama-server. Run npm run llama-server:fetch first.'); process.exit(1); }
 const tag = JSON.parse(await (await import('node:fs/promises')).readFile(path.join(HERE, 'llamaServerPin.json'), 'utf8')).tag;
 
-// A thinking model whose template opens the thought in its generation prompt: one turn, kept apart.
-if (thinkingModel) {
+// One turn of a thinking model, kept apart: its thought must arrive in `reasoning_content`, never in `content`.
+for (const [model, chat] of [[thinkingModel, 'thinking'], [gemmaModel, 'gemma']]) {
+  if (!model) continue;
   const settings = { contextSize: 4096, gpuLayers: ls.GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 1 };
-  const thinking = await scenario({ bin, modelPath: thinkingModel, settings, chat: 'thinking' });
+  const recorded = await scenario({ bin, modelPath: model, settings, chat });
   await mkdir(OUT_DIR, { recursive: true });
-  const file = path.join(OUT_DIR, `${tag}-thinking.json`);
-  await writeFile(file, `${JSON.stringify({ tag, model: path.basename(thinkingModel), applyTemplate: thinking.applyTemplate, chat: thinking.chat, chatStream: thinking.chatStream }, null, 1)}\n`);
-  console.log(`Recorded ${path.relative(ROOT, file)}: ${thinking.outcome}`);
-  if (!modelPath) process.exit(0);
+  const file = path.join(OUT_DIR, `${tag}-${chat}.json`);
+  await writeFile(file, `${JSON.stringify({ tag, model: path.basename(model), applyTemplate: recorded.applyTemplate, chat: recorded.chat, chatStream: recorded.chatStream }, null, 1)}\n`);
+  console.log(`Recorded ${path.relative(ROOT, file)}: ${recorded.outcome}`);
 }
+if (!modelPath) process.exit(0);
 
 const listDevices = await new Promise((resolve) => {
   let out = '';
