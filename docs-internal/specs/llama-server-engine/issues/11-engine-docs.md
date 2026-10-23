@@ -1,6 +1,7 @@
 # 11: Engine Docs
 
-Status: ready-for-agent
+Status: done
+Base: 52995d835
 Blocked by: 05, 06, 07, 08
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
