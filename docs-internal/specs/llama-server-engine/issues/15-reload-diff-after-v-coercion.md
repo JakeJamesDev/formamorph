@@ -1,6 +1,6 @@
 # 15: Reload Diff After V Coercion
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,6 +15,18 @@ The panel compares against the value main would apply, using the same coercion r
 
 ## Acceptance criteria
 
-- [ ] A panel test: stored V `q8_0` with Flash Attention off and an engine that applied `f16` shows Save & Reload disabled.
-- [ ] The guard is proven to bite: with the old comparison back, the test fails.
-- [ ] Main and the panel read one coercion rule.
+- [x] A panel test: stored V `q8_0` with Flash Attention off and an engine that applied `f16` shows Save & Reload disabled. (`stay disarmed when main coerced a stored quantized V…` in `LocalModelPanel.test.tsx`)
+- [x] The guard is proven to bite: with the old comparison back, the test fails. (ran it: 1 failed, 23 passed)
+- [x] Main and the panel read one coercion rule. (`electron/cacheTypes.cjs`; `llamaServer.cjs` re-exports it)
+
+## Landed
+
+First renderer import from `electron/`. Vite serves a `.cjs` raw in dev, so `vite.config.js` has a small `cache-types-cjs` plugin that wraps that one file as an ES module. The build resolves it unchanged.
+
+**Not verified**
+- Dev server in a browser: I checked the transformed module by importing it in Node, not by loading the page.
+- Packaging: I did not check that electron-builder ships `electron/cacheTypes.cjs`.
+
+**For you**
+- Local Model panel, Advanced: with a stored Q8_0 V Cache Type and Flash Attention off (the panel blocks making this pair, so use stale settings), Save & Reload stays off after a load.
+- No changelog fragment: the fix is for an unreleased feature.

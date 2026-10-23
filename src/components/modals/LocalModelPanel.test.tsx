@@ -163,6 +163,13 @@ describe('local model KV cache rows', () => {
     expect(picker('localVCacheType')).toHaveTextContent('Q8_0');
   });
 
+  it('stay disarmed when main coerced a stored quantized V to f16 with Flash Attention off', async () => {
+    localStorage.setItem('FORMAMORPH_localFlashAttention', 'false');
+    localStorage.setItem('FORMAMORPH_localVCacheType', 'q8_0');
+    await advanced(readyEngine({ flashAttention: false, vCacheType: 'f16' }));
+    expect(reloadButton()).toBeDisabled();
+  });
+
   it('Reset restores the defaults', async () => {
     localStorage.setItem('FORMAMORPH_localKCacheType', 'q4_0');
     localStorage.setItem('FORMAMORPH_localVCacheType', 'q8_0');

@@ -42,7 +42,7 @@ export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 2;
 // VRAM. Off gives every slot a full contextSize (--kv-unified left out, -c = contextSize × slots).
 export const DEFAULT_LOCAL_UNIFIED_KV_CACHE = true;
 // Precision of the context's K and V halves (llama-server -ctk / -ctv). Lower precision shrinks the context
-// for a little quality; a quantized V needs Flash Attention. Mirrors CACHE_TYPES in electron/llamaServer.cjs.
+// for a little quality; a quantized V needs Flash Attention. Mirrors CACHE_TYPES in electron/cacheTypes.cjs.
 export type LocalCacheType = 'f16' | 'q8_0' | 'q4_0';
 export const LOCAL_CACHE_TYPES: { value: LocalCacheType; label: string }[] = [
   { value: 'f16', label: 'F16' },
