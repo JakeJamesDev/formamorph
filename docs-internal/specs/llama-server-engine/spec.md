@@ -236,7 +236,7 @@ From ticket intent questions.
 - **T08-5.** Deleting a model in the app's folder also deletes its exactly named projector, and nothing else.
 - **T08-6.** A "Vision" badge, styled like the existing "Reasoning" badge, marks paired models in Installed and vision entries in Recommended.
 - **T17.** `llama-server` runs with `--reasoning-format deepseek`, and the proxy passes `reasoning_content` through. The app reads it like any endpoint's separate reasoning field. This replaces T03-3 and the `--reasoning-format none` line: a Gemma 4 template's thought tags reached the narration under `none`.
-- **T18.** A conversation with tool turns keeps its `tool_calls`, `tool` messages and `reasoning_content` through the proxy, and a trailing `tool` message stays a `tool` message. T03-1 and T03-2 still apply to conversations without tool turns.
+- **T18.** A conversation with tool turns keeps its `tool_calls`, `tool` messages and `reasoning_content` through the proxy, and a trailing `tool` message stays a `tool` message. T03-1 and T03-2 still apply to conversations without tool turns. A tool conversation is one with an assistant message carrying `tool_calls`; inside it, system messages still merge, text still flattens, and unknown roles still drop. Context Overflow never splits an assistant `tool_calls` message from its `tool` replies and keeps the current tool round whole; a round that doesn't fit gives the T07-3 context stop.
 - **T14.** `--cache-ram` stays at the server default (8192 MiB), as LM Studio leaves it. Ticket 14 is wontfix.
 - **T16.** The share counts the output buffer too; T04-3 is amended to match the code. Ticket 16 adds the test. Every recorded output buffer is a host buffer, so it stays out of the share; only an on-device output buffer counts.
 
