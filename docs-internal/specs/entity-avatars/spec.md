@@ -244,6 +244,10 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **T13-2:** a store Avatar exports under the library's file-name rule: its display name, with `.vrm`, or `.glb` when the file has no VRM metadata.
 - **T13-3:** history rows read "Add Avatar: <name>", "Rename Avatar: <new name>" and "Delete Avatar: <name>". An empty name reads "Unnamed".
 - **T13-4:** a library copy counts as an add in history.
+- **T14-1:** the legacy default-avatar-id save migration stays. It is tested, and the library delete warning depends on it. Ticket 14 removes only its orphaned comment and explains its cast.
+- **T14-2:** the long TSDoc to shorten is on the Avatar source URL hook.
+- **T14-3:** the played-Avatar hooks module is renamed after the library-Avatar hooks it holds, and the visual test moves into `src/lib`.
+- **T14-4:** the one player-facing "Default Avatar" casing fix is the library delete message. Comments that mean the bundled file stay as they are.
 
 ## Further Notes
 
