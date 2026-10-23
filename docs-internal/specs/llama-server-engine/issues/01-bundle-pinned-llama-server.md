@@ -1,6 +1,6 @@
 # 01: Bundle Pinned llama-server
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,9 +17,19 @@ This ticket only ships the files. The engine still runs node-llama-cpp until tic
 
 ## Acceptance criteria
 
-- [ ] The fetch step downloads the pinned tag's assets for all three platforms and refuses an unknown tag with a clear error.
-- [ ] A second run with the same tag downloads nothing.
-- [ ] A packaged Windows build contains `llama-server` and its backend DLLs outside the asar archive.
-- [ ] A test checks the asset-name mapping per platform against the pinned tag's real asset list.
-- [ ] The `release` skill has the check-and-bump step, and it names the follow-up checks.
-- [ ] Changelog fragment in `docs-internal/changelog.d/`.
+- [x] The fetch step downloads the pinned tag's assets for all three platforms and refuses an unknown tag with a clear error. Real run fetched all five builds; the unknown-tag test passes.
+- [x] A second run with the same tag downloads nothing. Real rerun said "up to date" in 0.07 s; a test counts downloads.
+- [x] A packaged Windows build contains `llama-server` and its backend DLLs outside the asar archive. `npm run desktop:build`, then read `release/win-unpacked/resources/llama-server/win-x64-vulkan`.
+- [x] A test checks the asset-name mapping per platform against the pinned tag's real asset list. `scripts/fetchLlamaServer.test.mjs` against a recorded list; a wrong name fails it.
+- [ ] The `release` skill has the check-and-bump step, and it names the follow-up checks. Written, but `.claude/skills` is untracked, so it is not in the commit.
+- [x] Changelog fragment in `docs-internal/changelog.d/`.
+
+## Landed
+
+**Not verified**
+- The `release` skill step: the skill folder is not tracked in git. The edited file is in the shared notes folder as `release-skill-with-4d.md`; the main checkout's skill needs the same step 4d.
+- macOS and Linux unpacking: only the Windows host ran. Symlinks in those archives need a mac or Linux runner.
+- The `extraResources` entries for macOS and Linux: not built here.
+
+**For you**
+- Windows signing now covers every `.exe` in `resources/llama-server/` (about 25 unused llama.cpp tools). Look at the build time; pruning them is a later choice.

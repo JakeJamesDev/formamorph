@@ -24,6 +24,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Enter World shows the avatar step when the persona you pick has an Avatar.** The button switches between **Continue to Avatar** and **Start Game** as you change persona. You pick a library Avatar only under User's Default, starting on your default.
     - **In play, one entity view shows each entity's Avatar, 3D model or image, and replaces the separate Avatar tab.** It shows the Avatar first, then the model, then the image, unless you pick another with **Display by Default**. Select an entity to see it. On mobile, the **View** tab holds it.
     - **Exported character cards and published entities carry the entity's Avatar, and importing one adds it to your Avatar library.** Importing the same Avatar twice keeps one copy. Publish counts the Avatar toward the 25 MB entity limit before upload.
+- **⚙️ Backend**
+  - **Llama Server Engine:**
+    - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds. The engine still runs node-llama-cpp.
 
 #### ➖ Removed
 
