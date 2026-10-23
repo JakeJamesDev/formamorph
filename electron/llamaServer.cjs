@@ -100,6 +100,8 @@ function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, 
     '--log-jsonl',
     // Thought text stays in `content`, as the app reads it.
     '--reasoning-format', 'none',
+    // Verbosity 4 is the lowest that prints the device and buffer-size lines the VRAM viewer reads.
+    '-lv', '4',
   ];
   // -c is the whole KV pool, split across slots. Unified: one pool the slots share. Not unified: a pool of
   // Context Size × slots, so each slot holds a full Context Size.
@@ -207,6 +209,85 @@ function parseLogLine(line) {
   };
 }
 
+// `llama_prepare_model_devices: using device Vulkan0 (NVIDIA GeForce RTX 4090) (0000:01:00.0) - 21970 MiB free`
+const USING_DEVICE = /\busing device (\S+) .* - (\d+) MiB free\s*$/;
+// `load_tensors:      Vulkan0 model buffer size =  2430.74 MiB`; RS is a hybrid model's recurrent state, its KV.
+const BUFFER_SIZE = /:\s+(\S+)\s+(?:model|KV|RS|compute|output) buffer size =\s*([\d.]+) MiB/;
+// CPU, CPU_Mapped, CPU_REPACK and Vulkan_Host buffers live in system RAM.
+const isHostBuffer = (name) => /^CPU|_Host$/.test(name);
+
+/**
+ * Folds an instance's load log into running sums. `fields(devices)` gives the status's VRAM fields, summed over
+ * the devices the instance logged, with totals from `devices` (the start's `--list-devices`).
+ */
+function memoryTally() {
+  const freeMB = new Map();
+  let vramMB = 0;
+  let buffers = 0;
+  return {
+    feed(text) {
+      const device = USING_DEVICE.exec(text);
+      if (device) { freeMB.set(device[1], Number(device[2])); return; }
+      const buffer = BUFFER_SIZE.exec(text);
+      if (buffer && !isHostBuffer(buffer[1])) { vramMB += Number(buffer[2]); buffers++; }
+    },
+    fields(devices) {
+      const used = devices.filter((d) => freeMB.has(d.id));
+      const sum = (values) => (values.length ? values.reduce((a, b) => a + b, 0) : null);
+      return {
+        engineVramMB: buffers ? Math.round(vramMB) : null,
+        deviceVramFreeMB: sum([...freeMB.values()]),
+        deviceVramTotalMB: sum(used.map((d) => d.totalMB)),
+      };
+    },
+  };
+}
+
+/** `name` without its folder and `.exe`, so Windows' `llama-server.exe` and macOS' full path both read `llama-server`. */
+const programOf = (name) => path.basename(String(name)).replace(/\.exe$/i, '');
+
+/**
+ * The model instance's pid among `rows` ({ pid, ppid, name }): the llama-server under `rootPid` whose parent is
+ * a llama-server too, since the router spawns it. `rootPid` is the router, or on POSIX its supervising shell.
+ */
+function instancePid(rows, rootPid) {
+  const byPid = new Map(rows.map((r) => [r.pid, r]));
+  // The instance sits two levels under the root at most; the hop cap only stops a pid cycle in a stale table.
+  const under = (r) => {
+    for (let p = r, hops = 0; p && hops < 8; p = byPid.get(p.ppid), hops++) if (p.ppid === rootPid) return true;
+    return false;
+  };
+  const found = rows.find((r) => programOf(r.name) === 'llama-server' && programOf(byPid.get(r.ppid)?.name ?? '') === 'llama-server' && under(r));
+  return found?.pid ?? null;
+}
+
+/** `<pid> <ppid> <name>` lines → rows; a name may hold spaces. */
+function parseProcessRows(text) {
+  const rows = [];
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line);
+    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: m[3] });
+  }
+  return rows;
+}
+
+/** Every process as { pid, ppid, name }. Answers [] when the listing fails or hangs. */
+function listProcesses({ platform = process.platform, spawn = require('node:child_process').spawn, timeoutMs = 15000 } = {}) {
+  const [command, args] = platform === 'win32'
+    ? ['powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "Get-CimInstance Win32_Process | ForEach-Object { '{0} {1} {2}' -f $_.ProcessId, $_.ParentProcessId, $_.Name }"]]
+    : ['ps', ['-A', '-o', 'pid=', '-o', 'ppid=', '-o', 'comm=']];
+  return new Promise((resolve) => {
+    let out = '';
+    let child;
+    try { child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); } catch { return resolve([]); }
+    const timer = setTimeout(() => { try { child.kill(); } catch { /* already gone */ } }, timeoutMs);
+    child.stdout?.on('data', (c) => { out += c; });
+    child.stderr?.on('data', () => { /* drained, never read */ });
+    child.once('error', () => { clearTimeout(timer); resolve([]); });
+    child.once('close', () => { clearTimeout(timer); resolve(parseProcessRows(out)); });
+  });
+}
+
 /**
  * Restates a failed load in the Local Model settings' names, from the instance's log lines. Null when the
  * log names no cause this knows, so the caller can fall back to the exit code.
@@ -234,4 +315,5 @@ module.exports = {
   freePort, errorText, spawnCommand,
   buildId, cpuNeedsOwnBuild, binaryPath, presetIni, serverArgs, cacheType, effectiveVCacheType,
   parseListDevices, listServerDevices, backendOf, deviceListing, sseReader, loadPercent, parseLogLine, describeLoadError,
+  memoryTally, instancePid, parseProcessRows, listProcesses,
 };

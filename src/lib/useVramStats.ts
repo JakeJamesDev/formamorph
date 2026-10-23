@@ -28,7 +28,7 @@ export interface VramStats {
   status: VramStatus;
   gpus: VramGpu[];
   processes: VramProcess[];
-  /** PID of our own process (the desktop main process, which hosts the bundled engine), for self-attribution. */
+  /** PID of the llama-server model instance, which holds our VRAM, for self-attribution. Null with no model. */
   selfPid: number | null;
   lastUpdated: number | null;
 }

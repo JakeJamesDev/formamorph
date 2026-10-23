@@ -76,7 +76,8 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     const send = (event) => { for (const res of sseClients) res.write(`data: ${JSON.stringify(fill(event))}\n\n`); };
     const timers = new Set();
     const later = (ms, fn) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); };
-    const router = { child, args, modelId, loaded: false };
+    // Under its POSIX shell the router is a pid of its own; the instance gets one per load.
+    const router = { child, args, modelId, loaded: false, wrapped, pid: wrapped ? nextPid++ : child.pid, instancePid: null };
     routers.push(router);
 
     const replay = (events, lines) => {
@@ -104,6 +105,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
       if (req.method === 'POST' && url.pathname === '/models/load') {
         await body(req);
         json(res, 200, fill(scenario.loadReply));
+        router.instancePid = nextPid++;
         return replay(scenario.loadEvents, scenario.load);
       }
       if (req.method === 'POST' && url.pathname === '/models/unload') {
@@ -159,5 +161,16 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     routerCalls: () => calls.filter((c) => !c.args.includes('--list-devices')),
     /** Processes still running: routers plus a loaded model instance each. */
     liveProcesses: () => routers.reduce((n, r) => n + (r.child.alive ? 1 : 0) + (r.loaded ? 1 : 0), 0),
+    /** The OS process table as the engine's listProcesses answers it: each live router's tree, among others. */
+    listProcesses: async () => {
+      const exe = (posix) => (posix ? '/opt/formamorph/llama-server' : 'llama-server.exe');
+      const rows = [{ pid: 4, ppid: 0, name: 'System' }, { pid: process.pid, ppid: 1, name: 'Formamorph Engine' }];
+      for (const r of routers.filter((x) => x.child.alive)) {
+        if (r.wrapped) rows.push({ pid: r.child.pid, ppid: process.pid, name: 'sh' });
+        rows.push({ pid: r.pid, ppid: r.wrapped ? r.child.pid : process.pid, name: exe(r.wrapped) });
+        if (r.loaded) rows.push({ pid: r.instancePid, ppid: r.pid, name: exe(r.wrapped) });
+      }
+      return rows;
+    },
   };
 }

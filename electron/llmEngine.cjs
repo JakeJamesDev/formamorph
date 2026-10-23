@@ -48,6 +48,7 @@ const NO_ENGINE = {
   gpuDeviceRawIndex: null,
   gpuDeviceOrigin: null,
   gpuDeviceOptions: null,
+  serverPid: null,
 };
 
 // Serializable status shared with the renderer (no live handles). status: stopped|loading|ready|error.
@@ -111,7 +112,7 @@ const withTimeout = (promise, ms) => {
  * One engine over its own `llama-server`. `spawn` starts processes (the fake server's seam), `binaryPath`
  * finds the bundled build, `workRoot` holds each start's preset and empty model cache.
  */
-function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.binaryPath, platform = process.platform, workRoot = os.tmpdir() } = {}) {
+function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.binaryPath, platform = process.platform, workRoot = os.tmpdir(), listProcesses = () => llamaServer.listProcesses({ platform }) } = {}) {
   let state = stoppedState();
   const statusListeners = new Set();
   // The live start (see `start`). Null while stopped.
@@ -156,7 +157,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
         resolve(result);
       };
       // One router process: its port, status stream, exit, and the instance's recent log lines.
-      const server = { modelId: l.modelId, child: null, port: null, sse: null, exited: Promise.resolve(null), loaded: false, unloaded: null, onLost: null, log: [] };
+      const server = { modelId: l.modelId, child: null, port: null, sse: null, exited: Promise.resolve(null), loaded: false, unloaded: null, onLost: null, log: [], memory: llamaServer.memoryTally() };
       l.server = server;
       const fail = (fallback) => finish({ ok: false, error: llamaServer.describeLoadError(server.log, { ...l.settings, cpu }) ?? fallback });
 
@@ -195,6 +196,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
             if (!line.trim()) continue;
             const entry = llamaServer.parseLogLine(line);
             if (entry.port != null) {
+              if (!server.loaded) server.memory.feed(entry.text);
               server.log.push(entry.text);
               if (server.log.length > LOG_LINES_KEPT) server.log.shift();
             } else if (!listening && entry.text.includes('listening on')) {
@@ -423,7 +425,17 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     }
     if (!isCurrent()) return abandoned();
     if (l.lost) return fail(l.lost);
-    setState({ status: 'ready', modelPath, modelId, port, error: null, loadProgress: null, ...applied, ...device });
+    // The share is the live model's; the device's VRAM at load also explains a later error, so it stays with `device`.
+    const { engineVramMB, ...deviceVram } = l.server.memory.fields(devices);
+    applied.engineVramMB = engineVramMB;
+    Object.assign(device, deviceVram);
+    setState({ status: 'ready', modelPath, modelId, port, error: null, loadProgress: null, serverPid: null, ...applied, ...device });
+    // The instance holds the VRAM, so the viewer attributes it; one lookup per load, after 'ready' so it never delays it.
+    const routerPid = l.server.child.pid;
+    listProcesses().then((rows) => {
+      const pid = llamaServer.instancePid(rows, routerPid);
+      if (pid != null && isCurrent() && state.status === 'ready') setState({ ...getState(), serverPid: pid });
+    }, () => { /* no pid leaves the viewer on the engine's own figure */ });
     return getState();
   }
 

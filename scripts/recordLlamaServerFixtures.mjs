@@ -1,6 +1,6 @@
 // Records the fake llama-server's fixtures from a real run of the pinned build: --list-devices, a load that
-// answers one chat turn, and a load that fails on the KV cache. `--thinking` records one turn of a thinking
-// model into <tag>-thinking.json. Rerun both after every pin bump.
+// answers one chat turn, a load that fails on the KV cache, a CPU load and a fit-off load. `--thinking` records
+// one turn of a thinking model into <tag>-thinking.json. Rerun both after every pin bump.
 // Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>]
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
@@ -148,8 +148,10 @@ const loaded = await scenario({ bin, modelPath, settings, chat: 'plain' });
 // Far past any VRAM, with fit off so the server tries it as asked.
 const kvFail = await scenario({ bin, modelPath, settings: { ...settings, contextSize: 1048576, gpuLayers: ls.GPU_LAYERS_MAX, parallelRequests: 1 } });
 const cpu = await scenario({ bin, modelPath, settings: { ...settings, cpu: true } });
+// Fit off: the buffer lines come from the one real load, with no fit trial before it.
+const max = await scenario({ bin, modelPath, settings: { ...settings, gpuLayers: ls.GPU_LAYERS_MAX } });
 
 await mkdir(OUT_DIR, { recursive: true });
 const file = path.join(OUT_DIR, `${tag}.json`);
-await writeFile(file, `${JSON.stringify({ tag, listDevices, scenarios: { loaded, kvFail, cpu } }, null, 1)}\n`);
-console.log(`Recorded ${path.relative(ROOT, file)}: loaded ${loaded.outcome}, kvFail ${kvFail.outcome}, cpu ${cpu.outcome}`);
+await writeFile(file, `${JSON.stringify({ tag, listDevices, scenarios: { loaded, kvFail, cpu, max } }, null, 1)}\n`);
+console.log(`Recorded ${path.relative(ROOT, file)}: loaded ${loaded.outcome}, kvFail ${kvFail.outcome}, cpu ${cpu.outcome}, max ${max.outcome}`);

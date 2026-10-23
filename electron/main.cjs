@@ -295,11 +295,10 @@ ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, 
 ipcMain.handle('vram-stats', async () => {
   try {
     // selfPid lets the renderer pick our own row out of the per-process list, to attribute Formamorph's VRAM
-    // share on the widget. Our VRAM is the bundled engine's, so it's the engine child's pid whenever one is
-    // running; with no engine there's nothing of ours in the list either way.
-    return { ...(await collectVram()), selfPid: llmEngine.enginePid() ?? process.pid };
+    // share on the widget. Our VRAM is the llama-server model instance's; with no model there's nothing of ours.
+    return { ...(await collectVram()), selfPid: llmEngine.getState().serverPid };
   } catch {
-    return { error: 'nvidia-smi-not-found', gpus: [], processes: [], selfPid: llmEngine.enginePid() ?? process.pid };
+    return { error: 'nvidia-smi-not-found', gpus: [], processes: [], selfPid: llmEngine.getState().serverPid };
   }
 });
 
