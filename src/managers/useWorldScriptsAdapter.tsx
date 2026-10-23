@@ -11,7 +11,7 @@ import { useCodeCardNavigation } from '@/lib/codeCardNavigation';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import { registerScriptInsert, reportScriptInsert } from '@/lib/formaquestion/scriptInsert';
 import { newScript } from '@/lib/scriptRows';
-import { SCRIPT_TIMING_DESCRIPTION, SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
+import { patchScript, SCRIPT_TIMING_DESCRIPTION, SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS, type ScriptPatch } from '@/lib/scripts';
 import { isStatOn } from '@/lib/statCodeTargets';
 import {
   editScripts, orderEdits, ownerRowId, reorderWrites, scriptEntryKey, scriptsByTiming, worldScriptEntries,
@@ -73,7 +73,7 @@ function WorldScriptDetail({ entry, onWrite, autoFocus }: {
   const { script, home } = entry;
   // A stat's or trait's Find All Uses row opens its owner's tab, so only a world script's lands here.
   const reveal = useCodeUseReveal(script.id, null, 'world');
-  const replace = (next: Script) => onWrite([{ home, edit: (scripts) => scripts.map((s) => (s.id === script.id ? next : s)) }]);
+  const patch = (change: ScriptPatch) => onWrite([{ home, edit: (scripts) => patchScript(scripts, script.id, change) }]);
   const remove = () => onWrite([{ home, edit: (scripts) => scripts.filter((s) => s.id !== script.id) }]);
   return (
     <ScriptRow
@@ -81,7 +81,7 @@ function WorldScriptDetail({ entry, onWrite, autoFocus }: {
       ownerName={entry.ownerName}
       self={self}
       context={context}
-      onChange={replace}
+      onChange={patch}
       onRemove={remove}
       reveal={home.kind === 'world' ? reveal : null}
       autoFocus={autoFocus}

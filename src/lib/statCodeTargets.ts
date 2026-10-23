@@ -134,6 +134,8 @@ export type CodeHome =
 /** One script of a stat that holds code. */
 export interface StatCodeBox extends Script {
   home: CodeHome;
+  /** The stored script the box was built from. */
+  script: Script;
   /** The stat as its runs read it: an owner's linked copy for a link's box. */
   stat: Stat;
   /** The entity an own or link box sits on. */
@@ -157,6 +159,8 @@ export type TraitCodeHome =
 /** One script of a trait that holds code. Its runs read no stat as `self`. */
 export interface TraitCodeBox extends Script {
   home: TraitCodeHome;
+  /** The stored script the box was built from. */
+  script: Script;
   /** The trait as its runs read it: a link's override applied. */
   trait: Trait;
   entity: Entity | null;
@@ -182,6 +186,8 @@ export type WorldScriptHome = { kind: 'world' };
 /** One world script that holds code. It runs once, with `self` and `owner` empty (Q31). */
 export interface WorldScriptBox extends Script {
   home: WorldScriptHome;
+  /** The stored script the box was built from. */
+  script: Script;
   owner: null;
   runs: TraitRun[];
 }
@@ -196,7 +202,7 @@ export const isWorldScriptBox = (box: { home: { kind: string } }): box is WorldS
 
 /** The world's filled scripts, in stored order. `pick` widens the walk. */
 export function worldScriptBoxes(world: WorldScriptsSource, pick: ScriptPick = filledScripts): WorldScriptBox[] {
-  return pick({ scripts: world.worldScripts }).map((script) => ({ home: { kind: 'world' }, ...script, owner: null, runs: [] }));
+  return pick({ scripts: world.worldScripts }).map((script) => ({ home: { kind: 'world' }, ...script, script, owner: null, runs: [] }));
 }
 
 /** Where a World Tool's script is authored: the Tool on the Tools tab. */
@@ -206,6 +212,8 @@ export type WorldToolHome = { kind: 'tool'; toolId: string };
  *  `args` too. Its `id` is the Tool's, and its timing the script timing the Tool runs on. */
 export interface WorldToolBox extends Script {
   home: WorldToolHome;
+  /** The Script the Tool's handler reads as. */
+  script: Script;
   /** The Tool as the Tools tab holds it. */
   tool: Tool;
   owner: null;
@@ -225,10 +233,8 @@ export function worldToolBoxes(world: WorldToolsSource): WorldToolBox[] {
   return (world.worldTools ?? []).flatMap((tool): WorldToolBox[] => {
     const { handler } = tool;
     if (handler.kind !== 'script' || !hasCode(handler)) return [];
-    return [{
-      home: { kind: 'tool', toolId: tool.id }, id: tool.id, name: tool.name, timing: SCRIPT_TIMING_OF_TOOL[toolTimingOf(tool)],
-      code: handler.code, tool, owner: null, runs: [],
-    }];
+    const script: Script = { id: tool.id, name: tool.name, timing: SCRIPT_TIMING_OF_TOOL[toolTimingOf(tool)], code: handler.code };
+    return [{ home: { kind: 'tool', toolId: tool.id }, ...script, script, tool, owner: null, runs: [] }];
   });
 }
 
@@ -244,7 +250,7 @@ export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld, pick: 
   const worldBoxes = world.traits.flatMap((trait) => {
     const blueprint = blueprintIds.has(trait.id);
     return pick(trait).map((script): TraitCodeBox => ({
-      home: { kind: 'trait', traitId: trait.id }, ...script, trait, entity: null,
+      home: { kind: 'trait', traitId: trait.id }, ...script, script, trait, entity: null,
       owner: blueprint ? blueprintOwner : null, runs: blueprint ? [] : [{ owner: null }],
     }));
   });
@@ -254,7 +260,7 @@ export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld, pick: 
     if (!entity) return [];
     const run: TraitRun = { owner: codeOwner };
     const own = (entity.traits ?? []).flatMap((trait) => pick(trait).map((script): TraitCodeBox => ({
-      home: { kind: 'entityTrait', entityId: entity.id, traitId: trait.id }, ...script, trait, entity, owner: run.owner, runs: [run],
+      home: { kind: 'entityTrait', entityId: entity.id, traitId: trait.id }, ...script, script, trait, entity, owner: run.owner, runs: [run],
     })));
     const linked = (entity.traitLinks ?? []).flatMap((link) => world.traits
       .filter((trait) => trait.id === link.originalId
@@ -267,7 +273,7 @@ export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld, pick: 
         const trait = effectiveLinkTrait(original, link);
         return pick(trait).map((script): TraitCodeBox => ({
           home: { kind: 'traitLink', entityId: entity.id, linkId: link.id, traitId: original.id },
-          ...script, trait, entity, owner: run.owner, runs: [run],
+          ...script, script, trait, entity, owner: run.owner, runs: [run],
         }));
       }));
     return [...own, ...linked];
@@ -287,13 +293,13 @@ export function statCodeBoxes(owners: CodeOwners, pick: ScriptPick = filledCodeB
   const { statWorld } = owners;
   const blueprintIds = statBlueprintIds(statWorld);
   const worldBoxes = owners.world.stats.flatMap((stat) => pick(stat).map((box): StatCodeBox => ({
-    home: { kind: 'stat', statId: stat.id }, ...box, stat, entity: null, owner: null, runs: [{ self: stat, owner: null }],
+    home: { kind: 'stat', statId: stat.id }, ...box, script: box, stat, entity: null, owner: null, runs: [{ self: stat, owner: null }],
   })));
   const blueprintBoxes = statWorld.stats.filter((stat) => blueprintIds.has(stat.id)).flatMap((stat) => {
     const group = blueprintGroupStats(statWorld, stat);
     const owner: CodeOwner = { entity: null, stats: group, byCodeName: owners.byCodeName(group), linkOf: NO_LINKS };
     return pick(stat).map((box): StatCodeBox => ({
-      home: { kind: 'stat', statId: stat.id }, ...box, stat, entity: null, owner, runs: [],
+      home: { kind: 'stat', statId: stat.id }, ...box, script: box, stat, entity: null, owner, runs: [],
     }));
   });
   const blueprintBox = new Map(blueprintBoxes.map((box) => [`${box.stat.id}:${box.id}`, box]));
@@ -305,11 +311,11 @@ export function statCodeBoxes(owners: CodeOwners, pick: ScriptPick = filledCodeB
       const original = link && statWorld.stats.find((s) => s.id === stat.id);
       const run: CodeRun = { self: stat, owner };
       if (!link) {
-        return [{ home: { kind: 'entity', entityId: entity.id, statId: stat.id }, ...box, stat, entity, owner, runs: [run] }];
+        return [{ home: { kind: 'entity', entityId: entity.id, statId: stat.id }, ...box, script: box, stat, entity, owner, runs: [run] }];
       }
       if (original && overridesScripts(link, original)) {
         const home: CodeHome = { kind: 'link', entityId: entity.id, linkId: link.id, statId: stat.id };
-        return [{ home, ...box, stat, entity, owner, runs: [run] }];
+        return [{ home, ...box, script: box, stat, entity, owner, runs: [run] }];
       }
       // Scripts the link leaves alone run the Blueprint's code for this owner.
       blueprintBox.get(`${stat.id}:${box.id}`)?.runs.push(run);

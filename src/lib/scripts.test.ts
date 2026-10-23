@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Script } from '@/types';
-import { inRunOrder, migrateStatBoxes, migrateStatLinkBoxes } from './scripts';
+import { inRunOrder, migrateStatBoxes, migrateStatLinkBoxes, patchScript } from './scripts';
 
 const script = (over: Partial<Script> & Pick<Script, 'id'>): Script => ({ timing: 'after', code: 'return 1;', ...over });
 
@@ -70,6 +70,34 @@ describe('inRunOrder', () => {
       { script: script({ id: 'd', order: 0 }) },
     ];
     expect(inRunOrder(units).map((unit) => unit.script.id)).toEqual(['d', 'b', 'a', 'c']);
+  });
+});
+
+describe('patchScript', () => {
+  const scripts = [script({ id: 'a', name: 'Drain' }), script({ id: 'b', order: 2 }), script({ id: 'c' })];
+
+  it('merges the patch onto the script with the id and keeps every other script by reference', () => {
+    const next = patchScript(scripts, 'b', { code: 'return 2;', timing: 'start' });
+    expect(next[1]).toStrictEqual({ id: 'b', timing: 'start', code: 'return 2;', order: 2 });
+    expect(next[0]).toBe(scripts[0]);
+    expect(next[2]).toBe(scripts[2]);
+    expect(scripts[1].code).toBe('return 1;');
+  });
+
+  it('drops a field the patch clears, so a cleared name stores none', () => {
+    const next = patchScript(scripts, 'a', { name: undefined });
+    expect(next[0]).toStrictEqual({ id: 'a', timing: 'after', code: 'return 1;' });
+    expect('name' in next[0]).toBe(false);
+  });
+
+  it('returns the same list when the patch changes nothing', () => {
+    expect(patchScript(scripts, 'a', { name: 'Drain', code: 'return 1;' })).toBe(scripts);
+    expect(patchScript(scripts, 'c', { name: undefined })).toBe(scripts);
+    expect(patchScript(scripts, 'c', {})).toBe(scripts);
+  });
+
+  it('returns the same list for an unknown id', () => {
+    expect(patchScript(scripts, 'missing', { code: 'return 9;' })).toBe(scripts);
   });
 });
 

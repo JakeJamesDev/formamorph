@@ -53,6 +53,22 @@ export const filledScriptsAt = (home: ScriptHome, timing: ScriptTiming): Script[
 export const firstScriptAt = (home: ScriptHome, timing: ScriptTiming): Script | undefined =>
   scriptsOf(home).find((script) => script.timing === timing);
 
+/** One script edit: the fields that changed. A field set to `undefined` is dropped, such as a cleared name. */
+export type ScriptPatch = Partial<Omit<Script, 'id'>>;
+
+/** `scripts` with `patch` merged onto the script `id` names; the same list when the id is unknown or nothing changes. */
+export function patchScript<T extends readonly Script[]>(scripts: T, id: string, patch: ScriptPatch): T | Script[] {
+  const index = scripts.findIndex((script) => script.id === id);
+  if (index < 0) return scripts;
+  const current = scripts[index];
+  const keys = Object.keys(patch) as (keyof ScriptPatch)[];
+  // A cleared field already absent reads `undefined` too, so it changes nothing.
+  if (keys.every((key) => current[key] === patch[key])) return scripts;
+  const next: Script = { ...current, ...patch };
+  for (const key of keys) if (patch[key] === undefined) delete (next as Partial<Script>)[key];
+  return scripts.map((script, i) => (i === index ? next : script));
+}
+
 /** `scripts` with each script `codeById` names holding its new code; the rest as they are. */
 export const withScriptCode = (scripts: readonly Script[], codeById: Readonly<Record<string, string>>): Script[] =>
   scripts.map((script) => (script.id in codeById ? { ...script, code: codeById[script.id] } : script));

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { Entity, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import {
   editScripts, orderEdits, reorderWrites, scriptsByTiming, worldScriptEntries, worldScriptList, type ScriptEntry,
-  type ScriptTreeWorld,
+  type ScriptSlices, type ScriptTreeWorld,
 } from './worldScripts';
-import { scriptsOf } from './scripts';
+import { patchScript, scriptsOf } from './scripts';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -46,6 +46,13 @@ const world: ScriptTreeWorld = {
   traits: [brave, fury], traitGroups: [traitBlueprints],
   entities: [ann, bob], placeholders: [],
 };
+
+/** Every script record the world stores, wherever its home keeps it. */
+const stored = new Set([
+  ...world.scripts!, ...world.stats.flatMap(scriptsOf), ...world.traits.flatMap(scriptsOf),
+  ...world.entities.flatMap((entity) => [...(entity.stats ?? []), ...(entity.traits ?? [])].flatMap(scriptsOf)),
+  ...bobHowl, ...bobFury,
+]);
 
 const ids = (entries: readonly ScriptEntry[]) => entries.map((entry) => `${entry.home.kind}:${entry.script.id}`);
 
@@ -116,13 +123,10 @@ describe('worldScriptEntries', () => {
     expect(byTiming.switch).toEqual([]);
   });
 
-  it('carries each script alone, never its box, so a row’s write puts no box fields into the world', () => {
-    // A stat's or trait's row writes `{ ...script, code }` straight back; a box there would nest its stat, owner and
-    // runs under the script, and every keystroke would nest the one before it again.
-    const keys = new Set(['id', 'name', 'timing', 'code', 'order']);
-    for (const entry of worldScriptEntries(world)) {
-      expect(Object.keys(entry.script).filter((key) => !keys.has(key))).toEqual([]);
-    }
+  it('hands the row the stored script itself, never its box', () => {
+    const entries = worldScriptEntries(world);
+    expect(entries).toHaveLength(11);
+    for (const entry of entries) expect(stored.has(entry.script)).toBe(true);
   });
 
   it('lists a script with no code, which the runner skips but the author still edits', () => {
@@ -212,6 +216,23 @@ describe('editScripts', () => {
     const [traitLink] = next.entities![1].traitLinks!;
     expect(traitLink.overrides!.fury.scripts).toEqual({ value: [{ ...bobFury[0], code: 'f' }], blueprint: fury.scripts });
     expect(next.stats).toBeUndefined();
+  });
+
+  it.each([
+    ['a global stat', 'stat', 'h-after', (w: Partial<ScriptSlices>) => w.stats![0].scripts!],
+    ['an entity stat', 'entity', 'rage-after', (w: Partial<ScriptSlices>) => w.entities![0].stats![0].scripts!],
+    ['a trait', 'trait', 'brave-after', (w: Partial<ScriptSlices>) => w.traits![0].scripts!],
+    ['a link override', 'link', 'howl-after', (w: Partial<ScriptSlices>) => w.entities![1].statLinks![0].overrides!.howl.scripts!.value],
+    ['a world script', 'world', 'w-after', (w: Partial<ScriptSlices>) => w.scripts!],
+  ])('merges a row’s patch on %s and writes nothing else into its home', (_kind, kind, id, listOf) => {
+    const entry = at(kind, id);
+    const was = entry.script;
+    const next = editScripts(world, [{ home: entry.home, edit: (scripts) => patchScript(scripts, id, { code: 'return 7;', name: undefined }) }]);
+    const list = listOf(next);
+    const written = list.find((script) => script.id === id)!;
+    expect(written).toStrictEqual({ id, timing: was.timing, code: 'return 7;' });
+    expect(list).toHaveLength(listOf(editScripts(world, [{ home: entry.home, edit: (scripts) => scripts }])).length);
+    for (const script of list) if (script.id !== id) expect(stored.has(script)).toBe(true);
   });
 
   it('drops an emptied stat or trait list, as the owner’s own Scripts section does', () => {
