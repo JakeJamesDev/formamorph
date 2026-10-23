@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import llmEngine from './llmEngine.cjs';
 import llamaServer from './llamaServer.cjs';
-import { countFakeTokens, createFakeLlamaServer, isCpuStart, loadFixture, loadThinkingFixture, renderChatMl } from './fakeLlamaServer.mjs';
+import { countFakeTokens, createFakeLlamaServer, isCpuStart, loadFixture, loadGemmaFixture, loadThinkingFixture, renderChatMl } from './fakeLlamaServer.mjs';
 
 const { createEngine, getState } = llmEngine;
 const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
@@ -453,23 +453,37 @@ describe('proxy request path', () => {
     }
   });
 
-  it('runs the router with raw reasoning output', async () => {
+  it('runs the router with a separate reasoning field', async () => {
     const { fake } = await ready();
-    expect(after(argsOf(fake.routerCalls()[0]), '--reasoning-format')).toBe('none');
+    expect(after(argsOf(fake.routerCalls()[0]), '--reasoning-format')).toBe('deepseek');
   });
 
-  it('keeps the opening think tag a template writes into its generation prompt', async () => {
-    const thinking = loadThinkingFixture();
-    // The recorded template opens the thought itself, so the model never generates the tag.
-    expect(thinking.applyTemplate.prompt.endsWith('<|im_start|>assistant\n<think>\n')).toBe(true);
-    // The thinking model's turn, served by the loaded scenario of the pinned run.
-    const loaded = { ...fixture.scenarios.loaded, chat: thinking.chat, chatStream: thinking.chatStream };
-    const { chat } = await ready({ fixture: { ...fixture, scenarios: { ...fixture.scenarios, loaded } } });
-    const reply = await (await chat({ messages: [{ role: 'user', content: 'What is 2+2? One word.' }] })).json();
-    expect(reply.choices[0].message.content.startsWith('<think>\n')).toBe(true);
-    const streamed = (await (await chat({ messages: [{ role: 'user', content: 'hi' }], stream: true })).text())
-      .split('\n\n').filter((f) => f.startsWith('data: {')).map((f) => JSON.parse(f.slice(6)).choices[0]?.delta?.content ?? '').join('');
-    expect(streamed.startsWith('<think>\n')).toBe(true);
+  describe.each([
+    ['a Qwen-style thinking model', loadThinkingFixture],
+    ['a Gemma 4 model', loadGemmaFixture],
+  ])('for %s', (_name, load) => {
+    const THOUGHT_TAGS = /<think>|<\/think>|<\|channel>|<channel\|>/;
+    const serve = async () => {
+      const recorded = load();
+      // The recorded turn, served by the loaded scenario of the pinned run.
+      const loaded = { ...fixture.scenarios.loaded, chat: recorded.chat, chatStream: recorded.chatStream };
+      return ready({ fixture: { ...fixture, scenarios: { ...fixture.scenarios, loaded } } });
+    };
+
+    it('passes the thought through in reasoning_content and keeps content free of thought tags', async () => {
+      const { chat } = await serve();
+      const message = (await (await chat({ messages: [{ role: 'user', content: 'What is 2+2? One word.' }] })).json()).choices[0].message;
+      expect(message.reasoning_content.length).toBeGreaterThan(0);
+      expect(message.content).not.toMatch(THOUGHT_TAGS);
+    });
+
+    it('streams the thought in reasoning_content deltas and none in content deltas', async () => {
+      const { chat } = await serve();
+      const deltas = (await (await chat({ messages: [{ role: 'user', content: 'hi' }], stream: true })).text())
+        .split('\n\n').filter((f) => f.startsWith('data: {')).map((f) => JSON.parse(f.slice(6)).choices[0]?.delta ?? {});
+      expect(deltas.map((d) => d.reasoning_content ?? '').join('').length).toBeGreaterThan(0);
+      expect(deltas.map((d) => d.content ?? '').join('')).not.toMatch(THOUGHT_TAGS);
+    });
   });
 });
 

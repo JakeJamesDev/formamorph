@@ -16,8 +16,11 @@ const readFixture = (name) => JSON.parse(readFileSync(path.join(HERE, 'fixtures'
 /** The recorded run for `tag` (default: the pinned one). */
 export const loadFixture = (tag = PIN) => readFixture(tag);
 
-/** One turn of a thinking model at `tag`, recorded with `--thinking`. */
+/** One turn of a Qwen-style thinking model at `tag`, recorded with `--thinking`. */
 export const loadThinkingFixture = (tag = PIN) => readFixture(`${tag}-thinking`);
+
+/** One turn of a Gemma 4 model with thinking on at `tag`, recorded with `--gemma`. */
+export const loadGemmaFixture = (tag = PIN) => readFixture(`${tag}-gemma`);
 
 const argValue = (args, flag) => {
   const i = args.indexOf(flag);

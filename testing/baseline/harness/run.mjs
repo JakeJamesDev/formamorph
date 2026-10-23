@@ -61,8 +61,8 @@ const modelToken = (cfg, model) => (model.modelPath ? "" : model.apiToken ?? cfg
 
 // The built-in engine is a plain Node module (no Electron): it runs a GGUF on the bundled llama-server and serves an
 // OpenAI-compatible endpoint on 127.0.0.1. Driving it here is the only way to screen a catalog model the way
-// the desktop build actually runs it — notably the `<think>` tag restore, which an external server does not
-// do (a reasoning model's answer otherwise arrives as bare chain-of-thought). Single model at a time: always
+// the desktop build actually runs it — notably `--reasoning-format deepseek`, which puts a thought in
+// `reasoning_content` as a server without a reasoning parser does not. Single model at a time: always
 // stopEngine() before starting the next.
 const require_ = createRequire(import.meta.url);
 let engine = null;
