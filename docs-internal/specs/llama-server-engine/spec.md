@@ -206,6 +206,14 @@ From the 2026-10-22 grill.
 - **Q23.** A Context Overflow setting with LM Studio's three policies, default Truncate Middle.
 - **Q25.** Stored Flash Attention "off" values stay, and now mean off.
 
+From ticket intent questions.
+
+- **T01.** Linux ships x64 Vulkan and CPU builds; macOS ships arm64 and x64; no Windows or Linux arm64. The pin is one literal tag.
+- **T02-1.** The router loads models from a one-section `--models-preset` INI written per start (model name → absolute path), not `--models-dir`, so models in the external folder still load and nothing scans at boot. It runs `--offline` with an empty cache folder. Ticket 08 adds the projector to the same section.
+- **T02-2.** Ticket 02 owns the `--list-devices` parser and moves the device picker and Auto's pick onto it. The raw Vulkan index probe and `GGML_VK_VISIBLE_DEVICES` go: `--device` is the one pinning scheme. Ticket 04 keeps the VRAM share, free-at-load, total and the attributed process.
+- **T02-3.** GPU Layers Max and Custom pass `--fit off`, so fit never shrinks the player's Context Size, and a load that doesn't fit fails as today. Auto keeps fit on.
+- **T02-4.** The CPU fallback reruns the same binary with `--device none -ngl 0` on Windows and macOS, and the bundled CPU build on Linux. After a fallback the backend reads `cpu`. When the CPU load fails too, the error shown is the GPU attempt's, restated in setting names.
+
 ## Further Notes
 
 - Constraint: no export-shape change. Worlds and saves don't change. The new settings are local app settings.
