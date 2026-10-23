@@ -62,6 +62,10 @@ function visionModel(root) {
   return { model, projector };
 }
 
+const callPart = (id) => ({ id, type: 'function', function: { name: 'roll', arguments: '{"sides":6}' } });
+const toolCall = (id, content = null) => ({ role: 'assistant', content, tool_calls: [callPart(id)] });
+const toolResult = (id, content) => ({ role: 'tool', tool_call_id: id, content });
+
 const argsOf = (call) => call.args;
 const after = (args, flag) => args[args.indexOf(flag) + 1];
 
@@ -340,6 +344,42 @@ describe('proxy request path', () => {
     expect(sent(fake).messages).toEqual([{ role: 'user', content: 'u1' }, { role: 'user', content: 'Last word.' }]);
   });
 
+  it('sends every tool round unchanged: calls, results and reasoning, with a trailing tool message kept', async () => {
+    const { fake, chat } = await ready();
+    const messages = [
+      { role: 'system', content: 'Narrate.' },
+      { role: 'user', content: 'u1' },
+      { role: 'assistant', content: 'a1', reasoning_content: 'Plain thought.' },
+      { role: 'user', content: 'Roll for it.' },
+      { ...toolCall('call_1'), reasoning_content: 'I need a roll.' },
+      toolResult('call_1', '4'),
+      { role: 'assistant', content: 'Once more.', tool_calls: [callPart('call_2'), callPart('call_3')], reasoning_content: 'Two more.' },
+      toolResult('call_2', '6'),
+      toolResult('call_3', '1'),
+    ];
+    await chat({ messages });
+    expect(sent(fake).messages).toEqual(messages);
+  });
+
+  it('keeps the other message rules in a tool conversation', async () => {
+    const { fake, chat } = await ready();
+    await chat({ messages: [
+      { role: 'user', content: 'u1' },
+      { role: 'system', content: 'Rules.' },
+      { ...toolCall('call_1'), reasoning: 'Another field name.' },
+      toolResult('call_1', [{ type: 'text', text: 'One.' }, { type: 'text', text: 'Two.' }]),
+      { role: 'developer', content: 'Unknown role.' },
+      { role: 'assistant', content: 'Continue from here.' },
+    ] });
+    expect(sent(fake).messages).toEqual([
+      { role: 'system', content: 'Rules.' },
+      { role: 'user', content: 'u1' },
+      toolCall('call_1'),
+      toolResult('call_1', 'One.\n\nTwo.'),
+      { role: 'user', content: 'Continue from here.' },
+    ]);
+  });
+
   it('joins a message’s text parts with a blank line', async () => {
     const { fake, chat } = await ready();
     await chat({ messages: [{ role: 'user', content: [{ type: 'text', text: 'One.' }, { type: 'text', text: 'Two.' }] }] });
@@ -513,6 +553,43 @@ describe('Context Overflow', () => {
     const { fake, chat } = await ready('truncateMiddle');
     expect((await chat({ messages: [sys, u1, big, latest], max_tokens: 150 })).status).toBe(200);
     expect(sent(fake).messages).toEqual([sys, u1, latest]);
+  });
+
+  const shortReply = { role: 'assistant', content: words('a1', 10) };
+
+  it('drops an older tool round only as a unit, call and results together', async () => {
+    const older = [toolCall('call_1', words('call', 120)), toolResult('call_1', words('result', 10))];
+    const current = [toolCall('call_2'), toolResult('call_2', words('now', 10))];
+    const { fake, chat } = await ready('truncateMiddle');
+    // Dropping the call alone fits, but leaves its result with no call.
+    expect((await chat({ messages: [sys, u1, ...older, shortReply, latest, ...current], max_tokens: 64 })).status).toBe(200);
+    expect(sent(fake).messages).toEqual([sys, u1, shortReply, latest, ...current]);
+  });
+
+  it('drops one older round of several without touching the next', async () => {
+    const first = [toolCall('call_1', words('call', 60)), toolResult('call_1', words('result', 5))];
+    const second = [toolCall('call_2', words('again', 60)), toolResult('call_2', words('result', 5))];
+    const current = [toolCall('call_3'), toolResult('call_3', words('now', 10))];
+    const { fake, chat } = await ready('truncateMiddle');
+    expect((await chat({ messages: [sys, u1, ...first, ...second, shortReply, latest, ...current], max_tokens: 64 })).status).toBe(200);
+    expect(sent(fake).messages).toEqual([sys, u1, ...second, shortReply, latest, ...current]);
+  });
+
+  it('Rolling Window drops older tool rounds whole and keeps the current one', async () => {
+    const older = [toolCall('call_1', words('call', 120)), toolResult('call_1', words('result', 10))];
+    const current = [toolCall('call_2'), toolResult('call_2', words('now', 10))];
+    const { fake, chat } = await ready('rollingWindow');
+    expect((await chat({ messages: [sys, u1, ...older, shortReply, latest, ...current], max_tokens: 64 })).status).toBe(200);
+    expect(sent(fake).messages).toEqual([sys, latest, ...current]);
+  });
+
+  it('never cuts into the current tool round, and stops when it does not fit', async () => {
+    const current = [toolCall('call_1'), toolResult('call_1', words('now', 200))];
+    const { fake, chat } = await ready('truncateMiddle');
+    const res = await chat({ messages: [sys, u1, shortReply, latest, ...current] });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.message).toBe('The messages this request must keep need more than 256 tokens. Raise “Context Size”.');
+    expect(fake.chatRequests).toHaveLength(0);
   });
 
   it('counts the prompt as the router renders the whole request, not the messages alone', async () => {
