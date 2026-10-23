@@ -19,5 +19,18 @@ Player docs for the new engine (spec: Solution; Q15).
 ## Acceptance criteria
 
 - [x] Settings help covers every new and changed engine setting; `copy-sweep` passes on it.
-- [x] The help vectors are rebuilt, and a Formaquestion query for each new setting returns its section.
+- [ ] The help vectors are rebuilt, and a Formaquestion query for each new setting returns its section. (Vectors rebuilt; the vision query was not re-run after the heading change.)
 - [x] The changelog leads for this effort name the Unified KV Cache default and the Flash Attention change.
+
+## Landed
+
+Committed by hand as 4e2e245f7, outside the ticket flow: the session ran without the project's agent files, so it skipped the gates, the code review and prepare. The spec session restored this Status and wrote this section from the session's report.
+
+**Not verified**
+- The four gates. Only vitest on `src/lib/docs`, `src/lib/formaquestion` and `scripts` ran (90 files, 1520 pass), plus the changelog format and copy sweep.
+- The code review against Base.
+- The vision query ("my vision model cannot see images") after the heading and keyword change.
+- The in-app copy in `settingsCopy.ts` was not re-checked.
+
+**For you**
+- Read the new Settings help sections: Engine Memory and Context, Flash Attention, Context Overflow, and projector pairing in Connect Your Own AI.
