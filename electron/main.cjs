@@ -48,7 +48,7 @@ let mainWindow = null;
 // Must match the renderer's DEFAULT_LOCAL_GPU_LAYERS so a fresh boot doesn't trigger a needless reload.
 // gpuDevice is a device *name* (or 'auto'/'all'), which the engine resolves against `--list-devices` at each
 // start — an index saved across a driver change would point at a different card.
-let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, gpuDevice: ENGINE_DEVICE_AUTO };
+let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, gpuDevice: ENGINE_DEVICE_AUTO };
 
 // Every GPU llama-server can see, for the device picker. `--list-devices` initializes every backend, so it is
 // read once and cached; each engine start reads its own copy and refreshes this one through its status.
@@ -325,12 +325,14 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     gpuLayers: opts.gpuLayers,
     flashAttention: opts.flashAttention === true,
     parallelRequests: typeof opts.parallelRequests === 'number' ? opts.parallelRequests : engineOptions.parallelRequests,
+    unifiedKvCache: typeof opts.unifiedKvCache === 'boolean' ? opts.unifiedKvCache : engineOptions.unifiedKvCache,
     gpuDevice: typeof opts.gpuDevice === 'string' ? opts.gpuDevice : engineOptions.gpuDevice,
   };
   const changed = next.contextSize !== engineOptions.contextSize
     || next.gpuLayers !== engineOptions.gpuLayers
     || next.flashAttention !== engineOptions.flashAttention
     || next.parallelRequests !== engineOptions.parallelRequests
+    || next.unifiedKvCache !== engineOptions.unifiedKvCache
     || next.gpuDevice !== engineOptions.gpuDevice;
   engineOptions = next;
   const loaded = llmEngine.getState().modelPath;
