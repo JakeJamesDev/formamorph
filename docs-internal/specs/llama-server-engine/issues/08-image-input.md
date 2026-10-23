@@ -1,6 +1,6 @@
 # 08: Image Input
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -18,10 +18,19 @@ Local vision models see images (spec: Images; Q11, Q13, Q16).
 
 ## Acceptance criteria
 
-- [ ] Engine tests: a model with a matching `mmproj*.gguf` loads with `--mmproj`; one without loads without it.
-- [ ] Proxy tests: images pass through with a projector, and are stripped and counted without one.
-- [ ] Download tests: a catalog vision entry fetches the model and its projector, and resume works for both.
-- [ ] On this PC, a vision model with its projector answers a turn that carries a scene image, and the reply refers to the image.
-- [ ] Changelog fragment in `docs-internal/changelog.d/`.
+- [x] Engine tests: a model with a matching `mmproj*.gguf` loads with `--mmproj`; one without loads without it. `llmEngine.test.mjs` "adds a model's paired projector to its preset section" (the projector rides the preset as `mmproj =`, per T02-1); pairing rules in `modelScan.test.mjs` "vision projectors".
+- [x] Proxy tests: images pass through with a projector, and are stripped and counted without one. `llmEngine.test.mjs` "passes image parts through when the model has a projector" and "drops image parts the model cannot see".
+- [x] Download tests: a catalog vision entry fetches the model and its projector, and resume works for both. `modelDownload.test.mjs` "downloadModel: a vision entry and its projector".
+- [x] On this PC, a vision model with its projector answers a turn that carries a scene image, and the reply refers to the image. Hauhau Gemma4 12B + BF16 projector on the RTX 4090 (Vulkan): the authoring tour's bedroom webp went through with no images dropped, and the reply named the red curtains, red rug, ceiling fan and clock.
+- [x] Changelog fragment in `docs-internal/changelog.d/`. `llama-server-engine-08.md`.
 
 For you: give a vision model a scene image in play and judge whether its description fits.
+
+## Landed
+
+**Not verified**
+- None. Each guard was also reinstated as a bug once and went red (11 mutations).
+
+**For you**
+- Give a vision model a scene image in play and judge whether its description fits.
+- Download Gemma-4 12B Uncensored (HauhauCS) from **Recommended**: one bar covers the model and its 175 MB projector, and the row and the Installed entry show **Vision**.

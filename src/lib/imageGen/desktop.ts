@@ -3,6 +3,7 @@
 // CORS-free proxy) route through this bridge and are disabled in the UI when it isn't present.
 
 import type { LocalCacheType } from '@/contexts/settingsDefaults';
+import type { ProjectorSource } from '@/lib/localModels';
 
 export interface DesktopFetchRequest {
   url: string;
@@ -35,6 +36,14 @@ export interface LocalPartial {
   received: number;
 }
 
+/** A catalog download: the model, and a vision entry's projector fetched in the same job. */
+export interface LocalDownloadOptions {
+  url: string;
+  fileName: string;
+  projector?: ProjectorSource;
+  autoLoad?: boolean;
+}
+
 /** An installed GGUF in one of the searched folders (any source, not just our downloader). */
 export interface LocalInstalledModel {
   /** Stable ref used to load, delete, and order this model. Root models use their bare filename; models in
@@ -49,6 +58,8 @@ export interface LocalInstalledModel {
   path: string;
   /** Which folder it came from. `external` models are read-only: loadable, never deleted by us. */
   source: 'root' | 'external';
+  /** Absolute path of the paired vision projector, or null when the model can't see images. */
+  projector: string | null;
 }
 
 /** Progress of an in-flight model move, in bytes across the whole batch. */
@@ -212,7 +223,7 @@ declare global {
         listDevices: () => Promise<EngineDeviceList>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
          *  the saved path. */
-        download: (opts: { url: string; fileName: string; autoLoad?: boolean }) => Promise<{ path: string }>;
+        download: (opts: LocalDownloadOptions) => Promise<{ path: string }>;
         /** Cancel (pause) the in-flight download; its partial is kept for a later resume. */
         cancelDownload: () => Promise<boolean>;
         /** Partial downloads waiting to be resumed. */
@@ -342,7 +353,7 @@ export const listLocalGpuDevices = (): Promise<EngineDeviceList> =>
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */
-export const downloadLocalModel = (opts: { url: string; fileName: string; autoLoad?: boolean }): Promise<{ path: string }> =>
+export const downloadLocalModel = (opts: LocalDownloadOptions): Promise<{ path: string }> =>
   requireLlm().download(opts);
 
 /** Cancel (pause) the in-flight model download; the partial is kept for a later resume. */

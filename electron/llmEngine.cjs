@@ -15,6 +15,7 @@ const path = require('node:path');
 const llamaServer = require('./llamaServer.cjs');
 const { selectEngineDevice } = require('./engineDevice.cjs');
 const { shapeChatBody } = require('./chatShape.cjs');
+const { findProjector } = require('./modelScan.cjs');
 
 const { errorText } = llamaServer;
 
@@ -342,7 +343,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     const applied = { ...settings, maxContextSize: null, engineVramMB: null };
     // This start: its settings, work folder, device, router (`server`), front server, and teardown state.
     // `projector` is the vision projector file, or null: without one, image parts are dropped.
-    const l = { modelId, settings, projector: null, aborted: false, server: null, front: null, lost: null };
+    const l = { modelId, settings, projector: findProjector(modelPath), aborted: false, server: null, front: null, lost: null };
     l.workDir = path.join(workRoot, `formamorph-engine-${process.pid}-${++starts}`);
     l.presetPath = path.join(l.workDir, 'preset.ini');
     // An empty cache, so the router lists no Hugging Face downloads beside our model.
@@ -381,7 +382,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     };
     try {
       fs.mkdirSync(l.cacheDir, { recursive: true });
-      fs.writeFileSync(l.presetPath, llamaServer.presetIni({ modelId, modelPath }));
+      fs.writeFileSync(l.presetPath, llamaServer.presetIni({ modelId, modelPath, projectorPath: l.projector }));
     } catch (e) {
       return fail(`Could not prepare the engine folder: ${errorText(e)}`);
     }
