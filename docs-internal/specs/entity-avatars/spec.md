@@ -1,7 +1,7 @@
 # Entity Avatars
 
 Status: done
-Status note: 2026-10-22. Tickets 01–08 are done; 09 and 10 are needs-triage. Last landing is ba0f3d786. Closed with gaps: 09 (stale export embed), 10 (raw-load remap); the step-delete gap was fixed in 5bb09f6ef. Closed red: lint fails in worlds-wip/cb-3.3.2-live.ts, outside the effort; test green. Follow-up tickets 09–14 are open.
+Status note: 2026-10-23. Tickets 01–14 are done. Last landing is 735a757bf. Review: the follow-up gaps were fixed in d3baf2ba0. Closed red: one load timeout in locationGraphNeighbors.test.ts, another effort's test, which passes alone; lint green.
 Spec session: entity-avatars — spec
 
 ## Problem Statement
