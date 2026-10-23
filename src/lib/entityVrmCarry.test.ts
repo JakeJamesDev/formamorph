@@ -124,6 +124,35 @@ describe('character card export', () => {
     expect(fallback).not.toHaveProperty('vrm');
   });
 
+  it('carries the newly picked Avatar over the one the entity already embeds', async () => {
+    const embedded = { name: 'Heron', file: await asset(vrmFile('Heron')), hash: 'heron-hash' };
+    const file = vrmFile('Kite');
+    const record = await addModel(file);
+
+    const card = buildEntityCardData(await withCarriedVrm({ id: 'e1', name: 'Wren', vrmPick: { kind: 'library', id: record.id }, vrm: embedded }));
+
+    expect(card.vrm).toMatchObject({ name: 'Kite', file: { data: await blobToDataUrl(file) } });
+  });
+
+  it('keeps an embedded Avatar the pick still names', async () => {
+    const file = await asset(vrmFile('Kite'));
+    const embedded = { name: 'Kite (shared)', file, hash: 'kite-hash' };
+    const store = { w1: { name: 'Kite', file, hash: 'kite-hash' } };
+
+    const card = buildEntityCardData(await withCarriedVrm({ id: 'e1', name: 'Wren', vrmPick: { kind: 'world', id: 'w1' }, vrm: embedded }, store));
+
+    expect(card.vrm).toEqual(embedded);
+  });
+
+  it('keeps an embedded Avatar the pick cannot find on this device', async () => {
+    const embedded = { name: 'Kite', file: await asset(vrmFile('Kite')), hash: 'kite-hash' };
+
+    const card = buildEntityCardData(await withCarriedVrm({ id: 'e1', name: 'Wren', vrmPick: { kind: 'library', id: 'authors-device' }, vrm: embedded }));
+
+    expect(card.vrmPick).toEqual({ kind: 'library', id: 'authors-device' });
+    expect(card.vrm).toEqual(embedded);
+  });
+
   it('exports a pick whose Avatar is gone as none', async () => {
     const card = buildEntityCardData(await withCarriedVrm({ id: 'e1', name: 'Wren', vrmPick: { kind: 'library', id: 'deleted' } }));
 
