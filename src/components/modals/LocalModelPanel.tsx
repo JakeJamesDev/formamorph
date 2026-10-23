@@ -21,6 +21,7 @@ import {
 } from '@/contexts/settingsDefaults';
 import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
+import { effectiveVCacheType } from '../../../electron/cacheTypes.cjs';
 
 /**
  * The desktop Endpoint tab's local-model view (shown when a custom endpoint is off). Model management sits
@@ -105,7 +106,8 @@ export function LocalModelPanel() {
     localParallelRequests !== engine.parallelRequests ||
     localUnifiedKvCache !== engine.unifiedKvCache ||
     localKCacheType !== engine.kCacheType ||
-    localVCacheType !== engine.vCacheType ||
+    // Main loads the coerced V type, so compare what it would apply, not the stored value.
+    effectiveVCacheType(localVCacheType, localFlashAttention) !== engine.vCacheType ||
     localKvCacheInRam !== engine.kvCacheInRam ||
     deviceDiffers;
 

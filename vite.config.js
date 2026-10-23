@@ -83,8 +83,22 @@ const docsIndexMarkdown = {
   },
 }
 
+// `electron/cacheTypes.cjs` is pure CommonJS that main and the renderer both load. Dev serves a .cjs raw,
+// so wrap it as an ES module with the names from its `module.exports = { ... }` line.
+const cacheTypesCjs = {
+  name: 'cache-types-cjs',
+  enforce: 'pre',
+  transform(code, id) {
+    if (!id.split('?')[0].endsWith('/electron/cacheTypes.cjs')) return null
+    const names = /module\.exports\s*=\s*\{([^}]*)\}/.exec(code)?.[1].split(',').map((n) => n.trim()).filter(Boolean) ?? []
+    if (names.length === 0) this.error('electron/cacheTypes.cjs must end in a one-line `module.exports = { a, b }`')
+    const exports = names.map((n) => `export const ${n} = shared.${n};`).join('\n')
+    return `const shared = (() => {\nconst module = { exports: {} };\n${code}\nreturn module.exports;\n})();\n${exports}\n`
+  },
+}
+
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(__dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
