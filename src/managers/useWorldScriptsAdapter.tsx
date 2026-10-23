@@ -56,7 +56,10 @@ function useScriptWrites() {
     }
     changed(before.stats, next.stats).forEach(updateStat);
     changed(before.traits, next.traits).forEach(updateTrait);
-    changed(before.entities, next.entities).forEach((entity) => editEntity(entity.id, () => entity));
+    // Apply the edits to the entity as it is when the updater runs, so a same-tick entity edit survives.
+    changed(before.entities, next.entities).forEach(({ id }) => editEntity(id, (live) => (
+      editScripts({ scripts: [], stats: [], traits: [], entities: [live] }, edits).entities?.[0] ?? live
+    )));
   }, [updateStat, updateTrait, editEntity, setWorldScripts, updateWorldScript]);
 }
 

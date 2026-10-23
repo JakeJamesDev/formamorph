@@ -166,6 +166,18 @@ describe('the Scripts tab', () => {
     expect(bench.ctx().entities[0].stats![0].scripts![0].code).toBe('owner.stats.Rage.value = 2;');
   });
 
+  it('keeps an entity edit queued in the same tick as a script write on that entity', () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openScripts();
+    selectRow('Temper');
+    act(() => {
+      bench.ctx().editEntity('resident', (entity) => ({ ...entity, name: 'Odd Wick II' }));
+      fireEvent.change(codeBox('Temper'), { target: { value: 'owner.stats.Rage.value = 2;' } });
+    });
+    expect(bench.ctx().entities[0].name).toBe('Odd Wick II');
+    expect(bench.ctx().entities[0].stats![0].scripts![0].code).toBe('owner.stats.Rage.value = 2;');
+  });
+
   it('undoes a typed run in the tab in one step', async () => {
     const bench = renderWorldEditorBench(WORLD, 'advanced');
     openScripts();
