@@ -121,15 +121,16 @@ export interface LocalLlmState {
   kvCacheInRam: boolean | null;
   /** The loaded model's trained context length — the ceiling for contextSize (null when no model loaded). */
   maxContextSize: number | null;
-  /** Our VRAM footprint in MB (device-usage delta across model load), or null if unknown/no model. */
+  /** Our VRAM footprint in MB: the model, KV, compute and output buffers llama-server logged on GPU devices
+   *  at load. Null on the CPU backend or with no model. */
   engineVramMB: number | null;
   /** The backend llama.cpp selected — 'cuda' | 'vulkan' | 'metal' | 'cpu' — or null before one is chosen.
    *  Survives a failed load, so an out-of-VRAM error still says which device it ran on. */
   gpuBackend: string | null;
   /** Devices that backend enumerated, or null when it can't enumerate them. */
   gpuDeviceNames: string[] | null;
-  /** Total / free VRAM in MB on the selected device, read just before the load sizes itself against it.
-   *  A mismatch against the nvidia-smi readout means llama.cpp picked a different device than expected. */
+  /** Total / free VRAM in MB on the devices the model loaded onto: total from `--list-devices`, free as
+   *  llama-server logged it at load. A mismatch against the nvidia-smi readout means a different device. */
   deviceVramTotalMB: number | null;
   deviceVramFreeMB: number | null;
   /** The device index the backend was restricted to, or null when it was left unfiltered. Pinning one
@@ -145,6 +146,8 @@ export interface LocalLlmState {
    *  into. A pinned backend can only enumerate its own device, so this is the only record of what it was
    *  chosen from, and the answer to "why that one" in a bug report. Null when nothing was pinned. */
   gpuDeviceOptions: string[] | null;
+  /** Pid of the llama-server model instance, which holds our VRAM. Null until found after the load. */
+  serverPid: number | null;
 }
 
 /** How the engine's pinned device was arrived at. */

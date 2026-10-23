@@ -14,7 +14,7 @@ const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'kCacheType', 'vCacheType', 'kvCacheInRam', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
-  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
+  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions', 'serverPid',
 ];
 const keysOf = (s) => Object.keys(s).sort();
 const expectedKeys = [...STATE_KEYS].sort();

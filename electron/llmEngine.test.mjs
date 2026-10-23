@@ -16,7 +16,7 @@ const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'kCacheType', 'vCacheType', 'kvCacheInRam', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
-  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
+  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions', 'serverPid',
 ];
 const keysOf = (s) => Object.keys(s).sort();
 const expectedKeys = [...STATE_KEYS].sort();
@@ -39,7 +39,7 @@ let workRoot = null;
 function setup(fakeOptions = {}, { platform = 'win32', binaryPath = ({ cpu } = {}) => (cpu ? 'llama-server-cpu' : 'llama-server') } = {}) {
   const fake = createFakeLlamaServer(fakeOptions);
   workRoot = mkdtempSync(path.join(os.tmpdir(), 'engine-test-'));
-  engine = createEngine({ spawn: fake.spawn, binaryPath, platform, workRoot });
+  engine = createEngine({ spawn: fake.spawn, binaryPath, platform, workRoot, listProcesses: fake.listProcesses });
   const seen = [];
   engine.onStatus((s) => seen.push(s));
   return { fake, seen };
@@ -107,7 +107,7 @@ describe('engine lifecycle through the fake server', () => {
     expect(ready).toMatchObject({
       status: 'ready', modelPath: MODEL, modelId: 'Tiny-Q4_K_M.gguf', port, error: null, loadProgress: null,
       contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2, unifiedKvCache: true,
-      maxContextSize: 131072, engineVramMB: null,
+      maxContextSize: 131072, engineVramMB: 3023, deviceVramTotalMB: 24138, deviceVramFreeMB: 21970,
       gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'], gpuDeviceOptions: ['NVIDIA GeForce RTX 4090'],
       gpuDeviceIndex: null, gpuDeviceOrigin: null,
     });
@@ -126,6 +126,7 @@ describe('engine lifecycle through the fake server', () => {
       binaryPath: () => 'llama-server',
       platform: 'win32',
       workRoot,
+      listProcesses: fake.listProcesses,
     });
     await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
     const call = fake.routerCalls()[0];
@@ -546,6 +547,74 @@ describe('CPU fallback and load errors', () => {
     expect(s.gpuBackend).toBe('cpu');
     expect(fake.routerCalls()).toHaveLength(1);
     expect(after(argsOf(fake.routerCalls()[0]), '--device')).toBe('none');
+  });
+});
+
+describe('VRAM viewer fields from the load log', () => {
+  /** The first status after `ready` that carries the instance pid. */
+  const pidStatus = (seen) => new Promise((resolve) => {
+    const hit = () => seen.find((s) => s.status === 'ready' && s.serverPid != null);
+    if (hit()) return resolve(hit());
+    const off = engine.onStatus(() => { if (hit()) { off(); resolve(hit()); } });
+  });
+
+  it('passes -lv 4, the verbosity that logs the device and buffer lines', async () => {
+    const { fake } = setup();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(after(argsOf(fake.routerCalls()[0]), '-lv')).toBe('4');
+  });
+
+  it('fills share, free-at-load, total, names and backend from an Auto load', async () => {
+    setup();
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    // Recorded: Vulkan0 model 2430.74 + KV 512 + compute 80.01 MiB; the CPU_Mapped and Vulkan_Host buffers stay out.
+    expect(s).toMatchObject({
+      engineVramMB: 3023, deviceVramFreeMB: 21970, deviceVramTotalMB: 24138,
+      gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'],
+    });
+  });
+
+  it('fills them from a fit-off load too', async () => {
+    setup({ scenarioFor: () => 'max' });
+    const s = await engine.start({ ...SETTINGS, gpuLayers: GPU_LAYERS_MAX, modelPath: MODEL, port: await freePort() });
+    expect(s).toMatchObject({ engineVramMB: 3023, deviceVramFreeMB: 22293, deviceVramTotalMB: 24138 });
+  });
+
+  it('reports no share and no device VRAM after a CPU fallback', async () => {
+    setup({ scenarioFor: (args) => (isCpuStart(args) ? 'cpu' : 'kvFail') });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(s).toMatchObject({ status: 'ready', gpuBackend: 'cpu', engineVramMB: null, deviceVramFreeMB: null, deviceVramTotalMB: null });
+  });
+
+  it('totals only the devices the instance logged, not every enumerated one', async () => {
+    // GPU Device All with an iGPU listed after the card; the recorded instance used Vulkan0 alone.
+    setup({ listDevices: `${fixture.listDevices}  Vulkan1: Intel(R) UHD Graphics 770 (16252 MiB, 15000 MiB free)\r\n` });
+    const s = await engine.start({ ...SETTINGS, gpuDevice: 'all', modelPath: MODEL, port: await freePort() });
+    expect(s).toMatchObject({ deviceVramTotalMB: 24138, deviceVramFreeMB: 21970 });
+  });
+
+  it('drops the share when the model is lost, keeping the device line for the error', async () => {
+    const { fake, seen } = setup();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    fake.routers[0].child.crash();
+    await new Promise((resolve) => { const check = () => (seen.at(-1).status === 'error' ? resolve() : setTimeout(check, 5)); check(); });
+    expect(seen.at(-1)).toMatchObject({ engineVramMB: null, serverPid: null, deviceVramTotalMB: 24138 });
+  });
+
+  it('attributes the model instance, not the router, and drops it on stop', async () => {
+    const { fake, seen } = setup();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    const s = await pidStatus(seen);
+    expect(s.serverPid).toBe(fake.routers[0].instancePid);
+    expect(s.serverPid).not.toBe(fake.routers[0].pid);
+    await engine.stop();
+    expect(engine.getState().serverPid).toBeNull();
+  });
+
+  it('finds the instance under the POSIX supervising shell', async () => {
+    const { fake, seen } = setup({}, { platform: 'linux' });
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect((await pidStatus(seen)).serverPid).toBe(fake.routers[0].instancePid);
   });
 });
 

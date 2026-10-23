@@ -20,7 +20,7 @@ const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
   contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false,
   maxContextSize: 32768, engineVramMB: 4096,
   gpuBackend: 'vulkan', gpuDeviceNames: [IGPU, DISCRETE], deviceVramTotalMB: 16376, deviceVramFreeMB: 15176,
-  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,
+  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null, serverPid: null,
   ...over,
 });
 

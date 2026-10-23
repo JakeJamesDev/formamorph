@@ -6,12 +6,76 @@ import path from 'node:path';
 import llamaServer from './llamaServer.cjs';
 import { loadFixture } from './fakeLlamaServer.mjs';
 
-const { parseListDevices, backendOf, loadPercent, parseLogLine, sseReader, describeLoadError, buildId, binaryPath, spawnCommand, GPU_LAYERS_MAX } = llamaServer;
+const { parseListDevices, backendOf, loadPercent, parseLogLine, sseReader, describeLoadError, buildId, binaryPath, spawnCommand, GPU_LAYERS_MAX, memoryTally, instancePid, parseProcessRows } = llamaServer;
 const fixture = loadFixture();
+
+/** A recorded scenario's instance log texts, fed through a fresh tally, as status fields over `devices`. */
+const fieldsOf = (texts, devices = parseListDevices(fixture.listDevices)) => {
+  const t = memoryTally();
+  for (const text of texts) t.feed(text);
+  return t.fields(devices);
+};
+const instanceTexts = (scenario) => fixture.scenarios[scenario].load.map(parseLogLine).filter((e) => e.port != null).map((e) => e.text);
+
+describe('memoryTally', () => {
+  it('sums the recorded non-host buffers and reads the device’s free VRAM at load', () => {
+    expect(fieldsOf(instanceTexts('loaded'))).toEqual({ engineVramMB: 3023, deviceVramFreeMB: 21970, deviceVramTotalMB: 24138 });
+  });
+
+  it('counts nothing on a CPU load, whose buffers are all host', () => {
+    expect(fieldsOf(instanceTexts('cpu'))).toEqual({ engineVramMB: null, deviceVramFreeMB: null, deviceVramTotalMB: null });
+  });
+
+  it('counts a hybrid model’s recurrent state with its KV', () => {
+    // Lines from a b11829 load of a Qwen3.6 35B-A3B (hybrid attention) on this PC.
+    const texts = [
+      'llama_prepare_model_devices: using device Vulkan0 (NVIDIA GeForce RTX 4090) (0000:01:00.0) - 23365 MiB free',
+      'load_tensors:      Vulkan0 model buffer size = 20117.18 MiB',
+      'llama_kv_cache:    Vulkan0 KV buffer size =    80.00 MiB',
+      'llama_memory_recurrent:    Vulkan0 RS buffer size =    62.81 MiB',
+      'sched_reserve:    Vulkan0 compute buffer size =    80.02 MiB',
+    ];
+    expect(fieldsOf(texts).engineVramMB).toBe(20340);
+  });
+
+  it('sums across devices when the load spans two', () => {
+    // The recorded single-GPU lines, each device and buffer line repeated for a second card.
+    const texts = instanceTexts('max').flatMap((t) => (/Vulkan0/.test(t) ? [t, t.replace('Vulkan0', 'Vulkan1').replace(/- \d+ MiB free/, '- 1000 MiB free')] : [t]));
+    const devices = parseListDevices('Available devices:\n  Vulkan0: NVIDIA GeForce RTX 4090 (24138 MiB, 22065 MiB free)\n  Vulkan1: NVIDIA GeForce RTX 3060 (12288 MiB, 1100 MiB free)\n');
+    expect(fieldsOf(texts, devices)).toEqual({ engineVramMB: 6046, deviceVramFreeMB: 23293, deviceVramTotalMB: 36426 });
+  });
+});
+
+describe('instancePid', () => {
+  // Windows rows from the CIM query: the router under the engine host, the instance under the router.
+  const win = parseProcessRows('4 0 System\r\n900 1 Formamorph Engine\r\n53724 900 llama-server.exe\r\n8852 53724 llama-server.exe\r\n7777 1 llama-server.exe\r\n7778 7777 llama-server.exe\r\n');
+
+  it('picks the router’s child, not the router or another app’s server', () => {
+    expect(instancePid(win, 53724)).toBe(8852);
+  });
+
+  it('walks through the POSIX supervising shell', () => {
+    const posix = parseProcessRows('  900     1 node\n  901   900 sh\n  902   901 /opt/app/llama-server\n  903   902 /opt/app/llama-server\n  904   901 sh\n');
+    expect(instancePid(posix, 901)).toBe(903);
+  });
+
+  it('answers null before the instance exists', () => {
+    expect(instancePid(win.filter((r) => r.pid !== 8852), 53724)).toBeNull();
+  });
+
+  it('lists this OS’s real process table, this process under its parent', async () => {
+    const rows = await llamaServer.listProcesses();
+    expect(rows.find((r) => r.pid === process.pid)?.ppid).toBe(process.ppid);
+  }, 30000);
+
+  it('keeps a name with spaces whole', () => {
+    expect(parseProcessRows('12 3 Formamorph Engine Helper.exe')).toEqual([{ pid: 12, ppid: 3, name: 'Formamorph Engine Helper.exe' }]);
+  });
+});
 
 describe('parseListDevices', () => {
   it('reads the recorded --list-devices output', () => {
-    expect(parseListDevices(fixture.listDevices)).toEqual([{ id: 'Vulkan0', name: 'NVIDIA GeForce RTX 4090', totalMB: 24138, freeMB: 23370 }]);
+    expect(parseListDevices(fixture.listDevices)).toEqual([{ id: 'Vulkan0', name: 'NVIDIA GeForce RTX 4090', totalMB: 24138, freeMB: 22065 }]);
   });
 
   it('keeps several devices in the server’s order and names the backend', () => {
