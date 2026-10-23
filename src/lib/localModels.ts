@@ -78,10 +78,10 @@ export const DOWNLOADS_AS_OF = '2026-07';
 // Verified against the HF API (filenames, sizes, release dates, all-time downloads) July 2026. Entries here
 // all happen to be roleplay finetunes — that's history, not an entry requirement (see the eligibility note at
 // the top of this file). The one flagged `reasoning: true` is an RP finetune on a reasoning base
-// (Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → node-llama-cpp
-// `budgets.thoughtTokens`, with `<think>` reconstruction). That handling is not a guarantee at small sizes —
-// the 4B reasoning entry was cut for returning empty narrations, so screen any reasoning candidate before
-// adding it. Refresh this list periodically; the scene moves fast.
+// (Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → llama-server
+// `thinking_budget_tokens`, with `<think>` restored when the template opens it). That handling is not a
+// guarantee at small sizes — the 4B reasoning entry was cut for returning empty narrations, so screen any
+// reasoning candidate before adding it. Refresh this list periodically; the scene moves fast.
 //
 // ORDER IS LOAD-BEARING: entries are grouped by tier, and within a tier they run best-first by screen ranking
 // (testing/baseline/leaderboard.md), with untested/unfit models last. The UI recommends a tier's FIRST entry
