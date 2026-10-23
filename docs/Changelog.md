@@ -42,6 +42,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.
   - **The Hidden list in Community Creations now scrolls, so you can unhide one world from a long list.** With many hidden worlds, the list grew past the screen and you couldn't reach most of them.
   - **Indented lists and paragraphs in narration and model thoughts now show as text, not as code blocks.** A model that indented its outline by four spaces got a code box. Fenced code still shows as code.
+  - **Unchecking Native Reasoning under Settings → Output now turns reasoning off on every prompt.** Before, only prompts set to Global followed it, so planning prompts kept reasoning at Low. Each prompt keeps its own setting for when you check it again.
   - **Test Code on a linked stat now routes writes through `owner.stats` to the stat itself, as play does.** The stat panel and the Scripts tab now give one report for one script. A Blueprint trait's script cards and Find All Uses now list the entities that link it.
 
 ---

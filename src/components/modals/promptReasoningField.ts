@@ -21,6 +21,8 @@ export interface PromptReasoningFieldProps {
   level: boolean;
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
   lockedOn?: boolean;
+  /** The endpoint-wide switch is off, so the prompt sends none and its own setting waits, inert. */
+  globalOff?: boolean;
   disabled?: boolean;
   /** The label, line and ⓘ in place of the prompt copy, where the target takes a level or neither strength. Null
    *  draws none, for a settings row that carries its own. */
@@ -77,6 +79,7 @@ export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omi
   const strength = resolveRequestReasoning(
     kind, { [kind]: setting.level }, resolveReasoningSetting(global), 'off', capability, { prompts: { [kind]: setting }, global },
   );
+  const lockedOn = reasoningOffRefused(capability);
   // A slider target with no base, or a level target with no slider; no other target shows a strength to read beside.
   const room = strength !== 'none' && ((slider && !scalable) || (!slider && level))
     ? thinkingRoomFor(strength, slider ? reasoningDialectBudgetFloor(capability.dialect) : 0)
@@ -85,7 +88,9 @@ export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omi
     setting,
     onChange,
     options: promptReasoningLevelOptions(capability, setting.level),
-    lockedOn: reasoningOffRefused(capability),
+    lockedOn,
+    // An endpoint that refuses off reasons whatever the switch says, so the prompt keeps its own control.
+    globalOff: !global.enabled && !lockedOn,
     // Each half follows the dialect's row and the record; the engine names no level field, so no dropdown.
     budget: slider && scalable ? { value: budgetPct, set: onBudgetChange, tokens } : null,
     room,

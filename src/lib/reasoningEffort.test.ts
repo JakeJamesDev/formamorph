@@ -188,6 +188,13 @@ describe('a request on an endpoint that refuses off', () => {
     expect(resolveRequestReasoning('narration', off, 'none', 'off', refuses, kept)).toBe('medium');
   });
 
+  it('carries a prompt\'s own level under the endpoint-wide master off, since the model reasons anyway', () => {
+    const refuses = record({ dialect: 'moonshot-k3' });
+    const kept = { prompts: { director: { enabled: true, level: 'high' as const } }, global: { enabled: false, level: 'auto' as const } };
+    expect(resolveRequestReasoning('director', { director: 'high' }, 'none', 'off', refuses, kept)).toBe('high');
+    expect(resolveRequestReasoning('director', { director: 'high' }, 'none', 'off', record({ dialect: 'openrouter', offAllowed: true }), kept)).toBe('none');
+  });
+
   it('falls back to the shipped strength when nothing is stored for the prompt', () => {
     const refuses = record({ dialect: 'moonshot-k3' });
     // Stat Updates ships switched off, remembering Global, and the shipped global strength is Model Default.
@@ -275,6 +282,21 @@ describe('per-prompt reasoning', () => {
     }
   });
 
+  it('resolves every prompt to none while the endpoint-wide switch is off, its own level and shipped tier included', () => {
+    for (const mode of ['off', 'precall', 'staged', 'inline'] as const) {
+      for (const kind of ALL_KINDS) {
+        expect(resolvePromptReasoning(kind, {}, 'none', mode)).toBe('none');
+        expect(resolvePromptReasoning(kind, { [kind]: 'high' }, 'none', mode)).toBe('none');
+      }
+    }
+  });
+
+  it('gives each prompt back its own choice once the endpoint-wide switch is on again', () => {
+    expect(resolvePromptReasoning('director', {}, 'none', 'off')).toBe('none');
+    expect(resolvePromptReasoning('director', {}, 'auto', 'off')).toBe('low');
+    expect(resolvePromptReasoning('summary', { summary: 'high' }, 'auto', 'off')).toBe('high');
+  });
+
   it('resolves the help kind from its own setting, off when none is given', () => {
     expect(resolvePromptReasoning('help', { help: 'high' }, 'low', 'off')).toBe('high');
     expect(resolvePromptReasoning('help', { help: 'global' }, 'medium', 'off')).toBe('medium');
@@ -335,10 +357,12 @@ describe('isReasoningEngaged', () => {
   it('is true out of the box: nothing stored, yet the shipped tiers switch several prompts on', () => {
     expect(isReasoningEngaged('off', 'auto', {})).toBe(true);
   });
-  it('is false only when every prompt resolves to none', () => {
+  it('is false only when every prompt resolves to none under a switched-on endpoint-wide setting', () => {
     expect(isReasoningEngaged('off', 'auto', everyKindOff)).toBe(false);
-    // Narration at Global follows a switched-off endpoint-wide setting, so it counts as none too.
-    expect(isReasoningEngaged('off', 'none', { ...everyKindOff, narration: 'global' })).toBe(false);
+  });
+  it('is true while the endpoint-wide switch is off, so its none goes out rather than nothing', () => {
+    expect(isReasoningEngaged('off', 'none', everyKindOff)).toBe(true);
+    expect(isReasoningEngaged('off', 'none', {})).toBe(true);
   });
   it('is true when a Thinking mode is active, whatever the prompts say', () => {
     expect(isReasoningEngaged('staged', 'none', everyKindOff)).toBe(true);
