@@ -15,10 +15,11 @@ import { setLocalLlmOptions, listLocalGpuDevices, pinnedEngineDevice, type Engin
 import {
   LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
   DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  DEFAULT_LOCAL_CONTEXT_OVERFLOW, LOCAL_CONTEXT_OVERFLOW_POLICIES,
   LOCAL_GPU_DEVICE_AUTO, LOCAL_GPU_DEVICE_ALL, DEFAULT_LOCAL_GPU_DEVICE,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
-import type { LocalCacheType } from '@/contexts/settingsDefaults';
+import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
 
 /**
@@ -36,6 +37,7 @@ export function LocalModelPanel() {
     localKCacheType, setLocalKCacheType,
     localVCacheType, setLocalVCacheType,
     localKvCacheInRam, setLocalKvCacheInRam,
+    localContextOverflow, setLocalContextOverflow,
     localGpuDevice, setLocalGpuDevice,
     localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
@@ -133,6 +135,7 @@ export function LocalModelPanel() {
     setLocalKCacheType(DEFAULT_LOCAL_K_CACHE_TYPE);
     setLocalVCacheType(DEFAULT_LOCAL_V_CACHE_TYPE);
     setLocalKvCacheInRam(DEFAULT_LOCAL_KV_CACHE_IN_RAM);
+    setLocalContextOverflow(DEFAULT_LOCAL_CONTEXT_OVERFLOW);
     setLocalGpuDevice(DEFAULT_LOCAL_GPU_DEVICE);
     setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
@@ -174,7 +177,7 @@ export function LocalModelPanel() {
 
       {/* When a change takes effect is a property of the whole group, not of any one row, so it belongs
           on the section header rather than at the end of every description. */}
-      <Section title="Engine" hint="Sampling changes apply to the next turn; the rest need a reload.">
+      <Section title="Engine" hint="Sampling and Context Overflow apply to the next turn; the rest need a reload">
       {/* Simple rows — always visible */}
       <Row htmlFor="localContextSize" {...rowCopy('localContextSize')}>
         <ValueSlider id="localContextSize" value={Math.min(localContextSize, contextMax)} min={2048} max={contextMax} step={1024} onChange={setLocalContextSize} format={(v) => `${v.toLocaleString()} tok`} />
@@ -322,6 +325,16 @@ export function LocalModelPanel() {
 
       {advancedMode && (
         <>
+          {/* Applies to the next request, as sampling does, so it groups with the sampling rows. */}
+          <Row htmlFor="localContextOverflow" {...rowCopy('localContextOverflow')}>
+            <Select value={localContextOverflow} onValueChange={(v) => setLocalContextOverflow(v as LocalContextOverflow)}>
+              <SelectTrigger id="localContextOverflow"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LOCAL_CONTEXT_OVERFLOW_POLICIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Row>
+
           <Row htmlFor="genTopP" {...rowCopy('localTopP')}>
             <ValueSlider id="genTopP" value={genTopP} min={0} max={1} step={0.05} onChange={setGenTopP} format={(v) => v.toFixed(2)} />
           </Row>

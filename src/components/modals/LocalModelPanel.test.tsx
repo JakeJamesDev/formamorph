@@ -5,6 +5,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { LocalModelPanel } from './LocalModelPanel';
+import { LocalEngineManager } from '../LocalEngineManager';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
 
 // The model manager is its own surface with its own coverage, and mounting it pulls in the whole install
@@ -25,6 +26,7 @@ const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
 });
 
 let setOptionsCalls: Record<string, unknown>[] = [];
+let contextOverflowCalls: string[] = [];
 
 /** Stand the desktop bridge up so the panel takes its desktop path — the only one the picker exists on. */
 function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = readyEngine() }: {
@@ -41,6 +43,8 @@ function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = re
       onStatus: () => () => {},
       listDevices: () => Promise.resolve({ backend, devices, autoPick }),
       setOptions: (opts: Record<string, unknown>) => { setOptionsCalls.push(opts); return Promise.resolve(engine); },
+      setContextOverflow: (policy: string) => { contextOverflowCalls.push(policy); return Promise.resolve(policy); },
+      stop: () => Promise.resolve(engine),
     },
   } as unknown as Window['formamorphDesktop'];
 }
@@ -56,6 +60,7 @@ const savedDevice = (name: string) => localStorage.setItem('FORMAMORPH_localGpuD
 beforeEach(() => {
   localStorage.clear();
   setOptionsCalls = [];
+  contextOverflowCalls = [];
   delete (window as { formamorphDesktop?: unknown }).formamorphDesktop;
 });
 
@@ -169,6 +174,50 @@ describe('local model KV cache rows', () => {
     expect(picker('localKCacheType')).toHaveTextContent('F16');
     expect(picker('localVCacheType')).toHaveTextContent('F16');
     expect(kvBox()).not.toBeChecked();
+  });
+});
+
+describe('local model Context Overflow row', () => {
+  const picker = () => document.getElementById('localContextOverflow') as HTMLElement;
+  const reloadButton = () => screen.getByRole('button', { name: /save.*reload/i });
+  // The manager is what pushes a change to the engine, so it mounts beside the panel as in the app.
+  const openWithManager = () => render(<SettingsProvider><LocalEngineManager /><LocalModelPanel /></SettingsProvider>);
+
+  it('shows in Advanced only, on Truncate Middle by default', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE] });
+    openPanel();
+    await screen.findByRole('combobox');
+    expect(screen.queryByText('Context Overflow')).toBeNull();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Advanced' }));
+    expect(picker()).toHaveTextContent('Truncate Middle');
+  });
+
+  it('sends a change to the engine at once, with no reload', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE] });
+    localStorage.setItem('FORMAMORPH_advancedMode', 'true');
+    openWithManager();
+    await screen.findAllByRole('combobox');
+    expect(contextOverflowCalls).toEqual(['truncateMiddle']);
+
+    await userEvent.click(picker());
+    await userEvent.click(await screen.findByRole('option', { name: 'Stop at Limit' }));
+    expect(picker()).toHaveTextContent('Stop at Limit');
+    expect(contextOverflowCalls.at(-1)).toBe('stopAtLimit');
+    expect(reloadButton()).toBeDisabled();
+    expect(setOptionsCalls.some((o) => 'contextOverflow' in o)).toBe(false);
+  });
+
+  it('Reset restores Truncate Middle', async () => {
+    localStorage.setItem('FORMAMORPH_localContextOverflow', 'rollingWindow');
+    stubDesktop({ devices: [IGPU, DISCRETE] });
+    localStorage.setItem('FORMAMORPH_advancedMode', 'true');
+    openPanel();
+    await screen.findAllByRole('combobox');
+    expect(picker()).toHaveTextContent('Rolling Window');
+
+    await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+    expect(picker()).toHaveTextContent('Truncate Middle');
   });
 });
 

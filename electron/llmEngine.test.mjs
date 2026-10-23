@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import llmEngine from './llmEngine.cjs';
 import llamaServer from './llamaServer.cjs';
-import { createFakeLlamaServer, isCpuStart, loadFixture, loadThinkingFixture } from './fakeLlamaServer.mjs';
+import { countFakeTokens, createFakeLlamaServer, isCpuStart, loadFixture, loadThinkingFixture, renderChatMl } from './fakeLlamaServer.mjs';
 
 const { createEngine, getState } = llmEngine;
 const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
@@ -430,6 +430,150 @@ describe('proxy request path', () => {
     const streamed = (await (await chat({ messages: [{ role: 'user', content: 'hi' }], stream: true })).text())
       .split('\n\n').filter((f) => f.startsWith('data: {')).map((f) => JSON.parse(f.slice(6)).choices[0]?.delta?.content ?? '').join('');
     expect(streamed.startsWith('<think>\n')).toBe(true);
+  });
+});
+
+describe('Context Overflow', () => {
+  // A 256-token slot. Each message costs 3 tokens plus its words in the fake's ChatML; the prompt adds 2.
+  const N_CTX = 256;
+  const words = (tag, n) => Array.from({ length: n }, (_, i) => `${tag}${i}`).join(' ');
+  const sys = { role: 'system', content: words('s', 20) };
+  const u1 = { role: 'user', content: words('first', 20) };
+  const middle = ['a1', 'u2', 'a2', 'u3', 'a3'].map((t) => ({ role: t[0] === 'a' ? 'assistant' : 'user', content: words(t, 30) }));
+  const latest = { role: 'user', content: words('latest', 20) };
+  // 236 tokens: fits 256, overflows once 64 are kept for the answer.
+  const story = [sys, u1, ...middle, latest];
+  const tokensOf = (messages) => countFakeTokens(renderChatMl(messages));
+
+  async function ready(policy, fakeOptions) {
+    const { fake } = setup(fakeOptions);
+    const port = await freePort();
+    expect(await engine.start({ ...SETTINGS, contextSize: N_CTX, modelPath: MODEL, port, contextOverflow: policy })).toMatchObject({ status: 'ready' });
+    const chat = (body) => fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body) });
+    return { fake, port, chat };
+  }
+  const sent = (fake) => fake.chatRequests.at(-1);
+
+  it('passes a prompt that fits unchanged, under every policy', async () => {
+    expect(tokensOf(story)).toBe(236);
+    const { fake, chat } = await ready('truncateMiddle');
+    for (const policy of ['truncateMiddle', 'rollingWindow', 'stopAtLimit']) {
+      engine.setContextOverflow(policy);
+      expect((await chat({ messages: story })).status).toBe(200);
+      expect(sent(fake).messages).toEqual(story);
+    }
+  });
+
+  it('Truncate Middle keeps the system prompt, the first user message and the latest, and drops whole messages between', async () => {
+    const { fake, chat } = await ready('truncateMiddle');
+    expect((await chat({ messages: story, max_tokens: 64 })).status).toBe(200);
+    // The smallest cut that keeps turns alternating: a1 alone would put u2 after u1.
+    expect(sent(fake).messages).toEqual([sys, u1, ...middle.slice(2), latest]);
+    expect(tokensOf(sent(fake).messages)).toBeLessThanOrEqual(N_CTX - 64);
+    expect(sent(fake).max_tokens).toBe(64);
+  });
+
+  it('Rolling Window keeps the system prompt and drops the oldest messages first', async () => {
+    const { fake, chat } = await ready('rollingWindow');
+    expect((await chat({ messages: story, max_tokens: 64 })).status).toBe(200);
+    // u1 alone would leave a1 first after the system prompt, so a1 drops with it.
+    expect(sent(fake).messages).toEqual([sys, ...middle.slice(1), latest]);
+    expect(tokensOf(sent(fake).messages)).toBeLessThanOrEqual(N_CTX - 64);
+  });
+
+  it('Stop at Limit returns a context-length stop and sends nothing to the model', async () => {
+    const { fake, chat } = await ready('stopAtLimit');
+    const res = await chat({ messages: story, max_tokens: 64, stream: true });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error).toMatchObject({ type: 'exceed_context_size_error', n_prompt_tokens: 236, n_ctx: N_CTX });
+    expect(error.message).toBe('This request needs 236 tokens, and “Context Size” leaves room for 192. Set “Context Overflow” to “Truncate Middle”, raise “Context Size”, or lower “Max Output Tokens”.');
+    expect(fake.chatRequests).toHaveLength(0);
+  });
+
+  it('stops the same way when the messages a policy keeps are too long on their own', async () => {
+    const longFirst = { role: 'user', content: words('first', 240) };
+    const { fake, chat } = await ready('truncateMiddle');
+    const res = await chat({ messages: [sys, longFirst, ...middle, latest] });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.message).toBe('The messages this request must keep need more than 256 tokens. Raise “Context Size”.');
+    expect(fake.chatRequests).toHaveLength(0);
+  });
+
+  it('drops one more message rather than put two user turns together', async () => {
+    const [a1, u2, a2] = [{ ...middle[0], content: words('a1', 60) }, middle[1], middle[2]];
+    const { fake, chat } = await ready('truncateMiddle');
+    // Dropping a1 alone fits, but leaves u1 then u2.
+    expect((await chat({ messages: [sys, u1, a1, u2, a2, latest], max_tokens: 64 })).status).toBe(200);
+    expect(sent(fake).messages).toEqual([sys, u1, a2, latest]);
+  });
+
+  it('breaks the turn order only when no cut that keeps it fits', async () => {
+    const big = { role: 'assistant', content: words('big', 100) };
+    const { fake, chat } = await ready('truncateMiddle');
+    expect((await chat({ messages: [sys, u1, big, latest], max_tokens: 150 })).status).toBe(200);
+    expect(sent(fake).messages).toEqual([sys, u1, latest]);
+  });
+
+  it('counts the prompt as the router renders the whole request, not the messages alone', async () => {
+    const { fake, chat } = await ready('truncateMiddle');
+    const tools = [{ type: 'function', function: { name: 'roll', parameters: { type: 'object' } } }];
+    await chat({ messages: story, max_tokens: 64, tools, stream: true });
+    expect(fake.templateRequests.length).toBeGreaterThan(0);
+    for (const r of fake.templateRequests) {
+      expect(r).toMatchObject({ model: 'Tiny-Q4_K_M.gguf', tools, max_tokens: 64 });
+      expect(r.stream).toBeUndefined();
+    }
+  });
+
+  it('keeps at most half the slot for the answer, so a large max_tokens still leaves room for the prompt', async () => {
+    const { fake, chat } = await ready('truncateMiddle');
+    const res = await chat({ messages: story, max_tokens: 1000 });
+    expect(res.status).toBe(200);
+    expect(sent(fake).messages.slice(0, 2)).toEqual([sys, u1]);
+    expect(sent(fake).messages.at(-1)).toEqual(latest);
+    expect(tokensOf(sent(fake).messages)).toBeLessThanOrEqual(N_CTX / 2);
+  });
+
+  it('restates the server’s own context error, for a prompt the server counts longer, in the same words', async () => {
+    // 200 tokens the template text doesn't show, as image embeddings are.
+    const { chat } = await ready('stopAtLimit', { chatExtraTokens: 200 });
+    const res = await chat({ messages: story });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error).toMatchObject({ type: 'exceed_context_size_error', n_prompt_tokens: 436, n_ctx: N_CTX });
+    expect(error.message).toBe('This request needs 436 tokens, and “Context Size” leaves room for 256. Set “Context Overflow” to “Truncate Middle”, or raise “Context Size”.');
+  });
+
+  it('stops counting and sends nothing when the client hangs up mid-count', async () => {
+    // Slower than expect.poll's 50 ms beat, so the hangup lands inside the first count.
+    const { fake, port } = await ready('truncateMiddle', { tokenizeMs: 200 });
+    // node:http, not fetch: the test environment's AbortSignal is not the one Node's fetch takes.
+    const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/v1/chat/completions' });
+    req.on('error', () => {});
+    req.end(JSON.stringify({ messages: story, max_tokens: 64 }));
+    await expect.poll(() => fake.templateRequests.length).toBe(1);
+    req.destroy();
+    // Three tokenize delays: an engine still counting would have sent its next template request by then.
+    await new Promise((r) => setTimeout(r, 600));
+    expect(fake.templateRequests).toHaveLength(1);
+    expect(fake.chatRequests).toHaveLength(0);
+  });
+
+  it('applies a policy change to the next request with no reload', async () => {
+    const { fake, chat } = await ready('truncateMiddle');
+    engine.setContextOverflow('stopAtLimit');
+    expect((await chat({ messages: story, max_tokens: 64 })).status).toBe(400);
+    engine.setContextOverflow('rollingWindow');
+    expect((await chat({ messages: story, max_tokens: 64 })).status).toBe(200);
+    expect(sent(fake).messages[1]).toEqual(middle[1]);
+    expect(fake.routerCalls()).toHaveLength(1);
+  });
+
+  it('reads an unknown policy as Truncate Middle', async () => {
+    const { fake, chat } = await ready('dropEverything');
+    await chat({ messages: story, max_tokens: 64 });
+    expect(sent(fake).messages.slice(0, 2)).toEqual([sys, u1]);
   });
 });
 

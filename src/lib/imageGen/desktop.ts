@@ -2,7 +2,7 @@
 // `window.formamorphDesktop`; in the plain web build it's absent. Cloud image providers (which need a
 // CORS-free proxy) route through this bridge and are disabled in the UI when it isn't present.
 
-import type { LocalCacheType } from '@/contexts/settingsDefaults';
+import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
 import type { ProjectorSource } from '@/lib/localModels';
 
 export interface DesktopFetchRequest {
@@ -219,6 +219,8 @@ declare global {
         onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
         /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if changed. */
         setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }) => Promise<LocalLlmState>;
+        /** Set the Context Overflow policy for the next request; no reload. Resolves the policy applied. */
+        setContextOverflow: (policy: LocalContextOverflow) => Promise<LocalContextOverflow>;
         /** Every GPU the engine can pin to, for the device picker. */
         listDevices: () => Promise<EngineDeviceList>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
@@ -345,6 +347,10 @@ export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => vo
 /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if they changed. */
 export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
+
+/** Set the engine's Context Overflow policy; it applies to the next request with no reload. */
+export const setLocalLlmContextOverflow = (policy: LocalContextOverflow): Promise<LocalContextOverflow> =>
+  requireLlm().setContextOverflow(policy);
 
 /** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty
  *  list — which the picker states rather than showing an empty dropdown. */

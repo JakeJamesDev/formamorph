@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
       return () => ipcRenderer.removeListener('llm-move-progress', handler);
     },
     setOptions: (opts) => ipcRenderer.invoke('llm-set-options', opts),
+    setContextOverflow: (policy) => ipcRenderer.invoke('llm-set-context-overflow', policy),
     listDevices: () => ipcRenderer.invoke('llm-list-devices'),
     download: (opts) => ipcRenderer.invoke('llm-download', opts),
     cancelDownload: () => ipcRenderer.invoke('llm-download-cancel'),

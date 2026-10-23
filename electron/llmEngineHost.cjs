@@ -15,7 +15,7 @@ function parentLink() {
 }
 
 // The parent addresses the engine by method name, so spell out which names are reachable.
-const METHODS = { start: engine.start, stop: engine.stop, getState: engine.getState, listDevices: engine.listDevices };
+const METHODS = { start: engine.start, stop: engine.stop, getState: engine.getState, listDevices: engine.listDevices, setContextOverflow: engine.setContextOverflow };
 
 const link = parentLink();
 

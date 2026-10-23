@@ -16,6 +16,7 @@ const llamaServer = require('./llamaServer.cjs');
 const { selectEngineDevice } = require('./engineDevice.cjs');
 const { shapeChatBody } = require('./chatShape.cjs');
 const { findProjector } = require('./modelScan.cjs');
+const contextOverflow = require('./contextOverflow.cjs');
 
 const { errorText } = llamaServer;
 
@@ -89,7 +90,8 @@ function readBody(req) {
 function routerRequest(port, method, urlPath, payload) {
   return new Promise((resolve, reject) => {
     const data = payload == null ? null : JSON.stringify(payload);
-    const req = http.request({ host: '127.0.0.1', port, method, path: urlPath, headers: data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {} }, (res) => {
+    // A connection of its own: the router closes a proxied route's socket, so a pooled one fails on reuse.
+    const req = http.request({ host: '127.0.0.1', port, method, path: urlPath, agent: false, headers: data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {} }, (res) => {
       let text = '';
       res.setEncoding('utf8');
       res.on('data', (c) => { text += c; });
@@ -119,6 +121,8 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
   // The live start (see `start`). Null while stopped.
   let launch = null;
   let starts = 0;
+  // Applies to the next chat request; changing it needs no reload.
+  let overflowPolicy = contextOverflow.DEFAULT_POLICY;
 
   const getState = () => ({ ...state });
 
@@ -273,19 +277,87 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     try { fs.rmSync(l.workDir, { recursive: true, force: true }); } catch { /* a temp folder left behind costs nothing */ }
   }
 
+  /** The tokens `body` renders to, by the router's own template and tokenizer. */
+  async function promptTokens(l, body) {
+    const { stream, stream_options: _streamOptions, ...rest } = body;
+    const rendered = await routerRequest(l.server.port, 'POST', '/apply-template', rest);
+    if (rendered.status !== 200 || typeof rendered.body?.prompt !== 'string') throw new Error('apply-template failed');
+    const tokens = await routerRequest(l.server.port, 'POST', '/tokenize', { model: l.modelId, content: rendered.body.prompt, add_special: true });
+    if (tokens.status !== 200 || !Array.isArray(tokens.body?.tokens)) throw new Error('tokenize failed');
+    return tokens.body.tokens.length;
+  }
+
+  /**
+   * `body` cut to fit the slot under the Context Overflow policy, or { stop } with the context-length error.
+   * The prompt leaves room for the request's max_tokens. Without a known slot size the body is unchanged.
+   */
+  /** The context-length stop for a prompt of `tokens` against a slot of `nCtx`, in the panel's setting names. */
+  function contextStop(body, tokens, nCtx) {
+    // The answer's room, capped at half the slot so a large max_tokens never leaves the prompt nothing.
+    const reserve = Math.min(Math.max(0, Number(body.max_tokens ?? body.max_completion_tokens) || 0), Math.floor(nCtx / 2));
+    const budget = nCtx - reserve;
+    const message = contextOverflow.overflowMessage({ tokens, budget, cut: overflowPolicy !== 'stopAtLimit', reserved: reserve > 0 });
+    return { budget, stop: { error: { code: 400, type: 'exceed_context_size_error', message, n_prompt_tokens: tokens, n_ctx: nCtx } } };
+  }
+
+  async function fitContext(l, body, isGone) {
+    if (!l.slotContext) return { body };
+    const { budget } = contextStop(body, 0, l.slotContext);
+    const fit = await contextOverflow.fitMessages(body.messages, {
+      policy: overflowPolicy,
+      budget,
+      count: (messages) => {
+        if (isGone()) throw new Error('The client hung up.');
+        return promptTokens(l, { ...body, messages });
+      },
+    });
+    if (!fit.overflow) return { body: fit.messages === body.messages ? body : { ...body, messages: fit.messages } };
+    return { stop: contextStop(body, fit.overflow.tokens, l.slotContext).stop };
+  }
+
   function forwardChat(req, res) {
     const l = launch;
     if (state.status !== 'ready' || !l?.server) return sendJson(res, 503, { error: { message: 'Model is not loaded.' } });
-    readBody(req).then((text) => {
+    readBody(req).then(async (text) => {
       let body;
       try { body = JSON.parse(text || '{}'); } catch { return sendJson(res, 400, { error: { message: 'The request body is not JSON.' } }); }
       const shaped = shapeChatBody(body, { modelId: l.modelId, keepImages: Boolean(l.projector) });
       if (shaped.droppedImages > 0) res.setHeader(IMAGES_DROPPED_HEADER, String(shaped.droppedImages));
-      const data = JSON.stringify(shaped.body);
+      // A client that hangs up mid-count stops the counting too. The socket ends before it is destroyed.
+      let hungUp = false;
+      const onHangup = () => { hungUp = true; };
+      req.socket.once('end', onHangup).once('close', onHangup);
+      const gone = () => hungUp || req.socket.destroyed;
+      let fitted;
+      try {
+        fitted = await fitContext(l, shaped.body, gone);
+      } catch {
+        // The count failed (the router stopped answering): forward the unfitted body; the server answers it.
+        fitted = { body: shaped.body };
+      } finally {
+        req.socket.off('end', onHangup).off('close', onHangup);
+      }
+      if (gone() || res.destroyed || res.writableEnded) return;
+      if (fitted.stop) return sendJson(res, 400, fitted.stop);
+      const data = JSON.stringify(fitted.body);
       const up = http.request({
         host: '127.0.0.1', port: l.server.port, method: 'POST', path: '/v1/chat/completions',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
       }, (upRes) => {
+        // The server's own context error (a prompt it counted longer, as with images) gets the same wording.
+        if (upRes.statusCode === 400) {
+          readBody(upRes).then((raw) => {
+            let error = null;
+            try { error = JSON.parse(raw)?.error ?? null; } catch { /* not JSON: pass it on */ }
+            if (error?.type === 'exceed_context_size_error' && typeof error.n_prompt_tokens === 'number' && typeof error.n_ctx === 'number') {
+              return sendJson(res, 400, contextStop(fitted.body, error.n_prompt_tokens, error.n_ctx).stop);
+            }
+            cors(res);
+            res.writeHead(400, { 'Content-Type': upRes.headers['content-type'] ?? 'application/json' });
+            res.end(raw);
+          }, () => sendJson(res, 502, { error: { message: 'llama-server stopped answering.' } }));
+          return;
+        }
         cors(res);
         const headers = { 'Content-Type': upRes.headers['content-type'] ?? 'application/json' };
         if (upRes.headers['cache-control']) headers['Cache-Control'] = upRes.headers['cache-control'];
@@ -323,9 +395,11 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
    * `parallelRequests` is the server's slot count; `unifiedKvCache` (default on) makes the slots share one
    * `contextSize` pool, off gives each slot a full `contextSize`. `gpuDevice` is the device setting (`auto`, `all`, or a
    * device name), resolved against `--list-devices` on every start with `nvidiaGpus` (nvidia-smi rows) for
-   * Auto's pick. A failed GPU load retries once on the CPU.
+   * Auto's pick. A failed GPU load retries once on the CPU. `contextOverflow`, when given, sets the policy
+   * as `setContextOverflow` does.
    */
-  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus } = {}) {
+  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus, contextOverflow: policy } = {}) {
+    if (policy !== undefined) setContextOverflow(policy);
     if (state.status === 'loading' || state.status === 'ready') return getState();
     if (!modelPath) { setState({ ...stoppedState(), status: 'error', port, error: 'No modelPath provided.' }); return getState(); }
     const modelId = path.basename(modelPath);
@@ -343,7 +417,8 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     const applied = { ...settings, maxContextSize: null, engineVramMB: null };
     // This start: its settings, work folder, device, router (`server`), front server, and teardown state.
     // `projector` is the vision projector file, or null: without one, image parts are dropped.
-    const l = { modelId, settings, projector: findProjector(modelPath), aborted: false, server: null, front: null, lost: null };
+    // `slotContext` is one slot's context in tokens once loaded, or null when the server didn't say.
+    const l = { modelId, settings, projector: findProjector(modelPath), aborted: false, server: null, front: null, lost: null, slotContext: null };
     l.workDir = path.join(workRoot, `formamorph-engine-${process.pid}-${++starts}`);
     l.presetPath = path.join(l.workDir, 'preset.ini');
     // An empty cache, so the router lists no Hugging Face downloads beside our model.
@@ -409,6 +484,15 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       fail(error).catch(() => {});
     };
     applied.maxContextSize = typeof result.info?.meta?.n_ctx_train === 'number' ? result.info.meta.n_ctx_train : null;
+    // One slot's context as the server sized it (padding and slot split included), for Context Overflow.
+    try {
+      const props = await routerRequest(l.server.port, 'GET', `/props?model=${encodeURIComponent(modelId)}`);
+      const nCtx = props.body?.default_generation_settings?.n_ctx;
+      l.slotContext = typeof nCtx === 'number' && nCtx > 0 ? nCtx : null;
+    } catch {
+      l.slotContext = null;
+    }
+    if (!isCurrent()) return abandoned();
     const front = http.createServer((req, res) => {
       try { frontRouter(req, res); } catch (e) {
         if (!res.headersSent) sendJson(res, 500, { error: { message: errorText(e) } });
@@ -449,7 +533,13 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     return getState();
   }
 
-  return { start, stop, getState, onStatus, listDevices };
+  /** Set the Context Overflow policy for the next chat request. Unknown values read as Truncate Middle. */
+  function setContextOverflow(policy) {
+    overflowPolicy = contextOverflow.overflowPolicy(policy);
+    return overflowPolicy;
+  }
+
+  return { start, stop, getState, onStatus, listDevices, setContextOverflow };
 }
 
 module.exports = { ...createEngine(), createEngine, stoppedState, DEFAULT_PORT, IMAGES_DROPPED_HEADER };

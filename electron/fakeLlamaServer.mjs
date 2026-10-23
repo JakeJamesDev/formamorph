@@ -24,6 +24,12 @@ const argValue = (args, flag) => {
   return i >= 0 ? args[i + 1] : null;
 };
 
+/** The fake template's rendering: the recorded Qwen ChatML shape, so turn markers cost tokens as they do live. */
+export const renderChatMl = (messages) => messages.map((m) => `<|im_start|>${m.role}\n${typeof m.content === 'string' ? m.content : ''}<|im_end|>\n`).join('') + '<|im_start|>assistant\n';
+
+/** The fake tokenizer: one token per special marker or whitespace-separated word. */
+export const countFakeTokens = (text) => (text.match(/<\|[a-z_]+\|>|[^\s<]+|</g) ?? []).length;
+
 /** True for the CPU fallback's router start. */
 export const isCpuStart = (args) => argValue(args, '--device') === 'none';
 
@@ -31,12 +37,13 @@ export const isCpuStart = (args) => argValue(args, '--device') === 'none';
  * `scenarioFor(args)` names the recorded scenario a router start replays: `loaded`, `kvFail` or `cpu`.
  * `listDevices` overrides the recorded `--list-devices` text. `stepMs` paces the replayed events.
  * `holdReply` keeps each chat reply open (a stream after its first frame); `chatHangups` gets each one the
- * caller ends.
+ * caller ends. `tokenizeMs` delays each `/tokenize` answer. `chatExtraTokens` adds to a chat prompt's count.
  */
-export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2, holdReply = false } = {}) {
+export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2, holdReply = false, tokenizeMs = 0, chatExtraTokens = 0 } = {}) {
   const calls = [];
   const chatRequests = [];
   const chatHangups = [];
+  const templateRequests = [];
   const routers = [];
   let nextPid = 40000;
 
@@ -78,6 +85,9 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     const later = (ms, fn) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); };
     // Under its POSIX shell the router is a pid of its own; the instance gets one per load.
     const router = { child, args, modelId, loaded: false, wrapped, pid: wrapped ? nextPid++ : child.pid, instancePid: null };
+    // One slot's context as the server sizes it from -c, --kv-unified and -np; null without -c.
+    const c = Number(argValue(args, '-c'));
+    const slotContext = c > 0 ? (args.includes('--kv-unified') ? c : c / (Number(argValue(args, '-np')) || 1)) : null;
     routers.push(router);
 
     const replay = (events, lines) => {
@@ -115,9 +125,28 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
         const unloaded = fixture.scenarios.loaded.afterEvents.find((e) => e.data?.status === 'unloaded');
         return later(stepMs, () => send(unloaded));
       }
+      // The token routes the proxy's Context Overflow reads, in the shapes the pinned build answers with.
+      if (req.method === 'GET' && url.pathname === '/props' && url.searchParams.get('model') === modelId) {
+        return json(res, 200, { default_generation_settings: { n_ctx: slotContext } });
+      }
+      if (req.method === 'POST' && url.pathname === '/apply-template') {
+        const payload = await body(req);
+        templateRequests.push(payload);
+        return json(res, 200, { prompt: renderChatMl(payload.messages) });
+      }
+      if (req.method === 'POST' && url.pathname === '/tokenize') {
+        const payload = await body(req);
+        if (tokenizeMs) await new Promise((r) => later(tokenizeMs, r));
+        return json(res, 200, { tokens: Array.from({ length: countFakeTokens(payload.content) }, (_, i) => i) });
+      }
       if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
         const payload = await body(req);
         chatRequests.push(payload);
+        // The server's own count, plus what the template text leaves out (image embeddings), in its recorded error.
+        const tokens = countFakeTokens(renderChatMl(payload.messages ?? [])) + chatExtraTokens;
+        if (slotContext && tokens > slotContext) {
+          return json(res, 400, { error: { code: 400, message: `request (${tokens} tokens) exceeds the available context size (${slotContext} tokens), try increasing it`, type: 'exceed_context_size_error', n_prompt_tokens: tokens, n_ctx: slotContext } });
+        }
         // A reply still decoding: a stream's first frame, or nothing yet, until the caller hangs up.
         if (holdReply) req.socket.once('close', () => chatHangups.push(payload));
         if (payload.stream) {
@@ -156,6 +185,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     calls,
     chatRequests,
     chatHangups,
+    templateRequests,
     routers,
     /** Router starts so far, newest last (list-devices runs excluded). */
     routerCalls: () => calls.filter((c) => !c.args.includes('--list-devices')),
