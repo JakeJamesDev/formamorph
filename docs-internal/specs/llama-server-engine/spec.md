@@ -218,11 +218,22 @@ From ticket intent questions.
 - **T03-3.** If the opening `<think>` tag is missing, the proxy restores it per request from the router's `/apply-template`: when the rendered prompt ends with an open think tag, the tag goes in front of the first content.
 - **T04-1.** The engine always passes `-lv 4`, since the buffer-size and "MiB free" lines only print at that level, and reads them for every GPU Layers mode. Output is drained continuously and never kept whole.
 - **T04-2.** The attributed process is the router's model instance, found once per load by a parent-process lookup. nvidia-smi never lists the router.
-- **T04-3.** The share sums the model, KV and compute buffers on non-host devices, across every device the instance uses. Host buffers are left out. On the CPU backend the share is null. Measured: 3024.75 MiB against a 3042 MiB nvidia-smi delta.
+- **T04-3.** The share sums the model, KV and compute buffers on non-host devices, across every device the instance uses. A hybrid model's recurrent-state (`RS`) buffer counts with the KV. Free-at-load and total sum the devices the instance used. Host buffers are left out. On the CPU backend the share is null. Measured: 3024.75 MiB against a 3042 MiB nvidia-smi delta.
 - **T04-4.** The "~" mark and the fallback order in the viewer stay as they are.
 - **T06-1.** The V-type / Flash Attention rule blocks rather than changes another setting. With Flash Attention off, the quantized V options are disabled with a hint. With a quantized V cache, the Flash Attention box is disabled with a hint. Neither setting changes the other.
 - **T06-2.** The main process coerces a stored or IPC value of quantized V with Flash Attention off to F16, so a stale value can't produce a failing load.
 - **T06-3.** K and V types use the panel's existing select; KV Cache in RAM is a check row. Stored as `f16` / `q8_0` / `q4_0` (anything else reads as `f16`) and a boolean.
+- **T07-1.** The fitted prompt leaves room for the request's `max_tokens` when it sets one: prompt ≤ slot context − `max_tokens`.
+- **T07-2.** Rolling Window keeps the merged system prompt and drops the oldest user/assistant turns, so the world is never the first thing lost.
+- **T07-3.** When the messages a policy must keep still don't fit, the proxy returns the same context-length stop as Stop at Limit.
+- **T07-4.** The context-length stop is an HTTP 400 whose message uses the panel's names, says how far over the story is, and names Context Size and Context Overflow as the fix. The app shows it like any endpoint error.
+- **T07-5.** Context Overflow applies to the next request with no reload, so it sits with the "next turn" settings and the reload diff ignores it. This overrides "they apply on reload" for this one row.
+- **T08-1.** A model pairs with `mmproj-<model file name>` in its own folder. Failing that, a folder with exactly one model and exactly one `*mmproj*.gguf` pairs them. Otherwise the model has no projector. Catalog downloads save the projector under the exact name.
+- **T08-2.** Projector files never show as models: not in Installed, the model picker, or the model list.
+- **T08-3.** Catalog vision entries are only those whose own repo ships a projector (HauhauCS Gemma4 12B, Qwen3.6 35B-A3B Anko). No cross-repo projector for a finetune.
+- **T08-4.** A model and its projector download as one job with one progress bar and shared pause and resume. A model already on disk fetches only its missing projector.
+- **T08-5.** Deleting a model in the app's folder also deletes its exactly named projector, and nothing else.
+- **T08-6.** A "Vision" badge, styled like the existing "Reasoning" badge, marks paired models in Installed and vision entries in Recommended.
 
 ## Further Notes
 
