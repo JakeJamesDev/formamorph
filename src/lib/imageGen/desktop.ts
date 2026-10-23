@@ -2,6 +2,8 @@
 // `window.formamorphDesktop`; in the plain web build it's absent. Cloud image providers (which need a
 // CORS-free proxy) route through this bridge and are disabled in the UI when it isn't present.
 
+import type { LocalCacheType } from '@/contexts/settingsDefaults';
+
 export interface DesktopFetchRequest {
   url: string;
   method?: string;
@@ -112,6 +114,11 @@ export interface LocalLlmState {
   parallelRequests: number | null;
   /** Whether the parallel slots shared one contextSize pool (true) or each held a full contextSize (false). */
   unifiedKvCache: boolean | null;
+  /** Precision of the K and V halves of the context the model was loaded with. */
+  kCacheType: LocalCacheType | null;
+  vCacheType: LocalCacheType | null;
+  /** Whether the context was kept in system RAM instead of VRAM. */
+  kvCacheInRam: boolean | null;
   /** The loaded model's trained context length — the ceiling for contextSize (null when no model loaded). */
   maxContextSize: number | null;
   /** Our VRAM footprint in MB (device-usage delta across model load), or null if unknown/no model. */
@@ -197,7 +204,7 @@ declare global {
         /** Subscribe to move progress; returns an unsubscribe fn. */
         onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
         /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if changed. */
-        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; gpuDevice: string }) => Promise<LocalLlmState>;
+        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }) => Promise<LocalLlmState>;
         /** Every GPU the engine can pin to, for the device picker. */
         listDevices: () => Promise<EngineDeviceList>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
@@ -322,7 +329,7 @@ export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => vo
 }
 
 /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if they changed. */
-export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; gpuDevice: string }): Promise<LocalLlmState> =>
+export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
 
 /** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty

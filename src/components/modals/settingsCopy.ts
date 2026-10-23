@@ -525,6 +525,27 @@ A higher value speeds up a turn. With **Unified KV Cache** on, the requests shar
 
 Turn it off to give each request the full **Context Size**. The context then uses **Parallel Requests** times more VRAM.`,
   },
+  localKCacheType: {
+    label: 'K Cache Type',
+    description: 'Trades a little quality for a longer context',
+    info: `Sets the precision of the context's key half. **Q8_0** and **Q4_0** shrink it, so a longer **Context Size** fits in the same VRAM.
+
+**F16** is full precision. Lower values can make the story read a little worse over a long context.`,
+  },
+  localVCacheType: {
+    label: 'V Cache Type',
+    description: 'Trades a little quality for a longer context',
+    info: `Sets the precision of the context's value half. **Q8_0** and **Q4_0** shrink it, so a longer **Context Size** fits in the same VRAM.
+
+A lower value needs **Flash Attention** on.`,
+  },
+  localKvCacheInRam: {
+    label: 'KV Cache in RAM',
+    description: 'Keeps the context in system RAM to free VRAM',
+    info: `Moves the context from VRAM to system RAM, so the model's weights get the VRAM. Replies can come slower.
+
+Use it when a model fits in VRAM but a long **Context Size** doesn't.`,
+  },
   localAutoLoad: {
     label: 'Auto-Load',
     description: 'Loads a model without waiting to be asked',

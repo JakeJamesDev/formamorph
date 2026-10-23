@@ -21,7 +21,7 @@ import {
  * Mount once near the app root (inside SettingsProvider).
  */
 export function LocalEngineManager() {
-  const { engineWanted, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests, localUnifiedKvCache, localGpuDevice, localAutoLoad } = useSettings();
+  const { engineWanted, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests, localUnifiedKvCache, localKCacheType, localVCacheType, localKvCacheInRam, localGpuDevice, localAutoLoad } = useSettings();
 
   useEffect(() => {
     if (!isDesktop()) return;
@@ -31,7 +31,7 @@ export function LocalEngineManager() {
         await stopLocalLlm().catch(() => { /* ignore */ });
         return;
       }
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, gpuDevice: localGpuDevice }).catch(() => { /* ignore */ });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice }).catch(() => { /* ignore */ });
       if (cancelled) return;
       if (!localAutoLoad) return;
       const st = await localLlmStatus().catch(() => null);
