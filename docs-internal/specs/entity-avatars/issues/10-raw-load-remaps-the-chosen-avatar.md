@@ -1,6 +1,6 @@
 # 10: Raw Load Remaps the Chosen Avatar
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: low
@@ -13,6 +13,16 @@ A save loads with its chosen Avatar remapped on every load path (spec: Saves; T0
 
 ## Acceptance criteria
 
-- [ ] A pre-change save that takes the raw-load fallback shows the same Avatar as through the normal load.
-- [ ] The remap stays idempotent on that path.
-- [ ] A test drives the fallback branch and fails when the remap is removed from it.
+- [x] A pre-change save that takes the raw-load fallback shows the same Avatar as through the normal load. (`GameplayContext.rawLoad.test.tsx`: library and no-choice cases)
+- [x] The remap stays idempotent on that path. (`keeps an already-remapped choice`)
+- [x] A test drives the fallback branch and fails when the remap is removed from it. (removing it turned 2 of 3 red)
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- None: the raw-load fallback needs a save whose conversion throws, which a player cannot easily produce.
