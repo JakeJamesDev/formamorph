@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BUILDS, fetchLlamaServer, listAssets, readPin } from './fetchLlamaServer.mjs';
+import { BUILDS, fetchLlamaServer, listAssets, platformsFromArgs, readPin } from './fetchLlamaServer.mjs';
 
 // The asset names of the pinned tag's real release, recorded with the API. A pin bump re-records this file.
 const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b11829.json'), 'utf8'));
@@ -28,6 +28,23 @@ describe('asset-name mapping', () => {
 
   it('never maps a CUDA build', () => {
     for (const build of BUILDS) expect(build.asset('b1')).not.toMatch(/cuda/i);
+  });
+});
+
+describe('platformsFromArgs', () => {
+  it('defaults to the host platform, so Windows never unpacks the macOS symlinks', () => {
+    expect(platformsFromArgs([], 'win32')).toEqual(['win']);
+    expect(platformsFromArgs([], 'darwin')).toEqual(['mac']);
+    expect(platformsFromArgs([], 'linux')).toEqual(['linux']);
+  });
+
+  it('fetches every platform with --all and one with --platform', () => {
+    expect(platformsFromArgs(['--all'], 'win32')).toBeUndefined();
+    expect(platformsFromArgs(['--platform', 'mac'], 'win32')).toEqual(['mac']);
+  });
+
+  it('refuses a host with no build', () => {
+    expect(() => platformsFromArgs([], 'freebsd')).toThrow(/--all/);
   });
 });
 
