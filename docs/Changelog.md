@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Exported character cards and published entities carry the entity's Avatar, and importing one adds it to your Avatar library.** Importing the same Avatar twice keeps one copy. Publish counts the Avatar toward the 25 MB entity limit before upload.
     - **The World Editor's Import Entity adds a card's Avatar to your library only when you confirm the import.** Cancel the import, and your Avatar library stays as it was.
     - **A library entity's Avatar dropdown shows Missing Avatar when its Avatar isn't on this device, as the link review does.** Pick another option to replace it.
+    - **Each Avatar in the World Overview has a Preview button that shows it in 3D, with Export.** Export saves the file under the Avatar's name. History names the Avatar you add, rename or delete.
 
 #### ➖ Removed
 

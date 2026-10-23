@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { makeGlb, makeVrm1 } from '@/test/glbFixture';
+import { blobToDataUrl } from '@/lib/imageSource';
+import { stepLabel } from '@/lib/editorHistoryLabels';
 import type { World } from '@/types';
 
 /**
@@ -30,6 +33,10 @@ const library = vi.hoisted(() => ({
   getModelData: vi.fn(),
 }));
 vi.mock('@/services/ModelStorageService', () => ({ default: library }));
+
+vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
+const download = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/downloadBlob', () => ({ downloadBlob: download }));
 
 const FILE = { data: 'data:model/vrm;base64,Z2xURgIA', type: 'model/vrm', name: 'Heron.vrm' };
 
@@ -63,6 +70,7 @@ const selectEntity = (name: string) => {
 
 beforeEach(() => {
   localStorage.clear();
+  download.mockReset();
   library.getModelMetadata.mockReset().mockResolvedValue([
     { id: 'lib-1', name: 'Fen Walker', type: 'model/vrm', size: LIBRARY_BYTES.length, license: { metaVersion: '1' } },
   ]);
@@ -187,6 +195,100 @@ describe('the World Overview Avatar store', () => {
     bench.history().undo();
     await waitFor(() => expect(avatarNames()).toEqual(['Heron', 'Reed']));
     expect(bench.ctx().entities.find((e) => e.id === 'e1')?.vrmPick).toEqual({ kind: 'world', id: 'heron' });
+  });
+});
+
+describe('a store row preview', () => {
+  /** A world whose store holds a VRM 1.0 file and a plain glTF, under names their files do not carry. */
+  const previewWorld = async () => {
+    const vrm = await blobToDataUrl(makeVrm1({ name: 'Inner', licenseUrl: 'https://vrm.dev/licenses/1.0/' }));
+    const glb = await blobToDataUrl(makeGlb({ asset: { version: '2.0' } }));
+    return benchEditorWorld({
+      worldOverview: {
+        ...WORLD.worldOverview,
+        vrmStore: {
+          heron: { name: 'Fen Walker', file: { data: vrm, type: 'model/vrm', name: 'upload-1.vrm' } },
+          reed: { name: 'Reed', file: { data: glb, type: 'model/vrm', name: 'upload-2.vrm' } },
+        },
+      },
+    });
+  };
+
+  const openPreview = async (row: number) => {
+    const rows = screen.getAllByRole('textbox', { name: 'Avatar Name' }).map((el) => el.parentElement!);
+    fireEvent.click(within(rows[row]).getByRole('button', { name: 'Preview this Avatar' }));
+    const dialog = await screen.findByRole('dialog');
+    const exportButton = within(dialog).getByRole('button', { name: 'Export' });
+    await waitFor(() => expect(exportButton).toBeEnabled());
+    return { dialog, exportButton };
+  };
+
+  it('opens the Avatar in the details view under its display name', async () => {
+    renderWorldEditorBench(await previewWorld(), 'advanced');
+    openOverview();
+    const { dialog } = await openPreview(0);
+    expect(within(dialog).getByRole('heading', { name: 'Fen Walker' })).toBeInTheDocument();
+  });
+
+  it('exports the stored bytes untouched, named for the display name', async () => {
+    const world = await previewWorld();
+    renderWorldEditorBench(world, 'advanced');
+    openOverview();
+    const { exportButton } = await openPreview(0);
+    fireEvent.click(exportButton);
+    expect(download).toHaveBeenLastCalledWith(expect.any(Blob), 'Fen Walker.vrm');
+    const [blob] = download.mock.lastCall as [Blob, string];
+    const stored = await (await fetch(world.worldOverview.vrmStore!.heron.file.data)).arrayBuffer();
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(new Uint8Array(stored));
+  });
+
+  it('exports a file with no VRM data as .glb', async () => {
+    renderWorldEditorBench(await previewWorld(), 'advanced');
+    openOverview();
+    const { exportButton } = await openPreview(1);
+    fireEvent.click(exportButton);
+    expect(download).toHaveBeenLastCalledWith(expect.any(Blob), 'Reed.glb');
+  });
+});
+
+describe('the store history labels', () => {
+  const lastLabel = (bench: ReturnType<typeof renderWorldEditorBench>) => {
+    const { steps, cursor } = bench.historyState();
+    return stepLabel(steps[cursor - 1]);
+  };
+
+  it('names an uploaded Avatar', async () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openOverview();
+    fireEvent.change(screen.getByLabelText('Avatar File'), { target: { files: [new File([LIBRARY_BYTES], 'Bittern.vrm')] } });
+    await waitFor(() => expect(lastLabel(bench)).toBe('Add Avatar: Bittern'));
+  });
+
+  it('names a library copy', async () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openOverview();
+    const copy = screen.getByRole('combobox', { name: 'Copy From Library' });
+    await waitFor(() => expect(copy).toBeEnabled());
+    pickOption(copy, 'Fen Walker');
+    await waitFor(() => expect(lastLabel(bench)).toBe('Add Avatar: Fen Walker'));
+  });
+
+  it('names a rename by its new name', async () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openOverview();
+    const [heron] = screen.getAllByRole('textbox', { name: 'Avatar Name' });
+    fireEvent.change(heron, { target: { value: 'Grey Heron' } });
+    fireEvent.blur(heron);
+    await waitFor(() => expect(lastLabel(bench)).toBe('Rename Avatar: Grey Heron'));
+  });
+
+  it('names a deleted Avatar', async () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openOverview();
+    const [heronRow] = screen.getAllByRole('textbox', { name: 'Avatar Name' }).map((el) => el.parentElement!);
+    fireEvent.click(within(heronRow).getByRole('button', { name: 'Delete this Avatar' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(lastLabel(bench)).toBe('Delete Avatar: Heron'));
   });
 });
 

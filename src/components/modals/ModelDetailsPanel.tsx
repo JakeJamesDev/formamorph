@@ -27,7 +27,7 @@ const REQUIREMENT_LABELS: Record<AvatarLicenseRequirement, string> = {
 
 /**
  * A model's 3D preview and everything its file says about itself, in the layout both VRM surfaces share: the
- * library's details modal and the World Editor's player-model preview. Read-only — it's a details panel rather
+ * library's details modal and the World Overview's store Avatar preview. Read-only — it's a details panel rather
  * than an editor. The caller owns where the bytes come from and passes a ready object/data URL; anything extra
  * that varies per surface (each one's Export button, which resolves its bytes differently) goes in `footer`.
  *

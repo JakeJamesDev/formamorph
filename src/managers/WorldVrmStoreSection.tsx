@@ -16,10 +16,76 @@ import { fieldFrame } from '@/lib/historyField';
 import { addWorldVrm, deleteWorldVrm, entitiesUsingWorldVrm, renameWorldVrm, vrmDisplayName } from '@/lib/worldVrmStore';
 import { blobHash } from '@/lib/blobHash';
 import { libraryFileName } from '@/lib/libraryVrm';
+import { readVrmMeta } from '@/lib/vrmMeta';
+import { downloadBlob } from '@/lib/downloadBlob';
+import { ActionIcon } from '@/lib/actionIcons';
+import { ModelDetailsPanel } from '@/components/modals/ModelDetailsPanel';
 import ModelStorageService from '@/services/ModelStorageService';
-import type { Entity, MediaAsset, ModelMetadata } from '@/types';
+import type { Entity, MediaAsset, ModelMetadata, VrmLicense } from '@/types';
 
 export const VRM_STORE_HINT = 'Add Avatars to this world, then choose one for each entity';
+
+/** An Avatar's name as a history label shows it. */
+const labelName = (name: string) => name.trim() || 'Unnamed';
+
+/**
+ * One store Avatar in the details view the library uses. The bytes are decoded only while this is mounted, and
+ * Export saves them untouched under the display name, so the file's own metadata and license travel with it.
+ */
+const StoreVrmPreview = ({ file, name, open, onClose }: { file: MediaAsset; name: string; open: boolean; onClose: () => void }) => {
+  const [url, setUrl] = useState<string | undefined>();
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [meta, setMeta] = useState<{ license?: VrmLicense; size?: number }>({});
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | undefined;
+    setFailed(false);
+    fetch(file.data)
+      .then((r) => r.blob())
+      .then(async (loaded) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(loaded);
+        setUrl(objectUrl);
+        const { license } = await readVrmMeta(loaded);
+        if (cancelled) return;
+        // Export waits for the license: it picks the file's extension.
+        setMeta({ license, size: loaded.size });
+        setBlob(loaded);
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setUrl(undefined);
+      setBlob(null);
+    };
+  }, [file.data]);
+
+  return (
+    <ModelDetailsPanel
+      open={open}
+      name={name}
+      url={url}
+      license={meta.license}
+      size={meta.size}
+      failed={failed}
+      onClose={onClose}
+      footer={
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => { if (blob) downloadBlob(blob, libraryFileName(name.trim() || 'Avatar', meta.license)); }}
+          disabled={!blob}
+        >
+          <ActionIcon.export className="mr-2 h-4 w-4" /> Export
+        </Button>
+      }
+    />
+  );
+};
 
 /** What a delete confirmation says about the entities that use the Avatar. */
 export const deleteVrmDescription = (users: Entity[]): string => users.length
@@ -46,14 +112,18 @@ export const DeleteVrmConfirm = ({ name, users, open, onConfirm, onOpenChange }:
   />
 );
 
-/** One store row: its display name, committed on blur, and its delete. */
-const VrmRow = ({ id, name, onRename, onDelete }: {
+/** One store row: its display name, committed on blur, its preview and its delete. */
+const VrmRow = ({ id, name, file, onRename, onDelete }: {
   id: string;
   name: string;
+  file: MediaAsset;
   onRename: (name: string) => void;
   onDelete: () => void;
 }) => {
   const [draft, setDraft] = useState(name);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // Mounted on first open and kept: decoding waits for a click, and an unmount on close would cut the exit animation.
+  const [previewMounted, setPreviewMounted] = useState(false);
   useEffect(() => setDraft(name), [name]);
   // A cleared name goes back to the stored one.
   const commit = () => {
@@ -70,6 +140,12 @@ const VrmRow = ({ id, name, onRename, onDelete }: {
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
         className="min-w-0 flex-1"
       />
+      <Tip tip="Preview this Avatar">
+        <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setPreviewMounted(true); setPreviewOpen(true); }}>
+          Preview
+        </Button>
+      </Tip>
+      {previewMounted && <StoreVrmPreview file={file} name={name} open={previewOpen} onClose={() => setPreviewOpen(false)} />}
       <Tip tip="Delete this Avatar">
         <Button variant="ghost" size="sm" className="shrink-0" onClick={onDelete}>Delete</Button>
       </Tip>
@@ -82,7 +158,7 @@ export const WorldVrmStoreSection = () => {
   const { worldOverview, updateWorldOverview, entities, setEntities } = useGameData();
   const history = useWorldHistoryMovesOptional();
   const store = worldOverview.vrmStore;
-  // Adds land after a file read, so they build on the store as it stands then, not at the click.
+  // Adds land after a file read and renames on blur, so both build on the store as it stands then.
   const storeRef = useRef(store);
   storeRef.current = store;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,10 +172,16 @@ export const WorldVrmStoreSection = () => {
       .catch(() => { /* An unreadable library offers no copies; upload still works. */ });
   }, [mounted]);
 
+  /** Runs one write as a single History step under `label`. */
+  const asStep = (label: string, run: () => void) => {
+    if (history) void history.batch(label, run);
+    else run();
+  };
+
   const add = (name: string, file: MediaAsset, hash: string) => {
     const next = addWorldVrm(storeRef.current, name, file, hash).store;
     storeRef.current = next;
-    updateWorldOverview({ vrmStore: next });
+    asStep(`Add Avatar: ${labelName(name)}`, () => updateWorldOverview({ vrmStore: next }));
   };
 
   const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -132,15 +214,13 @@ export const WorldVrmStoreSection = () => {
     const id = deleting;
     setDeleting(null);
     if (!id) return;
-    const run = () => {
+    asStep(`Delete Avatar: ${labelName(store?.[id]?.name ?? '')}`, () => {
       const next = deleteWorldVrm(store, entities, id);
       const fallback = worldOverview.legacyVrmFallback;
       const spent = fallback?.kind === 'world' && fallback.id === id;
       updateWorldOverview({ vrmStore: next.store, ...(spent ? { legacyVrmFallback: undefined } : {}) });
       setEntities(next.entities);
-    };
-    if (history) void history.batch('Delete Avatar', run);
-    else run();
+    });
   };
 
   const entries = Object.entries(store ?? {});
@@ -155,7 +235,8 @@ export const WorldVrmStoreSection = () => {
           key={id}
           id={id}
           name={vrm.name}
-          onRename={(name) => updateWorldOverview({ vrmStore: renameWorldVrm(store, id, name) })}
+          file={vrm.file}
+          onRename={(name) => asStep(`Rename Avatar: ${labelName(name)}`, () => updateWorldOverview({ vrmStore: renameWorldVrm(storeRef.current, id, name) }))}
           onDelete={() => setDeleting(id)}
         />
       ))}
