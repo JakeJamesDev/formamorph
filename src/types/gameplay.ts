@@ -283,9 +283,12 @@ export interface GameState {
   gameStates?: GameState[];
 }
 
-/** Which picture the player would rather open an entity on, keyed by entity id. Only meaningful for an
- *  entity carrying both an image and a 3D model; no entry means the image, as it always has. */
-export type EntityVisualPreference = Record<string, 'model' | 'image'>;
+/** One of the visuals an entity can show: its Avatar, its 3D model, or its image. */
+export type EntityVisualKind = 'avatar' | 'model' | 'image';
+
+/** Which visual the player would rather open an entity on, keyed by entity id. No entry, or a visual the
+ *  entity lacks, means the first it has of Avatar, 3D model, image. */
+export type EntityVisualPreference = Record<string, EntityVisualKind>;
 
 /**
  * How the player has the Traits tab arranged right now. Held in Gameplay rather than in the panel, because

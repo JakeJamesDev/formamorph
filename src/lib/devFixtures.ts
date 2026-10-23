@@ -8,7 +8,7 @@ import type { Entity, EntityStatValues, GameLocation, World, SaveObject } from '
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityPresence', 'entityFollowers'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'entityPresence', 'entityFollowers'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -56,6 +56,11 @@ const MORPH_ENTITY = {
   stats: [MORPH_STAT],
 } as unknown as Entity;
 const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, value }] }) as unknown as EntityStatValues;
+/** The `entityAvatars` fixture's one store Avatar, the bundled file served by the dev server. */
+const DEV_VRM_STORE = {
+  'dev-avatar': { name: 'Default', file: { name: 'default-avatar.vrm', type: 'model/vrm', data: DEFAULT_AVATAR_URL } },
+};
+const AVATAR_PERSONA = { id: 'dev-wren', name: 'Wren', locations: [], persona: true, vrmPick: { kind: 'default' } } as unknown as Entity;
 
 const WHITE_ROOM_ID = '1783535114538';
 /** The `entityPresence` fixture's cast, all but the last two at the White Room. */
@@ -171,6 +176,31 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           })),
         },
         saveName: 'DEV: Entity Morphs',
+      };
+    }
+    case 'entityAvatars': {
+      // The white room with the Golem in the scene carrying an Avatar, a 3D model and an image. Wren is played
+      // and shows User's Default.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      const saved = save.default as unknown as SaveObject;
+      const golem = { ...MORPH_ENTITY, images: [{ data: THOUSAND_TURN_IMAGES[0] }], vrmPick: { kind: 'world', id: 'dev-avatar' } } as Entity;
+      const scene = [{ name: 'Golem', revealed: true }];
+      return {
+        world: {
+          ...base,
+          worldOverview: { ...base.worldOverview, vrmStore: DEV_VRM_STORE },
+          entities: [...base.entities, golem, AVATAR_PERSONA],
+        },
+        save: {
+          ...saved,
+          persona: { source: 'world', entityId: AVATAR_PERSONA.id },
+          currentState: { ...saved.currentState, visibleEntities: scene, entityStats: morphValues(100) },
+        },
+        saveName: 'DEV: Entity Avatars',
       };
     }
     case 'entityPresence': {

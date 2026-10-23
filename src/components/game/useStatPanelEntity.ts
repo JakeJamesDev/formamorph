@@ -7,7 +7,7 @@ import { personaEntities } from '@/lib/entityStats';
 import { firstShowableEntity, shownEntityStats, statPanelOptions, statPanelSelection } from '@/lib/statPanelEntities';
 import { withTraitToggles, type OwnerStatTraits } from '@/lib/statOwners';
 import type { Entity, PlayerStat, Stat, StatGroup } from '@/types';
-import { hasEntityVisual } from './EntityVisual';
+import { usePlayAvatars } from '@/lib/usePlayAvatars';
 
 /** One owner's stats as the panel lays them out: its visible rows, placed by its authored stats and groups. */
 export interface StatPanelOwner {
@@ -44,7 +44,8 @@ export function useStatPanelEntity(inForce: OwnerStatTraits) {
     () => statPanelOptions({ entities: pickable, persona: persona?.entity ?? null, scene, history, values, keep: selectedEntityId }),
     [pickable, persona, scene, history, values, selectedEntityId],
   );
-  const shownId = statPanelSelection(selectedEntityId, options, firstShowableEntity(scene, pickable, hasEntityVisual)?.id);
+  const { shows } = usePlayAvatars();
+  const shownId = statPanelSelection(selectedEntityId, options, firstShowableEntity(scene, pickable, shows)?.id);
   const playedIds = new Set(played.map((entity) => entity.id));
   const shownEntity = shownId && !playedIds.has(shownId) ? pickable.find((entity) => entity.id === shownId) : undefined;
   return {

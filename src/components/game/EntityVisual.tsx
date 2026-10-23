@@ -1,26 +1,27 @@
 import { useState } from 'react';
 import { RemoteImg } from '@/lib/useRemoteImage';
-import { Box, Check, Image as ImageIcon } from 'lucide-react';
+import { Box, Check, Image as ImageIcon, type LucideIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { GalleryControls, type GalleryControlsProps } from '@/components/GalleryControls';
 import { resolveModelType } from '@/lib/UtilityComponents';
 import { entityImageData, entityImages } from '@/lib/entityImages';
+import { AvatarIcon } from '@/lib/elementIcons';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
-import type { Base64Data, Entity } from '@/types';
+import type { Base64Data, Entity, EntityVisualKind } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 
 /** The visual an entity can be shown by, if it has one at all. */
 export type EntityVisualSource = Pick<Entity, 'id' | 'name' | 'images' | 'model'>;
 
-/** Whether this entity has anything to show — a picture or a 3D model. */
+/** Whether this entity has a picture or a 3D model to show. An Avatar is the host's to know. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const hasEntityVisual = (entity?: EntityVisualSource | null): boolean =>
   !!(entityImages(entity).length || entity?.model?.data);
 
-/** The button both viewers carry, reading as pressed once this is the picture the entity opens on. */
+/** The button each viewer carries, reading as pressed once this is the visual the entity opens on. */
 const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => void }) => (
   <Button variant={active ? 'default' : 'secondary'} aria-pressed={active} onClick={onClick}>
     {active && <Check className="mr-2 h-4 w-4" />}
@@ -28,37 +29,48 @@ const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => vo
   </Button>
 );
 
+/** The default order, richest first. */
+const ORDER: readonly EntityVisualKind[] = ['avatar', 'model', 'image'];
+
+const VIEW: Record<EntityVisualKind, { label: string; icon: LucideIcon }> = {
+  avatar: { label: 'View Avatar', icon: AvatarIcon },
+  model: { label: 'View 3D Model', icon: Box },
+  image: { label: 'View Image', icon: ImageIcon },
+};
+
 /**
- * An entity's picture wherever one is shown in game. An entity carrying more than one pages between them —
- * chevrons on a pointer device, a swipe on touch — and the zoom viewer stays on whichever is showing. An
- * entity carrying both a picture and a 3D model shows one with a button in the corner opening the other, and
- * each of those viewers offers to make what it is showing the one this save opens on. With only a model, the
- * model takes the picture's place and is orbited in situ, since there is nothing for a corner button to sit
- * on top of.
+ * An entity's visual wherever one is shown in game: its Avatar, its 3D model or its image, the first it has
+ * in that order unless the player's preference names another it has. The shown visual fills the slot; each
+ * other one sits behind a corner button that opens it in its own viewer, and each viewer offers to make what
+ * it shows the one this save opens on. Avatars and models orbit in place. An entity carrying more than one
+ * image pages between them, chevrons on a pointer device and a swipe on touch, and the zoom viewer stays on
+ * whichever is showing.
  *
  * `onPreferenceChange` is what makes the preference offerable at all, and `onImageStep` what makes the gallery
  * pageable: without them (the World Editor's preview, which has no playthrough to hold either in) this shows
- * the primary picture plainly. Both live in gameplay state, so the host supplies them — see
+ * the primary picture plainly. Both live in gameplay state, so the host supplies them: see
  * `useEntityVisualPreference` and `useEntityGallery`, which also supplies the visible `images` in play.
  *
- * `morphValues` comes from the host for the same reason: the stat values live in gameplay state.
+ * `avatar` and `morphValues` come from the host for the same reason: the Avatar's source and the stat values
+ * live in gameplay state.
  *
  * Fills its container, so the caller owns the sizing.
  */
-export const EntityVisual = ({ entity, className, images: inPlay, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues }: {
+export const EntityVisual = ({ entity, className, images: inPlay, avatar, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues }: {
   entity: EntityVisualSource;
   /** The images visible in play, in author order. Absent, the authored gallery, rules ignored. */
   images?: readonly Base64Data[];
+  /** The entity's Avatar viewer, when it has one in play. */
+  avatar?: React.ReactNode;
   className?: string;
-  preference?: 'model' | 'image';
-  onPreferenceChange?: (next: 'model' | 'image' | undefined) => void;
+  preference?: EntityVisualKind;
+  onPreferenceChange?: (next: EntityVisualKind | undefined) => void;
   imageIndex?: number;
   onImageStep?: (by: number) => void;
   /** The shape keys the entity's own stats drive on its model, in every viewer this opens. */
   morphValues?: Readonly<Record<string, number>>;
 }) => {
-  const [zoomOpen, setZoomOpen] = useState(false);
-  const [modelOpen, setModelOpen] = useState(false);
+  const [open, setOpen] = useState<EntityVisualKind | null>(null);
 
   const images = inPlay ?? entityImageData(entity);
   // A held index outlives the gallery it was taken from (an edited world, a reused panel), so clamp it here
@@ -69,78 +81,90 @@ export const EntityVisual = ({ entity, className, images: inPlay, preference, on
   const model = entity.model?.data ? entity.model : undefined;
   const gallery = step && images.length > 1 ? { count: images.length, index, onStep: step } : undefined;
 
-  if (!current) {
-    return model ? (
-      <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} className={className} />
-    ) : null;
-  }
+  const has: Record<EntityVisualKind, boolean> = { avatar: !!avatar, model: !!model, image: !!current };
+  const available = ORDER.filter((kind) => has[kind]);
+  if (!available.length) return null;
+  const showing = preference && has[preference] ? preference : available[0];
+  const others = available.filter((kind) => kind !== showing);
 
-  const picture = (
-    <Picture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setZoomOpen(true)} />
+  const footer = (kind: EntityVisualKind) => (onPreferenceChange && available.length > 1 ? (
+    <DefaultToggle active={preference === kind} onClick={() => onPreferenceChange(preference === kind ? undefined : kind)} />
+  ) : undefined);
+  const openChange = (kind: EntityVisualKind) => (next: boolean) => setOpen(next ? kind : null);
+  const modelViewer = (viewerClass?: string) => model && (
+    <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} className={viewerClass} />
   );
-  const zoomViewer = (footer?: React.ReactNode) => (
-    <ImageZoomViewer
-      src={current}
-      alt={entity.name}
-      open={zoomOpen}
-      onOpenChange={setZoomOpen}
-      gallery={gallery}
-      footer={footer}
-    />
-  );
-
-  if (!model) {
-    return (
-      <Slot className={className}>
-        {picture}
-        {zoomViewer()}
-      </Slot>
-    );
-  }
-
-  // Both exist: the picture wins unless the player said otherwise for this entity.
-  const showingModel = preference === 'model';
-  const toggle = (side: 'model' | 'image') => () =>
-    onPreferenceChange?.(preference === side ? undefined : side);
 
   return (
-    <Slot className={className} fill={showingModel}>
-      {showingModel ? <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} /> : picture}
-      <CornerButton
-        label={showingModel ? 'View image' : 'View 3D model'}
-        onClick={() => (showingModel ? setZoomOpen(true) : setModelOpen(true))}
-      >
-        {showingModel ? <ImageIcon className="h-4 w-4" /> : <Box className="h-4 w-4" />}
-      </CornerButton>
+    <Slot className={className} fill={showing !== 'image'}>
+      {showing === 'avatar' ? avatar
+        : showing === 'model' ? modelViewer()
+        : <Picture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setOpen('image')} />}
+      {others.length > 0 && (
+        <div className="absolute top-1 right-1 flex flex-col gap-1">
+          {others.map((kind) => {
+            const { label, icon: Icon } = VIEW[kind];
+            return (
+              <CornerButton key={kind} label={label} onClick={() => setOpen(kind)}>
+                <Icon className="h-4 w-4" />
+              </CornerButton>
+            );
+          })}
+        </div>
+      )}
 
-      {zoomViewer(onPreferenceChange && (
-        <DefaultToggle active={preference === 'image'} onClick={toggle('image')} />
-      ))}
-      <Dialog open={modelOpen} onOpenChange={setModelOpen}>
-        <DialogContent className="sm:max-w-[600px] h-[80dvh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>{entity.name} — 3D Model</DialogTitle>
-          <DialogDescription className="sr-only">Interactive 3D model. Drag to rotate, scroll to zoom.</DialogDescription>
-          </DialogHeader>
-          {/* Mounted plainly, not gated on `modelOpen`: the dialog animates out over 200ms, and dropping the
-              viewer the moment it closes empties the window mid-animation. Radix unmounts the content once
-              the animation finishes, which is what releases the viewer's WebGL context. */}
-          <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} className="flex-grow" />
-          {onPreferenceChange && (
-            <DialogFooter className="flex-shrink-0 sm:justify-center">
-              <DefaultToggle active={preference === 'model'} onClick={toggle('model')} />
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
+      {current && (
+        <ImageZoomViewer
+          src={current}
+          alt={entity.name}
+          open={open === 'image'}
+          onOpenChange={openChange('image')}
+          gallery={gallery}
+          footer={footer('image')}
+        />
+      )}
+      {model && (
+        <ViewerDialog title={`${entity.name} — 3D Model`} description="Interactive 3D model. Drag to rotate, scroll to zoom." open={open === 'model'} onOpenChange={openChange('model')} footer={footer('model')}>
+          {modelViewer('flex-grow')}
+        </ViewerDialog>
+      )}
+      {avatar && (
+        <ViewerDialog title={`${entity.name} — Avatar`} description="Interactive Avatar. Drag to rotate, scroll to zoom." open={open === 'avatar'} onOpenChange={openChange('avatar')} footer={footer('avatar')}>
+          <div className="relative flex-grow min-h-0">{avatar}</div>
+        </ViewerDialog>
+      )}
     </Slot>
   );
 };
 
+/** A 3D visual opened from its corner button, with the preference control below it. */
+const ViewerDialog = ({ title, description, open, onOpenChange, footer, children }: {
+  title: string;
+  description: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="sm:max-w-[600px] h-[80dvh] flex flex-col">
+      <DialogHeader className="flex-shrink-0">
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription className="sr-only">{description}</DialogDescription>
+      </DialogHeader>
+      {/* Mounted plainly, not gated on `open`: the dialog animates out over 200ms, and dropping the viewer the
+          moment it closes empties the window mid-animation. Radix unmounts the content once the animation
+          finishes, which is what releases the viewer's WebGL context. */}
+      {children}
+      {footer && <DialogFooter className="flex-shrink-0 sm:justify-center">{footer}</DialogFooter>}
+    </DialogContent>
+  </Dialog>
+);
+
 /**
- * The picture's box. An image shrink-wraps, so a corner button rides the picture's own edge — the slot is
- * usually wider than the portrait it holds, and a button in the slot's corner reads as unattached. The model
- * viewer has no intrinsic size and would collapse to nothing wrapped that way, so it fills the slot instead.
+ * The visual's box. An image shrink-wraps, so a corner button rides the picture's own edge: the slot is
+ * usually wider than the portrait it holds, and a button in the slot's corner reads as unattached. A 3D viewer
+ * has no intrinsic size and would collapse to nothing wrapped that way, so it fills the slot instead.
  */
 const Slot = ({ className, fill, children }: {
   className?: string;
@@ -195,7 +219,7 @@ const CornerButton = ({ label, onClick, children }: {
     <Button
       variant="secondary"
       size="icon"
-      className="absolute top-1 right-1 h-8 w-8 opacity-80 hover:opacity-100"
+      className="h-8 w-8 opacity-80 hover:opacity-100"
       onClick={onClick}
     >
       {children}

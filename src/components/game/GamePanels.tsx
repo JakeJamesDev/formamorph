@@ -9,9 +9,7 @@ import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
 import { narrationOf } from '@/lib/aiResponse';
-import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
-import { usePlayedVrm } from '@/lib/usePlayedVrm';
-import { mergeBodyMorphs } from '@/lib/bodyMorphs';
+import { usePlayAvatars } from '@/lib/usePlayAvatars';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
@@ -53,13 +51,12 @@ import { CONTINUE_CHOICE } from "@/lib/choices";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tip } from "@/components/ui/tooltip";
 import { Pager } from "@/components/ui/pagination";
-import VRMViewer from '@/views/VRMViewer';
-import { EntityVisual, hasEntityVisual } from './EntityVisual';
+import { EntityVisual } from './EntityVisual';
+import { EntityAvatar } from './EntityAvatar';
 import { useEntityStatMorphs } from '@/lib/useEntityStatMorphs';
 import { useEntityVisualPreference } from '@/lib/useEntityVisualPreference';
 import { useEntityGallery } from '@/lib/useEntityGallery';
@@ -102,6 +99,9 @@ import { scriptPrompts } from '@/lib/scriptPrompts';
 import { turnTells } from '@/lib/scriptTells';
 import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 
+/** The You row's stand-in entity when no entity is played: it shows the played side's Avatar. */
+const YOU: Entity = { id: '__you', name: 'You', locations: [] } as unknown as Entity;
+
 /** One side-panel tab: an icon, and the label where the panel is wide enough to hold it. */
 const PanelTab = ({ value, icon: Icon, label }: { value: string; icon: LucideIcon; label: string }) => (
   // The label's own text names the tab; the tip shows it where the label is hidden.
@@ -133,11 +133,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   // The played entity heads the Entities tab in every scene; the scene parse never lists it.
   const personaEntity = persona?.entity;
   const {
-    // Aliased to the viewed-page values so paging back shows that turn's appearance + scene (they equal
-    // the live values on the latest page). Body morphs still ride live `bodyMorphValues`, which the
-    // GameViewer effect derives from the viewed stats.
-    viewCharacterData,
-    bodyMorphValues,
+    // Aliased to the viewed-page values so paging back shows that turn's scene (they equal the live values
+    // on the latest page).
     viewVisibleEntities: visibleEntities,
     viewEntityFollowers: entityFollowers,
     logEntries,
@@ -172,33 +169,32 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     setVisibleEntities((prev) => prev.filter((se) => se.name !== name));
     setPendingRemoval(null);
   };
-  const playedVrm = usePlayedVrm(persona, viewCharacterData);
-  const { url: playerModelUrl, resolving: urlResolving } = useVrmSourceUrl(playedVrm.source);
-  const modelResolving = playedVrm.resolving || urlResolving;
-  // The player view needs customization to apply and a played side that shows an Avatar.
-  const characterData = viewCharacterData && (playedVrm.resolving || playedVrm.source) ? viewCharacterData : null;
-  // First present entity with something to show — an image, or failing that a 3D model — displayed in the
-  // model section's Entities view (the portrait shows whether or not the name is revealed yet).
-  const firstShowable = firstShowableEntity(visibleEntities, entities, hasEntityVisual);
+  const avatars = usePlayAvatars();
+  // The played side with no played entity: the legacy fallback's Avatar, shown through the You row.
+  const you = !personaEntity && avatars.played ? YOU : undefined;
+  const avatarOf = (entity: Entity) => (entity === YOU ? avatars.played : avatars.sourceOf(entity));
+  const showable = (entity: Entity | undefined): entity is Entity => !!entity && (entity === YOU || avatars.shows(entity));
+  // First present entity with something to show (the portrait shows whether or not the name is revealed yet).
+  const firstShowable = firstShowableEntity(visibleEntities, entities, showable);
   const isMobile = useIsMobile();
-  const [showModel, setShowModel] = React.useState(true);
-  // Landscape model viewer view: the player VRM vs. the detected-entity view.
-  const [modelTab, setModelTab] = React.useState("avatar");
+  const [showEntityView, setShowEntityView] = React.useState(true);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
   React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, requestKey]);
 
-  // The shared pick when it has a picture to show, else the first detected showable entity. The stat panel's
-  // (None) and a pick with no picture both leave the view on that fallback.
+  // The shared pick when it has something to show, else the played entity, else the first showable scene
+  // entity. The stat panel's (None) and a pick with nothing to show both leave the view on that fallback.
   const pickedEntity = [...entities, ...(personaEntity ? [personaEntity] : [])].find((e) => e.id === selectedEntityId);
-  const entityViewEntity = (hasEntityVisual(pickedEntity) ? pickedEntity : undefined) ?? firstShowable;
-  const entityViewPreference = useEntityVisualPreference(entityViewEntity?.id);
+  const entityViewEntity = (showable(pickedEntity) ? pickedEntity : undefined)
+    ?? (showable(personaEntity) ? personaEntity : you)
+    ?? firstShowable;
+  const entityViewPreference = useEntityVisualPreference(entityViewEntity === YOU ? undefined : entityViewEntity?.id);
   const entityViewGallery = useEntityGallery(entityViewEntity);
   const entityViewMorphs = useEntityStatMorphs(entityViewEntity);
+  const entityViewAvatar = entityViewEntity && avatarOf(entityViewEntity);
 
-  // Clicking an entity swaps the in-section image when the viewer is open; otherwise it opens the
-  // entity popup (collapsed, on mobile, the entity has no image, or it's already the shown entity). A
-  // not-yet-revealed character can show its portrait but never opens the detail popup — that would spoil
-  // the name the scene is deliberately withholding.
+  // Clicking an entity with something to show selects it, so the view swaps to it. The popup opens on mobile,
+  // and in landscape when the view is hidden or already on that entity. A not-yet-revealed character can show
+  // its portrait but never opens the detail popup: that would spoil the name the scene is withholding.
   const handleEntityListClick = (se: SceneEntity) => {
     const match = resolveEntityByName(se.name, entities);
     if (!match) return; // un-named (ad-hoc) participant — nothing to show
@@ -206,17 +202,12 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   };
 
   const openEntity = (match: Entity, revealed: boolean) => {
-    const entitiesViewActive = !characterData || modelTab === "entities";
-    const alreadyShown = entitiesViewActive && match === entityViewEntity;
-    if (!isMobile && showModel && hasEntityVisual(match) && !alreadyShown) {
-      setSelectedEntityId(match.id);
-      setModelTab("entities");
-    } else if (revealed) {
-      onEntityClick(match.name);
-    }
+    const selects = showable(match) && (isMobile || (showEntityView && match.id !== entityViewEntity?.id));
+    if (selects) setSelectedEntityId(match.id);
+    if (revealed && (isMobile || !selects)) onEntityClick(match.name);
   };
 
-  // In landscape the model lives on top, not in a tab; leave the "model" tab.
+  // In landscape the view lives on top, not in a tab; leave the "model" tab.
   React.useEffect(() => {
     if (!isMobile && leftTab === "model") setLeftTab("notes");
   }, [isMobile, leftTab]);
@@ -241,28 +232,28 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     }
   }, [devRoute?.modal, devRoute?.tab, setIsEditMode]);
 
-  const modelViewer = characterData ? (
+  const entityView = entityViewEntity ? (
     // Mobile: fill the whole panel. Landscape: a fixed 1.2 aspect box sitting atop the panel.
     <div className={isMobile ? "relative w-full h-full" : "w-full relative"} style={isMobile ? undefined : { paddingTop: '120%' }}>
       <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-        {modelResolving ? (
-          // Hold a loader while a library model's blob resolves, so we don't transiently mount the bundled
-          // default (which would report default capabilities and flash before the real model swaps in).
-          <Loader2 className="animate-spin" size={32} />
-        ) : (
-          <VRMViewer
-            key={playerModelUrl ?? 'default'}
-            bodyMorphValues={mergeBodyMorphs(characterData.bodyMorphs, bodyMorphValues)}
-            hairColor={characterData.hairColor}
-            eyeColor={characterData.eyeColor}
-            skinColor={characterData.skinColor}
-            hairTypes={characterData.hairTypes}
-            currentHairStyle={characterData.currentHairStyle}
-            hairLength={characterData.hairLength}
-            modelUrl={playerModelUrl}
-            extraColors={characterData.extraColors}
-          />
-        )}
+        <EntityVisual
+          key={entityViewEntity.id}
+          entity={entityViewEntity}
+          images={entityViewGallery.images}
+          avatar={entityViewAvatar && (
+            <EntityAvatar
+              entity={entityViewEntity}
+              source={entityViewAvatar}
+              played={entityViewEntity === YOU || entityViewEntity.id === avatars.playedId}
+              resolving={avatars.resolving}
+            />
+          )}
+          preference={entityViewPreference.preference}
+          onPreferenceChange={entityViewPreference.onPreferenceChange}
+          imageIndex={entityViewGallery.imageIndex}
+          onImageStep={entityViewGallery.onImageStep}
+          morphValues={entityViewMorphs}
+        />
       </div>
     </div>
   ) : null;
@@ -270,61 +261,28 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   return (
   <Card className="w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
-      {/* Landscape: model on top with a show/hide toggle in the upper right */}
+      {/* Landscape: the entity view on top with a show/hide toggle in the upper right */}
       {!isMobile && (
         <div className="mb-2">
           <div className="relative flex items-center justify-center min-h-10">
-            {/* Only worlds with a player model offer the Avatar/Entities swap. */}
-            {characterData && (
-              <ToggleGroup
-                type="single"
-                value={modelTab}
-                // A single ToggleGroup clears its value when the active item is clicked again; one of the two
-                // is always shown, so an empty result is ignored rather than stored.
-                onValueChange={(v) => { if (v) setModelTab(v); }}
-              >
-                <ToggleGroupItem value="avatar">Avatar</ToggleGroupItem>
-                <ToggleGroupItem value="entities">Entities</ToggleGroupItem>
-              </ToggleGroup>
-            )}
-            <Tip tip={showModel ? "Hide Avatar" : "Show Avatar"}>
+            <Tip tip={showEntityView ? "Hide Entity View" : "Show Entity View"}>
               <Button
                 variant="ghost"
                 size="icon"
                 className="absolute right-0"
-                onClick={() => setShowModel((s) => !s)}
+                onClick={() => setShowEntityView((s) => !s)}
               >
-                {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showEntityView ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </Tip>
           </div>
-          {showModel && (
-            // No model ⇒ always the Entities view (there's no Avatar to swap to).
-            characterData && modelTab === "avatar"
-              ? modelViewer
-              : entityViewEntity && (
-                  <div className="w-full relative" style={{ paddingTop: '120%' }}>
-                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                      <EntityVisual
-                        key={entityViewEntity.id}
-                        entity={entityViewEntity}
-                        images={entityViewGallery.images}
-                        preference={entityViewPreference.preference}
-                        onPreferenceChange={entityViewPreference.onPreferenceChange}
-                        imageIndex={entityViewGallery.imageIndex}
-                        onImageStep={entityViewGallery.onImageStep}
-                        morphValues={entityViewMorphs}
-                      />
-                    </div>
-                  </div>
-                )
-          )}
+          {showEntityView && entityView}
         </div>
       )}
 
       <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="grid w-full flex-shrink-0 auto-cols-fr grid-flow-col">
-          {isMobile && <PanelTab value="model" icon={AvatarIcon} label="Avatar" />}
+          {isMobile && <PanelTab value="model" icon={AvatarIcon} label="View" />}
           <PanelTab value="entities" icon={EntitiesIcon} label="Entities" />
           <PanelTab value="notes" icon={NotebookPen} label="Notes" />
           <PanelTab value="memory" icon={Brain} label="Memory" />
@@ -332,7 +290,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
         </TabsList>
         {isMobile && (
           <TabsContent value="model" className="flex-grow overflow-hidden min-h-[100px]">
-            {modelViewer}
+            {entityView}
           </TabsContent>
         )}
         {/* `flex` must be state-scoped: a plain `flex` class beats the UA `[hidden]{display:none}` Radix
@@ -348,6 +306,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
               {personaEntity && (
                 <EntityListRow label={personaEntity.name} you onClick={() => openEntity(personaEntity, true)} />
               )}
+              {/* No pick falls back to the played side, which is what selecting You means. */}
+              {you && <EntityListRow label={you.name} onClick={() => setSelectedEntityId(undefined)} />}
               {visibleEntities.length > 0 ? (
                 visibleEntities.map((se, index) => {
                   const entityItem = resolveEntityByName(se.name, entities);
@@ -372,7 +332,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                     />
                   );
                 })
-              ) : personaEntity ? null : (
+              ) : personaEntity || you ? null : (
                 <p>No entity visible.</p>
               )}
             </div>

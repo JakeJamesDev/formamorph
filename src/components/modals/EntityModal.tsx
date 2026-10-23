@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil, RefreshCw, Loader2, X } from "lucide-react";
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
+import { EntityAvatar } from '../game/EntityAvatar';
+import { usePlayAvatars } from '@/lib/usePlayAvatars';
 import { useEntityTextResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
 import { useEntityGallery } from "@/lib/useEntityGallery";
@@ -33,6 +35,8 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
   const { images, imageIndex, onImageStep } = useEntityGallery(entity);
   const morphValues = useEntityStatMorphs(entity ?? undefined);
+  const avatars = usePlayAvatars();
+  const avatarSource = entity ? avatars.sourceOf(entity) : undefined;
 
   // 'edit' and 'preview' are mutually exclusive: entering one leaves the other.
   const [mode, setMode] = useState<'view' | 'edit' | 'preview'>('view');
@@ -118,6 +122,9 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
         <EntityCardBody
           entity={entity}
           images={images}
+          avatar={avatarSource && (
+            <EntityAvatar entity={entity} source={avatarSource} played={entity.id === avatars.playedId} resolving={avatars.resolving} />
+          )}
           preference={preference}
           onPreferenceChange={onPreferenceChange}
           imageIndex={imageIndex}

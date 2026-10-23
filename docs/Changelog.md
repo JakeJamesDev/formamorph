@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Mark one library Avatar as your default from its tile menu, and User's Default shows it.** The tile gets a **Default** badge. With no default, User's Default shows the bundled Avatar.
     - **Library entities pick an Avatar from your Avatar library, and a library persona shows it while you play.** Adding one to a world copies its Avatar into the world once. Deleting a library Avatar names the library entities that use it, and they show no Avatar.
     - **Enter World shows the avatar step when the persona you pick has an Avatar.** The button switches between **Continue to Avatar** and **Start Game** as you change persona. You pick a library Avatar only under User's Default, starting on your default.
+    - **In play, one entity view shows each entity's Avatar, 3D model or image, and replaces the separate Avatar tab.** It shows the Avatar first, then the model, then the image, unless you pick another with **Display by Default**. Select an entity to see it. On mobile, the **View** tab holds it.
 
 #### ➖ Removed
 
