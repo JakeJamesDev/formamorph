@@ -14,6 +14,7 @@ import {
   type LinkedContentRow, type LinkedWorldContent, type ListingVisibility,
 } from '@/lib/publishLinks';
 import { dictionaryPublishPayload, entityPublishPayload, type PublishPayload } from '@/lib/publishPayload';
+import { withCarriedVrm } from '@/lib/entityVrmCarry';
 import { readWorldPromptPins } from '@/lib/worldPromptPreset';
 import type { Dictionary, Entity } from '@/types';
 
@@ -181,7 +182,7 @@ export function usePublishLinks({ open, kind, contentData, localId, overwriteTar
         const details = await libraryItemDetails(row.kind, row.libraryId);
         const payload = row.kind === 'dictionary'
           ? dictionaryPublishPayload(data as Dictionary, details)
-          : entityPublishPayload(data as Entity, details);
+          : entityPublishPayload(await withCarriedVrm(data as Entity), details);
         const created = await publishOne({ ...payload, visibility: row.visibility });
         const listingId = created?._id || created?.id;
         if (!listingId) throw new Error('The server did not answer with a listing.');

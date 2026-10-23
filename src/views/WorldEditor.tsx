@@ -629,7 +629,7 @@ const WorldEditorInner = ({
     try {
       // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
       const links = await exportedComponentLinks(entity.link);
-      downloadBlob(await exportEntityCard(entity, placeholders, links, undefined, { traits, traitGroups, entities, stats, statGroups }), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
+      downloadBlob(await exportEntityCard(entity, placeholders, links, undefined, { traits, traitGroups, entities, stats, statGroups }, worldOverview?.vrmStore), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
     } catch (error) {
       toastError(error, 'Could not export the entity.');
     }

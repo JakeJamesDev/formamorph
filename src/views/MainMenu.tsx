@@ -83,6 +83,7 @@ import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { readLibraryDetails } from '@/lib/contentAuthor';
 import { importCharacterFile } from '@/lib/entityFile';
+import { withCarriedVrm } from '@/lib/entityVrmCarry';
 import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPersonaFiles, stPersonaReport } from '@/lib/stPersonaImport';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
@@ -617,7 +618,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * side already offers this choice; the publish side is where the big image actually comes from.
    */
   const publishEntity = async (entity: Entity, libraryDetails?: { author?: string }) => {
-    openPublish(entityPublishPayload(await promptEntity(entity), libraryDetails), entity.id);
+    openPublish(entityPublishPayload(await withCarriedVrm(await promptEntity(entity)), libraryDetails), entity.id);
   };
 
   /**
