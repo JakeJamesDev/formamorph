@@ -999,14 +999,16 @@ const CommunityCreationsBrowser = ({
         {hiddenWorldIds.length > 0 && (
           <div className="space-y-1">
             <span className="text-meta font-medium text-muted-foreground">Worlds</span>
-            <div className="flex flex-wrap gap-1">
-              {hiddenWorldIds.map((id) => (
-                <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
-                  {hiddenWorldName(id)}
-                  <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
-                </span>
-              ))}
-            </div>
+            <ScrollArea className="max-h-48">
+              <div className="flex flex-wrap gap-1">
+                {hiddenWorldIds.map((id) => (
+                  <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
+                    {hiddenWorldName(id)}
+                    <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
+                  </span>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         )}
         {hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 && (
