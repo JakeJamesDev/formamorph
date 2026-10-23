@@ -1,5 +1,5 @@
 // Fetches the pinned llama.cpp release's `llama-server` builds into build-assets/llama-server/<id>/.
-// Usage: node scripts/fetchLlamaServer.mjs [--platform win|mac|linux]
+// Usage: node scripts/fetchLlamaServer.mjs [--platform win|mac|linux | --all]  (default: the host's platform)
 import { spawnSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -59,10 +59,23 @@ function extract(archive, destDir) {
   const zip = name.endsWith('.zip');
   let result = run(TAR, [zip ? '-xf' : '-xzf', name, '-C', into]);
   if (result.status !== 0 && zip) result = run('unzip', ['-q', '-o', name, '-d', into]);
-  // Windows cannot create the .so/.dylib symlinks. Only a mac or linux build packaged here would miss them,
-  // and those package on their own runners.
-  const otherErrors = (result.stderr || '').match(/^(?!.*(?:symlink|Exiting with failure)).+$/im);
-  if (result.status !== 0 && !(process.platform === 'win32' && !otherErrors)) throw new Error(`Could not unpack ${path.basename(archive)}: ${result.stderr || result.error}`);
+  if (result.status !== 0) throw new Error(`Could not unpack ${path.basename(archive)}: ${result.stderr || result.error}`);
+}
+
+const HOST_PLATFORM = { win32: 'win', darwin: 'mac', linux: 'linux' };
+
+/**
+ * The platforms a CLI run fetches. The default is the host's: Windows cannot create the .dylib/.so
+ * symlinks of the other platforms' archives, and those platforms package on their own runners.
+ * `--all` fetches every platform; `--platform` names one.
+ */
+export function platformsFromArgs(argv, hostPlatform = process.platform) {
+  if (argv.includes('--all')) return undefined;
+  const i = argv.indexOf('--platform');
+  if (i >= 0) return [argv[i + 1]];
+  const host = HOST_PLATFORM[hostPlatform];
+  if (!host) throw new Error(`No llama-server build for ${hostPlatform}. Pass --platform win|mac|linux or --all.`);
+  return [host];
 }
 
 // A release tarball nests everything under one folder; the zip is flat. Move the files up to the root.
@@ -117,9 +130,8 @@ export async function fetchLlamaServer({ tag, platforms, dest = DEFAULT_DEST, fe
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const i = process.argv.indexOf('--platform');
-  const platforms = i >= 0 ? [process.argv[i + 1]] : undefined;
   try {
+    const platforms = platformsFromArgs(process.argv);
     const tag = await readPin();
     const got = await fetchLlamaServer({ tag, platforms });
     console.log(got.length ? `llama-server ${tag}: downloaded ${got.join(', ')}` : `llama-server ${tag}: up to date`);
