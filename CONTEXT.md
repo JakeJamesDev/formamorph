@@ -123,6 +123,9 @@ _Avoid_: model (in copy), VRM (the file format, not the thing)
 The Avatar choice that shows the player's default Avatar: the library Avatar marked Default, or the bundled one when none is marked. Device-local, never exported.
 _Avoid_: default avatar (as the choice's name)
 
+**Default Avatar**:
+The library Avatar the player marks with **Set as Default Avatar**. User's Default shows it. Copy names it "Default Avatar", matching Default Persona.
+
 **Profile Image**:
 The image on an account, shown beside a username. Code calls it an avatar; copy never does.
 _Avoid_: avatar (in copy), profile picture, user image
