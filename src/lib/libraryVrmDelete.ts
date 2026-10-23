@@ -1,6 +1,7 @@
 import { findSavesUsingModel } from '@/lib/modelUsage';
 import { replaceLibraryItemContent } from '@/lib/librarySources';
 import EntityStorageService from '@/services/EntityStorageService';
+import { withVrmPick } from '@/lib/worldVrmStore';
 
 /** What a library Avatar delete reaches: the saves and the library entities that use it, by name. */
 export interface ModelUsage {
@@ -35,7 +36,7 @@ export function deleteModelDescription(usage: ModelUsage | null): string {
   const parts = [
     ...(entities.length ? [`${listNames(entities)} will show no Avatar.`] : []),
     ...(saves.length
-      ? [`${saves.length === 1 ? 'One save uses' : `${saves.length} saves use`} this Avatar: ${listNames(saves)}. ${saves.length === 1 ? 'It' : 'They'} will fall back to the default Avatar.`]
+      ? [`${saves.length === 1 ? 'One save uses' : `${saves.length} saves use`} this Avatar: ${listNames(saves)}. ${saves.length === 1 ? 'It' : 'They'} will fall back to the Default Avatar.`]
       : []),
     'This action cannot be undone.',
   ];
@@ -47,7 +48,7 @@ export function deleteModelDescription(usage: ModelUsage | null): string {
 export async function clearLibraryModelPicks(modelId: string): Promise<void> {
   const revision = new Date().toISOString();
   for (const meta of await libraryUsers(modelId)) {
-    const { vrmPick: _gone, ...entity } = await EntityStorageService.getEntityData(meta.id);
+    const entity = withVrmPick(await EntityStorageService.getEntityData(meta.id));
     await replaceLibraryItemContent('entity', meta.id, entity, revision);
   }
 }

@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  World, SaveObject, CharacterData, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
+  World, SaveObject, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
   Opening, TraitRequirement,
 } from '@/types';
 import { isImplicitPair, parentIndex } from './locationGraph';
@@ -851,18 +851,14 @@ export function stripSnapshotHistory(state: GameState): GameState {
   return rest as GameState;
 }
 
-/**
- * Point a snapshot's player avatar at the seeded library record, from either older value: the pre-library
- * `'default'` sentinel, which has no referent now that the bundled avatar is an ordinary library entry, and
- * the `'default-model'` id it was seeded under before the library was renamed to avatars. Every other
- * value — a library id, `'world'`, or unset — is already meaningful and passes through.
- */
-
+/** Point a snapshot's `playerModelId` at the seeded library record when it holds either older id of the
+ *  bundled Avatar. Every other value passes through. */
 function migrateDefaultAvatarId(state: GameState): GameState {
   const character = state?.characterData as LegacyCharacterData | null;
   const current = character?.playerModelId;
   if (!character || !current || !LEGACY_DEFAULT_AVATAR_VALUES.includes(current)) return state;
-  return { ...state, characterData: { ...character, playerModelId: DEFAULT_AVATAR_ID } as CharacterData };
+  const migrated: LegacyCharacterData = { ...character, playerModelId: DEFAULT_AVATAR_ID };
+  return { ...state, characterData: migrated };
 }
 
 /** The legacy fixed body fields, before they were folded into the generic `bodyMorphs` map. */

@@ -18,7 +18,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, type PersonaRole } from '@/lib/customPersona';
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
-import type { Entity, Placeholder } from '@/types';
+import type { Entity, Placeholder, VrmPick } from '@/types';
 import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
 import { pickLabel } from '@/lib/vrmPickMatch';
 import { WorldInput } from '@/components/editor/WorldField';
@@ -338,33 +338,29 @@ export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => 
   );
 };
 
-export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars in the World Overview.';
-
-/** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
-export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
-  const { advanced } = useEditorMode();
-  const spendFallback = useSpendFallback();
-  const store = useGameDataOptional()?.worldOverview?.vrmStore;
-  if (!advanced) return null;
-  const pick = (v: string) => {
-    const next = vrmPickFromValue(v);
-    spendFallback('Set Avatar', !!next && !!value.customPersona, () => onChange('vrmPick', next));
-  };
+/** The Avatar dropdown both entity editors share. None and User's Default lead, `named` follows, and a stored
+ *  pick that matches no option reads as None. */
+const AvatarPickField = ({ entityId, hint, named, stored, onPick }: {
+  entityId: string;
+  hint: string;
+  /** The editor's own Avatars, as option values from `vrmPickValue`. */
+  named: { value: string; label: string }[];
+  stored: string;
+  onPick: (pick: VrmPick | undefined) => void;
+}) => {
   const none = vrmPickValue(undefined);
   const options = [
     { value: none, label: 'None' },
     { value: vrmPickValue({ kind: 'default' }), label: "User's Default" },
-    ...Object.entries(store ?? {}).map(([id, vrm]) => ({ value: vrmPickValue({ kind: 'world', id }), label: vrm.name || 'Unnamed' })),
+    ...named,
   ];
-  const stored = vrmPickValue(value.vrmPick);
-  // A pick of an id the store lacks reads as None.
   const selected = options.some((o) => o.value === stored) ? stored : none;
   return (
     <div className="space-y-2" {...fieldFrame('vrmPick')}>
-      <Label htmlFor={`entity-vrm-${value.id}`}>Avatar</Label>
-      <Hint>{ENTITY_VRM_HINT}</Hint>
-      <Select value={selected} onValueChange={pick}>
-        <SelectTrigger id={`entity-vrm-${value.id}`} className="w-64 max-w-full">
+      <Label htmlFor={`entity-vrm-${entityId}`}>Avatar</Label>
+      <Hint>{hint}</Hint>
+      <Select value={selected} onValueChange={(v) => onPick(vrmPickFromValue(v))}>
+        <SelectTrigger id={`entity-vrm-${entityId}`} className="w-64 max-w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -373,6 +369,20 @@ export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) =
       </Select>
     </div>
   );
+};
+
+export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars in the World Overview.';
+
+/** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
+export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
+  const { advanced } = useEditorMode();
+  const spendFallback = useSpendFallback();
+  const store = useGameDataOptional()?.worldOverview?.vrmStore;
+  if (!advanced) return null;
+  const pick = (next: VrmPick | undefined) =>
+    spendFallback('Set Avatar', !!next && !!value.customPersona, () => onChange('vrmPick', next));
+  const named = Object.entries(store ?? {}).map(([id, vrm]) => ({ value: vrmPickValue({ kind: 'world', id }), label: vrm.name || 'Unnamed' }));
+  return <AvatarPickField entityId={value.id} hint={ENTITY_VRM_HINT} named={named} stored={vrmPickValue(value.vrmPick)} onPick={pick} />;
 };
 
 export const LIBRARY_ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars on the Avatars tab.';
@@ -386,32 +396,13 @@ export const LibraryEntityVrmPickField = ({ value, onChange }: EntityFieldGroupP
       .then((models) => { if (mounted.current) setLibrary(models); })
       .catch(() => { /* An unreadable library offers None and User's Default only. */ });
   }, [mounted]);
-  const none = vrmPickValue(undefined);
-  const options = [
-    { value: none, label: 'None' },
-    { value: vrmPickValue({ kind: 'default' }), label: "User's Default" },
-    ...(library ?? []).map((model) => ({ value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed' })),
-  ];
+  const named = (library ?? []).map((model) => ({ value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed' }));
   const stored = vrmPickValue(value.vrmPick);
   // Once the library is read, a library id it lacks keeps its own option, named as the link review names it.
-  if (library && value.vrmPick?.kind === 'library' && !options.some((o) => o.value === stored)) {
-    options.push({ value: stored, label: pickLabel(value.vrmPick, { world: new Map(), library: new Map() }) });
+  if (library && value.vrmPick?.kind === 'library' && !named.some((o) => o.value === stored)) {
+    named.push({ value: stored, label: pickLabel(value.vrmPick, { world: new Map(), library: new Map() }) });
   }
-  const selected = options.some((o) => o.value === stored) ? stored : none;
-  return (
-    <div className="space-y-2" {...fieldFrame('vrmPick')}>
-      <Label htmlFor={`entity-vrm-${value.id}`}>Avatar</Label>
-      <Hint>{LIBRARY_ENTITY_VRM_HINT}</Hint>
-      <Select value={selected} onValueChange={(v) => onChange('vrmPick', vrmPickFromValue(v))}>
-        <SelectTrigger id={`entity-vrm-${value.id}`} className="w-64 max-w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectOptions options={options} />
-        </SelectContent>
-      </Select>
-    </div>
-  );
+  return <AvatarPickField entityId={value.id} hint={LIBRARY_ENTITY_VRM_HINT} named={named} stored={stored} onPick={(next) => onChange('vrmPick', next)} />;
 };
 
 /**

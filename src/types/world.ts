@@ -682,7 +682,7 @@ export interface WorldOverview {
   systemPrompt: string;
   tags: string[];
   /** The world's Avatars, keyed by id. Entities refer to one through `Entity.vrmPick`. */
-  vrmStore?: Record<string, WorldVrm>;
+  vrmStore?: WorldVrmStore;
   /** The played side's last resort, set only by the migration of a world whose old 3D Player Avatar flag
    *  was on (see lib/legacyVrm). Never shown in the editor. */
   legacyVrmFallback?: VrmPick;

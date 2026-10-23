@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EntityVisual, hasEntityVisual } from './EntityVisual';
+import { EntityVisual } from './EntityVisual';
 import type { Entity } from '@/types';
 
 // The real viewer needs a WebGL context jsdom has none of; what matters here is which visual gets mounted.
@@ -16,19 +16,6 @@ const IMAGE = 'data:image/webp;base64,AAAA';
 
 const entity = (extra: Partial<Entity>): Entity =>
   ({ id: 'e1', name: 'Sedge', ...extra }) as Entity;
-
-describe('hasEntityVisual', () => {
-  it('accepts an image or a model and rejects an entity with neither', () => {
-    expect(hasEntityVisual(entity({ images: [{ data: IMAGE }] }))).toBe(true);
-    expect(hasEntityVisual(entity({ model: MODEL }))).toBe(true);
-    expect(hasEntityVisual(entity({}))).toBe(false);
-    expect(hasEntityVisual(undefined)).toBe(false);
-  });
-
-  it('rejects a model asset carrying no data, which nothing could load', () => {
-    expect(hasEntityVisual(entity({ model: { name: 'statue.glb' } as Entity['model'] }))).toBe(false);
-  });
-});
 
 const AVATAR = <div data-testid="avatar-viewer" />;
 

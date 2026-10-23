@@ -7,7 +7,6 @@ import type { Entity } from '@/types';
 // suite is about — it tests the description's edit/regenerate controls only.
 vi.mock('../game/EntityVisual', () => ({
   EntityVisual: () => null,
-  hasEntityVisual: () => false,
 }));
 vi.mock('../game/AudioPlayer', () => ({ default: () => null }));
 vi.mock('@/lib/usePlaceholderResolver', () => ({ useEntityTextResolver: () => (_entity: unknown, t: string) => t }));

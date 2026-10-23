@@ -131,7 +131,7 @@ import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
-import { useSeedAvatarOnSaveLoad } from "@/lib/usePlayedVrm";
+import { useSeedAvatarOnSaveLoad } from "@/lib/useLibraryAvatars";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { variableForToken, tokenVariant } from "../lib/promptVariables";

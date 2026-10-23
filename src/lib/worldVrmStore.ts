@@ -1,7 +1,12 @@
 import { randomUUID } from '@/lib/uuid';
-import type { Entity, MediaAsset, VrmPick, WorldVrm } from '@/types';
+import type { Entity, MediaAsset, VrmPick, WorldVrmStore as Store } from '@/types';
 
-type Store = Record<string, WorldVrm>;
+/** The entity with `pick` as its Avatar pick, or with no pick when `pick` is unset. */
+export function withVrmPick<T extends Pick<Entity, 'vrmPick'>>(entity: T, pick?: VrmPick): T {
+  const { vrmPick: _old, ...rest } = entity;
+  // `vrmPick` is optional on T, so T without it is still a T.
+  return (pick ? { ...rest, vrmPick: pick } : rest) as T;
+}
 
 /** A file's name without its extension, the display name a new Avatar starts on. */
 export const vrmDisplayName = (fileName: string | undefined): string =>
@@ -45,10 +50,6 @@ export const entitiesUsingWorldVrm = (entities: Entity[], id: string): Entity[] 
  *  their identity. */
 export function deleteWorldVrm(store: Store | undefined, entities: Entity[], id: string): { store: Store; entities: Entity[] } {
   const { [id]: _removed, ...rest } = store ?? {};
-  const next = entities.map((entity) => {
-    if (!isPickOf(entity.vrmPick, id)) return entity;
-    const { vrmPick: _pick, ...cleared } = entity;
-    return cleared;
-  });
+  const next = entities.map((entity) => (isPickOf(entity.vrmPick, id) ? withVrmPick(entity) : entity));
   return { store: rest, entities: next };
 }

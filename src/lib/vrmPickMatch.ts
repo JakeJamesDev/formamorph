@@ -1,4 +1,4 @@
-import { addWorldVrm } from '@/lib/worldVrmStore';
+import { addWorldVrm, withVrmPick } from '@/lib/worldVrmStore';
 import type { Entity, MediaAsset, VrmPick, WorldVrmStore as Store } from '@/types';
 
 /** One Avatar as the comparisons name and match it. */
@@ -62,10 +62,7 @@ export function placeLibraryPicks<T extends Entity>(
     const pick = entity.vrmPick;
     if (pick?.kind !== 'library') return entity;
     const vrm = vrms.get(pick.id);
-    if (!vrm) {
-      const { vrmPick: _gone, ...rest } = entity;
-      return rest as T;
-    }
+    if (!vrm) return withVrmPick(entity);
     const held = Object.entries(next ?? {}).find(([id, entry]) => (entry.hash ?? hashes.get(id)) === vrm.hash);
     if (held) return { ...entity, vrmPick: { kind: 'world', id: held[0] } };
     const added = addWorldVrm(next, vrm.name, vrm.file, vrm.hash);

@@ -245,7 +245,7 @@ export const WorldVrmStoreSection = () => {
         <Button variant="outline" onClick={() => inputRef.current?.click()}>Upload Avatar…</Button>
         <Select value="" onValueChange={(id) => void copyFromLibrary(id)} disabled={library.length === 0}>
           <SelectTrigger aria-label="Copy From Library" className="w-64 max-w-full">
-            <SelectValue placeholder="Copy from library" />
+            <SelectValue placeholder="Copy From Library" />
           </SelectTrigger>
           <SelectContent>
             <SelectOptions options={library.map((m) => ({ value: m.id, label: m.name }))} />

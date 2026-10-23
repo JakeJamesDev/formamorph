@@ -21,7 +21,7 @@ import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import { loadVrmLookup } from '@/lib/libraryVrm';
 import { useMountedRef } from '@/lib/useMountedRef';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { Dictionary, Entity, WorldOverview } from '@/types';
+import type { Dictionary, Entity, WorldOverview, WorldVrmStore } from '@/types';
 
 /** A row's key. A world can hold the same library item twice, so the copy is part of the identity. */
 const rowKey = (row: UpdateRow) => `${row.worldId}:${row.itemId}`;
@@ -333,7 +333,7 @@ export function UpdateAvailableDialog({
 }
 
 /** One stored world's copy, for a comparison. */
-async function readStoredCopy(row: UpdateRow): Promise<{ copy: LinkableContent | undefined; vrmStore: WorldOverview['vrmStore'] }> {
+async function readStoredCopy(row: UpdateRow): Promise<{ copy: LinkableContent | undefined; vrmStore: WorldVrmStore | undefined }> {
   const data = await WorldStorageService.getWorldData(row.worldId) as {
     entities?: Entity[]; dictionaries?: Dictionary[]; worldOverview?: WorldOverview;
   };

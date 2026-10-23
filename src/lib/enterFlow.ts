@@ -6,7 +6,7 @@
  */
 
 import { customPersonaEntity } from './blueprints';
-import { playedVrmPick, type PlayedVrmAs } from './vrmResolver';
+import { playedVrmAs, playedVrmPick } from './vrmResolver';
 import type { Entity, PersonaRef, VrmPick, WorldOverview } from '@/types';
 
 /** How the player is starting: the full setup flow, the Quick Start bypass, or resuming a save. */
@@ -48,13 +48,12 @@ export interface EntryVrmInput {
  * picker, and a world or library pick shows that Avatar as set.
  */
 export function entryVrmPick({ persona, libraryPersona, entities, overview }: EntryVrmInput): VrmPick | undefined {
-  const worldPersona = persona.source === 'world' ? entities.find((e) => e.id === persona.entityId) : undefined;
-  const played: PlayedVrmAs = persona.source === 'library' ? { source: 'library', entity: libraryPersona ?? { id: persona.entityId } }
-    : worldPersona ? { source: 'world', entity: worldPersona }
-    : { source: 'none' };
+  const entity = persona.source === 'library' ? libraryPersona ?? { id: persona.entityId }
+    : persona.source === 'world' ? entities.find((e) => e.id === persona.entityId)
+    : undefined;
   return playedVrmPick({
     store: overview?.vrmStore,
-    played,
+    played: playedVrmAs(entity && persona.source !== 'none' ? { source: persona.source, entity } : null),
     customPersona: customPersonaEntity(entities),
     legacyFallback: overview?.legacyVrmFallback,
   });

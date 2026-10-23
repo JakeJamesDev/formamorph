@@ -1,6 +1,6 @@
 # 14: Entity Avatars Standards Cleanup
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 09, 10, 11, 12, 13
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -24,6 +24,23 @@ Fold in the close review's Standards findings without changing behavior (spec: P
 
 ## Acceptance criteria
 
-- [ ] Each item above is done or explained in the landing.
-- [ ] No test changes its assertions, except for a renamed import path or the placeholder text.
-- [ ] All four gates pass.
+- [x] Each item above is done or explained in the landing. Spec review checked each bullet; the notes below cover the partial ones.
+- [x] No test changes its assertions, except for a renamed import path or the placeholder text. The `hasEntityVisual` tests moved word for word to `src/lib/entityVisual.test.ts`; `libraryVrmDelete.test.ts` follows the Q27 copy (T14-4).
+- [x] All four gates pass. Prepare's gate run.
+
+## Landed
+
+How each item landed:
+
+- **Casts:** the GamePanels You row and the dev fixtures' `AVATAR_PERSONA` lose their `as unknown as`. The older casts in `devFixtures.ts` predate this effort and stay.
+- **You row:** `EntityViewSubject` (an entity, or the played side) replaces the fake `Entity`. A typed `PLAYED_SIDE` visual source (`id`, `name`) still feeds `EntityVisual` and the hooks, which take narrow picks.
+- **Pick field:** `AvatarPickField` in `EntityFields.tsx` serves both editors.
+- **Persona mapping:** `playedVrmAs` in `vrmResolver.ts` serves `playVrmContext` and `entryVrmPick`.
+- **Strip and store type:** `withVrmPick` in `worldVrmStore.ts` replaces five hand-written strips. Source files use `WorldVrmStore`; test files keep their `Record<string, WorldVrm>` annotations.
+- **Legacy migration:** kept, not dead (T14-1). Its detached comment is rewritten onto the function, and its cast is a typed local.
+- **Rename and move:** `usePlayedVrm.ts` is `useLibraryAvatars.ts`. `hasEntityVisual` is in `src/lib/entityVisual.ts`; the `EntityModal` test mock drops its stub key for it.
+- **Comments, placeholder, copy:** `useVrmSourceUrl` TSDoc shortened; "picture", "portrait", "character" become image and entity in this effort's comments; "Copy From Library"; "Default Avatar" in the delete dialog and `docs/Avatars.md`.
+
+**Not verified:** nothing.
+
+**For you:** nothing; the change is behavior-neutral.

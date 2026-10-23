@@ -1,4 +1,4 @@
-import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrm } from '@/types';
+import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrmStore } from '@/types';
 import type { ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
 
@@ -18,7 +18,7 @@ export type PlayedVrmAs =
 
 /** Everything the resolver reads besides the entity. */
 export interface VrmContext {
-  store: Record<string, WorldVrm> | undefined;
+  store: WorldVrmStore | undefined;
   /** The ids in the player's Avatar library on this device. */
   libraryIds: ReadonlySet<string>;
   /** The device's default Avatar, a library id. */
@@ -92,6 +92,13 @@ export function resolveEntityVrm(entity: PickedEntity, ctx: VrmContext): VrmSour
   return resolvePick(entity.vrmPick, ctx, () => deviceDefault(ctx));
 }
 
+/** Who the player plays: a library or world persona with its entity, else none. */
+export function playedVrmAs(persona: { source: ResolvedPersona['source']; entity: PickedEntity } | null): PlayedVrmAs {
+  return persona?.source === 'library' || persona?.source === 'world'
+    ? { source: persona.source, entity: persona.entity }
+    : { source: 'none' };
+}
+
 /** The resolver's context for a playthrough: who is played, the world's store and fallback, the save's choice. */
 export function playVrmContext(args: {
   persona: ResolvedPersona | null;
@@ -102,14 +109,11 @@ export function playVrmContext(args: {
   deviceDefault: string | undefined;
 }): VrmContext {
   const { persona, entities, overview, characterData } = args;
-  const played: PlayedVrmAs = persona?.source === 'library' ? { source: 'library', entity: persona.entity }
-    : persona?.source === 'world' ? { source: 'world', entity: persona.entity }
-    : { source: 'none' };
   return {
     store: overview.vrmStore,
     libraryIds: args.libraryIds,
     deviceDefault: args.deviceDefault,
-    played,
+    played: playedVrmAs(persona),
     customPersona: customPersonaEntity(entities),
     chosen: characterData?.chosenVrm ?? undefined,
     legacyFallback: overview.legacyVrmFallback,

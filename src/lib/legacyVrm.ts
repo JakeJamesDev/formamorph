@@ -2,7 +2,7 @@ import { normalizeCustomVRM } from './worldImport';
 import { vrmDisplayName } from './worldVrmStore';
 import { customPersonaEntity } from './blueprints';
 import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
-import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrm } from '@/types';
+import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrmStore } from '@/types';
 
 // Worlds and saves from before per-entity Avatars: the old 3D Player Avatar flag and world Avatar become a
 // store entry and a hidden fallback, and a save's old player model becomes its chosen Avatar.
@@ -27,7 +27,7 @@ export function migrateLegacyPlayerAvatar(world: Record<string, unknown>): void 
   if (file) {
     const name = (oldVrm as { name?: unknown }).name;
     if (typeof name === 'string' && name) file.name = name;
-    const store = (overview.vrmStore && typeof overview.vrmStore === 'object' ? overview.vrmStore : {}) as Record<string, WorldVrm>;
+    const store = (overview.vrmStore && typeof overview.vrmStore === 'object' ? overview.vrmStore : {}) as WorldVrmStore;
     overview.vrmStore = { ...store, [LEGACY_VRM_ID]: { name: vrmDisplayName(file.name), file } };
   }
   if (overview.use3DModel === true) {
@@ -59,7 +59,7 @@ export const LEGACY_DEFAULT_AVATAR_VALUES: readonly unknown[] = [LEGACY_DEFAULT_
  * no choice. A library id stays, marked legacy. Data that already carries `chosenVrm` passes through.
  */
 export function remapChosenVrm(
-  data: CharacterData | null | undefined, store: WorldOverview['vrmStore'],
+  data: CharacterData | null | undefined, store: WorldVrmStore | undefined,
 ): CharacterData | null {
   if (!data) return null;
   if (data.chosenVrm !== undefined) return data;

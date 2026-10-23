@@ -60,7 +60,7 @@ const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, v
 const DEV_VRM_STORE = {
   'dev-avatar': { name: 'Default', file: { name: 'default-avatar.vrm', type: 'model/vrm', data: DEFAULT_AVATAR_URL } },
 };
-const AVATAR_PERSONA = { id: 'dev-wren', name: 'Wren', locations: [], persona: true, vrmPick: { kind: 'default' } } as unknown as Entity;
+const AVATAR_PERSONA: Entity = { id: 'dev-wren', name: 'Wren', locations: [], persona: true, vrmPick: { kind: 'default' } };
 
 const WHITE_ROOM_ID = '1783535114538';
 /** The `entityPresence` fixture's cast, all but the last two at the White Room. */

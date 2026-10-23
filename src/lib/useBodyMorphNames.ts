@@ -89,8 +89,8 @@ export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: 
 }
 
 /**
- * Body slider names available to bind in the world editor, one group per model: the world's store Avatars
- * first, then the library models with the bundled default leading. Loading is
+ * Body slider names available to bind in the world editor, one group per Avatar: the world's store Avatars
+ * first, then the library Avatars with the bundled default leading. Loading is
  * lazy — call `load()` when the picker opens — and cached, so the stat editor stays fast until then.
  *
  * Names are model-agnostic (a binding is the bare morph name); the grouping is display only.
@@ -115,7 +115,7 @@ export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolea
         const morphs = await morphsForCustom(vrm.file.data);
         if (morphs.length) built.push({ heading: vrm.name, morphs });
       }
-      // Library models, newest-first, the bundled default leading: User's Default falls back to it. Loaded
+      // Library Avatars, newest-first, the bundled default leading: User's Default falls back to it. Loaded
       // one at a time rather than in parallel — VRMs are large, and a burst of concurrent GLTF loads would
       // spike memory; the cache makes this a one-time cost.
       const models = await ModelStorageService.getModelMetadata();

@@ -6,20 +6,13 @@ import { Button } from '@/components/ui/button';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { GalleryControls, type GalleryControlsProps } from '@/components/GalleryControls';
 import { resolveModelType } from '@/lib/UtilityComponents';
-import { entityImageData, entityImages } from '@/lib/entityImages';
+import { entityImageData } from '@/lib/entityImages';
+import type { EntityVisualSource } from '@/lib/entityVisual';
 import { AvatarIcon } from '@/lib/elementIcons';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
-import type { Base64Data, Entity, EntityVisualKind } from '@/types';
+import type { Base64Data, EntityVisualKind } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
-
-/** The visual an entity can be shown by, if it has one at all. */
-export type EntityVisualSource = Pick<Entity, 'id' | 'name' | 'images' | 'model'>;
-
-/** Whether this entity has a picture or a 3D model to show. An Avatar is the host's to know. */
-// eslint-disable-next-line react-refresh/only-export-components
-export const hasEntityVisual = (entity?: EntityVisualSource | null): boolean =>
-  !!(entityImages(entity).length || entity?.model?.data);
 
 /** The button each viewer carries, reading as pressed once this is the visual the entity opens on. */
 const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => void }) => (
@@ -48,7 +41,7 @@ const VIEW: Record<EntityVisualKind, { label: string; icon: LucideIcon }> = {
  *
  * `onPreferenceChange` is what makes the preference offerable at all, and `onImageStep` what makes the gallery
  * pageable: without them (the World Editor's preview, which has no playthrough to hold either in) this shows
- * the primary picture plainly. Both live in gameplay state, so the host supplies them: see
+ * the primary image plainly. Both live in gameplay state, so the host supplies them: see
  * `useEntityVisualPreference` and `useEntityGallery`, which also supplies the visible `images` in play.
  *
  * `avatar` and `morphValues` come from the host for the same reason: the Avatar's source and the stat values
@@ -162,8 +155,8 @@ const ViewerDialog = ({ title, description, open, onOpenChange, footer, children
 );
 
 /**
- * The visual's box. An image shrink-wraps, so a corner button rides the picture's own edge: the slot is
- * usually wider than the portrait it holds, and a button in the slot's corner reads as unattached. A 3D viewer
+ * The visual's box. An image shrink-wraps, so a corner button rides the image's own edge: the slot is
+ * usually wider than the image it holds, and a button in the slot's corner reads as unattached. A 3D viewer
  * has no intrinsic size and would collapse to nothing wrapped that way, so it fills the slot instead.
  */
 const Slot = ({ className, fill, children }: {
