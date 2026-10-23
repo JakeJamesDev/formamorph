@@ -25,7 +25,7 @@ import { WorldInput } from '@/components/editor/WorldField';
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectOptions } from "@/components/SelectOptions";
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
+import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { fieldFrame } from '@/lib/historyField';
 import { useMountedRef } from '@/lib/useMountedRef';
 import ModelStorageService from '@/services/ModelStorageService';
@@ -123,12 +123,10 @@ const PERSONA_ROLES: Record<EntityHome, { value: PersonaRole; label: string; hin
 /** Run an entity edit; when it leaves the Custom Persona with a pick, drop the legacy fallback in the same Step. */
 const useSpendFallback = () => {
   const gameData = useGameDataOptional();
-  const history = useWorldHistoryMovesOptional();
+  const asStep = useWorldHistoryStep();
   return (label: string, customPersonaPicks: boolean, run: () => void) => {
     if (!customPersonaPicks || !gameData?.worldOverview.legacyVrmFallback) return run();
-    const both = () => { run(); gameData.updateWorldOverview({ legacyVrmFallback: undefined }); };
-    if (history) void history.batch(label, both);
-    else both();
+    asStep(label, () => { run(); gameData.updateWorldOverview({ legacyVrmFallback: undefined }); });
   };
 };
 
