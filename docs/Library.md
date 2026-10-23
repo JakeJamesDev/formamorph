@@ -136,7 +136,7 @@ The Group's tiles go back to the board. In the grid view, each tile goes to the 
 | **Worlds** | Your worlds, and the worlds that come with Formamorph | Open the world dialog. See [The World Dialog](Starting-a-Game#the-world-dialog). |
 | **Entities** | Library entities | Open the entity editor |
 | **Dictionaries** | Library dictionaries | Open the dictionary editor |
-| **Avatars** | 3D player avatars | Open the avatar's details and preview |
+| **Avatars** | 3D Avatars | Open the Avatar's details and preview |
 
 On a wide screen, the tabs are at the top left. On mobile, they are at the bottom of the screen.
 

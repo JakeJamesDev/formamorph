@@ -36,7 +36,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 3. Open the **Persona** category. It shows when at least one persona is available.
 4. Select **None**, an entity under **From This World**, or one under **Your Personas**.
 5. If the world shows a **Custom Persona** in **None**'s place, type your **Name** and, if you like, a **Description**.
-6. Select **Start Game**. In a world with a 3D model, the button reads **Continue to Avatar**.
+6. Select **Start Game**. When the persona you play has an Avatar, the button reads **Continue to Avatar**.
 
 ## How to Change Persona in Game
 <!-- keywords: switch, swap, mid-game, different character, edit name, rename, already started, ongoing story, become someone else, wrong name fix, replace protagonist, halfway through, body swap -->

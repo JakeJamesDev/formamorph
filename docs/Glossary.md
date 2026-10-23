@@ -83,7 +83,8 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Save](Saves-and-Backup) | One game's progress, with every turn, your notes and your memories |
 | [Autosave](Saves-and-Backup#autosave) | The saves each world keeps, written after every turn: one by default, more with **Autosaves Kept** |
 | [Backup](Saves-and-Backup#the-backup--restore-dialog) | One file with your worlds, saves, library entities and library dictionaries |
-| [Avatar](Avatars) | A 3D model of you, the player, from a VRM file |
+| [Avatar](Avatars) | A 3D model from a VRM file, chosen for an entity |
+| [User's Default](Avatars#how-to-set-your-default-avatar) | The Avatar you mark as your default. An entity set to it shows your default, or the bundled Avatar when you have none. |
 | [Permissive License](Avatars#the-permissive-license) | A VRM license that allows every use the community needs. An Avatar needs it to publish. |
 | [Profile Image](Avatars#avatars-3d-models-and-profile-images) | The image on your Community Creations account. It is not an Avatar. |
 

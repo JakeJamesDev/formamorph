@@ -116,8 +116,12 @@ A location where a new game can begin, flagged by its author. When no location i
 _Avoid_: start location, spawn point
 
 **Avatar**:
-A VRM 3D model — in the local Model Library, chosen for a world, or published as a listing. The kind id in code is `model`; "avatar" in code means Profile Image.
+A VRM 3D model — in the local Model Library, held in a world's Avatar store, chosen for an entity, or published as a listing. The kind id in code is `model`; "avatar" in code means Profile Image.
 _Avoid_: model (in copy), VRM (the file format, not the thing)
+
+**User's Default**:
+The Avatar choice that shows the player's default Avatar: the library Avatar marked Default, or the bundled one when none is marked. Device-local, never exported.
+_Avoid_: default avatar (as the choice's name)
 
 **Profile Image**:
 The image on an account, shown beside a username. Code calls it an avatar; copy never does.

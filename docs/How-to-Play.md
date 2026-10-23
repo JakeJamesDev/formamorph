@@ -185,13 +185,13 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 | Area | What it holds |
 |---|---|
 | The story | The narration, the choices and the action box. A status line above the box names the request that is running, such as *Generating Narration…* |
-| The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. In a world with a 3D model, an **Avatar** / **Entities** switch sits above it. |
+| The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
 | The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits** and **Location** tabs |
 | Top left | The music button and the AI Context button |
 | Top right | **Edit World** and the **Menu** |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
 
-On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). The **Character** tab also has an **Avatar** tab for the 3D model. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
+On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). The **Character** tab also has a **View** tab that holds the entity view. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
 
 ## Turn Actions
 <!-- keywords: buttons under text, more menu, copy to clipboard, message options, toolbar, icons below, three dots, long press -->
@@ -256,7 +256,7 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 <!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->
 <!-- route: entity -->
 
-Select a name in the **Entities** tab to open it. On desktop with the avatar showing, the first select shows that entity's picture in the panel.
+Select a name in the **Entities** tab to open it. The first select shows that entity's Avatar, 3D model or image in the entity view.
 
 The dialog shows the entity's image or 3D model, its player-facing description, and its sound. An entity the story invented also has **Edit** and **Regenerate** for its description. **Regenerate** shows a **New Description** to **Keep** or **Discard**.
 
