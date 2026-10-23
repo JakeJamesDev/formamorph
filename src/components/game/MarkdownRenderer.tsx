@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
+import { remarkNoIndentedCode } from '@/lib/remarkNoIndentedCode';
 import { rehypePreviewTint } from '@/lib/previewTint';
 import { rehypeQuoteSpans } from '@/lib/rehypeQuoteSpans';
 import { getRevealTiming, type RevealTiming } from '@/lib/revealTimingStore';
@@ -20,6 +21,7 @@ import 'streamdown/styles.css';
 // block renderer.
 const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
   [remarkGfm, { singleTilde: false }],
+  remarkNoIndentedCode,
   remarkBreaks,
   remarkSubSuper,
   [remarkFlexibleMarkers, { actionForEmptyContent: 'remove' }],
