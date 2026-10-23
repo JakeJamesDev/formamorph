@@ -239,6 +239,11 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **Q32:** the lint error in the WIP world script was fixed outside this effort.
 - **T09-1:** export resolves the pick first and embeds that Avatar. It falls back to a held embedded file only when the pick resolves to nothing.
 - **T10-1:** the raw-load fallback runs the chosen-Avatar remap only. The stat backfill on that branch stays out of scope.
+- **T12-1:** for the World Editor card import, "confirmed" means the import review's confirm. Canceling the later Connect References step keeps the Avatar, matching the library copy that confirm already saves.
+- **T13-1:** each store row gets a Preview button beside Delete. It opens the Avatar details panel, with Export in the panel footer, as the old uploader had.
+- **T13-2:** a store Avatar exports under the library's file-name rule: its display name, with `.vrm`, or `.glb` when the file has no VRM metadata.
+- **T13-3:** history rows read "Add Avatar: <name>", "Rename Avatar: <new name>" and "Delete Avatar: <name>". An empty name reads "Unnamed".
+- **T13-4:** a library copy counts as an add in history.
 
 ## Further Notes
 
