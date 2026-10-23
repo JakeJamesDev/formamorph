@@ -14,7 +14,7 @@ const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs')
 const llamaServer = require('./llamaServer.cjs');
 const { binaryPath: llamaServerBinary, listServerDevices, deviceListing } = llamaServer;
 const modelDownload = require('./modelDownload.cjs');
-const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
+const { scanModels, resolveModelRef, isRootRef, projectorFileName } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { corsResponse } = require('./corsShim.cjs');
@@ -447,14 +447,15 @@ ipcMain.handle('llm-free-space', (_event, dir) => modelMove.freeSpace(dir || mod
 
 // Download a catalog model from Hugging Face, then load it unless the renderer opts out. Progress streams
 // to the renderer. autoLoad defaults to true so an older renderer keeps the load-on-finish behavior.
-ipcMain.handle('llm-download', async (_event, { url, fileName, autoLoad = true }) => {
+// `projector` ({ url, sizeBytes }) is a vision entry's projector, fetched in the same job.
+ipcMain.handle('llm-download', async (_event, { url, fileName, projector = null, autoLoad = true }) => {
   // Refuse rather than silently redirecting to the default folder: a model landing somewhere the user
   // didn't choose can quietly fill the drive they moved downloads off in the first place.
   const dest = modelsDir();
   if (!fs.existsSync(dest)) {
     throw new Error(`The download folder isn't available:\n${dest}\n\nReconnect it or choose a new one.`);
   }
-  const finalPath = await modelDownload.download({ url, fileName, destDir: dest }, (p) => {
+  const finalPath = await modelDownload.downloadModel({ url, fileName, projector, destDir: dest }, (p) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-download-progress', p);
   });
   if (autoLoad !== false) {
@@ -471,13 +472,16 @@ ipcMain.handle('llm-list-partials', () => modelDownload.listPartials(modelsDir()
 ipcMain.handle('llm-discard-partial', (_event, fileName) => modelDownload.discardPartial(modelsDir(), fileName));
 
 // Delete an installed model (stopping the engine first if it's the loaded one, to release the file lock).
-// Also clears any leftover .part for that model.
+// Also clears any leftover .part for that model, and its `mmproj-<file name>` projector.
 // Deleting is root-only: models found in the user's external folder belong to whatever app put them there.
 ipcMain.handle('llm-delete-model', async (_event, fileName) => {
   if (!isRootRef(fileName)) return false;
   const target = path.join(modelsDir(), path.basename(fileName));
   if (llmEngine.getState().modelPath === target) await llmEngine.stop();
+  const projector = projectorFileName(fileName);
   modelDownload.discardPartial(modelsDir(), fileName);
+  modelDownload.discardPartial(modelsDir(), projector);
+  try { fs.unlinkSync(path.join(modelsDir(), projector)); } catch { /* the model has none */ }
   try { fs.unlinkSync(target); return true; } catch { return false; }
 });
 

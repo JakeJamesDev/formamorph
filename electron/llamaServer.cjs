@@ -65,10 +65,12 @@ function binaryPath({ platform = process.platform, arch = process.arch, cpu = fa
   return null;
 }
 
-/** The one-section models preset that names the model to serve. */
-function presetIni({ modelId, modelPath }) {
+/** The one-section models preset that names the model to serve, and its vision projector when it has one. */
+function presetIni({ modelId, modelPath, projectorPath = null }) {
   // INI values are read to end of line, so a path needs no quoting; forward slashes avoid escape handling.
-  return `version = 1\n\n[${modelId}]\nmodel = ${modelPath.replace(/\\/g, '/')}\n`;
+  const slashes = (p) => p.replace(/\\/g, '/');
+  const mmproj = projectorPath ? `mmproj = ${slashes(projectorPath)}\n` : '';
+  return `version = 1\n\n[${modelId}]\nmodel = ${slashes(modelPath)}\n${mmproj}`;
 }
 
 const CACHE_TYPES = ['f16', 'q8_0', 'q4_0'];

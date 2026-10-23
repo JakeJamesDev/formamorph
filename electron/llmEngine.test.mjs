@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -51,6 +51,16 @@ afterEach(async () => {
   if (workRoot) rmSync(workRoot, { recursive: true, force: true });
   workRoot = null;
 });
+
+/** A model and its `mmproj-<file name>` projector in a fresh folder under `root`. */
+function visionModel(root) {
+  const dir = mkdtempSync(path.join(root, 'models-'));
+  const model = path.join(dir, 'Tiny-Q4_K_M.gguf');
+  const projector = path.join(dir, 'mmproj-Tiny-Q4_K_M.gguf');
+  writeFileSync(model, '');
+  writeFileSync(projector, '');
+  return { model, projector };
+}
 
 const argsOf = (call) => call.args;
 const after = (args, flag) => args[args.indexOf(flag) + 1];
@@ -137,6 +147,36 @@ describe('engine lifecycle through the fake server', () => {
     expect(readdirSync(cache)).toEqual([]);
   });
 
+  it('adds a model’s paired projector to its preset section, and none to a model without one', async () => {
+    const { fake } = setup();
+    const presets = [];
+    const spawn = fake.spawn;
+    engine = createEngine({
+      spawn: (bin, args, opts) => {
+        if (!args.includes('--list-devices')) presets.push(readFileSync(after(args, '--models-preset'), 'utf8'));
+        return spawn(bin, args, opts);
+      },
+      binaryPath: () => 'llama-server',
+      platform: 'win32',
+      workRoot,
+    });
+    const vision = visionModel(workRoot);
+    await engine.start({ ...SETTINGS, modelPath: vision.model, port: await freePort() });
+    await engine.stop();
+    const plain = path.join(path.dirname(vision.model), 'Plain-Q4_K_M.gguf');
+    writeFileSync(plain, '');
+    await engine.start({ ...SETTINGS, modelPath: plain, port: await freePort() });
+    /** The preset's key → value lines, the section header aside. */
+    const keys = (ini) => Object.fromEntries(ini.split('\n').filter((l) => l.includes(' = ')).map((l) => l.split(' = ')));
+    const vis = keys(presets[0]);
+    expect(Object.keys(vis)).toEqual(['version', 'model', 'mmproj']);
+    expect(path.resolve(vis.mmproj)).toBe(vision.projector);
+    expect(vis.mmproj).not.toContain('\\');
+    expect(presets[0]).toContain('[Tiny-Q4_K_M.gguf]');
+    expect(Object.keys(keys(presets[1]))).toEqual(['version', 'model']);
+    expect(path.resolve(keys(presets[1]).model)).toBe(plain);
+  });
+
   it('pins the router event name the pinned build emits', () => {
     // The README names it model_status; the recorded build emits the name the engine listens for.
     const progress = fixture.scenarios.loaded.loadEvents.filter((e) => e.data?.progress);
@@ -210,11 +250,12 @@ describe('engine lifecycle through the fake server', () => {
 
 describe('proxy request path', () => {
   /** A ready engine over a fake server; `chat(body)` posts to its front port. */
-  async function ready(fakeOptions) {
+  async function ready(fakeOptions, { vision = false } = {}) {
     const { fake } = setup(fakeOptions);
     const port = await freePort();
+    const modelPath = vision ? visionModel(workRoot).model : MODEL;
     // A failed start names its error here rather than as a refused connection later.
-    expect(await engine.start({ ...SETTINGS, modelPath: MODEL, port })).toMatchObject({ status: 'ready', error: null });
+    expect(await engine.start({ ...SETTINGS, modelPath, port })).toMatchObject({ status: 'ready', error: null });
     const chat = (body, init = {}) => fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body), ...init });
     return { fake, port, chat };
   }
@@ -235,6 +276,30 @@ describe('proxy request path', () => {
       { role: 'assistant', content: 'A cat.' },
       { role: 'user', content: 'And this?' },
     ]);
+  });
+
+  it('passes image parts through when the model has a projector', async () => {
+    const { fake, chat } = await ready(undefined, { vision: true });
+    const res = await chat({ messages: [
+      { role: 'system', content: [{ type: 'text', text: 'Narrate.' }, image(0)] },
+      { role: 'user', content: [{ type: 'text', text: 'Look.' }, image(1)] },
+      { role: 'assistant', content: 'A cat.' },
+      { role: 'user', content: [image(2), { type: 'text', text: 'And this?' }] },
+    ] });
+    // A system message merges into one string, so its image still drops and counts.
+    expect(res.headers.get('x-formamorph-images-dropped')).toBe('1');
+    expect(sent(fake).messages).toEqual([
+      { role: 'system', content: 'Narrate.' },
+      { role: 'user', content: [{ type: 'text', text: 'Look.' }, image(1)] },
+      { role: 'assistant', content: 'A cat.' },
+      { role: 'user', content: [image(2), { type: 'text', text: 'And this?' }] },
+    ]);
+  });
+
+  it('sets no image header when a projector sees every image', async () => {
+    const { chat } = await ready(undefined, { vision: true });
+    const res = await chat({ messages: [{ role: 'user', content: [{ type: 'text', text: 'Look.' }, image(1)] }] });
+    expect(res.headers.get('x-formamorph-images-dropped')).toBeNull();
   });
 
   it('sets no image header on a text-only request', async () => {

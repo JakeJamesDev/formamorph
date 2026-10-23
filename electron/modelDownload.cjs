@@ -6,6 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { pumpResponseToFile } = require('./streamDownload.cjs');
+const { projectorFileName } = require('./modelScan.cjs');
 const {
   DEFAULT_CHUNK_SIZE, planChunks, doneBytes, resumePlan, initRamp, rampOnSample, rampOnError,
 } = require('./downloadPlan.cjs');
@@ -357,6 +358,36 @@ async function download(
   }
 }
 
+/**
+ * Download a catalog model and, for a vision entry, its `projector` ({ url, sizeBytes }) saved as
+ * `mmproj-<fileName>`, as one job: model first, then projector. Progress reports the model's `fileName`
+ * over the summed bytes, using the projector's `sizeBytes` until its real size is known. A file already on
+ * disk is skipped, so a resume fetches only what is missing. Resolves with the model's path.
+ */
+async function downloadModel({ url, fileName, projector = null, destDir, ...opts }, onProgress) {
+  const files = [{ url, fileName }];
+  if (projector) files.push({ url: projector.url, fileName: projectorFileName(fileName), sizeBytes: projector.sizeBytes });
+  const sizes = files.map((f) => f.sizeBytes ?? 0);
+  const totalOf = () => sizes.reduce((a, b) => a + b, 0);
+  let before = 0;
+  for (const [i, file] of files.entries()) {
+    const last = i === files.length - 1;
+    const finalPath = path.join(destDir, path.basename(file.fileName));
+    if (fs.existsSync(finalPath)) {
+      sizes[i] = sizeOf(finalPath);
+      before += sizes[i];
+      if (last) onProgress({ fileName, received: before, total: totalOf(), done: true });
+      continue;
+    }
+    await download({ ...opts, url: file.url, fileName: file.fileName, destDir }, (p) => {
+      if (p.total) sizes[i] = p.total;
+      onProgress({ fileName, received: before + p.received, total: totalOf(), done: p.done && last });
+    });
+    before += sizes[i];
+  }
+  return path.join(destDir, path.basename(fileName));
+}
+
 /** Abort the in-flight download, if any. The partial is preserved for a later resume. */
 function cancel() {
   if (current) current.controller.abort();
@@ -387,4 +418,4 @@ function discardPartial(destDir, fileName) {
   return removeFile(partPath);
 }
 
-module.exports = { download, cancel, listPartials, discardPartial };
+module.exports = { download, downloadModel, cancel, listPartials, discardPartial };
