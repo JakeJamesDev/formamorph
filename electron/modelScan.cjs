@@ -14,6 +14,32 @@ const EXTERNAL_PREFIX = 'ext:';
 
 const isGguf = (name) => name.toLowerCase().endsWith('.gguf');
 
+// A vision projector (llama.cpp's `mmproj*.gguf`). It is never a model of its own.
+const isProjector = (name) => isGguf(name) && name.toLowerCase().includes('mmproj');
+const isModel = (name) => isGguf(name) && !isProjector(name);
+
+/** File names in `dir`, or [] when it can't be read. */
+function readNames(dir) {
+  try { return fs.readdirSync(dir); } catch { return []; }
+}
+
+/** The name the downloader gives a catalog model's projector, so it pairs by exact name. */
+const projectorFileName = (modelFileName) => `mmproj-${path.basename(modelFileName)}`;
+
+/**
+ * The projector beside `modelPath`, or null: `mmproj-<model file name>` first; otherwise the folder's one
+ * `*mmproj*.gguf` when the folder holds exactly one model (an LM Studio repo folder). `listDir` lets a scan
+ * read each folder once.
+ */
+function findProjector(modelPath, listDir = readNames) {
+  const dir = path.dirname(modelPath);
+  const names = listDir(dir);
+  const exact = projectorFileName(modelPath);
+  if (names.includes(exact)) return path.join(dir, exact);
+  const projectors = names.filter(isProjector);
+  return projectors.length === 1 && names.filter(isModel).length === 1 ? path.join(dir, projectors[0]) : null;
+}
+
 /** Absolute, normalized path with a trailing-separator-safe form for containment checks. */
 const norm = (p) => path.resolve(p);
 
@@ -23,14 +49,12 @@ function isInside(base, child) {
   return child.startsWith(base.endsWith(path.sep) ? base : base + path.sep);
 }
 
-/** GGUFs directly in `dir` (never recursive), as [{ absPath, relPath }]. Missing dir yields []. */
+/** Model GGUFs directly in `dir` (never recursive), as [{ absPath, relPath }]. Missing dir yields []. */
 function scanFlat(dir) {
-  let names = [];
-  try { names = fs.readdirSync(dir); } catch { return []; }
-  return names.filter(isGguf).map((n) => ({ absPath: path.join(dir, n), relPath: n }));
+  return readNames(dir).filter(isModel).map((n) => ({ absPath: path.join(dir, n), relPath: n }));
 }
 
-/** GGUFs under `dir` down to MAX_DEPTH. Symlinked directories are skipped so a link loop (or a link out
+/** Model GGUFs under `dir` down to MAX_DEPTH. Symlinked directories are skipped so a link loop (or a link out
  *  of the chosen folder) can't run away or escape confinement. */
 function scanDeep(dir, depth = 0, base = dir) {
   if (depth > MAX_DEPTH) return [];
@@ -41,11 +65,11 @@ function scanDeep(dir, depth = 0, base = dir) {
     const abs = path.join(dir, e.name);
     if (e.isSymbolicLink()) {
       // Symlinked files are fine (users link GGUFs between apps); only don't *descend* through links.
-      if (isGguf(e.name)) out.push({ absPath: abs, relPath: path.relative(base, abs) });
+      if (isModel(e.name)) out.push({ absPath: abs, relPath: path.relative(base, abs) });
       continue;
     }
     if (e.isDirectory()) out.push(...scanDeep(abs, depth + 1, base));
-    else if (isGguf(e.name)) out.push({ absPath: abs, relPath: path.relative(base, abs) });
+    else if (isModel(e.name)) out.push({ absPath: abs, relPath: path.relative(base, abs) });
   }
   return out;
 }
@@ -62,10 +86,15 @@ function sizeOf(absPath) {
  *
  * Entries carry a stable ref (`id`), the containing folder relative to its base (`subpath`, '' at the
  * top level), and the absolute path so the UI can tell which row is the loaded one by path rather than
- * by a filename two folders could share.
+ * by a filename two folders could share. `projector` is the paired vision projector's path, or null.
  */
 function scanModels({ rootDir, externalDir, searchSubfolders }) {
   const root = norm(rootDir);
+  const dirNames = new Map();
+  const listDir = (dir) => {
+    if (!dirNames.has(dir)) dirNames.set(dir, readNames(dir));
+    return dirNames.get(dir);
+  };
   const entry = (source, absPath, relPath) => ({
     id: source === 'root' ? path.basename(relPath) : EXTERNAL_PREFIX + relPath.split(path.sep).join('/'),
     fileName: path.basename(relPath),
@@ -73,6 +102,7 @@ function scanModels({ rootDir, externalDir, searchSubfolders }) {
     size: sizeOf(absPath),
     path: absPath,
     source,
+    projector: findProjector(absPath, listDir),
   });
 
   const out = scanFlat(root).map((f) => entry('root', f.absPath, f.relPath));
@@ -108,11 +138,11 @@ function resolveModelRef(ref, { rootDir, externalDir }) {
   const base = norm(baseDir);
   const target = norm(path.join(base, rel));
   if (!isInside(base, target) || target === base) return null;
-  if (!isGguf(target)) return null;
+  if (!isModel(path.basename(target))) return null;
   return target;
 }
 
 /** True when the ref points at the app's own models folder (the only place we download to or delete from). */
 const isRootRef = (ref) => typeof ref === 'string' && !ref.startsWith(EXTERNAL_PREFIX);
 
-module.exports = { scanModels, resolveModelRef, isRootRef, EXTERNAL_PREFIX, MAX_DEPTH };
+module.exports = { scanModels, resolveModelRef, isRootRef, findProjector, projectorFileName, EXTERNAL_PREFIX, MAX_DEPTH };

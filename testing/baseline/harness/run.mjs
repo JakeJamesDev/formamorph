@@ -59,10 +59,10 @@ const modelEndpoint = (cfg, model) =>
   model.modelPath ? engineUrl(model.enginePort ?? ENGINE_PORT) : (model.endpointUrl ?? cfg.endpointUrl);
 const modelToken = (cfg, model) => (model.modelPath ? "" : model.apiToken ?? cfg.apiToken ?? "");
 
-// The built-in engine is a plain Node module (no Electron): it loads a GGUF via node-llama-cpp and serves an
+// The built-in engine is a plain Node module (no Electron): it runs a GGUF on the bundled llama-server and serves an
 // OpenAI-compatible endpoint on 127.0.0.1. Driving it here is the only way to screen a catalog model the way
-// the desktop build actually runs it — notably the `<think>` re-wrapping, which an external server does not
-// do (a reasoning model's answer otherwise arrives as bare chain-of-thought). Single model at a time: always
+// the desktop build actually runs it — notably `--reasoning-format deepseek`, which puts a thought in
+// `reasoning_content` as a server without a reasoning parser does not. Single model at a time: always
 // stopEngine() before starting the next.
 const require_ = createRequire(import.meta.url);
 let engine = null;
@@ -75,7 +75,7 @@ let engine = null;
 const ENGINE_CONTEXT_SIZE = 8192;
 
 async function startEngine(model) {
-  engine ??= require_(path.join(REPO_ROOT, "electron", "llmEngine.cjs"));
+  engine ??= require_(path.join(argVal("--engine-root") ? path.resolve(argVal("--engine-root")) : REPO_ROOT, "electron", "llmEngine.cjs"));
   const port = model.enginePort ?? ENGINE_PORT;
   console.log(`  loading ${path.basename(model.modelPath)} into the built-in engine (port ${port})…`);
   await engine.start({ modelPath: model.modelPath, port, contextSize: model.contextSize ?? ENGINE_CONTEXT_SIZE });

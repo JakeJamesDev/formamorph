@@ -6,8 +6,9 @@
 // reported machine saw 47.8 GB total and 0 GB free while nvidia-smi showed 14.7 GB free on the card alone.
 // One visible adapter means the figure is that adapter's own.
 //
-// Nothing else decides: llmEngine.cjs applies whatever index this returns, and null means "leave llama.cpp's
-// own default alone", which is what a machine that can't be told apart gets.
+// Nothing else decides: llmEngine.cjs passes the device at whatever index this returns to llama-server's
+// `--device`, and null means "leave llama.cpp's own default alone", which is what a machine that can't be
+// told apart gets.
 
 /** The setting value meaning "let the policy choose". Anything else is a device name to pin to. */
 const ENGINE_DEVICE_AUTO = 'auto';
@@ -100,28 +101,4 @@ function selectEngineDevice({ deviceNames, nvidiaGpus, setting } = {}) {
   return { index, origin: index == null ? null : 'auto' };
 }
 
-/** Cap on raw Vulkan indexes to probe. The driver list is a handful of adapters plus their D3D12 wrappers. */
-const MAX_RAW_DEVICES = 16;
-
-/**
- * Map each enumerated device name to the raw Vulkan device index that binds it.
- *
- * ggml's enumeration is a filtered view of Vulkan's physical-device list: CPU devices and unsupported
- * adapters are dropped, and a GPU two drivers expose is kept once and moved to the end. GGML_VK_VISIBLE_DEVICES
- * takes the raw index, so a position in the enumeration pins the wrong adapter whenever anything was dropped
- * or reordered. `probe(rawIndex)` answers with the name a backend pinned to that raw index binds, and
- * rejects once the index is past the end of the raw list. Probes run one at a time, in raw order, and stop
- * at the first rejection or once every name has a raw index. The first raw index to carry a name wins.
- */
-async function resolveRawIndices(deviceNames, probe) {
-  const wanted = new Set(Array.isArray(deviceNames) ? deviceNames : []);
-  const map = new Map();
-  for (let raw = 0; raw < MAX_RAW_DEVICES && map.size < wanted.size; raw++) {
-    let name;
-    try { name = await probe(raw); } catch { break; }
-    if (typeof name === 'string' && wanted.has(name) && !map.has(name)) map.set(name, raw);
-  }
-  return map;
-}
-
-module.exports = { selectEngineDevice, resolveRawIndices, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };
+module.exports = { selectEngineDevice, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };

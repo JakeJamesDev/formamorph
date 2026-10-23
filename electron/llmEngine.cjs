@@ -1,31 +1,45 @@
-// Desktop-only local LLM engine. Loads a GGUF via node-llama-cpp and serves a minimal OpenAI-compatible
-// chat-completions endpoint on 127.0.0.1, so the renderer can point its normal OpenAI endpoint at
+// Desktop-only local LLM engine. Runs the bundled llama.cpp `llama-server` in router mode and serves an
+// OpenAI-compatible endpoint on 127.0.0.1, so the renderer points its normal OpenAI endpoint at
 // http://localhost:<port>/v1 with no other changes.
 //
-// Hosted in a child process (llmEngineHost.cjs), not the Electron main process: model loads and token
-// decoding are synchronous native work, and the main process's event loop is also the app's window message
-// pump. The main process reaches it through llmEngineProxy.cjs, which keeps this module's exact API.
+// Hosted in a child process (llmEngineHost.cjs), not the Electron main process. The main process reaches it
+// through llmEngineProxy.cjs, which keeps this module's exact API.
 //
-// Single model; N in-flight requests via a pool of context sequences (see start/handleChatCompletion).
-// node-llama-cpp is ESM-only, so it's pulled in via dynamic import() from this CommonJS module.
+// One model per start, loaded and unloaded through the router's API; its status stream carries the progress.
+// The router dies with this process (llamaServer.spawnCommand); its model instance exits on stdin EOF.
+const childProcess = require('node:child_process');
+const fs = require('node:fs');
 const http = require('node:http');
+const os = require('node:os');
 const path = require('node:path');
+const llamaServer = require('./llamaServer.cjs');
+const { selectEngineDevice } = require('./engineDevice.cjs');
+const { shapeChatBody } = require('./chatShape.cjs');
+const { findProjector } = require('./modelScan.cjs');
+const contextOverflow = require('./contextOverflow.cjs');
+
+const { errorText } = llamaServer;
 
 const DEFAULT_PORT = 8977;
 
-// gpuLayers sentinels (kept as numbers so the setting/IPC stay numeric): AUTO = offload as many layers as fit
-// VRAM (node-llama-cpp default, omit the option); MAX = offload every layer ("max"). Any value >= 0 is a
-// literal layer count. Mirror of GPU_LAYERS_AUTO/MAX in the renderer's settingsDefaults.
-const GPU_LAYERS_AUTO = -1;
-const GPU_LAYERS_MAX = -2;
+// How long a stop waits on the router to unload the model and exit before it stops asking.
+const STOP_TIMEOUT_MS = 5000;
+// How long the router has to start listening.
+const BOOT_TIMEOUT_MS = 30000;
+// Instance log lines kept for a load error.
+const LOG_LINES_KEPT = 200;
 
-// The load-dependent half of the status: the options the current model was loaded with, and the device
-// node-llama-cpp picked for it. All null when nothing is loaded.
+// The load-dependent half of the status: the options the current model was loaded with, and the device it
+// runs on. All null when nothing is loaded.
 const NO_ENGINE = {
   contextSize: null,
   gpuLayers: null,
   flashAttention: null,
   parallelRequests: null,
+  unifiedKvCache: null,
+  kCacheType: null,
+  vCacheType: null,
+  kvCacheInRam: null,
   maxContextSize: null,
   engineVramMB: null,
   gpuBackend: null,
@@ -36,6 +50,7 @@ const NO_ENGINE = {
   gpuDeviceRawIndex: null,
   gpuDeviceOrigin: null,
   gpuDeviceOptions: null,
+  serverPid: null,
 };
 
 // Serializable status shared with the renderer (no live handles). status: stopped|loading|ready|error.
@@ -44,142 +59,6 @@ const NO_ENGINE = {
 /** The idle status, every field the renderer expects declared. Also the proxy's starting mirror. */
 function stoppedState() {
   return { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, loadProgress: null, ...NO_ENGINE };
-}
-
-let state = stoppedState();
-
-let server = null;
-let llama = null;
-let model = null;
-let context = null;
-// The model's chat template, resolved once at load time. LlamaChatSession resolves it per session when left
-// on "auto", which re-parses the template on every request (~250-430ms of synchronous work).
-let chatWrapper = null;
-
-// Parallel request slots: the context is created with N sequences (llama.cpp batches them), so up to N
-// requests decode at once. `freeSequences` holds the idle ones; when all are busy, incoming requests wait in
-// `waitQueue` (resolved as slots free) rather than being rejected. N sequences share the context's KV, so each
-// slot's usable window is ~contextSize / N.
-let sequences = [];
-const freeSequences = [];
-const waitQueue = [];
-
-/** Take a free sequence, or wait in line until one is released. */
-function acquireSequence() {
-  return new Promise((resolve, reject) => {
-    if (!sequences.length) return reject(new Error('Engine not ready.'));
-    if (freeSequences.length) resolve(freeSequences.pop());
-    else waitQueue.push(resolve);
-  });
-}
-
-/** Return a sequence to the pool (clearing its KV first so no state bleeds into the next request), handing it
- *  straight to the next waiter if one is queued. */
-async function releaseSequence(seq) {
-  try { await seq.clearHistory?.(); } catch { /* a failed clear must not strand the slot */ }
-  const next = waitQueue.shift();
-  if (next) next(seq);
-  else freeSequences.push(seq);
-}
-
-const statusListeners = new Set();
-
-function getState() {
-  return { ...state };
-}
-
-/** Replace the status and notify listeners (main forwards these to the renderer). */
-function setState(next) {
-  state = next;
-  for (const cb of statusListeners) {
-    try { cb(getState()); } catch { /* a bad listener must not break the engine */ }
-  }
-}
-
-/** Subscribe to status changes; returns an unsubscribe function. */
-function onStatus(cb) {
-  statusListeners.add(cb);
-  return () => statusListeners.delete(cb);
-}
-
-/** A message's text. Content parts keep their text parts; image parts have no engine input and are counted. */
-function contentText(content) {
-  if (!Array.isArray(content)) return { text: content || '', dropped: 0 };
-  const texts = [];
-  let dropped = 0;
-  for (const part of content) {
-    if (part && part.type === 'text') texts.push(part.text || '');
-    else if (part && part.type === 'image_url') dropped += 1;
-  }
-  return { text: texts.join('\n\n'), dropped };
-}
-
-/** Split an OpenAI messages array into a node-llama-cpp chat history, the final prompt text, and the image count dropped. */
-function splitMessages(messages) {
-  const list = Array.isArray(messages) ? messages : [];
-  const last = list[list.length - 1];
-  const history = [];
-  let system = '';
-  let droppedImages = 0;
-  const textOf = (m) => {
-    const { text, dropped } = contentText(m.content);
-    droppedImages += dropped;
-    return text;
-  };
-  for (const m of list.slice(0, -1)) {
-    if (m.role === 'system') system += (system ? '\n' : '') + textOf(m);
-    else if (m.role === 'user') history.push({ type: 'user', text: textOf(m) });
-    else if (m.role === 'assistant') history.push({ type: 'model', response: [textOf(m)] });
-  }
-  const chatHistory = system ? [{ type: 'system', text: system }, ...history] : history;
-  return { chatHistory, promptText: last ? textOf(last) : '', droppedImages };
-}
-
-/** Options passed to session.prompt(), mapped from the OpenAI request body. */
-function promptOptions(body, onResponseChunk, signal) {
-  const opts = { onResponseChunk };
-  if (signal) opts.signal = signal;
-  if (typeof body.temperature === 'number') opts.temperature = body.temperature;
-  if (typeof body.top_p === 'number') opts.topP = body.top_p;
-  if (typeof body.top_k === 'number') opts.topK = body.top_k;
-  if (typeof body.min_p === 'number') opts.minP = body.min_p;
-  if (typeof body.max_tokens === 'number') opts.maxTokens = body.max_tokens;
-  // Reasoning cap (llama.cpp-server field name): budget the model's thought segment. 0 = no thinking.
-  if (typeof body.thinking_budget_tokens === 'number') opts.budgets = { thoughtTokens: body.thinking_budget_tokens };
-  if (typeof body.repetition_penalty === 'number') opts.repeatPenalty = { penalty: body.repetition_penalty };
-  const stop = body.stop == null ? [] : Array.isArray(body.stop) ? body.stop : [body.stop];
-  if (stop.length) opts.customStopTriggers = stop;
-  return opts;
-}
-
-/**
- * Reconstruct the model's *verbatim* output from node-llama-cpp response chunks. `onTextChunk` drops
- * thought segments, so a reasoning model whose answer lands inside a `<think>` block (common with small
- * models, even under /no_think) would stream nothing — an empty completion. Instead we re-wrap thought
- * segments in `<think>…</think>` so the raw output reaches the client (which strips reasoning itself for
- * narration but needs the real content for choices/stats and the raw-output viewer). Comment segments and
- * main text pass through untagged. Returns { feed(chunk) → text delta, flush() → closing tag or '' }.
- */
-function makeRawReconstructor() {
-  let openTag = null;
-  const tagFor = (chunk) => (chunk.type === 'segment' && chunk.segmentType === 'thought' ? 'think' : null);
-  return {
-    feed(chunk) {
-      const tag = tagFor(chunk);
-      let out = '';
-      if (tag !== openTag) {
-        if (openTag) out += `</${openTag}>`;
-        if (tag) out += `<${tag}>`;
-        openTag = tag;
-      }
-      return out + (chunk.text || '');
-    },
-    flush() {
-      const out = openTag ? `</${openTag}>` : '';
-      openTag = null;
-      return out;
-    },
-  };
 }
 
 /** Response header carrying the count of image parts the engine dropped. */
@@ -207,285 +86,460 @@ function readBody(req) {
   });
 }
 
-/** node-llama-cpp lazy-imports the chat session class the first time we need it. */
-let LlamaChatSession = null;
-
-async function handleChatCompletion(req, res) {
-  if (state.status !== 'ready') return sendJson(res, 503, { error: { message: 'Model is not loaded.' } });
-  const body = JSON.parse((await readBody(req)) || '{}');
-  const { chatHistory, promptText, droppedImages } = splitMessages(body.messages);
-  const streaming = body.stream === true;
-  const created = Math.floor(Date.now() / 1000);
-  const id = `chatcmpl-${created}`;
-
-  // Abort the generation if the client disconnects — otherwise a canceled request would hold its slot until
-  // it finished decoding on its own.
-  const ac = new AbortController();
-  const onClose = () => ac.abort();
-  res.on('close', onClose);
-
-  // Wait for a free parallel slot (queues transparently when all N are busy). A null slot means the engine was
-  // torn down while we waited.
-  let seq;
-  try { seq = await acquireSequence(); } catch { seq = null; }
-  if (!seq) { res.off('close', onClose); return sendJson(res, 503, { error: { message: 'Model is not loaded.' } }); }
-  const session = new LlamaChatSession(chatWrapper ? { contextSequence: seq, chatWrapper } : { contextSequence: seq });
-  session.setChatHistory(chatHistory);
-  if (droppedImages > 0) res.setHeader(IMAGES_DROPPED_HEADER, String(droppedImages));
-  const raw = makeRawReconstructor();
-
-  try {
-    if (streaming) {
-      cors(res);
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-      const frame = (delta, finish = null) => {
-        const chunk = { id, object: 'chat.completion.chunk', created, model: state.modelId, choices: [{ index: 0, delta, finish_reason: finish }] };
-        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-      };
-      frame({ role: 'assistant' });
-      await session.prompt(promptText, promptOptions(body, (chunk) => {
-        const delta = raw.feed(chunk);
-        if (delta) frame({ content: delta });
-      }, ac.signal));
-      const tail = raw.flush();
-      if (tail) frame({ content: tail });
-      frame({}, 'stop');
-      res.write('data: [DONE]\n\n');
-      res.end();
-    } else {
+/** A JSON request to the router. Resolves { status, body }; rejects when the router can't be reached. */
+function routerRequest(port, method, urlPath, payload) {
+  return new Promise((resolve, reject) => {
+    const data = payload == null ? null : JSON.stringify(payload);
+    // A connection of its own: the router closes a proxied route's socket, so a pooled one fails on reuse.
+    const req = http.request({ host: '127.0.0.1', port, method, path: urlPath, agent: false, headers: data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {} }, (res) => {
       let text = '';
-      await session.prompt(promptText, promptOptions(body, (chunk) => { text += raw.feed(chunk); }, ac.signal));
-      text += raw.flush();
-      sendJson(res, 200, {
-        id, object: 'chat.completion', created, model: state.modelId,
-        choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
+      res.setEncoding('utf8');
+      res.on('data', (c) => { text += c; });
+      res.on('end', () => {
+        let body = null;
+        try { body = JSON.parse(text); } catch { body = text; }
+        resolve({ status: res.statusCode, body });
       });
-    }
-  } catch (e) {
-    // A client-disconnect abort is expected — swallow it; anything else surfaces as a 500 (if not already sent).
-    if (!ac.signal.aborted && !res.headersSent) sendJson(res, 500, { error: { message: String((e && e.message) || e) } });
-    else if (!res.writableEnded) res.end();
-  } finally {
-    res.off('close', onClose);
-    await releaseSequence(seq);
-  }
+    });
+    req.on('error', reject);
+    req.end(data ?? undefined);
+  });
 }
 
-async function router(req, res) {
-  if (req.method === 'OPTIONS') { cors(res); res.writeHead(204); return res.end(); }
-  const url = new URL(req.url, 'http://localhost');
-  if (req.method === 'GET' && url.pathname.endsWith('/models')) {
-    // This matches ANY */models path, including LM Studio's native /api/v0/models — which callers probe
-    // first and read `state` from. Reporting it keeps a reachability check honest about a loaded model
-    // whatever name the request asks for; without it a probe reads "reachable, but no such model".
-    return sendJson(res, 200, {
-      object: 'list',
-      data: [{
-        id: state.modelId,
-        object: 'model',
-        owned_by: 'formamorph',
-        state: state.status === 'ready' ? 'loaded' : 'not-loaded',
-      }],
-    });
-  }
-  if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) {
-    return handleChatCompletion(req, res);
-  }
-  return sendJson(res, 404, { error: { message: `Unknown route ${req.method} ${url.pathname}` } });
-}
+const withTimeout = (promise, ms) => {
+  let timer;
+  return Promise.race([promise, new Promise((resolve) => { timer = setTimeout(resolve, ms); })]).finally(() => clearTimeout(timer));
+};
 
 /**
- * Load `modelPath` and start the local OpenAI server. Idempotent while loading/ready.
- * `contextSize` bounds the KV cache (VRAM); omit/0 for node-llama-cpp's auto sizing. `gpuLayers` is a
- * layer count (0 = CPU-only); omit/null to auto-offload as many layers as fit. `parallelRequests` is the
- * number of requests that can decode at once (context sequences); they share the KV, so each slot's window
- * is ~contextSize / parallelRequests. `gpuDeviceIndex` names the pinned GPU as a position in
- * `gpuDeviceOptions`, the unfiltered device list it was chosen from (omit/null to leave every visible one in
- * play); `gpuDeviceRawIndex` is the raw Vulkan index that binds that device, which is what the backend is
- * restricted to; `gpuDeviceOrigin` records where the choice came from. A pin without a raw index is an error,
- * never a guess.
+ * One engine over its own `llama-server`. `spawn` starts processes (the fake server's seam), `binaryPath`
+ * finds the bundled build, `workRoot` holds each start's preset and empty model cache.
  */
-async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, gpuDeviceIndex, gpuDeviceRawIndex, gpuDeviceOrigin, gpuDeviceOptions } = {}) {
-  if (state.status === 'loading' || state.status === 'ready') return getState();
-  const slots = Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1);
-  // The options this model is (being) loaded with — surfaced in state so the renderer can compare against
-  // pending settings.
-  const applied = {
-    contextSize: typeof contextSize === 'number' ? contextSize : null,
-    // Store the requested value (incl. AUTO/MAX sentinels) so the renderer compares against exactly what it asked for.
-    gpuLayers: typeof gpuLayers === 'number' ? gpuLayers : null,
-    flashAttention: flashAttention === true,
-    parallelRequests: slots,
-    maxContextSize: null, // filled in once the model loads and reports its trained context length
-    engineVramMB: null, // filled in from the device VRAM delta across load (our footprint per llama.cpp)
-  };
-  // Which backend and device node-llama-cpp selected, and the VRAM it sizes the load against. Captured
-  // before the load so a failure still reports the device it tried: when CUDA breaks and llama.cpp falls
-  // back to Vulkan on an iGPU, every model reports "not enough VRAM" while the discrete card sits idle.
-  const device = {
-    gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
-    gpuDeviceIndex: typeof gpuDeviceIndex === 'number' ? gpuDeviceIndex : null,
-    gpuDeviceRawIndex: typeof gpuDeviceRawIndex === 'number' ? gpuDeviceRawIndex : null,
-    gpuDeviceOrigin: typeof gpuDeviceOrigin === 'string' ? gpuDeviceOrigin : null,
-    // The unfiltered enumeration the pin was resolved against — the engine itself can't report it once
-    // pinned, and "which device, out of which" is the whole answer to a wrong-device report.
-    gpuDeviceOptions: Array.isArray(gpuDeviceOptions) ? [...gpuDeviceOptions] : null,
-  };
-  // The device the pin names, for the bound-device check after backend init.
-  const pinnedName = device.gpuDeviceIndex != null ? device.gpuDeviceOptions?.[device.gpuDeviceIndex] ?? null : null;
-  // Restrict the Vulkan backend to one adapter before anything can initialize it. With several visible,
-  // llama.cpp's memory accounting aggregates them and sizes the load against a figure belonging to no real
-  // card. The variable takes a raw Vulkan index, not a position in the enumeration (see engineDevice.cjs),
-  // and is read once at backend init, so a changed pin needs a fresh process — which is why the proxy ends
-  // the child on stop (see llmEngineProxy.cjs) rather than reusing it.
-  if (device.gpuDeviceIndex != null && device.gpuDeviceRawIndex == null) {
-    setState({ status: 'error', modelPath: modelPath ?? null, modelId: null, port, error: `No Vulkan device index found for ${pinnedName ?? 'the chosen GPU'}. Pick another device or All GPUs.`, loadProgress: null, ...NO_ENGINE, ...device });
-    return getState();
-  }
-  if (device.gpuDeviceRawIndex != null) process.env.GGML_VK_VISIBLE_DEVICES = String(device.gpuDeviceRawIndex);
-  else delete process.env.GGML_VK_VISIBLE_DEVICES;
-  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', loadProgress: null, ...NO_ENGINE, ...device }); return getState(); }
-  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, loadProgress: 0, ...applied, ...device });
-  try {
-    const nlc = await import('node-llama-cpp');
-    LlamaChatSession = nlc.LlamaChatSession;
-    llama = await nlc.getLlama();
-    // llama.gpu is false when no GPU backend was selected; report that as 'cpu' so the field is always a name.
-    device.gpuBackend = llama.gpu === false ? 'cpu' : llama.gpu;
-    try { device.gpuDeviceNames = await llama.getGpuDeviceNames(); } catch { /* not every backend enumerates devices */ }
-    // A pinned backend sees exactly one device. If it is not the one the pin named, the raw index mapped to
-    // another adapter; loading would size against the wrong card, so stop here and say which one it got.
-    if (pinnedName != null && device.gpuDeviceNames && device.gpuDeviceNames[0] !== pinnedName) {
-      throw new Error(`The engine bound ${device.gpuDeviceNames.join(', ') || 'no device'} instead of ${pinnedName}. Pick the device again or choose All GPUs.`);
-    }
-    // Device VRAM before we allocate anything — the delta after load+context is our footprint (weights +
-    // KV cache), from llama.cpp's own accounting. Robust across GPUs where per-process nvidia-smi is null.
-    let vramUsedBefore = null;
-    try {
-      const vram = await llama.getVramState();
-      vramUsedBefore = vram.used;
-      device.deviceVramTotalMB = Math.round(vram.total / 1024 / 1024);
-      device.deviceVramFreeMB = Math.round(vram.free / 1024 / 1024);
-    } catch { /* not all backends report VRAM */ }
-    // Publish the device now rather than at 'ready', so a slow load shows what it's loading onto.
-    setState({ ...getState(), ...device });
-    const loadOpts = { modelPath };
-    // AUTO → fit layers around the KV cache we're about to allocate; MAX → "max" (all layers); else the
-    // literal layer count. Auto-fitting without `fitContext` sizes layers to free VRAM alone and offloads
-    // enough to leave the context no room, so createContext then rejects a size that would have fit — and
-    // the more VRAM is free, the more it over-offloads. Requesting above the trained max only over-reserves
-    // (createContext clamps below), which is the safe direction.
-    if (gpuLayers === GPU_LAYERS_MAX) loadOpts.gpuLayers = 'max';
-    else if (typeof gpuLayers === 'number' && gpuLayers >= 0) loadOpts.gpuLayers = gpuLayers;
-    else if (typeof contextSize === 'number' && contextSize > 0) {
-      loadOpts.gpuLayers = { fitContext: { contextSize } };
-    }
-    // llama.cpp reports load progress far more often than a status push is worth; whole percents cap this at
-    // 100 messages for a load that otherwise sits silent for a minute on a 20GB model.
-    let lastPct = -1;
-    loadOpts.onLoadProgress = (p) => {
-      const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
-      if (pct === lastPct || state.status !== 'loading') return;
-      lastPct = pct;
-      setState({ ...getState(), loadProgress: pct });
-    };
-    model = await llama.loadModel(loadOpts);
-    // Wrappers are immutable once constructed, so one instance serves every request's session. A resolution
-    // failure falls back to per-session "auto", which is what an unresolved wrapper means to LlamaChatSession.
-    try { chatWrapper = nlc.resolveChatWrapper(model); } catch { chatWrapper = null; }
-    // The model's trained context length is the hard ceiling for contextSize — surface it so the UI can cap
-    // its slider, and clamp our request to it (createContext rejects a contextSize above the trained max).
-    const trainedMax = typeof model.trainContextSize === 'number' ? model.trainContextSize : null;
-    applied.maxContextSize = trainedMax;
-    const ctxOpts = { sequences: slots };
-    if (typeof contextSize === 'number' && contextSize > 0) {
-      ctxOpts.contextSize = trainedMax ? Math.min(contextSize, trainedMax) : contextSize;
-    }
-    if (flashAttention) ctxOpts.flashAttention = true;
-    context = await model.createContext(ctxOpts);
-    sequences = Array.from({ length: slots }, () => context.getSequence());
-    freeSequences.length = 0;
-    freeSequences.push(...sequences);
-    waitQueue.length = 0;
+function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.binaryPath, platform = process.platform, workRoot = os.tmpdir(), listProcesses = () => llamaServer.listProcesses({ platform }) } = {}) {
+  let state = stoppedState();
+  const statusListeners = new Set();
+  // The live start (see `start`). Null while stopped.
+  let launch = null;
+  let starts = 0;
+  // Applies to the next chat request; changing it needs no reload.
+  let overflowPolicy = contextOverflow.DEFAULT_POLICY;
 
-    // Our VRAM footprint = how much device usage grew across load + context allocation.
-    if (vramUsedBefore != null) {
+  const getState = () => ({ ...state });
+
+  /** Replace the status and notify listeners (main forwards these to the renderer). */
+  function setState(next) {
+    state = next;
+    for (const cb of statusListeners) {
+      try { cb(getState()); } catch { /* a bad listener must not break the engine */ }
+    }
+  }
+
+  /** Subscribe to status changes; returns an unsubscribe function. */
+  function onStatus(cb) {
+    statusListeners.add(cb);
+    return () => statusListeners.delete(cb);
+  }
+
+  /** Every device `llama-server --list-devices` reports, for the device picker. */
+  async function listDevices() {
+    return llamaServer.deviceListing(await llamaServer.listServerDevices({ bin: binaryPath({ platform }), spawn }));
+  }
+
+  /**
+   * Start one router and load the model. Resolves { ok: true, info } with the router's loaded-model info, or
+   * { ok: false, error } with the load error in setting names. `launch.server` holds the router meanwhile.
+   */
+  function attempt(l, { cpu }) {
+    const bin = cpu && llamaServer.cpuNeedsOwnBuild(platform) ? binaryPath({ platform, cpu: true }) : l.bin;
+    if (!bin) return Promise.resolve({ ok: false, error: 'The bundled llama-server is missing. Reinstall Formamorph.' });
+    return new Promise((resolve) => {
+      let settled = false;
+      let bootTimer = null;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(bootTimer);
+        resolve(result);
+      };
+      // One router process: its port, status stream, exit, and the instance's recent log lines.
+      const server = { modelId: l.modelId, child: null, port: null, sse: null, exited: Promise.resolve(null), loaded: false, unloaded: null, onLost: null, log: [], memory: llamaServer.memoryTally() };
+      l.server = server;
+      const fail = (fallback) => finish({ ok: false, error: llamaServer.describeLoadError(server.log, { ...l.settings, cpu }) ?? fallback });
+
+      llamaServer.freePort().then((port) => {
+        if (l.aborted) return finish({ ok: false, error: null });
+        server.port = port;
+        const args = llamaServer.serverArgs({ presetPath: l.presetPath, port, ...l.settings, device: cpu ? null : l.device, cpu });
+        const cmd = llamaServer.spawnCommand(bin, args, platform);
+        let child;
+        try {
+          child = spawn(cmd.command, cmd.args, { stdio: [cmd.stdin, 'pipe', 'pipe'], env: { ...process.env, LLAMA_CACHE: l.cacheDir }, windowsHide: true });
+        } catch (e) {
+          return finish({ ok: false, error: errorText(e) });
+        }
+        server.child = child;
+        // A spawn that fails emits `error` without `exit`; either one ends this process's life.
+        server.exited = new Promise((done) => {
+          child.once('exit', (code) => done(code));
+          child.once('error', (e) => { finish({ ok: false, error: errorText(e) }); done(null); });
+        });
+        server.exited.then((code) => {
+          const error = `llama-server stopped unexpectedly (exit code ${code}).`;
+          fail(error);
+          server.onLost?.(error);
+        });
+
+        bootTimer = setTimeout(() => fail('llama-server did not start.'), BOOT_TIMEOUT_MS);
+        let partial = '';
+        let listening = false;
+        child.stdout.setEncoding('utf8');
+        child.stdout.on('data', (chunk) => {
+          partial += chunk;
+          const lines = partial.split('\n');
+          partial = lines.pop();
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const entry = llamaServer.parseLogLine(line);
+            if (entry.port != null) {
+              if (!server.loaded) server.memory.feed(entry.text);
+              server.log.push(entry.text);
+              if (server.log.length > LOG_LINES_KEPT) server.log.shift();
+            } else if (!listening && entry.text.includes('listening on')) {
+              listening = true;
+              clearTimeout(bootTimer);
+              subscribeAndLoad();
+            }
+          }
+        });
+        child.stderr.on('data', () => { /* --log-jsonl sends everything to stdout */ });
+      }, (e) => finish({ ok: false, error: errorText(e) }));
+
+      // The status stream first, so no event of the load falls before the subscription.
+      function subscribeAndLoad() {
+        const reader = llamaServer.sseReader();
+        const req = http.get({ host: '127.0.0.1', port: server.port, path: '/models/sse' }, (res) => {
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => { for (const e of reader.feed(chunk)) onEvent(e); });
+          routerRequest(server.port, 'POST', '/models/load', { model: l.modelId }).then(({ status, body }) => {
+            if (status !== 200 || body?.success !== true) fail(`llama-server refused the load: ${typeof body === 'string' ? body : JSON.stringify(body)}`);
+          }, () => fail('llama-server stopped answering.'));
+        });
+        req.on('error', () => { /* the router went away; its exit settles the attempt */ });
+        server.sse = req;
+      }
+
+      function onEvent(e) {
+        if (e.event !== llamaServer.STATUS_EVENT || e.model !== l.modelId) return;
+        const status = e.data?.status;
+        if (status === 'loading') {
+          const pct = llamaServer.loadPercent(e.data.progress);
+          if (pct != null && !l.aborted && state.status === 'loading' && pct !== state.loadProgress) setState({ ...getState(), loadProgress: pct });
+        } else if (status === 'loaded') {
+          server.loaded = true;
+          finish({ ok: true, info: e.data.info ?? null });
+        } else if (status === 'unloaded') {
+          server.unloaded?.();
+          if (server.loaded) server.onLost?.(`The model stopped unexpectedly (exit code ${e.data.exit_code ?? 'unknown'}).`);
+          else fail(`llama-server could not load the model (exit code ${e.data.exit_code ?? 'unknown'}).`);
+        }
+      }
+    });
+  }
+
+  /** Unload, then end the router. Safe on a router that never started or already exited. */
+  async function endServer(server) {
+    if (!server?.child) return;
+    if (server.loaded && server.port) {
+      const unloaded = new Promise((resolve) => { server.unloaded = resolve; });
       try {
-        const grew = (await llama.getVramState()).used - vramUsedBefore;
-        applied.engineVramMB = Math.max(0, Math.round(grew / 1024 / 1024));
-      } catch { /* leave null */ }
+        await withTimeout(routerRequest(server.port, 'POST', '/models/unload', { model: server.modelId }).then(() => unloaded), STOP_TIMEOUT_MS);
+      } catch { /* the router is gone; the kill below is a no-op */ }
     }
-
-    server = http.createServer((req, res) => {
-      router(req, res).catch((e) => {
-        if (!res.headersSent) sendJson(res, 500, { error: { message: String((e && e.message) || e) } });
-        else res.end();
-      });
-    });
-    await new Promise((resolve, reject) => {
-      server.once('error', reject);
-      server.listen(port, '127.0.0.1', resolve);
-    });
-    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null, loadProgress: null, ...applied, ...device });
-  } catch (e) {
-    await stop();
-    // Keep the device diagnostics: which backend a failed load ran on is exactly what an out-of-VRAM error
-    // can't tell you on its own.
-    setState({ status: 'error', modelPath, modelId: null, port, error: describeLoadError(String((e && e.message) || e)), loadProgress: null, ...NO_ENGINE, ...device });
+    try { server.sse?.destroy(); } catch { /* ignore */ }
+    try { server.child.kill(); } catch { /* already gone */ }
+    await withTimeout(server.exited, STOP_TIMEOUT_MS);
   }
-  return getState();
-}
 
-/** Restates node-llama-cpp's context-fit error in the names the Local Model settings use. */
-function describeLoadError(message) {
-  const m = /^A context size of (\d+)(?: with (\d+) sequences)? is too large for the available VRAM( and RAM)?/.exec(message);
-  if (!m) return message;
-  const parallel = m[2] ? ` with ${m[2]} Parallel Requests` : '';
-  const memory = m[3] ? "this computer's VRAM and RAM" : "this GPU's VRAM";
-  return `Context Size ${m[1]}${parallel} doesn't fit in ${memory}. Lower Context Size${m[2] ? ' or Parallel Requests' : ''}.`;
-}
+  /** Ends a start's front server and router. Once per start; `l.done` settles when everything is gone. */
+  function teardown(l) {
+    l.aborted = true;
+    l.done ??= endLaunch(l);
+    return l.done;
+  }
 
-/** Tear everything down and return to `stopped`. Safe to call when already stopped. */
-async function stop() {
-  try {
-    if (server) {
-      const s = server;
-      // close() alone waits for keep-alive sockets (our streaming responses keep them open) to end,
-      // which never happens — so destroy active connections too, letting close() actually resolve.
+  async function endLaunch(l) {
+    if (l.front) {
+      const s = l.front;
+      // close() alone waits for keep-alive sockets (streaming responses keep them open), so end those too.
       await new Promise((resolve) => { s.close(resolve); s.closeAllConnections?.(); });
     }
-  } catch { /* ignore */ }
-  for (const seq of sequences) { try { seq?.dispose?.(); } catch { /* ignore */ } }
-  try { if (context?.dispose) await context.dispose(); } catch { /* ignore */ }
-  try { if (model?.dispose) await model.dispose(); } catch { /* ignore */ }
-  // Reject anyone still queued for a slot so their request fails cleanly instead of hanging.
-  for (const resolve of waitQueue.splice(0)) { try { resolve(null); } catch { /* ignore */ } }
-  server = null; sequences = []; freeSequences.length = 0; context = null; model = null; llama = null; chatWrapper = null;
-  setState(stoppedState());
-  return getState();
-}
-
-/**
- * Enumerate every GPU the backend can see, without loading a model — the unfiltered list a pinned engine
- * can no longer report, and what the device picker offers. With `rawIndex`, enumerate the Vulkan backend
- * pinned to that raw device index instead: the one name it answers is the adapter that index binds, and an
- * index past the end of the raw list rejects (the backend refuses to initialize, and no other backend or
- * build is tried). Meant for a short-lived process of its own: initializing the backend here settles this
- * process's device visibility for the rest of its life.
- */
-async function listDevices({ rawIndex } = {}) {
-  const nlc = await import('node-llama-cpp');
-  let backend;
-  if (typeof rawIndex === 'number') {
-    process.env.GGML_VK_VISIBLE_DEVICES = String(rawIndex);
-    backend = await nlc.getLlama({ gpu: 'vulkan', build: 'never' });
-  } else {
-    delete process.env.GGML_VK_VISIBLE_DEVICES;
-    backend = await nlc.getLlama();
+    await endServer(l.server);
+    try { fs.rmSync(l.workDir, { recursive: true, force: true }); } catch { /* a temp folder left behind costs nothing */ }
   }
-  let gpuDeviceNames = null;
-  try { gpuDeviceNames = await backend.getGpuDeviceNames(); } catch { /* not every backend enumerates devices */ }
-  return { gpuBackend: backend.gpu === false ? 'cpu' : backend.gpu, gpuDeviceNames };
+
+  /** The tokens `body` renders to, by the router's own template and tokenizer. */
+  async function promptTokens(l, body) {
+    const { stream, stream_options: _streamOptions, ...rest } = body;
+    const rendered = await routerRequest(l.server.port, 'POST', '/apply-template', rest);
+    if (rendered.status !== 200 || typeof rendered.body?.prompt !== 'string') throw new Error('apply-template failed');
+    const tokens = await routerRequest(l.server.port, 'POST', '/tokenize', { model: l.modelId, content: rendered.body.prompt, add_special: true });
+    if (tokens.status !== 200 || !Array.isArray(tokens.body?.tokens)) throw new Error('tokenize failed');
+    return tokens.body.tokens.length;
+  }
+
+  /**
+   * `body` cut to fit the slot under the Context Overflow policy, or { stop } with the context-length error.
+   * The prompt leaves room for the request's max_tokens. Without a known slot size the body is unchanged.
+   */
+  /** The context-length stop for a prompt of `tokens` against a slot of `nCtx`, in the panel's setting names. */
+  function contextStop(body, tokens, nCtx) {
+    // The answer's room, capped at half the slot so a large max_tokens never leaves the prompt nothing.
+    const reserve = Math.min(Math.max(0, Number(body.max_tokens ?? body.max_completion_tokens) || 0), Math.floor(nCtx / 2));
+    const budget = nCtx - reserve;
+    const message = contextOverflow.overflowMessage({ tokens, budget, cut: overflowPolicy !== 'stopAtLimit', reserved: reserve > 0 });
+    return { budget, stop: { error: { code: 400, type: 'exceed_context_size_error', message, n_prompt_tokens: tokens, n_ctx: nCtx } } };
+  }
+
+  async function fitContext(l, body, isGone) {
+    if (!l.slotContext) return { body };
+    const { budget } = contextStop(body, 0, l.slotContext);
+    const fit = await contextOverflow.fitMessages(body.messages, {
+      policy: overflowPolicy,
+      budget,
+      count: (messages) => {
+        if (isGone()) throw new Error('The client hung up.');
+        return promptTokens(l, { ...body, messages });
+      },
+    });
+    if (!fit.overflow) return { body: fit.messages === body.messages ? body : { ...body, messages: fit.messages } };
+    return { stop: contextStop(body, fit.overflow.tokens, l.slotContext).stop };
+  }
+
+  function forwardChat(req, res) {
+    const l = launch;
+    if (state.status !== 'ready' || !l?.server) return sendJson(res, 503, { error: { message: 'Model is not loaded.' } });
+    readBody(req).then(async (text) => {
+      let body;
+      try { body = JSON.parse(text || '{}'); } catch { return sendJson(res, 400, { error: { message: 'The request body is not JSON.' } }); }
+      const shaped = shapeChatBody(body, { modelId: l.modelId, keepImages: Boolean(l.projector) });
+      if (shaped.droppedImages > 0) res.setHeader(IMAGES_DROPPED_HEADER, String(shaped.droppedImages));
+      // A client that hangs up mid-count stops the counting too. The socket ends before it is destroyed.
+      let hungUp = false;
+      const onHangup = () => { hungUp = true; };
+      req.socket.once('end', onHangup).once('close', onHangup);
+      const gone = () => hungUp || req.socket.destroyed;
+      let fitted;
+      try {
+        fitted = await fitContext(l, shaped.body, gone);
+      } catch {
+        // The count failed (the router stopped answering): forward the unfitted body; the server answers it.
+        fitted = { body: shaped.body };
+      } finally {
+        req.socket.off('end', onHangup).off('close', onHangup);
+      }
+      if (gone() || res.destroyed || res.writableEnded) return;
+      if (fitted.stop) return sendJson(res, 400, fitted.stop);
+      const data = JSON.stringify(fitted.body);
+      const up = http.request({
+        host: '127.0.0.1', port: l.server.port, method: 'POST', path: '/v1/chat/completions',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+      }, (upRes) => {
+        // The server's own context error (a prompt it counted longer, as with images) gets the same wording.
+        if (upRes.statusCode === 400) {
+          readBody(upRes).then((raw) => {
+            let error = null;
+            try { error = JSON.parse(raw)?.error ?? null; } catch { /* not JSON: pass it on */ }
+            if (error?.type === 'exceed_context_size_error' && typeof error.n_prompt_tokens === 'number' && typeof error.n_ctx === 'number') {
+              return sendJson(res, 400, contextStop(fitted.body, error.n_prompt_tokens, error.n_ctx).stop);
+            }
+            cors(res);
+            res.writeHead(400, { 'Content-Type': upRes.headers['content-type'] ?? 'application/json' });
+            res.end(raw);
+          }, () => sendJson(res, 502, { error: { message: 'llama-server stopped answering.' } }));
+          return;
+        }
+        cors(res);
+        const headers = { 'Content-Type': upRes.headers['content-type'] ?? 'application/json' };
+        if (upRes.headers['cache-control']) headers['Cache-Control'] = upRes.headers['cache-control'];
+        res.writeHead(upRes.statusCode ?? 502, headers);
+        upRes.pipe(res);
+      });
+      up.on('error', (e) => {
+        if (res.destroyed || res.writableEnded) return;
+        if (!res.headersSent) sendJson(res, 502, { error: { message: errorText(e) } });
+        else res.end();
+      });
+      // A client that hangs up cancels the upstream request rather than letting it decode to the end.
+      res.on('close', () => { if (!res.writableFinished) up.destroy(); });
+      up.end(data);
+    }, () => sendJson(res, 400, { error: { message: 'The request body could not be read.' } }));
+  }
+
+  function frontRouter(req, res) {
+    if (req.method === 'OPTIONS') { cors(res); res.writeHead(204); return res.end(); }
+    const url = new URL(req.url, 'http://localhost');
+    if (req.method === 'GET' && url.pathname.endsWith('/models')) {
+      // Any */models path, LM Studio's /api/v0/models included: callers probe it and read `state`.
+      return sendJson(res, 200, {
+        object: 'list',
+        data: [{ id: state.modelId, object: 'model', owned_by: 'formamorph', state: state.status === 'ready' ? 'loaded' : 'not-loaded' }],
+      });
+    }
+    if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) return forwardChat(req, res);
+    return sendJson(res, 404, { error: { message: `Unknown route ${req.method} ${url.pathname}` } });
+  }
+
+  /**
+   * Load `modelPath` and start the local OpenAI server. Idempotent while loading/ready.
+   * `contextSize` is the KV cache size (`-c`). `gpuLayers` is a layer count, or the AUTO/MAX sentinel.
+   * `parallelRequests` is the server's slot count; `unifiedKvCache` (default on) makes the slots share one
+   * `contextSize` pool, off gives each slot a full `contextSize`. `gpuDevice` is the device setting (`auto`, `all`, or a
+   * device name), resolved against `--list-devices` on every start with `nvidiaGpus` (nvidia-smi rows) for
+   * Auto's pick. A failed GPU load retries once on the CPU. `contextOverflow`, when given, sets the policy
+   * as `setContextOverflow` does.
+   */
+  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus, contextOverflow: policy } = {}) {
+    if (policy !== undefined) setContextOverflow(policy);
+    if (state.status === 'loading' || state.status === 'ready') return getState();
+    if (!modelPath) { setState({ ...stoppedState(), status: 'error', port, error: 'No modelPath provided.' }); return getState(); }
+    const modelId = path.basename(modelPath);
+    const settings = {
+      contextSize: typeof contextSize === 'number' ? contextSize : null,
+      gpuLayers: typeof gpuLayers === 'number' ? gpuLayers : null,
+      flashAttention: flashAttention !== false,
+      parallelRequests: Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1),
+      unifiedKvCache: unifiedKvCache !== false,
+      kCacheType: llamaServer.cacheType(kCacheType),
+      vCacheType: llamaServer.effectiveVCacheType(vCacheType, flashAttention),
+      kvCacheInRam: kvCacheInRam === true,
+    };
+    // The options this model is (being) loaded with, so the renderer can compare against pending settings.
+    const applied = { ...settings, maxContextSize: null, engineVramMB: null };
+    // This start: its settings, work folder, device, router (`server`), front server, and teardown state.
+    // `projector` is the vision projector file, or null: without one, image parts are dropped.
+    // `slotContext` is one slot's context in tokens once loaded, or null when the server didn't say.
+    const l = { modelId, settings, projector: findProjector(modelPath), aborted: false, server: null, front: null, lost: null, slotContext: null };
+    l.workDir = path.join(workRoot, `formamorph-engine-${process.pid}-${++starts}`);
+    l.presetPath = path.join(l.workDir, 'preset.ini');
+    // An empty cache, so the router lists no Hugging Face downloads beside our model.
+    l.cacheDir = path.join(l.workDir, 'cache');
+    launch = l;
+    const isCurrent = () => launch === l && !l.aborted;
+    // A stop overtook this start: answer once the stop has freed everything, so the caller reads `stopped`.
+    const abandoned = async () => { await l.done; return getState(); };
+
+    setState({ status: 'loading', modelPath, modelId, port, error: null, loadProgress: 0, ...NO_ENGINE, ...applied });
+    l.bin = binaryPath({ platform });
+    const devices = await llamaServer.listServerDevices({ bin: l.bin, spawn });
+    if (!isCurrent()) return abandoned();
+    const names = devices.map((d) => d.name);
+    const pick = selectEngineDevice({ deviceNames: names, nvidiaGpus, setting: gpuDevice });
+    l.device = pick.index != null ? devices[pick.index].id : null;
+    const device = {
+      gpuBackend: llamaServer.backendOf(devices),
+      gpuDeviceNames: pick.index != null ? [names[pick.index]] : names,
+      deviceVramTotalMB: null,
+      deviceVramFreeMB: null,
+      gpuDeviceIndex: pick.index,
+      gpuDeviceRawIndex: null,
+      gpuDeviceOrigin: pick.origin,
+      gpuDeviceOptions: names.length ? names : null,
+    };
+    // Publish the device now rather than at 'ready', so a slow load shows what it's loading onto.
+    setState({ ...getState(), ...device });
+
+    const errorState = (error) => ({ status: 'error', modelPath, modelId: null, port, error, loadProgress: null, ...NO_ENGINE, ...device });
+    const fail = async (error) => {
+      await teardown(l);
+      if (launch === l) launch = null;
+      setState(errorState(error));
+      return getState();
+    };
+    try {
+      fs.mkdirSync(l.cacheDir, { recursive: true });
+      fs.writeFileSync(l.presetPath, llamaServer.presetIni({ modelId, modelPath, projectorPath: l.projector }));
+    } catch (e) {
+      return fail(`Could not prepare the engine folder: ${errorText(e)}`);
+    }
+
+    let result = await attempt(l, { cpu: !devices.length });
+    if (!result.ok && devices.length && isCurrent()) {
+      const gpuError = result.error;
+      await endServer(l.server);
+      l.server = null;
+      if (!isCurrent()) return abandoned();
+      device.gpuBackend = 'cpu';
+      setState({ ...getState(), loadProgress: 0, gpuBackend: 'cpu' });
+      result = await attempt(l, { cpu: true });
+      // The GPU attempt's error names the setting to lower; the CPU one only says RAM ran out too.
+      if (!result.ok) result.error = gpuError;
+    }
+    if (!isCurrent()) return abandoned();
+    if (!result.ok) return fail(result.error);
+
+    // From here a router or model crash is a loss to report: held until 'ready', then reported once.
+    l.server.onLost = (error) => {
+      if (!isCurrent()) return;
+      if (state.status !== 'ready') { l.lost ??= error; return; }
+      fail(error).catch(() => {});
+    };
+    applied.maxContextSize = typeof result.info?.meta?.n_ctx_train === 'number' ? result.info.meta.n_ctx_train : null;
+    // One slot's context as the server sized it (padding and slot split included), for Context Overflow.
+    try {
+      const props = await routerRequest(l.server.port, 'GET', `/props?model=${encodeURIComponent(modelId)}`);
+      const nCtx = props.body?.default_generation_settings?.n_ctx;
+      l.slotContext = typeof nCtx === 'number' && nCtx > 0 ? nCtx : null;
+    } catch {
+      l.slotContext = null;
+    }
+    if (!isCurrent()) return abandoned();
+    const front = http.createServer((req, res) => {
+      try { frontRouter(req, res); } catch (e) {
+        if (!res.headersSent) sendJson(res, 500, { error: { message: errorText(e) } });
+        else res.end();
+      }
+    });
+    l.front = front;
+    try {
+      await new Promise((resolve, reject) => {
+        front.once('error', reject);
+        front.listen(port, '127.0.0.1', resolve);
+      });
+    } catch (e) {
+      return fail(`Could not serve on port ${port}: ${errorText(e)}`);
+    }
+    if (!isCurrent()) return abandoned();
+    if (l.lost) return fail(l.lost);
+    // The share is the live model's; the device's VRAM at load also explains a later error, so it stays with `device`.
+    const { engineVramMB, ...deviceVram } = l.server.memory.fields(devices);
+    applied.engineVramMB = engineVramMB;
+    Object.assign(device, deviceVram);
+    setState({ status: 'ready', modelPath, modelId, port, error: null, loadProgress: null, serverPid: null, ...applied, ...device });
+    // The instance holds the VRAM, so the viewer attributes it; one lookup per load, after 'ready' so it never delays it.
+    const routerPid = l.server.child.pid;
+    listProcesses().then((rows) => {
+      const pid = llamaServer.instancePid(rows, routerPid);
+      if (pid != null && isCurrent() && state.status === 'ready') setState({ ...getState(), serverPid: pid });
+    }, () => { /* no pid leaves the viewer on the engine's own figure */ });
+    return getState();
+  }
+
+  /** Tear everything down and return to `stopped`. Safe to call when already stopped. */
+  async function stop() {
+    const l = launch;
+    launch = null;
+    if (l) await teardown(l);
+    setState(stoppedState());
+    return getState();
+  }
+
+  /** Set the Context Overflow policy for the next chat request. Unknown values read as Truncate Middle. */
+  function setContextOverflow(policy) {
+    overflowPolicy = contextOverflow.overflowPolicy(policy);
+    return overflowPolicy;
+  }
+
+  return { start, stop, getState, onStatus, listDevices, setContextOverflow };
 }
 
-module.exports = { start, stop, getState, onStatus, stoppedState, listDevices, splitMessages, describeLoadError, IMAGES_DROPPED_HEADER };
+module.exports = { ...createEngine(), createEngine, stoppedState, DEFAULT_PORT, IMAGES_DROPPED_HEADER };
