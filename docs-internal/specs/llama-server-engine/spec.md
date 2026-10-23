@@ -1,6 +1,7 @@
 # Llama Server Engine
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-10-23, tickets 01–13 done, last landing 720794622. Closed with gaps: tickets 14–16 (cache RAM limit, reload diff after V coercion, share buffer set). Spec text corrected. Gates green on 2026-10-23 (lint, test).
 Target branch: engine/llama-server
 Spec session: llama-server-engine — spec
 
@@ -93,9 +94,9 @@ The desktop engine runs llama.cpp's own `llama-server`, the same runtime LM Stud
 - node-llama-cpp and its prebuilt packages leave the dependencies and the packaging rules.
 
 **Process**
-- `llama-server` runs in router mode, pointed at the models folder. The engine loads and unloads models through the router API and reads load progress from its status event stream. The README and the code disagree on that event's name, so a test pins the name the pinned build emits.
+- `llama-server` runs in router mode, loading the model from a one-section `--models-preset` file written per start (T02-1). The engine loads and unloads models through the router API and reads load progress from its status event stream. The README and the code disagree on that event's name, so a test pins the name the pinned build emits.
 - The engine host keeps its current role and its public contract: `start(options)`, `stop()`, `getState()`, `onStatus()`, the device listing, and the status shape the renderer reads. Its internals spawn and supervise `llama-server`.
-- The `llama-server` process dies with the app, including on a crash (a Windows Job Object or the platform's equivalent). The process the VRAM viewer attributes to Formamorph is the `llama-server` process.
+- The `llama-server` process dies with the app, including on a crash (a Windows Job Object or the platform's equivalent). The process the VRAM viewer attributes to Formamorph is the router's model instance (T04-2).
 - The engine passes `-np` (Parallel Requests) every time, because the server's auto default forces four slots.
 - When a GPU load fails, the engine retries once on the CPU and reports the CPU backend in its status.
 
@@ -104,19 +105,19 @@ The desktop engine runs llama.cpp's own `llama-server`, the same runtime LM Stud
 | Setting | Server argument | Note |
 |---|---|---|
 | Context Size | `-c` | With Unified KV Cache off, the engine passes Context Size × Parallel Requests, so each slot gets the full Context Size |
-| GPU Layers Auto / Max / Custom | `-ngl auto` with fit on / `-ngl all` / `-ngl N` | llama.cpp's own fit replaces our `fitContext` workaround |
-| GPU Device | Resolved by name against `--list-devices` on each start | Keep pin-by-name. Use one pinning scheme only, never the env var and `--device` together |
+| GPU Layers Auto / Max / Custom | `-ngl auto` with fit on / `-ngl all` with `--fit off` / `-ngl N` with `--fit off` (T02-3) | llama.cpp's own fit replaces our `fitContext` workaround |
+| GPU Device | Resolved by name against `--list-devices` on each start | Keep pin-by-name. `--device` is the only pinning scheme (T02-2) |
 | Flash Attention | `-fa on` / `-fa off` | Off means off. Stored values stay |
 | Parallel Requests | `-np N` | Always passed |
 | Unified KV Cache (new) | `--kv-unified` on or off | Default on |
 | K Cache Type (new) | `-ctk f16 / q8_0 / q4_0` | Default F16 |
 | V Cache Type (new) | `-ctv f16 / q8_0 / q4_0` | Default F16. A quantized V requires Flash Attention on |
 | KV Cache in RAM (new) | `-nkvo` when on | Default off (KV on the GPU) |
-| Image input (new) | `--mmproj <file>` | Only when a projector is found |
+| Image input (new) | `mmproj = <file>` in the preset section | Only when a projector is found |
 | Prompt cache | Slot prompt reuse on, `--cache-ram` set low | The server's default holds 8 GB of host RAM |
 
 - Each new setting follows the existing engine-setting path: a default beside the others, a validated persisted value, the `setOptions` IPC, the main process's boot options and reload diff, and the applied value in the engine status. The renderer's boot default and the main process's boot options stay equal, so a fresh start doesn't reload.
-- The new rows sit in the Local Model panel under **Advanced**, next to the other engine rows. They apply on reload. A quantized V cache type turns Flash Attention on or blocks the choice while it is off. The exact control is a design-system decision.
+- The new rows sit in the Local Model panel under **Advanced**, next to the other engine rows. They apply on reload, except Context Overflow (T07-5). A quantized V cache type turns Flash Attention on or blocks the choice while it is off. The exact control is a design-system decision.
 - The Parallel Requests copy and the code comments state the real behavior for both Unified KV Cache states.
 
 **Proxy**
@@ -135,12 +136,12 @@ The desktop engine runs llama.cpp's own `llama-server`, the same runtime LM Stud
 - Token counts come from the server's tokenizer, so the cut matches what the model sees.
 
 **Images**
-- A projector is a file named `mmproj*.gguf` beside the model in the models folder (llama.cpp's convention). The engine pairs them when it loads the model.
+- A projector pairs with a model by the rules in T08-1. The engine pairs them when it loads the model.
 - Recommended catalog entries for vision models list their projector, and the download fetches both.
 
 **VRAM viewer**
 - The GPU bars stay on nvidia-smi in the main process. They don't depend on the engine.
-- The Formamorph share is the sum of the non-host model, KV, compute and output buffer sizes `llama-server` logs at load, read as JSON log lines.
+- The Formamorph share is the sum of the non-host buffer sizes `llama-server` logs at load, across the devices the instance uses (T04-3).
 - The free-at-load figure comes from the "using device … MiB free" log line. The total, the device names and the backend come from `--list-devices`, run once per device enumeration, never polled.
 - The share is llama.cpp's own allocation. It leaves out driver overhead, so it reads a little lower than today's delta figure.
 
