@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ActionIcon } from '@/lib/actionIcons';
 import { ModelDetailsPanel } from './ModelDetailsPanel';
 import ModelStorageService from '@/services/ModelStorageService';
 import { downloadBlob } from '@/lib/downloadBlob';
-import type { ModelMetadata, VrmLicense } from '@/types';
+import { libraryFileName } from '@/lib/libraryVrm';
+import { useHeldModelBlob } from '@/lib/useHeldModelBlob';
+import type { ModelMetadata } from '@/types';
 
 /**
  * The model library's details view: resolves a stored model's bytes, then hands them to the shared
@@ -17,52 +19,21 @@ export function ModelDetailsModal({ model, onPublish, onClose }: {
   onPublish?: (model: ModelMetadata) => void;
   onClose: () => void;
 }) {
-  const [url, setUrl] = useState<string | undefined>();
-  const [blob, setBlob] = useState<Blob | null>(null);
-  const [license, setLicense] = useState<VrmLicense | undefined>();
-  const [failed, setFailed] = useState(false);
+  const load = useMemo(() => model && (async () => {
+    // The library grid only backfills a model that has no thumbnail yet, so a legacy record that already has
+    // one can carry a license that predates the Permissive License gate's fields. Opening re-reads it.
+    await ModelStorageService.ensureThumbnail(model.id);
+    const data = await ModelStorageService.getModelData(model.id);
+    return { blob: data.blob, license: data.license };
+  }), [model]);
+  const { url, blob, license: readLicense, failed } = useHeldModelBlob(load);
+  // The stored license shows at once; the re-read one replaces it.
+  const license = readLicense ?? model?.license;
 
-  // Hold the model's bytes as an object URL only while the dialog is open; a VRM runs to tens of megabytes.
-  useEffect(() => {
-    if (!model) return;
-    let cancelled = false;
-    let objectUrl: string | undefined;
-    setFailed(false);
-    setLicense(model.license); // shown immediately; replaced below once a stale copy has been re-read
-    (async () => {
-      try {
-        // The library grid only backfills a model that has no thumbnail yet, so a legacy record that already
-        // has one can carry a license that predates the Permissive License gate's fields. Forcing the same
-        // backfill here, on open, is what actually satisfies "stale record re-read, then kept" for this view.
-        await ModelStorageService.ensureThumbnail(model.id);
-        const data = await ModelStorageService.getModelData(model.id);
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(data.blob);
-        setUrl(objectUrl);
-        setBlob(data.blob);
-        setLicense(data.license);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setUrl(undefined);
-      setBlob(null);
-    };
-  }, [model]);
-
-  /**
-   * Save the model back out byte-for-byte. Nothing is re-encoded: the file that went in is the file that comes
-   * out, so its own metadata and license travel with it untouched.
-   */
+  /** Saves the model back out byte-for-byte, so its own metadata and license travel with it untouched. */
   const handleExport = () => {
     if (!blob || !model) return;
-    // A file with no VRM data is a plain glTF; name it for what it is rather than trusting the reported MIME,
-    // which browsers often leave empty for .vrm.
-    const extension = license?.metaVersion === null ? 'glb' : 'vrm';
-    downloadBlob(blob, `${model.name || 'Avatar'}.${extension}`);
+    downloadBlob(blob, libraryFileName(model.name || 'Avatar', license));
   };
 
   return (

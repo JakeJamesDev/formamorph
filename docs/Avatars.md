@@ -154,7 +154,9 @@ The steps to publish are in [Publishing an Avatar](Community-Creations#publishin
 ## World Avatars
 <!-- keywords: model bundled with world, author supplied body, ship my own model, avatar store, give npc a model, entity avatar dropdown, share avatar between entities, not in my library, user's default -->
 
-A world keeps its own Avatars. The author adds them in the World Editor's **Overview**, in **Avatars**, in Advanced mode. **Upload Avatar** adds a `.vrm` or `.glb` file. **Copy from library** copies one of your Avatars into the world. The world stores the file, so a player who downloads the world gets it. You can rename an Avatar or delete it. A delete names the entities that use it, and they go back to **None**.
+A world keeps its own Avatars. The author adds them in the World Editor's **Overview**, in **Avatars**, in Advanced mode. **Upload Avatar** adds a `.vrm` or `.glb` file. **Copy From Library** copies one of your Avatars into the world. The world stores the file, so a player who downloads the world gets it. You can rename an Avatar or delete it. **Preview** opens its details, where **Export** saves the file. A delete names the entities that use it, and they go back to **None**.
+
+A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In play it shows the bundled Avatar. Pick another option to replace it.
 
 Each entity picks its Avatar in its **Avatar** dropdown, in Advanced mode:
 

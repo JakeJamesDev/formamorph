@@ -328,6 +328,15 @@ export function useWorldHistoryMoves(): Omit<WorldHistoryControls, 'store'> {
 export const useWorldHistoryMovesOptional = (): Omit<WorldHistoryControls, 'store'> | null =>
   useContext(WorldHistoryContext);
 
+/** Runs a write as one History Step under its label, or directly outside a world's history. */
+export const useWorldHistoryStep = () => {
+  const history = useWorldHistoryMovesOptional();
+  return (label: string, run: () => void) => {
+    if (history) void history.batch(label, run);
+    else run();
+  };
+};
+
 /** The open world's history: where the cursor stands, the Steps, and the moves. Throws outside a world. */
 export function useWorldHistory() {
   const controls = useContext(WorldHistoryContext);

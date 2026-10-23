@@ -537,12 +537,12 @@ function useProvideGameplay() {
     vrmStore?: WorldVrmStore,
   ) => {
     const locationIds = locations.map((l) => l.id);
-    /** The state with every stat the world has since added, global and each entity's, no entity stat
-     *  carrying stored code bounds, each position checked against the world, and its chosen Avatar remapped. */
     /** The state with its chosen Avatar remapped against the world's Avatar store. */
     const withChosenVrmRemapped = (raw: GameState) => (raw.characterData
       ? { ...raw, characterData: remapChosenVrm(raw.characterData, vrmStore) }
       : raw);
+    /** The state with every stat the world has since added, global and each entity's, no entity stat
+     *  carrying stored code bounds, each position checked against the world, and its chosen Avatar remapped. */
     const backfilled = (raw: GameState, persona?: PersonaRef) => {
       const state = withChosenVrmRemapped(raw);
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);

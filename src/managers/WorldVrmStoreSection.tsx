@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
-import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
+import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Hint } from '@/components/ui/typography';
@@ -17,11 +17,12 @@ import { addWorldVrm, deleteWorldVrm, entitiesUsingWorldVrm, renameWorldVrm, vrm
 import { blobHash } from '@/lib/blobHash';
 import { libraryFileName } from '@/lib/libraryVrm';
 import { readVrmMeta } from '@/lib/vrmMeta';
+import { useHeldModelBlob } from '@/lib/useHeldModelBlob';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { ActionIcon } from '@/lib/actionIcons';
 import { ModelDetailsPanel } from '@/components/modals/ModelDetailsPanel';
 import ModelStorageService from '@/services/ModelStorageService';
-import type { Entity, MediaAsset, ModelMetadata, VrmLicense } from '@/types';
+import type { Entity, MediaAsset, ModelMetadata } from '@/types';
 
 export const VRM_STORE_HINT = 'Add Avatars to this world, then choose one for each entity';
 
@@ -33,43 +34,20 @@ const labelName = (name: string) => name.trim() || 'Unnamed';
  * Export saves them untouched under the display name, so the file's own metadata and license travel with it.
  */
 const StoreVrmPreview = ({ file, name, open, onClose }: { file: MediaAsset; name: string; open: boolean; onClose: () => void }) => {
-  const [url, setUrl] = useState<string | undefined>();
-  const [blob, setBlob] = useState<Blob | null>(null);
-  const [meta, setMeta] = useState<{ license?: VrmLicense; size?: number }>({});
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | undefined;
-    setFailed(false);
-    fetch(file.data)
-      .then((r) => r.blob())
-      .then(async (loaded) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(loaded);
-        setUrl(objectUrl);
-        const { license } = await readVrmMeta(loaded);
-        if (cancelled) return;
-        // Export waits for the license: it picks the file's extension.
-        setMeta({ license, size: loaded.size });
-        setBlob(loaded);
-      })
-      .catch(() => { if (!cancelled) setFailed(true); });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setUrl(undefined);
-      setBlob(null);
-    };
+  // The license is read before the bytes are held, because it picks the export's extension.
+  const load = useMemo(() => async () => {
+    const blob = await (await fetch(file.data)).blob();
+    return { blob, license: (await readVrmMeta(blob)).license };
   }, [file.data]);
+  const { url, blob, license, failed } = useHeldModelBlob(load);
 
   return (
     <ModelDetailsPanel
       open={open}
       name={name}
       url={url}
-      license={meta.license}
-      size={meta.size}
+      license={license}
+      size={blob?.size}
       failed={failed}
       onClose={onClose}
       footer={
@@ -77,7 +55,7 @@ const StoreVrmPreview = ({ file, name, open, onClose }: { file: MediaAsset; name
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => { if (blob) downloadBlob(blob, libraryFileName(name.trim() || 'Avatar', meta.license)); }}
+          onClick={() => { if (blob) downloadBlob(blob, libraryFileName(name.trim() || 'Avatar', license)); }}
           disabled={!blob}
         >
           <ActionIcon.export className="mr-2 h-4 w-4" /> Export
@@ -156,7 +134,6 @@ const VrmRow = ({ id, name, file, onRename, onDelete }: {
 /** The world's Avatar store: add by upload or library copy, rename, delete. Advanced only, in the World Overview. */
 export const WorldVrmStoreSection = () => {
   const { worldOverview, updateWorldOverview, entities, setEntities } = useGameData();
-  const history = useWorldHistoryMovesOptional();
   const store = worldOverview.vrmStore;
   // Adds land after a file read and renames on blur, so both build on the store as it stands then.
   const storeRef = useRef(store);
@@ -172,11 +149,7 @@ export const WorldVrmStoreSection = () => {
       .catch(() => { /* An unreadable library offers no copies; upload still works. */ });
   }, [mounted]);
 
-  /** Runs one write as a single History step under `label`. */
-  const asStep = (label: string, run: () => void) => {
-    if (history) void history.batch(label, run);
-    else run();
-  };
+  const asStep = useWorldHistoryStep();
 
   const add = (name: string, file: MediaAsset, hash: string) => {
     const next = addWorldVrm(storeRef.current, name, file, hash).store;
