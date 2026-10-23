@@ -1,6 +1,6 @@
 # Llama Server Engine
 
-Status: done
+Status: ready-for-agent
 Status note: 2026-10-23, tickets 01–13 done, last landing 720794622. Closed with gaps: tickets 14–16 (cache RAM limit, reload diff after V coercion, share buffer set); 14 wontfix (T14); 15 and 16 done after the close, last landing a4c22d94f. Spec text corrected. Gates green on 2026-10-23 (lint, test).
 Target branch: engine/llama-server
 Spec session: llama-server-engine — spec
@@ -235,6 +235,8 @@ From ticket intent questions.
 - **T08-4.** A model and its projector download as one job with one progress bar and shared pause and resume. A model already on disk fetches only its missing projector.
 - **T08-5.** Deleting a model in the app's folder also deletes its exactly named projector, and nothing else.
 - **T08-6.** A "Vision" badge, styled like the existing "Reasoning" badge, marks paired models in Installed and vision entries in Recommended.
+- **T17.** `llama-server` runs with `--reasoning-format deepseek`, and the proxy passes `reasoning_content` through. The app reads it like any endpoint's separate reasoning field. This replaces T03-3 and the `--reasoning-format none` line: a Gemma 4 template's thought tags reached the narration under `none`.
+- **T18.** A conversation with tool turns keeps its `tool_calls`, `tool` messages and `reasoning_content` through the proxy, and a trailing `tool` message stays a `tool` message. T03-1 and T03-2 still apply to conversations without tool turns.
 - **T14.** `--cache-ram` stays at the server default (8192 MiB), as LM Studio leaves it. Ticket 14 is wontfix.
 - **T16.** The share counts the output buffer too; T04-3 is amended to match the code. Ticket 16 adds the test. Every recorded output buffer is a host buffer, so it stays out of the share; only an on-device output buffer counts.
 
