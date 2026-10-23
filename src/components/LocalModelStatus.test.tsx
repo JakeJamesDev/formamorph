@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 const stopped: LocalLlmState = {
   status: 'stopped', modelPath: null, modelId: null, port: null, error: null, loadProgress: null,
-  contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null,
+  contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null, unifiedKvCache: null,
   maxContextSize: null, engineVramMB: null,
   gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
   gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,

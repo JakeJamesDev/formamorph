@@ -64,8 +64,13 @@ describe('describeLoadError', () => {
   const kvLines = fixture.scenarios.kvFail.load.map(parseLogLine).filter((l) => l.port != null).map((l) => l.text);
 
   it('restates the recorded KV cache failure in setting names', () => {
-    expect(describeLoadError(kvLines, { contextSize: 8192, parallelRequests: 2 }))
+    expect(describeLoadError(kvLines, { contextSize: 8192, parallelRequests: 2, unifiedKvCache: false }))
       .toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this GPU's VRAM. Lower Context Size or Parallel Requests.");
+  });
+
+  it('leaves Parallel Requests out while the slots share one cache', () => {
+    expect(describeLoadError(kvLines, { contextSize: 8192, parallelRequests: 2, unifiedKvCache: true }))
+      .toBe("Context Size 8192 doesn't fit in this GPU's VRAM. Lower Context Size.");
   });
 
   it('leaves Parallel Requests out with one slot', () => {

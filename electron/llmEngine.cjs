@@ -33,6 +33,7 @@ const NO_ENGINE = {
   gpuLayers: null,
   flashAttention: null,
   parallelRequests: null,
+  unifiedKvCache: null,
   maxContextSize: null,
   engineVramMB: null,
   gpuBackend: null,
@@ -311,11 +312,12 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
   /**
    * Load `modelPath` and start the local OpenAI server. Idempotent while loading/ready.
    * `contextSize` is the KV cache size (`-c`). `gpuLayers` is a layer count, or the AUTO/MAX sentinel.
-   * `parallelRequests` is the server's slot count. `gpuDevice` is the device setting (`auto`, `all`, or a
+   * `parallelRequests` is the server's slot count; `unifiedKvCache` (default on) makes the slots share one
+   * `contextSize` pool, off gives each slot a full `contextSize`. `gpuDevice` is the device setting (`auto`, `all`, or a
    * device name), resolved against `--list-devices` on every start with `nvidiaGpus` (nvidia-smi rows) for
    * Auto's pick. A failed GPU load retries once on the CPU.
    */
-  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, gpuDevice, nvidiaGpus } = {}) {
+  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, gpuDevice, nvidiaGpus } = {}) {
     if (state.status === 'loading' || state.status === 'ready') return getState();
     if (!modelPath) { setState({ ...stoppedState(), status: 'error', port, error: 'No modelPath provided.' }); return getState(); }
     const modelId = path.basename(modelPath);
@@ -324,6 +326,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       gpuLayers: typeof gpuLayers === 'number' ? gpuLayers : null,
       flashAttention: flashAttention !== false,
       parallelRequests: Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1),
+      unifiedKvCache: unifiedKvCache !== false,
     };
     // The options this model is (being) loaded with, so the renderer can compare against pending settings.
     const applied = { ...settings, maxContextSize: null, engineVramMB: null };

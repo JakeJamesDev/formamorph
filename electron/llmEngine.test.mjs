@@ -13,7 +13,7 @@ const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
 // A branch that forgets one hands the UI `undefined` where the type says `number | null`.
 const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
-  'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'maxContextSize', 'engineVramMB',
+  'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
   'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
 ];
@@ -26,7 +26,7 @@ const initialState = getState();
 
 const fixture = loadFixture();
 const MODEL = path.join(os.tmpdir(), 'models', 'Tiny-Q4_K_M.gguf');
-const SETTINGS = { contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2, gpuDevice: 'auto' };
+const SETTINGS = { contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, gpuDevice: 'auto' };
 
 // A dGPU beside an iGPU, in the recorded line format: the case the device pin exists for.
 const TWO_DEVICES = 'Available devices:\r\n  Vulkan0: Intel(R) UHD Graphics 770 (16252 MiB, 15000 MiB free)\r\n  Vulkan1: NVIDIA GeForce RTX 4080 (16376 MiB, 15500 MiB free)\r\n';
@@ -105,7 +105,7 @@ describe('engine lifecycle through the fake server', () => {
 
     expect(ready).toMatchObject({
       status: 'ready', modelPath: MODEL, modelId: 'Tiny-Q4_K_M.gguf', port, error: null, loadProgress: null,
-      contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2,
+      contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2, unifiedKvCache: true,
       maxContextSize: 131072, engineVramMB: null,
       gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'], gpuDeviceOptions: ['NVIDIA GeForce RTX 4090'],
       gpuDeviceIndex: null, gpuDeviceOrigin: null,
@@ -252,6 +252,26 @@ describe('settings → server arguments', () => {
     expect(after((await startWith({ parallelRequests: undefined })).args, '-np')).toBe('1');
   });
 
+  it('Unified KV Cache on → --kv-unified and -c Context Size', async () => {
+    const { args, state } = await startWith({ unifiedKvCache: true, contextSize: 8192, parallelRequests: 3 });
+    expect(args).toContain('--kv-unified');
+    expect(after(args, '-c')).toBe('8192');
+    expect(state.unifiedKvCache).toBe(true);
+  });
+
+  it('Unified KV Cache off → -c Context Size × Parallel Requests, no --kv-unified', async () => {
+    const { args, state } = await startWith({ unifiedKvCache: false, contextSize: 8192, parallelRequests: 3 });
+    expect(args).not.toContain('--kv-unified');
+    expect(after(args, '-c')).toBe('24576');
+    expect(state.unifiedKvCache).toBe(false);
+  });
+
+  it('Unified KV Cache unset counts as on', async () => {
+    const { args, state } = await startWith({ unifiedKvCache: undefined });
+    expect(args).toContain('--kv-unified');
+    expect(state.unifiedKvCache).toBe(true);
+  });
+
   it('GPU Device by name → --device with that device id, resolved by name', async () => {
     const { args, state } = await startWith({ gpuDevice: 'NVIDIA GeForce RTX 4080' }, { listDevices: TWO_DEVICES });
     expect(after(args, '--device')).toBe('Vulkan1');
@@ -303,7 +323,7 @@ describe('CPU fallback and load errors', () => {
 
   it('reports a failed CPU retry with the GPU attempt’s error in setting names', async () => {
     const { fake } = setup({ scenarioFor: () => 'kvFail' });
-    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    const s = await engine.start({ ...SETTINGS, unifiedKvCache: false, modelPath: MODEL, port: await freePort() });
     expect(s.status).toBe('error');
     expect(s.error).toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this GPU's VRAM. Lower Context Size or Parallel Requests.");
     expect(keysOf(s)).toEqual(expectedKeys);
@@ -321,7 +341,7 @@ describe('CPU fallback and load errors', () => {
 
   it('reports a failed CPU-only load in setting names, naming RAM', async () => {
     const { fake } = setup({ listDevices: 'Available devices:\r\n', scenarioFor: () => 'kvFail' });
-    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    const s = await engine.start({ ...SETTINGS, unifiedKvCache: false, modelPath: MODEL, port: await freePort() });
     expect(s.status).toBe('error');
     expect(s.error).toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this computer's RAM. Lower Context Size or Parallel Requests.");
     expect(fake.routerCalls()).toHaveLength(1);

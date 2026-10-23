@@ -516,7 +516,14 @@ Turn it off only if an old GPU or backend can't run it.`,
     description: 'Sets how many requests the model answers at once',
     info: `After the narration, a turn sends several follow-up requests: choices, stat changes, the location check. Sets how many of them the model answers at the same time instead of one after another.
 
-A higher value speeds up a turn, but the requests split the context between them, and each uses more VRAM.`,
+A higher value speeds up a turn. With **Unified KV Cache** on, the requests share one context, so a long request leaves less room for the others. With it off, each request gets the full **Context Size**, and the context uses more VRAM.`,
+  },
+  localUnifiedKvCache: {
+    label: 'Unified KV Cache',
+    description: 'Lets parallel requests share one context',
+    info: `Keeps one context that all parallel requests share, so extra requests add no VRAM. A long request leaves less room for the others.
+
+Turn it off to give each request the full **Context Size**. The context then uses **Parallel Requests** times more VRAM.`,
   },
   localAutoLoad: {
     label: 'Auto-Load',

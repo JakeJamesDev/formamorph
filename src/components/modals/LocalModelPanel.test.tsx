@@ -17,7 +17,7 @@ const IGPU = 'Intel(R) UHD Graphics 770';
 /** A loaded engine at the renderer's own defaults, so only the device row can differ from what's applied. */
 const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
   status: 'ready', modelPath: 'D:/models/m.gguf', modelId: 'm.gguf', port: 8977, error: null, loadProgress: null,
-  contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2,
+  contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true,
   maxContextSize: 32768, engineVramMB: 4096,
   gpuBackend: 'vulkan', gpuDeviceNames: [IGPU, DISCRETE], deviceVramTotalMB: 16376, deviceVramFreeMB: 15176,
   gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,
@@ -57,6 +57,46 @@ beforeEach(() => {
   localStorage.clear();
   setOptionsCalls = [];
   delete (window as { formamorphDesktop?: unknown }).formamorphDesktop;
+});
+
+describe('local model Unified KV Cache row', () => {
+  const unifiedBox = () => screen.getByRole('checkbox', { name: /unified kv cache/i });
+  const reloadButton = () => screen.getByRole('button', { name: /save.*reload/i });
+
+  it('shows in Advanced only', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE] });
+    openPanel();
+    await screen.findByRole('combobox');
+    expect(screen.queryByText('Unified KV Cache')).toBeNull();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Advanced' }));
+    expect(unifiedBox()).toBeChecked();
+  });
+
+  it('stays disarmed while it matches the applied value, then arms on a change and sends it', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE] });
+    localStorage.setItem('FORMAMORPH_advancedMode', 'true');
+    openPanel();
+    await screen.findByRole('combobox');
+    expect(reloadButton()).toBeDisabled();
+
+    await userEvent.click(unifiedBox());
+    expect(reloadButton()).toBeEnabled();
+    await userEvent.click(reloadButton());
+    expect(setOptionsCalls[0].unifiedKvCache).toBe(false);
+  });
+
+  it('Reset restores on', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE], engine: readyEngine({ unifiedKvCache: false }) });
+    localStorage.setItem('FORMAMORPH_advancedMode', 'true');
+    localStorage.setItem('FORMAMORPH_localUnifiedKvCache', 'false');
+    openPanel();
+    await screen.findByRole('combobox');
+    expect(unifiedBox()).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+    expect(unifiedBox()).toBeChecked();
+  });
 });
 
 describe('local model GPU device picker', () => {

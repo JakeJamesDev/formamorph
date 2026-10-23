@@ -75,7 +75,8 @@ function presetIni({ modelId, modelPath }) {
  * Router-mode arguments for one start. `device` is a `--list-devices` id (`Vulkan1`) or null for every
  * device; `cpu` is the fallback after a failed GPU load.
  */
-function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, parallelRequests, device = null, cpu = false }) {
+function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache = true, device = null, cpu = false }) {
+  const slots = Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1);
   const args = [
     '--models-preset', presetPath,
     '--offline',
@@ -85,7 +86,10 @@ function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, 
     '--port', String(port),
     '--log-jsonl',
   ];
-  if (typeof contextSize === 'number' && contextSize > 0) args.push('-c', String(contextSize));
+  // -c is the whole KV pool, split across slots. Unified: one pool the slots share. Not unified: a pool of
+  // Context Size × slots, so each slot holds a full Context Size.
+  const unified = unifiedKvCache !== false;
+  if (typeof contextSize === 'number' && contextSize > 0) args.push('-c', String(unified ? contextSize : contextSize * slots));
   if (cpu) args.push('--device', 'none', '-ngl', '0', '--fit', 'off');
   else {
     // Auto lets llama.cpp fit layers around the context; Max and Custom are the user's split, so fit stays out.
@@ -96,7 +100,8 @@ function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, 
   }
   args.push('-fa', flashAttention === false ? 'off' : 'on');
   // Always passed: the server's auto default is four slots.
-  args.push('-np', String(Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1)));
+  args.push('-np', String(slots));
+  if (unified) args.push('--kv-unified');
   return args;
 }
 
@@ -189,11 +194,12 @@ function parseLogLine(line) {
  * Restates a failed load in the Local Model settings' names, from the instance's log lines. Null when the
  * log names no cause this knows, so the caller can fall back to the exit code.
  */
-function describeLoadError(lines, { contextSize, parallelRequests, gpuLayers, cpu = false } = {}) {
+function describeLoadError(lines, { contextSize, parallelRequests, unifiedKvCache = true, gpuLayers, cpu = false } = {}) {
   const text = lines.join('\n');
   const memory = cpu ? "this computer's RAM" : "this GPU's VRAM";
   if (/failed to allocate buffer for kv cache|failed to initialize the context|failed to create context/i.test(text)) {
-    const n = Math.max(1, parallelRequests ?? 1);
+    // A shared pool costs the same at any slot count, so Parallel Requests only matters when it is off.
+    const n = unifiedKvCache === false ? Math.max(1, parallelRequests ?? 1) : 1;
     const size = typeof contextSize === 'number' && contextSize > 0 ? `Context Size ${contextSize}` : 'The context';
     const parallel = n > 1 ? ` with ${n} Parallel Requests` : '';
     return `${size}${parallel} doesn't fit in ${memory}. Lower Context Size${n > 1 ? ' or Parallel Requests' : ''}.`;

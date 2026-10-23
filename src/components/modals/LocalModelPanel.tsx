@@ -14,7 +14,7 @@ import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
 import { setLocalLlmOptions, listLocalGpuDevices, pinnedEngineDevice, type EngineDeviceList } from '@/lib/imageGen/desktop';
 import {
   LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
-  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_PARALLEL_REQUESTS,
   LOCAL_GPU_DEVICE_AUTO, LOCAL_GPU_DEVICE_ALL, DEFAULT_LOCAL_GPU_DEVICE,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
@@ -31,6 +31,7 @@ export function LocalModelPanel() {
     localGpuLayers, setLocalGpuLayers,
     localFlashAttention, setLocalFlashAttention,
     localParallelRequests, setLocalParallelRequests,
+    localUnifiedKvCache, setLocalUnifiedKvCache,
     localGpuDevice, setLocalGpuDevice,
     localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
@@ -93,6 +94,7 @@ export function LocalModelPanel() {
     localGpuLayers !== engine.gpuLayers ||
     localFlashAttention !== engine.flashAttention ||
     localParallelRequests !== engine.parallelRequests ||
+    localUnifiedKvCache !== engine.unifiedKvCache ||
     deviceDiffers;
 
   // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
@@ -106,7 +108,7 @@ export function LocalModelPanel() {
   const saveReload = async () => {
     setReloading(true);
     try {
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, gpuDevice: localGpuDevice });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, gpuDevice: localGpuDevice });
     } finally {
       setReloading(false);
     }
@@ -117,6 +119,7 @@ export function LocalModelPanel() {
     setLocalGpuLayers(DEFAULT_LOCAL_GPU_LAYERS);
     setLocalFlashAttention(DEFAULT_LOCAL_FLASH_ATTENTION);
     setLocalParallelRequests(DEFAULT_LOCAL_PARALLEL_REQUESTS);
+    setLocalUnifiedKvCache(DEFAULT_LOCAL_UNIFIED_KV_CACHE);
     setLocalGpuDevice(DEFAULT_LOCAL_GPU_DEVICE);
     setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
@@ -239,7 +242,7 @@ export function LocalModelPanel() {
         />
       )}
 
-      {/* Parallel slots split the context (each gets ~context / slots), so the per-slot window is worth showing. */}
+      {/* Unified: the slots share one Context Size pool. Not unified: every slot holds a full Context Size. */}
       {advancedMode && (
         <Row htmlFor="localParallelRequests" {...rowCopy('localParallelRequests')}>
           <ValueSlider
@@ -249,9 +252,18 @@ export function LocalModelPanel() {
             max={LOCAL_PARALLEL_REQUESTS_MAX}
             step={1}
             onChange={setLocalParallelRequests}
-            format={(v) => (v === 1 ? '1 (off)' : `${v} · ~${Math.floor(localContextSize / v).toLocaleString()} tok each`)}
+            format={(v) => (v === 1 ? '1 (off)' : localUnifiedKvCache ? `${v} · share ${localContextSize.toLocaleString()} tok` : `${v} · ${localContextSize.toLocaleString()} tok each`)}
           />
         </Row>
+      )}
+
+      {advancedMode && (
+        <CheckRow
+          htmlFor="localUnifiedKvCache"
+          checked={localUnifiedKvCache}
+          onChange={setLocalUnifiedKvCache}
+          {...rowCopy('localUnifiedKvCache')}
+        />
       )}
 
       {/* Sampling settings, grouped together (all "apply to the next turn"). */}

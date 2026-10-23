@@ -34,10 +34,13 @@ export const DEFAULT_LOCAL_GPU_LAYERS = GPU_LAYERS_AUTO;
 // On by default: mature and widely supported (modern llama.cpp auto-enables it), cuts KV-cache VRAM — which
 // matters most now that parallel slots split the cache. Only truly old/unsupported backends need it off.
 export const DEFAULT_LOCAL_FLASH_ATTENTION = true;
-// How many requests the bundled engine decodes at once (context sequences). They share the KV cache, so each
-// slot's window is ~contextSize / N — 2 balances a real turn-batch speedup against the halved per-slot window.
+// How many requests the bundled engine decodes at once (llama-server slots). With the unified KV cache they
+// share one contextSize pool; without it each slot holds a full contextSize, so the cache is N times larger.
 export const LOCAL_PARALLEL_REQUESTS_MAX = 8;
 export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 2;
+// On by default, as in LM Studio: parallel requests share one contextSize pool, so extra slots cost no extra
+// VRAM. Off gives every slot a full contextSize (--kv-unified left out, -c = contextSize × slots).
+export const DEFAULT_LOCAL_UNIFIED_KV_CACHE = true;
 // Which GPU the bundled engine runs on, as a device *name* so the choice survives a driver update that
 // reorders the adapters. AUTO picks the discrete card and ignores an integrated one — see
 // electron/engineDevice.cjs for the policy; the value is only ever resolved to an index in main.
