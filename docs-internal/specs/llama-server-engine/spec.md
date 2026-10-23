@@ -213,6 +213,13 @@ From ticket intent questions.
 - **T02-2.** Ticket 02 owns the `--list-devices` parser and moves the device picker and Auto's pick onto it. The raw Vulkan index probe and `GGML_VK_VISIBLE_DEVICES` go: `--device` is the one pinning scheme. Ticket 04 keeps the VRAM share, free-at-load, total and the attributed process.
 - **T02-3.** GPU Layers Max and Custom pass `--fit off`, so fit never shrinks the player's Context Size, and a load that doesn't fit fails as today. Auto keeps fit on.
 - **T02-4.** The CPU fallback reruns the same binary with `--device none -ngl 0` on Windows and macOS, and the bundled CPU build on Linux. After a fallback the backend reads `cpu`. When the CPU load fails too, the error shown is the GPU attempt's, restated in setting names.
+- **T03-1.** The proxy copies the old engine's message rule exactly: the last message always goes up as a user turn, whatever its role.
+- **T03-2.** The proxy flattens text parts into one string joined by a blank line, as today. A message that still holds an image after stripping keeps its parts array.
+- **T03-3.** If the opening `<think>` tag is missing, the proxy restores it per request from the router's `/apply-template`: when the rendered prompt ends with an open think tag, the tag goes in front of the first content.
+- **T04-1.** The engine always passes `-lv 4`, since the buffer-size and "MiB free" lines only print at that level, and reads them for every GPU Layers mode. Output is drained continuously and never kept whole.
+- **T04-2.** The attributed process is the router's model instance, found once per load by a parent-process lookup. nvidia-smi never lists the router.
+- **T04-3.** The share sums the model, KV and compute buffers on non-host devices, across every device the instance uses. Host buffers are left out. On the CPU backend the share is null. Measured: 3024.75 MiB against a 3042 MiB nvidia-smi delta.
+- **T04-4.** The "~" mark and the fallback order in the viewer stay as they are.
 
 ## Further Notes
 
