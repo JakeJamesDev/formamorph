@@ -98,6 +98,8 @@ function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, 
     '--host', '127.0.0.1',
     '--port', String(port),
     '--log-jsonl',
+    // Thought text stays in `content`, as the app reads it.
+    '--reasoning-format', 'none',
   ];
   // -c is the whole KV pool, split across slots. Unified: one pool the slots share. Not unified: a pool of
   // Context Size × slots, so each slot holds a full Context Size.

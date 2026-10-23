@@ -1,10 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import llmEngine from './llmEngine.cjs';
 import llamaServer from './llamaServer.cjs';
-import { createFakeLlamaServer, loadFixture } from './fakeLlamaServer.mjs';
+import { createFakeLlamaServer, isCpuStart, loadFixture, loadThinkingFixture } from './fakeLlamaServer.mjs';
 
 const { createEngine, getState } = llmEngine;
 const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
@@ -206,6 +207,166 @@ describe('engine lifecycle through the fake server', () => {
   });
 });
 
+describe('proxy request path', () => {
+  /** A ready engine over a fake server; `chat(body)` posts to its front port. */
+  async function ready(fakeOptions) {
+    const { fake } = setup(fakeOptions);
+    const port = await freePort();
+    // A failed start names its error here rather than as a refused connection later.
+    expect(await engine.start({ ...SETTINGS, modelPath: MODEL, port })).toMatchObject({ status: 'ready', error: null });
+    const chat = (body, init = {}) => fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body), ...init });
+    return { fake, port, chat };
+  }
+  const sent = (fake) => fake.chatRequests.at(-1);
+  const image = (n) => ({ type: 'image_url', image_url: { url: `data:image/png;base64,${n}` } });
+
+  it('drops image parts the model cannot see and counts them in an exposed header', async () => {
+    const { fake, chat } = await ready();
+    const res = await chat({ messages: [
+      { role: 'user', content: [{ type: 'text', text: 'Look.' }, image(1)] },
+      { role: 'assistant', content: 'A cat.' },
+      { role: 'user', content: [image(2), { type: 'text', text: 'And this?' }, image(3)] },
+    ] });
+    expect(res.headers.get('x-formamorph-images-dropped')).toBe('3');
+    expect(res.headers.get('access-control-expose-headers')).toContain('X-Formamorph-Images-Dropped');
+    expect(sent(fake).messages).toEqual([
+      { role: 'user', content: 'Look.' },
+      { role: 'assistant', content: 'A cat.' },
+      { role: 'user', content: 'And this?' },
+    ]);
+  });
+
+  it('sets no image header on a text-only request', async () => {
+    const { chat } = await ready();
+    const res = await chat({ messages: [{ role: 'user', content: 'hi' }] });
+    expect(res.headers.get('x-formamorph-images-dropped')).toBeNull();
+  });
+
+  it('merges every system message into one at the top', async () => {
+    const { fake, chat } = await ready();
+    await chat({ messages: [
+      { role: 'system', content: 'Rules.' },
+      { role: 'user', content: 'u1' },
+      { role: 'system', content: [{ type: 'text', text: 'World.' }] },
+      { role: 'assistant', content: 'a1' },
+      { role: 'user', content: 'u2' },
+    ] });
+    expect(sent(fake).messages).toEqual([
+      { role: 'system', content: 'Rules.\nWorld.' },
+      { role: 'user', content: 'u1' },
+      { role: 'assistant', content: 'a1' },
+      { role: 'user', content: 'u2' },
+    ]);
+  });
+
+  it('sends the last message as a user turn, whatever its role, and drops other roles', async () => {
+    const { fake, chat } = await ready();
+    await chat({ messages: [
+      { role: 'user', content: 'u1' },
+      { role: 'tool', content: 'result', tool_call_id: 't1' },
+      { role: 'assistant', content: 'Continue from here.' },
+    ] });
+    expect(sent(fake).messages).toEqual([
+      { role: 'user', content: 'u1' },
+      { role: 'user', content: 'Continue from here.' },
+    ]);
+    await chat({ messages: [{ role: 'user', content: 'u1' }, { role: 'system', content: 'Last word.' }] });
+    expect(sent(fake).messages).toEqual([{ role: 'user', content: 'u1' }, { role: 'user', content: 'Last word.' }]);
+  });
+
+  it('joins a message’s text parts with a blank line', async () => {
+    const { fake, chat } = await ready();
+    await chat({ messages: [{ role: 'user', content: [{ type: 'text', text: 'One.' }, { type: 'text', text: 'Two.' }] }] });
+    expect(sent(fake).messages).toEqual([{ role: 'user', content: 'One.\n\nTwo.' }]);
+  });
+
+  it('passes every other request field through unchanged', async () => {
+    const { fake, chat } = await ready();
+    const fields = {
+      response_format: { type: 'json_schema', json_schema: { name: 'turn', schema: { type: 'object', properties: { a: { type: 'string' } } } } },
+      top_a: 0.2, // an Extra Parameter the app knows nothing about
+      temperature: 0.7, top_p: 0.9, top_k: 40, min_p: 0.05, max_tokens: 300, stop: ['\n\n'],
+      repetition_penalty: 1.1, repeat_penalty: 1.1,
+      thinking_budget_tokens: 256, reasoning_budget_tokens: 128, reasoning_effort: 'none',
+      chat_template_kwargs: { enable_thinking: false },
+      seed: 42,
+    };
+    await chat({ model: 'whatever', messages: [{ role: 'user', content: 'hi' }], ...fields });
+    const { model, messages, ...rest } = sent(fake);
+    expect(rest).toEqual(fields);
+    expect(model).toBe('Tiny-Q4_K_M.gguf');
+    expect(messages).toEqual([{ role: 'user', content: 'hi' }]);
+  });
+
+  it('keeps the OpenAI reply shape, streamed and not', async () => {
+    const { chat } = await ready();
+    const expected = fixture.scenarios.loaded.chat.choices[0].message.content;
+    const reply = await (await chat({ messages: [{ role: 'user', content: 'hi' }] })).json();
+    expect(reply).toMatchObject({ object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: expected }, finish_reason: 'stop' }] });
+
+    const res = await chat({ messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }, image(1)] }], stream: true });
+    expect(res.headers.get('content-type')).toMatch(/^text\/event-stream/);
+    expect(res.headers.get('x-formamorph-images-dropped')).toBe('1');
+    const frames = (await res.text()).split('\n\n').filter(Boolean).map((f) => f.replace(/^data: /, ''));
+    expect(frames.at(-1)).toBe('[DONE]');
+    const chunks = frames.slice(0, -1).map((f) => JSON.parse(f));
+    expect(chunks.every((c) => c.object === 'chat.completion.chunk')).toBe(true);
+    expect(chunks.map((c) => c.choices[0].delta.content ?? '').join('')).toBe(expected);
+    expect(chunks.at(-1).choices[0].finish_reason).toBe('stop');
+  });
+
+  it('cancels the upstream request when the client hangs up mid-stream', async () => {
+    const { fake, port } = await ready({ holdReply: true });
+    // node:http, not fetch: the test environment's AbortSignal is not the one Node's fetch takes.
+    const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/v1/chat/completions' });
+    const firstFrame = new Promise((resolve) => req.on('response', (res) => res.once('data', resolve)));
+    req.on('error', () => {});
+    req.end(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], stream: true }));
+    await firstFrame; // the reply is mid-decode
+    expect(fake.chatHangups).toHaveLength(0);
+    req.destroy();
+    await expect.poll(() => fake.chatHangups.length).toBe(1);
+  });
+
+  it('cancels the upstream request when the client hangs up before a non-stream reply', async () => {
+    const { fake, port } = await ready({ holdReply: true });
+    const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/v1/chat/completions' });
+    req.on('error', () => {});
+    req.end(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }));
+    await expect.poll(() => fake.chatRequests.length).toBe(1); // upstream is decoding
+    expect(fake.chatHangups).toHaveLength(0);
+    req.destroy();
+    await expect.poll(() => fake.chatHangups.length).toBe(1);
+  });
+
+  it('answers every */models path with the loaded model and its state', async () => {
+    const { port } = await ready();
+    for (const p of ['/v1/models', '/api/v0/models', '/models']) {
+      const list = await (await fetch(`http://127.0.0.1:${port}${p}`)).json();
+      expect(list).toEqual({ object: 'list', data: [{ id: 'Tiny-Q4_K_M.gguf', object: 'model', owned_by: 'formamorph', state: 'loaded' }] });
+    }
+  });
+
+  it('runs the router with raw reasoning output', async () => {
+    const { fake } = await ready();
+    expect(after(argsOf(fake.routerCalls()[0]), '--reasoning-format')).toBe('none');
+  });
+
+  it('keeps the opening think tag a template writes into its generation prompt', async () => {
+    const thinking = loadThinkingFixture();
+    // The recorded template opens the thought itself, so the model never generates the tag.
+    expect(thinking.applyTemplate.prompt.endsWith('<|im_start|>assistant\n<think>\n')).toBe(true);
+    // The thinking model's turn, served by the loaded scenario of the pinned run.
+    const loaded = { ...fixture.scenarios.loaded, chat: thinking.chat, chatStream: thinking.chatStream };
+    const { chat } = await ready({ fixture: { ...fixture, scenarios: { ...fixture.scenarios, loaded } } });
+    const reply = await (await chat({ messages: [{ role: 'user', content: 'What is 2+2? One word.' }] })).json();
+    expect(reply.choices[0].message.content.startsWith('<think>\n')).toBe(true);
+    const streamed = (await (await chat({ messages: [{ role: 'user', content: 'hi' }], stream: true })).text())
+      .split('\n\n').filter((f) => f.startsWith('data: {')).map((f) => JSON.parse(f.slice(6)).choices[0]?.delta?.content ?? '').join('');
+    expect(streamed.startsWith('<think>\n')).toBe(true);
+  });
+});
+
 describe('settings → server arguments', () => {
   const startWith = async (options, fakeOptions) => {
     const { fake } = setup(fakeOptions);
@@ -338,7 +499,7 @@ describe('settings → server arguments', () => {
 
 describe('CPU fallback and load errors', () => {
   it('retries a failed GPU load once on the CPU and reports the CPU backend', async () => {
-    const { fake, seen } = setup({ scenarioFor: (args) => (args.includes('none') ? 'cpu' : 'kvFail') });
+    const { fake, seen } = setup({ scenarioFor: (args) => (isCpuStart(args) ? 'cpu' : 'kvFail') });
     const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
     expect(s.status).toBe('ready');
     expect(s.gpuBackend).toBe('cpu');
@@ -363,7 +524,7 @@ describe('CPU fallback and load errors', () => {
   });
 
   it('falls back to the separate CPU build on Linux, under the supervising shell', async () => {
-    const { fake } = setup({ scenarioFor: (args) => (args.includes('none') ? 'cpu' : 'kvFail') }, { platform: 'linux' });
+    const { fake } = setup({ scenarioFor: (args) => (isCpuStart(args) ? 'cpu' : 'kvFail') }, { platform: 'linux' });
     const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
     expect(s.status).toBe('ready');
     expect(s.gpuBackend).toBe('cpu');
