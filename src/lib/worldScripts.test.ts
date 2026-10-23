@@ -116,6 +116,15 @@ describe('worldScriptEntries', () => {
     expect(byTiming.switch).toEqual([]);
   });
 
+  it('carries each script alone, never its box, so a row’s write puts no box fields into the world', () => {
+    // A stat's or trait's row writes `{ ...script, code }` straight back; a box there would nest its stat, owner and
+    // runs under the script, and every keystroke would nest the one before it again.
+    const keys = new Set(['id', 'name', 'timing', 'code', 'order']);
+    for (const entry of worldScriptEntries(world)) {
+      expect(Object.keys(entry.script).filter((key) => !keys.has(key))).toEqual([]);
+    }
+  });
+
   it('lists a script with no code, which the runner skips but the author still edits', () => {
     const blank = { ...world, scripts: [s('w-blank', 'after', { code: '' })] };
     expect(ids(scriptsByTiming(worldScriptEntries(blank)).after)).toContain('world:w-blank');

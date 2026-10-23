@@ -94,9 +94,14 @@ export function worldScriptList(
   ];
 }
 
-const entryOf = (home: ScriptHomeRef, script: Script, ownerName: string, entity: Entity | null, box?: StatCodeBox | TraitCodeBox): ScriptEntry => ({
-  key: scriptEntryKey(home, script.id), home, script, ownerName, label: scriptLabel(script, ownerName), entity, ...(box && { box }),
-});
+/** The Script fields of a box, and nothing a box adds: the row writes this object back into the world. */
+const plainScript = ({ id, name, timing, code, order }: Script): Script =>
+  ({ id, timing, code, ...(name !== undefined && { name }), ...(order !== undefined && { order }) });
+
+const entryOf = (home: ScriptHomeRef, box: Script, ownerName: string, entity: Entity | null, opened?: StatCodeBox | TraitCodeBox): ScriptEntry => {
+  const script = plainScript(box);
+  return { key: scriptEntryKey(home, script.id), home, script, ownerName, label: scriptLabel(script, ownerName), entity, ...(opened && { box: opened }) };
+};
 
 /** The row a box opens on its owner's tab. */
 export const ownerRowId = (entry: ScriptEntry): string | null => (entry.box ? rowIdOf(entry.box) : null);
@@ -128,7 +133,7 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
     return traits.filter(onEntity(entity.id)).sort((a, b) => at(a) - at(b));
   };
   return [
-    ...worldScripts.map(({ home, owner, runs, ...script }) => entryOf(home, script, WORLD_SCRIPT_OWNER, null)),
+    ...worldScripts.map((box) => entryOf(box.home, box, WORLD_SCRIPT_OWNER, null)),
     ...stats.filter(global).map(statEntry),
     ...globalTraits().map(traitEntry),
     ...world.entities.flatMap((entity) => [

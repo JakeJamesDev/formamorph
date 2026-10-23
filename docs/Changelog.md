@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The bundled model's out-of-VRAM error names your Context Size and Parallel Requests settings.** It said "sequences" before and gave no next step. Now it tells you which setting to lower.
+  - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.
 
 ---
 
