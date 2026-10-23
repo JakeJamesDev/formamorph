@@ -94,14 +94,9 @@ export function worldScriptList(
   ];
 }
 
-/** The Script fields of a box, and nothing a box adds: the row writes this object back into the world. */
-const plainScript = ({ id, name, timing, code, order }: Script): Script =>
-  ({ id, timing, code, ...(name !== undefined && { name }), ...(order !== undefined && { order }) });
-
-const entryOf = (home: ScriptHomeRef, box: Script, ownerName: string, entity: Entity | null, opened?: StatCodeBox | TraitCodeBox): ScriptEntry => {
-  const script = plainScript(box);
-  return { key: scriptEntryKey(home, script.id), home, script, ownerName, label: scriptLabel(script, ownerName), entity, ...(opened && { box: opened }) };
-};
+const entryOf = (home: ScriptHomeRef, script: Script, ownerName: string, entity: Entity | null, box?: StatCodeBox | TraitCodeBox): ScriptEntry => ({
+  key: scriptEntryKey(home, script.id), home, script, ownerName, label: scriptLabel(script, ownerName), entity, ...(box && { box }),
+});
 
 /** The row a box opens on its owner's tab. */
 export const ownerRowId = (entry: ScriptEntry): string | null => (entry.box ? rowIdOf(entry.box) : null);
@@ -117,8 +112,8 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
   const stats = listed.flatMap((entry) => (entry.kind === 'stat' ? [entry.box] : []));
   const traits = listed.flatMap((entry) => (entry.kind === 'trait' ? [entry.box] : []));
   const worldScripts = listed.flatMap((entry) => (entry.kind === 'world' ? [entry.box] : []));
-  const statEntry = (box: StatCodeBox) => entryOf(box.home, box, box.stat.name, box.entity, box);
-  const traitEntry = (box: TraitCodeBox) => entryOf(box.home, box, box.trait.name, box.entity, box);
+  const statEntry = (box: StatCodeBox) => entryOf(box.home, box.script, box.stat.name, box.entity, box);
+  const traitEntry = (box: TraitCodeBox) => entryOf(box.home, box.script, box.trait.name, box.entity, box);
   const blueprint = (box: StatCodeBox | TraitCodeBox) => (box.home.kind === 'stat' || box.home.kind === 'trait') && box.owner !== null;
   const global = (box: StatCodeBox | TraitCodeBox) => (box.home.kind === 'stat' || box.home.kind === 'trait') && box.owner === null;
   // The runner reaches global traits in the Traits tab's order (Q50); the sort is stable within one trait's scripts.
@@ -133,7 +128,7 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
     return traits.filter(onEntity(entity.id)).sort((a, b) => at(a) - at(b));
   };
   return [
-    ...worldScripts.map((box) => entryOf(box.home, box, WORLD_SCRIPT_OWNER, null)),
+    ...worldScripts.map((box) => entryOf(box.home, box.script, WORLD_SCRIPT_OWNER, null)),
     ...stats.filter(global).map(statEntry),
     ...globalTraits().map(traitEntry),
     ...world.entities.flatMap((entity) => [

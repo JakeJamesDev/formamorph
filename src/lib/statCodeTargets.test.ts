@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Entity, Stat } from '@/types';
-import { statCodeReferences } from './statCodeTargets';
+import type { Entity, Stat, Tool } from '@/types';
+import { statCodeReferences, worldToolBoxes } from './statCodeTargets';
 import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
@@ -10,6 +10,16 @@ const code = 'self.value = 1; const n = stats.find((s) => s.id); return stats.De
 const rage = stat('rage', 'Rage', { scripts: boxScripts({ before: 'owner.stats.Rage.max = 50;' }) });
 const creature: Entity = { id: 'creature', name: 'The Creature', stats: [rage] };
 const world = { stats: [stat('destruction', 'Destruction'), stat('alert', 'Alert', { scripts: boxScripts({ after: code }) })], entities: [creature], placeholders: [] };
+
+describe('worldToolBoxes', () => {
+  it('carries the Script a Tool reads as, with the box’s own fields left out', () => {
+    const dice: Tool = {
+      id: 'dice', name: 'roll_dice', description: '', params: [], handler: { kind: 'script', code: 'return 4;' }, emptyResult: '', offeredTo: ['narration'],
+    };
+    const [box] = worldToolBoxes({ worldTools: [dice] });
+    expect(box.script).toStrictEqual({ id: 'dice', name: 'roll_dice', timing: box.timing, code: 'return 4;' });
+  });
+});
 
 describe('statCodeReferences', () => {
   const references = statCodeReferences(world);
