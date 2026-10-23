@@ -13,7 +13,7 @@ const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
 // A branch that forgets one hands the UI `undefined` where the type says `number | null`.
 const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
-  'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'maxContextSize', 'engineVramMB',
+  'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'kCacheType', 'vCacheType', 'kvCacheInRam', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
   'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
 ];
@@ -270,6 +270,37 @@ describe('settings → server arguments', () => {
     const { args, state } = await startWith({ unifiedKvCache: undefined });
     expect(args).toContain('--kv-unified');
     expect(state.unifiedKvCache).toBe(true);
+  });
+
+  it('K and V Cache Type → -ctk and -ctv, and the applied types show in the status', async () => {
+    const { args, state } = await startWith({ kCacheType: 'q8_0', vCacheType: 'q4_0' });
+    expect(after(args, '-ctk')).toBe('q8_0');
+    expect(after(args, '-ctv')).toBe('q4_0');
+    expect(state).toMatchObject({ kCacheType: 'q8_0', vCacheType: 'q4_0' });
+  });
+
+  it('K and V Cache Type unset or unknown count as F16', async () => {
+    const { args, state } = await startWith({ kCacheType: 'q5_1', vCacheType: undefined });
+    expect(after(args, '-ctk')).toBe('f16');
+    expect(after(args, '-ctv')).toBe('f16');
+    expect(state).toMatchObject({ kCacheType: 'f16', vCacheType: 'f16' });
+  });
+
+  it('a quantized V cache with Flash Attention off falls back to F16; a quantized K stays', async () => {
+    const { args, state } = await startWith({ kCacheType: 'q8_0', vCacheType: 'q8_0', flashAttention: false });
+    expect(after(args, '-fa')).toBe('off');
+    expect(after(args, '-ctk')).toBe('q8_0');
+    expect(after(args, '-ctv')).toBe('f16');
+    expect(state.vCacheType).toBe('f16');
+  });
+
+  it('KV Cache in RAM on → -nkvo; off or unset → no -nkvo', async () => {
+    const on = await startWith({ kvCacheInRam: true });
+    expect(on.args).toContain('-nkvo');
+    expect(on.state.kvCacheInRam).toBe(true);
+    const off = await startWith({ kvCacheInRam: undefined });
+    expect(off.args).not.toContain('-nkvo');
+    expect(off.state.kvCacheInRam).toBe(false);
   });
 
   it('GPU Device by name → --device with that device id, resolved by name', async () => {

@@ -34,6 +34,9 @@ const NO_ENGINE = {
   flashAttention: null,
   parallelRequests: null,
   unifiedKvCache: null,
+  kCacheType: null,
+  vCacheType: null,
+  kvCacheInRam: null,
   maxContextSize: null,
   engineVramMB: null,
   gpuBackend: null,
@@ -317,7 +320,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
    * device name), resolved against `--list-devices` on every start with `nvidiaGpus` (nvidia-smi rows) for
    * Auto's pick. A failed GPU load retries once on the CPU.
    */
-  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, gpuDevice, nvidiaGpus } = {}) {
+  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus } = {}) {
     if (state.status === 'loading' || state.status === 'ready') return getState();
     if (!modelPath) { setState({ ...stoppedState(), status: 'error', port, error: 'No modelPath provided.' }); return getState(); }
     const modelId = path.basename(modelPath);
@@ -327,6 +330,9 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       flashAttention: flashAttention !== false,
       parallelRequests: Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1),
       unifiedKvCache: unifiedKvCache !== false,
+      kCacheType: llamaServer.cacheType(kCacheType),
+      vCacheType: llamaServer.effectiveVCacheType(vCacheType, flashAttention),
+      kvCacheInRam: kvCacheInRam === true,
     };
     // The options this model is (being) loaded with, so the renderer can compare against pending settings.
     const applied = { ...settings, maxContextSize: null, engineVramMB: null };

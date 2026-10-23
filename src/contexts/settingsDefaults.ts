@@ -41,6 +41,18 @@ export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 2;
 // On by default, as in LM Studio: parallel requests share one contextSize pool, so extra slots cost no extra
 // VRAM. Off gives every slot a full contextSize (--kv-unified left out, -c = contextSize × slots).
 export const DEFAULT_LOCAL_UNIFIED_KV_CACHE = true;
+// Precision of the context's K and V halves (llama-server -ctk / -ctv). Lower precision shrinks the context
+// for a little quality; a quantized V needs Flash Attention. Mirrors CACHE_TYPES in electron/llamaServer.cjs.
+export type LocalCacheType = 'f16' | 'q8_0' | 'q4_0';
+export const LOCAL_CACHE_TYPES: { value: LocalCacheType; label: string }[] = [
+  { value: 'f16', label: 'F16' },
+  { value: 'q8_0', label: 'Q8_0' },
+  { value: 'q4_0', label: 'Q4_0' },
+];
+export const DEFAULT_LOCAL_K_CACHE_TYPE: LocalCacheType = 'f16';
+export const DEFAULT_LOCAL_V_CACHE_TYPE: LocalCacheType = 'f16';
+// Off keeps the context on the GPU (llama-server -nkvo left out); on moves it to system RAM.
+export const DEFAULT_LOCAL_KV_CACHE_IN_RAM = false;
 // Which GPU the bundled engine runs on, as a device *name* so the choice survives a driver update that
 // reorders the adapters. AUTO picks the discrete card and ignores an integrated one — see
 // electron/engineDevice.cjs for the policy; the value is only ever resolved to an index in main.

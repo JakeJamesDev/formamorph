@@ -17,7 +17,7 @@ const IGPU = 'Intel(R) UHD Graphics 770';
 /** A loaded engine at the renderer's own defaults, so only the device row can differ from what's applied. */
 const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
   status: 'ready', modelPath: 'D:/models/m.gguf', modelId: 'm.gguf', port: 8977, error: null, loadProgress: null,
-  contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true,
+  contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false,
   maxContextSize: 32768, engineVramMB: 4096,
   gpuBackend: 'vulkan', gpuDeviceNames: [IGPU, DISCRETE], deviceVramTotalMB: 16376, deviceVramFreeMB: 15176,
   gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,
@@ -66,7 +66,7 @@ describe('local model Unified KV Cache row', () => {
   it('shows in Advanced only', async () => {
     stubDesktop({ devices: [IGPU, DISCRETE] });
     openPanel();
-    await screen.findByRole('combobox');
+    await screen.findAllByRole('combobox');
     expect(screen.queryByText('Unified KV Cache')).toBeNull();
 
     await userEvent.click(screen.getByRole('radio', { name: 'Advanced' }));
@@ -77,7 +77,7 @@ describe('local model Unified KV Cache row', () => {
     stubDesktop({ devices: [IGPU, DISCRETE] });
     localStorage.setItem('FORMAMORPH_advancedMode', 'true');
     openPanel();
-    await screen.findByRole('combobox');
+    await screen.findAllByRole('combobox');
     expect(reloadButton()).toBeDisabled();
 
     await userEvent.click(unifiedBox());
@@ -91,11 +91,84 @@ describe('local model Unified KV Cache row', () => {
     localStorage.setItem('FORMAMORPH_advancedMode', 'true');
     localStorage.setItem('FORMAMORPH_localUnifiedKvCache', 'false');
     openPanel();
-    await screen.findByRole('combobox');
+    await screen.findAllByRole('combobox');
     expect(unifiedBox()).not.toBeChecked();
 
     await userEvent.click(screen.getByRole('button', { name: /reset/i }));
     expect(unifiedBox()).toBeChecked();
+  });
+});
+
+describe('local model KV cache rows', () => {
+  const kvBox = () => screen.getByRole('checkbox', { name: /kv cache in ram/i });
+  const flashBox = () => screen.getByRole('checkbox', { name: /flash attention/i });
+  const reloadButton = () => screen.getByRole('button', { name: /save.*reload/i });
+  const advanced = async (engine = readyEngine()) => {
+    stubDesktop({ devices: [IGPU, DISCRETE], engine });
+    localStorage.setItem('FORMAMORPH_advancedMode', 'true');
+    openPanel();
+    await screen.findAllByRole('combobox');
+  };
+  // The cache pickers are the only comboboxes whose trigger id names them.
+  const picker = (id: string) => document.getElementById(id) as HTMLElement;
+  const choose = async (id: string, label: string) => {
+    await userEvent.click(picker(id));
+    await userEvent.click(await screen.findByRole('option', { name: label }));
+  };
+
+  it('show in Advanced only', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE] });
+    openPanel();
+    await screen.findByRole('combobox');
+    expect(screen.queryByText('K Cache Type')).toBeNull();
+    expect(screen.queryByText('V Cache Type')).toBeNull();
+    expect(screen.queryByText('KV Cache in RAM')).toBeNull();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Advanced' }));
+    expect(picker('localKCacheType')).toHaveTextContent('F16');
+    expect(picker('localVCacheType')).toHaveTextContent('F16');
+    expect(kvBox()).not.toBeChecked();
+  });
+
+  it('stay disarmed at the defaults, then arm on a change and send all three', async () => {
+    await advanced();
+    expect(reloadButton()).toBeDisabled();
+
+    await choose('localKCacheType', 'Q8_0');
+    await userEvent.click(kvBox());
+    expect(reloadButton()).toBeEnabled();
+    await userEvent.click(reloadButton());
+    expect(setOptionsCalls[0]).toMatchObject({ kCacheType: 'q8_0', vCacheType: 'f16', kvCacheInRam: true });
+  });
+
+  it('block a quantized V cache while Flash Attention is off, and say why', async () => {
+    localStorage.setItem('FORMAMORPH_localFlashAttention', 'false');
+    await advanced(readyEngine({ flashAttention: false }));
+    await userEvent.click(picker('localVCacheType'));
+    expect(await screen.findByRole('option', { name: 'Q8_0' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('option', { name: 'Q4_0' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('option', { name: 'F16' })).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('block Flash Attention while V is quantized, without changing V', async () => {
+    localStorage.setItem('FORMAMORPH_localVCacheType', 'q8_0');
+    await advanced(readyEngine({ vCacheType: 'q8_0' }));
+    expect(flashBox()).toBeDisabled();
+    expect(flashBox()).toBeChecked();
+    expect(picker('localVCacheType')).toHaveTextContent('Q8_0');
+  });
+
+  it('Reset restores the defaults', async () => {
+    localStorage.setItem('FORMAMORPH_localKCacheType', 'q4_0');
+    localStorage.setItem('FORMAMORPH_localVCacheType', 'q8_0');
+    localStorage.setItem('FORMAMORPH_localKvCacheInRam', 'true');
+    await advanced(readyEngine({ kCacheType: 'q4_0', vCacheType: 'q8_0', kvCacheInRam: true }));
+    expect(kvBox()).toBeChecked();
+
+    await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+    expect(picker('localKCacheType')).toHaveTextContent('F16');
+    expect(picker('localVCacheType')).toHaveTextContent('F16');
+    expect(kvBox()).not.toBeChecked();
   });
 });
 

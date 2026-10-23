@@ -11,7 +11,8 @@ const { collect: collectVram } = require('./vramCollect.cjs');
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
 const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
-const { binaryPath: llamaServerBinary, listServerDevices, deviceListing } = require('./llamaServer.cjs');
+const llamaServer = require('./llamaServer.cjs');
+const { binaryPath: llamaServerBinary, listServerDevices, deviceListing } = llamaServer;
 const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
@@ -48,7 +49,7 @@ let mainWindow = null;
 // Must match the renderer's DEFAULT_LOCAL_GPU_LAYERS so a fresh boot doesn't trigger a needless reload.
 // gpuDevice is a device *name* (or 'auto'/'all'), which the engine resolves against `--list-devices` at each
 // start — an index saved across a driver change would point at a different card.
-let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, gpuDevice: ENGINE_DEVICE_AUTO };
+let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false, gpuDevice: ENGINE_DEVICE_AUTO };
 
 // Every GPU llama-server can see, for the device picker. `--list-devices` initializes every backend, so it is
 // read once and cached; each engine start reads its own copy and refreshes this one through its status.
@@ -326,13 +327,21 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     flashAttention: opts.flashAttention === true,
     parallelRequests: typeof opts.parallelRequests === 'number' ? opts.parallelRequests : engineOptions.parallelRequests,
     unifiedKvCache: typeof opts.unifiedKvCache === 'boolean' ? opts.unifiedKvCache : engineOptions.unifiedKvCache,
+    kCacheType: llamaServer.cacheType(opts.kCacheType ?? engineOptions.kCacheType),
+    vCacheType: llamaServer.cacheType(opts.vCacheType ?? engineOptions.vCacheType),
+    kvCacheInRam: typeof opts.kvCacheInRam === 'boolean' ? opts.kvCacheInRam : engineOptions.kvCacheInRam,
     gpuDevice: typeof opts.gpuDevice === 'string' ? opts.gpuDevice : engineOptions.gpuDevice,
   };
+  // A quantized V cache needs Flash Attention; without it the stored V type is not usable.
+  next.vCacheType = llamaServer.effectiveVCacheType(next.vCacheType, next.flashAttention);
   const changed = next.contextSize !== engineOptions.contextSize
     || next.gpuLayers !== engineOptions.gpuLayers
     || next.flashAttention !== engineOptions.flashAttention
     || next.parallelRequests !== engineOptions.parallelRequests
     || next.unifiedKvCache !== engineOptions.unifiedKvCache
+    || next.kCacheType !== engineOptions.kCacheType
+    || next.vCacheType !== engineOptions.vCacheType
+    || next.kvCacheInRam !== engineOptions.kvCacheInRam
     || next.gpuDevice !== engineOptions.gpuDevice;
   engineOptions = next;
   const loaded = llmEngine.getState().modelPath;

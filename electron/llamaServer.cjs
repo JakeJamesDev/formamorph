@@ -71,11 +71,24 @@ function presetIni({ modelId, modelPath }) {
   return `version = 1\n\n[${modelId}]\nmodel = ${modelPath.replace(/\\/g, '/')}\n`;
 }
 
+const CACHE_TYPES = ['f16', 'q8_0', 'q4_0'];
+
+/** A stored cache type, or f16 when it is not one of the three the panel offers. */
+function cacheType(value) {
+  return CACHE_TYPES.includes(value) ? value : 'f16';
+}
+
+/** The V cache type the server may use: a quantized V cache needs Flash Attention, so it falls back to f16 without it. */
+function effectiveVCacheType(value, flashAttention) {
+  const type = cacheType(value);
+  return type !== 'f16' && flashAttention === false ? 'f16' : type;
+}
+
 /**
  * Router-mode arguments for one start. `device` is a `--list-devices` id (`Vulkan1`) or null for every
  * device; `cpu` is the fallback after a failed GPU load.
  */
-function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache = true, device = null, cpu = false }) {
+function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache = true, kCacheType, vCacheType, kvCacheInRam = false, device = null, cpu = false }) {
   const slots = Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1);
   const args = [
     '--models-preset', presetPath,
@@ -102,6 +115,8 @@ function serverArgs({ presetPath, port, contextSize, gpuLayers, flashAttention, 
   // Always passed: the server's auto default is four slots.
   args.push('-np', String(slots));
   if (unified) args.push('--kv-unified');
+  args.push('-ctk', cacheType(kCacheType), '-ctv', effectiveVCacheType(vCacheType, flashAttention));
+  if (kvCacheInRam === true) args.push('-nkvo');
   return args;
 }
 
@@ -215,6 +230,6 @@ function describeLoadError(lines, { contextSize, parallelRequests, unifiedKvCach
 module.exports = {
   GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT,
   freePort, errorText, spawnCommand,
-  buildId, cpuNeedsOwnBuild, binaryPath, presetIni, serverArgs,
+  buildId, cpuNeedsOwnBuild, binaryPath, presetIni, serverArgs, cacheType, effectiveVCacheType,
   parseListDevices, listServerDevices, backendOf, deviceListing, sseReader, loadPercent, parseLogLine, describeLoadError,
 };

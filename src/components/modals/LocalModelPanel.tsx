@@ -14,10 +14,11 @@ import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
 import { setLocalLlmOptions, listLocalGpuDevices, pinnedEngineDevice, type EngineDeviceList } from '@/lib/imageGen/desktop';
 import {
   LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
-  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_PARALLEL_REQUESTS,
   LOCAL_GPU_DEVICE_AUTO, LOCAL_GPU_DEVICE_ALL, DEFAULT_LOCAL_GPU_DEVICE,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
+import type { LocalCacheType } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
 
 /**
@@ -32,6 +33,9 @@ export function LocalModelPanel() {
     localFlashAttention, setLocalFlashAttention,
     localParallelRequests, setLocalParallelRequests,
     localUnifiedKvCache, setLocalUnifiedKvCache,
+    localKCacheType, setLocalKCacheType,
+    localVCacheType, setLocalVCacheType,
+    localKvCacheInRam, setLocalKvCacheInRam,
     localGpuDevice, setLocalGpuDevice,
     localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
@@ -69,6 +73,9 @@ export function LocalModelPanel() {
   };
   const gpuLabel = localGpuLayers === 0 ? 'Off (CPU)' : `${localGpuLayers} layers`;
 
+  // A quantized V cache needs Flash Attention, so each setting blocks the other and neither changes the other.
+  const vCacheQuantized = localVCacheType !== 'f16';
+
   // Cap Context Size at the loaded model's trained ceiling; a smaller model can make a persisted value invalid.
   const contextMax = engine.maxContextSize ?? 32768;
   useEffect(() => {
@@ -95,6 +102,9 @@ export function LocalModelPanel() {
     localFlashAttention !== engine.flashAttention ||
     localParallelRequests !== engine.parallelRequests ||
     localUnifiedKvCache !== engine.unifiedKvCache ||
+    localKCacheType !== engine.kCacheType ||
+    localVCacheType !== engine.vCacheType ||
+    localKvCacheInRam !== engine.kvCacheInRam ||
     deviceDiffers;
 
   // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
@@ -108,7 +118,7 @@ export function LocalModelPanel() {
   const saveReload = async () => {
     setReloading(true);
     try {
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, gpuDevice: localGpuDevice });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice });
     } finally {
       setReloading(false);
     }
@@ -120,6 +130,9 @@ export function LocalModelPanel() {
     setLocalFlashAttention(DEFAULT_LOCAL_FLASH_ATTENTION);
     setLocalParallelRequests(DEFAULT_LOCAL_PARALLEL_REQUESTS);
     setLocalUnifiedKvCache(DEFAULT_LOCAL_UNIFIED_KV_CACHE);
+    setLocalKCacheType(DEFAULT_LOCAL_K_CACHE_TYPE);
+    setLocalVCacheType(DEFAULT_LOCAL_V_CACHE_TYPE);
+    setLocalKvCacheInRam(DEFAULT_LOCAL_KV_CACHE_IN_RAM);
     setLocalGpuDevice(DEFAULT_LOCAL_GPU_DEVICE);
     setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
@@ -238,6 +251,8 @@ export function LocalModelPanel() {
           htmlFor="localFlashAttention"
           checked={localFlashAttention}
           onChange={setLocalFlashAttention}
+          disabled={vCacheQuantized}
+          below={vCacheQuantized ? <Hint>Stays on while <strong>V Cache Type</strong> is Q8_0 or Q4_0</Hint> : undefined}
           {...rowCopy('localFlashAttention')}
         />
       )}
@@ -264,6 +279,36 @@ export function LocalModelPanel() {
           onChange={setLocalUnifiedKvCache}
           {...rowCopy('localUnifiedKvCache')}
         />
+      )}
+
+      {advancedMode && (
+        <>
+          <Row htmlFor="localKCacheType" {...rowCopy('localKCacheType')}>
+            <Select value={localKCacheType} onValueChange={(v) => setLocalKCacheType(v as LocalCacheType)}>
+              <SelectTrigger id="localKCacheType"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LOCAL_CACHE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row htmlFor="localVCacheType" {...rowCopy('localVCacheType')}>
+            <Select value={localVCacheType} onValueChange={(v) => setLocalVCacheType(v as LocalCacheType)}>
+              <SelectTrigger id="localVCacheType"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LOCAL_CACHE_TYPES.map((t) => <SelectItem key={t.value} value={t.value} disabled={t.value !== 'f16' && !localFlashAttention}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {!localFlashAttention && <Hint className="mt-1">Q8_0 and Q4_0 need <strong>Flash Attention</strong>. Turn it on to pick them.</Hint>}
+          </Row>
+
+          <CheckRow
+            htmlFor="localKvCacheInRam"
+            checked={localKvCacheInRam}
+            onChange={setLocalKvCacheInRam}
+            {...rowCopy('localKvCacheInRam')}
+          />
+        </>
       )}
 
       {/* Sampling settings, grouped together (all "apply to the next turn"). */}
