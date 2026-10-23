@@ -6,7 +6,7 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider, useGameData } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
-import { useSeedAvatarOnSaveLoad } from '@/lib/usePlayedVrm';
+import { useSeedAvatarOnSaveLoad } from '@/lib/useLibraryAvatars';
 import { LEGACY_VRM_ID, defaultCharacterData } from '@/lib/legacyVrm';
 import { putSaveRecord } from '@/components/modals/dbUtils';
 import { worldFixture } from '@/test/gamePanels';

@@ -4,18 +4,10 @@ import { useGameData } from '@/contexts/GameDataContext';
 import type { VrmSource } from '@/lib/vrmResolver';
 
 /**
- * Resolve an Avatar source into a URL for `VRMViewer.modelUrl`.
- * - a library id → that model's Blob as an object URL (revoked on change/unmount)
- * - a world store id → the store entry's embedded file
- * - the bundled file, or no source → `undefined` (VRMViewer's bundled default)
- *
- * A library model that fails to load falls back to the bundled file, which is why deleting the seeded copy
- * is safe.
- *
- * `resolving` is true only while a library model's blob is being fetched (so a caller can hold a loader
- * instead of transiently mounting the bundled default, which reports default capabilities and can leave the
- * viewer stuck on them). It clears once the fetch settles — including a failed one that falls back to the
- * default — so a deleted model never leaves the loader spinning forever.
+ * An Avatar source as a URL for `VRMViewer.modelUrl`: a library Avatar's object URL, a store entry's embedded
+ * file, or `undefined` for the bundled file. A library Avatar that fails to load falls back to the bundled file.
+ * `resolving` holds while a library Avatar loads, so a caller can hold a loader instead of the bundled file.
+ * It clears when the load settles, failed or not, so a deleted Avatar never leaves the loader spinning.
  */
 export function useVrmSourceUrl(source: VrmSource | undefined): { url: string | undefined; resolving: boolean } {
   const { worldOverview } = useGameData();

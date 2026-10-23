@@ -38,7 +38,7 @@ describe('findModelUsage', () => {
 describe('deleteModelDescription', () => {
   it('names entities and saves together', () => {
     expect(deleteModelDescription({ entities: ['Wren', 'Odd Wick'], saves: ['Night One'] })).toBe(
-      '"Wren" and "Odd Wick" will show no Avatar. One save uses this Avatar: "Night One". It will fall back to the default Avatar. This action cannot be undone.',
+      '"Wren" and "Odd Wick" will show no Avatar. One save uses this Avatar: "Night One". It will fall back to the Default Avatar. This action cannot be undone.',
     );
   });
 

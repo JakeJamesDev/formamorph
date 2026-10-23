@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
-import { NO_LIBRARY, useLibraryIds } from '@/lib/usePlayedVrm';
+import { NO_LIBRARY, useLibraryIds } from '@/lib/useLibraryAvatars';
 import { readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { playedEntityId, playVrmContext, resolveEntityVrm, resolvePlayedVrm } from '@/lib/vrmResolver';
-import { hasEntityVisual } from '@/components/game/EntityVisual';
+import { hasEntityVisual } from '@/lib/entityVisual';
 import type { Entity } from '@/types';
 
 /** Each entity's Avatar in this playthrough. Whether an entity shows one never waits on the library list: a

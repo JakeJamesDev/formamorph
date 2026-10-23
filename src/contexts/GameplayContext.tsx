@@ -66,7 +66,7 @@ import type {
   TraitsPanelView,
   CascadeOffTraitIds,
   OwnedTraitStates,
-  WorldOverview,
+  WorldVrmStore,
 } from '@/types';
 import { remapChosenVrm } from '../lib/legacyVrm';
 
@@ -534,7 +534,7 @@ function useProvideGameplay() {
    *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. */
   const loadGame = useCallback(async (
     saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (PlaceableEntity & Pick<Entity, 'stats'>)[],
-    vrmStore?: WorldOverview['vrmStore'],
+    vrmStore?: WorldVrmStore,
   ) => {
     const locationIds = locations.map((l) => l.id);
     /** The state with every stat the world has since added, global and each entity's, no entity stat

@@ -1,4 +1,5 @@
 import { assetHash, loadLibraryVrms } from '@/lib/libraryVrm';
+import { withVrmPick } from '@/lib/worldVrmStore';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, VrmPick, WorldVrmStore } from '@/types';
 
@@ -27,8 +28,9 @@ export function readCarriedVrm(raw: unknown): CarriedVrm | undefined {
 }
 
 const withoutVrm = <T extends PortableEntity>(entity: T, pick: VrmPick | undefined): T => {
-  const { vrm: _vrm, vrmPick: _pick, ...rest } = entity;
-  return (pick ? { ...rest, vrmPick: pick } : rest) as T;
+  const { vrm: _vrm, ...rest } = entity;
+  // `vrm` is optional on T, so T without it is still a T.
+  return withVrmPick(rest as T, pick);
 };
 
 /**

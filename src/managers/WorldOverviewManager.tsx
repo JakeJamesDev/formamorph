@@ -99,7 +99,7 @@ const WorldOverviewManager = () => {
 
   return (
     // The listing fields first, then the Avatars, then the music: the library card's name, author, tags and
-    // picture read as one block.
+    // image read as one block.
     <div className="space-y-4">
       <div className="space-y-2" data-tour-anchor="world-name" {...fieldFrame('name')}>
         <Label htmlFor="worldName">World Name</Label>

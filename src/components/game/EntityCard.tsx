@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { EntityVisual, hasEntityVisual } from './EntityVisual';
+import { EntityVisual } from './EntityVisual';
+import { hasEntityVisual } from '@/lib/entityVisual';
 import AudioPlayer from './AudioPlayer';
 import type { Entity } from '@/types';
 

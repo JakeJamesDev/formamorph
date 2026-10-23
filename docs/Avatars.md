@@ -133,7 +133,7 @@ Right-click a tile for **Publish**, **Thumbnail**, **Delete**, **Tile Size** and
 
 ### Deleting an Avatar
 
-**Delete Player Avatar** asks you to confirm. If saves use the Avatar, the dialog names them. Those saves use the default Avatar after you delete it. If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it. You can't delete your last Avatar.
+**Delete Player Avatar** asks you to confirm. If saves use the Avatar, the dialog names them. Those saves use the Default Avatar after you delete it. If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it. You can't delete your last Avatar.
 
 ## The Permissive License
 <!-- keywords: cc0, creative commons, upload rejected, why is sharing blocked, open licence, convert to vrm 1, missing rights message, set in vroid -->

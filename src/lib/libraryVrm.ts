@@ -1,10 +1,11 @@
 import { blobHash } from '@/lib/blobHash';
 import { blobToDataUrl } from '@/lib/imageSource';
+import { withVrmPick } from '@/lib/worldVrmStore';
 import { libraryPickIds, placeLibraryPicks, type LibraryVrm, type NamedHash, type VrmLookup } from '@/lib/vrmPickMatch';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, VrmLicense, VrmPick, WorldVrmStore as Store } from '@/types';
 
-/** A library model's file name: its display name, with the extension its format calls for. */
+/** A library Avatar's file name: its display name, with the extension its format calls for. */
 export const libraryFileName = (name: string, license: VrmLicense | undefined) =>
   `${name}.${license?.metaVersion === null ? 'glb' : 'vrm'}`;
 
@@ -88,6 +89,5 @@ export async function withLibraryPick<T extends object>(item: T, store: Store | 
   const pick = (item as Partial<Entity>).vrmPick;
   if (pick?.kind !== 'world') return item;
   const next = await toLibraryPick(pick, store);
-  const { vrmPick: _world, ...rest } = item as Partial<Entity>;
-  return (next ? { ...rest, vrmPick: next } : rest) as T;
+  return withVrmPick(item as T & Pick<Entity, 'vrmPick'>, next);
 }
