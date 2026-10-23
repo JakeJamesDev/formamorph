@@ -206,6 +206,19 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **T03-5:** the save's chosen Avatar replaces the old model-id field and holds a world or library pick plus the legacy mark. The game-load remap turns an unset or "the world's" value into the reserved id with the mark (or nothing when the store lacks it), and an old library id into a library pick with the mark. Library-delete checks read both forms. The chosen Avatar also has an explicit no-choice form: absent marks a save made before this change, which is remapped once, and the remap and the seeding helper write the no-choice form.
 - **T03-6:** deleting the reserved store entry in the editor also clears the fallback.
 - **T03-7:** ticket 06 owns the store entry's content-hash field (T06-1). An entry without a hash, such as the one the migration creates, gets its hash computed lazily.
+- **T05-1:** the step's picker starts on the device default. When that is unset or missing, it starts on the library copy of the bundled Avatar, and when that is gone too, on the first library Avatar.
+- **T05-2:** when the picker shows, Finish writes the shown library Avatar as the save's chosen Avatar, so the save keeps what the player saw even if the device default changes later.
+- **T05-3:** when the picker is hidden (an author's world Avatar or a library pick), the step previews the resolved Avatar, and Finish writes the no-choice form. The add and delete controls hide with the picker.
+- **T05-4:** "is User's Default" means the winning played-side pick, with no save yet, is user's default. A legacy fallback of User's Default counts. The resolver gains an additive export that returns the winning pick.
+- **T05-5:** the button label is "Start Game", in title case.
+- **T05-6:** for a library persona, the step and its label treat the pick as absent until the library entity has loaded.
+- **T04-1:** the showing visual fills the slot. There is one corner button per other visual (View Avatar, View 3D Model, View Image), and each opens its viewer with **Display by Default**. The stored preference gains an Avatar value, and clearing it returns to the default order.
+- **T04-2:** the entity popup shows the Avatar too. It uses the same component and the same order.
+- **T04-3:** the mobile tab becomes the entity view, labeled "View" with the same icon. A row click on an entity with a visual sets the selection and still opens the popup, as today.
+- **T04-4:** the landscape Avatar/Entities toggle goes. The chevron tips read "Hide Entity View" and "Show Entity View".
+- **T04-5:** the played entity's row behaves like any other row. The fallback You row only selects and never opens a popup.
+- **T04-6:** the stat panel's default pick counts an Avatar as a visual, so both use the same visual test. With no pick, the stat panel stays scene-first, because the played entity's stats already sit in the player rows. So at game start the view can show the played entity while the stat panel shows a scene entity. They agree once the player picks anyone, and selecting the fallback You row returns the stat panel to its scene default.
+- **T04-7:** an NPC Avatar renders as its file is authored: no color overrides, and hair and morph values that leave the mesh unchanged. Only its own stats' morph bindings move it.
 
 ## Further Notes
 
