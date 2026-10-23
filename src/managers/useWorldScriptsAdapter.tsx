@@ -20,7 +20,7 @@ import {
 import type { Script, ScriptTiming } from '@/types';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 import { ScriptRow } from './ScriptsSection';
-import { useScriptEntryContext } from './useScriptEntryContext';
+import { useScriptBoxContext } from './useScriptBoxContext';
 
 /** One row of the tree: a timing's group, or a script under it. */
 interface ScriptTreeRow {
@@ -69,8 +69,8 @@ function WorldScriptDetail({ entry, onWrite, autoFocus }: {
   onWrite: (edits: ScriptEdit[]) => void;
   autoFocus: boolean;
 }) {
-  const { self, context } = useScriptEntryContext(entry);
   const { script, home } = entry;
+  const context = useScriptBoxContext(home);
   // A stat's or trait's Find All Uses row opens its owner's tab, so only a world script's lands here.
   const reveal = useCodeUseReveal(script.id, null, 'world');
   const patch = (change: ScriptPatch) => onWrite([{ home, edit: (scripts) => patchScript(scripts, script.id, change) }]);
@@ -79,7 +79,6 @@ function WorldScriptDetail({ entry, onWrite, autoFocus }: {
     <ScriptRow
       script={script}
       ownerName={entry.ownerName}
-      self={self}
       context={context}
       onChange={patch}
       onRemove={remove}

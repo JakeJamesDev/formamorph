@@ -28,6 +28,7 @@ vi.mock('@/contexts/GameDataContext', () => {
   const world = () => ({
     stats: [store.stat],
     playStats: [store.stat],
+    statGroups: [],
     placeholders: store.placeholders,
     traits: [],
     traitGroups: [],

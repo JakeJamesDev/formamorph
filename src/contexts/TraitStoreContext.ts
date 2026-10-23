@@ -45,7 +45,7 @@ export interface EntityRoot {
   /** The entity, its links bound to `world` where they can be. */
   owner: Entity;
   /** The world the editor was opened from, which the links read their originals from; null standalone. */
-  world: LinkOriginals & { placeholders: readonly Placeholder[] } | null;
+  world: LinkOriginals & { placeholders: readonly Placeholder[]; stats?: readonly Stat[]; statGroups?: readonly StatGroup[] } | null;
 }
 
 /** The world lists a link's original is read from. */

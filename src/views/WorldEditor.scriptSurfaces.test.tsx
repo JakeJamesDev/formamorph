@@ -140,3 +140,39 @@ describe.each(SURFACES)('a script edited from %s', (_where, surface) => {
     expect(surface.list(bench.ctx())).toStrictEqual(others);
   });
 });
+
+/** Ash links the Blueprint stat Trust and overrides its scripts, so the Scripts tab lists the link's own row. */
+const LINKED: World = benchEditorWorld({
+  stats: [stat('bp-trust', 'Trust', { groupId: 'bp', value: 5 })],
+  statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, order: 1, system: 'blueprints' }],
+  entities: [{
+    id: 'ash', name: 'Ash', locations: ['harbor'],
+    statLinks: [{
+      id: 'l-trust', originalId: 'bp-trust', kind: 'stat', originalName: 'Trust', groupId: null,
+      overrides: { 'bp-trust': { scripts: { value: [{ id: 't-after', timing: 'after', code: '' }], blueprint: [] } } },
+    }],
+  }],
+} as Partial<World>);
+
+const TRUST_BOX = 'Trust · After the AI';
+
+describe.each([
+  ['the stat panel', () => {
+    openEditorTab(/^Entities/);
+    fireEvent.click(screen.getAllByText('Ash')[0]);
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name: 'Stats' }));
+    fireEvent.click(screen.getAllByText('Trust').find((el) => !el.closest('[role="group"]'))!);
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Scripts' }));
+  }],
+  ['the Scripts tab', () => openScriptsTab(TRUST_BOX)],
+])('Test Code on a root-linked stat from %s', (_where, open) => {
+  it('reports a write through owner.stats to the stat itself, as play runs it', async () => {
+    renderWorldEditorBench(LINKED, 'advanced');
+    open();
+    fireEvent.change(screen.getByRole('textbox', { name: `Code ${TRUST_BOX}` }), { target: { value: 'owner.stats.Trust.value = 7;' } });
+    fireEvent.click(screen.getByRole('button', { name: `Test Code ${TRUST_BOX}` }));
+    const report = within(screen.getByRole('group', { name: TRUST_BOX }));
+    expect(await report.findByText('Result: 7')).toBeInTheDocument();
+    expect(report.queryByText(/did nothing/)).toBeNull();
+  });
+});

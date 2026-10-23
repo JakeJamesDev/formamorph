@@ -56,6 +56,7 @@ export function LinkedTraitManager({ owner, link, original, ...panel }: {
   const { overridden, stale } = useMemo(() => linkTraitState(original, link), [original, link]);
   const edit: TraitLinkEdit = {
     ownerId: owner.id,
+    linkId: link.id,
     overridden,
     stale,
     write: (next) => editEntity(owner.id, (e) => editLinkTrait(originals, e, link.id, original.id, next)),
