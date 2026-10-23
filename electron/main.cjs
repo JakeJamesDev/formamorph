@@ -10,7 +10,8 @@ const { collect: collectVram } = require('./vramCollect.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
-const { selectEngineDevice, resolveRawIndices, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
+const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
+const { binaryPath: llamaServerBinary, listServerDevices, deviceListing } = require('./llamaServer.cjs');
 const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
@@ -45,85 +46,33 @@ let mainWindow = null;
 // gpuLayers null = auto-offload all that fit.
 // gpuLayers -1 = AUTO (fit as many layers as VRAM allows); -2 = MAX (all layers); >=0 = literal count.
 // Must match the renderer's DEFAULT_LOCAL_GPU_LAYERS so a fresh boot doesn't trigger a needless reload.
-// gpuDevice is a device *name* (or 'auto'), resolved to an index against the live enumeration at each
+// gpuDevice is a device *name* (or 'auto'/'all'), which the engine resolves against `--list-devices` at each
 // start — an index saved across a driver change would point at a different card.
 let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, gpuDevice: ENGINE_DEVICE_AUTO };
 
-// Every GPU the engine's backend can see, unfiltered. A pinned engine only ever reports its own device, so
-// this is cached from unpinned enumerations and refreshed by a short-lived probe when it's cold.
+// Every GPU llama-server can see, for the device picker. `--list-devices` initializes every backend, so it is
+// read once and cached; each engine start reads its own copy and refreshes this one through its status.
 let deviceEnumeration = null;
-
-/** Enumerate devices in a child of its own, which dies with the answer: a backend keeps whatever device
- *  visibility it was initialized with, so the process that enumerates unfiltered can't then run pinned.
- *  Always answers — a backend that never came back is a null backend with no devices, which is a cacheable
- *  answer rather than a reason to fork another process on the next load. */
-async function probeDevices() {
-  const probe = llmEngine.createEngineProxy();
-  try {
-    const info = await probe.listDevices();
-    if (info && Array.isArray(info.gpuDeviceNames)) return info;
-  } catch { /* fall through to the no-backend answer */ }
-  finally { probe.dispose(); }
-  return { gpuBackend: null, gpuDeviceNames: [] };
-}
-
-// One probe at a time: a desktop boot can ask twice at once (the engine manager starting a model while the
-// settings panel fills its picker), and each extra probe is a whole process spinning up a Vulkan backend.
+// One read at a time: a desktop boot can ask twice at once (a model starting while the picker fills).
 let devicesInFlight = null;
 
 async function currentEnumeration() {
   if (deviceEnumeration) return deviceEnumeration;
-  devicesInFlight ??= probeDevices().finally(() => { devicesInFlight = null; });
+  devicesInFlight ??= listServerDevices({ bin: llamaServerBinary() })
+    .then(deviceListing)
+    .finally(() => { devicesInFlight = null; });
   deviceEnumeration = await devicesInFlight;
   return deviceEnumeration;
 }
 
-// Device name → raw Vulkan index, which is what GGML_VK_VISIBLE_DEVICES takes (engineDevice.cjs explains the
-// mismatch with the enumeration's own order). Resolved on the first pin, one short-lived probe per raw index,
-// and cached with the enumeration it belongs to.
-let rawIndices = null;
-let rawIndicesInFlight = null;
-
-/** The one device a backend pinned to `rawIndex` binds. Rejects past the end of the raw device list. */
-async function probeRawDevice(rawIndex) {
-  const probe = llmEngine.createEngineProxy();
-  try {
-    const info = await probe.listDevices({ rawIndex });
-    return info?.gpuDeviceNames?.[0] ?? null;
-  } finally { probe.dispose(); }
+/** nvidia-smi's GPUs for Auto's pick; none without nvidia-smi, where the name patterns decide alone. */
+async function nvidiaGpus() {
+  try { return (await collectVram()).gpus; } catch { return []; }
 }
 
-async function currentRawIndices(deviceNames) {
-  if (rawIndices) return rawIndices;
-  rawIndicesInFlight ??= resolveRawIndices(deviceNames, probeRawDevice).finally(() => { rawIndicesInFlight = null; });
-  rawIndices = await rawIndicesInFlight;
-  return rawIndices;
-}
-
-const NO_PIN = { gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null };
-
-/** The device pin for one start: which device to restrict the backend to (as a position in the list it was
- *  picked from, plus the raw index that binds it), and where the pick came from. The engine can't report the
- *  list once it is pinned to a single device. A chosen device whose raw index can't be found keeps the pin
- *  so the engine refuses the load by name; an automatic pick in that state is dropped, since the unpinned
- *  load is what that machine had before. */
-async function resolveEngineDevice() {
-  const enumeration = await currentEnumeration();
-  // The pin is a Vulkan mechanism (GGML_VK_VISIBLE_DEVICES); no other backend has anything to filter.
-  if (enumeration.gpuBackend !== 'vulkan') return { ...NO_PIN };
-  let nvidiaGpus = [];
-  try { nvidiaGpus = (await collectVram()).gpus; } catch { /* no nvidia-smi: the name-pattern fallback stands */ }
-  const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus, setting: engineOptions.gpuDevice });
-  if (pick.index == null) return { ...NO_PIN, gpuDeviceOrigin: pick.origin, gpuDeviceOptions: enumeration.gpuDeviceNames };
-  const raw = (await currentRawIndices(enumeration.gpuDeviceNames)).get(enumeration.gpuDeviceNames[pick.index]) ?? null;
-  if (raw == null && pick.origin !== 'manual') return { ...NO_PIN, gpuDeviceOptions: enumeration.gpuDeviceNames };
-  return { gpuDeviceIndex: pick.index, gpuDeviceRawIndex: raw, gpuDeviceOrigin: pick.origin, gpuDeviceOptions: enumeration.gpuDeviceNames };
-}
-
-/** The engine's load options for a model: the renderer's settings plus the resolved device pin. */
+/** The engine's load options for a model: the renderer's settings plus the GPUs Auto picks among. */
 async function startOptions(modelPath) {
-  const { gpuDevice: _wanted, ...load } = engineOptions;
-  return { modelPath, ...load, ...(await resolveEngineDevice()) };
+  return { modelPath, ...engineOptions, nvidiaGpus: await nvidiaGpus() };
 }
 
 // Keep the (multi-GB) models beside the app so a portable build stays self-contained — burying them in
@@ -197,14 +146,8 @@ function detectLmStudioDir() {
 
 // Push every engine status change to the renderer (it also polls once on mount via 'llm-status').
 llmEngine.onStatus((state) => {
-  // An unpinned engine enumerated every device there is — the picker's list, free of a probe.
-  if (state.gpuDeviceIndex == null && Array.isArray(state.gpuDeviceNames)) {
-    deviceEnumeration = { gpuBackend: state.gpuBackend, gpuDeviceNames: state.gpuDeviceNames };
-  }
-  // A pin that left the backend with nothing means the cached enumeration is behind the hardware (a card
-  // removed mid-session): an index past the end drops llama.cpp to the CPU rather than erroring. Forget the
-  // cache so the next load resolves against a fresh one.
-  if (state.gpuDeviceIndex != null && state.gpuBackend === 'cpu') deviceEnumeration = null;
+  // A start read the device list afresh; keep the picker's copy in step, so a card added or removed shows.
+  if (deviceEnumeration && Array.isArray(state.gpuDeviceOptions)) deviceEnumeration = { ...deviceEnumeration, gpuDeviceNames: state.gpuDeviceOptions };
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-status', state);
 });
 
@@ -388,7 +331,6 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     || next.gpuLayers !== engineOptions.gpuLayers
     || next.flashAttention !== engineOptions.flashAttention
     || next.parallelRequests !== engineOptions.parallelRequests
-    // A device change needs a fresh process either way: an initialized backend keeps its device set.
     || next.gpuDevice !== engineOptions.gpuDevice;
   engineOptions = next;
   const loaded = llmEngine.getState().modelPath;
@@ -405,10 +347,8 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
 ipcMain.handle('llm-list-devices', async () => {
   const enumeration = await currentEnumeration();
   let autoPick = null;
-  if (enumeration.gpuBackend === 'vulkan') {
-    let nvidiaGpus = [];
-    try { nvidiaGpus = (await collectVram()).gpus; } catch { /* the name-pattern fallback stands */ }
-    const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus });
+  if (enumeration.gpuDeviceNames.length) {
+    const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus: await nvidiaGpus() });
     if (pick.index != null) autoPick = enumeration.gpuDeviceNames[pick.index] ?? null;
   }
   return { backend: enumeration.gpuBackend, devices: enumeration.gpuDeviceNames, autoPick };

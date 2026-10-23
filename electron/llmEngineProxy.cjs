@@ -145,10 +145,8 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
 
   const start = (options) => call('start', options);
 
-  /** Every GPU the backend can see, unfiltered — or, with `{ rawIndex }`, the one device that raw Vulkan
-   *  index binds. Spawns a child if none is running — so call it on a proxy of its own, whose child dies
-   *  with the answer, rather than on the one serving a loaded model. */
-  const listDevices = (opts) => (opts ? call('listDevices', opts) : call('listDevices'));
+  /** Every GPU `llama-server --list-devices` reports. Spawns a child if none is running. */
+  const listDevices = () => call('listDevices');
 
   async function stop() {
     // Nothing to tear down, but keep the in-process engine's status sequence: its stop always reported

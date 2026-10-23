@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import llmEngine from './llmEngine.cjs';
+import llamaServer from './llamaServer.cjs';
+import { createFakeLlamaServer, loadFixture } from './fakeLlamaServer.mjs';
 
-const { start, stop, getState, onStatus } = llmEngine;
+const { createEngine, getState } = llmEngine;
+const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
 
 // The renderer's LocalLlmState (src/lib/imageGen/desktop.ts) promises every one of these on every status.
 // A branch that forgets one hands the UI `undefined` where the type says `number | null`.
@@ -11,178 +17,331 @@ const STATE_KEYS = [
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
   'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
 ];
-
 const keysOf = (s) => Object.keys(s).sort();
 const expectedKeys = [...STATE_KEYS].sort();
 
-// Read at import, before any stop() can refill the object: the renderer polls 'llm-status' on mount, so the
-// declared initial state is what it sees on a desktop launch where no model was ever loaded.
+// Read at import: the renderer polls 'llm-status' on mount, so the declared initial state is what it sees on a
+// desktop launch where no model was ever loaded.
 const initialState = getState();
 
-describe('llmEngine status shape', () => {
+const fixture = loadFixture();
+const MODEL = path.join(os.tmpdir(), 'models', 'Tiny-Q4_K_M.gguf');
+const SETTINGS = { contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2, gpuDevice: 'auto' };
+
+// A dGPU beside an iGPU, in the recorded line format: the case the device pin exists for.
+const TWO_DEVICES = 'Available devices:\r\n  Vulkan0: Intel(R) UHD Graphics 770 (16252 MiB, 15000 MiB free)\r\n  Vulkan1: NVIDIA GeForce RTX 4080 (16376 MiB, 15500 MiB free)\r\n';
+
+let engine = null;
+let workRoot = null;
+
+/** An engine over a fake server, recording every status it pushes. Windows unless `platform` says otherwise. */
+function setup(fakeOptions = {}, { platform = 'win32', binaryPath = ({ cpu } = {}) => (cpu ? 'llama-server-cpu' : 'llama-server') } = {}) {
+  const fake = createFakeLlamaServer(fakeOptions);
+  workRoot = mkdtempSync(path.join(os.tmpdir(), 'engine-test-'));
+  engine = createEngine({ spawn: fake.spawn, binaryPath, platform, workRoot });
+  const seen = [];
+  engine.onStatus((s) => seen.push(s));
+  return { fake, seen };
+}
+
+afterEach(async () => {
+  await engine?.stop();
+  engine = null;
+  if (workRoot) rmSync(workRoot, { recursive: true, force: true });
+  workRoot = null;
+});
+
+const argsOf = (call) => call.args;
+const after = (args, flag) => args[args.indexOf(flag) + 1];
+
+describe('engine status shape', () => {
   it('declares every field up front, all null', () => {
     expect(keysOf(initialState)).toEqual(expectedKeys);
     expect(initialState.status).toBe('stopped');
     for (const k of STATE_KEYS.filter((k) => k !== 'status')) expect(initialState[k]).toBeNull();
   });
-});
-
-describe('llmEngine status transitions', () => {
-  // A pinned start sets the device filter in this process's own environment, and stop() has no reason to
-  // clear it. Left behind, it would decide what a later test's engine could see.
-  beforeEach(async () => {
-    await stop();
-    delete process.env.GGML_VK_VISIBLE_DEVICES;
-  });
-
-  it('reports every field after a stop, all null', () => {
-    const s = getState();
-    expect(keysOf(s)).toEqual(expectedKeys);
-    expect(s.status).toBe('stopped');
-    for (const k of STATE_KEYS.filter((k) => k !== 'status')) expect(s[k]).toBeNull();
-  });
 
   it('keeps the full shape on the no-model error branch', async () => {
-    const s = await start({ port: 1234 });
+    setup();
+    const s = await engine.start({ port: 1234 });
     expect(s.status).toBe('error');
     expect(keysOf(s)).toEqual(expectedKeys);
-    expect(s.gpuBackend).toBeNull();
-    expect(s.deviceVramTotalMB).toBeNull();
   });
 
-  it('pushes the full shape to subscribers, not just to getState', async () => {
-    const seen = [];
-    const off = onStatus((s) => seen.push(s));
-    await start({ port: 1234 });
-    await stop();
-    off();
-    expect(seen.length).toBeGreaterThan(0);
-    for (const s of seen) expect(keysOf(s)).toEqual(expectedKeys);
-  });
-
-  it('reports the device pin the start asked for, and where the pick came from', async () => {
-    // The renderer's only window onto which GPU the engine was restricted to — a wrong pin has to be
-    // readable off one screenshot rather than reproduced.
-    const s = await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 3, gpuDeviceOrigin: 'manual' });
-    expect(s.gpuDeviceIndex).toBe(1);
-    expect(s.gpuDeviceRawIndex).toBe(3);
-    expect(s.gpuDeviceOrigin).toBe('manual');
-  });
-
-  it('refuses a pin that carries no raw index, naming the device, before anything loads', async () => {
-    // GGML_VK_VISIBLE_DEVICES takes a raw Vulkan index. Pinning by the enumeration's position is the bug
-    // being fixed, so a start that has only the position must not guess.
-    const options = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'];
-    const s = await start({ port: 1234, modelPath: 'model.gguf', gpuDeviceIndex: 1, gpuDeviceOrigin: 'manual', gpuDeviceOptions: options });
+  it('reports a missing bundled build by name, full shape', async () => {
+    const fake = createFakeLlamaServer();
+    engine = createEngine({ spawn: fake.spawn, binaryPath: () => null, platform: 'win32', workRoot: os.tmpdir() });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
     expect(s.status).toBe('error');
-    expect(s.error).toContain('No Vulkan device index found for NVIDIA GeForce RTX 4080');
-    // Refused before the backend initialized: no backend, no env filter left behind.
-    expect(s.gpuBackend).toBeNull();
-    expect(process.env.GGML_VK_VISIBLE_DEVICES).toBeUndefined();
-    // The readout still says which device, out of which, the start asked for.
-    expect(s.gpuDeviceIndex).toBe(1);
-    expect(s.gpuDeviceOptions).toEqual(options);
-  });
-
-  it('restricts the backend to the raw index, not the position in the list', async () => {
-    await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 3, gpuDeviceOrigin: 'manual', gpuDeviceOptions: ['a', 'b'] });
-    expect(process.env.GGML_VK_VISIBLE_DEVICES).toBe('3');
-  });
-
-  it('reports the device list the pin was chosen from, which a pinned backend can no longer enumerate', async () => {
-    // "Which device, out of which" is the whole answer to a wrong-device report — the pinned engine only
-    // ever sees its own, so the list has to travel with the request.
-    const options = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'];
-    const s = await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: options });
-    expect(s.gpuDeviceOptions).toEqual(options);
-    // The index indexes into it, which is what lets a reader name the pinned device.
-    expect(s.gpuDeviceOptions[s.gpuDeviceIndex]).toBe('NVIDIA GeForce RTX 4080');
-  });
-
-  it('keeps its own copy of that list, so the caller cannot rewrite it after the fact', async () => {
-    const options = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'];
-    await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: options });
-    options[1] = 'tampered';
-    expect(getState().gpuDeviceOptions[1]).toBe('NVIDIA GeForce RTX 4080');
-  });
-
-  it('reports no pin when the start carried none', async () => {
-    const s = await start({ port: 1234 });
-    expect(s.gpuDeviceIndex).toBeNull();
-    expect(s.gpuDeviceRawIndex).toBeNull();
-    expect(s.gpuDeviceOrigin).toBeNull();
+    expect(s.error).toMatch(/llama-server is missing/);
+    expect(keysOf(s)).toEqual(expectedKeys);
   });
 
   it('hands out copies, so a caller cannot mutate the live state', () => {
-    const s = getState();
+    setup();
+    const s = engine.getState();
     s.gpuBackend = 'cuda';
-    expect(getState().gpuBackend).toBeNull();
+    expect(engine.getState().gpuBackend).toBeNull();
   });
 });
 
-describe('llmEngine splitMessages', () => {
-  const { splitMessages } = llmEngine;
-  const img = (url) => ({ type: 'image_url', image_url: { url } });
+describe('engine lifecycle through the fake server', () => {
+  it('goes start → loading with percent → ready → stop, full shape at each step', async () => {
+    const { seen } = setup();
+    const port = await freePort();
+    const ready = await engine.start({ ...SETTINGS, modelPath: MODEL, port });
+    await engine.stop();
 
-  it('keeps the text of a content-parts final prompt and counts the dropped images', () => {
-    const out = splitMessages([
-      { role: 'system', content: 'sys' },
-      { role: 'user', content: [{ type: 'text', text: 'look' }, img('data:a'), img('data:b')] },
-    ]);
-    expect(out.promptText).toBe('look');
-    expect(out.droppedImages).toBe(2);
+    for (const s of seen) expect(keysOf(s)).toEqual(expectedKeys);
+    expect(seen.at(-1).status).toBe('stopped');
+    const loading = seen.filter((s) => s.status === 'loading');
+    // The recorded run's progress events, in whole percents, rising from 0 to 100.
+    const pcts = [...new Set(loading.map((s) => s.loadProgress))];
+    expect(pcts[0]).toBe(0);
+    expect(pcts.at(-1)).toBe(100);
+    expect(pcts.length).toBeGreaterThan(4);
+    expect(pcts.every((p, i) => Number.isInteger(p) && (i === 0 || p > pcts[i - 1]))).toBe(true);
+    expect(loading.every((s) => s.modelId === 'Tiny-Q4_K_M.gguf' && s.contextSize === 8192)).toBe(true);
+
+    expect(ready).toMatchObject({
+      status: 'ready', modelPath: MODEL, modelId: 'Tiny-Q4_K_M.gguf', port, error: null, loadProgress: null,
+      contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2,
+      maxContextSize: 131072, engineVramMB: null,
+      gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'], gpuDeviceOptions: ['NVIDIA GeForce RTX 4090'],
+      gpuDeviceIndex: null, gpuDeviceOrigin: null,
+    });
+    for (const k of STATE_KEYS.filter((k) => k !== 'status')) expect(seen.at(-1)[k]).toBeNull();
   });
 
-  it('keeps the text of a content-parts history message and counts its images', () => {
-    const out = splitMessages([
-      { role: 'user', content: [{ type: 'text', text: 'first' }, img('data:a')] },
-      { role: 'assistant', content: 'reply' },
-      { role: 'user', content: 'next' },
-    ]);
-    expect(out.chatHistory).toEqual([
-      { type: 'user', text: 'first' },
-      { type: 'model', response: ['reply'] },
-    ]);
-    expect(out.promptText).toBe('next');
-    expect(out.droppedImages).toBe(1);
+  it('serves the model from a one-section preset, offline, with an empty model cache', async () => {
+    const { fake } = setup();
+    let preset = null;
+    const spawn = fake.spawn;
+    engine = createEngine({
+      spawn: (bin, args, opts) => {
+        if (!args.includes('--list-devices')) preset = readFileSync(after(args, '--models-preset'), 'utf8');
+        return spawn(bin, args, opts);
+      },
+      binaryPath: () => 'llama-server',
+      platform: 'win32',
+      workRoot,
+    });
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    const call = fake.routerCalls()[0];
+    expect(preset).toBe(`version = 1\n\n[Tiny-Q4_K_M.gguf]\nmodel = ${MODEL.replace(/\\/g, '/')}\n`);
+    expect(argsOf(call)).toContain('--offline');
+    const cache = call.env.LLAMA_CACHE;
+    expect(cache.startsWith(workRoot)).toBe(true);
+    expect(readdirSync(cache)).toEqual([]);
   });
 
-  it('leaves plain string messages unchanged and reports no drop', () => {
-    const out = splitMessages([
-      { role: 'system', content: 'sys' },
-      { role: 'user', content: 'hi' },
-      { role: 'assistant', content: 'yo' },
-      { role: 'user', content: 'go' },
-    ]);
-    expect(out.chatHistory).toEqual([
-      { type: 'system', text: 'sys' },
-      { type: 'user', text: 'hi' },
-      { type: 'model', response: ['yo'] },
-    ]);
-    expect(out.promptText).toBe('go');
-    expect(out.droppedImages).toBe(0);
+  it('pins the router event name the pinned build emits', () => {
+    // The README names it model_status; the recorded build emits the name the engine listens for.
+    const progress = fixture.scenarios.loaded.loadEvents.filter((e) => e.data?.progress);
+    expect(progress.length).toBeGreaterThan(0);
+    expect(new Set(progress.map((e) => e.event))).toEqual(new Set([STATUS_EVENT]));
+  });
+
+  it('forwards a chat request to the router with the served model name, and the reply back', async () => {
+    const { fake } = setup();
+    const port = await freePort();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port });
+    const body = { model: 'whatever', messages: [{ role: 'user', content: 'hi' }], temperature: 0.7, response_format: { type: 'json_object' } };
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body) });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe('*');
+    const reply = await res.json();
+    expect(reply.choices[0].message.content).toBe(fixture.scenarios.loaded.chat.choices[0].message.content);
+    expect(fake.chatRequests[0]).toEqual({ ...body, model: 'Tiny-Q4_K_M.gguf' });
+
+    const streamed = await (await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', body: JSON.stringify({ ...body, stream: true }) })).text();
+    expect(streamed).toContain('data: [DONE]');
+  });
+
+  it('answers the */models probe with the loaded model', async () => {
+    setup();
+    const port = await freePort();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port });
+    const list = await (await fetch(`http://127.0.0.1:${port}/api/v0/models`)).json();
+    expect(list.data[0]).toMatchObject({ id: 'Tiny-Q4_K_M.gguf', state: 'loaded' });
+  });
+
+  it('leaves no llama-server process after stop', async () => {
+    const { fake } = setup();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(fake.liveProcesses()).toBe(2);
+    await engine.stop();
+    expect(fake.liveProcesses()).toBe(0);
+    expect(engine.getState().status).toBe('stopped');
+    expect(readdirSync(workRoot)).toEqual([]);
+  });
+
+  it('stops a load part-way and leaves nothing running', async () => {
+    const { fake, seen } = setup({ stepMs: 30 });
+    const started = engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    await expect.poll(() => seen.some((s) => (s.loadProgress ?? 0) > 0)).toBe(true);
+    await engine.stop();
+    const s = await started;
+    expect(s.status).toBe('stopped');
+    expect(fake.liveProcesses()).toBe(0);
+  });
+
+  it('reports a router that dies after the load, once, and frees it', async () => {
+    const { fake, seen } = setup();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    fake.routers[0].child.crash(3);
+    await expect.poll(() => engine.getState().status).toBe('error');
+    expect(engine.getState().error).toMatch(/stopped unexpectedly \(exit code 3\)/);
+    expect(keysOf(engine.getState())).toEqual(expectedKeys);
+    expect(seen.filter((s) => s.status === 'error')).toHaveLength(1);
+  });
+
+  it('reports a model instance that dies under a live router, and ends the router', async () => {
+    const { fake } = setup();
+    await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    fake.routers[0].crashInstance();
+    await expect.poll(() => engine.getState().status).toBe('error');
+    expect(engine.getState().error).toBe('The model stopped unexpectedly (exit code 1).');
+    await expect.poll(() => fake.liveProcesses()).toBe(0);
   });
 });
 
-describe('describeLoadError', () => {
-  const { describeLoadError } = llmEngine;
+describe('settings → server arguments', () => {
+  const startWith = async (options, fakeOptions) => {
+    const { fake } = setup(fakeOptions);
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort(), ...options });
+    return { args: argsOf(fake.routerCalls()[0]), state: s, fake };
+  };
 
-  it('names the Parallel Requests setting instead of sequences', () => {
-    expect(describeLoadError('A context size of 8192 with 2 sequences is too large for the available VRAM'))
-      .toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this GPU's VRAM. Lower Context Size or Parallel Requests.");
+  it('Context Size → -c', async () => {
+    expect(after((await startWith({ contextSize: 12288 })).args, '-c')).toBe('12288');
   });
 
-  it('leaves Parallel Requests out when there is one sequence', () => {
-    expect(describeLoadError('A context size of 4096 is too large for the available VRAM'))
-      .toBe("Context Size 4096 doesn't fit in this GPU's VRAM. Lower Context Size.");
+  it('GPU Layers Auto → -ngl auto with fit on', async () => {
+    const { args } = await startWith({ gpuLayers: GPU_LAYERS_AUTO });
+    expect(after(args, '-ngl')).toBe('auto');
+    expect(after(args, '--fit')).toBe('on');
   });
 
-  it('keeps the VRAM and RAM variant apart', () => {
-    expect(describeLoadError('A context size of 2048 with 4 sequences is too large for the available VRAM and RAM (including swap)'))
-      .toBe("Context Size 2048 with 4 Parallel Requests doesn't fit in this computer's VRAM and RAM. Lower Context Size or Parallel Requests.");
+  it('GPU Layers Max → -ngl all with fit off', async () => {
+    const { args, state } = await startWith({ gpuLayers: GPU_LAYERS_MAX });
+    expect(after(args, '-ngl')).toBe('all');
+    expect(after(args, '--fit')).toBe('off');
+    expect(state.gpuLayers).toBe(GPU_LAYERS_MAX);
   });
 
-  it('passes other errors through', () => {
-    expect(describeLoadError('disk full')).toBe('disk full');
+  it('GPU Layers Custom → -ngl N with fit off', async () => {
+    const { args } = await startWith({ gpuLayers: 17 });
+    expect(after(args, '-ngl')).toBe('17');
+    expect(after(args, '--fit')).toBe('off');
+  });
+
+  it('Flash Attention on → -fa on, off → -fa off', async () => {
+    expect(after((await startWith({ flashAttention: true })).args, '-fa')).toBe('on');
+    await engine.stop();
+    const off = await startWith({ flashAttention: false });
+    expect(after(off.args, '-fa')).toBe('off');
+    expect(off.state.flashAttention).toBe(false);
+  });
+
+  it('Parallel Requests → -np N on every start, one included', async () => {
+    expect(after((await startWith({ parallelRequests: 3 })).args, '-np')).toBe('3');
+    await engine.stop();
+    expect(after((await startWith({ parallelRequests: 1 })).args, '-np')).toBe('1');
+    await engine.stop();
+    expect(after((await startWith({ parallelRequests: undefined })).args, '-np')).toBe('1');
+  });
+
+  it('GPU Device by name → --device with that device id, resolved by name', async () => {
+    const { args, state } = await startWith({ gpuDevice: 'NVIDIA GeForce RTX 4080' }, { listDevices: TWO_DEVICES });
+    expect(after(args, '--device')).toBe('Vulkan1');
+    expect(state).toMatchObject({
+      gpuDeviceIndex: 1, gpuDeviceOrigin: 'manual', gpuDeviceNames: ['NVIDIA GeForce RTX 4080'],
+      gpuDeviceOptions: ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'],
+    });
+  });
+
+  it('GPU Device Auto pins the one real card beside an iGPU', async () => {
+    const { args, state } = await startWith({ gpuDevice: 'auto', nvidiaGpus: [{ name: 'NVIDIA GeForce RTX 4080' }] }, { listDevices: TWO_DEVICES });
+    expect(after(args, '--device')).toBe('Vulkan1');
+    expect(state.gpuDeviceOrigin).toBe('auto');
+  });
+
+  it('GPU Device All passes no --device', async () => {
+    const { args, state } = await startWith({ gpuDevice: 'all' }, { listDevices: TWO_DEVICES });
+    expect(args).not.toContain('--device');
+    expect(state.gpuDeviceIndex).toBeNull();
+  });
+
+  it('a chosen device that is gone falls back to Auto and says so', async () => {
+    const { args, state } = await startWith({ gpuDevice: 'AMD Radeon RX 7900 XTX' }, { listDevices: TWO_DEVICES });
+    expect(after(args, '--device')).toBe('Vulkan1');
+    expect(state.gpuDeviceOrigin).toBe('fallback-auto');
+  });
+
+  it('uses one pinning scheme only: no Vulkan visibility variable', async () => {
+    const { fake } = await startWith({ gpuDevice: 'NVIDIA GeForce RTX 4080' }, { listDevices: TWO_DEVICES });
+    expect(fake.routerCalls()[0].env).not.toHaveProperty('GGML_VK_VISIBLE_DEVICES');
+  });
+});
+
+describe('CPU fallback and load errors', () => {
+  it('retries a failed GPU load once on the CPU and reports the CPU backend', async () => {
+    const { fake, seen } = setup({ scenarioFor: (args) => (args.includes('none') ? 'cpu' : 'kvFail') });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(s.status).toBe('ready');
+    expect(s.gpuBackend).toBe('cpu');
+    expect(s.error).toBeNull();
+    const calls = fake.routerCalls();
+    expect(calls).toHaveLength(2);
+    expect(after(argsOf(calls[1]), '--device')).toBe('none');
+    expect(after(argsOf(calls[1]), '-ngl')).toBe('0');
+    // The failed GPU router is gone before the CPU one runs.
+    expect(fake.routers[0].child.alive).toBe(false);
+    expect(seen.filter((x) => x.status === 'loading').at(-1).gpuBackend).toBe('cpu');
+  });
+
+  it('reports a failed CPU retry with the GPU attempt’s error in setting names', async () => {
+    const { fake } = setup({ scenarioFor: () => 'kvFail' });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(s.status).toBe('error');
+    expect(s.error).toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this GPU's VRAM. Lower Context Size or Parallel Requests.");
+    expect(keysOf(s)).toEqual(expectedKeys);
+    expect(fake.routerCalls()).toHaveLength(2);
+    expect(fake.liveProcesses()).toBe(0);
+  });
+
+  it('falls back to the separate CPU build on Linux, under the supervising shell', async () => {
+    const { fake } = setup({ scenarioFor: (args) => (args.includes('none') ? 'cpu' : 'kvFail') }, { platform: 'linux' });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(s.status).toBe('ready');
+    expect(s.gpuBackend).toBe('cpu');
+    expect(fake.routerCalls().map((c) => [c.bin, c.wrapped])).toEqual([['llama-server', true], ['llama-server-cpu', true]]);
+  });
+
+  it('reports a failed CPU-only load in setting names, naming RAM', async () => {
+    const { fake } = setup({ listDevices: 'Available devices:\r\n', scenarioFor: () => 'kvFail' });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(s.status).toBe('error');
+    expect(s.error).toBe("Context Size 8192 with 2 Parallel Requests doesn't fit in this computer's RAM. Lower Context Size or Parallel Requests.");
+    expect(fake.routerCalls()).toHaveLength(1);
+  });
+
+  it('loads straight on the CPU when there is no GPU device', async () => {
+    const { fake } = setup({ listDevices: 'Available devices:\r\n' });
+    const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+    expect(s.status).toBe('ready');
+    expect(s.gpuBackend).toBe('cpu');
+    expect(fake.routerCalls()).toHaveLength(1);
+    expect(after(argsOf(fake.routerCalls()[0]), '--device')).toBe('none');
+  });
+});
+
+describe('device listing', () => {
+  it('lists every device --list-devices reports', async () => {
+    setup({ listDevices: TWO_DEVICES });
+    await expect(engine.listDevices()).resolves.toEqual({
+      gpuBackend: 'vulkan', gpuDeviceNames: ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'],
+    });
   });
 });
