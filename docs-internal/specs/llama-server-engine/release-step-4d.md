@@ -17,5 +17,9 @@ The desktop build bundles `llama-server` from one pinned llama.cpp release tag, 
 4. A bump is not done until two follow-ups pass. Quote each result:
    - the recorded `llama-server` fixtures are re-recorded (ticket 02 of the llama-server-engine spec), so a
      format change fails the parser tests here, not in the viewer;
-   - the settings load matrix runs against the new binary (ticket 09 of that spec).
+   - the settings load matrix runs against the new binary (ticket 09 of that spec). It loads models on the GPU,
+     so ask the user for a window first (about 2 minutes):
+     `node testing/llama-server-matrix/run.mjs --model <small.gguf>`. Quote its last line. Every row must read
+     PASS, including `bad-v-q8-fa-off`, which passes when the load fails. The README beside it has the
+     packaged-build smoke steps.
 
