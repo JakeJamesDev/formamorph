@@ -23,7 +23,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🔌 **[Connect Your Own AI](Connect-Your-Own-AI)** | Moving from the Demo AI to a stronger model — a local server, a hosted API service, or the desktop app |
 | 📱 **[Install on Android](Install-on-Android)** | Getting the app on your phone — the download, Android's prompts, and how it updates itself |
 | 📚 **[Library](Library)** | The main menu's board — the four tabs, tile sizes, Groups, the card menu, and import and export of worlds, entities, dictionaries and avatars |
-| 🧍 **[Avatars](Avatars)** | Your 3D player model — importing a VRM file, Character Customization, the details and license, and how it differs from an entity's 3D model and your Profile Image |
+| 🧍 **[Avatars](Avatars)** | The 3D models an entity can show — importing a VRM file, your default Avatar, Character Customization, the details and license, and how an Avatar differs from an entity's 3D model and your Profile Image |
 | 🚪 **[Starting a Game](Starting-a-Game)** | Everything before page one — Enter World, Quick Start, starting traits, the starting location and Library Additions |
 | 🎮 **[How to Play](How-to-Play)** | Taking a turn — actions, choices, `[bracket]` direction, images, re-generate, edit, rewind, the side panels and the game menu |
 | ❓ **[Formaquestion](Formaquestion)** | The help window in the app — the **Help** tab and F1, asking a question, searching this guide, reading a page, moving the window, and changing its settings |
@@ -44,7 +44,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🔤 **[Glossary](Glossary)** | Every Formamorph term in one place, each linked to the page that explains it |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |
 | 🛠️ **[World Editor](WorldEditor)** | The editor's modes, find and replace, the Authoring Tour, and saving your changes |
-| 🌍 **[World Editor: Overview](World-Editor-Overview)** | The world's name, card, avatar, music and AI-facing text, and uploaded or linked images |
+| 🌍 **[World Editor: Overview](World-Editor-Overview)** | The world's name, card, Avatars, music and AI-facing text, and uploaded or linked images |
 | 🎬 **[World Editor: Openings](World-Editor-Openings)** | The ways a game can start, their weights, and Self openings for personas |
 | 📊 **[World Editor: Stats](World-Editor-Stats)** | The player's numbers, their descriptors, and their scripts |
 | 🎭 **[World Editor: Entities](World-Editor-Entities)** | The people, creatures and things in a world, their names and aliases, and SillyTavern cards |

@@ -35,8 +35,7 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 | **Author** | Your name on the card. |
 | **Tags** | The words the community browser filters on. |
 | **Thumbnail** | The card's image. **Generate with AI** under the frame makes one from your Player-Facing Description, or from the AI-Facing Description when that is empty. |
-| **3D Player Avatar** | Gives this world a 3D avatar. The player can [customize it](Avatars#character-customization) before they start. |
-| **Custom Player Avatar** | **Advanced mode only**, and only with **3D Player Avatar** on. Your own `.vrm` or `.glb` replaces the bundled model. See [The World Avatar](Avatars#the-world-avatar). **Preview** opens it, and **Remove** goes back to the default. |
+| **Avatars** | **Advanced mode only.** The Avatars this world carries. **Upload Avatar** adds a `.vrm` or `.glb` file. **Copy from library** copies one of your Avatars. Rename a row to change its name in the **Avatar** dropdown. A delete names the entities that use the Avatar, and they go back to **None**. Pick an Avatar on each entity. See [World Avatars](Avatars#world-avatars). |
 | **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |

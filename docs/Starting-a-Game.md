@@ -13,7 +13,7 @@ A new game starts at **Enter World**. One dialog holds every choice before page 
 2. Select **Enter World**.
 3. If the world has an **Introduction**, read it and close it.
 4. In the **Enter World** dialog, select each category in the list on the left and make your picks. The categories are in [The Enter World Dialog](#the-enter-world-dialog).
-5. Select **Start Game**. In a world with a 3D model, the button reads **Continue to Avatar**, and the avatar step comes next.
+5. Select **Start Game**. When the persona you play has an Avatar, the button reads **Continue to Avatar**, and the Avatar step comes next.
 
 A world with nothing to choose skips the **Enter World** dialog.
 
@@ -163,7 +163,9 @@ An author can write an **Introduction** for the world. It opens before the **Ent
 ## The Avatar Step
 <!-- keywords: 3d model, appearance, body sliders, finalize, vrm, how i look, continue button -->
 
-In a world with a 3D model, **Continue to Avatar** opens **Character Customization**. Pick a **Player Avatar**, adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog. See [Character Customization](Avatars#character-customization).
+The step shows when the persona you play has an Avatar. The button switches between **Continue to Avatar** and **Start Game** as you change your persona. A persona with no Avatar skips the step.
+
+**Continue to Avatar** opens **Character Customization**. When the persona uses **User's Default**, pick a **Player Avatar**. It starts on your default. When the author picked an Avatar, that one shows and you can't change it. Adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog. Your changes apply to the Avatar of the entity you play. See [Character Customization](Avatars#character-customization).
 
 ## What Happens at Start
 <!-- keywords: first turn, opening scene, prefilled text, already typed, first message, greeting, popups, intro scene -->

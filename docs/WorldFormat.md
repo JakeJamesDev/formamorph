@@ -126,7 +126,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | A script that uses `stats.find(…)` | The same code with the stat map |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
-| A root `customPlayerVRM` | `worldOverview.customPlayerVRM` |
+| A root `customPlayerVRM` | An Avatar in `worldOverview.vrmStore`. See [Avatar Picks](#avatar-picks) |
 | Entity and location `inGameDescription` and `detailedDescription` | `playerDescription` and `aiDescription` |
 | A trait `description` | Both `playerDescription` and `aiDescription` |
 
@@ -145,9 +145,9 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `thumbnail` | ✓ | [Image](#media-fields) \| `null` | The card image |
 | `bgm` | ✓ | [Audio](#media-fields) \| `null` | Background music, as a data URL |
 | `systemPrompt` | ✓ | String | The **AI-Facing Description**: what the AI reads about the world. Players never see it |
-| `use3DModel` | ✓ | Boolean | The world shows a 3D avatar |
 | `tags` | ✓ | String[] | Listing tags |
-| `customPlayerVRM` | | [MediaAsset](#media-fields) \| `null` | The world's own player avatar, a `.vrm` file |
+| `vrmStore` | | Object | The world's Avatars, keyed by `id`. Each value is `{ "name": String, "file": MediaAsset, "hash": String }`. `hash` is optional. Entities refer to an entry by `id` through `vrmPick` |
+| `legacyVrmFallback` | | [Avatar pick](#avatar-picks) | Written by the migration of an older world, not for authors. It gives the played entity an Avatar when that entity has none. Absent = no fallback |
 | `readme` | | String | Markdown the player sees when play starts |
 | `introReadme` | | String | Markdown the player sees on the first setup screen. It shares the readme's on and off switch |
 | `promptOverrides` | | Object | The world's **Custom Prompts**. See below. Absent = the player's prompts |
@@ -371,6 +371,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `sound` | | [MediaAsset](#media-fields) | A sound |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
+| `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
 | `locations` | | String[] | The `id`s of the locations where the entity is. It is at all of them |
 | `groupId` | | String \| `null` | Editor-only. The [entity group's](#entity-groups) `id`. Absent or `null` = no group |
 | `order` | | Number | Editor-only. The order in its group |
@@ -616,7 +617,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 
 **Background music** (`bgm`) is a base64 data URL.
 
-**Uploaded audio and models** (`customPlayerVRM`, location `ambientSound`, entity `sound` and `model`) are a `MediaAsset`:
+**Uploaded audio and models** (the `file` of a `vrmStore` entry, location `ambientSound`, entity `sound` and `model`) are a `MediaAsset`:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -628,6 +629,21 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ```json
 { "data": "data:model/vrm;base64,...", "type": "model/vrm", "name": "hero.vrm" }
 ```
+
+## Avatar Picks
+<!-- keywords: vrm pick, entity avatar, avatar store reference, user's default, legacy keys, use3DModel, customPlayerVRM -->
+
+An Avatar pick says which Avatar an entity shows. It is an object with a `kind`:
+
+| Shape | Meaning |
+|---|---|
+| `{ "kind": "default" }` | **User's Default**: the player's default Avatar |
+| `{ "kind": "world", "id": "<vrmStore id>" }` | An Avatar in the world's `vrmStore` |
+| `{ "kind": "library", "id": "<id>" }` | An Avatar in the player's library. Library entities use this form. A world file never holds it. |
+
+Entities share an Avatar by naming the same `id`. A pick of an `id` the store lacks reads as none. A character card or entity listing that carries a pick also carries the Avatar file.
+
+A world file from an older version can hold `use3DModel` and `customPlayerVRM` in `worldOverview`. The app moves the Avatar into `vrmStore` and sets `legacyVrmFallback` only when `use3DModel` is `true`. New files do not write those two keys.
 
 ## Example World
 <!-- keywords: sample, starter, minimal, full file, copy paste, reference json, demo, boilerplate -->
@@ -645,7 +661,6 @@ A short world. `...` replaces the media data.
     "thumbnail": "data:image/png;base64,...",
     "bgm": null,
     "systemPrompt": "A quiet fantasy town. Magic is rare and feared.",
-    "use3DModel": false,
     "tags": ["fantasy"],
     "readme": "# Welcome\nYou arrive at dusk.",
     "openings": [
