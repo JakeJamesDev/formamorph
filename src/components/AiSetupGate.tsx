@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toastError } from '@/lib/linkToast';
 import {
-  VRAM_TIERS, formatModelSize, groupModelsByFit, tierForVram, type LocalModelInfo, type VramTier,
+  VRAM_TIERS, downloadBytes, formatModelSize, groupModelsByFit, tierForVram, type LocalModelInfo, type VramTier,
 } from '@/lib/localModels';
 import { fmtGB, useVramStats } from '@/lib/useVramStats';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
@@ -55,9 +55,10 @@ function ModelRow({ model, recommended, dimmed, onDownload }: {
           <span className="text-label font-medium">{model.name}</span>
           {recommended && <Badge>Recommended</Badge>}
           {model.reasoning && <Badge variant="outline">Reasoning</Badge>}
+          {model.projector && <Badge variant="outline">Vision</Badge>}
         </div>
         <div className="text-meta text-muted-foreground">
-          {model.params} · {model.quant} · {formatModelSize(model.sizeBytes)}
+          {model.params} · {model.quant} · {formatModelSize(downloadBytes(model))}
         </div>
         <p className="mt-1 text-helper text-muted-foreground">{model.note}</p>
       </div>
@@ -264,11 +265,11 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     setPicked(m);
     pickedRef.current = m;
     setPhase('downloading');
-    setProgress({ fileName: m.fileName, received: 0, total: m.sizeBytes, done: false });
+    setProgress({ fileName: m.fileName, received: 0, total: downloadBytes(m), done: false });
     try {
       // Always loads on finish, whatever the auto-load setting says: the gate's success step waits on the
       // engine reaching ready, and a download that didn't load would leave it waiting forever.
-      await downloadLocalModel({ url: m.url, fileName: m.fileName });
+      await downloadLocalModel({ url: m.url, fileName: m.fileName, projector: m.projector });
       setProgress(null);
       setPhase('loading');
     } catch (e) {

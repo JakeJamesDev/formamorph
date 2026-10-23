@@ -12,24 +12,16 @@ publish:
 files:
   - dist/**/*
   - electron/**/*
-  # Drop the node-llama-cpp CUDA backends (~537MB): the prebuilts need CUDA redistributables that don't ship
-  # with them and aren't on normal systems, AND the prebuilt fails to initialize even with matching redist
-  # (0 devices) — a liability that only balloons the download. Vulkan runs on every GPU incl. NVIDIA, so it's
-  # the shipped GPU backend (with CPU fallback); revisit a dedicated CUDA build later. Matches `*cuda*` on all
-  # platforms; mac has no CUDA package so it's unaffected. Also drop the unused Windows arm64 backend (we don't
-  # target win-arm; mac-arm64 is a different package and stays, so Apple Silicon isn't touched).
-  - '!**/node_modules/@node-llama-cpp/*cuda*/**'
-  - '!**/node_modules/@node-llama-cpp/win-arm64/**'
-  # The llama.cpp git bundle (~32MB) exists only to build the engine from source; a prebuilt ship never does.
-  - '!**/node_modules/node-llama-cpp/llama/gitRelease.bundle'
-# node-llama-cpp ships native binaries (the llama.cpp engine + backend .node/.dll/.so/.dylib). They can't
-# run from inside the asar archive, so keep them (and node-llama-cpp itself) unpacked on disk.
-asarUnpack:
-  - '**/node_modules/node-llama-cpp/**'
-  - '**/node_modules/@node-llama-cpp/**'
+  # The fake llama-server and its recorded runs are test-only.
+  - '!electron/fixtures/**'
+  - '!electron/fakeLlamaServer.mjs'
+# llama-server builds (scripts/fetchLlamaServer.mjs) ship as plain files in resources/llama-server/<build>/.
 # Single icon source shared with the web favicon (public/icon.png, 512x512). electron-builder converts
 # it to .ico (Windows) and .icns (macOS) at build time and uses the PNG directly on Linux.
 win:
+  extraResources:
+    - from: build-assets/llama-server/win-x64-vulkan
+      to: llama-server/win-x64-vulkan
   # `dir` = the unpacked app payload only (release/win-unpacked), NOT a runnable installer. The Windows
   # distributable is assembled in CI: the Go launcher (launcher/) at the clean root + this payload under
   # `<root>/app`, which the launcher swaps in place on update (see electron/winUpdate.cjs + launcher/main.go).
@@ -38,6 +30,11 @@ win:
     - dir
   icon: public/icon.png
 linux:
+  extraResources:
+    - from: build-assets/llama-server/linux-x64-vulkan
+      to: llama-server/linux-x64-vulkan
+    - from: build-assets/llama-server/linux-x64-cpu
+      to: llama-server/linux-x64-cpu
   target:
     - AppImage
   category: Game
@@ -45,6 +42,12 @@ linux:
   maintainer: Jake James <bennybroseph@gmail.com>
   icon: public/icon.png
 mac:
+  # Both architectures ship; the engine picks by process.arch.
+  extraResources:
+    - from: build-assets/llama-server/mac-arm64
+      to: llama-server/mac-arm64
+    - from: build-assets/llama-server/mac-x64
+      to: llama-server/mac-x64
   target:
     - dmg
   category: public.app-category.games

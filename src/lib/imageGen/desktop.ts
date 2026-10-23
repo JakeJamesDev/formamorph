@@ -2,6 +2,9 @@
 // `window.formamorphDesktop`; in the plain web build it's absent. Cloud image providers (which need a
 // CORS-free proxy) route through this bridge and are disabled in the UI when it isn't present.
 
+import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
+import type { ProjectorSource } from '@/lib/localModels';
+
 export interface DesktopFetchRequest {
   url: string;
   method?: string;
@@ -33,6 +36,14 @@ export interface LocalPartial {
   received: number;
 }
 
+/** A catalog download: the model, and a vision entry's projector fetched in the same job. */
+export interface LocalDownloadOptions {
+  url: string;
+  fileName: string;
+  projector?: ProjectorSource;
+  autoLoad?: boolean;
+}
+
 /** An installed GGUF in one of the searched folders (any source, not just our downloader). */
 export interface LocalInstalledModel {
   /** Stable ref used to load, delete, and order this model. Root models use their bare filename; models in
@@ -47,6 +58,8 @@ export interface LocalInstalledModel {
   path: string;
   /** Which folder it came from. `external` models are read-only: loadable, never deleted by us. */
   source: 'root' | 'external';
+  /** Absolute path of the paired vision projector, or null when the model can't see images. */
+  projector: string | null;
 }
 
 /** Progress of an in-flight model move, in bytes across the whole batch. */
@@ -110,17 +123,25 @@ export interface LocalLlmState {
   flashAttention: boolean | null;
   /** Parallel decode slots the model was loaded with (context sequences). */
   parallelRequests: number | null;
+  /** Whether the parallel slots shared one contextSize pool (true) or each held a full contextSize (false). */
+  unifiedKvCache: boolean | null;
+  /** Precision of the K and V halves of the context the model was loaded with. */
+  kCacheType: LocalCacheType | null;
+  vCacheType: LocalCacheType | null;
+  /** Whether the context was kept in system RAM instead of VRAM. */
+  kvCacheInRam: boolean | null;
   /** The loaded model's trained context length — the ceiling for contextSize (null when no model loaded). */
   maxContextSize: number | null;
-  /** Our VRAM footprint in MB (device-usage delta across model load), or null if unknown/no model. */
+  /** Our VRAM footprint in MB: the model, KV, compute and output buffers llama-server logged on GPU devices
+   *  at load. Null on the CPU backend or with no model. */
   engineVramMB: number | null;
   /** The backend llama.cpp selected — 'cuda' | 'vulkan' | 'metal' | 'cpu' — or null before one is chosen.
    *  Survives a failed load, so an out-of-VRAM error still says which device it ran on. */
   gpuBackend: string | null;
   /** Devices that backend enumerated, or null when it can't enumerate them. */
   gpuDeviceNames: string[] | null;
-  /** Total / free VRAM in MB on the selected device, read just before the load sizes itself against it.
-   *  A mismatch against the nvidia-smi readout means llama.cpp picked a different device than expected. */
+  /** Total / free VRAM in MB on the devices the model loaded onto: total from `--list-devices`, free as
+   *  llama-server logged it at load. A mismatch against the nvidia-smi readout means a different device. */
   deviceVramTotalMB: number | null;
   deviceVramFreeMB: number | null;
   /** The device index the backend was restricted to, or null when it was left unfiltered. Pinning one
@@ -136,6 +157,8 @@ export interface LocalLlmState {
    *  into. A pinned backend can only enumerate its own device, so this is the only record of what it was
    *  chosen from, and the answer to "why that one" in a bug report. Null when nothing was pinned. */
   gpuDeviceOptions: string[] | null;
+  /** Pid of the llama-server model instance, which holds our VRAM. Null until found after the load. */
+  serverPid: number | null;
 }
 
 /** How the engine's pinned device was arrived at. */
@@ -195,12 +218,14 @@ declare global {
         /** Subscribe to move progress; returns an unsubscribe fn. */
         onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
         /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if changed. */
-        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; gpuDevice: string }) => Promise<LocalLlmState>;
+        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }) => Promise<LocalLlmState>;
+        /** Set the Context Overflow policy for the next request; no reload. Resolves the policy applied. */
+        setContextOverflow: (policy: LocalContextOverflow) => Promise<LocalContextOverflow>;
         /** Every GPU the engine can pin to, for the device picker. */
         listDevices: () => Promise<EngineDeviceList>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
          *  the saved path. */
-        download: (opts: { url: string; fileName: string; autoLoad?: boolean }) => Promise<{ path: string }>;
+        download: (opts: LocalDownloadOptions) => Promise<{ path: string }>;
         /** Cancel (pause) the in-flight download; its partial is kept for a later resume. */
         cancelDownload: () => Promise<boolean>;
         /** Partial downloads waiting to be resumed. */
@@ -320,8 +345,12 @@ export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => vo
 }
 
 /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if they changed. */
-export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; gpuDevice: string }): Promise<LocalLlmState> =>
+export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
+
+/** Set the engine's Context Overflow policy; it applies to the next request with no reload. */
+export const setLocalLlmContextOverflow = (policy: LocalContextOverflow): Promise<LocalContextOverflow> =>
+  requireLlm().setContextOverflow(policy);
 
 /** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty
  *  list — which the picker states rather than showing an empty dropdown. */
@@ -330,7 +359,7 @@ export const listLocalGpuDevices = (): Promise<EngineDeviceList> =>
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */
-export const downloadLocalModel = (opts: { url: string; fileName: string; autoLoad?: boolean }): Promise<{ path: string }> =>
+export const downloadLocalModel = (opts: LocalDownloadOptions): Promise<{ path: string }> =>
   requireLlm().download(opts);
 
 /** Cancel (pause) the in-flight model download; the partial is kept for a later resume. */

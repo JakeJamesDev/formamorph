@@ -1,8 +1,7 @@
-// Child-process host for the local LLM engine. Everything the engine does — backend init, model load, token
-// decoding, the localhost OpenAI server — runs here rather than on the Electron main process's event loop,
-// which is also the app's window message pump. Only control traffic (start/stop/status, and the device
-// enumeration behind the GPU picker) crosses to the parent; the renderer keeps talking to the engine over
-// localhost HTTP.
+// Child-process host for the local LLM engine. The engine's supervision of llama-server and its localhost
+// OpenAI server run here rather than on the Electron main process's event loop, which is also the app's
+// window message pump. Only control traffic (start/stop/status, and the device enumeration) crosses to the
+// parent; the renderer keeps talking to the engine over localhost HTTP. The host's end also ends llama-server.
 //
 // Runs under Electron's utilityProcess.fork and Node's child_process.fork alike, so probes and tests drive
 // the real code path headlessly. llmEngineProxy.cjs is the parent half of this protocol.
@@ -16,7 +15,7 @@ function parentLink() {
 }
 
 // The parent addresses the engine by method name, so spell out which names are reachable.
-const METHODS = { start: engine.start, stop: engine.stop, getState: engine.getState, listDevices: engine.listDevices };
+const METHODS = { start: engine.start, stop: engine.stop, getState: engine.getState, listDevices: engine.listDevices, setContextOverflow: engine.setContextOverflow };
 
 const link = parentLink();
 

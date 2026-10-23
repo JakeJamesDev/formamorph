@@ -516,7 +516,44 @@ Turn it off only if an old GPU or backend can't run it.`,
     description: 'Sets how many requests the model answers at once',
     info: `After the narration, a turn sends several follow-up requests: choices, stat changes, the location check. Sets how many of them the model answers at the same time instead of one after another.
 
-A higher value speeds up a turn, but the requests split the context between them, and each uses more VRAM.`,
+A higher value speeds up a turn. With **Unified KV Cache** on, the requests share one context, so a long request leaves less room for the others. With it off, each request gets the full **Context Size**, and the context uses more VRAM.`,
+  },
+  localUnifiedKvCache: {
+    label: 'Unified KV Cache',
+    description: 'Lets parallel requests share one context',
+    info: `Keeps one context that all parallel requests share, so extra requests add no VRAM. A long request leaves less room for the others.
+
+Turn it off to give each request the full **Context Size**. The context then uses **Parallel Requests** times more VRAM.`,
+  },
+  localKCacheType: {
+    label: 'K Cache Type',
+    description: 'Trades a little quality for a longer context',
+    info: `Sets the precision of the context's key half. **Q8_0** and **Q4_0** shrink it, so a longer **Context Size** fits in the same VRAM.
+
+**F16** is full precision. Lower values can make the story read a little worse over a long context.`,
+  },
+  localVCacheType: {
+    label: 'V Cache Type',
+    description: 'Trades a little quality for a longer context',
+    info: `Sets the precision of the context's value half. **Q8_0** and **Q4_0** shrink it, so a longer **Context Size** fits in the same VRAM.
+
+A lower value needs **Flash Attention** on.`,
+  },
+  localKvCacheInRam: {
+    label: 'KV Cache in RAM',
+    description: 'Frees VRAM, but replies get much slower as the story grows',
+    info: `Moves the context from VRAM to system RAM, so the model's weights get the VRAM. Replies get much slower, and the slowdown grows as the context fills.
+
+Try a smaller **K Cache Type** and **V Cache Type** first. Use this only when the model still doesn't fit.`,
+  },
+  localContextOverflow: {
+    label: 'Context Overflow',
+    description: 'Chooses what happens when the story is longer than the context',
+    info: `- **Truncate Middle** keeps the system prompt and your first message, and drops messages from the middle
+- **Rolling Window** keeps the system prompt and drops the oldest messages first
+- **Stop at Limit** drops nothing and stops the request with an error
+
+The model never sees part of a message.`,
   },
   localAutoLoad: {
     label: 'Auto-Load',

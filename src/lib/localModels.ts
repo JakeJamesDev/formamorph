@@ -53,9 +53,24 @@ export interface LocalModelInfo {
   /** True for native-reasoning models (default `<think>`) — surfaced as a badge so users pair them with
    *  the per-prompt reasoning-budget control. The engine handles both kinds identically; this is a UI hint. */
   reasoning?: boolean;
+  /** The vision projector from the model's own repo, for an entry that can see images. The download saves
+   *  it as `mmproj-<fileName>` beside the model, so the engine pairs the two. */
+  projector?: ProjectorSource;
+}
+
+/** Where a vision projector downloads from, and its size in bytes. */
+export interface ProjectorSource {
+  url: string;
+  sizeBytes: number;
 }
 
 const hf = (repo: string, file: string) => `https://huggingface.co/${repo}/resolve/main/${file}`;
+
+/** The name a catalog projector is saved under, as electron/modelScan.cjs pairs it. */
+export const projectorFileName = (modelFileName: string) => `mmproj-${modelFileName}`;
+
+/** Bytes a catalog download fetches: the model plus its projector. */
+export const downloadBytes = (m: LocalModelInfo) => m.sizeBytes + (m.projector?.sizeBytes ?? 0);
 
 /** Month the `downloads` snapshots below were captured, for the "as of" label when live counts are offline. */
 export const DOWNLOADS_AS_OF = '2026-07';
@@ -63,10 +78,10 @@ export const DOWNLOADS_AS_OF = '2026-07';
 // Verified against the HF API (filenames, sizes, release dates, all-time downloads) July 2026. Entries here
 // all happen to be roleplay finetunes — that's history, not an entry requirement (see the eligibility note at
 // the top of this file). The one flagged `reasoning: true` is an RP finetune on a reasoning base
-// (Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → node-llama-cpp
-// `budgets.thoughtTokens`, with `<think>` reconstruction). That handling is not a guarantee at small sizes —
-// the 4B reasoning entry was cut for returning empty narrations, so screen any reasoning candidate before
-// adding it. Refresh this list periodically; the scene moves fast.
+// (Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → llama-server
+// `thinking_budget_tokens`, with `<think>` restored when the template opens it). That handling is not a
+// guarantee at small sizes — the 4B reasoning entry was cut for returning empty narrations, so screen any
+// reasoning candidate before adding it. Refresh this list periodically; the scene moves fast.
 //
 // ORDER IS LOAD-BEARING: entries are grouped by tier, and within a tier they run best-first by screen ranking
 // (testing/baseline/leaderboard.md), with untested/unfit models last. The UI recommends a tier's FIRST entry
@@ -95,6 +110,10 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     // bound by it on download. The app links to HF; it neither redistributes nor runs the weights itself.
     sizeBytes: 7_380_000_000, note: 'Best-fitting model for an 8GB card — clean stats, choices and routing.', license: 'Gemma',
     released: '2026-06', downloads: 150_443,
+    projector: {
+      url: hf('HauhauCS/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced', 'mmproj-Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-BF16.gguf'),
+      sizeBytes: 175_115_264,
+    },
   },
   {
     id: 'anubis-mini-8b', name: 'Anubis Mini 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
@@ -176,6 +195,10 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     url: hf('bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF', 'allura-org_Qwen3.6-35B-A3B-Anko-Q4_K_M.gguf'),
     sizeBytes: 21_390_000_000, note: 'Allura’s RP finetune of Qwen3.6 — reasoning MoE, smart and characterful.', license: 'Apache 2.0',
     released: '2026-04', downloads: 26_028, reasoning: true,
+    projector: {
+      url: hf('bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF', 'mmproj-allura-org_Qwen3.6-35B-A3B-Anko-f16.gguf'),
+      sizeBytes: 899_283_296,
+    },
   },
   {
     id: 'skyfall-31b', name: 'Skyfall 31B v4.2', params: '31B', quant: 'Q4_K_M', tier: 'unlimited',

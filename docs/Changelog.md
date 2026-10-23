@@ -27,6 +27,18 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor's Import Entity adds a card's Avatar to your library only when you confirm the import.** Cancel the import, and your Avatar library stays as it was.
     - **A library entity's Avatar dropdown shows Missing Avatar when its Avatar isn't on this device, as the link review does.** Pick another option to replace it.
     - **Each Avatar in the World Overview has a Preview button that shows it in 3D, with Export.** Export saves the file under the Avatar's name. History names the Avatar you add, rename or delete.
+  - **Local Model:**
+    - **Unified KV Cache is on by default, so parallel requests share one context.** Turn it off in **Advanced** to give every request the full Context Size.
+    - **K Cache Type, V Cache Type and KV Cache in RAM give you more control over the context's memory.** Q8_0 or Q4_0 shrink the context. KV Cache in RAM moves it out of VRAM, but replies get much slower. Find them in **Advanced**.
+    - **Local vision models see the images in your story when their projector sits beside the model.** Recommended vision models download theirs with them and show a **Vision** badge. A text-only model still drops images.
+    - **Context Overflow chooses what happens when a story is longer than Context Size.** Truncate Middle keeps the system prompt and your first message. Rolling Window keeps the system prompt and drops the oldest messages. Stop at Limit shows an error. Find it in **Advanced**.
+    - **World Tools work on the desktop engine, and the model reads each Tool's result before it answers.** Context Overflow keeps the current Tool round whole and drops an older round only as a unit.
+- **⚙️ Backend**
+  - **Llama Server Engine:**
+    - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.
+    - **The desktop engine now runs models through the bundled llama-server instead of node-llama-cpp.** Every engine setting maps to a server flag. A failed GPU load retries once on the CPU, and the server exits with the app, even on a crash.
+    - **The engine's proxy shapes each chat request the way node-llama-cpp read it.** It merges system messages at the top, sends the last message as a user turn, drops images a text-only model can't see, and passes the model's thoughts in a separate reasoning field.
+    - **The VRAM viewer reads the engine's share from llama-server's own load log.** The share sums the model, context and compute buffers on the GPU. The device line shows the free VRAM llama-server saw at load.
 
 #### ➖ Removed
 
@@ -34,10 +46,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Entity Avatars:**
     - **The 3D Player Avatar checkbox and the Custom Player Avatar uploader leave the World Overview.** An older world that had the checkbox on still shows the same Avatar. Its old Avatar now sits in the world's Avatars.
     - **The Enter World avatar step no longer has a Delete button.** Delete an Avatar from its tile menu on the library's **Avatars** tab, which names the saves and entities that use it.
+- **⚙️ Backend**
+  - **Llama Server Engine:**
+    - **The desktop build no longer ships node-llama-cpp.** Its dependency, its prebuilt packages and its packaging rules are gone, and the Windows payload is 4 MB smaller.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Turning off Flash Attention in the Local Model panel now turns it off when the model loads.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
   - **The bundled model's out-of-VRAM error names your Context Size and Parallel Requests settings.** It said "sequences" before and gave no next step. Now it tells you which setting to lower.
   - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.
   - **The Hidden list in Community Creations now scrolls, so you can unhide one world from a long list.** With many hidden worlds, the list grew past the screen and you couldn't reach most of them.

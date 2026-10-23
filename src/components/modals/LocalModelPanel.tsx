@@ -14,11 +14,14 @@ import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
 import { setLocalLlmOptions, listLocalGpuDevices, pinnedEngineDevice, type EngineDeviceList } from '@/lib/imageGen/desktop';
 import {
   LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
-  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  DEFAULT_LOCAL_CONTEXT_OVERFLOW, LOCAL_CONTEXT_OVERFLOW_POLICIES,
   LOCAL_GPU_DEVICE_AUTO, LOCAL_GPU_DEVICE_ALL, DEFAULT_LOCAL_GPU_DEVICE,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
+import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
+import { effectiveVCacheType } from '../../../electron/cacheTypes.cjs';
 
 /**
  * The desktop Endpoint tab's local-model view (shown when a custom endpoint is off). Model management sits
@@ -31,6 +34,11 @@ export function LocalModelPanel() {
     localGpuLayers, setLocalGpuLayers,
     localFlashAttention, setLocalFlashAttention,
     localParallelRequests, setLocalParallelRequests,
+    localUnifiedKvCache, setLocalUnifiedKvCache,
+    localKCacheType, setLocalKCacheType,
+    localVCacheType, setLocalVCacheType,
+    localKvCacheInRam, setLocalKvCacheInRam,
+    localContextOverflow, setLocalContextOverflow,
     localGpuDevice, setLocalGpuDevice,
     localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
@@ -68,6 +76,9 @@ export function LocalModelPanel() {
   };
   const gpuLabel = localGpuLayers === 0 ? 'Off (CPU)' : `${localGpuLayers} layers`;
 
+  // A quantized V cache needs Flash Attention, so each setting blocks the other and neither changes the other.
+  const vCacheQuantized = localVCacheType !== 'f16';
+
   // Cap Context Size at the loaded model's trained ceiling; a smaller model can make a persisted value invalid.
   const contextMax = engine.maxContextSize ?? 32768;
   useEffect(() => {
@@ -93,6 +104,11 @@ export function LocalModelPanel() {
     localGpuLayers !== engine.gpuLayers ||
     localFlashAttention !== engine.flashAttention ||
     localParallelRequests !== engine.parallelRequests ||
+    localUnifiedKvCache !== engine.unifiedKvCache ||
+    localKCacheType !== engine.kCacheType ||
+    // Main loads the coerced V type, so compare what it would apply, not the stored value.
+    effectiveVCacheType(localVCacheType, localFlashAttention) !== engine.vCacheType ||
+    localKvCacheInRam !== engine.kvCacheInRam ||
     deviceDiffers;
 
   // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
@@ -106,7 +122,7 @@ export function LocalModelPanel() {
   const saveReload = async () => {
     setReloading(true);
     try {
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, gpuDevice: localGpuDevice });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice });
     } finally {
       setReloading(false);
     }
@@ -117,6 +133,11 @@ export function LocalModelPanel() {
     setLocalGpuLayers(DEFAULT_LOCAL_GPU_LAYERS);
     setLocalFlashAttention(DEFAULT_LOCAL_FLASH_ATTENTION);
     setLocalParallelRequests(DEFAULT_LOCAL_PARALLEL_REQUESTS);
+    setLocalUnifiedKvCache(DEFAULT_LOCAL_UNIFIED_KV_CACHE);
+    setLocalKCacheType(DEFAULT_LOCAL_K_CACHE_TYPE);
+    setLocalVCacheType(DEFAULT_LOCAL_V_CACHE_TYPE);
+    setLocalKvCacheInRam(DEFAULT_LOCAL_KV_CACHE_IN_RAM);
+    setLocalContextOverflow(DEFAULT_LOCAL_CONTEXT_OVERFLOW);
     setLocalGpuDevice(DEFAULT_LOCAL_GPU_DEVICE);
     setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
@@ -158,7 +179,7 @@ export function LocalModelPanel() {
 
       {/* When a change takes effect is a property of the whole group, not of any one row, so it belongs
           on the section header rather than at the end of every description. */}
-      <Section title="Engine" hint="Sampling changes apply to the next turn; the rest need a reload.">
+      <Section title="Engine" hint="Sampling and Context Overflow apply to the next turn; the rest need a reload">
       {/* Simple rows — always visible */}
       <Row htmlFor="localContextSize" {...rowCopy('localContextSize')}>
         <ValueSlider id="localContextSize" value={Math.min(localContextSize, contextMax)} min={2048} max={contextMax} step={1024} onChange={setLocalContextSize} format={(v) => `${v.toLocaleString()} tok`} />
@@ -235,11 +256,13 @@ export function LocalModelPanel() {
           htmlFor="localFlashAttention"
           checked={localFlashAttention}
           onChange={setLocalFlashAttention}
+          disabled={vCacheQuantized}
+          below={vCacheQuantized ? <Hint>Stays on while <strong>V Cache Type</strong> is Q8_0 or Q4_0</Hint> : undefined}
           {...rowCopy('localFlashAttention')}
         />
       )}
 
-      {/* Parallel slots split the context (each gets ~context / slots), so the per-slot window is worth showing. */}
+      {/* Unified: the slots share one Context Size pool. Not unified: every slot holds a full Context Size. */}
       {advancedMode && (
         <Row htmlFor="localParallelRequests" {...rowCopy('localParallelRequests')}>
           <ValueSlider
@@ -249,9 +272,48 @@ export function LocalModelPanel() {
             max={LOCAL_PARALLEL_REQUESTS_MAX}
             step={1}
             onChange={setLocalParallelRequests}
-            format={(v) => (v === 1 ? '1 (off)' : `${v} · ~${Math.floor(localContextSize / v).toLocaleString()} tok each`)}
+            format={(v) => (v === 1 ? '1 (off)' : localUnifiedKvCache ? `${v} · share ${localContextSize.toLocaleString()} tok` : `${v} · ${localContextSize.toLocaleString()} tok each`)}
           />
         </Row>
+      )}
+
+      {advancedMode && (
+        <CheckRow
+          htmlFor="localUnifiedKvCache"
+          checked={localUnifiedKvCache}
+          onChange={setLocalUnifiedKvCache}
+          {...rowCopy('localUnifiedKvCache')}
+        />
+      )}
+
+      {advancedMode && (
+        <>
+          <Row htmlFor="localKCacheType" {...rowCopy('localKCacheType')}>
+            <Select value={localKCacheType} onValueChange={(v) => setLocalKCacheType(v as LocalCacheType)}>
+              <SelectTrigger id="localKCacheType"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LOCAL_CACHE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row htmlFor="localVCacheType" {...rowCopy('localVCacheType')}>
+            <Select value={localVCacheType} onValueChange={(v) => setLocalVCacheType(v as LocalCacheType)}>
+              <SelectTrigger id="localVCacheType"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LOCAL_CACHE_TYPES.map((t) => <SelectItem key={t.value} value={t.value} disabled={t.value !== 'f16' && !localFlashAttention}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {!localFlashAttention && <Hint className="mt-1">Q8_0 and Q4_0 need <strong>Flash Attention</strong>. Turn it on to pick them.</Hint>}
+          </Row>
+
+          <CheckRow
+            htmlFor="localKvCacheInRam"
+            checked={localKvCacheInRam}
+            onChange={setLocalKvCacheInRam}
+            {...rowCopy('localKvCacheInRam')}
+          />
+        </>
       )}
 
       {/* Sampling settings, grouped together (all "apply to the next turn"). */}
@@ -265,6 +327,16 @@ export function LocalModelPanel() {
 
       {advancedMode && (
         <>
+          {/* Applies to the next request, as sampling does, so it groups with the sampling rows. */}
+          <Row htmlFor="localContextOverflow" {...rowCopy('localContextOverflow')}>
+            <Select value={localContextOverflow} onValueChange={(v) => setLocalContextOverflow(v as LocalContextOverflow)}>
+              <SelectTrigger id="localContextOverflow"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LOCAL_CONTEXT_OVERFLOW_POLICIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Row>
+
           <Row htmlFor="genTopP" {...rowCopy('localTopP')}>
             <ValueSlider id="genTopP" value={genTopP} min={0} max={1} step={0.05} onChange={setGenTopP} format={(v) => v.toFixed(2)} />
           </Row>

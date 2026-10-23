@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -14,7 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Section, RowLabel, CheckRow, HintInfo } from '@/components/SettingsRows';
 import { rowCopy } from './settingsRowCopy';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, formatReleased, formatDownloads, repoOf, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
+import { LOCAL_MODELS, VRAM_TIERS, downloadBytes, projectorFileName, formatModelSize, formatReleased, formatDownloads, repoOf, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
 import { useCatalogDownloads } from '@/lib/useCatalogDownloads';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -54,6 +55,11 @@ const CATALOG_BY_FILE = new Map(LOCAL_MODELS.map((m) => [m.fileName, m.name]));
 /** localStorage key for the user's manual ordering of the Installed list (model refs, in order). */
 const INSTALLED_ORDER_KEY = 'formamorph:installedModelOrder';
 const COPIED_LABEL_MS = 2000;
+
+/** A small capability tag on a model row (Reasoning, Vision). */
+function InfoTag({ className, children }: { className?: string; children: ReactNode }) {
+  return <span className={cn('rounded bg-info/15 px-1.5 py-0.5 align-middle text-[10px] font-medium text-info', className)}>{children}</span>;
+}
 
 /** Sort installed models by the saved manual order; unranked (new) files keep their input order at the end. */
 function applyInstalledOrder(list: LocalInstalledModel[]): LocalInstalledModel[] {
@@ -95,6 +101,7 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
         <div className="flex items-center gap-2 truncate text-label font-medium">
           {name}
           {isLoaded && <span className="rounded bg-success px-1.5 py-0.5 text-meta text-success-foreground">Loaded</span>}
+          {item.projector && <InfoTag>Vision</InfoTag>}
         </div>
         {known && <div className="truncate text-meta text-muted-foreground">{item.fileName}</div>}
         {external && (
@@ -447,10 +454,21 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
   const [spaceWarning, setSpaceWarning] = useState<{ model: LocalModelInfo; needed: number; free: number } | null>(null);
   const autoedRef = useRef(false);
 
-  const installedNames = useMemo(
-    () => new Set(installed.filter((i) => i.source === 'root').map((i) => i.fileName)),
+  const rootInstalled = useMemo(
+    () => new Map(installed.filter((i) => i.source === 'root').map((i) => [i.fileName, i])),
     [installed],
   );
+  // A vision entry counts as installed once its projector is beside it too.
+  const isCatalogInstalled = (m: LocalModelInfo) => {
+    const item = rootInstalled.get(m.fileName);
+    return Boolean(item && (!m.projector || item.projector));
+  };
+  /** Bytes a catalog download already holds on disk, or undefined when nothing has started. */
+  const resumeBytes = (m: LocalModelInfo): number | undefined => {
+    const model = rootInstalled.get(m.fileName)?.size ?? partials[m.fileName];
+    const projector = m.projector ? partials[projectorFileName(m.fileName)] : undefined;
+    return model === undefined && projector === undefined ? undefined : (model ?? 0) + (projector ?? 0);
+  };
 
   const refresh = () => {
     localModelLocations().then(setLocations).catch(() => { /* ignore */ });
@@ -500,7 +518,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
     // Warn (don't block) when the model won't fit — the figure can be stale on a network share, and a
     // resumed download only needs what's left. Failing 7 GB in is worse than a question up front.
     if (!force) {
-      const needed = m.sizeBytes - (partials[m.fileName] ?? 0);
+      const needed = downloadBytes(m) - (resumeBytes(m) ?? 0);
       const free = await localModelFreeSpace().catch(() => null);
       if (free !== null && free < needed) {
         setSpaceWarning({ model: m, needed, free });
@@ -508,9 +526,9 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
       }
     }
     // Seed the bar at the resume point so a resumed download doesn't flash back to 0%.
-    setProgress({ fileName: m.fileName, received: partials[m.fileName] ?? 0, total: m.sizeBytes, done: false });
+    setProgress({ fileName: m.fileName, received: resumeBytes(m) ?? 0, total: downloadBytes(m), done: false });
     try {
-      await downloadLocalModel({ url: m.url, fileName: m.fileName, autoLoad: localAutoLoad });
+      await downloadLocalModel({ url: m.url, fileName: m.fileName, projector: m.projector, autoLoad: localAutoLoad });
       refresh();
     } catch (e) {
       // A pause isn't an error — just refresh so the row shows its resumable partial.
@@ -523,7 +541,11 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
 
   const discardPartial = async (m: LocalModelInfo) => {
     setBusyFile(m.fileName);
-    try { await discardLocalPartial(m.fileName); refresh(); } finally { setBusyFile(null); }
+    try {
+      await discardLocalPartial(m.fileName);
+      if (m.projector) await discardLocalPartial(projectorFileName(m.fileName));
+      refresh();
+    } finally { setBusyFile(null); }
   };
 
   const load = async (ref: string) => {
@@ -690,15 +712,16 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                 // Root-folder only: this tab manages our own downloads, and its Load/Delete work on refs
                 // that resolve there. A catalog model that exists only in the external folder still shows
                 // on the Installed tab.
-                const isInstalled = installedNames.has(m.fileName);
+                const isInstalled = isCatalogInstalled(m);
                 const isLoaded = engine.status === 'ready' && engine.modelId === m.fileName;
                 const isLoading = engine.status === 'loading' && engine.modelId === m.fileName;
                 const thisDownloading = downloading && progress?.fileName === m.fileName;
                 const busy = busyFile === m.fileName;
                 const pct = progress && progress.total ? Math.round((progress.received / progress.total) * 100) : 0;
-                const partialBytes = partials[m.fileName];
+                const totalBytes = downloadBytes(m);
+                const partialBytes = resumeBytes(m);
                 const hasPartial = partialBytes !== undefined && !isInstalled;
-                const partialPct = hasPartial ? Math.round((partialBytes / m.sizeBytes) * 100) : 0;
+                const partialPct = hasPartial ? Math.round((partialBytes / totalBytes) * 100) : 0;
                 const downloadsLabel = `${formatDownloads(liveDownloads[repoOf(m)] ?? m.downloads)} downloads`;
 
                 return (
@@ -706,8 +729,9 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-medium">
-                          {m.name} <span className="text-meta text-muted-foreground">{m.params} · {m.quant} · {formatModelSize(m.sizeBytes)}</span>
-                          {m.reasoning && <span className="ml-1.5 rounded bg-info/15 px-1.5 py-0.5 align-middle text-[10px] font-medium text-info">Reasoning</span>}
+                          {m.name} <span className="text-meta text-muted-foreground">{m.params} · {m.quant} · {formatModelSize(totalBytes)}</span>
+                          {m.reasoning && <InfoTag className="ml-1.5">Reasoning</InfoTag>}
+                          {m.projector && <InfoTag className="ml-1.5">Vision</InfoTag>}
                         </div>
                         <div className="text-meta text-muted-foreground">{m.note}</div>
                         <div className="text-meta text-muted-foreground">License: {m.license}</div>
@@ -722,7 +746,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                       <div className="space-y-1">
                         <Progress value={pct} />
                         <div className="flex items-center justify-between text-meta text-muted-foreground">
-                          <span>{formatModelSize(progress.received)} / {formatModelSize(progress.total || m.sizeBytes)} ({pct}%)</span>
+                          <span>{formatModelSize(progress.received)} / {formatModelSize(progress.total || totalBytes)} ({pct}%)</span>
                           <Button size="sm" variant="ghost" onClick={() => cancelLocalDownload()}>Pause</Button>
                         </div>
                       </div>
@@ -749,13 +773,13 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => discardPartial(m)} disabled={busy || downloading}>Discard</Button>
                             <span className="text-meta text-muted-foreground">
-                              {formatModelSize(partialBytes)} / {formatModelSize(m.sizeBytes)}
+                              {formatModelSize(partialBytes)} / {formatModelSize(totalBytes)}
                             </span>
                           </>
                         ) : (
                           <>
                             <Button size="sm" onClick={() => startDownload(m)} disabled={downloading}>
-                              Download ({formatModelSize(m.sizeBytes)})
+                              Download ({formatModelSize(totalBytes)})
                             </Button>
                             <span className="text-meta text-muted-foreground">{downloadsLabel}</span>
                           </>

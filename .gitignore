@@ -74,3 +74,4 @@ testing/open-speed/results.json
 *.tsbuildinfo
 testing/editor-speed/.out/
 testing/editor-speed/.build/
+build-assets/llama-server/

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import modelScan from './modelScan.cjs';
 
-const { scanModels, resolveModelRef, isRootRef, MAX_DEPTH } = modelScan;
+const { scanModels, resolveModelRef, isRootRef, findProjector, projectorFileName, MAX_DEPTH } = modelScan;
 
 // Real folders on disk: the scan's whole job is reading a directory tree, and a mocked fs would prove
 // nothing about depth caps or symlink handling.
@@ -168,5 +168,60 @@ describe('isRootRef: what delete and download are allowed to touch', () => {
   it('accepts app-folder refs and rejects external ones', () => {
     expect(isRootRef('alpha.gguf')).toBe(true);
     expect(isRootRef('ext:pub/repo/m.gguf')).toBe(false);
+  });
+});
+
+describe('vision projectors: pairing and listing', () => {
+  const scanRoot = () => scanModels({ rootDir: rootDir(), externalDir: null, searchSubfolders: false });
+
+  it('pairs a model with mmproj-<its file name> in a shared folder', () => {
+    const model = path.join(rootDir(), 'Vision-Q4_K_M.gguf');
+    write(model);
+    write(path.join(rootDir(), 'Text-Q4_K_M.gguf'));
+    write(path.join(rootDir(), projectorFileName('Vision-Q4_K_M.gguf')));
+    write(path.join(rootDir(), 'mmproj-Other-F16.gguf'));
+    expect(projectorFileName('Vision-Q4_K_M.gguf')).toBe('mmproj-Vision-Q4_K_M.gguf');
+    expect(findProjector(model)).toBe(path.join(rootDir(), 'mmproj-Vision-Q4_K_M.gguf'));
+    expect(findProjector(path.join(rootDir(), 'Text-Q4_K_M.gguf'))).toBeNull();
+  });
+
+  it('pairs a folder’s one model with its one projector, a mid-name mmproj included', () => {
+    const dir = path.join(extDir(), 'pub', 'Repo-GGUF');
+    write(path.join(dir, 'repo-31B-Q4_K_M.gguf'));
+    write(path.join(dir, 'repo-31B-mmproj-BF16.gguf'));
+    expect(findProjector(path.join(dir, 'repo-31B-Q4_K_M.gguf'))).toBe(path.join(dir, 'repo-31B-mmproj-BF16.gguf'));
+  });
+
+  it('pairs nothing when a folder has two models or two projectors and no exact name', () => {
+    write(path.join(rootDir(), 'a.gguf'));
+    write(path.join(rootDir(), 'b.gguf'));
+    write(path.join(rootDir(), 'mmproj-F16.gguf'));
+    expect(findProjector(path.join(rootDir(), 'a.gguf'))).toBeNull();
+
+    const dir = path.join(extDir(), 'one-model');
+    write(path.join(dir, 'm.gguf'));
+    write(path.join(dir, 'mmproj-F16.gguf'));
+    write(path.join(dir, 'mmproj-BF16.gguf'));
+    expect(findProjector(path.join(dir, 'm.gguf'))).toBeNull();
+  });
+
+  it('never lists a projector as a model, and marks the model that has one', () => {
+    write(path.join(rootDir(), 'Vision.gguf'));
+    write(path.join(rootDir(), 'mmproj-Vision.gguf'));
+    write(path.join(rootDir(), 'Text.gguf'));
+    write(path.join(extDir(), 'pub', 'repo', 'm.gguf'));
+    write(path.join(extDir(), 'pub', 'repo', 'm-mmproj-f16.gguf'));
+    const out = scanModels({ rootDir: rootDir(), externalDir: extDir(), searchSubfolders: true });
+    expect(out.map((m) => [m.fileName, m.projector])).toEqual([
+      ['m.gguf', path.join(extDir(), 'pub', 'repo', 'm-mmproj-f16.gguf')],
+      ['Text.gguf', null],
+      ['Vision.gguf', path.join(rootDir(), 'mmproj-Vision.gguf')],
+    ]);
+    expect(scanRoot().map((m) => m.fileName)).toEqual(['Text.gguf', 'Vision.gguf']);
+  });
+
+  it('refuses a projector as a model to load', () => {
+    write(path.join(rootDir(), 'mmproj-Vision.gguf'));
+    expect(resolveModelRef('mmproj-Vision.gguf', { rootDir: rootDir(), externalDir: null })).toBeNull();
   });
 });

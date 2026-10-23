@@ -227,6 +227,80 @@ describe('download: pause and resume', () => {
   });
 });
 
+describe('downloadModel: a vision entry and its projector', () => {
+  const PROJECTOR = `mmproj-${FILE_NAME}`;
+  const PROJECTOR_URL = `${URL_BASE}/mmproj-F16.gguf`;
+  const modelBody = makeBody(CHUNK * 4);
+  const projectorBody = makeBody(CHUNK * 2 + 7).reverse();
+
+  /** One fetch over two servers: the projector URL reaches `proj`, everything else `model`. */
+  const routed = (model, proj) => (url, init) => (String(url).includes('mmproj') ? proj : model).fetchImpl(url, init);
+  const runVision = (fetchImpl, onProgress = () => {}) => modelDownload.downloadModel({
+    url: MODEL_URL, fileName: FILE_NAME, projector: { url: PROJECTOR_URL, sizeBytes: projectorBody.length },
+    destDir: tmp, chunkSize: CHUNK, fetchImpl,
+  }, onProgress);
+  const projectorPart = () => path.join(tmp, `${PROJECTOR}.part`);
+  const partDone = (p) => fs.existsSync(`${p}.json`) && JSON.parse(fs.readFileSync(`${p}.json`, 'utf8')).done.length;
+
+  it('fetches the model and its projector, with one progress over both', async () => {
+    const model = await rangeServer(modelBody);
+    const proj = await rangeServer(projectorBody);
+    const events = [];
+
+    const finalPath = await runVision(routed(model, proj), (p) => events.push(p));
+
+    expect(finalPath).toBe(path.join(tmp, FILE_NAME));
+    expect(fs.readFileSync(path.join(tmp, FILE_NAME))).toEqual(modelBody);
+    expect(fs.readFileSync(path.join(tmp, PROJECTOR))).toEqual(projectorBody);
+    const total = modelBody.length + projectorBody.length;
+    expect(events.at(-1)).toEqual({ fileName: FILE_NAME, received: total, total, done: true });
+    expect(events.filter((e) => e.done)).toHaveLength(1);
+    expect(events.every((e) => e.fileName === FILE_NAME && e.total === total && e.received <= total)).toBe(true);
+  });
+
+  it('resumes a pause in the model, then a pause in the projector, fetching only what is missing', async () => {
+    // Pause 1: two model chunks land, the rest hang.
+    const m1 = await rangeServer(modelBody, { hangFromOffset: CHUNK * 2 });
+    const p1 = await rangeServer(projectorBody);
+    const first = runVision(routed(m1, p1)).catch((e) => e);
+    await waitFor(() => partDone(partPath()) === 2);
+    cancel();
+    expect((await first).message).toBe('DOWNLOAD_PAUSED');
+    expect(p1.state.requests).toEqual([]);
+
+    // Pause 2: the model finishes, one projector chunk lands, the rest hang.
+    const m2 = await rangeServer(modelBody);
+    const p2 = await rangeServer(projectorBody, { hangFromOffset: CHUNK });
+    const second = runVision(routed(m2, p2)).catch((e) => e);
+    await waitFor(() => partDone(projectorPart()) === 1);
+    cancel();
+    expect((await second).message).toBe('DOWNLOAD_PAUSED');
+    expect(m2.state.requests.map((r) => r.start).sort((a, b) => a - b)).toEqual([CHUNK * 2, CHUNK * 3]);
+    expect(fs.readFileSync(path.join(tmp, FILE_NAME))).toEqual(modelBody);
+    expect(listPartials(tmp)).toEqual([{ fileName: PROJECTOR, received: CHUNK }]);
+
+    // The last resume asks for nothing of the model and only the projector's missing chunks.
+    const m3 = await rangeServer(modelBody);
+    const p3 = await rangeServer(projectorBody);
+    const events = [];
+    await runVision(routed(m3, p3), (p) => events.push(p));
+    expect(m3.state.requests).toEqual([]);
+    expect(p3.state.requests.map((r) => r.start).sort((a, b) => a - b)).toEqual([CHUNK, CHUNK * 2]);
+    expect(fs.readFileSync(path.join(tmp, PROJECTOR))).toEqual(projectorBody);
+    const total = modelBody.length + projectorBody.length;
+    expect(events.at(-1)).toEqual({ fileName: FILE_NAME, received: total, total, done: true });
+  });
+
+  it('fetches only the projector for a model already on disk', async () => {
+    fs.writeFileSync(path.join(tmp, FILE_NAME), modelBody);
+    const model = await rangeServer(modelBody);
+    const proj = await rangeServer(projectorBody);
+    await runVision(routed(model, proj));
+    expect(model.state.requests).toEqual([]);
+    expect(fs.readFileSync(path.join(tmp, PROJECTOR))).toEqual(projectorBody);
+  });
+});
+
 describe('download: what must never happen', () => {
   it('does not rename when a chunk keeps arriving short', async () => {
     const body = makeBody(CHUNK * 3);
