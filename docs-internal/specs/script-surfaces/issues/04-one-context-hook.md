@@ -20,6 +20,7 @@ All three surfaces switch to the hook. The code box's own home derivation for Te
 - [ ] Library entity editor: a script box on a library entity's stat and trait completes against the entity's own stats and runs Test Code with no card lookup.
 - [ ] The box's Test Code home comes from the hook's home; the box's own derivation is gone.
 - [ ] The three extracted builders are deleted; no surface builds its context outside the hook.
+- [ ] A Blueprint trait box's lookup lists the owners that link the trait on both surfaces, as a Blueprint stat's does (T04-1); the parity row that recorded no owners is updated to the owners.
 - [ ] Changelog fragment in `docs-internal/changelog.d/`, under Fixed, 👤: Test Code on a linked stat now routes writes through `owner.stats` to the stat itself, as play does.
 
 For you: on a world with an entity linking a Blueprint stat, run Test Code on that stat's script from its panel and from the Scripts tab, and confirm the two reports match.
