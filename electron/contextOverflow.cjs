@@ -8,12 +8,14 @@ const DEFAULT_POLICY = 'truncateMiddle';
 const overflowPolicy = (v) => (POLICIES.includes(v) ? v : DEFAULT_POLICY);
 
 /**
- * `messages` as shaped (an optional system turn on top, the last message a user turn). Resolves
- * { messages, tokens } that fit `budget`, or { overflow: { tokens } } with the uncut count when the policy
- * stops or the messages it must keep don't fit. `count(messages)` resolves the rendered prompt's tokens.
+ * `messages` as shaped (an optional system turn on top; the current tool round, if any, follows the last
+ * user turn, and with no user turn nothing can be cut). Resolves { messages, tokens } that fit `budget`, or { overflow: { tokens } }
+ * with the uncut count when the policy stops or the messages it must keep don't fit. `count(messages)`
+ * resolves the rendered prompt's tokens.
  *
  * The dropped block is one run of messages: from just after the first user turn (Truncate Middle) or the
- * system turn (Rolling Window). A cut that keeps the turns alternating wins over a smaller one that doesn't.
+ * system turn (Rolling Window), and never past the last user turn. A cut never ends on a `tool` message, so
+ * a tool round drops whole. A cut that keeps the turns alternating wins over a smaller one that doesn't.
  */
 async function fitMessages(messages, { policy, budget, count }) {
   const total = await count(messages);
@@ -21,14 +23,14 @@ async function fitMessages(messages, { policy, budget, count }) {
   const overflow = { overflow: { tokens: total } };
   if (overflowPolicy(policy) === 'stopAtLimit') return overflow;
 
-  const last = messages.length - 1;
+  const lastUser = messages.findLastIndex((m) => m.role === 'user');
   const sys = messages[0]?.role === 'system' ? 1 : 0;
   let from = sys;
   if (overflowPolicy(policy) === 'truncateMiddle') {
-    const firstUser = messages.findIndex((m, i) => i >= sys && i < last && m.role === 'user');
+    const firstUser = messages.findIndex((m, i) => i >= sys && i < lastUser && m.role === 'user');
     if (firstUser >= 0) from = firstUser + 1;
   }
-  const room = last - from;
+  const room = lastUser - from;
   if (room <= 0) return overflow;
 
   const prev = messages[from - 1];
@@ -54,7 +56,7 @@ async function fitMessages(messages, { policy, budget, count }) {
     }
     return ks[lo];
   };
-  const all = Array.from({ length: room }, (_, i) => i + 1);
+  const all = Array.from({ length: room }, (_, i) => i + 1).filter((k) => messages[from + k].role !== 'tool');
   const k = (await smallestFit(all.filter(alternates))) ?? (await smallestFit(all));
   if (k == null) return overflow;
   return { messages: cut(k), tokens: await tokensAt(k) };
