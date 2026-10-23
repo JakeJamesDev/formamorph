@@ -1,6 +1,6 @@
 # 03: Extract the Builders and Record Parity
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,8 +15,18 @@ A parity fixture world holds one of each home: a global stat, an entity's own st
 
 ## Acceptance criteria
 
-- [ ] Each of the three derivations is a pure function the component calls; the existing panel, trait and Scripts tab tests pass unchanged.
-- [ ] The parity fixture world covers the eight homes above, each with a script and, for the linked stat, an override.
-- [ ] Parity tests record Owner, self name, owner stats, owner stat names and the lookup answer per home per surface, and name every recorded disagreement, the linked stat's self id included.
-- [ ] A parity test fails when one extracted builder's Owner derivation is changed, proven once by hand.
-- [ ] No changelog fragment: a prefactor with no player-visible change.
+- [x] Each of the three derivations is a pure function the component calls; the existing panel, trait and Scripts tab tests pass unchanged. `statPanelBoxContext`, `traitTabBoxContext`, `scriptEntryBoxContext` in `src/managers/scriptBoxBuilders.ts`; 97 related test files (1115 tests) green with no test file changed.
+- [x] The parity fixture world covers the eight homes above, each with a script and, for the linked stat, an override. Fixture in `scriptBoxBuilders.parity.test.tsx`; a second entity links both Blueprints unoverridden so their lookups have an owner.
+- [x] Parity tests record Owner, self name, owner stats, owner stat names and the lookup answer per home per surface, and name every recorded disagreement, the linked stat's self id included. `RECORD` plus `DISAGREEMENTS` (T03-1, T03-2, T03-3); the Scripts tab runs through `useScriptEntryContext` itself.
+- [x] A parity test fails when one extracted builder's Owner derivation is changed, proven once by hand. Trait tab Blueprint owner set to null: `blueprintTrait on the traitTab` went red; Scripts tab Blueprint owner dropped: two Scripts tab cases went red. Both reverted.
+- [x] No changelog fragment: a prefactor with no player-visible change.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Nothing to judge in play: no surface changes what it shows or runs.
+
+Seen in passing, for ticket 04: a Blueprint trait box's lookup lists no owners on either surface (`owner().owners` and `ownerEntityIds()` empty), because the lookup finds a Blueprint box's runs by its self stat id, which a trait box has none of. Recorded as today's value in `RECORD.blueprintTrait`.

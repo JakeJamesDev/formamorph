@@ -4,17 +4,14 @@ import { Label } from "@/components/ui/label";
 import { Hint } from "@/components/ui/typography";
 import { HelpButton } from "@/components/HelpButton";
 import { LabelRow } from "@/components/editor/BlueprintReset";
-import { statBoxLookups, traitBoxSelf } from "@/lib/codeWorldLookup";
-import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
-import { resolvedEntityStats } from "@/lib/statLinks";
-import { isBlueprintItem } from "@/lib/traitTree";
+import { statBoxLookups } from "@/lib/codeWorldLookup";
 import { registerScriptInsert, reportScriptInsert } from "@/lib/formaquestion/scriptInsert";
 import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
 import { useLanding } from "@/lib/surface/useLanding";
 import type { CodeUseReveal } from "@/lib/codeUseReveal";
 import { useScriptWorldNames } from "@/lib/useScriptWorldNames";
-import type { Entity, Script, ScriptTiming, Trait } from "@/types";
-import type { ScriptBoxContext, ScriptBoxOwner } from "./ScriptBox";
+import type { Entity, Script, Trait } from "@/types";
+import { traitTabBoxContext } from "./scriptBoxBuilders";
 import { ScriptsSection } from "./ScriptsSection";
 
 /**
@@ -35,32 +32,12 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
 }) {
   const world = useGameDataOptional();
   const { names, placeholderPlaces, world: foldWorld } = useScriptWorldNames();
-  const placeholders = names.placeholders.list;
-  const selfName = statCodeName(trait.name, placeholders);
-  const blueprint = !owner && isBlueprintItem({ traits: [...names.traits], traitGroups: world?.traitGroups ?? [] }, trait.id);
-  const ownerId = owner?.id;
-  const boxOwner = useMemo<ScriptBoxOwner | null>(
-    () => (ownerId ? { kind: 'entity', entityId: ownerId } : blueprint ? { kind: 'blueprint' } : null),
-    [ownerId, blueprint],
-  );
-  // `owner.stats` is the owner's own; a Blueprint trait's owners vary, so its names go unchecked.
-  const ownerStats = useMemo(() => (owner
-    ? statCodeNamed(resolvedEntityStats({ stats: world?.stats ?? [], statGroups: world?.statGroups ?? [] }, owner), placeholders)
-    : []), [owner, world?.stats, world?.statGroups, placeholders]);
-  const ownerStatNames = useMemo(
-    () => (owner ? ownerStats.map((stat) => stat.name).filter(Boolean) : undefined),
-    [owner, ownerStats],
-  );
   // Cards read the authored world, so the library, which has none, gets no lookup.
-  const lookup = useMemo(() => {
-    if (!world) return undefined;
-    const lookups = statBoxLookups(world);
-    const self = traitBoxSelf(trait.id, selfName);
-    return (timing: ScriptTiming) => lookups({ owner: boxOwner, timing, self });
-  }, [world, trait.id, selfName, boxOwner]);
-  const context = useMemo<ScriptBoxContext>(() => ({
-    selfName, owner: boxOwner, names, world: foldWorld, ownerStats, ...(ownerStatNames && { ownerStatNames }), placeholderPlaces, lookup,
-  }), [selfName, boxOwner, names, foldWorld, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
+  const lookups = useMemo(() => world && statBoxLookups(world), [world]);
+  const { self, context } = useMemo(
+    () => traitTabBoxContext({ trait, owner, world, lookups, shared: { names, placeholderPlaces, world: foldWorld } }),
+    [trait, owner, world, lookups, names, placeholderPlaces, foldWorld],
+  );
 
   // The help window's Insert adds a script of its timing to this trait and lands on it. This tab mounts only while shown.
   const landOnScript = useLanding(scriptRow, { focus: noFocus });
@@ -94,7 +71,7 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
         scripts={trait.scripts ?? []}
         onChange={onChange}
         ownerName={ownerName}
-        self={{ kind: 'trait', id: trait.id }}
+        self={self}
         context={context}
         reveal={reveal}
         focusId={inserted}
