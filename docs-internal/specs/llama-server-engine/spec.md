@@ -1,7 +1,7 @@
 # Llama Server Engine
 
-Status: ready-for-agent
-Status note: 2026-10-23, tickets 01–13 done, last landing 720794622. Closed with gaps: tickets 14–16 (cache RAM limit, reload diff after V coercion, share buffer set); 14 wontfix (T14); 15 and 16 done after the close, last landing a4c22d94f. Spec text corrected. Gates green on 2026-10-23 (lint, test).
+Status: done
+Status note: 2026-10-23, tickets 01–13 done, last landing 720794622. Closed with gaps: tickets 14–16 (cache RAM limit, reload diff after V coercion, share buffer set); 14 wontfix (T14); 15–18 done after the close, last landing 5cc3d99d0. Spec text corrected. Gates green on 2026-10-23 (lint, test).
 Target branch: engine/llama-server
 Spec session: llama-server-engine — spec
 
