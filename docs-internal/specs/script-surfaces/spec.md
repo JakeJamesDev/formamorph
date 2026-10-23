@@ -1,6 +1,7 @@
 # Script Surfaces
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-23; tickets 01–04 done; last landing a56fc5248. Review: spec text corrected. Closed red: src/components/prompt/CodeArea.test.tsx, a completion-pick timing failure under the full run that passes alone and sits outside the effort's files.
 Spec session: script-surfaces — spec
 
 ## Problem Statement
@@ -58,9 +59,9 @@ The three surfaces share what decides their behavior, and a row can no longer ha
 - One hook takes a script's home, as the Sandbox Snapshot names homes, and an optional world. It returns the box context the row needs: the Owner, the self name, the owner's stats under their code names, the owner stat names where they are checked, and the card lookup when a world exists.
 - The Owner derives from the home through the snapshot's own derivation. The home decides everything else: a global stat or world script has no owner, an entity's stat or trait runs under that entity, a Blueprint stat runs under its group's stats, a Blueprint trait under the empty entry whose owner stat names go unchecked.
 - `self` is the stat or trait as the stored world holds it, found by its home. On an entity's linked stat it is the resolved stat under the original id, never the link id. The stat panel reads it from the world, not from its editing draft; the draft writes through on every edit, so the two never differ in a way Test Code reads.
-- Without a world, as in the library entity editor, the hook returns no lookup and takes the owner's stats from the entity it is given.
+- Without a world, as in the library entity editor, the hook returns no lookup and resolves the owner's stats from the entity it is given, over the library's stat world when the library was opened from one (T04-3).
 - The code box's own home derivation for Test Code is replaced by the same home, so a box runs under the home its context was built from.
-- The three builders that exist today (the stat panel's, the trait tab's, the Scripts tab's entry context) are first extracted as pure functions over the same inputs, so the parity tests can run them beside the hook. Once the hook matches, the surfaces switch to it and the extracted builders are deleted.
+- The three builders the surfaces once held (the stat panel's, the trait tab's, the Scripts tab's entry context) were extracted, recorded by the parity tests, and deleted once the hook matched the record. No surface builds its context outside the hook.
 
 **Scripts tab entity write (Q5)**
 - The Scripts tab's write of an entity slice applies the script edit inside the entity setter's updater, on the entity as it is at that moment, instead of replacing it with the copy the write read. Stats, traits and world scripts keep their per-record writers.
@@ -78,8 +79,8 @@ The three surfaces share what decides their behavior, and a row can no longer ha
 
 A good test drives a public seam with real inputs and asserts what an author sees or what the world holds. It never mirrors the implementation. Each guard is proven by reinstating the bug it prevents.
 
-- **Patch helper and entries** (prior art: `worldScripts.test.ts`, `scripts.test.ts`): a patch merges onto the right id and leaves other scripts by reference; a cleared name drops the field; an unknown id returns the same list; every entry's script has only Script keys; the Scripts tab's edit of a stat, an entity stat, a trait, a link override and a world script writes the patched script and nothing else.
-- **Context hook parity** (prior art: `GameDataContext.*.test.tsx` with renderHook under the provider): one fixture world with a global stat, an entity's own stat, a root-linked Blueprint stat, a Blueprint stat, a global trait, an entity's trait, a Blueprint trait and a world script. For each, the extracted builders and the hook agree on the Owner, the self name, the owner stats, the owner stat names, and the lookup's answer for a sample timing. The one recorded difference is the linked stat's self id, asserted as the original id.
+- **Patch helper and entries** (prior art: `worldScripts.test.ts`, `scripts.test.ts`): a patch merges onto the right id and leaves other scripts by reference; a cleared name drops the field; an unknown id returns the same list; every entry's script is the stored Script record by reference (T01-1), and the row's change callback carries only Script fields; the Scripts tab's edit of a stat, an entity stat, a trait, a link override and a world script writes the patched script and nothing else.
+- **Context hook parity** (prior art: `GameDataContext.*.test.tsx` with renderHook under the provider): one fixture world with a global stat, an entity's own stat, a root-linked Blueprint stat, a Blueprint stat, a global trait, an entity's trait, a Blueprint trait and a world script. For each, the hook matches an explicit recorded table of the Owner, `self`, the self name, the owner stats, the owner stat names, and the lookup's answers for Before the AI (T03-1, T03-2). The two differences the record once named, the linked stat's self id and a global trait's owner stat names, are settled as the original id (Q9) and absent (T04-2).
 - **Test Code on a linked stat** (prior art: `StatManager.testCode.test.tsx`): a script that writes through `owner.stats` to itself reports the written value with no dropped-write line, from the stat panel and from the Scripts tab.
 - **Surfaces end to end** (prior art: `worldEditorBench`): typing in a script box on each of the three surfaces leaves one changed field on the stored script and no extra keys; a fast run of keystrokes keeps the script's JSON size flat; a rename, a Timing change and a remove behave the same on each surface.
 - **Live entity write** (prior art: `worldScripts.test.ts` for the pure edit, `WorldEditor.history.test.tsx` for the commit): an entity edit queued in the same tick as a Scripts tab write survives.
@@ -107,6 +108,6 @@ A good test drives a public seam with real inputs and asserts what an author see
 
 ## Further Notes
 
-- Rulings Q1–Q11 come from the 2026-10-22 grill. Q4 ruled no scrub. Q9 was settled on a code trace: play and the Scripts tab run a linked stat's script under the original id, the stat panel under the link id; the trace is unverified by a live run, so the Test Code test above is the first proof.
+- Rulings Q1–Q11 come from the 2026-10-22 grill. Q4 ruled no scrub. Q9 was settled on a code trace: play and the Scripts tab run a linked stat's script under the original id, the stat panel under the link id. Ticket 04's Test Code test on both surfaces, run against the real executor, proved the trace.
 - The bug this effort closes landed with the Scripts tab in 3.4.0 and was fixed on 2026-10-22 by reducing each entry to the Script shape. That fix hard-codes the Script field list, which the patch boundary replaces.
 - Glossary: **Script** in `CONTEXT.md` already says its home decides `self`. No change needed.
