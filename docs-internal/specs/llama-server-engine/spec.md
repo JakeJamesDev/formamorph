@@ -220,6 +220,9 @@ From ticket intent questions.
 - **T04-2.** The attributed process is the router's model instance, found once per load by a parent-process lookup. nvidia-smi never lists the router.
 - **T04-3.** The share sums the model, KV and compute buffers on non-host devices, across every device the instance uses. Host buffers are left out. On the CPU backend the share is null. Measured: 3024.75 MiB against a 3042 MiB nvidia-smi delta.
 - **T04-4.** The "~" mark and the fallback order in the viewer stay as they are.
+- **T06-1.** The V-type / Flash Attention rule blocks rather than changes another setting. With Flash Attention off, the quantized V options are disabled with a hint. With a quantized V cache, the Flash Attention box is disabled with a hint. Neither setting changes the other.
+- **T06-2.** The main process coerces a stored or IPC value of quantized V with Flash Attention off to F16, so a stale value can't produce a failing load.
+- **T06-3.** K and V types use the panel's existing select; KV Cache in RAM is a check row. Stored as `f16` / `q8_0` / `q4_0` (anything else reads as `f16`) and a boolean.
 
 ## Further Notes
 
