@@ -19,7 +19,7 @@ import { libraryFileName } from '@/lib/libraryVrm';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, ModelMetadata } from '@/types';
 
-export const VRM_STORE_HINT = 'Add the Avatars this world carries. Pick one on each entity.';
+export const VRM_STORE_HINT = 'Add Avatars to this world, then choose one for each entity';
 
 /** What a delete confirmation says about the entities that use the Avatar. */
 export const deleteVrmDescription = (users: Entity[]): string => users.length
