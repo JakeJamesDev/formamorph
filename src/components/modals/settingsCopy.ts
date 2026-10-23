@@ -541,10 +541,10 @@ A lower value needs **Flash Attention** on.`,
   },
   localKvCacheInRam: {
     label: 'KV Cache in RAM',
-    description: 'Keeps the context in system RAM to free VRAM',
-    info: `Moves the context from VRAM to system RAM, so the model's weights get the VRAM. Replies can come slower.
+    description: 'Frees VRAM, but replies get much slower as the story grows',
+    info: `Moves the context from VRAM to system RAM, so the model's weights get the VRAM. Replies get much slower, and the slowdown grows as the context fills.
 
-Use it when a model fits in VRAM but a long **Context Size** doesn't.`,
+Try a smaller **K Cache Type** and **V Cache Type** first. Use this only when the model still doesn't fit.`,
   },
   localContextOverflow: {
     label: 'Context Overflow',
