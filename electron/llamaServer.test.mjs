@@ -38,6 +38,22 @@ describe('memoryTally', () => {
     expect(fieldsOf(texts).engineVramMB).toBe(20340);
   });
 
+  it('leaves out the recorded output buffers, which are host buffers', () => {
+    const texts = instanceTexts('loaded');
+    const outputs = texts.filter((t) => /output buffer size/.test(t));
+    expect(outputs.length).toBeGreaterThan(0);
+    expect(outputs.every((t) => /\b(?:CPU|\w+_Host)\b/.test(t))).toBe(true);
+    expect(fieldsOf(texts).engineVramMB).toBe(fieldsOf(texts.filter((t) => !outputs.includes(t))).engineVramMB);
+  });
+
+  it('counts a non-host output buffer with the model, KV and compute buffers', () => {
+    // Synthetic: no recording has an on-device output buffer. Format is llama.cpp's `%10s output buffer size = %8.2f MiB`.
+    const output = `llama_context: ${'Vulkan0'.padStart(10)} output buffer size = ${(0.98).toFixed(2).padStart(8)} MiB`;
+    const texts = instanceTexts('loaded');
+    expect(fieldsOf(texts).engineVramMB).toBe(3023);
+    expect(fieldsOf([...texts, output]).engineVramMB).toBe(3024);
+  });
+
   it('sums across devices when the load spans two', () => {
     // The recorded single-GPU lines, each device and buffer line repeated for a second card.
     const texts = instanceTexts('max').flatMap((t) => (/Vulkan0/.test(t) ? [t, t.replace('Vulkan0', 'Vulkan1').replace(/- \d+ MiB free/, '- 1000 MiB free')] : [t]));

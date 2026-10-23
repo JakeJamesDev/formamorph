@@ -1,6 +1,6 @@
 # 16: Share Buffer Set
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -15,5 +15,13 @@ Ruled (T16): keep the output buffer in the sum; T04-3 now names it. This ticket 
 
 ## Acceptance criteria
 
-- [ ] The parser and T04-3 name the same buffer set.
-- [ ] A test against the recorded fixtures checks the chosen set.
+- [x] The parser and T04-3 name the same buffer set. `BUFFER_SIZE` lists model, KV, RS, compute, output; T04-3 names the same five (host buffers excluded).
+- [x] A test against the recorded fixtures checks the chosen set. `memoryTally` tests: "leaves out the recorded output buffers" (all four recorded lines are host) and "counts a non-host output buffer" (synthetic line in llama.cpp's format; fails when `output` leaves the regex).
+
+## Landed
+
+**Not verified:** none.
+
+**For you:** none.
+
+The recorded fixtures hold no on-device output buffer, so the non-host case uses one synthetic line. The review's ~0.5 MiB gap was not in the recorded runs.
