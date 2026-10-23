@@ -3,7 +3,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a player presses **Start game**, the game draws one opening from the pool.
+**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a player presses **Start Game**, the game draws one opening from the pool.
 
 Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text lands:
 

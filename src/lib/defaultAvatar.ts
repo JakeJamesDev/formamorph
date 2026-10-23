@@ -26,3 +26,7 @@ const userDefaultAvatar = createStoredString('local', 'FORMAMORPH_defaultAvatar'
 export const readUserDefaultAvatar = (): string | undefined => userDefaultAvatar.read();
 export const setUserDefaultAvatar = (modelId: string): void => userDefaultAvatar.write(modelId);
 export const clearUserDefaultAvatar = (): void => userDefaultAvatar.clear();
+
+/** The library Avatar a picker opens on: the device default, else the bundled copy, else the first. */
+export const pickerStart = (libraryIds: readonly string[], deviceDefault: string | undefined): string =>
+  [deviceDefault, DEFAULT_AVATAR_ID].find((id) => id && libraryIds.includes(id)) ?? libraryIds[0] ?? DEFAULT_AVATAR_ID;

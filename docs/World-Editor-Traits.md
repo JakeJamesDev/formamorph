@@ -231,7 +231,7 @@ A group with a maximum of one shows radio buttons. In **Up to One**, pick anothe
 On the setup screen:
 
 - A group that's short of its minimum says how many more picks it needs, such as *Choose 2 more traits*.
-- **Start game** stays disabled until every group meets its minimum. In a world with a 3D model, the button reads **Continue to Avatar**. **Quick Start** never blocks, and it leaves the gap in place.
+- **Start Game** stays disabled until every group meets its minimum. In a world with a 3D model, the button reads **Continue to Avatar**. **Quick Start** never blocks, and it leaves the gap in place.
 - At a maximum above one, the unchecked rows disable. Uncheck one to pick another.
 
 During the game:

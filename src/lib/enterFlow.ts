@@ -5,6 +5,10 @@
  * earns depends on the world *and* on how the player is starting it.
  */
 
+import { customPersonaEntity } from './blueprints';
+import { playedVrmPick, type PlayedVrmAs } from './vrmResolver';
+import type { Entity, PersonaRef, VrmPick, WorldOverview } from '@/types';
+
 /** How the player is starting: the full setup flow, the Quick Start bypass, or resuming a save. */
 export type EnterMode = 'newGame' | 'quickStart' | 'saveLoad';
 
@@ -26,8 +30,34 @@ export interface EnterFlowWorld {
   hasLibraryAdditions: boolean;
   /** The world has entities the player can play as. */
   hasWorldPersonas: boolean;
-  /** The played side shows an Avatar: the world has a legacy Avatar fallback. */
+  /** The draft persona's played side shows an Avatar. */
   showsAvatar: boolean;
+}
+
+/** What world entry reads to place the draft persona's Avatar. */
+export interface EntryVrmInput {
+  persona: PersonaRef;
+  /** The library persona's record, once loaded. Before that it has no pick. */
+  libraryPersona: Pick<Entity, 'id' | 'vrmPick'> | undefined;
+  entities: readonly Entity[];
+  overview: Pick<WorldOverview, 'vrmStore' | 'legacyVrmFallback'> | undefined;
+}
+
+/**
+ * The pick the draft persona's played side lands on: none skips the avatar step, User's Default offers the
+ * picker, and a world or library pick shows that Avatar as set.
+ */
+export function entryVrmPick({ persona, libraryPersona, entities, overview }: EntryVrmInput): VrmPick | undefined {
+  const worldPersona = persona.source === 'world' ? entities.find((e) => e.id === persona.entityId) : undefined;
+  const played: PlayedVrmAs = persona.source === 'library' ? { source: 'library', entity: libraryPersona ?? { id: persona.entityId } }
+    : worldPersona ? { source: 'world', entity: worldPersona }
+    : { source: 'none' };
+  return playedVrmPick({
+    store: overview?.vrmStore,
+    played,
+    customPersona: customPersonaEntity(entities),
+    legacyFallback: overview?.legacyVrmFallback,
+  });
 }
 
 /**
