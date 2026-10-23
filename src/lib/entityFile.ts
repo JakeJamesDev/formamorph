@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Base64Data, BlueprintOverride, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
+  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
   StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
@@ -25,6 +25,7 @@ import { portableOwnedStats, type OwnedStatFields } from './portableStats';
 import { portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
+import { adoptCarriedVrm, withCarriedVrm, type CarriedVrm, type PortableEntity } from './entityVrmCarry';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -77,6 +78,10 @@ export interface EntityCardData {
   source?: ComponentFileSource;
   /** The worlds this character is offered for, by listing id. Never the worlds themselves. */
   associations?: WorldAssociation[];
+  /** The entity's Avatar pick. A library or world pick names an id on the author's device; `vrm` is the file. */
+  vrmPick?: VrmPick;
+  /** The picked Avatar's file. Import adds it to the Avatar library and points the pick at that record. */
+  vrm?: CarriedVrm;
 }
 
 /** The card's text fields, stamped with the current app version. `model`/`sound` are intentionally dropped;
@@ -86,7 +91,7 @@ export interface EntityCardData {
  *  about its source and the worlds it suits; a card written without it says nothing about either. `world` is
  *  the world a world entity's requirements point into, for their names. */
 export function buildEntityCardData(
-  entity: Entity,
+  entity: PortableEntity,
   available: Placeholder[] = carriedPlaceholders(entity),
   links: ComponentFileLinks = {},
   libraryDetails?: LibraryDetails,
@@ -125,8 +130,16 @@ export function buildEntityCardData(
     ...portableOwnedStats(entity, world),
     ...(links.source ? { source: links.source } : {}),
     ...(links.associations?.length ? { associations: links.associations } : {}),
+    ...(entity.vrmPick ? { vrmPick: entity.vrmPick } : {}),
+    ...(entity.vrm ? { vrm: entity.vrm } : {}),
   };
 }
+
+/** The parsed entity with the card's Avatar pick adopted into the Avatar library. */
+const adoptCardVrm = (entity: Entity, raw: unknown): Promise<Entity> => {
+  const { vrmPick, vrm } = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+  return adoptCarriedVrm<Entity>({ ...entity, vrmPick, vrm });
+};
 
 /**
  * Parse an embedded card payload into a NEW entity (fresh id, so importing the same card twice never collides).
@@ -373,10 +386,12 @@ function cardOpening(raw: unknown): Opening[] {
 
 /**
  * Encode an entity as a shareable WebP character card: its portrait carrying the text fields in a metadata chunk.
- * Entities without a portrait get Morph art so export always yields a valid image.
+ * Entities without a portrait get Morph art so export always yields a valid image. The card carries the picked
+ * Avatar's file; `vrmStore` is the world's store, for a world entity.
  */
 export async function exportEntityCard(
-  entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails, world?: TraitWorld,
+  entity: PortableEntity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails, world?: TraitWorld,
+  vrmStore?: WorldVrmStore,
 ): Promise<Blob> {
   // The art follows the listing, else the library item, so a card matches the tile it came from.
   let imageUrl = primaryImage(entity) || await morphCardImage(
@@ -393,7 +408,7 @@ export async function exportEntityCard(
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());
-  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available, links, libraryDetails, world)), { w, h });
+  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(await withCarriedVrm(entity, vrmStore), available, links, libraryDetails, world)), { w, h });
   return new Blob([card], { type: 'image/webp' });
 }
 
@@ -408,7 +423,7 @@ export async function importEntityCard(file: File): Promise<Entity> {
   } catch {
     throw new Error('This character card is corrupted.');
   }
-  return parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp'));
+  return adoptCardVrm(parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp')), raw);
 }
 
 /**
@@ -433,7 +448,7 @@ export async function importCharacterFile(
     } catch {
       throw new Error('This character card is corrupted.');
     }
-    const entity = parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp'));
+    const entity = await adoptCardVrm(parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp')), raw);
     return { entity, book: null, links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) };
   }
 

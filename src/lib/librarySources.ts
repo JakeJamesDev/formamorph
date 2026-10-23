@@ -12,6 +12,7 @@ import AuthService from '@/services/AuthService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import { withLibraryPick } from '@/lib/libraryVrm';
+import { adoptListingVrm } from '@/lib/entityVrmCarry';
 import type {
   CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, LibraryDetails, GameLocation,
   Placeholder, WorldVrmStore,
@@ -242,7 +243,7 @@ export async function saveDownloadToLibrary(
   }
   const id = held?.id ?? randomUUID();
   const now = new Date().toISOString();
-  const shared = splitLibraryContent(content, listing.authorName);
+  const shared = splitLibraryContent(await adoptListingVrm(kind, content), listing.authorName);
   const data = { ...shared.content, id };
   const name = data.name?.trim() || listing.name?.trim() || 'Untitled';
   await LIBRARIES[kind].store({

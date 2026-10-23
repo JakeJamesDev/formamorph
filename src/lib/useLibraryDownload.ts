@@ -8,6 +8,7 @@ import { KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { CommunityLink, LibraryDetails } from "@/types";
 import { splitLibraryContent } from './contentAuthor';
+import { adoptListingVrm } from './entityVrmCarry';
 
 /** A local library record with its community link — the slice this flow needs, whichever kind it is. */
 export interface LibraryRecord extends CommunityLink {
@@ -84,8 +85,9 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
       const content = await fetchCatalogContent(listingId, (fraction) =>
         setDownloadProgress((p) => ({ ...p, [listingId]: fraction })));
 
+      const adopted = await adoptListingVrm(target.kind, content as T);
       const shared = target.kind === 'entity' || target.kind === 'dictionary'
-        ? splitLibraryContent(content as T, listing.author?.username)
+        ? splitLibraryContent(adopted, listing.author?.username)
         : { content: content as T, libraryDetails: undefined };
       const item = shared.content;
       const final = target.onFetched ? await target.onFetched(item) : item;
