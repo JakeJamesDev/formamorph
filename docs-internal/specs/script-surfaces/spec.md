@@ -94,6 +94,12 @@ A good test drives a public seam with real inputs and asserts what an author see
 
 ## Ticket Rulings
 
+- **T01-1:** a code box keeps a reference to the stored Script it was built from, under its own `script` field, set where the box producers spread the script (world, Tool, stat and trait boxes alike). The Scripts tab's entries hand that stored record to the row as `entry.script`. No field list, no pick, and the row never reads a box as its script. The entries test that pins Script-only keys stays and now asserts the stored record by reference; the row guard is added beside it.
+- **T03-1:** the parity record per home and surface holds: the Owner, the box's `self` prop (kind plus stat or trait id), the self name, the owner stats as code names, the owner stat names, and the lookup's answers for the Before the AI Timing to `self()` (id and name), `owner()` (kind plus entity id or Blueprint owner ids) and `ownerEntityIds()`. No stat, trait or uses queries.
+- **T03-2:** the record is an explicit expected table in the parity test, one row per home plus a named list of disagreements per surface, not a snapshot file; ticket 04 runs its hook against the same table. The builders are driven through renderHook under the GameData provider loaded with the fixture world.
+- **T03-3:** two named disagreements are recorded: the linked stat's self id (link id on the stat panel, original id on the Scripts tab, showing in both `self` and `lookup.self()`), and a global trait's owner stat names (absent on the trait tab, empty on the Scripts tab). Ticket 04 settles the second as absent: the hook returns owner stat names only where an owner's names are checked.
+- **T01-2:** the patch is `Partial<Omit<Script, 'id'>>`; a key present as `undefined` drops the field, so a cleared name sends the name as `undefined`. The helper lives in the scripts library, returns the same list for an unknown id or a no-op patch, and the row reports `{ name }`, `{ timing }` and `{ code }`. The old rename helper goes.
+
 ## Further Notes
 
 - Rulings Q1–Q11 come from the 2026-10-22 grill. Q4 ruled no scrub. Q9 was settled on a code trace: play and the Scripts tab run a linked stat's script under the original id, the stat panel under the link id; the trace is unverified by a live run, so the Test Code test above is the first proof.
