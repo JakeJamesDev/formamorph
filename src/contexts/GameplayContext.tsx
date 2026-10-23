@@ -539,8 +539,12 @@ function useProvideGameplay() {
     const locationIds = locations.map((l) => l.id);
     /** The state with every stat the world has since added, global and each entity's, no entity stat
      *  carrying stored code bounds, each position checked against the world, and its chosen Avatar remapped. */
+    /** The state with its chosen Avatar remapped against the world's Avatar store. */
+    const withChosenVrmRemapped = (raw: GameState) => (raw.characterData
+      ? { ...raw, characterData: remapChosenVrm(raw.characterData, vrmStore) }
+      : raw);
     const backfilled = (raw: GameState, persona?: PersonaRef) => {
-      const state = raw.characterData ? { ...raw, characterData: remapChosenVrm(raw.characterData, vrmStore) } : raw;
+      const state = withChosenVrmRemapped(raw);
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
       if (!worldEntities) return players;
       const cast = positionedCast(worldEntities, persona);
@@ -665,7 +669,7 @@ function useProvideGameplay() {
 
           // Try to load the save anyway (legacy shape, best-effort)
           try {
-            const success = loadGameState(migrateGlobalFields(savedData as unknown as GameState), locations, { worldStats });
+            const success = loadGameState(withChosenVrmRemapped(migrateGlobalFields(savedData as unknown as GameState)), locations, { worldStats });
             if (success) {
               addSystemLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
               setSaveLoads((n) => n + 1);
