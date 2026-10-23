@@ -1,6 +1,7 @@
 # Entity Avatars
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-10-22. Tickets 01–08 are done; 09 and 10 are needs-triage. Last landing is ba0f3d786. Closed with gaps: 09 (stale export embed), 10 (raw-load remap); the step-delete gap was fixed in 5bb09f6ef. Closed red: lint fails in worlds-wip/cb-3.3.2-live.ts, outside the effort; test green.
 Spec session: entity-avatars — spec
 
 ## Problem Statement
@@ -208,7 +209,7 @@ A good test drives a public seam with real inputs and asserts what a player or a
 - **T03-7:** ticket 06 owns the store entry's content-hash field (T06-1). An entry without a hash, such as the one the migration creates, gets its hash computed lazily.
 - **T05-1:** the step's picker starts on the device default. When that is unset or missing, it starts on the library copy of the bundled Avatar, and when that is gone too, on the first library Avatar.
 - **T05-2:** when the picker shows, Finish writes the shown library Avatar as the save's chosen Avatar, so the save keeps what the player saw even if the device default changes later.
-- **T05-3:** when the picker is hidden (an author's world Avatar or a library pick), the step previews the resolved Avatar, and Finish writes the no-choice form. The add and delete controls hide with the picker.
+- **T05-3:** when the picker is hidden (an author's world Avatar or a library pick), the step previews the resolved Avatar, and Finish writes the no-choice form. The add control hides with the picker. The step has no delete control; Avatars are deleted from the library's Avatars tab.
 - **T05-4:** "is User's Default" means the winning played-side pick, with no save yet, is user's default. A legacy fallback of User's Default counts. The resolver gains an additive export that returns the winning pick.
 - **T05-5:** the button label is "Start Game", in title case.
 - **T05-6:** for a library persona, the step and its label treat the pick as absent until the library entity has loaded.
