@@ -68,7 +68,20 @@ Select a card to open it in the panel. An entity's or location's image opens the
 - **Download** saves the file. A linked image shows **Open Link**, which opens its address.
 - **Remove** clears the slot, and the card leaves the gallery. Undo brings it back.
 - **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
-- **Used By** lists the entities that pick an Avatar. Select one to open it.
+
+## Avatars
+<!-- keywords: add avatar, upload avatar, copy from library, rename avatar, replace avatar, delete avatar, used by, avatar store -->
+
+The **World › Avatars** section holds the world's Avatars, in Simple and Advanced mode. It shows even when the world has no Avatar, unless a filter or a search is on.
+
+- **Upload Avatar…** adds a `.vrm` or `.glb` file. **Copy From Library** copies one of your Avatars. Select the section's header to see both.
+- **Name.** Edit the name at the top of the Avatar's panel. It shows in each entity's **Avatar** dropdown.
+- **Replace** swaps the file and keeps the Avatar's name and place, so every entity that picks it keeps its pick.
+- **Download** saves the file.
+- **Delete** names the entities that use the Avatar, and they go back to **None**. Undo brings it all back.
+- **Used By** lists the entities that pick the Avatar. Select one to open it.
+
+Each entity still picks its Avatar in its own **Avatar** dropdown. See [World Avatars](Avatars#world-avatars).
 
 ## The image panel
 <!-- keywords: entity gallery, location background, reorder images, primary image, generate with ai, image tags, visibility rule, framed image, avatar link -->

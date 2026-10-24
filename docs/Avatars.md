@@ -154,7 +154,7 @@ The steps to publish are in [Publishing an Avatar](Community-Creations#publishin
 ## World Avatars
 <!-- keywords: model bundled with world, author supplied body, ship my own model, avatar store, give npc a model, entity avatar dropdown, share avatar between entities, not in my library, user's default -->
 
-A world keeps its own Avatars. The author adds them in the World Editor's **Overview**, in **Avatars**, in Advanced mode. **Upload Avatar** adds a `.vrm` or `.glb` file. **Copy From Library** copies one of your Avatars into the world. The world stores the file, so a player who downloads the world gets it. You can rename an Avatar or delete it. **Preview** opens its details, where **Export** saves the file. A delete names the entities that use it, and they go back to **None**.
+A world keeps its own Avatars. The author adds them in the World Editor's **Media** tab, in the **World › Avatars** section, in Simple and Advanced mode. Select the section's header, then **Upload Avatar…** adds a `.vrm` or `.glb` file. **Copy From Library** copies one of your Avatars into the world. The world stores the file, so a player who downloads the world gets it. Select an Avatar's card to rename it, replace its file, download it or delete it. **Replace** keeps the Avatar's name, so every entity that picks it keeps its pick. **Used By** lists the entities that pick it. A delete names those entities, and they go back to **None**. See [World Editor Media](World-Editor-Media).
 
 A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In play it shows the bundled Avatar. Pick another option to replace it.
 
@@ -180,7 +180,7 @@ Old worlds still work. An older world that showed one Avatar for the player keep
 | | Avatar | Entity 3D model | Profile Image |
 |---|---|---|---|
 | **What it is** | A VRM model that an entity shows | A model of one entity | The image on your account |
-| **Where you add it** | The library's **Avatars** tab, or the world's **Avatars** in the **Overview** | The entity's **3D Model** field, in Advanced mode | **User Profile** |
+| **Where you add it** | The library's **Avatars** tab, or the world's **Avatars** section in the **Media** tab | The entity's **3D Model** field, in Advanced mode | **User Profile** |
 | **Files** | `.vrm`, `.glb` | `.glb`, `.gltf`, `.fbx`, `.obj` | `.png`, `.jpg`, `.webp`, `.gif`, up to 10 MB |
 | **Where it is stored** | Your library, on this device, or inside the world file | Inside the world file | The Community Creations server |
 | **Where it shows** | The entity view | The entity's image, with **View 3D model** | Beside your name in Community Creations |

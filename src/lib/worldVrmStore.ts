@@ -24,6 +24,14 @@ export function renameWorldVrm(store: Store | undefined, id: string, name: strin
   return entry ? { ...store, [id]: { ...entry, name } } : store;
 }
 
+/** The store with one entry's file and hash swapped. The id and name stay, so entities keep their picks. */
+export function replaceWorldVrm(store: Store | undefined, id: string, file: MediaAsset, hash?: string): Store | undefined {
+  const entry = store?.[id];
+  if (!entry) return store;
+  const { hash: _old, ...rest } = entry;
+  return { ...store, [id]: { ...rest, file, ...(hash ? { hash } : {}) } };
+}
+
 const isPickOf = (pick: VrmPick | undefined, id: string) => pick?.kind === 'world' && pick.id === id;
 
 const NONE = 'none';

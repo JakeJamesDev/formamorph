@@ -376,7 +376,7 @@ const AvatarPickField = ({ entityId, hint, named, stored, onPick }: {
   );
 };
 
-export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars in the World Overview.';
+export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars in the Media tab.';
 
 /** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
 export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {

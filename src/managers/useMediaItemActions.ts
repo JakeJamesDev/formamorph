@@ -15,13 +15,27 @@ export const mediaStepLabel = (verb: string, item: MediaItem): string =>
 /** Whether a panel offers Replace and Remove. Avatars act from their own panel. */
 export const actsInItemPanel = (item: MediaItem): boolean => item.kind !== 'avatar';
 
+/** Runs a write as one labeled History Step that keeps the Media tab as its Origin. */
+export function useMediaStep() {
+  const history = useWorldHistoryMovesOptional();
+  return useCallback(async (label: string, run: () => void) => {
+    if (!history) { run(); return; }
+    // A group, not a batch: a batch drops the Origin that brings an undo back to this tab.
+    history.beginGroup(label);
+    try {
+      run();
+    } finally {
+      await history.endGroup();
+    }
+  }, [history]);
+}
+
 /**
  * Replace and Remove for every slot but an Avatar's. Each writes the field the slot's own panel writes,
  * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
  */
 export function useMediaItemActions() {
   const { editEntity, locations, updateLocation, dictionaries, updateDictionary, updateWorldOverview } = useGameData();
-  const history = useWorldHistoryMovesOptional();
 
   const write = useCallback((item: MediaItem, next: Write) => {
     const { parent, key } = item;
@@ -56,16 +70,7 @@ export function useMediaItemActions() {
     }
   }, [editEntity, locations, updateLocation, dictionaries, updateDictionary, updateWorldOverview]);
 
-  const step = useCallback(async (label: string, run: () => void) => {
-    if (!history) { run(); return; }
-    // A group, not a batch: a batch drops the Origin that brings an undo back to this tab.
-    history.beginGroup(label);
-    try {
-      run();
-    } finally {
-      await history.endGroup();
-    }
-  }, [history]);
+  const step = useMediaStep();
 
   const replace = useCallback((item: MediaItem, media: MediaAsset) =>
     step(mediaStepLabel('Replace', item), () => write(item, media)), [step, write]);
