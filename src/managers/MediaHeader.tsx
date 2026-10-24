@@ -1,0 +1,125 @@
+import { useId, useState, type ReactNode } from 'react';
+import { ArrowDownWideNarrow, Check, Layers, ListFilter } from 'lucide-react';
+import { HintInfo } from '@/components/SettingsRows';
+import { BAND_FILL, PUBLISH_SIZE_INFO } from '@/components/editor/IssuesInstrument';
+import { MENU_ROW } from '@/components/menuRow';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
+import { MEDIA_FILTERS, type MediaFilter, type MediaGrouping } from '@/lib/mediaIndex';
+import { formatPublishBytes, PUBLISH_LIMITS, publishSizeBand } from '@/lib/publishLimits';
+import { cn } from '@/lib/utils';
+
+/** The world's worker-measured publish size against the limit, thin enough for the header row. */
+export function MediaPublishMeter({ bytes }: { bytes: number | null }) {
+  const labelId = useId();
+  const limit = PUBLISH_LIMITS.world;
+  const { band, ratio } = publishSizeBand(bytes ?? 0, limit);
+  const readout = bytes === null ? 'Measuring…' : `${formatPublishBytes(bytes)} / ${formatPublishBytes(limit)}`;
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-1">
+        <span id={labelId} className="truncate text-meta font-medium max-[480px]:sr-only">Publish Size</span>
+        <HintInfo>{PUBLISH_SIZE_INFO}</HintInfo>
+        <Meta className="ml-auto shrink-0 tabular-nums">{readout}</Meta>
+      </div>
+      <div
+        role="meter"
+        aria-labelledby={labelId}
+        aria-valuemin={0}
+        aria-valuemax={limit}
+        aria-valuenow={Math.min(bytes ?? 0, limit)}
+        aria-valuetext={readout}
+        data-band={bytes === null ? undefined : band}
+        className="mt-1 h-1 w-full overflow-hidden rounded-full bg-secondary"
+      >
+        {bytes !== null && <div className={cn('h-full rounded-full', BAND_FILL[band])} style={{ width: `${ratio * 100}%` }} />}
+      </div>
+    </div>
+  );
+}
+
+function IconToggle({ label, pressed, onClick, children }: { label: string; pressed: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <Tip tip={label}>
+      <Button
+        type="button"
+        variant={pressed ? 'secondary' : 'ghost'}
+        size="icon"
+        aria-label={label}
+        aria-pressed={pressed}
+        onClick={onClick}
+        className="h-9 w-9 shrink-0"
+      >
+        {children}
+      </Button>
+    </Tip>
+  );
+}
+
+/** The filter popover's button: it names the active filter in place of its tooltip. */
+function FilterMenu({ filter, onChange }: { filter: MediaFilter; onChange: (filter: MediaFilter) => void }) {
+  const [open, setOpen] = useState(false);
+  const active = filter !== 'all';
+  const activeLabel = MEDIA_FILTERS.find((f) => f.value === filter)?.label;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant={active ? 'secondary' : 'ghost'}
+          size="icon"
+          aria-label={active ? `Filter: ${activeLabel}` : 'Filter'}
+          className={cn('h-9 shrink-0', active ? 'w-auto max-w-[8.5rem] gap-1 px-2' : 'w-9')}
+        >
+          <ListFilter className="h-4 w-4 shrink-0" />
+          {active && <span className="truncate text-meta">{activeLabel}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-52 p-1">
+        {MEDIA_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            className={MENU_ROW}
+            aria-pressed={filter === f.value}
+            onClick={() => { onChange(f.value); setOpen(false); }}
+          >
+            <Check className={cn('h-4 w-4 shrink-0', filter !== f.value && 'invisible')} />
+            {f.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** The Media tab's header row: the Publish Size meter, then grouping, Largest First and the filter. */
+export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange }: {
+  publishBytes: number | null;
+  grouping: MediaGrouping;
+  onGroupingChange: (grouping: MediaGrouping) => void;
+  largestFirst: boolean;
+  onLargestFirstChange: (largestFirst: boolean) => void;
+  filter: MediaFilter;
+  onFilterChange: (filter: MediaFilter) => void;
+}) {
+  const byType = grouping === 'type';
+  return (
+    <div className="flex flex-shrink-0 items-center gap-1" data-media-header>
+      <MediaPublishMeter bytes={publishBytes} />
+      <IconToggle
+        label="Group by Type"
+        pressed={byType}
+        onClick={() => onGroupingChange(byType ? 'parent' : 'type')}
+      >
+        <Layers className="h-4 w-4" />
+      </IconToggle>
+      <IconToggle label="Largest First" pressed={largestFirst} onClick={() => onLargestFirstChange(!largestFirst)}>
+        <ArrowDownWideNarrow className="h-4 w-4" />
+      </IconToggle>
+      <FilterMenu filter={filter} onChange={onFilterChange} />
+    </div>
+  );
+}

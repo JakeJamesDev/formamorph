@@ -14,7 +14,7 @@ One rule head, one hook branch, one merge line, following the stat-code-executio
 
 ## What to build
 
-When the measured size reaches the world limit, the World Doctor lists a warning: "The world is <size>, over the <limit> publish limit." The flask badge counts it like any other row. Clicking the item opens the Overview. There is no Fix. The finding is a head outside the rule catalog, produced from the size hook and merged into the findings, so Triggers never runs it and the rule count is unchanged.
+When the measured size reaches the world limit, the World Doctor lists a warning: "The world is <size>, over the <limit> publish limit." The flask badge counts it like any other row. Clicking the item opens the Media tab. There is no Fix. The finding is a head outside the rule catalog, produced from the size hook and merged into the findings, so Triggers never runs it and the rule count is unchanged.
 
 ## Acceptance criteria
 

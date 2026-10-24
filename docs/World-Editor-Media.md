@@ -19,6 +19,17 @@ Every file stays where you added it: on the entity, location, dictionary or Over
 
 To find one file, type its entity, location or dictionary name, or its slot name (such as "Ambient Sound"), in **Search media**.
 
+## The header
+<!-- keywords: publish size meter, group by type, largest first, filter, linked, embedded, visibility rules, over size budget, sort -->
+
+The row above the search box holds the **Publish Size** meter and three buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
+
+- **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location or dictionary it belongs to.
+- **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
+- **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules** or **Over Size Budget** items. **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included. The other three filters look at images, so they hide sounds, 3D Models and Avatars. The button shows the filter's name while it's on.
+
+The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
+
 ## The gallery
 <!-- keywords: cards, sections, stack, count badge, linked badge, rules badge, warning color, over budget -->
 

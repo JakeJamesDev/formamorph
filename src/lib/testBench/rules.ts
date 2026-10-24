@@ -89,7 +89,7 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'] as c
 
 /** The editor tab that owns a finding's items — where Open navigates to. */
 export type FindingSection =
-  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools';
+  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools' | 'media';
 
 /** One item a finding names, labeled as the editor's own lists label it. */
 export interface FindingItem {
@@ -3691,7 +3691,7 @@ export const SCRIPT_UNKNOWN_NAME: RuleHead = {
 export const WORLD_TOO_LARGE: RuleHead = {
   id: 'world-too-large',
   severity: 'warning',
-  section: 'overview',
+  section: 'media',
   summary: () => 'The world is over the publish limit',
 };
 

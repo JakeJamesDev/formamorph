@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { ListToolbar } from '@/components/ListToolbar';
 import { SearchField } from '@/components/ui/search-field';
@@ -6,38 +6,52 @@ import { Hint } from '@/components/ui/typography';
 import type { ListEditorParts } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
-import { mediaSections, sectionSelection, sectionTitle, type MediaParent } from '@/lib/mediaIndex';
+import { cn } from '@/lib/utils';
+import { filterSections, groupSections, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, type MediaFilter, type MediaParent } from '@/lib/mediaIndex';
+import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
 import { MediaGallery } from './MediaGallery';
+import { MediaHeader } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
 
 /**
  * The Media tab's List Editor parts: a gallery of every media item in the world, and the panel for the
- * selected card or section. A search matches a card's parent and slot names. It builds the parts itself rather
+ * selected card or section, under a header row with the Publish Size meter, grouping, Largest First and a
+ * filter. A search matches a card's parent and slot names. It builds the parts itself rather
  * than through `useListEditor`, whose rows and search list don't fit a card grid.
  */
-export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo }: {
+export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publishBytes }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   search: ListSearch;
   onGoTo: (parent: MediaParent) => void;
+  /** The worker-measured Publish Size, or null until the first measure lands. */
+  publishBytes: number | null;
 }): ListEditorParts {
   const { worldOverview, entities, entityGroups, locations, dictionaries, placeholders } = useGameData();
   const allSections = useMemo(
     () => mediaSections({ worldOverview, entities, entityGroups, locations, dictionaries }),
     [worldOverview, entities, entityGroups, locations, dictionaries],
   );
+  const { grouping, setGrouping, largestFirst, setLargestFirst } = useMediaViewPrefs();
+  // The filter lasts while the editor is open.
+  const [filter, setFilter] = useState<MediaFilter>('all');
+  // What the gallery lays out, before the search narrows it.
+  const shownSections = useMemo(() => {
+    const filtered = filterSections(groupSections(allSections, grouping), filter);
+    return largestFirst ? sortSectionsLargestFirst(filtered) : filtered;
+  }, [allSections, grouping, filter, largestFirst]);
   const term = search.term.trim();
   const sections = useMemo(() => {
-    if (!term) return allSections;
+    if (!term) return shownSections;
     const names = { placeholders };
-    return allSections
+    return shownSections
       .map((s) => ({ ...s, items: s.items.filter((i) => matchesListSearch(`${i.parent.name} ${i.slot}`, term, names)) }))
       .filter((s) => s.items.length);
-  }, [allSections, term, placeholders]);
+  }, [shownSections, term, placeholders]);
 
   const allItems = useMemo(() => allSections.flatMap((s) => s.items), [allSections]);
   const item = selectedId ? allItems.find((i) => i.id === selectedId) : undefined;
-  const section = selectedId && !item ? allSections.find((s) => sectionSelection(s.id) === selectedId) : undefined;
+  const section = selectedId && !item ? shownSections.find((s) => sectionSelection(s.id) === selectedId) : undefined;
   const held = !!item || !!section;
   // An undo or a removal elsewhere can take the selected item away.
   const stale = !!selectedId && !held;
@@ -59,7 +73,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo }: {
   const list = !allItems.length
     ? <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>
     : !sections.length
-      ? <Hint className="p-2">No media matches &ldquo;{search.typed}&rdquo;</Hint>
+      ? <Hint className="p-2">{term ? <>No media matches &ldquo;{search.typed}&rdquo;</> : 'No media matches this filter'}</Hint>
       : (
         // The list pane deselects on a bubbled click; cards select through their own handlers.
         <div onClick={(e) => e.stopPropagation()}>
@@ -70,18 +84,29 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo }: {
   return {
     search,
     toolbar: (className, extras) => (
-      <ListToolbar className={className} target={extras?.target}>
-        {extras?.children}
-        <SearchField
-          data-editor-find-skip
-          placeholder="Search media"
-          value={search.term}
-          onChange={search.setTerm}
-          onClear={search.clear}
-          className="flex-1"
+      <div className={cn('flex flex-shrink-0 flex-col gap-2', className)}>
+        <MediaHeader
+          publishBytes={publishBytes}
+          grouping={grouping}
+          onGroupingChange={setGrouping}
+          largestFirst={largestFirst}
+          onLargestFirstChange={setLargestFirst}
+          filter={filter}
+          onFilterChange={setFilter}
         />
-        {extras?.after}
-      </ListToolbar>
+        <ListToolbar target={extras?.target}>
+          {extras?.children}
+          <SearchField
+            data-editor-find-skip
+            placeholder="Search media"
+            value={search.term}
+            onChange={search.setTerm}
+            onClear={search.clear}
+            className="flex-1"
+          />
+          {extras?.after}
+        </ListToolbar>
+      </div>
     ),
     list,
     detail,

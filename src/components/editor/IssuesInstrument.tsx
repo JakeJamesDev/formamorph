@@ -45,7 +45,7 @@ const SeverityIcon = ({ severity }: { severity: Severity }) => {
   return <Info className={cn(className, 'text-muted-foreground')} aria-hidden />;
 };
 
-const BAND_FILL: Record<PublishSizeBand, string> = {
+export const BAND_FILL: Record<PublishSizeBand, string> = {
   green: 'bg-success',
   amber: 'bg-warning',
   red: 'bg-destructive',

@@ -85,7 +85,7 @@ Your pick stays when you switch tabs. A broken pin on your **Testing as** pick s
 
 The **Issues** tab is the World Doctor. It checks your world's structure: broken links, unused placeholders, stats that start out of range and more. It never judges your writing.
 
-- **Publish Size** shows how much of the publish limit the world uses. Images, sounds and 3D models count toward it.
+- **Publish Size** shows how much of the publish limit the world uses. Images, sounds and 3D models count toward it. A world over the limit adds a warning that opens the **Media** tab, where you can find the heavy files.
 - Each finding is one row with the items it names. A **New** tag marks a row you haven't seen.
 - **Fix** repairs a row when the fix is safe. **Fix All** repairs every item in the row.
 - The eye button dismisses a row. Open **dismissed** at the bottom, then select the restore button to bring it back.
