@@ -34,6 +34,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Context Overflow chooses what happens when a story is longer than Context Size.** Truncate Middle keeps the system prompt and your first message. Rolling Window keeps the system prompt and drops the oldest messages. Stop at Limit shows an error. Find it in **Advanced**.
     - **World Tools work on the desktop engine, and the model reads each Tool's result before it answers.** Context Overflow keeps the current Tool round whole and drops an older round only as a unit.
   - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
+- **🛠️ Developer tooling**
+  - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
 - **⚙️ Backend**
   - **Llama Server Engine:**
     - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.

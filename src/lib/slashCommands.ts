@@ -29,6 +29,7 @@ const PROFILES = Object.keys(REVEAL_TEST_PROFILES);
 export const SLASH_COMMANDS: SlashCommandTree = {
   choices: { test: leaves(PROFILES) },
   markdown: { test: leaves(['render', ...PROFILES]) },
+  turn: { test: leaves(PROFILES) },
 };
 
 /** The word under the caret, from `start` to `end`, and the words that complete it. */

@@ -168,7 +168,7 @@ import {
   type EntityMoveOffer, type FollowerState, type PeelOff,
 } from "../lib/entityFollowing";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
-import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
+import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlan, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { anatomyRegions, toAnatomyBlocks, type AnatomyRun } from "../lib/requestAnatomy";
 import type { PromptJumpTarget } from "../lib/promptJump";
@@ -191,7 +191,8 @@ import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { revealActive } from "../lib/narrationRevealConfig";
-import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, type RevealArrivalEvent } from "../lib/revealTestScripts";
+import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, TURN_TEST_ACTION, TURN_TEST_CHOICES, TURN_TEST_NARRATION, type RevealArrivalEvent } from "../lib/revealTestScripts";
+import { scriptedFetch } from "../lib/scriptedFetch";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { appliedStatDeltas, applyRegen, sumDeltas } from "../lib/statChanges";
@@ -401,7 +402,18 @@ const NO_PASSES: ReadonlySet<BackgroundPassKind> = new Set();
 interface ViewRequest extends TransportRequest {
   /** Skips the status label; a concurrent batch sets one label itself. */
   quiet?: boolean;
+  /** Answers the request in place of the network, for a scripted turn. */
+  fetchImpl?: typeof fetch;
 }
+
+/** A scripted turn's stand-in replies: its narration and choices streams. */
+interface TurnScript {
+  narration: typeof fetch;
+  choices: typeof fetch;
+}
+
+/** The passes a scripted turn runs; every other one would ask a real endpoint. */
+const SCRIPTED_PASSES = new Set(['narration', 'choices']);
 
 /** Calls `render` only while mounted, so a closed dialog's body costs the parent's render nothing. */
 function RenderMounted({ render }: { render: () => React.ReactNode }) {
@@ -949,6 +961,9 @@ const GameViewer = ({
     });
   }, [startCommandPreview, replaySchedule, pushPreviewNarration, finishPreviewNarration, fadeReveal, fadeRevealActive]);
 
+  // Set once the turn function exists, below.
+  const runTurnTestRef = useRef<(profileName?: string) => void>(() => {});
+
   // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
   const runSlashCommand = useCallback((input: string): boolean => {
     const parsed = parseSlashCommand(input);
@@ -962,6 +977,11 @@ const GameViewer = ({
     if (parsed.command === "choices" && parsed.args[0] === "test") {
       // /choices test [burst|steady|slow|fast|erratic] — the profile paces the narration.
       runChoicesTest(parsed.args[1]);
+      return true;
+    }
+    if (parsed.command === "turn" && parsed.args[0] === "test") {
+      // /turn test [burst|steady|slow|fast|erratic] — a real turn on canned replies; the profile paces the narration.
+      runTurnTestRef.current(parsed.args[1]);
       return true;
     }
     toast.info(`Unknown command: /${parsed.command}`);
@@ -2532,11 +2552,13 @@ const GameViewer = ({
    */
   const sendGameAction = async (
     action: string,
-    { writtenNarration, attachments, resentAttachments }: {
+    { writtenNarration, attachments, resentAttachments, script }: {
       writtenNarration?: string;
       attachments?: ImageAttachment[];
       /** The re-sent turn's images. They are kept even when the turn may not send them. */
       resentAttachments?: ImageAttachment[];
+      /** Plays the turn on canned narration and choices streams, with no other pass. */
+      script?: TurnScript;
     } = {},
   ) => {
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
@@ -2555,10 +2577,12 @@ const GameViewer = ({
       hasCurrentLocation: !!currentLocation,
       writtenNarration,
       attachments: resentAttachments ?? attachments,
-      settings: turnSettings(),
+      settings: script ? { ...turnSettings(), thinkingMode: "off" as const, choicesEnabled: true } : turnSettings(),
       prompts: turnPrompts(),
     };
-    let plan = planTurn(planInput);
+    const scripted = (planned: TurnPlan): TurnPlan =>
+      script ? { ...planned, passes: planned.passes.filter((pass) => SCRIPTED_PASSES.has(pass.id)) } : planned;
+    let plan = scripted(planTurn(planInput));
     // Only narration sees the real opening text; every other consumer (stats, planner, choices, dictionary
     // triggers, stored history) sees the terse "START GAME" proxy — the full cue is a narrator directive
     // that derails those prompts. The player's own text lives on in openingActionRef.
@@ -2683,7 +2707,7 @@ const GameViewer = ({
         scriptLocationRef.current = beforeTarget;
       }
       // Any code move beats the router and the suggest pass, so neither request is sent.
-      if (beforeWorld?.location !== undefined) plan = planTurn({ ...planInput, destinationCount: 0, locationCount: 0 });
+      if (beforeWorld?.location !== undefined) plan = scripted(planTurn({ ...planInput, destinationCount: 0, locationCount: 0 }));
       beforeBoxUndoRef.current = beforeBox ? preBox : null;
       turnPreBoxRef.current = preBox;
       turnBeforeBoxRef.current = beforeBox;
@@ -3087,6 +3111,7 @@ const GameViewer = ({
       // Each call reads the executor at call time, so a later call in the same request sees an earlier one's move.
       const request: TurnRequestAdapter = (spec, context) => pendingRequests.track(spec.type, () => sendAiRequest({
         ...spec, signal: context.signal, executeTool: (tool, args) => executeTool(tool, args),
+        fetchImpl: spec.type === "narration" ? script?.narration : spec.type === "choices" ? script?.choices : undefined,
       }));
 
       const result = await runTurn({
@@ -3915,7 +3940,7 @@ const GameViewer = ({
   };
 
   /** Sends one request through the Request Transport, with the sinks its type reports to. */
-  const sendAiRequest = async (args: ViewRequest): Promise<string> => {
+  const sendAiRequest = async ({ fetchImpl, ...args }: ViewRequest): Promise<string> => {
     const { type: requestType, silent = false, quiet = false } = args;
     if (!silent && !quiet) setAiRequestType(requestType);
     const lookups = lookupSink();
@@ -3924,7 +3949,7 @@ const GameViewer = ({
     if (narration) sinks.push(narration.sink);
     if (requestType === "choices") sinks.push(choicesSink);
     try {
-      const text = await transportRequest(args, transportContext(), fanOut(sinks));
+      const text = await transportRequest(args, { ...transportContext(), ...(fetchImpl && { fetchImpl }) }, fanOut(sinks));
       // The turn reads the narration its scripts left, which is what the screen and the save already hold.
       return (narration && text ? await narration.settled() : undefined) ?? text;
     } finally {
@@ -4261,6 +4286,27 @@ const GameViewer = ({
   // DEV-only: expose window.__baseline for the fork-local test harness (no-op in production builds).
   const debugTurnsRef = useRef(debugTurns);
   debugTurnsRef.current = debugTurns;
+  // A real turn whose narration and choices stream from canned text: the turn's end runs as in play, so its
+  // reveal, action row and choices can be watched without an endpoint. The narration is short enough that
+  // the choices stream in view.
+  runTurnTestRef.current = (profileName = 'steady') => {
+    const profile = REVEAL_TEST_PROFILES[profileName];
+    if (!profile) {
+      toast.info(`Unknown profile. Try: ${Object.keys(REVEAL_TEST_PROFILES).join(', ')}`);
+      return;
+    }
+    if (!isGameStarted) {
+      toast.info('Start the game first, then run /turn test.');
+      return;
+    }
+    void sendGameAction(TURN_TEST_ACTION, {
+      script: {
+        narration: scriptedFetch(TURN_TEST_NARRATION, profile.schedule(TURN_TEST_NARRATION.length)),
+        choices: scriptedFetch(TURN_TEST_CHOICES, REVEAL_TEST_PROFILES.steady.schedule(TURN_TEST_CHOICES.length)),
+      },
+    });
+  };
+
   const sendGameActionRef = useRef(sendGameAction);
   sendGameActionRef.current = sendGameAction;
   const isGameStartedRef = useRef(isGameStarted);

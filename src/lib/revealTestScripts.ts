@@ -108,6 +108,16 @@ export const CHOICES_TEST_ACTION = 'I force the gate open.';
 
 export const CHOICES_TEST_NARRATION = `The gate shudders as you brace against it, servos whining under the strain. Rust flakes drift down like *dead snow*, and somewhere beyond the wall the horde answers with a single, rising howl. The bolts groan, the doors grind inward, and a courtyard choked with ivy opens before you. Something moves in the shadow of the eastern arch.`;
 
+// The `/turn test` turn: a real turn with a short narration, so its choices stream in view without scrolling.
+export const TURN_TEST_ACTION = 'I push the door open.';
+
+export const TURN_TEST_NARRATION = `The door swings inward on a dark hall that smells of rain and old smoke. At the far end, a lamp flickers once and goes out.`;
+
+export const TURN_TEST_CHOICES = `Walk down the hall toward the dead lamp, one hand on the wall
+Call into the dark, "Is anyone there?" and wait for an answer
+Prop the door open with a chair so the light from outside reaches in
+Light a match and **study the floor** for footprints in the dust`;
+
 export const CHOICES_TEST_CHOICES = `Open fire on the shape under the arch before it can close the distance
 Call out "Who's there? Show yourself!" and hold your ground by the gate
 Back through the gate and **seal the doors** behind you
