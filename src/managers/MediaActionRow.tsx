@@ -90,11 +90,11 @@ export function MediaActionRow({ item, placeholders, onReplace, onRemove, remove
         <>
           <input ref={input} data-media-replace="" type="file" accept={ACCEPT[item.kind]} className="hidden" onChange={picked} />
           <Button variant="outline" size="sm" disabled={reading} onClick={() => input.current?.click()}>
-            <Upload className="mr-1 h-4 w-4" />Replace
+            <Upload className="mr-1 h-4 w-4" />{item.blank ? 'Upload' : 'Replace'}
           </Button>
         </>
       )}
-      <DownloadButton item={item} placeholders={placeholders} />
+      {!item.blank && <DownloadButton item={item} placeholders={placeholders} />}
       {onRemove && (
         <Button variant="outline" size="sm" onClick={onRemove}>
           <Trash2 className="mr-1 h-4 w-4" />{removeLabel}

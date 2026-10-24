@@ -11,7 +11,7 @@ const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound
 
 /** An image's own pixels, loaded lazily; every other kind shows its icon. */
 export function MediaThumb({ item, className }: { item: MediaItem; className?: string }) {
-  if (item.kind === 'image') {
+  if (item.kind === 'image' && !item.blank) {
     return <RemoteImg src={item.value} loading="lazy" decoding="async" alt="" className={cn('bg-muted object-cover', className)} />;
   }
   const Icon = KIND_ICON[item.kind];
@@ -52,7 +52,7 @@ function MediaCard({ item, images, selected, onSelect, placeholders }: {
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      data-media-card={stacked ? 'stack' : item.kind}
+      data-media-card={stacked ? 'stack' : item.blank ? 'blank' : item.kind}
       className={cn(
         'relative min-w-0 rounded-md border bg-card text-left',
         stacked && 'mr-2 mt-2 shadow-[4px_-4px_0_-1px_hsl(var(--card)),4px_-4px_0_0_hsl(var(--muted-foreground)/0.6),8px_-8px_0_-1px_hsl(var(--card)),8px_-8px_0_0_hsl(var(--muted-foreground)/0.35)]',
@@ -66,7 +66,9 @@ function MediaCard({ item, images, selected, onSelect, placeholders }: {
       {stacked && <Badge className="absolute right-1 top-1 px-1.5 py-0 text-meta" aria-label={`${images.length} images`}>{images.length}</Badge>}
       <span className="flex items-center justify-between gap-1 rounded-b-md px-1.5 py-1 text-meta">
         <span className="truncate"><MediaName item={item} placeholders={placeholders} /></span>
-        {stacked
+        {item.blank
+          ? null
+          : stacked
           ? <span className={cn('shrink-0 tabular-nums', images.some((i) => i.overBudget) && 'text-warning')}>{formatMediaBytes(totalBytes(images))}</span> : <span className="shrink-0"><MediaSize item={item} /></span>}
       </span>
     </button>

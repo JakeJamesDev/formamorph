@@ -46,6 +46,8 @@ export interface MediaItem {
   users?: MediaParent[];
   /** The uploaded file's name, on a field that keeps one. */
   fileName?: string;
+  /** An empty image slot, reported only by `blankSections`. It holds no bytes and the id the filled slot will have. */
+  blank?: true;
 }
 
 export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups'>;
@@ -109,6 +111,28 @@ function locationMedia(l: GameLocation): MediaItem[] {
   return items;
 }
 
+const blankImage = (parent: MediaParent, key: MediaSlotKey, slot: string, budget: ImageCap): MediaItem => ({
+  id: itemId(parent, key), key, kind: 'image', parent, slot, value: '', bytes: 0, linked: false, budget, overBudget: false, blank: true,
+});
+
+/** What each parent kind contributes to the sections: its media, or its empty image slots. */
+interface MediaSource {
+  world: (w: MediaWorld) => MediaItem[];
+  avatars: (w: MediaWorld) => MediaItem[];
+  entity: (e: Entity) => MediaItem[];
+  location: (l: GameLocation) => MediaItem[];
+  dictionaries: (w: MediaWorld) => MediaItem[];
+}
+
+const BLANK_SOURCE: MediaSource = {
+  world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail', IMAGE_CAPS.thumbnail)]),
+  avatars: () => [],
+  entity: (e) => (entityImages(e).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1', IMAGE_CAPS.entity)]),
+  location: (l) => (l.backgroundImage ? [] : [blankImage(locationParent(l), 'background', 'Background Image', IMAGE_CAPS.background)]),
+  // A dictionary's Cover Image is optional, so an empty one is not a gap.
+  dictionaries: () => [],
+};
+
 function worldMedia(w: MediaWorld): MediaItem[] {
   const o = w.worldOverview;
   const items: MediaItem[] = [];
@@ -152,30 +176,39 @@ const sectionBuilder = () => {
  * entity group, Locations and each location with children, and Dictionaries. An entity's or location's items
  * fold into the nearest section, and a section with no items is left out.
  */
-export function mediaSections(w: MediaWorld): MediaSection[] {
+export const mediaSections = (w: MediaWorld): MediaSection[] => sectionsFrom(w, MEDIA_SOURCE);
+
+/** The same sections holding only blank cards: each entity and location with no image, and an empty world thumbnail. */
+export const blankSections = (w: MediaWorld): MediaSection[] => sectionsFrom(w, BLANK_SOURCE);
+
+function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
   const { sections, add } = sectionBuilder();
-  add('world', ['World'], worldMedia(w));
-  add('avatars', ['World', 'Avatars'], avatarMedia(w));
+  add('world', ['World'], source.world(w));
+  add('avatars', ['World', 'Avatars'], source.avatars(w));
 
   const entityFolder = (id: string, path: string[], nodes: EntityTreeNode[]) => {
     const leaves = nodes.flatMap((n) => (n.kind === 'leaf' ? [n.leaf] : []));
-    add(id, path, leaves.flatMap(entityMedia));
+    add(id, path, leaves.flatMap(source.entity));
     for (const n of nodes) if (n.kind === 'group') entityFolder(`group:${n.id}`, [...path, n.group.name], n.children);
   };
   entityFolder('entities', ['Entities'], buildEntityTree(w.entityGroups ?? [], w.entities));
 
   // A location with children is a folder of its own, holding its own media and its leaf children's.
   const locationFolder = (id: string, path: string[], own: MediaItem[], nodes: LocationTreeNode[]) => {
-    add(id, path, [...own, ...nodes.filter((n) => !n.children.length).flatMap((n) => locationMedia(n.location))]);
+    add(id, path, [...own, ...nodes.filter((n) => !n.children.length).flatMap((n) => source.location(n.location))]);
     for (const n of nodes) {
-      if (n.children.length) locationFolder(`location:${n.id}`, [...path, n.location.name], locationMedia(n.location), n.children);
+      if (n.children.length) locationFolder(`location:${n.id}`, [...path, n.location.name], source.location(n.location), n.children);
     }
   };
   locationFolder('locations', ['Locations'], [], buildLocationTree(w.locations));
 
-  add('dictionaries', ['Dictionaries'], dictionaryMedia(w));
+  add('dictionaries', ['Dictionaries'], source.dictionaries(w));
   return sections;
 }
+
+const MEDIA_SOURCE: MediaSource = {
+  world: worldMedia, avatars: avatarMedia, entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia,
+};
 
 /** The selection id of a section's header, apart from any item's. */
 export const sectionSelection = (id: string): string => `section:${id}`;
@@ -292,7 +325,7 @@ export function typeSections(sections: readonly MediaSection[]): MediaSection[] 
 export const groupSections = (sections: MediaSection[], grouping: MediaGrouping): MediaSection[] =>
   grouping === 'type' ? typeSections(sections) : sections;
 
-export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget';
+export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget' | 'noImages';
 
 export const MEDIA_FILTERS: readonly { value: MediaFilter; label: string }[] = [
   { value: 'all', label: 'All Media' },
@@ -300,12 +333,18 @@ export const MEDIA_FILTERS: readonly { value: MediaFilter; label: string }[] = [
   { value: 'embedded', label: 'Embedded' },
   { value: 'rules', label: 'Has Visibility Rules' },
   { value: 'overBudget', label: 'Over Size Budget' },
+  { value: 'noImages', label: 'No Images' },
 ];
 
-/** Linked, rules and budget match images only; Embedded matches every item that is not a linked image. */
+/**
+ * Linked, rules and budget match images only; Embedded matches every item that is not a linked image. No Images
+ * matches blank cards, which only `blankSections` holds.
+ */
 export function matchesMediaFilter(item: MediaItem, filter: MediaFilter): boolean {
+  if (item.blank) return filter === 'noImages';
   switch (filter) {
     case 'all': return true;
+    case 'noImages': return false;
     case 'linked': return item.kind === 'image' && item.linked;
     case 'embedded': return !item.linked;
     case 'rules': return item.kind === 'image' && !!item.rules?.length;

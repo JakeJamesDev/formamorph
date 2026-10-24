@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import {
-  buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaHolds, mediaSections,
+  blankSections, buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaHolds, mediaSections,
   sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, withAvatarsSection, type MediaFilter,
 } from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
@@ -248,6 +248,62 @@ describe('sortSectionsLargestFirst', () => {
     const entities = sortSectionsLargestFirst(mediaSections(world)).find((s) => s.id === 'entities')!;
 
     expect(names(entities.items).slice(0, 3)).toEqual(['Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3']);
+  });
+});
+
+describe('blankSections', () => {
+  const blanks = (w: World) => blankSections(w).flatMap((s) => s.items);
+
+  it('reports each entity and location with no image, and no dictionary', () => {
+    expect(where(blanks(mediaFixtureWorld()))).toEqual([
+      'image entity:Hollow Image 1',
+      'image location:Bare Flat Background Image',
+    ]);
+  });
+
+  it('reports an empty world thumbnail', () => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.thumbnail = '';
+
+    expect(where(blanks(world))[0]).toBe('image world:World Thumbnail');
+  });
+
+  it('holds no bytes and the id the filled slot takes', () => {
+    const world = mediaFixtureWorld();
+    const [hollow] = blanks(world);
+    world.entities.find((e) => e.id === 'empty')!.images = [{ data: fakeDataUrl('image/webp', 500) }];
+    const filled = buildMediaIndex(world).find((i) => i.parent.id === 'empty')!;
+
+    expect(hollow).toMatchObject({ blank: true, bytes: 0, value: '' });
+    expect(filled.id).toBe(hollow.id);
+  });
+
+  it('never reaches the media index, the sections, or any filter but No Images', () => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.thumbnail = '';
+    const real = mediaSections(world);
+
+    expect(buildMediaIndex(world).some((i) => i.blank)).toBe(false);
+    for (const filter of ['all', 'linked', 'embedded', 'rules', 'overBudget'] as const) {
+      expect(filterSections(real, filter).flatMap((s) => s.items).some((i) => i.blank)).toBe(false);
+    }
+    expect(filterSections(blankSections(world), 'noImages').flatMap((s) => s.items)).toHaveLength(3);
+    expect(filterSections(blankSections(world), 'linked')).toEqual([]);
+  });
+
+  it('adds no bytes to a total', () => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.thumbnail = '';
+
+    expect(blanks(world).length).toBeGreaterThan(0);
+    expect(totalBytes(blanks(world))).toBe(0);
+  });
+
+  it('keeps the usual sections and sorts blank cards in author order under Largest First', () => {
+    const sorted = sortSectionsLargestFirst(blankSections(mediaFixtureWorld()));
+
+    expect(sorted.map((s) => s.id)).toEqual(['group:crew', 'locations']);
+    expect(groupSections(blankSections(mediaFixtureWorld()), 'type').map((s) => s.path)).toEqual([['Images']]);
   });
 });
 
