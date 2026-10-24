@@ -19,9 +19,14 @@ export interface MediaParent {
   name: string;
 }
 
+/** A slot inside its parent: a field, a gallery position, or an Avatar's store id. */
+export type MediaSlotKey =
+  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'background' | 'ambientSound' | `image:${number}` | `avatar:${string}`;
+
 export interface MediaItem {
   /** Stable for the item's slot: parent and slot key. */
   id: string;
+  key: MediaSlotKey;
   kind: MediaKind;
   parent: MediaParent;
   /** What the slot is called in copy: "Image 2", "Ambient Sound", or an Avatar's name. */
@@ -61,12 +66,12 @@ export function storedBytes(value: string): number {
   return bytes;
 }
 
-const itemId = (parent: MediaParent, key: string) => `${parent.kind}:${parent.id}:${key}`;
+const itemId = (parent: MediaParent, key: MediaSlotKey) => `${parent.kind}:${parent.id}:${key}`;
 
-function image(parent: MediaParent, key: string, slot: string, value: string, budget: ImageCap, extra: Partial<MediaItem> = {}): MediaItem {
+function image(parent: MediaParent, key: MediaSlotKey, slot: string, value: string, budget: ImageCap, extra: Partial<MediaItem> = {}): MediaItem {
   const linked = isRemoteImage(value);
   return {
-    id: itemId(parent, key), kind: 'image', parent, slot, value,
+    id: itemId(parent, key), key, kind: 'image', parent, slot, value,
     bytes: storedBytes(value), linked, budget,
     // The budget measures decoded image bytes, which a link has none of.
     overBudget: !linked && dataUrlBytes(value) > budget.maxBytes,
@@ -74,8 +79,8 @@ function image(parent: MediaParent, key: string, slot: string, value: string, bu
   };
 }
 
-const file = (parent: MediaParent, kind: MediaKind, key: string, slot: string, value: string, fileName?: string): MediaItem => ({
-  id: itemId(parent, key), kind, parent, slot, value, bytes: storedBytes(value), linked: false, overBudget: false,
+const file = (parent: MediaParent, kind: MediaKind, key: MediaSlotKey, slot: string, value: string, fileName?: string): MediaItem => ({
+  id: itemId(parent, key), key, kind, parent, slot, value, bytes: storedBytes(value), linked: false, overBudget: false,
   ...(fileName ? { fileName } : {}),
 });
 
@@ -119,7 +124,7 @@ function avatarMedia(w: MediaWorld): MediaItem[] {
 function dictionaryMedia(w: MediaWorld): MediaItem[] {
   return w.dictionaries.flatMap((d) => {
     const parent: MediaParent = { kind: 'dictionary', id: d.id, name: d.name };
-    return d.thumbnail ? [image(parent, 'thumbnail', 'Thumbnail', d.thumbnail, IMAGE_CAPS.thumbnail)] : [];
+    return d.thumbnail ? [image(parent, 'thumbnail', 'Cover Image', d.thumbnail, IMAGE_CAPS.thumbnail)] : [];
   });
 }
 
@@ -180,6 +185,11 @@ export const namedBySlot = (item: MediaItem): boolean => item.parent.kind === 'w
 
 /** Every media item in the world, in section order. Each Avatar appears once. */
 export const buildMediaIndex = (w: MediaWorld): MediaItem[] => mediaSections(w).flatMap((s) => s.items);
+
+/** Whether the gallery holds a selection: a card's id or a section header's. */
+export function mediaHolds(w: MediaWorld, id: string): boolean {
+  return mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));
+}
 
 export const totalBytes = (items: readonly MediaItem[]): number => items.reduce((n, i) => n + i.bytes, 0);
 

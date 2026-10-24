@@ -41,7 +41,7 @@ The cards sit in sections that follow your editor:
 | **World › Avatars** | Each Avatar in the world, once |
 | **Entities**, and one per entity group | Each entity's images, **Sound** and **3D Model** |
 | **Locations**, and one per location with sub-locations | Each location's **Background Image** and **Ambient Sound** |
-| **Dictionaries** | Each dictionary's **Thumbnail** |
+| **Dictionaries** | Each dictionary's **Cover Image** |
 
 Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it are the name of the entity, location or dictionary, and the file's size.
 
@@ -53,14 +53,15 @@ Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it 
 Only files that exist show. An empty slot makes no card.
 
 ## The panel
-<!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, go to, used by -->
+<!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
 
 Select a card to open it in the panel. A stack opens its first image.
 
 - **Preview.** An image shows large. A sound plays. A 3D Model and an Avatar turn in the viewer.
 - **Size and budget.** The file's size, and an image's size budget.
+- **Replace** swaps in a file you pick. The file stays in the same slot. A large image first asks whether to shrink it, as an upload does.
 - **Download** saves the file. A linked image shows **Open Link**, which opens its address.
-- **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
+- **Remove** clears the slot, and the card leaves the gallery. Undo brings it back.- **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
 - **Used By** lists the entities that pick an Avatar. Select one to open it.
 
 ## Sizes

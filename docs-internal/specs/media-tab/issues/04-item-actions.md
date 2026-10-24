@@ -1,6 +1,6 @@
 # 04: Item Actions
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -27,9 +27,18 @@ Changelog fragment: fold into ticket 01's line if unreleased.
 
 ## Acceptance criteria
 
-- [ ] Replace and Remove work for world thumbnail, Background Music, entity sound, entity 3D Model, location background, location ambient sound and dictionary thumbnail
-- [ ] Each action writes the world and undoes in one step
-- [ ] Replace on an image goes through the downscale consent
-- [ ] A Remove makes the card leave the gallery and the totals drop
-- [ ] Undoing a Media tab edit from another tab returns to the Media tab with that card selected
-- [ ] The action row is one component used by the item panel
+- [x] Replace and Remove work for world thumbnail, Background Music, entity sound, entity 3D Model, location background, location ambient sound and dictionary thumbnail: `WorldEditor.mediaActions.test.tsx`, both `it.each` over the seven slots
+- [x] Each action writes the world and undoes in one step: same tests read the field, the Step label and the cursor (+1, then −1 on Ctrl+Z)
+- [x] Replace on an image goes through the downscale consent: "puts a replacing image through the downscale consent" (real dialog, worker mocked)
+- [x] A Remove makes the card leave the gallery and the totals drop: the Remove `it.each` reads the card count and the section header total
+- [x] Undoing a Media tab edit from another tab returns to the Media tab with that card selected: "returns to the Media tab with the card selected…"; a gone card opens the tab bare (Q40)
+- [x] The action row is one component used by the item panel: `MediaActionRow`, rendered by `MediaItemPanel`
+
+## Landed
+
+**Not verified**
+- The panel's look in a browser. The Browser pane was hidden, so the page ran no timers; behavior is covered in jsdom only.
+
+**For you**
+- Open the Media tab, select a sound card, and check that Replace, Download, Remove and Go to sit on one row and read well.
+- Replace a large image on the world thumbnail and check the consent dialog, then undo from the Overview tab.

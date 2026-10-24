@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import {
-  buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaSections, sectionCards,
-  sortSectionsLargestFirst, storedBytes, totalBytes, type MediaFilter,
+  buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaHolds, mediaSections,
+  sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, type MediaFilter,
 } from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
 import { measurePublishBytes } from './publishLimits';
@@ -46,7 +46,7 @@ describe('buildMediaIndex', () => {
       'image location:Harbor Steps Background Image',
       'image location:Lamp Room Background Image',
       'sound location:Lamp Room Ambient Sound',
-      'image dictionary:Fen Lore Thumbnail',
+      'image dictionary:Fen Lore Cover Image',
     ]);
   });
 
@@ -110,8 +110,19 @@ describe('mediaSections', () => {
       ['Entities › Crew › Deckhands', ['Bram Image 1']],
       ['Locations', ['Marsh Background Image']],
       ['Locations › Harbor Steps', ['Harbor Steps Background Image', 'Lamp Room Background Image', 'Lamp Room Ambient Sound']],
-      ['Dictionaries', ['Fen Lore Thumbnail']],
+      ['Dictionaries', ['Fen Lore Cover Image']],
     ]);
+  });
+
+  it("holds a card's id and a section header's, and drops a card once its field is gone", () => {
+    const world = mediaFixtureWorld();
+
+    expect(mediaHolds(world, 'location:lamp:ambientSound')).toBe(true);
+    expect(mediaHolds(world, sectionSelection('dictionaries'))).toBe(true);
+    world.locations.find((l) => l.id === 'lamp')!.ambientSound = undefined;
+    world.dictionaries[0].thumbnail = '';
+    expect(mediaHolds(world, 'location:lamp:ambientSound')).toBe(false);
+    expect(mediaHolds(world, sectionSelection('dictionaries'))).toBe(false);
   });
 });
 
@@ -157,7 +168,7 @@ describe('groupSections by type', () => {
     expect(sections.map((s) => [s.path.join(' › '), names(s.items)])).toEqual([
       ['Images', [
         'World Thumbnail', 'Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3', 'Bram Image 1',
-        'Marsh Background Image', 'Harbor Steps Background Image', 'Lamp Room Background Image', 'Fen Lore Thumbnail',
+        'Marsh Background Image', 'Harbor Steps Background Image', 'Lamp Room Background Image', 'Fen Lore Cover Image',
       ]],
       ['Sounds', ['World Background Music', 'Odd Wick Sound', 'Lamp Room Ambient Sound']],
       ['3D Models', ['Odd Wick 3D Model']],

@@ -100,7 +100,8 @@ export interface RevealPlace {
   holds(tab: RevealTab, id: string): boolean;
 }
 
-const REVEAL_TABS = new Set<string>(Object.values(SLICE_TABS));
+// The Media tab owns no slice: its edits reveal it through their Origin.
+const REVEAL_TABS = new Set<string>([...Object.values(SLICE_TABS), 'media']);
 const isRevealTab = (tab: string): tab is RevealTab => REVEAL_TABS.has(tab);
 
 /** The Origin's sub-view and field, which belong to whichever target sits on the Origin's tab. */
@@ -132,7 +133,8 @@ function revealStep(step: Step, world: WorldSlices, place: RevealPlace): RevealT
   if (!origin.ids?.length) return { tab: origin.tab, ...subView(origin) };
   const { tab } = origin;
   const standing = origin.ids.filter((id) => place.holds(tab, id));
-  if (!standing.length) return fallback;
+  // A gone card leaves the gallery, which is what the Media tab shows.
+  if (!standing.length) return tab === 'media' ? { tab } : fallback;
   return { tab, id: standing[0], ...(standing.length > 1 ? { ids: standing } : {}), ...subView(origin) };
 }
 
