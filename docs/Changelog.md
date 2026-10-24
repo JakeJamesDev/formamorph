@@ -37,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor's new Media tab shows every image, sound, 3D Model and Avatar in the world, with sizes.** Cards sit in sections that follow your groups and locations, and an entity's images stack into one card. Select a card to preview, download or go to it.
     - **The Media tab header shows Publish Size and lets you group, sort and filter the gallery.** Group by type, show the largest files first, or filter to linked, embedded, rule-bearing or over-budget images. An over-limit world's warning now opens this tab.
     - **The Media tab's panel can now replace or remove a sound, 3D Model, background, thumbnail or cover image.** A replaced file keeps its slot, and each change undoes in one step.
+    - **Optimize Images moves into the World Editor's Media tab header in both modes, and now shrinks dictionary cover images.** The app bar no longer has the button. Sizes and the meter update when a run ends.
   - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.

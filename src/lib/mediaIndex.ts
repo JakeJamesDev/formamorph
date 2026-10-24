@@ -186,6 +186,23 @@ export const namedBySlot = (item: MediaItem): boolean => item.parent.kind === 'w
 /** Every media item in the world, in section order. Each Avatar appears once. */
 export const buildMediaIndex = (w: MediaWorld): MediaItem[] => mediaSections(w).flatMap((s) => s.items);
 
+export type ImageSlot = { url: string; cap: ImageCap; path: string };
+
+/** Every image in a world with its budget, from the index: the optimize scan and walk read the same list as the gallery. */
+export function worldImageSlots(w: Partial<MediaWorld>): ImageSlot[] {
+  const index = buildMediaIndex({
+    worldOverview: w.worldOverview ?? ({} as MediaWorld['worldOverview']),
+    entities: w.entities ?? [],
+    locations: w.locations ?? [],
+    dictionaries: w.dictionaries ?? [],
+    entityGroups: w.entityGroups,
+  });
+  return index.flatMap((i) => (i.kind === 'image' && i.budget ? [{ url: i.value, cap: i.budget, path: i.id }] : []));
+}
+
+/** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
+export const countWorldImages = (w: Partial<MediaWorld>): number => worldImageSlots(w).length;
+
 /** Whether the gallery holds a selection: a card's id or a section header's. */
 export function mediaHolds(w: MediaWorld, id: string): boolean {
   return mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));

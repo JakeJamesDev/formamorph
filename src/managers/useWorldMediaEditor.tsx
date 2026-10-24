@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { filterSections, groupSections, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, type MediaFilter, type MediaParent } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
 import { MediaGallery } from './MediaGallery';
-import { MediaHeader } from './MediaHeader';
+import { MediaHeader, type OptimizeControl } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
 
 /**
@@ -19,13 +19,15 @@ import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
  * filter. A search matches a card's parent and slot names. It builds the parts itself rather
  * than through `useListEditor`, whose rows and search list don't fit a card grid.
  */
-export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publishBytes }: {
+export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publishBytes, optimize }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   search: ListSearch;
   onGoTo: (parent: MediaParent) => void;
   /** The worker-measured Publish Size, or null until the first measure lands. */
   publishBytes: number | null;
+  /** The Optimize Images run: its progress, and the click that starts it. */
+  optimize: OptimizeControl;
 }): ListEditorParts {
   const { worldOverview, entities, entityGroups, locations, dictionaries, placeholders } = useGameData();
   const allSections = useMemo(
@@ -93,6 +95,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
           onLargestFirstChange={setLargestFirst}
           filter={filter}
           onFilterChange={setFilter}
+          optimize={optimize}
         />
         <ListToolbar target={extras?.target}>
           {extras?.children}

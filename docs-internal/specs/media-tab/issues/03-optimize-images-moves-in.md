@@ -1,6 +1,6 @@
 # 03: Optimize Images Moves In
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -23,10 +23,19 @@ Update the wiki lines that place Optimize Images in the app bar. Changelog fragm
 
 ## Acceptance criteria
 
-- [ ] The app bar has no Optimize Images button in either mode
-- [ ] The Media tab header's Optimize Images runs in Simple and in Advanced
-- [ ] A world with an oversized dictionary thumbnail gets it shrunk under the thumbnail budget
-- [ ] World thumbnail, gallery images and location backgrounds are still optimized as before
-- [ ] One undo reverts the whole run
-- [ ] Closing the editor mid-run cancels it and writes nothing
-- [ ] After a run, the affected cards and the meter show the new sizes
+- [x] The app bar has no Optimize Images button in either mode (appBar and mobileFooter suites assert absence)
+- [x] The Media tab header's Optimize Images runs in Simple and in Advanced (optimize suite, both modes, last header icon)
+- [x] A world with an oversized dictionary thumbnail gets it shrunk under the thumbnail budget (imageOptim test: visited at the thumbnail cap; editor test: written back). The real encoder did not run
+- [x] World thumbnail, gallery images and location backgrounds are still optimized as before (existing imageOptim walk tests, editor write-back)
+- [x] One undo reverts the whole run (optimize suite, undo and redo, dictionary included)
+- [x] Closing the editor mid-run cancels it and writes nothing (optimize suite, signal aborted, world unchanged)
+- [ ] After a run, the affected cards and the meter show the new sizes (cards verified in the optimize suite; the meter was not)
+
+## Landed
+
+**Not verified**
+- The Publish Size meter after a run: jsdom has no publish worker, so it shows Measuring….
+- A real WebP encode of an oversized dictionary thumbnail: tests stub the encoder.
+
+**For you**
+- Run Optimize Images on a world with a large book cover. Look at the Media tab header and the Dictionaries section sizes.

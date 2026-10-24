@@ -5,7 +5,8 @@
 import type { Entity, GalleryImage, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { entityImages } from './entityImages';
-import { IMAGE_CAPS, countWorldImages, type ImageCap } from './imageSlots';
+import { IMAGE_CAPS, type ImageCap } from './imageSlots';
+import { countWorldImages } from './mediaIndex';
 
 /** Encodes and measures image data-URLs. `encode` never throws; it returns the source on failure. */
 export interface ImageCodec {
@@ -117,11 +118,18 @@ export async function downscaleWorldImages(
     locations.push({ ...l, backgroundImage: (await opt(l.backgroundImage, IMAGE_CAPS.background)) ?? undefined });
   }
 
+  const dictionaries: World['dictionaries'] = [];
+  for (const d of world.dictionaries ?? []) {
+    dictionaries.push(d.thumbnail ? { ...d, thumbnail: (await opt(d.thumbnail, IMAGE_CAPS.thumbnail)) ?? d.thumbnail } : d);
+  }
+
   return {
     ...world,
     worldOverview: { ...world.worldOverview, thumbnail: thumbnail ?? null },
     entities,
     locations,
+    // A world saved without the field keeps it absent.
+    ...(world.dictionaries ? { dictionaries } : {}),
   };
 }
 

@@ -4,7 +4,7 @@
  */
 import type { Entity, World } from '@/types';
 import { BackupShapeError, BackupSyntaxError, scanBackupSpans, type Span } from './backupScan';
-import { countWorldImages } from './imageSlots';
+import { countWorldImages } from './mediaIndex';
 import { entityImages } from './entityImages';
 import { applyEntityImagesOptimize, applyWorldOptimize, type ImageCodec, type OptimizeMode } from './imageOptimCore';
 

@@ -139,6 +139,27 @@ describe('downscaleWorldImages', () => {
     });
   });
 
+  it('visits a dictionary thumbnail under the thumbnail budget and counts it in the progress total', async () => {
+    const caps: unknown[] = [];
+    const capDeps: DownscaleDeps = {
+      shouldEncode: (url, cap) => { if (url === 'BIG-book') caps.push(cap); return Promise.resolve(url.startsWith('BIG')); },
+      optimize: (url) => Promise.resolve(`OPT:${url}`),
+    };
+    const withBooks = {
+      ...world,
+      dictionaries: [
+        { id: 'd1', name: 'Lore', entries: [], thumbnail: 'BIG-book' },
+        { id: 'd2', name: 'Plain', entries: [] },
+      ],
+    } as unknown as World;
+    const calls: number[] = [];
+    const out = await downscaleWorldImages(withBooks, capDeps, (_done, total) => calls.push(total));
+    expect(out.dictionaries[0].thumbnail).toBe('OPT:BIG-book');
+    expect(out.dictionaries[1]).toEqual(withBooks.dictionaries[1]);
+    expect(caps).toEqual([IMAGE_CAPS.thumbnail]);
+    expect(new Set(calls)).toEqual(new Set([6]));
+  });
+
   it('reports a zero total when the world has no images', async () => {
     const empty = { worldOverview: {}, entities: [], locations: [] } as unknown as World;
     const calls: { done: number; total: number }[] = [];

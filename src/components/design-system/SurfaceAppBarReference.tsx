@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronRight, FlaskConical, ImageDown } from 'lucide-react';
+import { ChevronRight, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
-import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
@@ -91,16 +90,6 @@ export function SurfaceAppBarReference() {
                     aria-label="Sample editor mode"
                   />
                   <Separator orientation="vertical" className="mx-1 h-5" />
-                  {mode === 'advanced' && (
-                    <Tip tip={OPTIMIZE_IMAGES_TIP}>
-                      <Button
-                        variant="ghost" size="icon" aria-label="Optimize Images"
-                        onClick={() => setAction('Optimize Images.')}
-                      >
-                        <ImageDown className="h-4 w-4" />
-                      </Button>
-                    </Tip>
-                  )}
                   <Tip tip="Test Bench">
                     <Button variant="ghost" size="icon" onClick={() => setAction('Test Bench.')}>
                       <FlaskConical className="h-4 w-4" />
