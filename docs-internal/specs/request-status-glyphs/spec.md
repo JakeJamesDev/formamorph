@@ -21,6 +21,7 @@ Settled with the user on 2026-10-23 and 2026-10-24 in the grill.
 |---|---|
 | Q1 | The glyphs use **Motion** (`motion` 14) and animate-ui's icon sources, copied into our tree from its registry. We do not add the `@animate-ui/react` package |
 | Q1b | We copy animate-ui's **v2** registry. Its icon wrapper calls `React.use` three times, and that needs React 19. We patch those calls to `useContext`, because we are on React 18.3. The v1 registry works on React 18 but lacks hourglass, book-open and scroll |
+| Q1c | Supersedes Q1b. New evidence: the v2 wrapper needs far more than three patches for React 18 (context as provider, ref as prop, `<style precedence>`, four more `React.use` calls in its motion utils). A spike measured a React 19 upgrade: typecheck 12 errors, lint and build pass, 16 test failures and a stack-overflow crash. Ruling: the project upgrades to React 19 first, as its own effort, starting from the spike branch. Ticket 02 then uses the v2 wrapper **unpatched** |
 | Q2 | Three rows get glyphs: the turn request row, the Tool status row, and the background pass row |
 | Q3 | No step dots for the passes a turn will run. That is a separate effort |
 | Q4 | A whole-turn elapsed timer appears after 3 s |
@@ -97,11 +98,11 @@ The mock's pencil glyph is not used.
 
 - **One status-row component.** A new shared component renders the strip: glyph slot, label, the existing indeterminate bar, and an optional timer. The turn row, the Tool row and the background pass row all render through it. Its inputs are the glyph to show, the label text, and whether to show the timer with the turn's start time. It owns the 300 ms dwell, the crossfade and the timer.
 - **Glyph map.** A table maps every `AIRequestType` to a glyph key. It is typed as a complete record over the request type union, so a new request type fails typecheck until it gets a glyph. The editor request types map to sparkles. The background pass kinds map through a second small table (Q10). A Tool round maps to hammer.
-- **Glyph library.** A new folder holds the copied animate-ui wrapper (with the Q1b patch) and one file per glyph. Each glyph keeps animate-ui's variant shape: named parts, an `initial` and an `animate` variant, and the `default-loop` variant where animate-ui ships one. The wrapper's `loop` mode runs each glyph with a 400 ms `loopDelay`. Our three glyphs and the thought cloud follow the same shape. The split glyph alternates its branch on each loop.
+- **Glyph library.** A new folder holds the copied animate-ui wrapper (unpatched, on React 19; Q1c) and one file per glyph. Each glyph keeps animate-ui's variant shape: named parts, an `initial` and an `animate` variant, and the `default-loop` variant where animate-ui ships one. The wrapper's `loop` mode runs each glyph with a 400 ms `loopDelay`. Our three glyphs and the thought cloud follow the same shape. The split glyph alternates its branch on each loop.
 - **Thinking header.** The shared Thinking label (used by the game's reasoning block and Formaquestion's answer header) renders the thought cloud in place of its pulsing dot while active, at the header's text size. The finished "Thought for Ns" line shows no glyph, as today.
 - **The wrapper's dependencies come with it.** The v2 wrapper imports a Slot primitive and an in-view hook. The ticket copies what the wrapper needs, or swaps it for the project's own Radix Slot where the shapes match. It adds no other animate-ui component.
 - **Reduced motion.** The glyphs honor `prefers-reduced-motion` through Motion's user setting, so a static first frame shows. No app setting.
-- **Timer.** The turn's start time comes from the moment the turn's first request starts. A Tool row in the same turn shares that start. The timer appears at 3 s and counts whole seconds.
+- **Timer.** The turn's start time comes from the moment the turn's first request starts. A Tool row in the same turn shares that start. The timer appears at 3 s and counts whole seconds, with no minutes form ("75s"), after the bar. It never restarts mid-turn. A Tool row with no turn running shows no timer. The row takes an optional start time and owns its 1 s tick (answers to ticket 04, 2026-10-24).
 - **Placement.** The strip is positioned over the bottom edge of the narration area, anchored to the top of the footer, in both layouts. It is out of flow, so the footer's height never changes. A gradient from the panel background gives it a backdrop. The narration gets no reserved padding (Q15).
 - **Copy.** The labels stay as they are today ("Generating Narration…", "Summarizing turn…"). This effort changes no label text.
 - **Third-party notice.** THIRD-PARTY-NOTICES gets an animate-ui entry with its license text (MIT plus the Commons Clause condition). The Commons Clause allows use inside a paid app. It forbids selling or redistributing the components themselves.
@@ -129,7 +130,8 @@ The mock's pencil glyph is not used.
 - A thinking glyph in the status strip (Q18).
 - A reserved bottom padding in the narration (Q15).
 - Any change to the label text.
-- Updating Motion or animate-ui sources after the copy; a later pull from upstream re-applies the Q1b patch.
+- Updating Motion or animate-ui sources after the copy.
+- The React 19 upgrade itself. It is its own effort, and ticket 02 waits for it (Q1c).
 
 ## Further Notes
 
