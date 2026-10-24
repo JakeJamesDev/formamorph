@@ -12,6 +12,20 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   };
 }
 
+// Nor IntersectionObserver, which Motion's in-view hook (the status glyphs) calls on mount. It never reports.
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  globalThis.IntersectionObserver = class {
+    readonly root = null;
+    readonly rootMargin = '0px';
+    readonly scrollMargin = '0px';
+    readonly thresholds = [0];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() { return []; }
+  };
+}
+
 // jsdom doesn't implement matchMedia either; anything reading a media query (useIsMobile, the theme's
 // contrast check) needs it just to render. Reports "no match", i.e. the desktop/light branch — a test that
 // cares about the other branch stubs its own, which still overrides this.

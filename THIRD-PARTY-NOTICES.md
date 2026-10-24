@@ -25,6 +25,35 @@ Formamorph bundles third-party open-source software and assets. This file lists 
   - **Andika** — © SIL International, SIL Open Font License 1.1 (accessibility: literacy)
 
   OFL/Apache obligations met: fonts are embedded (never sold standalone), unmodified (no Reserved Font Name reuse), and attributed here. Bundle each package's `LICENSE` in the release notices.
+- **animate-ui** (`src/components/game/statusGlyphs/`) — © 2025 Elliot Sutton, MIT License with the Commons Clause condition (<https://github.com/imskyleen/animate-ui>). The animated icon wrapper, its Slot and motion utilities, and eight icons are copied from its v2 registry. They are part of the application and are not sold or offered as standalone components.
+
+  ```
+  MIT + Commons Clause License Condition
+
+  Copyright (c) 2025 Elliot Sutton
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, and distribute the Software **as part of an application, website, or product**, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  ## Commons Clause Restriction
+
+  You may use this Software, including for any commercial purpose, **so long as you do not sell or redistribute the components themselves in their original form—whether alone or in a bundle.**
+
+  ## No Warranty
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+  ```
 - Other bundled images in the default worlds are author-created/AI-generated.
 
 ## Standards & specifications
@@ -58,7 +87,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 | Count | License |
 |---:|---|
-| 324 | MIT |
+| 328 | MIT |
 | 39 | ISC |
 | 17 | BSD-3-Clause |
 | 11 | Apache-2.0 |
@@ -70,7 +99,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 | 1 | Unlicense |
 | 1 | 0BSD |
 
-Total production components: **400**.
+Total production components: **404**.
 
 ## Components and license texts
 
@@ -6771,6 +6800,34 @@ Apache License
    limitations under the License.
 ```
 
+### framer-motion@14.6.0
+
+- License: **MIT** · https://github.com/motiondivision/motion
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2018 Framer B.V.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### get-nonce@1.0.1
 
 - License: **MIT** · git@github.com:theKashey/get-nonce
@@ -9710,6 +9767,46 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
+```
+
+### motion-dom@14.6.0
+
+- License: **MIT** · https://github.com/motiondivision/motion
+
+Same license text as `motion@14.6.0` below.
+
+### motion-utils@14.6.0
+
+- License: **MIT** · https://github.com/motiondivision/motion
+
+Same license text as `motion@14.6.0` below.
+
+### motion@14.6.0
+
+- License: **MIT** · https://github.com/motiondivision/motion
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2024 [Motion](https://motion.dev) B.V.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### ms@2.1.3

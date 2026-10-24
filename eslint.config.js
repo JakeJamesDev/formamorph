@@ -107,6 +107,17 @@ export default tseslint.config(
     rules: { 'formamorph/no-native-title': 'error' },
   },
   {
+    // animate-ui's registry source, copied as is. Its icons take `ref` as a React 19 prop and spread it on
+    // the svg, and its `<style precedence>` is a React 19 resource prop.
+    files: ['src/components/game/statusGlyphs/animate-ui/**'],
+    rules: {
+      'formamorph/composed-forwardref': 'off',
+      'react/no-unknown-property': ['error', { ignore: ['precedence'] }],
+      'react-refresh/only-export-components': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  {
     // Tests carry non-TSDoc block comments (e.g. the `@vitest-environment` pragma) — skip tsdoc there.
     files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
     rules: { 'tsdoc/syntax': 'off' },

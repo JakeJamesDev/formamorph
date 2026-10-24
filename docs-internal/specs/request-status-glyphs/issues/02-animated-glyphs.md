@@ -1,6 +1,6 @@
 # 02: Animated Glyphs
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,13 +23,26 @@ Spec: Q1, Q1c, Q5–Q8, glyph map; stories 1, 3, 6–11, 13–18, 22, 29, 30.
 
 ## Acceptance criteria
 
-- [ ] The glyph map is a complete record over `AIRequestType`; removing one entry fails typecheck (checked once by hand)
-- [ ] Status-row test: each request type shows its mapped glyph next to its label
-- [ ] Status-row test with fake timers: the label changes at once; the glyph swap waits until the old glyph has shown 300 ms
-- [ ] Status-row test: with reduced motion on, the glyph renders and runs no animation
-- [ ] The vendored wrapper matches animate-ui's v2 source with no React 18 patches
-- [ ] THIRD-PARTY-NOTICES has the animate-ui entry; bundle size before and after is in the landing message
-- [ ] Frames: `.scratch/frames/glyph-plan-light.png`, `glyph-stats-dark.png`, `glyph-tool-mobile-light.png`
-- [ ] How-to-Play mentions the icon; changelog fragment written
+- [x] The glyph map is a complete record over `AIRequestType`; removing one entry fails typecheck (checked once by hand): removing `help` gave TS2741 in `glyphMap.ts`
+- [x] Status-row test: each request type shows its mapped glyph next to its label: `glyphMap.test.ts` checks every type against the spec's map, written out by hand; `RequestStatusRow.test.tsx` checks the glyph sits beside its label. GameViewer calls the tested `requestGlyph`
+- [x] Status-row test with fake timers: the label changes at once; the glyph swap waits until the old glyph has shown 300 ms: "changes the label at once and the glyph only after…", plus the at-once and skipped-glyph cases. Removing the dwell turns two red
+- [x] Status-row test: with reduced motion on, the glyph renders and runs no animation: `RequestStatusRow.motion.test.tsx`, real timers, with a control that sees the needle rotate. Forcing reduced motion off turns it red
+- [x] The vendored wrapper matches animate-ui's v2 source with no React 18 patches: line diff against upstream main shows only the relative import paths and two lint comments that named a plugin we lack
+- [x] THIRD-PARTY-NOTICES has the animate-ui entry; bundle size before and after is in the landing message
+- [x] Frames: `.scratch/frames/glyph-plan-light.png`, `glyph-stats-dark.png`, `glyph-tool-mobile-light.png`: showcase entry, DOM read before each shot showed one glyph at full opacity
+- [x] How-to-Play mentions the icon; changelog fragment written
 
 For you: watch a full turn and judge the loop pause and the swap between glyphs.
+
+## Landed
+
+**Not verified**
+
+- The 400 ms loop pause and the 150 ms crossfade have no test or frame sampling. The wrapper takes the pause as `loopDelay`. The Browser pane pauses frames, so it can't show either one.
+- Frames come from the showcase, not a live turn. The game row uses the same component.
+
+**For you**
+
+- Watch a full turn and judge the loop pause and the swap between glyphs. The showcase's Turn row steps through six requests every 2 s, so you can also judge the swap there: `.scratch/request-status-glyphs-02/frames/glyph-plan-light.png`, `glyph-stats-dark.png`, `glyph-tool-mobile-light.png`.
+- Approve the glyph set in the showcase (**Request Status Strip**), mobile included. It is a new visual pattern.
+- After the landing, run `npm install` and then `npx patch-package` in the main checkout. Its `node_modules` doesn't have `motion` yet.

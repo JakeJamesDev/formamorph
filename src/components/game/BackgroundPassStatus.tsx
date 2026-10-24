@@ -1,5 +1,6 @@
 import type { BackgroundPassKind } from "@/lib/backgroundPassQueue/backgroundPassQueue";
 import { RequestStatusRow } from "./RequestStatusRow";
+import { FALLBACK_GLYPH } from "./statusGlyphs/glyphMap";
 
 // One label at a time, by fixed precedence.
 const LABELS: ReadonlyArray<[BackgroundPassKind, string]> = [
@@ -13,5 +14,5 @@ const LABELS: ReadonlyArray<[BackgroundPassKind, string]> = [
 export function BackgroundPassStatus({ running }: { running: ReadonlySet<BackgroundPassKind> }) {
   const label = LABELS.find(([kind]) => running.has(kind))?.[1];
   if (!label) return null;
-  return <RequestStatusRow label={label} />;
+  return <RequestStatusRow label={label} glyph={FALLBACK_GLYPH} />;
 }
