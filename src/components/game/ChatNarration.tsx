@@ -10,7 +10,7 @@ import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useTopFade } from './narrationFade';
+import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
@@ -105,7 +105,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
   const turnsRef = useRef(turns);
   turnsRef.current = turns;
   const scroller = useRef<HTMLDivElement>(null);
-  useTopFade(scroller);
+  useEdgeFades(scroller);
   const virtualizer = useVirtualizer({
     count: turns.length,
     getScrollElement: () => scroller.current,
