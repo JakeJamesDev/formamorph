@@ -10,7 +10,7 @@ import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { BOTTOM_FADE, useBottomFade } from './useBottomFade';
+import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useTopFade } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
@@ -81,7 +81,7 @@ export const PLAYER_ACTION_BUBBLE = 'ml-auto w-fit max-w-[85%] rounded-2xl round
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeBottom = false }: {
+export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
   parseAssistantMessage: (content: string) => string;
   latestFooter?: React.ReactNode;
   /** The actions of one committed narration bubble. */
@@ -90,8 +90,8 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
   playerActionsFor?: (turn: ChatPlayerTurn) => BubbleAction[];
   /** Deletes one scene image of the named turn. */
   onDeleteSceneImage: (turnId: string, index: number) => void;
-  /** Fades the turns out at the bottom, under the request status strip. */
-  fadeBottom?: boolean;
+  /** Fades the turns out above the request status strip, which floats over the bottom. */
+  fadeUnderStrip?: boolean;
 }) {
   const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
@@ -105,7 +105,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
   const turnsRef = useRef(turns);
   turnsRef.current = turns;
   const scroller = useRef<HTMLDivElement>(null);
-  useBottomFade(scroller, fadeBottom);
+  useTopFade(scroller);
   const virtualizer = useVirtualizer({
     count: turns.length,
     getScrollElement: () => scroller.current,
@@ -179,7 +179,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
       <ScrollArea
         className="min-h-0 flex-grow"
         viewportRef={scroller}
-        viewportProps={{ 'data-chat-scroller': '', className: cn('[container-type:size] [overflow-anchor:auto]', fadeBottom && BOTTOM_FADE) }}
+        viewportProps={{ 'data-chat-scroller': '', className: cn('[container-type:size] [overflow-anchor:auto]', fadeUnderStrip ? NARRATION_FADE_UNDER_STRIP : NARRATION_FADE) }}
       >
         <div className="mx-auto max-w-3xl px-2">
           <div style={{ height: before, overflowAnchor: 'none' }} />
