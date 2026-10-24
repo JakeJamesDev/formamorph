@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ChevronRight, Download, ExternalLink } from 'lucide-react';
+import { useMemo } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,16 +11,14 @@ import VRMViewer from '@/views/VRMViewer';
 import { resolveModelType } from '@/lib/UtilityComponents';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { useHeldModelBlob } from '@/lib/useHeldModelBlob';
-import { downloadBlob } from '@/lib/downloadBlob';
-import { toastError } from '@/lib/linkToast';
-import { labelPlaceholders } from '@/lib/placementLetters';
-import { useMountedRef } from '@/lib/useMountedRef';
 import {
-  MEDIA_KIND_LABELS, formatMediaBytes, kindBreakdown, largestItems, mediaFileName, namedBySlot, totalBytes,
+  MEDIA_KIND_LABELS, formatMediaBytes, kindBreakdown, largestItems, namedBySlot, totalBytes,
   type MediaItem, type MediaParent,
 } from '@/lib/mediaIndex';
-import type { Placeholder } from '@/types';
+import type { MediaAsset, Placeholder } from '@/types';
 import { MediaName, MediaSize, MediaThumb } from './MediaGallery';
+import { MediaActionRow } from './MediaActionRow';
+import { actsInItemPanel, useMediaItemActions } from './useMediaItemActions';
 
 /** How many items a summary lists as the largest. */
 const LARGEST_COUNT = 5;
@@ -61,42 +59,14 @@ function Preview({ item }: { item: MediaItem }) {
   }
 }
 
-/** Download: embedded bytes under a name from the parent and slot, or the link itself for a linked image. */
-function DownloadButton({ item, placeholders }: { item: MediaItem; placeholders: readonly Placeholder[] }) {
-  const mounted = useMountedRef();
-  const [busy, setBusy] = useState(false);
-  if (item.linked) {
-    return (
-      <Button variant="outline" size="sm" asChild>
-        <a href={item.value} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-4 w-4" />Open Link</a>
-      </Button>
-    );
-  }
-  const save = async () => {
-    setBusy(true);
-    try {
-      const blob = await (await fetch(item.value)).blob();
-      downloadBlob(blob, mediaFileName(item, labelPlaceholders(item.parent.name, placeholders)));
-    } catch (e: unknown) {
-      toastError(e, { headline: "Couldn't save the file" });
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
-  };
-  return (
-    <Button variant="outline" size="sm" disabled={busy} onClick={() => void save()}>
-      <Download className="mr-1 h-4 w-4" />Download
-    </Button>
-  );
-}
-
-/** One item: a large preview by kind, its size and budget, Download, and Go to the place that holds it. */
+/** One item: a large preview by kind, its size and budget, its actions, and Go to the place that holds it. */
 export function MediaItemPanel({ item, placeholders, onGoTo }: {
   item: MediaItem;
   placeholders: readonly Placeholder[];
   onGoTo: (parent: MediaParent) => void;
 }) {
   const titled = !namedBySlot(item);
+  const { replace, remove } = useMediaItemActions();
   return (
     <div className="space-y-4" data-media-panel={item.id}>
       <div>
@@ -119,7 +89,12 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
       </div>
       <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>
       <div className="flex flex-wrap gap-2">
-        <DownloadButton item={item} placeholders={placeholders} />
+        <MediaActionRow
+          className="contents"
+          item={item}
+          placeholders={placeholders}
+          {...(actsInItemPanel(item) ? { onReplace: (media: MediaAsset) => void replace(item, media), onRemove: () => void remove(item) } : {})}
+        />
         <GoToButton parent={item.parent} placeholders={placeholders} onGoTo={onGoTo} />
       </div>
       {item.kind === 'avatar' && (

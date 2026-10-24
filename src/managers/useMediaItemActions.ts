@@ -1,0 +1,65 @@
+import { useCallback } from 'react';
+import { useGameData } from '@/contexts/GameDataContext';
+import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
+import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
+import type { MediaAsset } from '@/types';
+
+/** A field's new value: the replacing file, or null to clear it. */
+type Write = MediaAsset | null;
+
+/** "Remove Ambient Sound: Lamp Room", or "Replace Background Music" for world media. */
+export const mediaStepLabel = (verb: string, item: MediaItem): string =>
+  namedBySlot(item) ? `${verb} ${item.slot}` : `${verb} ${item.slot}: ${item.parent.name}`;
+
+/** Whether the item panel offers Replace and Remove. Gallery images and Avatars act from their own panels. */
+export const actsInItemPanel = (item: MediaItem): boolean => item.kind !== 'avatar' && item.galleryIndex === undefined;
+
+/**
+ * Replace and Remove for the slots the item panel acts on. Each writes the field the slot's own panel writes,
+ * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
+ */
+export function useMediaItemActions() {
+  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, updateWorldOverview } = useGameData();
+  const history = useWorldHistoryMovesOptional();
+
+  const write = useCallback((item: MediaItem, next: Write) => {
+    const { parent, key } = item;
+    switch (parent.kind) {
+      case 'world':
+        if (key === 'thumbnail') updateWorldOverview({ thumbnail: next?.data ?? '' });
+        else if (key === 'bgm') updateWorldOverview({ bgm: next?.data ?? null });
+        return;
+      case 'entity':
+        if (key === 'sound' || key === 'model') editEntity(parent.id, (e) => ({ ...e, [key]: next ?? undefined }));
+        return;
+      case 'location': {
+        const location = locations.find((l) => l.id === parent.id);
+        if (!location) return;
+        if (key === 'background') updateLocation({ ...location, backgroundImage: next?.data ?? '' });
+        else if (key === 'ambientSound') updateLocation({ ...location, ambientSound: next ?? undefined });
+        return;
+      }
+      case 'dictionary': {
+        const book = dictionaries.find((d) => d.id === parent.id);
+        if (book && key === 'thumbnail') updateDictionary({ ...book, thumbnail: next?.data ?? '' });
+      }
+    }
+  }, [editEntity, locations, updateLocation, dictionaries, updateDictionary, updateWorldOverview]);
+
+  const step = useCallback(async (label: string, run: () => void) => {
+    if (!history) { run(); return; }
+    // A group, not a batch: a batch drops the Origin that brings an undo back to this tab.
+    history.beginGroup(label);
+    try {
+      run();
+    } finally {
+      await history.endGroup();
+    }
+  }, [history]);
+
+  const replace = useCallback((item: MediaItem, media: MediaAsset) =>
+    step(mediaStepLabel('Replace', item), () => write(item, media)), [step, write]);
+  const remove = useCallback((item: MediaItem) =>
+    step(mediaStepLabel('Remove', item), () => write(item, null)), [step, write]);
+  return { replace, remove };
+}

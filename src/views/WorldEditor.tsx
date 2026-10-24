@@ -127,7 +127,7 @@ import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
 import type { Entity, Dictionary, World, FocusFieldHint } from '@/types';
-import type { MediaParent, MediaParentKind } from '@/lib/mediaIndex';
+import { mediaHolds, type MediaParent, type MediaParentKind } from '@/lib/mediaIndex';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
@@ -1062,7 +1062,7 @@ const WorldEditorInner = ({
   const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {
     traits: traitsAdapter, placeholders: placeholdersEditor.adapter, stats: statsAdapter,
     entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter, scripts: scriptsAdapter,
-    tools: toolsAdapter,
+    tools: toolsAdapter, media: { holds: (id) => mediaHolds(getWorldData(), id) },
   };
   listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
