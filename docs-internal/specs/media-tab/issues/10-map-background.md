@@ -1,6 +1,6 @@
 # 10: Map Background
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -28,17 +28,29 @@ Ship the docs it stales: the Locations page (canvas section), the Media tab page
 
 ## Acceptance criteria
 
-- [ ] **Set Background Image…** adds an image that covers the locations' bounding box
-- [ ] With Adjust off, the image never moves, and location drags, selection and connections work as before
-- [ ] With Adjust on, drag and corner resize move and scale the image at a fixed aspect ratio; each is one undo step
-- [ ] The Opacity slider changes canvas and Map alike, and one release is one undo step
-- [ ] The player's Map shows the image at the same place, size and opacity
-- [ ] A second image with a rule shows on the Map only while a row holds, in the same frame; a bearer-less stat Condition reads the played persona
-- [ ] The canvas shows slot 0 whatever the rules say
-- [ ] The Media tab stacks a multi-image Map Background; its image panel edits each image's rule; Replace, Download and Remove work, each one undo step
-- [ ] **No Images** shows a blank Map Background card when the world has none, and its upload lands at the default placement
-- [ ] Optimize Images and Over Size Budget use the 2560 px, 2.5 MB cap
-- [ ] Export, publish and import keep the images, their rules, the frame and the opacity
-- [ ] Frames: `.scratch/frames/map-background-adjust-dark.png` and `.scratch/frames/map-background-map-light.png` at 1600×900
+- [x] **Set Background Image…** adds an image that covers the locations' bounding box (e2e `map-background.spec.ts` "Set Background Image covers…"; `firstMapFrame` unit tests)
+- [ ] With Adjust off, the image never moves, and location drags, selection and connections work as before (e2e "a locked background…" covers drag and marquee selection, not connections)
+- [x] With Adjust on, drag and corner resize move and scale the image at a fixed aspect ratio; each is one undo step (e2e, two undos walk back resize then move; `resizeFrame` unit tests)
+- [x] The Opacity slider changes canvas and Map alike, and one release is one undo step (e2e slider drag + one undo; Map reads the stored opacity, e2e Map test reads 0.85)
+- [x] The player's Map shows the image at the same place, size and opacity (e2e Map test on the `mapBackground` fixture)
+- [x] A second image with a rule shows on the Map only while a row holds, in the same frame; a bearer-less stat Condition reads the played persona (`useMapBackdrop` hook test)
+- [x] The canvas shows slot 0 whatever the rules say (e2e locked test: slot 0's rule never holds, the canvas draws it)
+- [ ] The Media tab stacks a multi-image Map Background; its image panel edits each image's rule; Replace, Download and Remove work, each one undo step (`WorldEditor.mapBackground.test.tsx` covers stack, rule, Replace and Remove; Download not driven for the map)
+- [x] **No Images** shows a blank Map Background card when the world has none, and its upload lands at the default placement (same file, "under No Images")
+- [x] Optimize Images and Over Size Budget use the 2560 px, 2.5 MB cap (`mediaIndex.test.ts` Map Background; `imageOptim.test.ts` map walk)
+- [x] Export, publish and import keep the images, their rules, the frame and the opacity (`GameDataContext.test.tsx` export-and-load round trip; `embedRemoteImages.test.ts`; publish sends the overview as is)
+- [x] Frames: `.scratch/frames/map-background-adjust-dark.png` and `.scratch/frames/map-background-map-light.png` at 1600×900 (written by the e2e spec)
 
 For you: trace a hand-drawn world map behind your locations, add a ruined version ruled on a story stat, then open the Map in play and watch it swap.
+
+## Landed
+
+**Not verified**
+- Connections drawn with Adjust off: the locked layer takes no pointer (e2e proves drag and marquee), but no test draws a Connection over it.
+- Download of a map image: it shares the Media action row, which other tickets test, but no test drives it for the map.
+
+**For you**
+- For you: trace a hand-drawn world map behind your locations, add a ruined version ruled on a story stat, then open the Map in play and watch it swap.
+- Look at the Adjust card and corner handles, a new canvas pattern: `.scratch/media-tab-10/frames/map-background-adjust-dark.png`.
+- Look at the player's Map with the background: `.scratch/media-tab-10/frames/map-background-map-light.png`.
+- Drag any World Editor slider right after typing in a field, then undo once: the whole drag reverts (a shared gesture fix this ticket needed).

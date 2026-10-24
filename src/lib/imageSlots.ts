@@ -14,5 +14,7 @@ export const IMAGE_CAPS = {
   thumbnail: { maxDim: 1024, maxBytes: 500_000 },
   entity: { maxDim: 1024, maxBytes: 600_000 },
   background: { maxDim: 1920, maxBytes: 1_500_000 },
+  /** The Map Background, which an author zooms into on the canvas. */
+  map: { maxDim: 2560, maxBytes: 2_500_000 },
 } as const satisfies Record<string, ImageCap>;
 

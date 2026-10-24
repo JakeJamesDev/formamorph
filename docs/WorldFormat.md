@@ -157,8 +157,17 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `openingsEnabled` | | Boolean | `false` stops every opening of the world, its locations and its entities from drawing. Absent = on |
 | `allowedPersonas` | | `"any"` \| `"world"` | Which personas the player can pick. `"world"` allows only this world's personas and its Custom Persona. Absent = `"any"` |
 | `startPersona` | | Object | The persona a new player starts on: `{ "source": "none" }`, or `{ "source": "world", "entityId": "<entity id>" }`. Absent = the player's default persona |
+| `mapBackground` | | Object | The picture behind the Locations canvas and the in-game Map. See below. Absent = none |
 
 See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields behave.
+
+**`mapBackground`** holds the world map art:
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `images` | ✓ | [Gallery image](#media-fields)[] | One or more images. In play, the Map shows the first visible one. A condition with no `owner` reads the played persona. The editor's canvas shows the first |
+| `frame` | ✓ | Object | `{ "x", "y", "width", "height" }` in canvas units. Every image fits inside it at its own aspect ratio |
+| `opacity` | ✓ | Number | From `0` to `1` |
 
 **`promptOverrides`** replaces some of the player's prompts while they play this world:
 
@@ -611,12 +620,12 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
 
-**Gallery images** (entity and location `images`) are objects:
+**Gallery images** (entity and location `images`, and `mapBackground.images`) are objects:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `data` | ✓ | Image | The picture |
-| `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown. On a location, a condition with no `owner` reads the played persona |
+| `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown. On a location or the Map Background, a condition with no `owner` reads the played persona |
 
 **Background music** (`bgm`) is a base64 data URL.
 

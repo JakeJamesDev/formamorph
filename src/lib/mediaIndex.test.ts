@@ -26,6 +26,7 @@ function withoutMedia(world: World): World {
     if (l.ambientSound) l.ambientSound.data = '';
   }
   for (const d of w.dictionaries) if (d.thumbnail) d.thumbnail = '';
+  for (const img of w.worldOverview.mapBackground?.images ?? []) img.data = '';
   return w;
 }
 
@@ -254,8 +255,9 @@ describe('sortSectionsLargestFirst', () => {
 describe('blankSections', () => {
   const blanks = (w: World) => blankSections(w).flatMap((s) => s.items);
 
-  it('reports each entity and location with no image, and no dictionary', () => {
+  it('reports an empty Map Background, each entity and location with no image, and no dictionary', () => {
     expect(where(blanks(mediaFixtureWorld()))).toEqual([
+      'image map:Map Background Image 1',
       'image entity:Hollow Image 1',
       'image location:Bare Flat Image 1',
     ]);
@@ -270,7 +272,7 @@ describe('blankSections', () => {
 
   it('holds no bytes and the id the filled slot takes', () => {
     const world = mediaFixtureWorld();
-    const [hollow] = blanks(world);
+    const hollow = blanks(world).find((i) => i.parent.id === 'empty')!;
     world.entities.find((e) => e.id === 'empty')!.images = [{ data: fakeDataUrl('image/webp', 500) }];
     const filled = buildMediaIndex(world).find((i) => i.parent.id === 'empty')!;
 
@@ -287,7 +289,7 @@ describe('blankSections', () => {
     for (const filter of ['all', 'linked', 'embedded', 'rules', 'overBudget'] as const) {
       expect(filterSections(real, filter).flatMap((s) => s.items).some((i) => i.blank)).toBe(false);
     }
-    expect(filterSections(blankSections(world), 'noImages').flatMap((s) => s.items)).toHaveLength(3);
+    expect(filterSections(blankSections(world), 'noImages').flatMap((s) => s.items)).toHaveLength(4);
     expect(filterSections(blankSections(world), 'linked')).toEqual([]);
   });
 
@@ -302,7 +304,7 @@ describe('blankSections', () => {
   it('keeps the usual sections and sorts blank cards in author order under Largest First', () => {
     const sorted = sortSectionsLargestFirst(blankSections(mediaFixtureWorld()));
 
-    expect(sorted.map((s) => s.id)).toEqual(['group:crew', 'locations']);
+    expect(sorted.map((s) => s.id)).toEqual(['mapBackground', 'group:crew', 'locations']);
     expect(groupSections(blankSections(mediaFixtureWorld()), 'type').map((s) => s.path)).toEqual([['Images']]);
   });
 });
@@ -339,6 +341,53 @@ describe('location galleries', () => {
     expect(pick('overBudget')).toEqual(['Image 1']);
     expect(worldImageSlots(galleryWorld()).filter((s) => s.path.startsWith('location:marsh:')).map((s) => s.path))
       .toEqual(['location:marsh:image:0', 'location:marsh:image:1']);
+  });
+});
+
+describe('Map Background', () => {
+  const RUINED = [{ all: [{ kind: 'stat' as const, id: 'ruin', operator: '>' as const, value: 4, unit: 'raw' as const }] }];
+  // Over the background budget, under the map's own.
+  const BIG = fakeDataUrl('image/webp', 2_000_000, 'd');
+  const mapWorld = () => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.mapBackground = {
+      images: [{ data: BIG }, { data: fakeDataUrl('image/webp', IMAGE_CAPS.map.maxBytes + 1_000, 'r'), requires: RUINED }],
+      frame: { x: 0, y: 0, width: 1000, height: 600 },
+      opacity: 0.8,
+    };
+    return world;
+  };
+  const mapItems = () => buildMediaIndex(mapWorld()).filter((i) => i.parent.kind === 'map');
+
+  it('lists each image in World › Map Background with its position, rule and the map budget', () => {
+    const section = mediaSections(mapWorld()).find((s) => s.id === 'mapBackground')!;
+    expect(section.path).toEqual(['World', 'Map Background']);
+    expect(mapItems().map((i) => [i.id, i.parent.name, i.slot, i.galleryIndex, i.rules, i.budget])).toEqual([
+      ['map:map:image:0', 'Map Background', 'Image 1', 0, undefined, IMAGE_CAPS.map],
+      ['map:map:image:1', 'Map Background', 'Image 2', 1, RUINED, IMAGE_CAPS.map],
+    ]);
+  });
+
+  it('stacks two or more images on one card', () => {
+    const section = mediaSections(mapWorld()).find((s) => s.id === 'mapBackground')!;
+    expect(sectionCards(section.items).map((c) => c.images?.length)).toEqual([2]);
+  });
+
+  it('judges size against the 2560 px, 2.5 MB cap, and feeds the optimize walk with it', () => {
+    expect(mapItems().map((i) => i.overBudget)).toEqual([false, true]);
+    expect(worldImageSlots(mapWorld()).filter((s) => s.path.startsWith('map:'))).toEqual([
+      { url: BIG, cap: IMAGE_CAPS.map, path: 'map:map:image:0' },
+      expect.objectContaining({ cap: IMAGE_CAPS.map, path: 'map:map:image:1' }),
+    ]);
+  });
+
+  it('counts toward the publish measure like other media', () => {
+    const world = mapWorld();
+    expect(measurePublishBytes(world) - totalBytes(buildMediaIndex(world))).toBe(measurePublishBytes(withoutMedia(world)));
+  });
+
+  it('shows no blank card once it holds an image', () => {
+    expect(blankSections(mapWorld()).flatMap((s) => s.items).some((i) => i.parent.kind === 'map')).toBe(false);
   });
 });
 

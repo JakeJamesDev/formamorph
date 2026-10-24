@@ -129,7 +129,7 @@ import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
-import { useLocationBackdrop } from "@/lib/useLocationBackdrop";
+import { useLocationBackdrop, useMapBackdrop } from "@/lib/useLocationBackdrop";
 import { useSeedAvatarOnSaveLoad } from "@/lib/useLibraryAvatars";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
@@ -5192,6 +5192,7 @@ const GameViewer = ({
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
   const backdrop = useLocationBackdrop(viewLocation);
+  const mapBackdrop = useMapBackdrop(worldOverview);
 
   // Menu save/load handlers, extracted so the desktop (header) and mobile (tab-row) MenuModal instances share them.
   const handleMenuSave = (name: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) =>
@@ -5388,6 +5389,7 @@ const GameViewer = ({
         connections={connections}
         currentLocationId={currentLocation?.id ?? null}
         entitiesAt={metRoster}
+        mapBackground={mapBackdrop}
         changeLocation={changeLocation}
         resolveText={resolvePH}
       />

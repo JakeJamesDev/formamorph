@@ -42,6 +42,28 @@ describe('remoteWorldImages', () => {
   });
 });
 
+describe('Map Background links', () => {
+  const frame = { x: 0, y: 0, width: 400, height: 300 };
+  const mapped = (): World => {
+    const w = world();
+    w.worldOverview.mapBackground = { images: [{ data: 'https://host/map.png' }, { data: 'https://host/ruin.png', requires: KNIGHT }], frame, opacity: 0.5 };
+    return w;
+  };
+
+  it('are found and embedded with their rules, frame and opacity kept', async () => {
+    expect(remoteWorldImages(mapped()).slice(-2)).toEqual(['https://host/map.png', 'https://host/ruin.png']);
+    const { world: out } = await embedWorldRemoteImages(mapped());
+    expect(out.worldOverview.mapBackground).toEqual({
+      images: [
+        { data: 'data:image/webp;base64,EMBEDDED(https://host/map.png)' },
+        { data: 'data:image/webp;base64,EMBEDDED(https://host/ruin.png)', requires: KNIGHT },
+      ],
+      frame,
+      opacity: 0.5,
+    });
+  });
+});
+
 describe('remoteImagesInContent', () => {
   it('lists a published character’s linked pictures, ruled ones included', () => {
     const entity = { id: 'e1', name: 'A', images: [{ data: 'https://host/a.png', requires: KNIGHT }, { data: 'data:image/webp;base64,K' }, { data: 'https://host/b.png' }] };

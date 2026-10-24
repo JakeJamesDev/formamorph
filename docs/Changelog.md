@@ -43,6 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Media tab filter has a No Images option that lists entities, locations and the world thumbnail with no image.** Select a blank card to add its first image. Dictionaries without a cover image stay out.
     - **Trait requirements and image Visibility rules can check the time of day, such as evening or night.** Pick **Time of Day**, then turn on the dayparts. The game checks once per turn, after the turn's time passes.
     - **In the World Editor, a location's background is now a gallery, and each image can take a Visibility rule.** In play the backdrop shows the first visible image. A condition with no owner reads your persona. Older worlds load with their background first.
+    - **The Locations canvas can show a Map Background image, and the in-game Map draws it behind the locations.** Right-click the canvas to set it, then drag, resize and fade it under Adjust Background. In the Media tab, add more map images with Visibility rules so the map changes in play.
   - **Request Status Strip:**
     - **The request status strip shows a small animated icon for each request, such as a compass for Plan.** The icon holds still when your system's reduced-motion setting is on.
   - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
@@ -80,6 +81,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Choices now stream word by word at the end of a turn in long stories, instead of appearing at once.** Long stories re-read the whole history on each narration sentence and choice word, which froze the screen. A row that still shows late keeps its pace.
   - **The turn's action row now slides open after the narration finishes, and the choices stream in after it.** Before, the row appeared mid-stream and pushed the choices down, and numbered choices showed all at once. **Continue the Story** now comes last.
   - **The request status strip floats over the bottom of the narration, so the Pager and the action box stay still.** It works the same in Pages and Chat. A fade keeps the label readable over the text.
+  - **One drag of a World Editor slider or color picker now undoes in one step.** A drag that started while another field had focus used to split into many undo steps.
 
 ---
 

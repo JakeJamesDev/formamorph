@@ -24,7 +24,9 @@ export function useGestureStart(): (event: PointerEvent) => void {
     groups.begin();
     // On the window: a drag can be released anywhere, or end when the window loses focus mid-drag.
     const ends = ['pointerup', 'pointercancel', 'blur'] as const;
-    const end = () => {
+    const end = (e?: Event) => {
+      // A capture listener hears every element's blur; only the window's own ends the drag.
+      if (e?.type === 'blur' && e.target instanceof Node) return;
       for (const type of ends) window.removeEventListener(type, end, true);
       ending.current = null;
       groups.end();

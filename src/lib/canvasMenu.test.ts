@@ -35,6 +35,14 @@ describe("canvasMenuSections", () => {
     ]);
   });
 
+  it("puts the Map Background's switches in their own titled set after the connection styles, only when given", () => {
+    const adjust: CanvasMenuItem = { label: "Adjust Background", checked: true, onSelect: noop };
+    const sections = canvasMenuSections(state, actions, nodeActions, [adjust]);
+    expect(titles(sections)).toEqual(["Grid", "Connection Style", "Background", undefined, undefined]);
+    expect(sections[2].items).toEqual([adjust]);
+    expect(titles(canvasMenuSections(state, actions, nodeActions, []))).not.toContain("Background");
+  });
+
   it("carries no title on the history or target sections", () => {
     const sections = canvasMenuSections(state, actions, nodeActions);
     expect(sections[2].title).toBeUndefined();

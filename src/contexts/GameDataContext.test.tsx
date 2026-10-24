@@ -658,6 +658,23 @@ describe('loadWorldData', () => {
     expect(result.current.worldOverview.openingsEnabled).toBe(false);
   });
 
+  it("carries the Map Background's images, rules, frame and opacity through an export and load", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    const mapBackground = {
+      images: [
+        { data: 'data:image/webp;base64,bWFw' },
+        { data: 'https://example.com/ruin.png', requires: [{ all: [{ kind: 'stat' as const, id: 'ruin', operator: '>' as const, value: 4, unit: 'raw' as const }] }] },
+      ],
+      frame: { x: -40, y: 12, width: 900, height: 500 },
+      opacity: 0.6,
+    };
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', { mapBackground })))); });
+    expect(result.current.worldOverview.mapBackground).toEqual(mapBackground);
+
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(result.current.worldOverview.mapBackground).toBeUndefined();
+  });
+
   it('loads an old single cue as the first row of the list', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     const legacy = world('a', { openingCue: 'You wake in the reed-beds.' });

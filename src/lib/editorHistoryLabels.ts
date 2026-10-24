@@ -49,6 +49,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     openingsEnabled: "Openings",
     allowedPersonas: "Allowed Personas",
     startPersona: "Starts On",
+    mapBackground: "Map Background",
   },
   stats: {
     type: "Type",

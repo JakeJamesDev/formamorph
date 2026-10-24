@@ -8,7 +8,7 @@ import type { Entity, EntityStatValues, GameLocation, World, SaveObject } from '
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'entityPresence', 'entityFollowers'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'entityPresence', 'entityFollowers', 'mapBackground'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -83,6 +83,10 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
 /** The `entityFollowers` fixture's follower. */
 const ENTITY_FOLLOWER: Entity = { id: 'dev-scout', name: 'Scout', locations: [WHITE_ROOM_ID], movement: 'follow' };
 const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep', nearbyUsesConnections: true };
+
+/** A hand-drawn-looking map for the `mapBackground` fixture: land, water and a road, labeled by fill. */
+const mapArt = (land: string, label: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#9cc7d9"/><path d="M80 120 Q400 20 760 140 T1120 220 L1080 600 Q600 680 140 560 Z" fill="${land}"/><path d="M160 300 C420 260 640 420 1000 320" stroke="#7a5a38" stroke-width="14" fill="none"/><text x="600" y="660" font-family="serif" font-size="40" text-anchor="middle" fill="#2b2b2b">${label}</text></svg>`)}`;
 
 /** Page one of the `writtenOpening` fixture. */
 export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
@@ -238,6 +242,27 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           },
         },
         saveName: 'DEV: Entity Followers',
+      };
+    }
+    case 'mapBackground': {
+      // The white room under a Map Background: a ruined map ruled on Resolve under 2, then the drawn map. Resolve
+      // opens at 3, so the drawn map shows.
+      const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
+      return {
+        world: {
+          ...world,
+          worldOverview: {
+            ...world.worldOverview,
+            mapBackground: {
+              images: [
+                { data: mapArt('#8a7f73', 'The Ruined Lands'), requires: [{ all: [{ kind: 'stat', id: 'stat-resolve', operator: '<', value: 2, unit: 'raw' }] }] },
+                { data: mapArt('#cfe0a8', 'The Known Lands') },
+              ],
+              frame: { x: -120, y: -80, width: 780, height: 455 },
+              opacity: 0.85,
+            },
+          },
+        },
       };
     }
     case 'writtenOpening': {

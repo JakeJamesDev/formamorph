@@ -3,6 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
+import { mapImages, withMapImages } from '@/lib/mapBackground';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
 import type { GalleryImage, MediaAsset } from '@/types';
 
@@ -40,7 +41,7 @@ export function useMediaStep() {
  * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
  */
 export function useMediaItemActions() {
-  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, updateWorldOverview } = useGameData();
+  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview } = useGameData();
 
   const write = useCallback((item: MediaItem, next: Write) => {
     const { parent, key } = item;
@@ -49,6 +50,13 @@ export function useMediaItemActions() {
         if (key === 'thumbnail') updateWorldOverview({ thumbnail: next?.data ?? '' });
         else if (key === 'bgm') updateWorldOverview({ bgm: next?.data ?? null });
         return;
+      case 'map': {
+        const at = item.galleryIndex;
+        if (at !== undefined) {
+          updateWorldOverview({ mapBackground: withMapImages(worldOverview.mapBackground, writeGallery(mapImages(worldOverview), at, next)) });
+        }
+        return;
+      }
       case 'entity': {
         if (key === 'sound' || key === 'model') editEntity(parent.id, (e) => ({ ...e, [key]: next ?? undefined }));
         const at = item.galleryIndex;
@@ -68,7 +76,7 @@ export function useMediaItemActions() {
         if (book && key === 'thumbnail') updateDictionary({ ...book, thumbnail: next?.data ?? '' });
       }
     }
-  }, [editEntity, locations, updateLocation, dictionaries, updateDictionary, updateWorldOverview]);
+  }, [editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview]);
 
   const step = useMediaStep();
 

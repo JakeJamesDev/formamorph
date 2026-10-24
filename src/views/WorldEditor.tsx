@@ -144,7 +144,7 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
 }
 
 /** The tab that holds each kind of media parent other than the world. */
-const MEDIA_PARENT_TABS: Record<Exclude<MediaParentKind, 'world'>, FindingSection> = {
+const MEDIA_PARENT_TABS: Record<Exclude<MediaParentKind, 'world' | 'map'>, FindingSection> = {
   entity: 'entities', location: 'locations', dictionary: 'dictionary',
 };
 
@@ -1046,7 +1046,10 @@ const WorldEditorInner = ({
   const selectMediaItem = useCallback((id: string | null) => select('media', id), [select]);
   const goToMediaParent = useCallback((parent: MediaParent) => {
     if (parent.kind === 'world') setActiveTab('overview');
-    else navigateToBenchItem(MEDIA_PARENT_TABS[parent.kind], parent.id);
+    else if (parent.kind === 'map') {
+      setActiveTab('locations');
+      setLocationView('canvas');
+    } else navigateToBenchItem(MEDIA_PARENT_TABS[parent.kind], parent.id);
   }, [navigateToBenchItem]);
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
