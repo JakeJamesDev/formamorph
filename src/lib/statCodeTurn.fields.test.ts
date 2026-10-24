@@ -7,7 +7,7 @@ import { runStatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
-import type { Entity, PersonaRef, Placeholder, PlayerStat, Trait, TraitGroup } from '@/types';
+import type { Entity, PersonaRef, Placeholder, PlayerStat, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
 import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
@@ -24,7 +24,7 @@ const gifted: Trait = { id: 'gifted', name: 'Gifted', groupId: 'mood', playerTog
 const calm: Trait = { id: 'calm', name: 'Calm', statChanges: [] };
 const sworn: Trait = { id: 'sworn', name: 'Sworn', requires: [{ all: [{ kind: 'trait', id: 'calm' }] }], statChanges: [] };
 const mira: Entity = { id: 'mira', name: 'Mira', persona: true, type: 'Knight', pronouns: 'she/her', traits: [calm] };
-const rook: Entity = { id: 'rook', name: 'Rook', traits: [calm, sworn].map((t) => ({ ...t, id: `rook-${t.id}`, requires: t.requires?.map((row) => ({ all: row.all.map((r) => ({ ...r, id: `rook-${r.id}` })) })) })) };
+const rook: Entity = { id: 'rook', name: 'Rook', traits: [calm, sworn].map((t) => ({ ...t, id: `rook-${t.id}`, requires: t.requires?.map((row) => ({ all: row.all.map((r) => ({ ...r, id: `rook-${r.id}` }) as TraitRequirement) })) })) };
 const pip: Entity = { id: 'pip', name: 'Pip' };
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 

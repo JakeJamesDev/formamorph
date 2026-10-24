@@ -25,6 +25,7 @@ import { portableOwnedStats, type OwnedStatFields } from './portableStats';
 import { portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
+import { daypartSet, isDaypart } from './gameClock';
 import { adoptCarriedVrm, withCarriedVrm, type CarriedVrm, type PortableEntity } from './entityVrmCarry';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
@@ -221,6 +222,10 @@ const isStatComparison = (v: unknown): v is StatComparison => typeof v === 'stri
 
 function cardRequirement(condition: unknown): TraitRequirement[] {
   const raw = conditionWithOwnerKey(condition);
+  if (isRecord(raw) && raw.kind === 'time') {
+    const dayparts = Array.isArray(raw.dayparts) ? daypartSet(raw.dayparts.filter(isDaypart)) : [];
+    return dayparts.length ? [{ kind: 'time', dayparts }] : [];
+  }
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);
   if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...not }];

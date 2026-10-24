@@ -2401,7 +2401,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     : req.kind !== 'playingAs' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
   const crossings = held.filter((gate) => gate.owner.id === null && global.traits.some((t) => t.id === gate.trait.id))
     .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
-      if (req.kind === 'playingAs' || req.owner) return [];
+      if (req.kind === 'playingAs' || req.kind === 'time' || req.owner) return [];
       const isGlobal = req.kind === 'stat' ? !!stats.global[req.id] : globalIds.has(req.id);
       return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
     })));

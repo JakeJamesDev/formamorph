@@ -78,7 +78,7 @@ describe('stat Conditions', () => {
       expect(unlocked(req, scoped<GateStatSet>({}))).toBe(false);
       expect(unlocked(req, undefined)).toBe(false);
       expect(unlocked(req, rage(10, { inert: true }))).toBe(false);
-      expect(unlocked({ ...req, owner: { kind: 'entity', id: 'gone', name: 'Ash' } }, scoped<GateStatSet>({}, { gone: { rage: S('Rage', 10) } }))).toBe(false);
+      expect(unlocked({ ...req, owner: { kind: 'entity' as const, id: 'gone', name: 'Ash' } }, scoped<GateStatSet>({}, { gone: { rage: S('Rage', 10) } }))).toBe(false);
     }
   });
 

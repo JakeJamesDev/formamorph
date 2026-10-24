@@ -63,7 +63,7 @@ describe('a stat Condition in the rows editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByText('Global Stats')).toBeInTheDocument();
     expect(screen.getByText('Ash Stats')).toBeInTheDocument();
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Rage', 'Gold', 'Hunger']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Rage', 'Gold', 'Hunger', 'Time of Day']);
 
     fireEvent.click(screen.getByRole('option', { name: /^Rage/ }));
     expect(rows()).toEqual([{ all: [{ kind: 'stat', id: 'rage', operator: '>=', value: 50, unit: 'raw' }] }]);
@@ -198,6 +198,6 @@ describe('a stat Condition in the rows editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByText('Ash Stats')).toBeInTheDocument();
     expect(screen.queryByText('Global Stats')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Hunger']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Hunger', 'Time of Day']);
   });
 });

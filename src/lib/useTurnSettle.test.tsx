@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
+import { useCallback, useState } from 'react';
 import { useTurnSettle } from './useTurnSettle';
+import { daypartAt } from './gameClock';
 import {
   activeTraits, gateStatsOf, settleTraits, switchPlayerTrait, type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
@@ -157,5 +159,39 @@ describe('the per-turn settle', () => {
     });
     await Promise.all([first, second]);
     expect(commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the per-turn settle with a time gate', () => {
+  // Lantern holds while it is evening or night; the player chose it.
+  const lantern: Trait = {
+    id: 'lantern', name: 'Lantern', playerToggle: true, statChanges: [],
+    requires: [{ all: [{ kind: 'time', dayparts: ['evening', 'night'] }] }],
+  };
+
+  /** A commit as GameViewer runs one: the turn's hours pass, then the settle runs against the world as it reads then. */
+  function useClockedTurn(start: TraitRuntimeState, startHours: number) {
+    const [gameTime, setGameTime] = useState(startHours);
+    const [state, setState] = useState(start);
+    const daypart = daypartAt(gameTime);
+    const world = useCallback((): TraitWorld => ({ traits: [lantern], groups: [], daypart }), [daypart]);
+    const settle = useTurnSettle(state, world, nameOf, (result) => setState(result.state));
+    const turn = (hours: number) => {
+      setGameTime((now) => now + hours);
+      return settle(null);
+    };
+    return { state, turn };
+  }
+
+  it('reads the clock after the turn’s time passes, so the commit that reaches evening turns the trait on', async () => {
+    // Off at 12:00, midday; a six-hour turn reaches 18:00, evening.
+    const chosen: TraitRuntimeState = { stats: [], traits: [lantern], disabledTraitIds: [], appliedValues: {} };
+    const midday = settleTraits(chosen, { traits: [lantern], groups: [], daypart: daypartAt(4) }).state;
+    expect(on(midday)).toEqual([]);
+    const hook = renderHook(() => useClockedTurn(midday, 4));
+    let settled: Promise<void> = Promise.resolve();
+    await act(async () => { settled = hook.result.current.turn(6); });
+    await settled;
+    expect(on(hook.result.current.state)).toEqual(['lantern']);
   });
 });

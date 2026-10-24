@@ -1,6 +1,6 @@
 # 07: Time Condition
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -27,14 +27,24 @@ Ship the docs it stales: the trait gates and Visibility rule wiki lines, and the
 
 ## Acceptance criteria
 
-- [ ] The Condition editor offers a time Condition with a daypart multi-select, in trait gates and in image rules
-- [ ] A trait gated on "evening or night" turns on when the clock reaches evening, at the turn commit that crosses it
-- [ ] An entity image ruled on "night" shows in play at night and not at midday
-- [ ] The Condition works with the AI clock off, on the flat hour per turn
-- [ ] A world with a non-24-hour day length divides dayparts by fraction, matching the narration's daypart
-- [ ] A character card with a time Condition round-trips through export and import
-- [ ] The Test Bench reads the Condition at the opening hour
-- [ ] The rule summary reads the dayparts in words
-- [ ] A guard test fails when the snapshot reads the clock before the turn's time passes
+- [x] The Condition editor offers a time Condition with a daypart multi-select, in trait gates and in image rules. `RequirementRowsField.time.test.tsx`; both hosts share `RequirementRowsField`; live frame `.scratch/media-tab-07/frames/time-chip.jpg`
+- [x] A trait gated on "evening or night" turns on when the clock reaches evening, at the turn commit that crosses it. `traitGates.time.test.ts` (per-turn settle) and `useTurnSettle.test.tsx` (time gate)
+- [x] An entity image ruled on "night" shows in play at night and not at midday. `traitGates.time.test.ts`, `visibleImages` at night and midday
+- [x] The Condition works with the AI clock off, on the flat hour per turn. `traitGates.time.test.ts`, ten flat turns from 8:00 reach evening
+- [x] A world with a non-24-hour day length divides dayparts by fraction, matching the narration's daypart. `traitGates.time.test.ts`, every hour of a 30-hour day against `formatAbsolute`
+- [x] A character card with a time Condition round-trips through export and import. `traitGates.time.test.ts`, trait gate and image rule
+- [x] The Test Bench reads the Condition at the opening hour. `rules.test.ts`, gated defaults: morning passes, evening or night is flagged
+- [x] The rule summary reads the dayparts in words. `traitGates.time.test.ts`, "Shown while evening or night", each run from the daypart after a gap (spec session ruling, replacing Q63)
+- [x] A guard test fails when the snapshot reads the clock before the turn's time passes. `useTurnSettle.test.tsx`; reading `world()` when the settle is asked for turned it red, and only it
 
 For you: author a day and night pair of images on one entity and play across an evening to see the swap.
+
+## Landed
+
+**Not verified**
+- GameViewer's call order (the turn's hours pass before `settleTurn`) has no test of its own. The guard covers `useTurnSettle` only; GameViewer was checked by reading.
+- Image rules read the daypart of the turn on screen as soon as the clock moves (Q64), so in a live turn a night image can swap a moment before a trait on the same clock settles. Image stat Conditions behave the same way.
+
+**For you**
+- Author a day and night pair of images on one entity and play across an evening to see the swap.
+- See the daypart chip, the approved segmented multi-select (Q66), in the World Editor and at `#dev?modal=designSystem&tab=segmented-multi-select`: frame `.scratch/media-tab-07/frames/time-chip.jpg`.

@@ -41,6 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **An entity's or location's image opens one Media tab panel with its gallery, and the framed image's actions sit below.** Reorder, generate, replace, download or remove images there. An entity's image also gets its Visibility rule editor and a link to its Avatar.
     - **The Media tab now holds the world's Avatars, in Simple and Advanced mode.** Upload, copy from your library, rename, replace, download or delete an Avatar there. The Overview no longer has the section.
     - **The Media tab filter has a No Images option that lists entities, locations and the world thumbnail with no image.** Select a blank card to add its first image. Dictionaries without a cover image stay out.
+    - **Trait requirements and image Visibility rules can check the time of day, such as evening or night.** Pick **Time of Day**, then turn on the dayparts. The game checks once per turn, after the turn's time passes.
   - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.

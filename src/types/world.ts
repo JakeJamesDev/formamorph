@@ -214,7 +214,23 @@ export type TraitRequirement =
   | { kind: 'trait'; id: string; name?: string; owner?: RequirementOwner; not?: true }
   | { kind: 'group'; id: string; name?: string; owner?: RequirementOwner; not?: true }
   | { kind: 'playingAs'; id: string; name?: string; not?: true }
-  | StatRequirement;
+  | StatRequirement
+  | TimeRequirement;
+
+/** A coarse time of day, as the story clock splits its day by fractions. */
+export type Daypart = 'night' | 'dawn' | 'morning' | 'midday' | 'afternoon' | 'evening';
+
+/** A time Condition: it holds while the story clock's daypart is one of `dayparts`. It names no target and
+ *  no owner. */
+export interface TimeRequirement {
+  kind: 'time';
+  dayparts: Daypart[];
+  // Absent, so code that reads any Condition's target finds none here.
+  id?: undefined;
+  name?: undefined;
+  owner?: undefined;
+  not?: undefined;
+}
 
 /** A stat Condition: see {@link TraitRequirement}. */
 export interface StatRequirement {

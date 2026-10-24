@@ -13,6 +13,7 @@ import { ChipOptionsReference } from '@/components/design-system/ChipOptionsRefe
 import { CodeCardReference } from '@/components/design-system/CodeCardReference';
 import { VariableMenuReference } from '@/components/design-system/VariableMenuReference';
 import { YouMarkReference } from '@/components/design-system/YouMarkReference';
+import { SegmentedMultiSelectReference } from '@/components/design-system/SegmentedMultiSelectReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -466,6 +467,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'You Pill',
     description: 'The mark after the played persona’s name, on a plain row and a selected row',
     Component: YouMarkReference,
+  },
+  {
+    id: 'segmented-multi-select',
+    label: 'Segmented Multi-Select',
+    description: 'A segmented control where each option turns on by itself, as the time chip uses',
+    Component: SegmentedMultiSelectReference,
   },
 ];
 

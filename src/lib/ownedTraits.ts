@@ -92,7 +92,7 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
   const ids = new Map([...traitsOf(entity), ...groupsOf(entity), ...links].map((item) => [item.id, randomUUID()] as const));
   const remap = (id: string | null | undefined) => (id ? ids.get(id) ?? id : id);
   const remapRequirement = (r: TraitRequirement): TraitRequirement =>
-    ({ ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
+    (r.kind === 'time' ? r : { ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
   const reminted = withOwnedTraits(
     withImageRules(entity, remapRequirement),
     traitsOf(entity).map((t) => ({

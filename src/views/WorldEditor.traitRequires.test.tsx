@@ -92,7 +92,7 @@ describe('the Requires field', () => {
     const list = await screen.findByRole('listbox');
     // A one-chip row already listed stays in place and reads disabled.
     expect(within(list).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
-    const search = screen.getByPlaceholderText('Search traits, groups, and personas');
+    const search = screen.getByPlaceholderText('Search traits, groups, time of day, and personas');
     // The search reads what a row shows, never the requirement key behind it.
     fireEvent.change(search, { target: { value: 'trait' } });
     expect(screen.queryAllByRole('option')).toEqual([]);

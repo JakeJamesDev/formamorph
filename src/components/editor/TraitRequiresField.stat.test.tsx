@@ -48,7 +48,7 @@ describe('TraitRequiresField with stats', () => {
   it('offers a world trait the global stats with no owner, then each entity’s with its owner', async () => {
     render(<Harness subject={berserk} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
-    expect(await screen.findByPlaceholderText('Search traits, groups, stats, and personas')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Search traits, groups, stats, time of day, and personas')).toBeInTheDocument();
     expect(screen.getByText('Global Stats')).toBeInTheDocument();
     expect(screen.getByText('Mira Stats')).toBeInTheDocument();
 
@@ -80,7 +80,7 @@ describe('TraitRequiresField with stats', () => {
   it('offers an off-world entity only its own stats', async () => {
     render(<Harness subject={squire} offWorld />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
-    expect(await screen.findByPlaceholderText('Search traits, groups, and stats')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Search traits, groups, stats, and time of day')).toBeInTheDocument();
     expect(screen.getByText('Mira Stats')).toBeInTheDocument();
     expect(screen.queryByText('Global Stats')).not.toBeInTheDocument();
   });

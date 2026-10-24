@@ -76,7 +76,7 @@ import type { Entity, PersonaRef, SceneEntity, Stat, StatGroup, Trait } from '@/
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
-import { formatAbsolute, formatClock } from '@/lib/gameClock';
+import { daypartAt, formatAbsolute, formatClock } from '@/lib/gameClock';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
@@ -1313,11 +1313,13 @@ export const RightPanel = ({
     const held = globalTraits.filter((t) => heldRows.has(t.id));
     return [...(isViewingPast ? held : listableGlobalTraits(held, globalRows, globalOrder)), ...entityRows];
   }, [isViewingPast, globalTraits, traitTree, viewOwnedTraits]);
-  // The played world entity is out of the cast, and a "playing as" gate has to find it.
+  // The played world entity is out of the cast, and a "playing as" gate has to find it. Time Conditions read
+  // the viewed turn's clock.
+  const daypart = daypartAt(gameTime, calendar);
   const gateWorld = React.useMemo<TraitWorld>(() => ({
-    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
+    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart,
     ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, ownerWorld, traitLibrary]);
+  }), [traits, traitGroups, cast, persona, personaRef, daypart, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
     [globalTraits, viewDisabledTraitIds, viewOwnedTraits],

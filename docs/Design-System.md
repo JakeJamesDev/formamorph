@@ -36,6 +36,7 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 - Put a short description below its control or beside a checkbox. Keep necessary detail behind the information control.
 - Use several suitable widget types. Do not convert every setting into the same control for visual uniformity.
 - Use the responsive option switcher for mutually exclusive choices: segmented options at `sm` and wider, a select below `sm`.
+- Inside a dense control, a short pick-many set can use the [segmented multi-select](#pattern-segmented-multi-select).
 - Keep long values inside the control column. Select triggers truncate instead of widening the row.
 
 ### Production mapping
@@ -2093,6 +2094,20 @@ The pill is the same size on desktop and mobile. The reference shows its three p
 The pill reads **You**. A screen reader hears it after the name.
 
 Open `#dev?modal=designSystem&tab=you-mark` for a plain row and a selected row in light, dark and the Purple palette.
+
+## Pattern: Segmented multi-select
+
+✅ Approved by the user on 2026-10-24 (media-tab Q66).
+
+A segmented control whose options turn on and off one by one, for a short pick-many set inside a dense control such as a Condition chip. A settings row with a pick-many choice still uses checkboxes.
+
+- 🧩 **Component.** `ToggleGroup` with `type="multiple"` in [`toggle-group.tsx`](../src/components/ui/toggle-group.tsx), at the chip's `h-6 px-2 text-helper` size. The production use is [`TimeConditionControls.tsx`](../src/components/editor/TimeConditionControls.tsx).
+- 🔢 **Order.** Options keep one fixed order, such as clock order, whatever was picked first.
+- 🔒 **Never empty.** When one option is left on, it is disabled, so the value can't empty.
+- 📱 **Width.** The group wraps inside its chip on a narrow screen. It does not switch to a select.
+- 🔊 **Name.** The group carries an `aria-label`; each option is a pressed or unpressed button.
+
+Open `#dev?modal=designSystem&tab=segmented-multi-select` for the time chip's controls with local state.
 
 ## UI and prototype workflow
 

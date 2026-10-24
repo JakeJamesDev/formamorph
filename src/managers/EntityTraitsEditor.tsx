@@ -70,7 +70,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   // "Playing as" the entity itself opens the entity where a host can; every other persona is outside.
   const requirementOpens = (r: TraitRequirement) => (r.kind === 'playingAs'
     ? !!onOpenEntity && (r.id === owner.id || r.id === SELF_ENTITY)
-    : rowOf(r.id) !== null);
+    : r.kind !== 'time' && rowOf(r.id) !== null);
   const nameChips = <PlaceholderText text={owner.name} placeholders={placeholders} />;
 
   const add = (typed: string, addItem: typeof addOwnedTrait) => {
