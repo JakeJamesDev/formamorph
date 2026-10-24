@@ -3,7 +3,7 @@ import { CodeRenameDialog } from '@/components/editor/CodeRenameOffer';
 import { ReplaceAllConfirm } from '@/components/editor/EditorFindBar';
 import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
 import { ReplaceImageDialog } from '@/managers/ImageTagsField';
-import { DeleteVrmConfirm } from '@/managers/WorldVrmStoreSection';
+import { DeleteVrmConfirm } from '@/managers/AvatarStore';
 import type { CodeRenamePlan } from '@/lib/statCodeRename';
 import type { Entity } from '@/types';
 

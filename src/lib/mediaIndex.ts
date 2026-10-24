@@ -206,9 +206,27 @@ export function worldImageSlots(w: Partial<MediaWorld>): ImageSlot[] {
 /** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
 export const countWorldImages = (w: Partial<MediaWorld>): number => worldImageSlots(w).length;
 
-/** Whether the gallery holds a selection: a card's id or a section header's. */
+/** The section ids that hold Avatars: by parent, and by type. */
+const AVATAR_SECTION_IDS: readonly string[] = ['avatars', 'type:avatar'];
+
+/** Whether a section is the Avatars section, which carries the Avatar controls. */
+export const isAvatarSection = (section: Pick<MediaSection, 'id'>): boolean => AVATAR_SECTION_IDS.includes(section.id);
+
+/**
+ * The sections with an Avatars section in them even when no Avatar exists, so the first one has a way in:
+ * after World when grouping by parent, last when grouping by type.
+ */
+export function withAvatarsSection(sections: readonly MediaSection[], grouping: MediaGrouping): MediaSection[] {
+  if (sections.some(isAvatarSection)) return [...sections];
+  if (grouping === 'type') return [...sections, { id: 'type:avatar', path: [MEDIA_KIND_LABELS.avatar.many], items: [] }];
+  const at = sections[0]?.id === 'world' ? 1 : 0;
+  return [...sections.slice(0, at), { id: 'avatars', path: ['World', 'Avatars'], items: [] }, ...sections.slice(at)];
+}
+
+/** Whether the gallery holds a selection: a card's id or a section header's. The Avatars header always stands. */
 export function mediaHolds(w: MediaWorld, id: string): boolean {
-  return mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));
+  return AVATAR_SECTION_IDS.some((s) => sectionSelection(s) === id)
+    || mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));
 }
 
 export const totalBytes = (items: readonly MediaItem[]): number => items.reduce((n, i) => n + i.bytes, 0);

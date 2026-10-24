@@ -120,12 +120,13 @@ describe('Media tab Remove', () => {
     expect(slot.read(bench.ctx())).toBe(was);
   });
 
-  it('offers no Replace or Remove on an Avatar', () => {
+  it('offers an Avatar Replace, Download and Delete in place of Remove', () => {
     openMedia();
     fireEvent.click(card('World › Avatars', 'avatar'));
-    expect(panelButton('Download')).not.toBeNull();
     expect(panelButton('Remove')).toBeNull();
-    expect(panelButton('Replace')).toBeNull();
+    expect(panelButton('Replace')).not.toBeNull();
+    expect(panelButton('Download')).not.toBeNull();
+    expect(panelButton('Delete')).not.toBeNull();
   });
 });
 

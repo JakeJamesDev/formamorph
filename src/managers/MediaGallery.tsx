@@ -95,6 +95,7 @@ export function MediaGallery({ sections, selectedId, onSelect, placeholders }: {
               <span className="truncate text-label font-medium">{sectionTitle(section)}</span>
               <Meta className="ml-auto shrink-0 tabular-nums">{formatMediaBytes(totalBytes(section.items))}</Meta>
             </button>
+            {!section.items.length && <Meta className="px-1">No Avatars yet</Meta>}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] items-start gap-2 pt-1.5">
               {sectionCards(section.items).map(({ item, images }) => (
                 <MediaCard

@@ -140,7 +140,8 @@ describe('Media tab panels', () => {
     fireEvent.click(card('World › Avatars', 'avatar'));
 
     const usedBy = within(panel()!).getAllByRole('button').map((b) => b.textContent);
-    expect(usedBy).toEqual(expect.arrayContaining(['Odd Wick', 'Bram', 'Go to Overview']));
+    expect(usedBy).toEqual(expect.arrayContaining(['Odd Wick', 'Bram']));
+    expect(usedBy).not.toContain('Go to Overview');
     fireEvent.click(card('World › Avatars', 'avatar', 1));
     expect(panel()).toHaveTextContent('No entity uses this Avatar');
   });

@@ -27,6 +27,8 @@ vi.mock('@/services/ModelStorageService', () => ({
   default: { getModelMetadata: vi.fn().mockResolvedValue([]), getModelData: vi.fn() },
 }));
 
+vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
+
 const FILE = { data: 'data:model/vrm;base64,Z2xURgIA', type: 'model/vrm', name: 'Wren.vrm' };
 
 /** A world as a build before per-entity Avatars stored it: the flag on, an old Avatar, a Custom Persona. */
@@ -52,13 +54,17 @@ const selectEntity = (name: string) => {
   fireEvent.click(screen.getByText(name));
 };
 
+const avatarCardNames = () =>
+  Array.from(screen.getByRole('region', { name: 'World › Avatars' }).querySelectorAll('[data-media-card="avatar"] .truncate')).map((el) => el.textContent);
+
 beforeEach(() => localStorage.clear());
 
 describe("an old world's player Avatar in the editor", () => {
   it('shows the old Avatar as a store entry, with no checkbox or old uploader', () => {
     const bench = renderWorldEditorBench(OLD_WORLD, 'advanced');
+    openEditorTab(/^Media$/);
+    expect(avatarCardNames()).toEqual(['Wren']);
     openEditorTab(/Overview/);
-    expect(screen.getAllByRole('textbox', { name: 'Avatar Name' }).map((el) => (el as HTMLInputElement).value)).toEqual(['Wren']);
     expect(screen.queryByText('3D Player Avatar')).toBeNull();
     expect(screen.queryByRole('checkbox', { name: /3D Player Avatar/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Player Avatar/ })).toBeNull();
@@ -100,9 +106,9 @@ describe("an old world's player Avatar in the editor", () => {
 
   it('clears the fallback with the store entry it points at', async () => {
     const bench = renderWorldEditorBench(OLD_WORLD, 'advanced');
-    openEditorTab(/Overview/);
-    const [row] = screen.getAllByRole('textbox', { name: 'Avatar Name' }).map((el) => el.parentElement!);
-    fireEvent.click(within(row).getByRole('button', { name: 'Delete this Avatar' }));
+    openEditorTab(/^Media$/);
+    fireEvent.click(screen.getByRole('region', { name: 'World › Avatars' }).querySelector<HTMLElement>('[data-media-card="avatar"]')!);
+    fireEvent.click(within(document.querySelector<HTMLElement>('[data-media-panel]')!).getByRole('button', { name: 'Delete' }));
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(bench.ctx().worldOverview.vrmStore).toEqual({}));

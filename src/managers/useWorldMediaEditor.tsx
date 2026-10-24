@@ -7,8 +7,12 @@ import type { ListEditorParts } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
-import { filterSections, groupSections, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, mediaParentKey, type MediaFilter, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
+import {
+  filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
+  type MediaFilter, type MediaItem, type MediaParent,
+} from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
+import { AvatarStoreControls } from './AvatarStore';
 import { MediaGallery } from './MediaGallery';
 import { MediaHeader, type OptimizeControl } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
@@ -45,7 +49,9 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   // What the gallery lays out, before the search narrows it.
   const shownSections = useMemo(() => {
     const filtered = filterSections(groupSections(allSections, grouping), filter);
-    return largestFirst ? sortSectionsLargestFirst(filtered) : filtered;
+    const sorted = largestFirst ? sortSectionsLargestFirst(filtered) : filtered;
+    // Unfiltered, the Avatars section always shows, so the first Avatar has a way in.
+    return filter === 'all' ? withAvatarsSection(sorted, grouping) : sorted;
   }, [allSections, grouping, filter, largestFirst]);
   const term = search.term.trim();
   const sections = useMemo(() => {
@@ -58,7 +64,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
 
   const allItems = useMemo(() => allSections.flatMap((s) => s.items), [allSections]);
   const item = selectedId ? allItems.find((i) => i.id === selectedId) : undefined;
-  const section = selectedId && !item ? shownSections.find((s) => sectionSelection(s.id) === selectedId) : undefined;
+  const section = selectedId && !item ? shownSections.find((s) => sectionSelection(s.id) === selectedId && (s.items.length || !term)) : undefined;
   const held = !!item || !!section;
   // An undo or a removal elsewhere can take the selected item away.
   const stale = !!selectedId && !held;
@@ -105,7 +111,15 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
     : item
     ? <MediaItemPanel item={item} placeholders={placeholders} onGoTo={onGoTo} />
     : section
-      ? <MediaSummaryPanel title={sectionTitle(section)} items={section.items} placeholders={placeholders} onSelect={onSelect} />
+      ? (
+        <MediaSummaryPanel
+          title={sectionTitle(section)}
+          items={section.items}
+          placeholders={placeholders}
+          onSelect={onSelect}
+          controls={isAvatarSection(section) ? <AvatarStoreControls /> : undefined}
+        />
+      )
       : allItems.length
         ? (
           <div className="space-y-3">
@@ -115,16 +129,15 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
         )
         : null;
 
-  const list = !allItems.length
-    ? <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>
-    : !sections.length
-      ? <Hint className="p-2">{term ? <>No media matches &ldquo;{search.typed}&rdquo;</> : 'No media matches this filter'}</Hint>
-      : (
-        // The list pane deselects on a bubbled click; cards select through their own handlers.
-        <div onClick={(e) => e.stopPropagation()}>
-          <MediaGallery sections={sections} selectedId={selectedId} onSelect={onSelect} placeholders={placeholders} />
-        </div>
-      );
+  const list = !sections.length
+    ? <Hint className="p-2">{term ? <>No media matches &ldquo;{search.typed}&rdquo;</> : 'No media matches this filter'}</Hint>
+    : (
+      // The list pane deselects on a bubbled click; cards select through their own handlers.
+      <div onClick={(e) => e.stopPropagation()}>
+        {!allItems.length && <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>}
+        <MediaGallery sections={sections} selectedId={selectedId} onSelect={onSelect} placeholders={placeholders} />
+      </div>
+    );
 
   return {
     search,

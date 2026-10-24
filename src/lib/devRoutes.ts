@@ -88,7 +88,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  closes it and writes nothing. `savedElsewhere` and `deletedElsewhere` open the World Editor and raise
  *  the question another tab's save or delete of the open world asks. Either answer closes it and writes nothing.
  *  `deleteWorldAvatar` opens the World Editor and raises an Avatar store delete on canned entities, which
- *  writes nothing; add `tab=overview&mode=advanced` to show the World Overview's Avatars section under it. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
+ *  writes nothing; add `tab=media` to show the Media tab's Avatars section under it. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
   narration endpoint and the seen-key say, so it is reachable on a build that overrides the default endpoint.
  *  `persona` is in game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel
  *  mounts only on the Status tab, so open that tab first. `likePrompt` is in game (GameViewer) and shows the

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import {
   buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaHolds, mediaSections,
-  sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, type MediaFilter,
+  sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, withAvatarsSection, type MediaFilter,
 } from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
 import { measurePublishBytes } from './publishLimits';
@@ -123,6 +123,45 @@ describe('mediaSections', () => {
     world.dictionaries[0].thumbnail = '';
     expect(mediaHolds(world, 'location:lamp:ambientSound')).toBe(false);
     expect(mediaHolds(world, sectionSelection('dictionaries'))).toBe(false);
+  });
+});
+
+describe('withAvatarsSection', () => {
+  const bare = () => {
+    const w = mediaFixtureWorld();
+    w.worldOverview.vrmStore = undefined;
+    return w;
+  };
+  const ids = (sections: ReturnType<typeof mediaSections>) => sections.map((s) => s.id);
+
+  it('adds an empty Avatars section after World when no Avatar exists', () => {
+    const sections = withAvatarsSection(mediaSections(bare()), 'parent');
+    expect(ids(sections).slice(0, 2)).toEqual(['world', 'avatars']);
+    expect(sections[1].items).toEqual([]);
+    expect(sections[1].path).toEqual(['World', 'Avatars']);
+  });
+
+  it('puts it first when the world has no World media', () => {
+    const w = bare();
+    w.worldOverview.thumbnail = '';
+    w.worldOverview.bgm = '';
+    expect(ids(withAvatarsSection(mediaSections(w), 'parent'))[0]).toBe('avatars');
+  });
+
+  it('adds it last under type grouping', () => {
+    const sections = withAvatarsSection(groupSections(mediaSections(bare()), 'type'), 'type');
+    expect(ids(sections).at(-1)).toBe('type:avatar');
+    expect(sections.at(-1)?.items).toEqual([]);
+  });
+
+  it('leaves an existing Avatars section as it is', () => {
+    const sections = mediaSections(mediaFixtureWorld());
+    expect(withAvatarsSection(sections, 'parent')).toEqual(sections);
+  });
+
+  it('adds nothing to the index: an empty section holds no item', () => {
+    const w = bare();
+    expect(withAvatarsSection(mediaSections(w), 'parent').flatMap((s) => s.items)).toEqual(buildMediaIndex(w));
   });
 });
 

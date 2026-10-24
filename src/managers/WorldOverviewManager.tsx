@@ -17,7 +17,6 @@ import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
-import { WorldVrmStoreSection } from './WorldVrmStoreSection';
 
 const ALLOWED_PERSONAS_LABELS: Record<AllowedPersonas, string> = { any: 'Any', world: 'World Only' };
 
@@ -98,8 +97,7 @@ const WorldOverviewManager = () => {
   const tagOptions = useDanbooruTags();
 
   return (
-    // The listing fields first, then the Avatars, then the music: the library card's name, author, tags and
-    // image read as one block.
+    // The listing fields first, then the music: the library card's name, author, tags and image read as one block.
     <div className="space-y-4">
       <div className="space-y-2" data-tour-anchor="world-name" {...fieldFrame('name')}>
         <Label htmlFor="worldName">World Name</Label>
@@ -150,7 +148,6 @@ const WorldOverviewManager = () => {
           />
         </div>
       </div>
-      {advanced && <WorldVrmStoreSection />}
       {advanced && <PersonaRulesFields />}
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>

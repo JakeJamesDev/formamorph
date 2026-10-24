@@ -107,11 +107,11 @@ beforeEach(() => {
 });
 
 describe('the World Editor Overview columns', () => {
-  it('reads the listing fields, then the Avatars, then the music down the left column', async () => {
+  it('reads the listing fields, then the persona rules, then the music down the left column', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     expect(leftLabels()).toEqual([
-      'World Name', 'Author', 'Tags', 'Thumbnail', 'Avatars', 'Allowed Personas', 'Starts On', 'Background Music',
+      'World Name', 'Author', 'Tags', 'Thumbnail', 'Allowed Personas', 'Starts On', 'Background Music',
     ]);
   });
 
