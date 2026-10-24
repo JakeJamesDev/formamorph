@@ -13,12 +13,29 @@ import type { AITurnResult, ChatMessage } from '@/types';
  * This slice only *generates and stores* digests. Nothing consumes them yet (see Slice 2: banding).
  */
 
-// The history is walked repeatedly — the context meter alone re-derives on every sentence boundary of
-// every turn — and each walk parses every assistant message again. Cache by the exact content string, so
-// only a turn that actually changed is re-parsed. Bounded: an entry is dropped once the map outgrows a
-// long session's history, and a parse is cheap enough that a miss costs nothing.
-const PARSE_CACHE_LIMIT = 400;
-const parseCache = new Map<string, AITurnResult | null>();
+// The history is walked repeatedly, and each walk parses every assistant message again. Cache by the exact
+// content string, so only a turn that actually changed is re-parsed. Two generations: a full one ages into
+// `previousParses`, and a hit there moves back, so a working set under the limit never misses and stale
+// strings (a streaming turn's partials, rolled-back turns) drop after two rotations.
+const PARSE_CACHE_LIMIT = 4000;
+let parseCache = new Map<string, AITurnResult>();
+let previousParses = new Map<string, AITurnResult>();
+
+function cachedParse(content: string): AITurnResult | undefined {
+  const hit = parseCache.get(content);
+  if (hit !== undefined) return hit;
+  const old = previousParses.get(content);
+  if (old !== undefined) storeParse(content, old);
+  return old;
+}
+
+function storeParse(content: string, parsed: AITurnResult) {
+  if (parseCache.size >= PARSE_CACHE_LIMIT) {
+    previousParses = parseCache;
+    parseCache = new Map();
+  }
+  parseCache.set(content, parsed);
+}
 
 /** Parse an assistant turn's JSON content, or `null` if it doesn't parse. Legacy v1.2 / pre-release 2.0
  *  saves stored the narration under `game_text`; normalize that to `narration` on read (non-destructive
@@ -28,7 +45,7 @@ const parseCache = new Map<string, AITurnResult | null>();
  *  the same string. json5 stays as the fallback for legacy and model-authored content, which is the only
  *  place its tolerance was ever needed. */
 export function parseTurnContent(content: string): AITurnResult | null {
-  const hit = parseCache.get(content);
+  const hit = cachedParse(content);
   if (hit !== undefined) return hit;
 
   let parsed: (AITurnResult & { game_text?: string }) | null = null;
@@ -46,16 +63,13 @@ export function parseTurnContent(content: string): AITurnResult | null {
     delete parsed.game_text;
   }
 
-  // Only successful parses are cached: a streaming turn hands every partial content string through here,
-  // and caching those misses would fill the map mid-turn until the cap wiped the whole history's parses.
-  // A failed parse exits fast, so re-failing on the next walk costs nothing.
+  // Only successful parses are cached; a failed parse exits fast, so re-failing on the next walk costs nothing.
   if (parsed) {
     // Every consumer shares this one object, so an in-place write would corrupt the cache and every
     // other reader at once. Frozen (shallowly — the hot path can't afford a deep walk) to make that
     // mistake throw here rather than surface as a wrong turn somewhere else. Callers spread to modify.
     Object.freeze(parsed);
-    if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
-    parseCache.set(content, parsed);
+    storeParse(content, parsed);
   }
   return parsed;
 }

@@ -171,24 +171,50 @@ function started(word: HTMLElement): boolean {
   });
 }
 
-/** Holds `root`'s height to the bottom of its last started word until every word has started. */
+/**
+ * Holds `root`'s height to the bottom of its last started word until every word has started. One scan per
+ * text change finds the words already started; after that each word's `animationstart` moves the edge, so
+ * nothing polls per frame. A width change re-fits, since it moves the words.
+ */
 function useFitShown(root: RefObject<HTMLDivElement | null>, enabled: boolean, text: string) {
   useLayoutEffect(() => {
     const el = root.current;
     if (!el) return;
     if (!enabled || typeof el.getAnimations !== 'function') { el.style.height = ''; return; }
-    let frame = 0;
-    const fit = () => {
+    let edge: HTMLElement | null = null;
+    let done = false;
+    const fitTo = (word: HTMLElement | null) => {
       const words = el.querySelectorAll<HTMLElement>('[data-sd-animate]');
-      let i = words.length - 1;
-      while (i >= 0 && !started(words[i])) i--;
-      if (i === words.length - 1) { el.style.height = ''; return; }
+      edge = word;
+      if (words.length === 0 || word === words[words.length - 1]) { done = true; el.style.height = ''; return; }
       // The root is the words' offset parent, and offsets ignore the entrance's own motion.
-      el.style.height = i < 0 ? '0px' : `${words[i].offsetTop + words[i].offsetHeight}px`;
-      frame = requestAnimationFrame(fit);
+      el.style.height = word ? `${word.offsetTop + word.offsetHeight}px` : '0px';
     };
-    fit();
-    return () => cancelAnimationFrame(frame);
+    const words = el.querySelectorAll<HTMLElement>('[data-sd-animate]');
+    let i = words.length - 1;
+    while (i >= 0 && !started(words[i])) i--;
+    fitTo(i < 0 ? null : words[i]);
+    if (done) return;
+
+    const onStart = (event: AnimationEvent) => {
+      const word = event.target;
+      if (done || !(word instanceof HTMLElement) || !word.matches('[data-sd-animate]')) return;
+      // Words start in document order; a later event never moves the edge back.
+      if (edge && edge.compareDocumentPosition(word) & Node.DOCUMENT_POSITION_PRECEDING) return;
+      fitTo(word);
+    };
+    let width = el.offsetWidth;
+    const resize = new ResizeObserver(() => {
+      if (done || el.offsetWidth === width) return;
+      width = el.offsetWidth;
+      fitTo(edge);
+    });
+    el.addEventListener('animationstart', onStart);
+    resize.observe(el);
+    return () => {
+      el.removeEventListener('animationstart', onStart);
+      resize.disconnect();
+    };
   }, [root, enabled, text]);
 }
 // scroll-guard: allow horizontal: wide tables scroll sideways

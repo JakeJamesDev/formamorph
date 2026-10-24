@@ -235,6 +235,15 @@ describe('parseTurnContent — parser choice and caching', () => {
     expect(parseTurnContent(content)).toBe(first);
   });
 
+  it('keeps a long history cached across repeated walks', () => {
+    const history = Array.from({ length: 1000 }, (_, i) =>
+      JSON.stringify({ narration: `n${i}`, choices: [], stat_changes: [], turnId: `long-${i}` }));
+    const first = history.map(parseTurnContent);
+    // A streaming turn's partials are valid JSON too, so they enter the cache between walks.
+    for (let i = 0; i < 50; i++) parseTurnContent(JSON.stringify({ narration: `partial ${i}`, choices: [], stat_changes: [] }));
+    history.forEach((content, i) => expect(parseTurnContent(content)).toBe(first[i]));
+  });
+
   it('parses a changed turn afresh rather than serving the old one', () => {
     const before = JSON.stringify({ narration: 'before', choices: [], stat_changes: [], turnId: 't' });
     const after = JSON.stringify({ narration: 'after', choices: [], stat_changes: [], turnId: 't' });

@@ -187,7 +187,7 @@ import { pickHistoryRecall, type HistoryPicks } from "../lib/historyRecall";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, sameCharacterName } from "../lib/entityMatch";
-import { parseChoices } from "../lib/choices";
+import { keepSameRows, parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
@@ -402,6 +402,11 @@ const NO_PASSES: ReadonlySet<BackgroundPassKind> = new Set();
 interface ViewRequest extends TransportRequest {
   /** Skips the status label; a concurrent batch sets one label itself. */
   quiet?: boolean;
+}
+
+/** Calls `render` only while mounted, so a closed dialog's body costs the parent's render nothing. */
+function RenderMounted({ render }: { render: () => React.ReactNode }) {
+  return <>{render()}</>;
 }
 
 const GameViewer = ({
@@ -929,7 +934,9 @@ const GameViewer = ({
       REVEAL_TEST_PROFILES.steady.schedule(CHOICES_TEST_CHOICES.length),
       (slice) => {
         const list = parseChoices(slice);
-        if (list.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setCommandChoices({ list, settled: false });
+        if (list.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) {
+          setCommandChoices((prev) => (prev && !prev.settled && keepSameRows(prev.list, list) === prev.list ? prev : { list, settled: false }));
+        }
       },
       () => {
         void (fadeRevealActive ? fadeReveal.drained() : Promise.resolve()).then(() => {
@@ -3755,7 +3762,7 @@ const GameViewer = ({
     if (event.type !== "delta") return;
     // Not over a still-fading narration: the drain commits them.
     const choicesList = parseChoices(stripReasoningLive(event.content));
-    if (choicesList.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setChoices(choicesList);
+    if (choicesList.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setChoices((prev) => keepSameRows(prev, choicesList));
   };
 
   /**
@@ -4299,10 +4306,15 @@ const GameViewer = ({
   );
   const passesRunning = useSyncExternalStore(subscribePasses, () => passQueue?.running() ?? NO_PASSES);
 
+  // A running turn streams its narration into history sentence by sentence; the queue is busy then, so it
+  // reads the history as the turn found it and re-derives once the turn ends.
+  const settledHistoryRef = useRef(fullMessageHistory);
+  if (!isWaitingForAI) settledHistoryRef.current = fullMessageHistory;
+  const settledHistory = settledHistoryRef.current;
   useEffect(() => {
     passQueue?.update({
-      history: fullMessageHistory,
-      effectiveTurns: parseEffectiveTurns(fullMessageHistory),
+      history: settledHistory,
+      effectiveTurns: parseEffectiveTurns(settledHistory),
       milestoneSelection,
       memoryPins,
       busy: isWaitingForAI || sceneImageJob !== null,
@@ -4314,7 +4326,7 @@ const GameViewer = ({
       entityNames: allEntities.map((e) => e.name),
       suppressedNames: suppressedCharacterNames,
     });
-  }, [passQueue, fullMessageHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames]);
+  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames]);
 
   const fullMessageHistoryRef = useRef(fullMessageHistory);
   fullMessageHistoryRef.current = fullMessageHistory;
@@ -4859,10 +4871,12 @@ const GameViewer = ({
     return showSilentRequests ? <BackgroundPassStatus running={passesRunning} /> : null;
   })();
 
-  // The context meter's history math is O(turns) (parseTurns + banding), so memoize it: this recomputes
-  // only when the history/settings that feed getTrimmedMessageHistory change (a few times per turn),
-  // not on every render.
+  // The context meter's history math is O(turns) (parseTurns + banding), so memoize it. A running turn
+  // writes its narration into history sentence by sentence, so the meter holds its last reading until the
+  // turn ends.
+  const memoryStatsRef = useRef<{ promptTokens: number; trimmed: ChatMessage[]; bandCounts: BandCounts | null; historyTokens: number } | null>(null);
   const memoryStats = useMemo(() => {
+    if (isWaitingForAI && memoryStatsRef.current) return memoryStatsRef.current;
     const promptTokens = estimateTokens(lastPromptChars);
     const { messages: trimmed } = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current, lastActionVecRef.current);
     return {
@@ -4871,7 +4885,8 @@ const GameViewer = ({
       bandCounts: lastBandCountsRef.current, // set as a side effect of the call above
       historyTokens: estimateTokens(estimateHistoryChars(trimmed)),
     };
-  }, [getTrimmedMessageHistory, lastPromptChars]);
+  }, [getTrimmedMessageHistory, lastPromptChars, isWaitingForAI]);
+  memoryStatsRef.current = memoryStats;
 
   const memoryBar = (() => {
     // Token breakdown of the model's context window: prompt + history + reserved output vs the window.
@@ -5354,7 +5369,7 @@ const GameViewer = ({
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <DialogContent surface="aiContext" aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] flex flex-col overflow-hidden">
-          {(() => {
+          <RenderMounted render={() => {
             const palette = HIGHLIGHT_PALETTE;
             // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,
             // the inline match-chips, and the reason popovers so one accent always means one entry.
@@ -5890,7 +5905,7 @@ const GameViewer = ({
                 )}
               </>
             );
-          })()}
+          }} />
         </DialogContent>
       </Dialog>
 

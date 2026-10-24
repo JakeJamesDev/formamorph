@@ -9,6 +9,8 @@ import {
   buildBandedHistory,
   importanceFactors,
   IMPORTANCE_SPREAD,
+  bandCostTracker,
+  bandExchangeCost,
   type BandTurn,
 } from './turnBanding';
 import { outputReserve } from './outputLength';
@@ -815,5 +817,48 @@ describe('Strip Links And Images in the history', () => {
   it('strips the verbatim history when digests are off', () => {
     const { messages } = buildVerbatimHistory(turns(), WIDE, 0, 0, [], '', true);
     expect(messages.map((m) => m.content)).toEqual(['a1', PLAIN, 'a2', 'two', 'a3', PLAIN]);
+  });
+});
+
+describe('bandCostTracker', () => {
+  const RECAP = 'Recap the "story" so far.';
+  const summaries = ['plain', 'quote " and \\ slash', 'line\nbreak\ttab', 'café ☕ ünïcode', '\u0001 control', 'emoji 🐉 inside', '  padded  '];
+  const turns = Array.from({ length: 40 }, (_, i) => bandTurn(i * 2 + 1, { summary: summaries[i % summaries.length] }));
+  const notes = [{ id: 'n1', text: 'a "note"', anchorTurn: 6 }, { id: 'n2', text: '', anchorTurn: 9 }];
+  const stamp = (pos: number) => (pos % 3 ? `[Day ${pos} — "dusk"]` : '');
+
+  it.each([
+    ['plain', undefined, [], undefined],
+    ['with a now-line', 'Now: the "dock".', [], undefined],
+    ['with notes and stamps', 'Now: here.', notes, stamp],
+  ] as const)('matches a full recount after every drop, %s', (_, nowLine, withNotes, withStamp) => {
+    let current = [...turns];
+    const tracker = bandCostTracker(current, RECAP, nowLine, [...withNotes], withStamp);
+    expect(tracker.cost()).toBe(bandExchangeCost(current, RECAP, nowLine, [...withNotes], withStamp));
+    // Drop from the front and the middle in turn, as the oldest-first and ranked trims do.
+    for (let step = 0; current.length > 0; step++) {
+      const at = step % 2 ? Math.floor(current.length / 2) : 0;
+      tracker.remove(current[at]);
+      current = current.filter((_t, i) => i !== at);
+      expect(tracker.cost()).toBe(bandExchangeCost(current, RECAP, nowLine, [...withNotes], withStamp));
+    }
+  });
+
+  it('matches a full recount when pieces end on lone surrogates', () => {
+    const high = String.fromCharCode(0xd83d);
+    const low = String.fromCharCode(0xdc09);
+    let current = [bandTurn(1, { summary: `high ${high}` }), bandTurn(3, { summary: `${low} low` }), bandTurn(5, { summary: 'tail' })];
+    const tracker = bandCostTracker(current, RECAP, undefined, [], undefined);
+    expect(tracker.cost()).toBe(bandExchangeCost(current, RECAP, undefined, [], undefined));
+    tracker.remove(current[2]);
+    current = current.slice(0, 2);
+    expect(tracker.cost()).toBe(bandExchangeCost(current, RECAP, undefined, [], undefined));
+  });
+
+  it('keeps trimming a long band fast enough to run on every render', () => {
+    const long = Array.from({ length: 3000 }, (_, i) => bandTurn(i, { summary: `summary of turn ${i} `.repeat(4) }));
+    const started = performance.now();
+    buildBandedHistory({ turns: long, contextWindow: 4096, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: 0, keywords: [], actionEntities: [], recapPrompt: RECAP });
+    expect(performance.now() - started).toBeLessThan(250);
   });
 });

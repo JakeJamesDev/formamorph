@@ -22,6 +22,11 @@ export function parseChoices(raw: string, max = 6): string[] {
     .slice(0, max);
 }
 
+/** `next` when it differs from `prev` row by row, else `prev`, so a state update with the same rows renders nothing. */
+export function keepSameRows(prev: string[], next: string[]): string[] {
+  return prev.length === next.length && prev.every((row, i) => row === next[i]) ? prev : next;
+}
+
 // "Glue" words carry no signal for which choice an action grew from; dropping them lets the shared
 // content words drive the score, so light rewording ("knock on the wall" → "I knock on the wall firmly")
 // still matches.
