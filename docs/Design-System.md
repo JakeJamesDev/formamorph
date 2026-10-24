@@ -1311,7 +1311,7 @@ The live reference opens the production line in a store of its own under a sampl
 
 | Part | Holds | Notes |
 | --- | --- | --- |
-| **Glyph slot** | A 16px slot, hidden from assistive technology | Empty until the request glyphs land. |
+| **Glyph slot** | The request's animated glyph, 16px, hidden from assistive technology | Each glyph loops with a 400 ms pause, in the label's muted color. A new glyph waits until the old one has shown 300 ms, then crossfades in over 150 ms. With reduced motion on, it holds still. |
 | **Label** | The request's name, such as *Generating Narration…* | It truncates at 60% of the row. |
 | **Bar** | The indeterminate progress bar | It fills the rest of the row. |
 
@@ -1322,6 +1322,7 @@ The live reference opens the production line in a store of its own under a sampl
 | The row and the strip | `RequestStatusRow` and `RequestStatusStrip` in [`RequestStatusRow.tsx`](../src/components/game/RequestStatusRow.tsx) |
 | The background pass row | [`BackgroundPassStatus.tsx`](../src/components/game/BackgroundPassStatus.tsx) |
 | The host, in Pages and Chat | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| The glyph map and the glyphs | [`glyphMap.ts`](../src/components/game/statusGlyphs/glyphMap.ts) and [`StatusGlyph.tsx`](../src/components/game/statusGlyphs/StatusGlyph.tsx), over animate-ui's icons in `statusGlyphs/animate-ui/` |
 | Isolated reference | [`RequestStatusStripReference.tsx`](../src/components/design-system/RequestStatusStripReference.tsx) |
 
 ### Responsive behavior
@@ -1337,7 +1338,7 @@ Pages, Chat, desktop and mobile use the same strip. The label truncates before t
 | Background pass | One pass name by precedence, such as *Summarizing turn…*. It shows only between turns, with **Show Silent Requests** on |
 | Idle | No strip. The narration shows to the frame's bottom edge |
 
-The live reference shows each row in its strip over a sample frame, above a Pager that stays still.
+The live reference shows each row in its strip over a sample frame, above a Pager that stays still. Its Turn row steps through a turn's requests every 2 s, so the glyph swap shows. Below it, the glyph set loops with the requests each glyph serves.
 
 ### Writing review
 

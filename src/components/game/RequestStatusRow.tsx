@@ -1,6 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Meta } from "@/components/ui/typography";
+import { StatusGlyph } from "./statusGlyphs/StatusGlyph";
+import type { StatusGlyphKey } from "./statusGlyphs/glyphMap";
 
 const TIMER_DELAY_MS = 3000;
 
@@ -18,17 +21,55 @@ function useElapsedSeconds(startedAt: number | undefined): number | null {
   return elapsed >= TIMER_DELAY_MS ? Math.floor(elapsed / 1000) : null;
 }
 
+/** How long a glyph shows before the next one may replace it. */
+const GLYPH_DWELL_MS = 300;
+const GLYPH_CROSSFADE_S = 0.15;
+
+/** Holds `value` until the shown one has been on screen for `ms`, then takes the latest. */
+function useDwell<T>(value: T, ms: number): T {
+  const [shown, setShown] = useState(value);
+  const shownAt = useRef(Date.now());
+  useEffect(() => {
+    if (value === shown) return;
+    const swap = () => {
+      shownAt.current = Date.now();
+      setShown(value);
+    };
+    const wait = shownAt.current + ms - Date.now();
+    if (wait <= 0) {
+      swap();
+      return;
+    }
+    const id = setTimeout(swap, wait);
+    return () => clearTimeout(id);
+  }, [value, shown, ms]);
+  return shown;
+}
+
 /**
- * One running request: a glyph slot, its label, the indeterminate bar, and the turn timer.
+ * One running request: its glyph, its label, the indeterminate bar, and the turn timer.
  * `startedAt` (epoch ms) is the turn's start; leave it unset for rows that show no timer.
  * Carries no position of its own.
  */
-export function RequestStatusRow({ label, glyph, startedAt }: { label: string; glyph?: ReactNode; startedAt?: number }) {
+export function RequestStatusRow({ label, glyph, startedAt }: { label: string; glyph: StatusGlyphKey; startedAt?: number }) {
+  const shownGlyph = useDwell(glyph, GLYPH_DWELL_MS);
   const seconds = useElapsedSeconds(startedAt);
   return (
     <div className="flex items-center gap-2">
-      <span aria-hidden data-slot="status-glyph" className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
-        {glyph}
+      <span aria-hidden data-slot="status-glyph" className="relative size-4 shrink-0 text-muted-foreground">
+        <AnimatePresence initial={false}>
+          <motion.span
+            key={shownGlyph}
+            data-glyph={shownGlyph}
+            className="absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: GLYPH_CROSSFADE_S }}
+          >
+            <StatusGlyph glyph={shownGlyph} />
+          </motion.span>
+        </AnimatePresence>
       </span>
       <Meta className="truncate min-w-0 max-w-[60%]">{label}</Meta>
       <div className="flex-grow">
