@@ -175,7 +175,7 @@ import type { PromptJumpTarget } from "../lib/promptJump";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
-import { buildStamper, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, daypartAt, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildMemoryLedger, scriptMemories } from "../lib/memoryView";
@@ -744,16 +744,18 @@ const GameViewer = ({
     () => ({ traits: authoredTraits, traitGroups, entities: traitEntities }),
     [authoredTraits, traitGroups, traitEntities],
   );
-  /** The authored world every owner's trait gates read: the traits, the groups, who the player is, and each
-   *  present owner's tree under that persona. */
+  // The per-turn settle reads this at the render that holds the turn's advanced clock.
+  const daypart = daypartAt(gameTime, calendar);
+  /** The authored world every owner's trait gates read: the traits, the groups, who the player is, each
+   *  present owner's tree under that persona, and the story clock's daypart. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
-      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' },
+      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart,
       // A persona change reads this before its render, so its entities and library are the ones under `ref`.
       entities: ref === personaRef ? worldEntitiesOf(entities, persona) : presentEntitiesUnder(ref),
       ...inPlayOwners(ownerWorld, ref, libraryUnder(traitLibrary, personaRef, ref)),
     }),
-    [authoredTraits, traitGroups, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
+    [authoredTraits, traitGroups, daypart, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
   // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {

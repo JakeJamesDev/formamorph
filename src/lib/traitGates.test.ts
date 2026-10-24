@@ -1100,7 +1100,7 @@ describe('Always On traits', () => {
 });
 
 describe('Not Conditions', () => {
-  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true });
+  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true }) as TraitRequirement;
   const ref = (traitId: string, ownerId: OwnerId = null) => ({ ownerId, traitId });
   const only = (...all: TraitRequirement[]) => [{ all }];
 

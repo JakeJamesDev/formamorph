@@ -124,15 +124,15 @@ describe('TraitRequiresField owner choice', () => {
   it('goes back to the targets with the search cleared, and closing the picker forgets the target', async () => {
     render(<Harness trait={traits[3]} />);
     openPicker();
-    fireEvent.change(screen.getByPlaceholderText('Search traits, groups, and personas'), { target: { value: 'pal' } });
+    fireEvent.change(screen.getByPlaceholderText('Search traits, groups, time of day, and personas'), { target: { value: 'pal' } });
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
-    expect(screen.getByPlaceholderText('Search traits, groups, and personas')).toHaveValue('');
+    expect(screen.getByPlaceholderText('Search traits, groups, time of day, and personas')).toHaveValue('');
     expect(screen.getByRole('option', { name: /^Wizard/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('option', { name: /^Paladin/ }));
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     openPicker();
-    expect(await screen.findByPlaceholderText('Search traits, groups, and personas')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Search traits, groups, time of day, and personas')).toBeInTheDocument();
   });
 
   it('offers a same-owner requirement on an owned trait and names its group owners', async () => {
@@ -187,7 +187,7 @@ describe('TraitRequiresField breadcrumbs', () => {
     const user = userEvent.setup();
     render(<Harness trait={traits[0]} extra={deep} />);
     await user.click(screen.getByRole('button', { name: 'Add Requirement' }));
-    await user.type(screen.getByPlaceholderText('Search traits, groups, and personas'), 'elder');
+    await user.type(screen.getByPlaceholderText('Search traits, groups, time of day, and personas'), 'elder');
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
       'RuneLore › … › Deep', 'any ElderLore › Runes', 'any DeepLore › … › Elder',
     ]);
@@ -302,7 +302,7 @@ describe('TraitRequiresField Not flip', () => {
   });
 
   it('keeps the owner on a flipped chip', () => {
-    render(<Harness trait={smite([{ all: [{ ...paladin, owner: { kind: 'you' } }] }])} />);
+    render(<Harness trait={smite([{ all: [{ ...paladin, owner: { kind: 'you' as const } }] }])} />);
     fireEvent.click(screen.getByRole('button', { name: 'Require Persona: Paladin to be off' }));
     expect(screen.getByRole('button', { name: 'NOT Persona: Paladin' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Require Persona: Paladin instead' })).toBeInTheDocument();

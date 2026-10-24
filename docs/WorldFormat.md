@@ -285,10 +285,12 @@ Each requirement has a `kind`:
 | `"group"` | `id`, `name`, `owner` | The owner has any trait in the group with this `id` |
 | `"playingAs"` | `id`, `name` | The player plays as the entity with this `id` |
 | `"stat"` | `id`, `name`, `owner`, `operator`, `value`, `unit` | The owner's stat with this `id` compares true against `value` |
+| `"time"` | `dayparts` | The story clock's time of day is one of `dayparts` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
 - `owner` is optional, and it applies only to a trait, group or stat an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- A `"time"` requirement's `dayparts` lists one or more of `"night"`, `"dawn"`, `"morning"`, `"midday"`, `"afternoon"` and `"evening"`. It has no `id`, `owner` or `not`. `{ "kind": "time", "dayparts": ["evening", "night"] }` holds from evening until dawn.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
 

@@ -70,7 +70,7 @@ describe('gateLineParts', () => {
 
 describe('gateLine with Not Conditions', () => {
   const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
-  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true });
+  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true }) as TraitRequirement;
   const trait = (id: string, extra: Partial<TraitRequirement> = {}) => ({ kind: 'trait', id, ...extra }) as TraitRequirement;
   const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Tamed')] };
   const lineOf = (gated: Trait, active: string[] = [], extra: Partial<GateInput> = {}) => {

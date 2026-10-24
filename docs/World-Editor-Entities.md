@@ -207,14 +207,14 @@ A generated image goes into the first free slot. With no free slot, **Replace wh
 
 A **Visibility rule** makes an image show only in the right state. Give the wounded portrait a rule that reads *Health < 20%*, and it shows while the entity is hurt.
 
-An image with no rule always shows. In play, the entity shows the **first image that is visible**, counting from the left. The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a trait's **Requires** field, including [stat conditions](World-Editor-Traits#stat-conditions).
+An image with no rule always shows. In play, the entity shows the **first image that is visible**, counting from the left. The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a trait's **Requires** field, including [stat conditions](World-Editor-Traits#stat-conditions) and [time conditions](World-Editor-Traits#time-conditions). Give a night portrait the rule *night*, and it shows only at night.
 
 ### How to add a rule
 <!-- keywords: cog on thumbnail, add visibility rule, edit rule, shown while, badge on image, eye badge -->
 
 1. Select the entity, then open its **Profile** tab.
 2. Hover over the image's thumbnail, then select the cog on its corner. Its tooltip reads **Visibility Rule**. On a touch screen, the cog always shows.
-3. Select **Add Requirement**, then pick a trait or a stat.
+3. Select **Add Requirement**, then pick a trait, a stat or **Time of Day**.
 4. Select **And** to add a condition to the same row. Select **Or Another Way** to add a row.
 
 An image shows while **any one row** holds. A row holds when **all** its conditions hold.

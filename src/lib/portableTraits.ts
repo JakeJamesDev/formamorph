@@ -12,6 +12,7 @@ import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
+import { daypartSet } from './gameClock';
 import { hasImageRules, mapImageRules, withImageRules } from './entityImages';
 import { withoutGlobalOwner } from './version';
 
@@ -48,7 +49,7 @@ const ownIds = (entity: Entity): Set<string> =>
 
 /** Whether a requirement points inside the entity: at one of its own traits, groups or stats. */
 const pointsInside = (r: TraitRequirement, entity: Entity, inside: ReadonlySet<string>): boolean =>
-  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && inside.has(r.id));
+  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && r.kind !== 'time' && inside.has(r.id));
 
 /** Every trait, group and stat of the world and of its entities other than `except`. */
 function targets(world: TraitWorld, except?: string) {
@@ -59,11 +60,12 @@ function targets(world: TraitWorld, except?: string) {
     // Only a persona can be played as.
     playingAs: others.filter((e) => e.persona),
     stat: [...world.stats ?? [], ...others.flatMap((e) => e.stats ?? [])],
+    time: [],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], time: [] };
 
 const isSelf = (r: TraitRequirement, entityId: string): r is Extract<TraitRequirement, { kind: 'playingAs' }> =>
   r.kind === 'playingAs' && (r.id === SELF_ENTITY || r.id === entityId);
@@ -72,7 +74,7 @@ const isSelfOwner = (b: EntityOwner, entityId: string) => b.id === SELF_ENTITY |
 
 /** The requirement with its named owner rewritten; the same requirement when it names none. */
 const withOwner = (r: TraitRequirement, map: (b: EntityOwner) => RequirementOwner): TraitRequirement =>
-  (r.kind !== 'playingAs' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
+  (r.kind !== 'playingAs' && r.kind !== 'time' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
   entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
@@ -130,7 +132,7 @@ function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitReq
   return (req) => {
     if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
     const r = withOwner(req, owner);
-    if (pointsInside(r, entity, inside)) return r;
+    if (r.kind === 'time' || pointsInside(r, entity, inside)) return r;
     const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
     return name ? { ...r, name } : r;
   };
@@ -180,7 +182,7 @@ function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) 
     if (isSelf(req, entity.id)) return { ...req, id: entity.id };
     const r = withOwner(req, owner);
     // A world record that carries no stats has none to bind a stat Condition to.
-    if (pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
+    if (r.kind === 'time' || pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
     const list = r.kind === 'stat' ? statsOf(r, statWorld!) : pool[r.kind];
     if (list.some((item) => item.id === r.id)) return r;
     return { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
@@ -237,6 +239,7 @@ const comparableOwner = (b: EntityOwner, entityId: string): RequirementOwner =>
 export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink<TraitLink>[]; images?: GalleryImage[] } => {
   const inside = ownIds(entity);
   const comparable = (req: TraitRequirement): TraitRequirement => {
+    if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts) };
     const not = notFlag(req.not);
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withOwner(req, (b) => comparableOwner(b, entity.id));

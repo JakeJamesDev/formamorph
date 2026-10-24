@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type {
-  Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
+  Daypart, Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
   GalleryImage, Script, StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -2309,8 +2309,8 @@ describe('trait gate rules', () => {
     trait({ id, name: id.toUpperCase(), requires: requires.map((r) => ({ all: [r] })), ...over });
   const rowed = (id: string, requires: TraitRequirementRow[], over: Partial<Trait> = {}): Trait =>
     trait({ id, name: id.toUpperCase(), requires, ...over });
-  const ref = (id: string): TraitRequirement => ({ kind: 'trait', id });
-  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true });
+  const ref = (id: string): Extract<TraitRequirement, { kind: 'trait' }> => ({ kind: 'trait', id });
+  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true }) as TraitRequirement;
   const ash: Entity = { ...resident, id: 'ash', name: 'Ash', persona: true };
   const gates = (traits: Trait[], over: Partial<RuleWorld> = {}) => base({ traits, ...over });
   const ids = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
@@ -2936,7 +2936,7 @@ describe('trait gate rules', () => {
 
       it('fires when a stat pair differs in value, unit or owner, or does not split the line', () => {
         const over = atLeast('rage', 80, { operator: '>' });
-        const pair = (second: Partial<StatRequirement>) => ids(only(pictured([image([over]), image([{ ...over, operator: '<=', ...second }])]), rule));
+        const pair = (second: Partial<StatRequirement>) => ids(only(pictured([image([over]), image([{ ...over, operator: '<=' as const, ...second }])]), rule));
         expect(pair({ value: 50 })).toEqual([['ash']]);
         expect(pair({ unit: 'percent' })).toEqual([['ash']]);
         expect(pair({ owner: { kind: 'you' } })).toEqual([['ash']]);
@@ -3010,6 +3010,13 @@ describe('trait gate rules', () => {
       expect(found[0].severity).toBe('warning');
       expect(found[0].message).toBe('“A” is marked default but starts unselected — no starting default or persona choice meets “B”');
       expect(only(gates([gated('a', needs('b'), def), trait({ id: 'b', name: 'B', ...def })]), rule)).toEqual([]);
+    });
+
+    it('reads a time Condition at the opening hour, which is morning', () => {
+      const at = (...dayparts: Daypart[]) => only(gates([gated('a', [{ kind: 'time', dayparts }], def)]), rule);
+      expect(at('morning')).toEqual([]);
+      expect(at('evening', 'night').map((f) => f.message))
+        .toEqual(['“A” is marked default but starts unselected — no starting default or persona choice meets “evening or night”']);
     });
 
     it('flags each default down a chain that has no open root', () => {

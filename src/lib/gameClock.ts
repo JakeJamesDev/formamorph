@@ -11,6 +11,8 @@
  * the same seam. Design: docs-internal/designs/time-system/design.md.
  */
 
+import type { Daypart } from '@/types';
+
 /** The story's time frame. Not authored anywhere yet — every field falls back to its default. */
 export interface WorldCalendar {
   /** Hour of day the story opens at, 0..hoursPerDay-1. */
@@ -106,10 +108,18 @@ export function dayAndHour(elapsed: number, calendar?: WorldCalendar): { day: nu
   return { day: Math.floor(total / hoursPerDay) + 1, hour: total % hoursPerDay };
 }
 
+/** Every daypart `daypart()` emits, in clock order from midnight. */
+export const DAYPARTS: readonly Daypart[] = ['night', 'dawn', 'morning', 'midday', 'afternoon', 'evening'];
+
+export const isDaypart = (v: unknown): v is Daypart => typeof v === 'string' && (DAYPARTS as readonly string[]).includes(v);
+
+/** `dayparts` once each, in clock order. */
+export const daypartSet = (dayparts: readonly Daypart[]): Daypart[] => DAYPARTS.filter((d) => dayparts.includes(d));
+
 /** Coarse time of day. Deliberately not a clock reading: an exact numeral in context is a parrotable
  *  value — small models echo it back into the prose — and the narration only ever needs the daypart.
  *  Boundaries are fractions of the day, so a non-24-hour calendar divides the same way. */
-export function daypart(hour: number, calendar?: WorldCalendar): string {
+export function daypart(hour: number, calendar?: WorldCalendar): Daypart {
   const { hoursPerDay } = resolve(calendar);
   const f = ((hour % hoursPerDay) + hoursPerDay) % hoursPerDay / hoursPerDay;
   if (f < 0.25) return 'night';
@@ -120,6 +130,13 @@ export function daypart(hour: number, calendar?: WorldCalendar): string {
   if (f < 0.83) return 'evening';
   return 'night';
 }
+
+/** The daypart after `elapsed` story hours. */
+export const daypartAt = (elapsed: number, calendar?: WorldCalendar): Daypart =>
+  daypart(dayAndHour(elapsed, calendar).hour, calendar);
+
+/** The daypart a story opens at when nothing set its hour: what authoring lenses read. */
+export const OPENING_DAYPART: Daypart = daypart(DEFAULT_START_HOUR);
 
 /** Absolute position in story time, e.g. `Day 3, evening`. */
 export function formatAbsolute(elapsed: number, calendar?: WorldCalendar): string {
