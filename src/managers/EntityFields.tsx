@@ -12,7 +12,7 @@ import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/Plac
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { entityImages } from '../lib/entityImages';
-import { ImageGallery, ImageTags, ImageWidget } from './ImageTagsField';
+import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, type PersonaRole } from '@/lib/customPersona';
@@ -291,14 +291,20 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
  * The entity's picture widget with neither piece placed: a host draws `ImageGallery` and `ImageTags` where
  * its own layout wants them and both still write this entity. `EntityGalleryField` is the one-box version.
  */
-export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId, children }: EntityFieldGroupProps & { children: ReactNode }) => (
+export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}` }: EntityFieldGroupProps & {
+  children: ReactNode;
+  /** A host that shows the framed image's details controls the frame. */
+  frame?: GalleryFrameProps;
+  /** The file inputs' id, unique per rendered widget. */
+  imageId?: string;
+}) => (
   <ImageWidget
     label="Image"
     tourAnchor="entity-image"
     images={entityImages(value)}
     onImagesChange={(list) => onChange('images', list)}
     slots={Infinity}
-    imageId={`entity-image-${value.id}`}
+    imageId={imageId}
     cap={IMAGE_CAPS.entity}
     description={value.aiDescription || value.playerDescription}
     kind="character"
@@ -308,6 +314,7 @@ export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId,
     placeholders={placeholders}
     ownerId={ownerId}
     ruleOwnerId={value.id}
+    {...frame}
   >
     {children}
   </ImageWidget>

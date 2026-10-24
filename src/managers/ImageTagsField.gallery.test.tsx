@@ -343,3 +343,35 @@ describe('ImageTagsField gallery — each image’s Visibility rule', () => {
     expect(onImagesChange).toHaveBeenCalledWith([{ data: A, requires: hurt }, { data: `${B}-new`, requires: knight }, { data: C }]);
   });
 });
+
+describe('ImageTagsField gallery — a host-controlled frame', () => {
+  const host = (framed: number) => {
+    const onFramedChange = vi.fn();
+    render(
+      <ImageTagsField
+        label="Image" images={wrap([A, B, C])} onImagesChange={vi.fn()} slots={4} imageId="x"
+        cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()}
+        framed={framed} onFramedChange={onFramedChange}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    return { onFramedChange };
+  };
+
+  it('frames the slot the host names and reports a tile press without moving on its own', () => {
+    const { onFramedChange } = host(2);
+    expect(slotWrapper(C).className).not.toMatch(/hidden/);
+
+    fireEvent.click(tile('Image 2'));
+
+    expect(onFramedChange).toHaveBeenCalledWith(1);
+    expect(slotWrapper(C).className).not.toMatch(/hidden/);
+    expect(slotWrapper(B).className).toMatch(/hidden/);
+  });
+
+  it('reports the add tile as the open slot', () => {
+    const { onFramedChange } = host(0);
+    fireEvent.click(screen.getByLabelText('Add an Image'));
+    expect(onFramedChange).toHaveBeenCalledWith(3);
+  });
+});

@@ -31,7 +31,7 @@ const lowHealth: TraitRequirementRow[] = [{ all: [{ kind: 'stat', id: 'health', 
 const notHealed: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'healed', not: true }] }];
 
 /** The gallery over Wren in a world of her own, as the World Editor's entity panel mounts it. */
-function Harness({ initial, inDialog = false }: { initial: GalleryImage[]; inDialog?: boolean }) {
+function Harness({ initial, inDialog = false, ruleCog }: { initial: GalleryImage[]; inDialog?: boolean; ruleCog?: boolean }) {
   const [images, setImages] = useState(initial);
   const world = { traits: [], traitGroups: [], entities: [wren] };
   const store = {
@@ -50,6 +50,7 @@ function Harness({ initial, inDialog = false }: { initial: GalleryImage[]; inDia
       kind="character"
       onTagsChange={vi.fn()}
       ruleOwnerId="wren"
+      ruleCog={ruleCog}
     />
   );
   return (
@@ -103,6 +104,16 @@ describe('Gallery Visibility rules', () => {
     expect(document.querySelector('[data-image-rule-summary]')).toBeNull();
     fireEvent.click(tile(/^Image 2/));
     expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while Health < 20%');
+  });
+
+  it('hides the cog and the framed summary when the host edits the rule, and keeps the badge and the cover warning', () => {
+    render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B, requires: lowHealth }]} ruleCog={false} />);
+    fireEvent.click(tile(/^Image 2/));
+
+    expect(screen.queryByRole('button', { name: 'Visibility Rule' })).toBeNull();
+    expect(document.querySelector('[data-image-rule-summary]')).toBeNull();
+    expect(tileBox(/^Image 2/).querySelector('[data-image-rule-badge]')).not.toBeNull();
+    expect(document.querySelector('[data-image-rule-cover-warning]')).not.toBeNull();
   });
 
   it('reads a trait Condition, and Not', () => {

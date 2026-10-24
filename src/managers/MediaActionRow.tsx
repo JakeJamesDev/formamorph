@@ -88,7 +88,7 @@ export function MediaActionRow({ item, placeholders, onReplace, onRemove, remove
     <div className={className}>
       {onReplace && (
         <>
-          <input ref={input} type="file" accept={ACCEPT[item.kind]} className="hidden" onChange={picked} />
+          <input ref={input} data-media-replace="" type="file" accept={ACCEPT[item.kind]} className="hidden" onChange={picked} />
           <Button variant="outline" size="sm" disabled={reading} onClick={() => input.current?.click()}>
             <Upload className="mr-1 h-4 w-4" />Replace
           </Button>

@@ -55,7 +55,7 @@ const openMedia = (mode: 'simple' | 'advanced' = 'simple') => {
 };
 
 const pickFile = async (file: File) => {
-  const input = panel()!.querySelector<HTMLInputElement>('input[type="file"]')!;
+  const input = panel()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
   await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
 };
 
@@ -120,14 +120,10 @@ describe('Media tab Remove', () => {
     expect(slot.read(bench.ctx())).toBe(was);
   });
 
-  it('offers no Replace or Remove on a gallery image or an Avatar', () => {
+  it('offers no Replace or Remove on an Avatar', () => {
     openMedia();
-    fireEvent.click(card('Entities', 'stack'));
-    expect(panelButton('Remove')).toBeNull();
-    expect(panelButton('Replace')).toBeNull();
-    expect(panelButton('Download')).not.toBeNull();
-
     fireEvent.click(card('World › Avatars', 'avatar'));
+    expect(panelButton('Download')).not.toBeNull();
     expect(panelButton('Remove')).toBeNull();
     expect(panelButton('Replace')).toBeNull();
   });

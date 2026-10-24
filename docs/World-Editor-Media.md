@@ -60,14 +60,28 @@ Only files that exist show. An empty slot makes no card.
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
 
-Select a card to open it in the panel. A stack opens its first image.
+Select a card to open it in the panel. An entity's or location's image opens the image panel, described below. Every other card opens on its own.
 
 - **Preview.** An image shows large. A sound plays. A 3D Model and an Avatar turn in the viewer.
 - **Size and budget.** The file's size, and an image's size budget.
 - **Replace** swaps in a file you pick. The file stays in the same slot. A large image first asks whether to shrink it, as an upload does.
 - **Download** saves the file. A linked image shows **Open Link**, which opens its address.
-- **Remove** clears the slot, and the card leaves the gallery. Undo brings it back.- **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
+- **Remove** clears the slot, and the card leaves the gallery. Undo brings it back.
+- **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
 - **Used By** lists the entities that pick an Avatar. Select one to open it.
+
+## The image panel
+<!-- keywords: entity gallery, location background, reorder images, primary image, generate with ai, image tags, visibility rule, framed image, avatar link -->
+
+An entity's or location's images open in one panel. A stack opens on its primary image. An image picked from **Largest** opens on that image.
+
+- 🧾 **Header.** The name, the image count and their total, and **Go to**. An entity shows the Avatar it picks: select a world Avatar to open its card.
+- 🖼️ **Gallery.** The same gallery as the entity's **Profile** tab or the location's **Media** tab. Select a tile in the strip to frame it. Drag a tile to reorder; drag it to the front to make it the primary image. **Generate with AI** shows in both modes, and **Image Tags** in Advanced.
+- ➕ **Add tile.** It frames the empty slot. Upload there, and the frame moves to the new image.
+- 📋 **Framed image.** Under the gallery: its slot name, size and budget, then **Replace**, **Download** and **Remove**. Replace keeps the image's place and its Visibility rule.
+- 🎚️ **Visibility rule.** An entity's framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the **Profile** tab, and a rule set there shows here.
+
+Each change is one undo step.
 
 ## Sizes
 <!-- keywords: how size is measured, mb, kb, publish size match, total -->

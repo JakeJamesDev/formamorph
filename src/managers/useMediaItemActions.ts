@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
+import { entityImages } from '@/lib/entityImages';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
 import type { MediaAsset } from '@/types';
 
@@ -11,11 +12,11 @@ type Write = MediaAsset | null;
 export const mediaStepLabel = (verb: string, item: MediaItem): string =>
   namedBySlot(item) ? `${verb} ${item.slot}` : `${verb} ${item.slot}: ${item.parent.name}`;
 
-/** Whether the item panel offers Replace and Remove. Gallery images and Avatars act from their own panels. */
-export const actsInItemPanel = (item: MediaItem): boolean => item.kind !== 'avatar' && item.galleryIndex === undefined;
+/** Whether a panel offers Replace and Remove. Avatars act from their own panel. */
+export const actsInItemPanel = (item: MediaItem): boolean => item.kind !== 'avatar';
 
 /**
- * Replace and Remove for the slots the item panel acts on. Each writes the field the slot's own panel writes,
+ * Replace and Remove for every slot but an Avatar's. Each writes the field the slot's own panel writes,
  * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
  */
 export function useMediaItemActions() {
@@ -29,9 +30,18 @@ export function useMediaItemActions() {
         if (key === 'thumbnail') updateWorldOverview({ thumbnail: next?.data ?? '' });
         else if (key === 'bgm') updateWorldOverview({ bgm: next?.data ?? null });
         return;
-      case 'entity':
+      case 'entity': {
         if (key === 'sound' || key === 'model') editEntity(parent.id, (e) => ({ ...e, [key]: next ?? undefined }));
+        const at = item.galleryIndex;
+        // A replaced gallery image keeps its place and its rule; a removed one leaves with its rule.
+        if (at !== undefined) {
+          editEntity(parent.id, (e) => ({
+            ...e,
+            images: entityImages(e).flatMap((img, i) => (i !== at ? [img] : next ? [{ ...img, data: next.data }] : [])),
+          }));
+        }
         return;
+      }
       case 'location': {
         const location = locations.find((l) => l.id === parent.id);
         if (!location) return;

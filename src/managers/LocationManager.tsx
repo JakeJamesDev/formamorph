@@ -13,8 +13,7 @@ import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { SoundUpload } from '../lib/UtilityComponents';
-import { IMAGE_CAPS } from '../lib/imageOptim';
-import ImageTagsField from './ImageTagsField';
+import { LocationImageField } from './LocationImageField';
 import LocationConnections from './LocationConnections';
 import LocationEntitiesHere from './LocationEntitiesHere';
 import LocationKnownHere from './LocationKnownHere';
@@ -217,20 +216,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
       </PanelTabContent>
 
       <PanelTabContent value="media">
-        <ImageTagsField
-          label="Background Image"
-          tourAnchor="location-image"
-          images={editingLocation.backgroundImage ? [{ data: editingLocation.backgroundImage }] : []}
-          onImagesChange={(list) => handleChange('backgroundImage', list[0]?.data ?? '')}
-          imageId={`location-image-${editingLocation.id}`}
-          cap={IMAGE_CAPS.background}
-          description={editingLocation.aiDescription || editingLocation.playerDescription}
-          kind="location"
-          fileSubject={labelPlaceholders(editingLocation.name, placeholders)}
-          tags={editingLocation.imageTags}
-          onTagsChange={(t) => handleChange('imageTags', t)}
-          placeholders={placeholders}
-        />
+        <LocationImageField location={editingLocation} onChange={handleChange} placeholders={placeholders} tourAnchor="location-image" />
         {advanced && (
           <div className="space-y-2">
             <Label>Ambient Sound</Label>
