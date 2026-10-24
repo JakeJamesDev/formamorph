@@ -1,8 +1,9 @@
-// Visibility rules in play: which of an entity's or a location's gallery images the story shows right now.
+// Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, RequirementOwner, TraitRequirement, TraitRequirementRow } from '@/types';
+import type { Base64Data, Entity, GalleryImage, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { entityImages } from './entityImages';
 import { locationImages, type LocationImageBearing } from './locationImages';
+import { mapImages } from './mapBackground';
 import { mapConditions } from './requirementRows';
 import { globalItems, ruleStates, type GateInput, type RowState } from './traitGates';
 
@@ -46,3 +47,7 @@ export const locationRuleStates = (input: GateInput, rows: readonly TraitRequire
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
 export const visibleLocationImages = (location: LocationImageBearing, input: GateInput): VisibleImage[] =>
   visibleBy(locationImages(location), (rows) => locationRuleStates(input, rows));
+
+/** The Map Background's images visible in play, in author order. Its rows read as a location's do (Q74). */
+export const visibleMapImages = (overview: Pick<WorldOverview, 'mapBackground'>, input: GateInput): VisibleImage[] =>
+  visibleBy(mapImages(overview), (rows) => locationRuleStates(input, rows));

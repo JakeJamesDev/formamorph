@@ -365,7 +365,7 @@ describe('Media tab No Images filter', () => {
     expect(blankCards()).toEqual([]);
 
     pickFilter('No Images');
-    expect(blankCards()).toEqual(['Thumbnail', 'Hollow', 'Bare Flat']);
+    expect(blankCards()).toEqual(['Thumbnail', 'Map Background', 'Hollow', 'Bare Flat']);
 
     pickFilter('Linked');
     expect(blankCards()).toEqual([]);
@@ -384,7 +384,7 @@ describe('Media tab No Images filter', () => {
   it('opens a blank entity card on the add slot, and an upload lands in slot 0 as one undoable step', async () => {
     const bench = open('simple', noThumbnail());
     pickFilter('No Images');
-    fireEvent.click(blankEls()[1]);
+    fireEvent.click(blankEls()[2]);
 
     expect(panel()).toHaveAttribute('data-media-image-panel', 'entity:empty');
     expect(framed()).toBeNull();
@@ -392,13 +392,13 @@ describe('Media tab No Images filter', () => {
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
     await waitFor(() => expect(bench.ctx().entities.find((e) => e.id === 'empty')!.images).toHaveLength(1));
-    expect(blankCards()).toEqual(['Thumbnail', 'Bare Flat']);
+    expect(blankCards()).toEqual(['Thumbnail', 'Map Background', 'Bare Flat']);
     expect(panel()).toHaveAttribute('data-media-image-panel', 'entity:empty');
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:empty:image:0');
 
     await undo();
     expect(bench.ctx().entities.find((e) => e.id === 'empty')!.images ?? []).toHaveLength(0);
-    expect(blankCards()).toEqual(['Thumbnail', 'Hollow', 'Bare Flat']);
+    expect(blankCards()).toEqual(['Thumbnail', 'Map Background', 'Hollow', 'Bare Flat']);
   });
 
   it('uploads into a blank world slot from its item panel', async () => {
@@ -411,7 +411,7 @@ describe('Media tab No Images filter', () => {
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
     await waitFor(() => expect(bench.ctx().worldOverview.thumbnail).toMatch(/^data:/));
-    expect(blankCards()).toEqual(['Hollow', 'Bare Flat']);
+    expect(blankCards()).toEqual(['Map Background', 'Hollow', 'Bare Flat']);
     expect(lastLabel(bench)).toBe('Add Thumbnail');
   });
 });

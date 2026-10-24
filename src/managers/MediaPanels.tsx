@@ -25,7 +25,7 @@ import { AvatarNameField, useAvatarDelete, useAvatarStore } from './AvatarStore'
 /** How many items a summary lists as the largest. */
 const LARGEST_COUNT = 5;
 
-/** The jump to the place that holds an item: its entity, location or dictionary, or the Overview for world media. */
+/** The jump to the place that holds an item: its entity, location or dictionary, the Overview for world media, or the Locations canvas for the Map Background. */
 export function GoToButton({ parent, placeholders, onGoTo }: {
   parent: MediaParent;
   placeholders: readonly Placeholder[];
@@ -33,7 +33,9 @@ export function GoToButton({ parent, placeholders, onGoTo }: {
 }) {
   return (
     <Button variant="ghost" size="sm" onClick={() => onGoTo(parent)}>
-      {parent.kind === 'world' ? 'Go to Overview' : <>Go to{' '}<PlaceholderText text={parent.name} placeholders={placeholders} /></>}
+      {parent.kind === 'world' ? 'Go to Overview'
+        : parent.kind === 'map' ? 'Go to Locations'
+        : <>Go to{' '}<PlaceholderText text={parent.name} placeholders={placeholders} /></>}
     </Button>
   );
 }

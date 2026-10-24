@@ -722,6 +722,29 @@ export interface WorldOverview {
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
   startPersona?: StartPersona;
+  /** The picture behind the Locations canvas and the player's Map. Absent = none. */
+  mapBackground?: MapBackground;
+}
+
+/** A box on the Locations canvas, in canvas units. */
+export interface MapFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The world map art behind the location boxes. Every image fits inside the one frame at its own aspect
+ * ratio. In play the Map shows the first visible image; authoring shows slot 0. An owner-less rule row reads
+ * the played persona, as on a location.
+ */
+export interface MapBackground {
+  /** At least one image; the field goes with the last one. */
+  images: GalleryImage[];
+  frame: MapFrame;
+  /** 0 to 1. */
+  opacity: number;
 }
 
 /** `world` limits the pickers to this world's personas and its Custom Persona. Applied by lib/personaPick. */

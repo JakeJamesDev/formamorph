@@ -6,12 +6,15 @@ import { ImageRuleEditor, LOCATION_RULE_HOST, useEntityRuleHost } from '@/compon
 import { useGameData } from '@/contexts/GameDataContext';
 import { entityImages, withImageRule } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
+import { mapImages } from '@/lib/mapBackground';
 import { formatMediaBytes, mediaParentKey, totalBytes, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, Placeholder, TraitRequirementRow } from '@/types';
 import { EntityImageWidget } from './EntityFields';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import { LocationImageField } from './LocationImageField';
+import { MapBackgroundField } from './MapBackgroundField';
+import { useMapBackground } from './useMapBackground';
 import { MediaActionRow } from './MediaActionRow';
 import { GoToButton, MediaFacts } from './MediaPanels';
 import { useMediaItemActions } from './useMediaItemActions';
@@ -47,7 +50,7 @@ function PickedAvatar({ entity, avatar, onSelect }: {
 }
 
 /**
- * One entity's or location's images: the gallery frames one, and the framed image's size, actions and
+ * One entity's, location's or the Map Background's images: the gallery frames one, and the framed image's size, actions and
  * Visibility rule editor sit below it. `framed` past the last image is the add tile's empty slot.
  */
 export function MediaImagePanel({ parent, images, framed, onFrame, avatar, placeholders, onGoTo, onSelect }: {
@@ -62,7 +65,9 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   onGoTo: (parent: MediaParent) => void;
   onSelect: (id: string) => void;
 }) {
-  const { entities, editEntity, locations, updateLocation } = useGameData();
+  const { entities, editEntity, locations, updateLocation, worldOverview, updateWorldOverview } = useGameData();
+  const map = useMapBackground({ worldOverview, updateWorldOverview, locations });
+  const isMap = parent.kind === 'map';
   const { replace, remove } = useMediaItemActions();
   const entity = parent.kind === 'entity' ? entities.find((e) => e.id === parent.id) : undefined;
   const location = parent.kind === 'location' ? locations.find((l) => l.id === parent.id) : undefined;
@@ -76,9 +81,10 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
     if (at === undefined) return;
     if (entity) editEntity(entity.id, (e) => ({ ...e, images: withImageRule(entityImages(e), at, rows) }));
     else if (location) updateLocation({ ...location, images: withImageRule(locationImages(location), at, rows) });
+    else if (isMap) void map.setImages(withImageRule(mapImages(worldOverview), at, rows));
   };
   const entityHost = useEntityRuleHost(entity?.id);
-  const ruleHost = location ? LOCATION_RULE_HOST : entityHost;
+  const ruleHost = location || isMap ? LOCATION_RULE_HOST : entityHost;
   const removeFramed = (target: MediaItem) => {
     // The frame stays on the same position, clamped. Ids are positional, so the id holds before and after.
     const left = images.length - 1;
@@ -117,6 +123,15 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
           onChange={(field, value) => updateLocation({ ...location, [field]: value })}
           placeholders={placeholders}
           imageId={`media-location-image-${location.id}`}
+          frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
+        />
+      )}
+
+      {isMap && (
+        <MapBackgroundField
+          overview={worldOverview}
+          onImagesChange={(list) => void map.setImages(list)}
+          placeholders={placeholders}
           frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
         />
       )}

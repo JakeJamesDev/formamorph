@@ -6,6 +6,7 @@ import type { Entity, GalleryImage, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
+import { rewriteMapImages } from './mapBackground';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import { countWorldImages } from './mediaIndex';
 
@@ -126,9 +127,15 @@ export async function downscaleWorldImages(
     dictionaries.push(d.thumbnail ? { ...d, thumbnail: (await opt(d.thumbnail, IMAGE_CAPS.thumbnail)) ?? d.thumbnail } : d);
   }
 
+  const map = await rewriteMapImages(world.worldOverview, async (data) => (await opt(data, IMAGE_CAPS.map)) ?? data);
+
   return {
     ...world,
-    worldOverview: { ...world.worldOverview, thumbnail: thumbnail ?? null },
+    worldOverview: {
+      ...world.worldOverview,
+      thumbnail: thumbnail ?? null,
+      ...map,
+    },
     entities,
     locations,
     // A world saved without the field keeps it absent.

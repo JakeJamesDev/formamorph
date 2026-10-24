@@ -10,7 +10,7 @@ import {
 import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2,
+  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2, ImagePlus,
   LayoutGrid, Magnet, Maximize2, Megaphone, Minus, Pencil, Redo2, Spline, SquareCheck, Star,
   Trash2, Undo2, X,
 } from 'lucide-react';
@@ -63,6 +63,10 @@ import { cn } from '@/lib/utils';
 import type { Connection, Entity, GameLocation, LegKey } from '@/types';
 import { CanvasControlButton, CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
+import { MapBackgroundLayer, type MapGesture } from '@/components/MapBackgroundLayer';
+import { mapImages } from '@/lib/mapBackground';
+import { MapBackgroundPanel, type MapBackgroundPanelMode } from '@/managers/MapBackgroundPanel';
+import { useMapBackground } from '@/managers/useMapBackground';
 
 /**
  * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
@@ -89,6 +93,12 @@ interface DropTarget {
 }
 
 const IDLE: DropTarget = { active: false, into: [], toTopLevel: false };
+
+/** A canvas with no world overview holds no Map Background. */
+const NO_OVERVIEW = {};
+const IGNORE_OVERVIEW = () => {};
+
+const MAP_STEP_LABELS: Record<MapGesture, string> = { move: 'Move Map Background', resize: 'Resize Map Background' };
 
 const sameDropTarget = (a: DropTarget, b: DropTarget) =>
   a.active === b.active && a.toTopLevel === b.toTopLevel
@@ -750,7 +760,9 @@ type CanvasData = Pick<ReturnType<typeof useGameData>,
   'locations' | 'setLocations' | 'connections' | 'setConnections' | 'placeholders' |
   'placementLetters' | 'placeholderOwners'>
   // The cast, for picking an entity on the full-screen canvas. A canvas without one has no entity card.
-  & Partial<Pick<ReturnType<typeof useGameData>, 'entities' | 'updateEntity'>>;
+  & Partial<Pick<ReturnType<typeof useGameData>, 'entities' | 'updateEntity'>>
+  // The Map Background's home. A canvas without one draws and offers none.
+  & Partial<Pick<ReturnType<typeof useGameData>, 'worldOverview' | 'updateWorldOverview'>>;
 
 export interface LocationCanvasInputs {
   data: CanvasData;
@@ -772,7 +784,7 @@ const CanvasInner = ({
 } & Pick<LocationCanvasInputs, 'data' | 'preferences'> & Pick<CanvasReveal, 'revealSelection' | 'onSelectionRevealed'>) => {
   const {
     locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners,
-    entities, updateEntity,
+    entities, updateEntity, worldOverview, updateWorldOverview,
   } = data;
   // The entity the full-screen canvas picks for. While one is picked, the canvas is a read-only picker.
   const [pickState, setPickState] = useState<PickState | null>(null);
@@ -784,11 +796,20 @@ const CanvasInner = ({
     selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
   } = session;
   const store = useStoreApi();
-  const { fitView, setCenter, getInternalNode, getZoom } = useReactFlow();
+  const { fitView, setCenter, getInternalNode, getZoom, screenToFlowPosition } = useReactFlow();
   const reduceMotion = usePrefersReducedMotion();
   const [snap, setSnap] = preferences.snap;
   const [gridVisible, setGridVisible] = preferences.grid;
   const [connectionStyle, setConnectionStyle] = preferences.connectionStyle;
+  const mapBackground = useMapBackground({
+    worldOverview: worldOverview ?? NO_OVERVIEW, updateWorldOverview: updateWorldOverview ?? IGNORE_OVERVIEW, locations,
+  });
+  // Authoring always shows slot 0, whatever its rule says.
+  const mapPrimary = worldOverview ? mapImages(worldOverview)[0] : undefined;
+  const [mapPanel, setMapPanel] = useState<MapBackgroundPanelMode | null>(null);
+  // Adjust ends with the last image, and a picker never adjusts.
+  const shownMapPanel = picking || (mapPanel === 'adjust' && !mapPrimary) ? null : mapPanel;
+  const adjustingMap = shownMapPanel === 'adjust';
   // What the next menu will be a menu of. Radix owns whether one is open and where; all this holds is which
   // target the right-click that is about to open it landed on.
   const [menuTarget, setMenuTarget] = useState<MenuTarget>({ kind: 'pane' });
@@ -1366,8 +1387,28 @@ const CanvasInner = ({
         icon: LayoutGrid,
         onSelect: () => commitLocations(autoArrangeAll(locations, connections)),
       },
+      ...(updateWorldOverview
+        ? [{
+          label: mapPrimary ? 'Replace Background Image…' : 'Set Background Image…',
+          icon: ImagePlus,
+          onSelect: () => setMapPanel('set'),
+        }]
+        : []),
     ];
   };
+
+  /** The canvas's view in canvas units, which a first image covers when there are no locations. */
+  const visibleArea = () => {
+    const rect = frameRef.current?.getBoundingClientRect();
+    if (!rect?.width) return null;
+    const a = screenToFlowPosition({ x: rect.left, y: rect.top });
+    const b = screenToFlowPosition({ x: rect.right, y: rect.bottom });
+    return { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
+  };
+
+  const mapBackgroundRows: CanvasMenuItem[] = mapPrimary && !picking
+    ? [{ label: 'Adjust Background', checked: adjustingMap, onSelect: () => setMapPanel(adjustingMap ? null : 'adjust') }]
+    : [];
 
   return (
     // The frame is the menu's trigger, so the browser's own menu never opens over the canvas — Radix takes
@@ -1446,6 +1487,14 @@ const CanvasInner = ({
       >
         {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
+        {mapPrimary && mapBackground.background && (
+          <MapBackgroundLayer
+            src={mapPrimary.data}
+            frame={mapBackground.background.frame}
+            opacity={mapBackground.background.opacity}
+            adjust={adjustingMap ? { onCommit: (frame, gesture) => void mapBackground.setFrame(frame, MAP_STEP_LABELS[gesture]) } : undefined}
+          />
+        )}
         {/* The embedded canvas's whole chrome: the zoom controls, and the way to the big one. Everything
             heavier belongs to full screen, so the quick view stays a view. */}
         <CanvasControls>
@@ -1486,12 +1535,27 @@ const CanvasInner = ({
         )}
         {/* One column on the right: an open Connection above the entity card, so neither covers the other.
             Below the toolbar and the search box on a narrow window. */}
-        {((selectedConnection && !picking) || (fullscreen && entities && updateEntity)) && (
+        {((selectedConnection && !picking) || (fullscreen && entities && updateEntity) || shownMapPanel) && (
           <Panel
             position="top-right"
             // Full screen drops the column under the window's corner button.
             className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
+            {shownMapPanel && (
+              <MapBackgroundPanel
+                mode={shownMapPanel}
+                replacing={!!mapPrimary}
+                opacity={mapBackground.background?.opacity ?? 1}
+                onPick={(data) => {
+                  // A first image goes straight to Adjust, where it can be placed.
+                  setMapPanel('adjust');
+                  void mapBackground.setPrimary(data, visibleArea());
+                }}
+                onOpacity={mapBackground.setOpacity}
+                onRemove={() => void mapBackground.removePrimary()}
+                onClose={() => setMapPanel(null)}
+              />
+            )}
             {selectedConnection && !picking && (
               <ConnectionInspector
                 connection={selectedConnection}
@@ -1535,6 +1599,7 @@ const CanvasInner = ({
           setConnectionStyle,
         },
         menuActions(menuTarget),
+        mapBackgroundRows,
       )}
     />
     </ContextMenu>

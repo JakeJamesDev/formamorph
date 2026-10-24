@@ -63,6 +63,8 @@ export function canvasMenuSections(
   state: CanvasMenuState,
   actions: CanvasMenuActions,
   targetActions: CanvasMenuItem[],
+  /** The Map Background's switches, while there is one. */
+  background: CanvasMenuItem[] = [],
 ): CanvasMenuSection[] {
   const grid: CanvasMenuItem[] = [
     { label: "Snap To Grid", checked: state.snap, onSelect: () => actions.setSnap(!state.snap) },
@@ -82,6 +84,7 @@ export function canvasMenuSections(
   return [
     { title: "Grid", items: grid },
     { title: "Connection Style", items: style },
+    ...(background.length ? [{ title: "Background", items: background }] : []),
     { items: history },
     ...(targetActions.length ? [{ items: targetActions }] : []),
   ];

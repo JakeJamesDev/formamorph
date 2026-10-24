@@ -28,7 +28,7 @@ The row above the search box holds the **Publish Size** meter and four buttons. 
 - **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location or dictionary it belongs to.
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
 - **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules** or **Over Size Budget** items. **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included. The other three filters look at images, so they hide sounds, 3D Models and Avatars. The button shows the filter's name while it's on.
-- **No Images** shows one blank card for each entity or location with no image, and for an empty world thumbnail. Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
+- **No Images** shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**. Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
 - **Optimize Images** shrinks images that are over their size budget. See [Optimize Images](#optimize-images).
 
 The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
@@ -42,6 +42,7 @@ The cards sit in sections that follow your editor:
 |---|---|
 | **World** | The **Thumbnail** and **Background Music** |
 | **World › Avatars** | Each Avatar in the world, once |
+| **World › Map Background** | The images behind the Locations canvas and the in-game Map |
 | **Entities**, and one per entity group | Each entity's images, **Sound** and **3D Model** |
 | **Locations**, and one per location with sub-locations | Each location's background images and **Ambient Sound** |
 | **Dictionaries** | Each dictionary's **Cover Image** |
@@ -102,6 +103,17 @@ An entity's or location's images open in one panel. A stack opens on its primary
 - 🎚️ **Visibility rule.** The framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the entity's **Profile** tab or the location's **Media** tab, and a rule set there shows here. On a location, a condition with no owner reads the persona.
 
 Each change is one undo step.
+
+## Map Background
+<!-- keywords: map background, world map, map image, map visibility rule, ruined map, map changes in game, go to locations -->
+
+The **World › Map Background** cards hold the picture behind the [Locations canvas](World-Editor-Locations#map-background). Two or more images stack, like an entity's.
+
+- 🖼️ The cards open the image panel, with **Replace**, **Download**, **Remove** and **Go to Locations**.
+- 🎚️ Each image can carry a Visibility rule. In play, the Map shows the first visible image, and no image when none is visible. A condition with no owner reads the persona.
+- 📐 Every image fits inside one shared frame at its own shape, so a swap lines up with your locations.
+- ➕ With no image, **No Images** shows a blank card. An upload there covers your locations.
+- 📦 The budget is 2560 px on the long edge and 2.5 MB.
 
 ## Sizes
 <!-- keywords: how size is measured, mb, kb, publish size match, total -->

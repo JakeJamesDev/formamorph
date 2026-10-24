@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { DEFAULT_BACKGROUND, useLocationBackdrop } from './useLocationBackdrop';
+import { DEFAULT_BACKGROUND, useLocationBackdrop, useMapBackdrop } from './useLocationBackdrop';
 import type { GateInput } from './traitGates';
 import type { GalleryImage, StatRequirement } from '@/types';
 
@@ -45,5 +45,24 @@ describe('useLocationBackdrop', () => {
 
   it('shows the default background only when there is no location', () => {
     expect(renderHook(() => useLocationBackdrop(null)).result.current).toBe(DEFAULT_BACKGROUND);
+  });
+});
+
+describe('useMapBackdrop', () => {
+  const frame = { x: -40, y: 0, width: 900, height: 500 };
+  const overview = (images: GalleryImage[]) => ({ mapBackground: { images, frame, opacity: 0.7 } });
+
+  it('swaps to a ruled image while an owner-less row holds on the persona, in the same frame', () => {
+    const map = overview([when('ruined', hurt), { data: 'drawn' }]);
+    const { result, rerender } = renderHook(() => useMapBackdrop(map));
+    expect(result.current).toEqual({ data: 'drawn', frame, opacity: 0.7 });
+    state.health = 10;
+    rerender();
+    expect(result.current).toEqual({ data: 'ruined', frame, opacity: 0.7 });
+  });
+
+  it('draws nothing when no image passes, or the world has none', () => {
+    expect(renderHook(() => useMapBackdrop(overview([when('ruined', hurt)]))).result.current).toBeUndefined();
+    expect(renderHook(() => useMapBackdrop({})).result.current).toBeUndefined();
   });
 });

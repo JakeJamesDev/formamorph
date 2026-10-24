@@ -14,6 +14,8 @@ import {
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
+import { MapBackgroundLayer } from '@/components/MapBackgroundLayer';
+import type { MapBackdrop } from '@/lib/useLocationBackdrop';
 import { cn } from '@/lib/utils';
 import type { MetRoster } from '@/lib/metEntities';
 import type { Connection, GameLocation } from '@/types';
@@ -119,11 +121,13 @@ const MapGroupNode = ({ id, data }: NodeProps<MapNode>) => (
 const nodeTypes = { location: MapLocationNode, locationGroup: MapGroupNode };
 const edgeTypes = { floating: FloatingEdge };
 
-const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, onTravel }: {
+const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, background, onTravel }: {
   locations: GameLocation[];
   connections: Connection[];
   currentLocationId: string | null;
   entitiesAt?: MetRoster;
+  /** The Map Background's visible image, drawn where the author placed it. */
+  background?: MapBackdrop;
   onTravel: (location: GameLocation) => void;
 }) => {
   // The same shape the canvas draws arrows in — presentation, and one person's own preference, so someone who
@@ -221,6 +225,7 @@ const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, on
         >
           {/* The grid is an authoring aid — what a location snaps to. The player gets the plain ground. */}
           <Background className="!bg-background" color="transparent" gap={CANVAS_GRID} />
+          {background && <MapBackgroundLayer src={background.data} frame={background.frame} opacity={background.opacity} />}
           <CanvasControls />
         </ReactFlow>
       </TravelContext.Provider>

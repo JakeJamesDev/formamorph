@@ -10,6 +10,7 @@ import { ancestors, parentLookup } from "@/lib/ancestors";
 import { useTravelView, type TravelView } from "@/lib/travelPrefs";
 import { cn } from "@/lib/utils";
 import type { MetRoster } from "@/lib/metEntities";
+import type { MapBackdrop } from "@/lib/useLocationBackdrop";
 import type { Connection, GameLocation } from "@/types";
 
 /**
@@ -24,7 +25,7 @@ const INDENT_REM = 1.25;
 const ROW_INSET_REM = 0.75;
 
 export const LocationModal = ({
-  isOpen, onOpenChange, locations, connections, currentLocationId, entitiesAt, changeLocation, resolveText,
+  isOpen, onOpenChange, locations, connections, currentLocationId, entitiesAt, mapBackground, changeLocation, resolveText,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +34,8 @@ export const LocationModal = ({
   currentLocationId: string | null;
   /** The met entities the Map shows. */
   entitiesAt?: MetRoster;
+  /** The Map Background image the Map draws behind its boxes. */
+  mapBackground?: MapBackdrop;
   changeLocation: (location: GameLocation) => void;
   resolveText: (text: string) => string;
 }) => {
@@ -178,6 +181,7 @@ export const LocationModal = ({
                 connections={connections}
                 currentLocationId={currentLocationId}
                 entitiesAt={entitiesAt}
+                background={mapBackground}
                 onTravel={travel}
               />
             </div>

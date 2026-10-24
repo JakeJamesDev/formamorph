@@ -5,13 +5,14 @@
 import type { Entity, GalleryImage, GameLocation, TraitRequirementRow, World } from '@/types';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
+import { mapImages } from './mapBackground';
 import { buildEntityTree, type EntityTreeNode } from './entityGroupTree';
 import { buildLocationTree, type LocationTreeNode } from './locationTree';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
-export type MediaParentKind = 'world' | 'entity' | 'location' | 'dictionary';
+export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary';
 
 /** What holds a media item. Its name is what copy calls it; world media has the world as its parent. */
 export interface MediaParent {
@@ -54,6 +55,8 @@ export interface MediaItem {
 export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups'>;
 
 const WORLD_PARENT: MediaParent = { kind: 'world', id: 'world', name: 'World' };
+/** The Map Background's gallery, which cards name like an entity's. */
+export const MAP_PARENT: MediaParent = { kind: 'map', id: 'map', name: 'Map Background' };
 
 /** UTF-8 length without an encode: a data URL is ASCII, so only a link can hold wider characters. */
 export function storedBytes(value: string): number {
@@ -124,6 +127,7 @@ const blankImage = (parent: MediaParent, key: MediaSlotKey, slot: string, budget
 interface MediaSource {
   world: (w: MediaWorld) => MediaItem[];
   avatars: (w: MediaWorld) => MediaItem[];
+  map: (w: MediaWorld) => MediaItem[];
   entity: (e: Entity) => MediaItem[];
   location: (l: GameLocation) => MediaItem[];
   dictionaries: (w: MediaWorld) => MediaItem[];
@@ -132,6 +136,7 @@ interface MediaSource {
 const BLANK_SOURCE: MediaSource = {
   world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail', IMAGE_CAPS.thumbnail)]),
   avatars: () => [],
+  map: (w) => (mapImages(w.worldOverview).length ? [] : [blankImage(MAP_PARENT, 'image:0', 'Image 1', IMAGE_CAPS.map)]),
   entity: (e) => (entityImages(e).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1', IMAGE_CAPS.entity)]),
   location: (l) => (locationImages(l).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1', IMAGE_CAPS.background)]),
   // A dictionary's Cover Image is optional, so an empty one is not a gap.
@@ -177,19 +182,20 @@ const sectionBuilder = () => {
 };
 
 /**
- * The world's media in sections, in author order. A section is a folder: World, its Avatars, Entities and each
+ * The world's media in sections, in author order. A section is a folder: World, its Avatars and Map Background, Entities and each
  * entity group, Locations and each location with children, and Dictionaries. An entity's or location's items
  * fold into the nearest section, and a section with no items is left out.
  */
 export const mediaSections = (w: MediaWorld): MediaSection[] => sectionsFrom(w, MEDIA_SOURCE);
 
-/** The same sections holding only blank cards: each entity and location with no image, and an empty world thumbnail. */
+/** The same sections holding only blank cards: each entity and location with no image, an empty world thumbnail and an empty Map Background. */
 export const blankSections = (w: MediaWorld): MediaSection[] => sectionsFrom(w, BLANK_SOURCE);
 
 function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
   const { sections, add } = sectionBuilder();
   add('world', ['World'], source.world(w));
   add('avatars', ['World', 'Avatars'], source.avatars(w));
+  add('mapBackground', ['World', 'Map Background'], source.map(w));
 
   const entityFolder = (id: string, path: string[], nodes: EntityTreeNode[]) => {
     const leaves = nodes.flatMap((n) => (n.kind === 'leaf' ? [n.leaf] : []));
@@ -212,7 +218,7 @@ function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
 }
 
 const MEDIA_SOURCE: MediaSource = {
-  world: worldMedia, avatars: avatarMedia, entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia,
+  world: worldMedia, avatars: avatarMedia, map: (w) => galleryMedia(MAP_PARENT, mapImages(w.worldOverview), IMAGE_CAPS.map), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia,
 };
 
 /** The selection id of a section's header, apart from any item's. */
@@ -290,9 +296,9 @@ export function kindBreakdown(items: readonly MediaItem[]): { kind: MediaKind; c
 export const largestItems = (items: readonly MediaItem[], count: number): MediaItem[] =>
   [...items].sort((a, b) => b.bytes - a.bytes).slice(0, count);
 
-/** Only an entity's or location's images stack; every other item is its own card. */
+/** Only a gallery's images stack (an entity's, a location's, the Map Background's); every other item is its own card. */
 export const canStack = (item: MediaItem): boolean =>
-  item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location');
+  item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location' || item.parent.kind === 'map');
 
 /** A section's cards: one parent's images stack when there are two or more, and every other item is its own card. */
 export interface MediaCardGroup {

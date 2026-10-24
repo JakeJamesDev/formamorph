@@ -161,6 +161,28 @@ describe('downscaleWorldImages', () => {
     expect(new Set(calls)).toEqual(new Set([7]));
   });
 
+  it('visits each Map Background image under the map budget, rules, frame and opacity kept', async () => {
+    const caps: unknown[] = [];
+    const capDeps: DownscaleDeps = {
+      shouldEncode: (url, cap) => { if (url.startsWith('BIG-map')) caps.push(cap); return Promise.resolve(url.startsWith('BIG')); },
+      optimize: (url) => Promise.resolve(`OPT:${url}`),
+    };
+    const frame = { x: 1, y: 2, width: 300, height: 200 };
+    const withMap: World = {
+      ...world,
+      worldOverview: { ...world.worldOverview, mapBackground: { images: [{ data: 'BIG-map' }, { data: 'BIG-map2', requires: WOUNDED }], frame, opacity: 0.4 } },
+    };
+    const totals: number[] = [];
+    const out = await downscaleWorldImages(withMap, capDeps, (_done, total) => totals.push(total));
+    expect(out.worldOverview.mapBackground).toEqual({
+      images: [{ data: 'OPT:BIG-map' }, { data: 'OPT:BIG-map2', requires: WOUNDED }], frame, opacity: 0.4,
+    });
+    expect(caps).toEqual([IMAGE_CAPS.map, IMAGE_CAPS.map]);
+    expect(new Set(totals)).toEqual(new Set([8]));
+    // A world without one keeps the field absent.
+    expect((await downscaleWorldImages(world, deps)).worldOverview).not.toHaveProperty('mapBackground');
+  });
+
   it('reports a zero total when the world has no images', async () => {
     const empty = { worldOverview: {}, entities: [], locations: [] } as unknown as World;
     const calls: { done: number; total: number }[] = [];

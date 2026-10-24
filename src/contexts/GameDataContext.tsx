@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, u
 import WorldStorageService from '../services/WorldStorageService';
 import { canonicalEqual } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
+import { mapImages } from '@/lib/mapBackground';
 import { registerDevHook } from '@/lib/devRouter';
 import { holdUnsavedWorld } from '@/lib/unsavedWorld';
 import { onWorldChangedElsewhere, type WorldChange } from '@/lib/worldChangeSignal';
@@ -406,6 +407,7 @@ function useProvideGameData() {
       ...(overview.vrmStore ? { vrmStore: overview.vrmStore } : {}),
       ...(overview.legacyVrmFallback ? { legacyVrmFallback: overview.legacyVrmFallback } : {}),
       ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {}),
+      ...(mapImages(overview).length && overview.mapBackground ? { mapBackground: overview.mapBackground } : {}),
       // Any and the player's default are the absent values.
       ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),
       ...(startPersona ? { startPersona } : {})

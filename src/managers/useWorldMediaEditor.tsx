@@ -8,8 +8,8 @@ import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
 import {
-  blankSections, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
-  type MediaFilter, type MediaItem, type MediaParent,
+  blankSections, canStack, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
+  type MediaFilter, type MediaParent,
 } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
 import { AvatarStoreControls } from './AvatarStore';
@@ -17,10 +17,6 @@ import { MediaGallery } from './MediaGallery';
 import { MediaHeader, type OptimizeControl } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
 import { MediaImagePanel } from './MediaImagePanel';
-
-/** An entity's or location's image, which opens its parent's image panel rather than the item panel. */
-const opensImagePanel = (item: MediaItem): boolean =>
-  item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location');
 
 /**
  * The Media tab's List Editor parts: a gallery of every media item in the world, and the panel for the
@@ -78,11 +74,11 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   const stale = !!selectedId && !held;
   useEffect(() => { if (stale) onSelect(null); }, [stale, onSelect]);
 
-  // An entity's or location's image opens its parent's image panel, framed on that image.
-  const panelParent = item && opensImagePanel(item) ? item.parent : undefined;
+  // A gallery's image opens its parent's image panel, framed on that image.
+  const panelParent = item && canStack(item) ? item.parent : undefined;
   const panelKey = panelParent && mediaParentKey(panelParent);
   const panelImages = useMemo(
-    () => (panelKey ? allItems.filter((i) => opensImagePanel(i) && mediaParentKey(i.parent) === panelKey) : []),
+    () => (panelKey ? allItems.filter((i) => canStack(i) && mediaParentKey(i.parent) === panelKey) : []),
     [allItems, panelKey],
   );
   // The add tile frames an empty slot, which no item holds yet. It lasts until the selection moves.

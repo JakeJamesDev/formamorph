@@ -9,6 +9,7 @@ import type { GalleryImage, World } from '@/types';
 import { IMAGE_CAPS, type ImageCap } from './imageOptim';
 import { entityImageData, entityImages } from './entityImages';
 import { locationImages } from './locationImages';
+import { mapImages, rewriteMapImages } from './mapBackground';
 import { isRemoteImage } from './imageBytes';
 import { fetchAsDataUrl } from './imageSource';
 
@@ -25,6 +26,7 @@ export function remoteWorldImages(world: World): string[] {
   if (isRemoteImage(thumb)) urls.push(thumb as string);
   for (const e of world.entities ?? []) urls.push(...entityImageData(e).filter(isRemoteImage));
   for (const l of world.locations ?? []) urls.push(...locationImages(l).map((img) => img.data).filter(isRemoteImage));
+  urls.push(...mapImages(world.worldOverview).map((img) => img.data).filter(isRemoteImage));
   return urls;
 }
 
@@ -89,8 +91,19 @@ export async function embedWorldRemoteImages(
     locations.push({ ...l, images });
   }
 
+  const map = await rewriteMapImages(world.worldOverview, async (data) => (await embed(data, IMAGE_CAPS.map)) ?? data);
+
   return {
-    world: { ...world, worldOverview: { ...world.worldOverview, thumbnail: thumbnail ?? null }, entities, locations },
+    world: {
+      ...world,
+      worldOverview: {
+        ...world.worldOverview,
+        thumbnail: thumbnail ?? null,
+        ...map,
+      },
+      entities,
+      locations,
+    },
     failures,
   };
 }
