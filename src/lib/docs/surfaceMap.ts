@@ -159,6 +159,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, BUGS_AND_SUGGESTIONS])),
 
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
+  'worldEditor.media': { page: 'World-Editor-Media', anchor: '-world-editor-media' },
   'worldEditor.stats': { page: 'World-Editor-Stats', anchor: '-world-editor-stats' },
   'worldEditor.entities': { page: 'World-Editor-Entities', anchor: '-world-editor-entities' },
   'worldEditor.locations': { page: 'World-Editor-Locations', anchor: '\u{FE0F}-world-editor-locations' },
