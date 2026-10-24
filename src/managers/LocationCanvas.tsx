@@ -810,6 +810,8 @@ const CanvasInner = ({
   // Adjust ends with the last image, and a picker never adjusts.
   const shownMapPanel = picking || (mapPanel === 'adjust' && !mapPrimary) ? null : mapPanel;
   const adjustingMap = shownMapPanel === 'adjust';
+  // A picker and Adjust both hold the boxes still: no drag, Connection, selection or key moves.
+  const boxesHeld = picking || adjustingMap;
   // What the next menu will be a menu of. Radix owns whether one is open and where; all this holds is which
   // target the right-click that is about to open it landed on.
   const [menuTarget, setMenuTarget] = useState<MenuTarget>({ kind: 'pane' });
@@ -1204,6 +1206,11 @@ const CanvasInner = ({
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (picking || !activeRef.current || isEditableTarget(event.target)) return;
+      // Adjusting the map holds the boxes still from the keys too; Ctrl+A stays the canvas's, selecting nothing.
+      if (adjustingMap) {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') event.preventDefault();
+        return;
+      }
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
       const nudge = NUDGES[event.key];
@@ -1227,7 +1234,7 @@ const CanvasInner = ({
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection, fullscreen, nudgeSelection, zoomToSelection, picking]);
+  }, [setSelection, fullscreen, nudgeSelection, zoomToSelection, picking, adjustingMap]);
 
   // Picking starts from a clean canvas: nothing selected, no Connection open.
   useEffect(() => {
@@ -1449,9 +1456,10 @@ const CanvasInner = ({
         onSelectionChange={handleSelectionChange}
         onEdgeClick={picking ? undefined : handleEdgeClick}
         // A picker is read-only: no drag, nesting, Connection or selection, and a drag with any button pans.
-        nodesDraggable={!picking}
-        nodesConnectable={!picking}
-        elementsSelectable={!picking}
+        // Adjusting the map holds the boxes still the same way, so every left press goes to the map.
+        nodesDraggable={!boxesHeld}
+        nodesConnectable={!boxesHeld}
+        elementsSelectable={!boxesHeld}
         edgesFocusable={!picking}
         onNodeMouseEnter={(_, node) => hoverOn(node.id)}
         onNodeMouseLeave={hoverOff}
@@ -1466,7 +1474,7 @@ const CanvasInner = ({
         // Node-editor controls: left-drag draws a marquee over the pane and moves a node on a node, the other
         // two buttons pan, and Shift or Ctrl composes a selection a node at a time.
         panOnDrag={picking ? [0, 1, 2] : [1, 2]}
-        selectionOnDrag={!picking}
+        selectionOnDrag={!boxesHeld}
         selectionKeyCode={null}
         multiSelectionKeyCode={picking ? null : ['Shift', 'Control', 'Meta']}
         // Snapping applies to the drag itself, so what the author sees land is exactly what is stored.
@@ -1483,7 +1491,7 @@ const CanvasInner = ({
         attributionPosition="bottom-left"
         minZoom={0.2}
         fitView
-        className={cn('h-full w-full', picking && 'canvas-picking')}
+        className={cn('h-full w-full', picking && 'canvas-picking', adjustingMap && 'canvas-adjusting')}
       >
         {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
@@ -1541,15 +1549,16 @@ const CanvasInner = ({
             // Full screen drops the column under the window's corner button.
             className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
-            {shownMapPanel && (
+            {shownMapPanel && worldOverview && (
               <MapBackgroundPanel
                 mode={shownMapPanel}
-                replacing={!!mapPrimary}
+                overview={worldOverview}
+                placeholders={placeholders}
                 opacity={mapBackground.background?.opacity ?? 1}
-                onPick={(data) => {
+                onImagesChange={(images) => {
                   // A first image goes straight to Adjust, where it can be placed.
-                  setMapPanel('adjust');
-                  void mapBackground.setPrimary(data, visibleArea());
+                  if (!mapPrimary && images.some((img) => img.data)) setMapPanel('adjust');
+                  void mapBackground.setGallery(images, visibleArea());
                 }}
                 onOpacity={mapBackground.setOpacity}
                 onRemove={() => void mapBackground.removePrimary()}

@@ -85,7 +85,7 @@ test.describe('Map Background', () => {
 
     await paneMenu(page);
     await page.getByRole('menuitem', { name: 'Set Background Image…' }).click();
-    await page.locator('[data-map-background-panel="set"] input[type="file"]').setInputFiles({
+    await page.locator('[data-map-background-panel="set"] #image-upload-canvas-map-background').setInputFiles({
       name: 'map.png', mimeType: 'image/png', buffer: await pngBytes(page, 400, 100),
     });
     // The upload offers its lossless re-encode; an author keeping the file as is takes the same path.
@@ -182,6 +182,167 @@ test.describe('Map Background', () => {
     await page.mouse.up();
     await expect(page.locator('.react-flow__node[data-id="loc-harbor"]')).toHaveClass(/selected/);
     expect(await frameOf(layer)).toEqual(before);
+  });
+
+  test('the Replace card is the gallery: reorder, remove one step at a time, and a fresh first image', async ({ page }) => {
+    await openApp(page);
+    const slot0 = `data:image/png;base64,${(await pngBytes(page, 300, 200)).toString('base64')}`;
+    const slot1 = `data:image/png;base64,${(await pngBytes(page, 200, 300)).toString('base64')}`;
+    await openCanvas(page, world('e2e-map-gallery', {
+      mapBackground: { images: [{ data: slot0 }, { data: slot1 }], frame: { x: -200, y: -200, width: 1200, height: 800 }, opacity: 0.5 },
+    }));
+    const layer = page.locator('[data-map-background]');
+    const card = page.locator('[data-map-background-panel="set"]');
+    await paneMenu(page);
+    await page.getByRole('menuitem', { name: 'Replace Background Image…' }).click();
+    // The menu animates out over the card; a press before it goes lands on the menu.
+    await expect(page.locator('[role="menu"]')).toHaveCount(0);
+    await expect(card.getByRole('button', { name: 'Primary image' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Image 2' })).toBeVisible();
+
+    // Image 2 dragged to the front becomes slot 0, which the canvas draws.
+    const tile2 = await center(card.getByRole('button', { name: 'Image 2' }));
+    const tile1 = await center(card.getByRole('button', { name: 'Primary image' }));
+    await page.mouse.move(tile2.x, tile2.y);
+    await page.mouse.down();
+    // Past the activation distance first, then onto the primary, so dnd-kit has seen the drag start.
+    await page.mouse.move(tile2.x - 12, tile2.y, { steps: 3 });
+    await page.mouse.move(tile1.x - 10, tile1.y, { steps: 10 });
+    await page.mouse.move(tile1.x - 12, tile1.y);
+    await page.mouse.up();
+    await expect(layer.locator('img')).toHaveAttribute('src', slot1);
+
+    // The x removes the framed image as one step; undo brings it back.
+    await card.getByRole('button', { name: 'Primary image' }).click();
+    await card.getByRole('button', { name: 'Remove image' }).click();
+    await expect(layer.locator('img')).toHaveAttribute('src', slot0);
+    await expect(card.getByRole('button', { name: 'Image 2' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Undo' }).first().click();
+    await expect(layer.locator('img')).toHaveAttribute('src', slot1);
+
+    // Removing both takes the frame and opacity with the last image (Q77).
+    for (let i = 0; i < 2; i++) {
+      await card.getByRole('button', { name: 'Primary image' }).click();
+      await card.getByRole('button', { name: 'Remove image' }).click();
+    }
+    await expect(layer).toHaveCount(0);
+    await expect(card).toHaveText(/Set Background Image/);
+
+    // The next upload lands at the canvas default: covering the locations, at full opacity, in Adjust.
+    await card.locator('#image-upload-canvas-map-background').setInputFiles({
+      name: 'map.png', mimeType: 'image/png', buffer: await pngBytes(page, 400, 100),
+    });
+    await page.getByRole('button', { name: 'Keep original' }).click();
+    await expect(layer).toHaveAttribute('data-map-background', 'adjust');
+    const placed = await frameOf(layer);
+    expect(placed.height).toBeCloseTo(312, 0);
+    expect(placed.x).toBeLessThanOrEqual(0);
+    expect(await layer.locator('img').evaluate((img) => Number((img as HTMLElement).style.opacity))).toBe(1);
+  });
+
+  test('Adjust draws the boxes above the map, sends every press to the map, and gives the boxes back after', async ({ page }) => {
+    await openApp(page, { 'vite-ui-theme': 'dark' });
+    const art = `data:image/png;base64,${(await pngBytes(page, 400, 200)).toString('base64')}`;
+    // The nw corner sits under Harbor's box (180 × 52 at the origin), and Marsh sits on the image with an
+    // arrow down to Reef.
+    await openCanvas(page, {
+      ...world('e2e-map-adjust-boxes', {
+        mapBackground: { images: [{ data: art }], frame: { x: 90, y: 26, width: 800, height: 400 }, opacity: 0.8 },
+      }),
+      locations: [...LOCATIONS, { id: 'loc-reef', name: 'Reef', canvasPosition: { x: 640, y: 380 } }],
+      connections: [{ id: 'conn-marsh-reef', a: 'loc-marsh', b: 'loc-reef', aToB: {} }],
+    });
+    const layer = page.locator('[data-map-background]');
+    const marsh = page.locator('.react-flow__node[data-id="loc-marsh"]');
+    const harbor = page.locator('.react-flow__node[data-id="loc-harbor"]');
+    // A selection made before Adjust stays put through it.
+    await harbor.click();
+    await expect(harbor).toHaveClass(/selected/);
+    const harborFrom = (await harbor.boundingBox())!;
+    await paneMenu(page);
+    await page.getByRole('menuitemcheckbox', { name: 'Adjust Background' }).click();
+    await expect(layer).toHaveAttribute('data-map-background', 'adjust');
+    // A checkbox row leaves the menu open.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[role="menu"]')).toHaveCount(0);
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Control+a');
+    expect((await harbor.boundingBox())!.x).toBeCloseTo(harborFrom.x, 0);
+    await expect(marsh).not.toHaveClass(/selected/);
+    expect(await page.evaluate(() => String(window.getSelection()))).toBe('');
+
+    // The image paints under the boxes, arrows and handles, all in the viewport's one stacking context.
+    const z = (el: Locator) => el.first().evaluate((e) => getComputedStyle(e).zIndex);
+    expect(await z(layer)).toBe('-1');
+    expect(await z(page.locator('[data-map-background-handles]'))).toBe('2000');
+    expect(Number(await z(marsh))).toBeGreaterThanOrEqual(0);
+    const arrow = page.locator('.react-flow__edges svg', { has: page.locator('.react-flow__edge') });
+    expect(['auto', '0']).toContain(await z(arrow));
+    expect(await marsh.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+
+    mkdirSync('.scratch/frames', { recursive: true });
+    await page.screenshot({ path: '.scratch/frames/map-background-adjust-boxes-dark.png' });
+
+    // The nw handle, under Harbor, is what the pointer finds there, and it resizes.
+    const before = await frameOf(layer);
+    const corner = await center(page.locator('[data-map-corner="nw"]'));
+    expect(await harbor.boundingBox().then((b) => b!.x <= corner.x && corner.x <= b!.x + b!.width && b!.y <= corner.y && corner.y <= b!.y + b!.height)).toBe(true);
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('data-map-corner'), corner)).toBe('nw');
+    await page.mouse.move(corner.x, corner.y);
+    await page.mouse.down();
+    await page.mouse.move(corner.x + 40, corner.y + 20, { steps: 5 });
+    await page.mouse.up();
+    const resized = await frameOf(layer);
+    expect(resized.width).toBeLessThan(before.width);
+    expect(resized.x + resized.width).toBeCloseTo(before.x + before.width, 1);
+
+    // A press on Marsh moves the image, not the box, and selects nothing.
+    const marshBox = (await marsh.boundingBox())!;
+    const at = await center(marsh);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x - 60, at.y + 30, { steps: 5 });
+    await page.mouse.up();
+    const moved = await frameOf(layer);
+    expect(moved.x).toBeLessThan(resized.x);
+    expect(moved.width).toBeCloseTo(resized.width, 3);
+    expect((await marsh.boundingBox())!.x).toBeCloseTo(marshBox.x, 0);
+    await expect(marsh).not.toHaveClass(/selected/);
+
+    // Stop Adjusting: the box drags, the marquee selects, and a Connection draws, all over the image.
+    await page.getByRole('button', { name: 'Stop Adjusting' }).click();
+    await expect(layer).toHaveAttribute('data-map-background', 'locked');
+    const locked = await frameOf(layer);
+    const from = await center(marsh);
+    const marshFrom = (await marsh.boundingBox())!;
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x - 80, from.y - 40, { steps: 6 });
+    await page.mouse.up();
+    expect((await marsh.boundingBox())!.x).toBeLessThan(marshFrom.x - 40);
+    expect(await frameOf(layer)).toEqual(locked);
+
+    // The drag made Marsh the selection, so the marquee is what selects Harbor.
+    await expect(harbor).not.toHaveClass(/selected/);
+    const h = (await harbor.boundingBox())!;
+    await page.mouse.move(h.x + h.width + 20, h.y + h.height + 20);
+    await page.mouse.down();
+    await page.mouse.move(h.x - 10, h.y - 10, { steps: 6 });
+    await page.mouse.up();
+    await expect(harbor).toHaveClass(/selected/);
+    await page.keyboard.press('Escape');
+
+    const edges = page.locator('.react-flow__edge');
+    const edgesBefore = await edges.count();
+    await harbor.hover();
+    const grip = await center(harbor.locator('.react-flow__handle.source'));
+    const target = await center(marsh);
+    await page.mouse.move(grip.x, grip.y);
+    await page.mouse.down();
+    await page.mouse.move(target.x, target.y, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(() => edges.count()).toBeGreaterThan(edgesBefore);
+    expect(await frameOf(layer)).toEqual(locked);
   });
 
   test("the player's Map draws the background behind its boxes", async ({ page }) => {

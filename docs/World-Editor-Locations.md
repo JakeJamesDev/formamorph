@@ -123,9 +123,10 @@ A **Map Background** is a picture behind the boxes, such as a hand-drawn world m
 4. Set **Opacity**, then close the card.
 
 - 🔒 **Locked.** Outside Adjust, the image never moves. Dragging, selecting and connecting boxes work as before.
-- 🎚️ **Adjust Background.** Right-click open canvas to turn it on or off. The card also holds **Remove Image**.
-- 🔁 **Replace Background Image…** swaps the first image and keeps its place.
-- ↩️ Each drag, resize, or opacity change is one undo step.
+- 🎚️ **Adjust Background.** Right-click open canvas to turn it on or off. The boxes stay on top but don't move, so a drag anywhere on the image moves it. The card also holds **Remove Image**.
+- 🖼️ **Replace Background Image…** opens the map's gallery, the same one the **Media** tab shows. Select a tile to frame it, drag a tile to reorder, or select **x** to remove the framed image. The canvas shows the first image.
+- 🗑️ Removing the last image also clears its place and opacity. The next image lands like a first one: over your locations, or over the visible canvas when there are none.
+- ↩️ Each drag, resize, removal, or opacity change is one undo step.
 
 The **Media** tab can hold more than one map image, each with its own [Visibility rule](World-Editor-Entities#visibility-rules). In play, the Map shows the first visible image, all in the same frame. A condition with no owner reads the persona, as on a location. The canvas always shows the first image. See [Map Background in the Media tab](World-Editor-Media#map-background).
 

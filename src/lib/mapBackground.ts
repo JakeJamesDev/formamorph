@@ -93,3 +93,17 @@ export function resizeFrame(frame: MapFrame, corner: MapCorner, dx: number, dy: 
     height,
   };
 }
+
+/** The History Step label for a gallery write that turns `before` into `after`. */
+export function mapGalleryStepLabel(before: GalleryImage[], after: GalleryImage[]): string {
+  const kept = after.filter((img) => !!img.data);
+  if (!before.length) return 'Set Map Background';
+  const changed = (list: GalleryImage[], other: GalleryImage[]) => list.findIndex((img, i) => img.data !== other[i]?.data);
+  if (kept.length < before.length) return `Remove Image ${changed(before, kept) + 1}: Map Background`;
+  if (kept.length > before.length) return `Add Image ${kept.length}: Map Background`;
+  const at = changed(kept, before);
+  const sameSet = kept.map((img) => img.data).sort().join('\n') === before.map((img) => img.data).sort().join('\n');
+  if (at !== -1 && sameSet) return 'Reorder Images: Map Background';
+  if (at !== -1) return `Replace Image ${at + 1}: Map Background`;
+  return 'Edit Map Background';
+}

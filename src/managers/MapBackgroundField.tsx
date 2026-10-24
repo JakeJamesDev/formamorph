@@ -4,12 +4,13 @@ import { mapImages } from '@/lib/mapBackground';
 import type { GalleryImage, Placeholder, WorldOverview } from '@/types';
 import { ImageGallery, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
 
-/** The Map Background's gallery as the Media tab shows it. Its rules read as a location's do (Q74). */
-export function MapBackgroundField({ overview, onImagesChange, placeholders, frame }: {
+/** The Map Background's gallery as the Media tab and the canvas card show it. Its rules read as a location's do (Q74). */
+export function MapBackgroundField({ overview, onImagesChange, placeholders, frame, imageId = 'media-map-background' }: {
   overview: Pick<WorldOverview, 'mapBackground' | 'description' | 'name'>;
   onImagesChange: (images: GalleryImage[]) => void;
   placeholders: Placeholder[];
   frame?: GalleryFrameProps;
+  imageId?: string;
 }) {
   return (
     <ImageWidget
@@ -17,7 +18,7 @@ export function MapBackgroundField({ overview, onImagesChange, placeholders, fra
       images={mapImages(overview)}
       onImagesChange={onImagesChange}
       slots={Infinity}
-      imageId="media-map-background"
+      imageId={imageId}
       cap={IMAGE_CAPS.map}
       description={overview.description}
       kind="world"

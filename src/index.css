@@ -961,6 +961,18 @@ b {
   opacity: 0.25;
 }
 
+/* Locations canvas while the Map Background is adjusted: the boxes and arrows draw over the map but take no
+   pointer, so a press anywhere on the map moves it. `!important` beats xyflow's own handle and edge rules.
+   LocationCanvas holds the same boxes still through its xyflow props. */
+.canvas-adjusting .react-flow__node,
+.canvas-adjusting .react-flow__node *,
+.canvas-adjusting .react-flow__edge,
+.canvas-adjusting .react-flow__edge *,
+.canvas-adjusting .react-flow__edgelabel-renderer *,
+.canvas-adjusting .react-flow__nodesselection-rect {
+  pointer-events: none !important;
+}
+
 /* The zoom controls: xyflow's base stylesheet leaves them unpainted, so they take the app's own button look
    and follow the theme with everything else. */
 .react-flow__controls-button {
