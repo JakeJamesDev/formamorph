@@ -748,12 +748,12 @@ export const MiddlePanel = ({
   const pageReasoning = pageReasoningLive
     ? liveReasoning
     : currentAssistantMessage ? parseSavedReasoning(currentAssistantMessage.content) : null;
-  const pageActions = currentAssistantMessage ? actionsFor({
   // The card holds its actions while live, so its row can open in place once the narration settles.
+  const pageActions = currentAssistantMessage ? actionsFor({
     index: currentPage - 1, isLatest: !isViewingPast, live: false, hasImage: sceneImages.length > 0, text: pageNarration,
   }) : [];
-  // The turn is live from submit, before its narration exists, until the reveal ends.
   const pageChromeHeld = pageLive && !narrationSettled;
+  // The turn is live from submit, before its narration exists, until the reveal ends.
   const actionLineActions = actionLine === undefined ? [] : playerActionsFor({
     index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
   });
