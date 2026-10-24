@@ -4819,12 +4819,18 @@ const GameViewer = ({
 
   // Status row shown while a turn is being generated, naming the current AI
   // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.
+  // One start per busy stretch, so the timer spans every request of the turn and resets with the next.
+  const busyStartedAtRef = useRef<number | null>(null);
+  if (!isWaitingForAI) busyStartedAtRef.current = null;
+  else busyStartedAtRef.current ??= Date.now();
+  const turnStartedAt = busyStartedAtRef.current ?? undefined;
+
   const progressBar = (() => {
     // The active turn's request takes the status row; a silent memory digest (which runs between turns)
     // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled. Tool
     // rounds are silent requests, so their line follows the same setting.
     const toolStatus = toolCallStatus(toolLookups);
-    if (toolStatus && showSilentRequests) return <RequestStatusRow label={toolStatus} />;
+    if (toolStatus && showSilentRequests) return <RequestStatusRow label={toolStatus} startedAt={turnStartedAt} />;
     if (isWaitingForAI) {
       const labels: Partial<Record<AIRequestType, string>> = {
         thinking: "Plan",
@@ -4845,7 +4851,7 @@ const GameViewer = ({
         sceneTags: "Scene Tags",
       };
       const label = (aiRequestType && labels[aiRequestType]) ?? "Response";
-      return <RequestStatusRow label={`Generating ${label}…`} />;
+      return <RequestStatusRow label={`Generating ${label}…`} startedAt={turnStartedAt} />;
     }
     return showSilentRequests ? <BackgroundPassStatus running={passesRunning} /> : null;
   })();

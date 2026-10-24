@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Local vision models see the images in your story when their projector sits beside the model.** Recommended vision models download theirs with them and show a **Vision** badge. A text-only model still drops images.
     - **Context Overflow chooses what happens when a story is longer than Context Size.** Truncate Middle keeps the system prompt and your first message. Rolling Window keeps the system prompt and drops the oldest messages. Stop at Limit shows an error. Find it in **Advanced**.
     - **World Tools work on the desktop engine, and the model reads each Tool's result before it answers.** Context Overflow keeps the current Tool round whole and drops an older round only as a unit.
+  - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
 - **⚙️ Backend**
   - **Llama Server Engine:**
     - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.
