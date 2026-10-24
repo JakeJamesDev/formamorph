@@ -5,8 +5,6 @@ import { cn } from '@/lib/utils';
 export const FLOATING = 'pointer-events-auto shadow-md';
 export const BUBBLE = cn(FLOATING, 'rounded-2xl px-3 py-2 text-label');
 export const ASSISTANT_BUBBLE = cn(BUBBLE, 'mr-6 self-start rounded-bl-sm border bg-popover text-popover-foreground');
-/** How far, in pixels, the scroller scrolls before older content fades out fully at its top. */
-export const TOP_FADE_DEPTH = 32;
 /**
  * Older content fades out at the top of a scroller, with no hard edge. `--fq-fade` is how much of the fade shows,
  * which `useFollowEnd` writes on the nearest `data-fq-fade` ancestor from the scroll, so the fade grows in over
