@@ -184,7 +184,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 | Area | What it holds |
 |---|---|
-| The story | The narration, the choices and the action box. A status line above the box names the request that is running, such as *Generating Narration…* |
+| The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the request that is running, such as *Generating Narration…* |
 | The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
 | The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits** and **Location** tabs |
 | Top left | The music button and the AI Context button |

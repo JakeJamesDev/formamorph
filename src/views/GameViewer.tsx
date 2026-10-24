@@ -43,11 +43,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Meta } from "@/components/ui/typography";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
 import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
-import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
@@ -154,6 +152,7 @@ import {
   type BackgroundPassKind, type BackgroundPassQueue, type DiaryTarget, type DigestTarget,
 } from "../lib/backgroundPassQueue/backgroundPassQueue";
 import { BackgroundPassStatus } from "../components/game/BackgroundPassStatus";
+import { RequestStatusRow } from "../components/game/RequestStatusRow";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
@@ -4818,25 +4817,14 @@ const GameViewer = ({
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
   const parseAssistantMessage = (content: string) => narrationOf(content) ?? "";
 
-  // Status line shown above the input while a turn is being generated, naming the current AI
+  // Status row shown while a turn is being generated, naming the current AI
   // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.
   const progressBar = (() => {
     // The active turn's request takes the status row; a silent memory digest (which runs between turns)
     // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled. Tool
     // rounds are silent requests, so their line follows the same setting.
     const toolStatus = toolCallStatus(toolLookups);
-    if (toolStatus && showSilentRequests) {
-      return (
-        <div className="flex items-center gap-2 mb-1">
-          <Meta className="whitespace-nowrap truncate min-w-0 max-w-[60%]">
-            {toolStatus}
-          </Meta>
-          <div className="flex-grow">
-            <IndeterminateProgress />
-          </div>
-        </div>
-      );
-    }
+    if (toolStatus && showSilentRequests) return <RequestStatusRow label={toolStatus} />;
     if (isWaitingForAI) {
       const labels: Partial<Record<AIRequestType, string>> = {
         thinking: "Plan",
@@ -4857,16 +4845,7 @@ const GameViewer = ({
         sceneTags: "Scene Tags",
       };
       const label = (aiRequestType && labels[aiRequestType]) ?? "Response";
-      return (
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-meta text-muted-foreground whitespace-nowrap">
-            Generating {label}…
-          </span>
-          <div className="flex-grow">
-            <IndeterminateProgress />
-          </div>
-        </div>
-      );
+      return <RequestStatusRow label={`Generating ${label}…`} />;
     }
     return showSilentRequests ? <BackgroundPassStatus running={passesRunning} /> : null;
   })();

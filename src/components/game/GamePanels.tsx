@@ -20,6 +20,7 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
+import { RequestStatusStrip } from './RequestStatusRow';
 import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
@@ -1102,6 +1103,9 @@ export const MiddlePanel = ({
               });
             }}
           />
+          {/* The footer. The status strip floats above it, so a request starting or ending moves nothing. */}
+          <div className="relative flex flex-col gap-2">
+          {progressBar && <RequestStatusStrip>{progressBar}</RequestStatusStrip>}
           <div className="flex flex-col items-center gap-2">
             {likePrompt}
             {locationSuggestion}
@@ -1112,7 +1116,6 @@ export const MiddlePanel = ({
               </div>
             )}
           </div>
-          {progressBar}
           <div className={cn('flex flex-col gap-2', attachDragOver && 'rounded-md ring-2 ring-inset ring-ring')} {...intakeProps}>
             {imageAttachments && (
               <AttachmentThumbs
@@ -1180,6 +1183,7 @@ export const MiddlePanel = ({
                 </Tip>
               )}
             </div>
+          </div>
           </div>
         </div>
       </CardContent>
