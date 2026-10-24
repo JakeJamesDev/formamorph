@@ -21,6 +21,8 @@ The world's Avatar store moves from the Overview into the Media tab (Q5, Q25), i
 - **Delete** keeps today's confirm, which names the entities that use the Avatar; they fall back to None, and a spent legacy fallback clears, as today.
 - Each action is one history step with today's labels.
 
+Keep the Avatar item id form `world:world:avatar:<id>`: ticket 05's image panel links to it (Q43).
+
 The Overview loses its Avatar section. The entity Avatar dropdown stays on the entity panel.
 
 Update the Overview and Avatars wiki pages. Changelog fragment: fold into the entity-avatars entry if it is still unreleased, otherwise into ticket 01's line.
