@@ -204,6 +204,89 @@ export function kindBreakdown(items: readonly MediaItem[]): { kind: MediaKind; c
 export const largestItems = (items: readonly MediaItem[], count: number): MediaItem[] =>
   [...items].sort((a, b) => b.bytes - a.bytes).slice(0, count);
 
+/** Only an entity's or location's images stack; every other item is its own card. */
+export const canStack = (item: MediaItem): boolean =>
+  item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location');
+
+/** A section's cards: one parent's images stack when there are two or more, and every other item is its own card. */
+export interface MediaCardGroup {
+  item: MediaItem;
+  /** The parent's images, on the card that leads them. */
+  images?: MediaItem[];
+}
+
+export function sectionCards(items: readonly MediaItem[]): MediaCardGroup[] {
+  const cards: MediaCardGroup[] = [];
+  const stacks = new Map<string, MediaItem[]>();
+  for (const item of items) {
+    if (!canStack(item)) { cards.push({ item }); continue; }
+    const key = `${item.parent.kind}:${item.parent.id}`;
+    const images = stacks.get(key);
+    if (images) { images.push(item); continue; }
+    const fresh = [item];
+    stacks.set(key, fresh);
+    cards.push({ item, images: fresh });
+  }
+  return cards;
+}
+
+export type MediaGrouping = 'parent' | 'type';
+
+/** The same items in one section per kind (Images, Sounds, 3D Models, Avatars), in author order; empty kinds are left out. */
+export function typeSections(sections: readonly MediaSection[]): MediaSection[] {
+  const items = sections.flatMap((s) => s.items);
+  return MEDIA_KINDS.flatMap((kind) => {
+    const list = items.filter((i) => i.kind === kind);
+    return list.length ? [{ id: `type:${kind}`, path: [MEDIA_KIND_LABELS[kind].many], items: list }] : [];
+  });
+}
+
+export const groupSections = (sections: MediaSection[], grouping: MediaGrouping): MediaSection[] =>
+  grouping === 'type' ? typeSections(sections) : sections;
+
+export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget';
+
+export const MEDIA_FILTERS: readonly { value: MediaFilter; label: string }[] = [
+  { value: 'all', label: 'All Media' },
+  { value: 'linked', label: 'Linked' },
+  { value: 'embedded', label: 'Embedded' },
+  { value: 'rules', label: 'Has Visibility Rules' },
+  { value: 'overBudget', label: 'Over Size Budget' },
+];
+
+/** Linked, rules and budget match images only; Embedded matches every item that is not a linked image. */
+export function matchesMediaFilter(item: MediaItem, filter: MediaFilter): boolean {
+  switch (filter) {
+    case 'all': return true;
+    case 'linked': return item.kind === 'image' && item.linked;
+    case 'embedded': return !item.linked;
+    case 'rules': return item.kind === 'image' && !!item.rules?.length;
+    case 'overBudget': return item.kind === 'image' && item.overBudget;
+  }
+}
+
+/** The sections' items that pass the filter; a section with none is left out. */
+export function filterSections(sections: MediaSection[], filter: MediaFilter): MediaSection[] {
+  if (filter === 'all') return sections;
+  return sections
+    .map((s) => ({ ...s, items: s.items.filter((i) => matchesMediaFilter(i, filter)) }))
+    .filter((s) => s.items.length);
+}
+
+/** Each section's cards by size, largest first, ties in author order. A stack sorts by its images' total and keeps their order. */
+export function sortSectionsLargestFirst(sections: MediaSection[]): MediaSection[] {
+  return sections.map((s) => ({
+    ...s,
+    items: sectionCards(s.items)
+      .map((card, order) => {
+        const members = card.images ?? [card.item];
+        return { members, order, bytes: totalBytes(members) };
+      })
+      .sort((a, b) => b.bytes - a.bytes || a.order - b.order)
+      .flatMap((card) => card.members),
+  }));
+}
+
 /** "640 KB", "12.4 MB": 1024-based, so a section's figure agrees with the Publish Size readout. */
 export function formatMediaBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

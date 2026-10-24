@@ -69,6 +69,8 @@ export interface TestBenchHandle {
   docked: boolean;
   /** The flask's one-button semantics: nothing showing opens the popover, anything showing closes. */
   toggleFlask: () => void;
+  /** The world's publish size from the worker measure, or null until the first one lands. */
+  publishBytes: number | null;
   /** Whether any Bench surface is showing — what the flask reads as pressed from. */
   active: boolean;
   /** How many rows the Issues list shows — the header badge's muted total. */
@@ -417,6 +419,7 @@ export function useTestBench({
     embedded: !isMobile && panelShown && placement === 'embedded',
     docked: !isMobile && panelShown && placement === 'docked',
     toggleFlask,
+    publishBytes,
     active: panelShown || popoverOpen,
     count: bench.groups.length,
     newCount: bench.newCount,

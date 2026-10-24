@@ -23,11 +23,11 @@ describe('the out-of-band publish-size finding', () => {
 
     expect(found.ruleId).toBe(WORLD_TOO_LARGE.id);
     expect(found.severity).toBe('warning');
-    expect(found.section).toBe('overview');
+    expect(found.section).toBe('media');
     expect(found.message).toBe('The world is 100 MB, over the 100 MB publish limit.');
   });
 
-  it('opens the Overview from its item, and carries no fix', () => {
+  it('opens the Media tab from its item, and carries no fix', () => {
     const [found] = checkWorldSize(world(), PUBLISH_LIMITS.world + 1);
 
     expect(found.items).toEqual([{ id: 'overview', name: 'Sedge Landing' }]);

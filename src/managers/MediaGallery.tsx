@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { RemoteImg } from '@/lib/useRemoteImage';
-import { formatMediaBytes, namedBySlot, sectionSelection, sectionTitle, totalBytes, type MediaItem, type MediaKind, type MediaSection } from '@/lib/mediaIndex';
+import { formatMediaBytes, namedBySlot, sectionCards, sectionSelection, sectionTitle, totalBytes, type MediaItem, type MediaKind, type MediaSection } from '@/lib/mediaIndex';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 
@@ -71,23 +71,6 @@ function MediaCard({ item, images, selected, onSelect, placeholders }: {
       </span>
     </button>
   );
-}
-
-/** A section's cards: one parent's images stack when there are two or more, and every other item is its own card. */
-function sectionCards(items: MediaItem[]): { item: MediaItem; images?: MediaItem[] }[] {
-  const cards: { item: MediaItem; images?: MediaItem[] }[] = [];
-  const stacks = new Map<string, MediaItem[]>();
-  for (const item of items) {
-    const canStack = item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location');
-    if (!canStack) { cards.push({ item }); continue; }
-    const key = `${item.parent.kind}:${item.parent.id}`;
-    const images = stacks.get(key);
-    if (images) { images.push(item); continue; }
-    const fresh = [item];
-    stacks.set(key, fresh);
-    cards.push({ item, images: fresh });
-  }
-  return cards;
 }
 
 /** The Media tab's list: one section per folder, each with its path and total, over a grid of cards. */

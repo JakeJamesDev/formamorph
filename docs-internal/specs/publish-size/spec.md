@@ -29,7 +29,7 @@ The server's world limit becomes 100 MB. The client mirrors it as one constant. 
 6. As a world author, I want the bar to stop at full when the world is over the limit, so that the readout stays legible.
 7. As a world author, I want an over-limit world to raise a warning finding, so that the flask badge tells me without opening the Bench.
 8. As a world author, I want the finding to name the size and the limit, so that I know how much to cut.
-9. As a world author, I want the finding to open the Overview, so that I land somewhere sensible when I click it.
+9. As a world author, I want the finding to open the Media tab, so that I land where I can find the heavy files.
 10. As a world author, I want the finding to have no one-click fix, so that nothing deletes my images for me.
 11. As a world author, I want the bar in the Bench Popover, so that quick triage shows it.
 12. As a world author, I want the bar in the full Test Bench panel, embedded or docked, so that every chrome agrees.
@@ -80,7 +80,7 @@ The server's world limit becomes 100 MB. The client mirrors it as one constant. 
 
 **Off-thread serialization.** The measure runs in the existing JSON file worker with no indentation, returning the byte count. The World Editor pass reuses the Bench's debounce: the size recomputes once the world has been still for the same interval the rules use. The bar shows the last known figure while a new one is pending, and nothing before the first result.
 
-**Out-of-band finding.** A `world-too-large` head with severity warning, section overview, no check, no fix, following the stat-code-execution pattern. A hook produces the finding when the measured bytes reach the limit, and the orchestrating hook merges it with the rule findings. Because it is not in the rule catalog, Triggers never runs it and the rule count does not include it. The message states the measured size and the limit.
+**Out-of-band finding.** A `world-too-large` head with severity warning, section media, no check, no fix, following the stat-code-execution pattern. A hook produces the finding when the measured bytes reach the limit, and the orchestrating hook merges it with the rule findings. Because it is not in the rule catalog, Triggers never runs it and the rule count does not include it. The message states the measured size and the limit.
 
 **Bands.** Ratio is bytes over the kind's limit. Green below 0.6, amber from 0.6 to below 0.9, red from 0.9. The fill clamps at 1.0. The readout formats both numbers with 1024-based units to one decimal, and shows a whole number bare, so "100 MB" agrees with the server's "100MB" wording. The existing 1000-based image formatter is not used here.
 

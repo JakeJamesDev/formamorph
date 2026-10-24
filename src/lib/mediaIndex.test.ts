@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
-import { buildMediaIndex, formatMediaBytes, kindBreakdown, largestItems, mediaFileName, mediaSections, storedBytes, totalBytes } from './mediaIndex';
+import {
+  buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaSections, sectionCards,
+  sortSectionsLargestFirst, storedBytes, totalBytes, type MediaFilter,
+} from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
 import { measurePublishBytes } from './publishLimits';
 import { LINKED_IMAGE, fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
@@ -142,5 +145,98 @@ describe('totals and summaries', () => {
     expect(formatMediaBytes(2048)).toBe('2 KB');
     expect(formatMediaBytes(5 * 1024 * 1024)).toBe('5 MB');
     expect(formatMediaBytes(1.25 * 1024 * 1024)).toBe('1.3 MB');
+  });
+});
+
+const names = (items: readonly { parent: { name: string }; slot: string }[]) => items.map((i) => `${i.parent.name} ${i.slot}`);
+
+describe('groupSections by type', () => {
+  it('makes one section per kind, in kind order, each keeping author order and naming its parent', () => {
+    const sections = groupSections(mediaSections(mediaFixtureWorld()), 'type');
+
+    expect(sections.map((s) => [s.path.join(' › '), names(s.items)])).toEqual([
+      ['Images', [
+        'World Thumbnail', 'Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3', 'Bram Image 1',
+        'Marsh Background Image', 'Harbor Steps Background Image', 'Lamp Room Background Image', 'Fen Lore Thumbnail',
+      ]],
+      ['Sounds', ['World Background Music', 'Odd Wick Sound', 'Lamp Room Ambient Sound']],
+      ['3D Models', ['Odd Wick 3D Model']],
+      ['Avatars', ['World Fen Walker', 'World Spare']],
+    ]);
+  });
+
+  it('leaves kinds with no items out, and keeps parent grouping as it is', () => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.vrmStore = {};
+    const parent = mediaSections(world);
+
+    expect(groupSections(parent, 'type').map((s) => s.path[0])).not.toContain('Avatars');
+    expect(groupSections(parent, 'parent')).toBe(parent);
+  });
+
+  it("still stacks one parent's images inside Images", () => {
+    const images = groupSections(mediaSections(mediaFixtureWorld()), 'type')[0];
+
+    expect(sectionCards(images.items).filter((c) => c.images && c.images.length > 1).map((c) => c.item.parent.name)).toEqual(['Odd Wick']);
+  });
+});
+
+describe('sortSectionsLargestFirst', () => {
+  it("orders each section's cards by size and keeps a stack's image order", () => {
+    const sorted = sortSectionsLargestFirst(mediaSections(mediaFixtureWorld()));
+    const entities = sorted.find((s) => s.id === 'entities')!;
+
+    // The 3D Model outweighs the stack (two uploads and a link), and the stack outweighs the Sound.
+    expect(names(entities.items)).toEqual(['Odd Wick 3D Model', 'Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3', 'Odd Wick Sound']);
+    expect(sorted.map((s) => s.id)).toEqual(mediaSections(mediaFixtureWorld()).map((s) => s.id));
+  });
+
+  it("sorts a stack by its total, not by its largest image", () => {
+    const world = mediaFixtureWorld();
+    // Three 1,900-byte images total more than the 3D Model, though each is smaller than it.
+    world.entities[0].images = [1, 2, 3].map((n) => ({ data: fakeDataUrl('image/webp', 1_900, String(n)) }));
+    const entities = sortSectionsLargestFirst(mediaSections(world)).find((s) => s.id === 'entities')!;
+
+    expect(names(entities.items).slice(0, 3)).toEqual(['Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3']);
+  });
+});
+
+describe('filterSections', () => {
+  const pick = (filter: MediaFilter) => names(filterSections(mediaSections(mediaFixtureWorld()), filter).flatMap((s) => s.items));
+
+  it('keeps linked images only under Linked', () => {
+    expect(pick('linked')).toEqual(['Odd Wick Image 3']);
+  });
+
+  it('keeps every item that is not a linked image under Embedded, sounds and Avatars included', () => {
+    const embedded = pick('embedded');
+
+    expect(embedded).not.toContain('Odd Wick Image 3');
+    expect(embedded).toEqual(expect.arrayContaining(['World Background Music', 'Odd Wick 3D Model', 'World Spare', 'Odd Wick Image 1']));
+    expect(embedded).toHaveLength(buildMediaIndex(mediaFixtureWorld()).length - 1);
+  });
+
+  it('keeps images with Visibility rules under Has Visibility Rules', () => {
+    expect(pick('rules')).toEqual(['Odd Wick Image 2']);
+  });
+
+  it('keeps images over their budget under Over Size Budget, and no other kind', () => {
+    expect(pick('overBudget')).toEqual(['Bram Image 1']);
+  });
+
+  it('leaves out a section with no match, and passes everything under All Media', () => {
+    const all = mediaSections(mediaFixtureWorld());
+
+    expect(filterSections(all, 'overBudget').map((s) => s.id)).toEqual(['group:deckhands']);
+    expect(filterSections(all, 'all')).toBe(all);
+  });
+
+  it('forms a stack from the images that pass, so its count and total follow the filter', () => {
+    const entities = filterSections(mediaSections(mediaFixtureWorld()), 'embedded').find((s) => s.id === 'entities')!;
+    const stack = sectionCards(entities.items).find((c) => c.images)!.images!;
+    const embeddedWick = buildMediaIndex(mediaFixtureWorld()).filter((i) => i.parent.name === 'Odd Wick' && i.kind === 'image' && !i.linked);
+
+    expect(stack.map((i) => i.slot)).toEqual(['Image 1', 'Image 2']);
+    expect(totalBytes(stack)).toBe(totalBytes(embeddedWick));
   });
 });

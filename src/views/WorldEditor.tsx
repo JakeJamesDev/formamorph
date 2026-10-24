@@ -1050,6 +1050,7 @@ const WorldEditorInner = ({
   }, [navigateToBenchItem]);
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
+    publishBytes: bench.publishBytes,
   });
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {

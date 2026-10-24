@@ -1,6 +1,6 @@
 # 02: Header Row
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -28,13 +28,25 @@ Changelog fragment: fold into ticket 01's line if it is still unreleased by land
 
 ## Acceptance criteria
 
-- [ ] The header is one row at 1600×900 and at 390×844
-- [ ] The meter's readout matches the World Doctor bar's figure for the same world, and its band color matches
-- [ ] Type grouping shows Images, Sounds, 3D Models and Avatars sections, with parent names on cards
-- [ ] Largest First sorts each section by size and restores author order when off
-- [ ] Each filter narrows the gallery to the matching items; the active filter's name shows on its button
-- [ ] Grouping and Largest First survive closing and reopening the editor; no world field changes
-- [ ] The over-limit finding opens the Media tab
-- [ ] Frames: `.scratch/frames/media-header-dark.png` and `.scratch/frames/media-header-light.png` with a filter active
+- [x] The header is one row at 1600×900 and at 390×844 (DOM read: 36 px high at both widths, no horizontal overflow, with the longest filter name on)
+- [x] The meter's readout matches the World Doctor bar's figure for the same world, and its band color matches (`WorldEditor.mediaTab.test.tsx` › "reads the same figure and band as the World Doctor's bar")
+- [x] Type grouping shows Images, Sounds, 3D Models and Avatars sections, with parent names on cards (test › "groups by type with parent names on the cards")
+- [x] Largest First sorts each section by size and restores author order when off (test › "sorts each section's cards largest first")
+- [x] Each filter narrows the gallery to the matching items; the active filter's name shows on its button (test › "narrows the gallery under %s")
+- [x] Grouping and Largest First survive closing and reopening the editor; no world field changes (test › "keeps grouping and Largest First when the editor reopens")
+- [x] The over-limit finding opens the Media tab (test › "opens the Media tab from the over-limit finding")
+- [x] Frames: `.scratch/frames/media-header-dark.png` and `.scratch/frames/media-header-light.png` with a filter active
 
 For you: judge whether the icon-only grouping and sort buttons read clearly enough with their tooltips.
+
+## Landed
+
+**Not verified**
+
+- The 390 px label change (the "Publish Size" label turns screen-reader-only below 480 px) was made after the mobile check, and the preview has no hot reload. The one-row DOM read ran before it.
+
+**For you**
+
+- Judge whether the icon-only grouping and sort buttons read clearly enough with their tooltips. Frames: `.scratch/media-tab-02/frames/media-header-dark.png`, `.scratch/media-tab-02/frames/media-header-light.png`.
+- Selecting a card and then filtering it out keeps its panel open (the selection survives a filter or grouping change). A selected section that a filter empties closes. Judge whether the card should close too.
+- The changelog fragment lands as its own entry under the **Media Tab** group, not folded into ticket 01's line.
