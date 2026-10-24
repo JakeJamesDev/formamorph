@@ -4923,8 +4923,7 @@ const GameViewer = ({
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
   const parseAssistantMessage = (content: string) => narrationOf(content) ?? "";
 
-  // Status row shown while a turn is being generated, naming the current AI
-  // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.
+  // The status strip names the running request: a turn's AI request, a Tool round, or a background pass.
   // One start per busy stretch, so the timer spans every request of the turn and resets with the next.
   const busyStartedAtRef = useRef<number | null>(null);
   if (!isWaitingForAI) busyStartedAtRef.current = null;
