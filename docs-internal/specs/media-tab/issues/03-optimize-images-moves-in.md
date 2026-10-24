@@ -13,7 +13,7 @@ Moves an existing action and switches its scan to the media index. The risk is i
 
 ## What to build
 
-**Optimize Images** leaves the World Editor app bar and becomes the last icon in the Media tab header, in both editor modes (Q7, Q9). It keeps its downscale consent dialog, its progress (a spinner on the icon, progress in its tooltip), its cancel-on-close behavior, and its single history step.
+**Optimize Images** leaves the World Editor app bar and becomes the last icon in the Media tab header row (the row above search, Q37), in both editor modes (Q7, Q9). It keeps its downscale consent dialog, its progress (a spinner on the icon, progress in its tooltip), its cancel-on-close behavior, and its single history step.
 
 The optimize scan reads the media index's image items instead of the old image slot list, so dictionary thumbnails are optimized under the thumbnail budget along with the world thumbnail, entity gallery images and location backgrounds. The apply step writes dictionary thumbnails back. The import-time optimize on the main menu uses the same list.
 
