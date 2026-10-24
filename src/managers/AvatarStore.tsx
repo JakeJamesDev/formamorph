@@ -72,7 +72,6 @@ export function useAvatarStore() {
   const replace = async (id: string, media: MediaAsset) => {
     const hash = await blobHash(await (await fetch(media.data)).blob());
     // The panel closed during the read: the pick is dropped, as an upload is.
-    // The panel closed during the read: the pick is dropped, as an upload is.
     if (!mounted.current) return;
     const file = { ...media, type: media.type || 'model/vrm' };
     await step(`Replace Avatar: ${labelName(storeRef.current?.[id]?.name ?? '')}`, () =>
@@ -169,7 +168,7 @@ export function AvatarStoreControls() {
       const [data, fileHash] = await Promise.all([blobToDataUrl(blob), hash ?? blobHash(blob)]);
       if (!mounted.current) return;
       add(model.name, { data, type: type || 'model/vrm', name: libraryFileName(model.name, model.license), size: blob.size }, fileHash);
-    } catch (error) {
+    } catch (error: unknown) {
       toastError(error, { headline: 'Error copying the Avatar. Please try again.' });
     }
   };
