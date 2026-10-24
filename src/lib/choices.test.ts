@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { parseChoices, matchChoicesToAction, choiceRuns, keepSameRows } from './choices';
+import { parseChoices, matchChoicesToAction, choiceRuns, keepSameRows, parseStreamingChoices } from './choices';
+
+describe('parseStreamingChoices', () => {
+  it('ends on the same rows as the finished parse, except a one-word last line still being written', () => {
+    const reply = '1. Walk down the hall\n2. Call into the dark';
+    expect(parseStreamingChoices(reply)).toEqual(parseChoices(reply));
+    expect(parseStreamingChoices('Walk down the hall\nWait')).toEqual(['Walk down the hall']);
+    expect(parseStreamingChoices('1. Walk down the hall\n2.')).toEqual(['Walk down the hall']);
+    expect(parseStreamingChoices('1. Walk down the hall\n2. Wait')).toEqual(['Walk down the hall', 'Wait']);
+  });
+});
 
 describe('keepSameRows', () => {
   it('keeps the previous list when a token leaves the parsed rows unchanged', () => {

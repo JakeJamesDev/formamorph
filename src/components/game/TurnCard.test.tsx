@@ -26,9 +26,18 @@ describe('TurnCard', () => {
     expect(screen.queryByTestId('bubble-actions')).toBeNull();
   });
 
-  it('hides the row while the turn is live, even with actions', () => {
-    render(<TurnCard actions={actions} turnNumber={2} live><p>body</p></TurnCard>);
-    expect(screen.queryByTestId('bubble-actions')).toBeNull();
+  it('keeps the row closed and the menu empty while the turn is live, then opens the row by growing it', () => {
+    const view = render(<TurnCard actions={actions} turnNumber={2} live><p>body</p></TurnCard>);
+    const row = screen.getByTestId('turn-actions');
+    expect(row.dataset.open).toBe('false');
+    expect(row.getAttribute('aria-hidden')).toBe('true');
+    expect(row.style.gridTemplateRows).toBe('0fr');
+    fireEvent.contextMenu(screen.getByText('body'));
+    expect(screen.queryByRole('menu')).toBeNull();
+    view.rerender(<TurnCard actions={actions} turnNumber={2}><p>body</p></TurnCard>);
+    expect(row.dataset.open).toBe('true');
+    expect(row.style.gridTemplateRows).toBe('1fr');
+    expect(row.style.transition).toContain('grid-template-rows');
   });
 
   it('opens its menu with every action on right-click', () => {
