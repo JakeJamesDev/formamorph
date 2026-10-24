@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import VRMViewer from '@/views/VRMViewer';
 import { resolveModelType } from '@/lib/UtilityComponents';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { useHeldModelBlob } from '@/lib/useHeldModelBlob';
+import { cn } from '@/lib/utils';
 import {
   MEDIA_KIND_LABELS, formatMediaBytes, kindBreakdown, largestItems, namedBySlot, totalBytes,
   type MediaItem, type MediaParent,
@@ -24,7 +25,7 @@ import { actsInItemPanel, useMediaItemActions } from './useMediaItemActions';
 const LARGEST_COUNT = 5;
 
 /** The jump to the place that holds an item: its entity, location or dictionary, or the Overview for world media. */
-function GoToButton({ parent, placeholders, onGoTo }: {
+export function GoToButton({ parent, placeholders, onGoTo }: {
   parent: MediaParent;
   placeholders: readonly Placeholder[];
   onGoTo: (parent: MediaParent) => void;
@@ -33,6 +34,18 @@ function GoToButton({ parent, placeholders, onGoTo }: {
     <Button variant="ghost" size="sm" onClick={() => onGoTo(parent)}>
       {parent.kind === 'world' ? 'Go to Overview' : <>Go to{' '}<PlaceholderText text={parent.name} placeholders={placeholders} /></>}
     </Button>
+  );
+}
+
+/** An item's size, an image's budget, and the over-budget badge, after whatever leads the line. */
+export function MediaFacts({ item, className, children }: { item: MediaItem; className?: string; children?: ReactNode }) {
+  return (
+    <div className={cn('flex flex-wrap items-center gap-2 text-meta text-muted-foreground', className)}>
+      {children}
+      <MediaSize item={item} />
+      {item.budget && !item.linked && <span>· Budget {formatMediaBytes(item.budget.maxBytes)}</span>}
+      {item.overBudget && <Badge variant="outline" className="border-warning text-warning">Over Budget</Badge>}
+    </div>
   );
 }
 
@@ -79,13 +92,10 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
           )}
           <span className="truncate">{item.slot}</span>
         </h2>
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
+        <MediaFacts item={item} className="mt-1">
           <span>{MEDIA_KIND_LABELS[item.kind].one}</span>
           <span aria-hidden>·</span>
-          <MediaSize item={item} />
-          {item.budget && !item.linked && <span>· Budget {formatMediaBytes(item.budget.maxBytes)}</span>}
-          {item.overBudget && <Badge variant="outline" className="border-warning text-warning">Over Budget</Badge>}
-        </div>
+        </MediaFacts>
       </div>
       <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>
       <div className="flex flex-wrap gap-2">

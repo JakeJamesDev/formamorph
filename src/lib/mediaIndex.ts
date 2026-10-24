@@ -66,7 +66,10 @@ export function storedBytes(value: string): number {
   return bytes;
 }
 
-const itemId = (parent: MediaParent, key: MediaSlotKey) => `${parent.kind}:${parent.id}:${key}`;
+/** One key per parent, the prefix of every item id it holds. */
+export const mediaParentKey = (parent: MediaParent): string => `${parent.kind}:${parent.id}`;
+
+const itemId = (parent: MediaParent, key: MediaSlotKey) => `${mediaParentKey(parent)}:${key}`;
 
 function image(parent: MediaParent, key: MediaSlotKey, slot: string, value: string, budget: ImageCap, extra: Partial<MediaItem> = {}): MediaItem {
   const linked = isRemoteImage(value);

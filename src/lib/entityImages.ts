@@ -1,4 +1,4 @@
-import type { Base64Data, GalleryImage, TraitRequirement } from '@/types';
+import type { Base64Data, GalleryImage, TraitRequirement, TraitRequirementRow } from '@/types';
 import { mapConditions } from './requirementRows';
 
 /** An entity's picture list in the shape the app stores it, or in any shape a record written before it holds. */
@@ -37,6 +37,16 @@ export const entityImageData = (entity?: ImageBearing | null): Base64Data[] => e
  * character card's own pixels. The first slot, so reordering the gallery is how an author changes it.
  */
 export const primaryImage = (entity?: ImageBearing | null): Base64Data | undefined => entityImages(entity)[0]?.data;
+
+/** `images` with image `index` under rule `rows`; empty rows drop the field. */
+export const withImageRule = (images: readonly GalleryImage[], index: number, rows: TraitRequirementRow[]): GalleryImage[] =>
+  images.map((img, i) => {
+    if (i !== index) return img;
+    const next = { ...img };
+    if (rows.length) next.requires = rows;
+    else delete next.requires;
+    return next;
+  });
 
 /** Whether any image in the entity's gallery carries a Visibility rule. */
 export const hasImageRules = (entity?: ImageBearing | null): boolean => entityImages(entity).some((img) => !!img.requires?.length);

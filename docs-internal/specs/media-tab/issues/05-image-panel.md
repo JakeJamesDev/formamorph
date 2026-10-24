@@ -1,6 +1,6 @@
 # 05: Image Panel
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -28,16 +28,25 @@ Update the wiki page from ticket 01 with the panel. Changelog fragment: fold int
 
 ## Acceptance criteria
 
-- [ ] A stack opens the image panel framed on the primary; an image card opens framed on that image
-- [ ] A strip click frames that image and the details below switch to it
-- [ ] The add tile frames the empty slot and an upload lands there
-- [ ] Replace, Download and Remove act on the framed image, each one history step
-- [ ] Reorder and Make Primary write the gallery order and undo in one step
-- [ ] A rule set in the panel shows on the entity's Profile tab, and a rule set there shows in the panel
-- [ ] The strip's rule cog is hidden in the Media tab and present on the Profile tab
-- [ ] Image Tags show in Advanced only; Generate with AI shows in both modes
-- [ ] A location's background opens the same panel without a rule editor
-- [ ] The entity's picked Avatar shows as a link in the header and opens that Avatar's card
-- [ ] Frames: `.scratch/frames/media-image-panel-dark.png` and `.scratch/frames/media-image-panel-light.png` at 1600×900 with a four-image entity framed on its third image
+- [x] A stack opens the image panel framed on the primary; an image card opens framed on that image (mediaImagePanel: framing tests)
+- [x] A strip click frames that image and the details below switch to it (mediaImagePanel: strip tile test)
+- [x] The add tile frames the empty slot and an upload lands there (mediaImagePanel: add tile test, incl. the selection that drives undo reveal)
+- [x] Replace, Download and Remove act on the framed image, each one history step (mediaImagePanel actions; mediaActions for the location background)
+- [x] Reorder and Make Primary write the gallery order and undo in one step (keyboard drag of Image 3 to the front; Make Primary is drag-to-front, Q42)
+- [x] A rule set in the panel shows on the entity's Profile tab, and a rule set there shows in the panel (mediaImagePanel: both directions)
+- [x] The strip's rule cog is hidden in the Media tab and present on the Profile tab (mediaImagePanel + ImageTagsField.rules)
+- [x] Image Tags show in Advanced only; Generate with AI shows in both modes (mediaImagePanel: per-mode test)
+- [x] A location's background opens the same panel without a rule editor (mediaImagePanel: location test)
+- [x] The entity's picked Avatar shows as a link in the header and opens that Avatar's card (mediaImagePanel: world, library and default picks)
+- [x] Frames: `.scratch/frames/media-image-panel-dark.png` and `.scratch/frames/media-image-panel-light.png` at 1600×900 with a four-image entity framed on its third image (Playwright on the ticket's dev server)
 
 For you: set a long Visibility rule in the panel and judge whether it reads better than on the Profile tab.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- For you: set a long Visibility rule in the panel and judge whether it reads better than on the Profile tab.
+- Frames: `.scratch/media-tab-05/frames/media-image-panel-dark.png` and `.scratch/media-tab-05/frames/media-image-panel-light.png`. Judge whether the framed details below the fold need the panel to scroll them into view on a strip click.

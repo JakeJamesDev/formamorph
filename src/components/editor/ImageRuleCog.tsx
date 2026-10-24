@@ -59,6 +59,20 @@ function ImageRuleRows({ ownerId, rows, onChange }: {
   );
 }
 
+/** One image's rule editor with its help line, as the cog's popover and the Media tab's image panel show it. */
+export function ImageRuleEditor(props: {
+  ownerId: string;
+  rows: TraitRequirementRow[];
+  onChange: (rows: TraitRequirementRow[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <ImageRuleRows {...props} />
+      <Hint>Shows this image in play while any row holds. With no rows, it always shows.</Hint>
+    </div>
+  );
+}
+
 /** "Shown while …" under the framed thumbnail, read through the rule text helpers. It mounts only for an image
  *  that has a rule, so an entity with none never builds the gate input. */
 export function ImageRuleSummary({ ownerId, rows }: { ownerId: string; rows: TraitRequirementRow[] }) {
@@ -102,10 +116,7 @@ export function ImageRuleCog({ ownerId, rows, onChange, className }: {
       </Tip>
       <PopoverContent align="start" className="w-[28rem] max-w-[calc(100vw-2rem)] space-y-2">
         <ScrollArea className="max-h-[min(24rem,60dvh)]">
-          <div className="space-y-2">
-            <ImageRuleRows ownerId={ownerId} rows={rows} onChange={onChange} />
-            <Hint>Shows this image in play while any row holds. With no rows, it always shows.</Hint>
-          </div>
+          <ImageRuleEditor ownerId={ownerId} rows={rows} onChange={onChange} />
         </ScrollArea>
       </PopoverContent>
     </Popover>

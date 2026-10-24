@@ -7,11 +7,16 @@ import type { ListEditorParts } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
-import { filterSections, groupSections, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, type MediaFilter, type MediaParent } from '@/lib/mediaIndex';
+import { filterSections, groupSections, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, mediaParentKey, type MediaFilter, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
 import { MediaGallery } from './MediaGallery';
 import { MediaHeader, type OptimizeControl } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
+import { MediaImagePanel } from './MediaImagePanel';
+
+/** An entity's or location's image, which opens its parent's image panel rather than the item panel. */
+const opensImagePanel = (item: MediaItem): boolean =>
+  item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location');
 
 /**
  * The Media tab's List Editor parts: a gallery of every media item in the world, and the panel for the
@@ -59,7 +64,45 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   const stale = !!selectedId && !held;
   useEffect(() => { if (stale) onSelect(null); }, [stale, onSelect]);
 
-  const detail = item
+  // An entity's or location's image opens its parent's image panel, framed on that image.
+  const panelParent = item && opensImagePanel(item) ? item.parent : undefined;
+  const panelKey = panelParent && mediaParentKey(panelParent);
+  const panelImages = useMemo(
+    () => (panelKey ? allItems.filter((i) => opensImagePanel(i) && mediaParentKey(i.parent) === panelKey) : []),
+    [allItems, panelKey],
+  );
+  // The add tile frames an empty slot, which no item holds yet. It lasts until the selection moves.
+  const [emptyFrame, setEmptyFrame] = useState<{ selectedId: string; index: number } | null>(null);
+  const openFrame = emptyFrame && emptyFrame.selectedId === selectedId ? emptyFrame.index : undefined;
+  // An image landing in the empty slot takes the selection, so the frame follows it.
+  const landed = openFrame !== undefined ? panelImages[openFrame] : undefined;
+  useEffect(() => { if (landed) onSelect(landed.id); }, [landed, onSelect]);
+  const framePanel = (index: number) => {
+    const next = panelImages[index];
+    if (next) {
+      setEmptyFrame(null);
+      onSelect(next.id);
+    } else if (selectedId) {
+      setEmptyFrame({ selectedId, index });
+    }
+  };
+  const pick = panelParent?.kind === 'entity' ? entities.find((e) => e.id === panelParent.id)?.vrmPick : undefined;
+  const avatar = pick?.kind === 'world' ? allItems.find((i) => i.key === `avatar:${pick.id}`) : undefined;
+
+  const detail = panelParent
+    ? (
+      <MediaImagePanel
+        parent={panelParent}
+        images={panelImages}
+        framed={openFrame ?? item?.galleryIndex ?? 0}
+        onFrame={framePanel}
+        avatar={avatar}
+        placeholders={placeholders}
+        onGoTo={onGoTo}
+        onSelect={onSelect}
+      />
+    )
+    : item
     ? <MediaItemPanel item={item} placeholders={placeholders} onGoTo={onGoTo} />
     : section
       ? <MediaSummaryPanel title={sectionTitle(section)} items={section.items} placeholders={placeholders} onSelect={onSelect} />
