@@ -4955,7 +4955,8 @@ const GameViewer = ({
       const label = (aiRequestType && labels[aiRequestType]) ?? "Response";
       return <RequestStatusRow label={`Generating ${label}…`} startedAt={turnStartedAt} />;
     }
-    return showSilentRequests ? <BackgroundPassStatus running={passesRunning} /> : null;
+    // Null when no pass runs, so the footer floats no empty strip and the narration takes no strip fade.
+    return showSilentRequests && passesRunning.size > 0 ? <BackgroundPassStatus running={passesRunning} /> : null;
   })();
 
   // The context meter's history math is O(turns) (parseTurns + banding), so memoize it. A running turn

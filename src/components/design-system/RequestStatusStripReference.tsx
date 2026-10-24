@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { RequestStatusRow, RequestStatusStrip } from '@/components/game/RequestStatusRow';
-import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useTopFade } from '@/components/game/narrationFade';
+import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from '@/components/game/narrationFade';
 
 const NARRATION = [
   'The ferry scrapes against the landing. Rain runs off the rope rail and into the black water below.',
@@ -26,7 +26,7 @@ export function RequestStatusStripReference() {
   const [startedAt] = useState(() => Date.now() - 12_000);
   const label = ROWS[row];
   const viewport = useRef<HTMLDivElement>(null);
-  useTopFade(viewport);
+  useEdgeFades(viewport);
   return (
     <Card role="region" aria-labelledby="status-strip-title">
       <CardHeader>

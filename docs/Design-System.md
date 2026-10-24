@@ -1300,7 +1300,7 @@ The live reference opens the production line in a store of its own under a sampl
 - One row at a time: the turn's request, a Tool round, or a background pass. **Show Silent Requests** gates the Tool and background rows.
 - The strip floats over the bottom edge of the narration frame, anchored to the top of the footer. It is out of flow, so the like prompt, the Pager and the action box never move.
 - The strip spans the frame's inner width. It has no fill. While it shows, the narration fades out above it: clear under the strip's bottom 1rem, then a 2.5rem fade. The fade stays at every scroll position.
-- The narration also fades at its top, like the Formaquestion column. That fade grows in over the first 32px of scroll and is gone at the top. It shows with or without the strip.
+- The narration also fades at both edges as it scrolls, like the Formaquestion column. Each fade grows in over the first 32px of content past its edge and is gone at that edge. While the strip shows, its fixed fade takes the bottom edge.
 - The narration gets no reserved padding. The strip can cover the newest line while a request runs.
 - The strip takes no pointer events, so the narration under it still scrolls and selects.
 
