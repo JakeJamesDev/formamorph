@@ -18,7 +18,7 @@ The Media tab's header becomes one row (spec P5):
 - **A slim Publish Size meter** fills the left: a thin bar in the band colors and a "N MB / 100 MB" readout. It uses the same worker-measured publish size and bands as the World Doctor bar, never a main-thread measure. The World Doctor keeps its full bar.
 - **Grouping** icon button: by parent (default) or by type (Images, Sounds, 3D Models, Avatars). In type grouping the stacking rules still apply inside Images, and each card names its parent.
 - **Largest First** icon toggle: sorts cards by size inside each section. Off, the gallery keeps author order.
-- **Filter** popover: All Media, Linked, Embedded, Has Visibility Rules, Over Size Budget. An active filter shows its name on the button.
+- **Filter** popover: All Media, Linked, Embedded, Has Visibility Rules, Over Size Budget. An active filter shows its name on the button. A stack forms from the images that pass the filter, so its count and total follow it (Q36).
 
 The index module gains type grouping, size sorting and the filters. Grouping and sort are remembered per device and never reach the world. The filter resets when the editor closes.
 
