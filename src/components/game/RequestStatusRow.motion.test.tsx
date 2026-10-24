@@ -1,20 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { RequestStatusRow } from './RequestStatusRow';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { waitReal } from '@/test/motionWait';
 
-// Motion's frame loop runs on the real clock and stalls once a fake clock has driven it, so this file
-// keeps to real timers.
+// Real timers only; see waitReal.
 describe('RequestStatusRow glyph motion', () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  const wait = (ms: number) => act(() => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));
   // The compass needle's transform: "none" at rest, a rotation while it swings.
   const needle = () => (document.querySelector('[data-glyph="compass"] path') as SVGElement | null)?.style.transform ?? '';
 
   it('animates the glyph', async () => {
     render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
-    await wait(300);
+    await waitReal(300);
     expect(needle()).toMatch(/rotate/);
   });
 
@@ -22,9 +21,9 @@ describe('RequestStatusRow glyph motion', () => {
     stubReducedMotion();
     render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
     expect(document.querySelector('[data-glyph="compass"] svg')).toBeTruthy();
-    await wait(300);
+    await waitReal(300);
     expect(needle()).toBe('none');
-    await wait(300);
+    await waitReal(300);
     expect(needle()).toBe('none');
   });
 });

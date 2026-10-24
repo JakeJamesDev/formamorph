@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { waitReal } from '@/test/motionWait';
 import { StatusGlyph, ThinkingGlyph } from './StatusGlyph';
 import { Split } from './icons/split';
 
-// Motion's frame loop runs on the real clock and stalls once a fake clock has driven it, so this file
-// keeps to real timers.
-const wait = (ms: number) => act(() => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));
+// Real timers only; see waitReal.
 const styleOf = (selector: string) => [...document.querySelectorAll<SVGElement>(selector)].map((el) => el.style);
 
 describe('our glyphs', () => {
@@ -16,17 +15,17 @@ describe('our glyphs', () => {
     render(<Split animate loop />);
     // The dot rides the branch's own path, so the path it is on is the branch the player sees it take.
     const route = () => (document.querySelector('circle') as SVGElement).style.offsetPath;
-    await wait(250);
+    await waitReal(250);
     expect(route()).toContain('L3 3');
-    await wait(1250);
+    await waitReal(1250);
     expect(route()).toContain('L21 3');
-    await wait(1300);
+    await waitReal(1300);
     expect(route()).toContain('L3 3');
   });
 
   it('moves the quill, the masks and the thought cloud', async () => {
     render(<><StatusGlyph glyph="quill" /><StatusGlyph glyph="masks" /><ThinkingGlyph /></>);
-    await wait(300);
+    await waitReal(300);
     const [quill, back, front] = styleOf('svg g');
     expect(quill.transform).toMatch(/translate/);
     expect(back.transform).toMatch(/rotate/);
@@ -37,7 +36,7 @@ describe('our glyphs', () => {
   it('holds the four glyphs still with reduced motion on, the thought cloud fully lit', async () => {
     stubReducedMotion();
     render(<><StatusGlyph glyph="quill" /><StatusGlyph glyph="masks" /><StatusGlyph glyph="split" /><ThinkingGlyph /></>);
-    await wait(600);
+    await waitReal(600);
     const [quill, back, front] = styleOf('svg g');
     for (const part of [quill, back, front]) expect(part.transform).toBe('none');
     const [ink] = styleOf('svg:nth-of-type(1) > path');
