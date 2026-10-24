@@ -13,6 +13,9 @@ describe('RequestStatusRow glyph', () => {
 
   it.each([
     ['Generating Plan…', 'compass'],
+    ['Generating Narration…', 'quill'],
+    ['Generating Cast…', 'masks'],
+    ['Generating Choices…', 'split'],
     ['Calling roll_dice…', 'hammer'],
   ] as const)('shows %s with its glyph beside it', (label, glyph) => {
     render(<RequestStatusRow label={label} glyph={glyph} />);
@@ -39,6 +42,18 @@ describe('RequestStatusRow glyph', () => {
     advance(400);
     rerender(<RequestStatusRow label="Generating Location…" glyph="mapPin" />);
     expect(shownGlyph()).toBe('mapPin');
+  });
+
+  it.each([
+    ['digest', 'Summarizing turn…', 'bookOpen'],
+    ['milestone', 'Selecting memories…', 'bookOpen'],
+    ['diary', 'Writing diary…', 'bookOpen'],
+    ['discover', 'Describing character…', 'masks'],
+  ] as const)('shows the %s pass as %s with its glyph beside it', (kind, label, glyph) => {
+    render(<BackgroundPassStatus running={new Set([kind])} />);
+    const slot = document.querySelector('[data-slot="status-glyph"]');
+    expect(slot?.nextElementSibling?.textContent).toBe(label);
+    expect(shownGlyph()).toBe(glyph);
   });
 
   it('skips a glyph that was replaced before it could show', () => {

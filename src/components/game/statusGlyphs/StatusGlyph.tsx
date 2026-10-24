@@ -8,6 +8,10 @@ import { MapPin } from './animate-ui/icons/map-pin';
 import { Scroll } from './animate-ui/icons/scroll';
 import { Sparkles } from './animate-ui/icons/sparkles';
 import type { StatusGlyphKey } from './glyphMap';
+import { Masks } from './icons/masks';
+import { Quill } from './icons/quill';
+import { Split } from './icons/split';
+import { ThoughtCloud } from './icons/thought-cloud';
 
 /** The pause between two runs of a glyph's loop. */
 const GLYPH_LOOP_DELAY_MS = 400;
@@ -23,9 +27,17 @@ const GLYPHS: Record<StatusGlyphKey, () => ReactElement> = {
   hourglass: () => <Hourglass {...LOOP} animation="default" />,
   sparkles: () => <Sparkles {...LOOP} animation="default" />,
   hammer: () => <Hammer {...LOOP} animation="default" />,
+  quill: () => <Quill {...LOOP} animation="default" />,
+  masks: () => <Masks {...LOOP} animation="default" />,
+  split: () => <Split {...LOOP} animation="default" />,
 };
 
 /** One looping status glyph at the label's size. */
 export function StatusGlyph({ glyph }: { glyph: StatusGlyphKey }) {
   return GLYPHS[glyph]();
+}
+
+/** The Thinking header's looping thought cloud, at the header's size. */
+export function ThinkingGlyph() {
+  return <ThoughtCloud {...LOOP} size={14} animation="default" />;
 }

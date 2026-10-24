@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { AIRequestType } from '@/types';
-import { TOOL_GLYPH, requestGlyph } from './glyphMap';
+import { BACKGROUND_PASS_GLYPHS, TOOL_GLYPH, requestGlyph } from './glyphMap';
 
-// The spec's glyph map, written out by hand. Narration, Cast, Motivation, Character and Choices show
-// sparkles until ticket 03 adds their own glyphs.
+// The spec's glyph map, written out by hand.
 const SPEC: Record<AIRequestType, string> = {
   thinking: 'compass',
-  director: 'sparkles',
-  character: 'sparkles',
-  discoverEntity: 'sparkles',
-  narration: 'sparkles',
-  choices: 'sparkles',
+  director: 'masks',
+  character: 'masks',
+  discoverEntity: 'masks',
+  narration: 'quill',
+  choices: 'split',
   statUpdates: 'chartColumnIncreasing',
   summary: 'bookOpen',
   milestoneSelect: 'bookOpen',
@@ -38,5 +37,16 @@ describe('requestGlyph', () => {
 
   it('shows the hammer for a Tool round', () => {
     expect(TOOL_GLYPH).toBe('hammer');
+  });
+});
+
+describe('BACKGROUND_PASS_GLYPHS', () => {
+  it.each([
+    ['digest', 'bookOpen'],
+    ['milestone', 'bookOpen'],
+    ['diary', 'bookOpen'],
+    ['discover', 'masks'],
+  ] as const)('maps %s to %s', (kind, glyph) => {
+    expect(BACKGROUND_PASS_GLYPHS[kind]).toBe(glyph);
   });
 });

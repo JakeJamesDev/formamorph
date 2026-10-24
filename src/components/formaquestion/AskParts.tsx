@@ -90,7 +90,7 @@ function FoldToggle({ open, label, onToggle }: { open: boolean; label: ReactNode
   );
 }
 
-/** The model's reasoning, muted, above its answer. The header pulses until the answer text starts. */
+/** The model's reasoning, muted, above its answer. The header shows a thought cloud until the answer text starts. */
 function Thinking({ text, ms, active, fold, toggles, who }: { text: string; ms: number; active: boolean; fold: Fold; toggles: boolean; who: string | null }) {
   if (!text) return null;
   if (!toggles) return fold.open ? <ReasoningBody text={text} className="[&_:first-child]:mt-0" /> : null;
