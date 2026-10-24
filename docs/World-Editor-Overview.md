@@ -27,7 +27,9 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 3. Select **Save**.
 
 ## The left column: how your world is listed
-<!-- keywords: rename my world, title, creator credit, byline, genre labels, categories, 3d body model, vrm glb, restrict who player is, default hero -->
+<!-- keywords: rename my world, title, creator credit, byline, genre labels, categories, restrict who player is, default hero -->
+
+The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Editor-Media#avatars).
 
 | Field | What it does |
 |---|---|

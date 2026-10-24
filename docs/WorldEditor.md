@@ -26,7 +26,7 @@ Each tab has its own page.
 
 | Page | Covers |
 |---|---|
-| [🌍 Overview](World-Editor-Overview) | The world's name, card, avatar, music and AI-facing text |
+| [🌍 Overview](World-Editor-Overview) | The world's name, card, music and AI-facing text |
 | [📦 Media](World-Editor-Media) | Every image, sound, 3D Model and Avatar in the world, with sizes |
 | [🎬 Openings](World-Editor-Openings) | The ways a playthrough can start, on the world, each location and each entity |
 | [📊 Stats](World-Editor-Stats) | The numbers that describe the player |

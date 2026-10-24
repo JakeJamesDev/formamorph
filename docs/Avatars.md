@@ -153,6 +153,7 @@ The steps to publish are in [Publishing an Avatar](Community-Creations#publishin
 
 ## World Avatars
 <!-- keywords: model bundled with world, author supplied body, ship my own model, avatar store, give npc a model, entity avatar dropdown, share avatar between entities, not in my library, user's default -->
+<!-- route: worldEditor.media -->
 
 A world keeps its own Avatars. The author adds them in the World Editor's **Media** tab, in the **World › Avatars** section, in Simple and Advanced mode. Select the section's header, then **Upload Avatar…** adds a `.vrm` or `.glb` file. **Copy From Library** copies one of your Avatars into the world. The world stores the file, so a player who downloads the world gets it. Select an Avatar's card to rename it, replace its file, download it or delete it. **Replace** keeps the Avatar's name, so every entity that picks it keeps its pick. **Used By** lists the entities that pick it. A delete names those entities, and they go back to **None**. See [World Editor Media](World-Editor-Media).
 
@@ -170,7 +171,7 @@ A library entity picks from your library instead, in the **Avatar** dropdown of 
 
 - When you add a library entity to a world, the world copies its Avatar once.
 - An exported character card carries the entity's Avatar.
-- When you import a card, the Avatar joins your **Avatars** tab. If you import the same Avatar twice, you keep one copy. See [World Editor Overview](World-Editor-Overview) and [World Editor Entities](World-Editor-Entities).
+- When you import a card, the Avatar joins your **Avatars** tab. If you import the same Avatar twice, you keep one copy. See [World Editor Media](World-Editor-Media) and [World Editor Entities](World-Editor-Entities).
 
 Old worlds still work. An older world that showed one Avatar for the player keeps showing it under any persona. This stops when the world's Custom Persona gets an Avatar of its own.
 
