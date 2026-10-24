@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ChipInput from './ChipInput';
 import TagChipField from './TagChipField';
@@ -239,12 +239,14 @@ describe('ChipTypeahead — drilling into a placeholder’s parts', () => {
   it('leaves a modified arrow to the caret, so selecting across the query is still possible', async () => {
     render(<Harness />);
     const user = await open('Molly');
-    await user.keyboard('{Shift>}{ArrowRight}{/Shift}');
+    // A bare key event: user-event moves the caret one place whatever Shift says, which here steps over the
+    // field's own "." and changes the query. The test is about the menu's key handler, not caret movement.
+    fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'ArrowRight', shiftKey: true });
     // Shift-Right extends a selection; hijacking it would walk into Molly instead.
     await waitFor(() => expect(offered()).toEqual(['Molly']));
     await user.keyboard('{ArrowRight}');
     await waitFor(() => expect(offered()).toEqual(['isWhite', 'isAsian']));
-    await user.keyboard('{Shift>}{ArrowLeft}{/Shift}');
+    fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'ArrowLeft', shiftKey: true });
     expect(offered()).toEqual(['isWhite', 'isAsian']);
   });
 

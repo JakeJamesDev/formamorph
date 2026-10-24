@@ -361,8 +361,8 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 		const prevSearchValue = React.useRef(searchValue);
 
 		// Each live region clears 100 ms after an announce; unmount cancels the pending clear.
-		const politeTimer = React.useRef<ReturnType<typeof setTimeout>>();
-		const assertiveTimer = React.useRef<ReturnType<typeof setTimeout>>();
+		const politeTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+		const assertiveTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 		React.useEffect(
 			() => () => {
 				clearTimeout(politeTimer.current);

@@ -494,7 +494,7 @@ describe('what a profile shows', () => {
     render(<ProfilePage username="wren_hallow" />);
 
     await screen.findByRole('heading', { name: 'wren_hallow' });
-    expect(document.title).toBe('wren_hallow · Formamorph');
+    await waitFor(() => expect(document.title).toBe('wren_hallow · Formamorph'));
     expect(await screen.findByText('3')).toBeInTheDocument();
     expect(screen.getByText('41')).toBeInTheDocument();
     expect(screen.getByText('108')).toBeInTheDocument();

@@ -52,6 +52,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The desktop engine now runs models through the bundled llama-server instead of node-llama-cpp.** Every engine setting maps to a server flag. A failed GPU load retries once on the CPU, and the server exits with the app, even on a crash.
     - **The engine's proxy shapes each chat request the way node-llama-cpp read it.** It merges system messages at the top, sends the last message as a user turn, drops images a text-only model can't see, and passes the model's thoughts in a separate reasoning field.
     - **The VRAM viewer reads the engine's share from llama-server's own load log.** The share sums the model, context and compute buffers on the GPU. The device line shows the free VRAM llama-server saw at load.
+  - **Dependencies:**
+    - **The app runs on React 19.** React, React DOM and their types move to 19.3, with next-themes 0.4.6 and react-resizable-panels 2.1.9. The code editor keeps newer keystrokes when a render lags, and surface requests reach dialogs that mount late.
 
 #### ➖ Removed
 

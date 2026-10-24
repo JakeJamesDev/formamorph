@@ -16,7 +16,7 @@ export const NARRATION_FADE_UNDER_STRIP =
   '[mask-image:linear-gradient(to_bottom,rgb(0_0_0/calc(1_-_var(--top-fade,0))),black_2rem,black_calc(100%_-_3.5rem),transparent_calc(100%_-_1rem))]';
 
 /** Writes each edge's fade share on the scroller from the content past it, on scroll and as the content grows. */
-export function useEdgeFades(viewportRef: RefObject<HTMLElement>, remountKey?: unknown) {
+export function useEdgeFades(viewportRef: RefObject<HTMLElement | null>, remountKey?: unknown) {
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;

@@ -785,7 +785,8 @@ describe('editing an announced podium', () => {
     catalog([...three(), fourth()]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={tied} />);
-    await screen.findByText('Salt-Bright Reaches');
+    // The name shows in the staged list and the catalog at once, so wait on the list.
+    await waitFor(() => expect(staged()).toHaveLength(4));
 
     expect(staged()).toEqual([
       '1st Place / Pearl of the Undertow',
