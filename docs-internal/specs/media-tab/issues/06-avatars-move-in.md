@@ -16,7 +16,7 @@ Moves an existing section's controls into the tab and adds Replace with a hash r
 The world's Avatar store moves from the Overview into the Media tab (Q5, Q25), in both modes (Q26).
 
 - **The Avatars section summary** holds **Upload Avatar…** and **Copy From Library**, with the same behavior they have in the Overview today.
-- **An Avatar's panel** shows the preview, size, an editable name (rename on blur, as today), **Used By** with each entity as a link to its card, and the action row from ticket 04: **Replace**, **Download**, and **Delete** in place of Remove.
+- **An Avatar's panel** shows the preview, size, an editable name (rename on blur, as today), **Used By** (built in ticket 01; reuse it), and the action row from ticket 04: **Replace**, **Download**, and **Delete** in place of Remove.
 - **Replace** swaps the file, recomputes its hash, and keeps the Avatar's id, so every entity keeps its pick.
 - **Delete** keeps today's confirm, which names the entities that use the Avatar; they fall back to None, and a spent legacy fallback clears, as today.
 - Each action is one history step with today's labels.
