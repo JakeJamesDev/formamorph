@@ -20,14 +20,16 @@ Every file stays where you added it: on the entity, location, dictionary or Over
 To find one file, type its entity, location or dictionary name, or its slot name (such as "Ambient Sound"), in **Search media**.
 
 ## The header
-<!-- keywords: publish size meter, group by type, largest first, filter, linked, embedded, visibility rules, over size budget, sort -->
+<!-- keywords: publish size meter, group by type, largest first, filter, linked, embedded, visibility rules, over size budget, sort, no images, missing image, empty gallery, blank card -->
+<!-- route: worldEditor.media#list-toolbar -->
 
-The row above the search box holds the **Publish Size** meter and three buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
+The row above the search box holds the **Publish Size** meter and four buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
 
 - **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location or dictionary it belongs to.
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
 - **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules** or **Over Size Budget** items. **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included. The other three filters look at images, so they hide sounds, 3D Models and Avatars. The button shows the filter's name while it's on.
-- **No Images** shows one blank card for each entity or location with no image, and for an empty world thumbnail. Blank cards show only name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
+- **No Images** shows one blank card for each entity or location with no image, and for an empty world thumbnail. Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
+- **Optimize Images** shrinks images that are over their size budget. See [Optimize Images](#optimize-images).
 
 The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
 
@@ -55,11 +57,13 @@ Only files that exist show. An empty slot makes no card.
 
 ## Optimize Images
 <!-- keywords: optimize images, shrink images, downscale, over budget, thumbnail budget, spinner, undo optimize -->
+<!-- route: worldEditor.media#list-toolbar -->
 
 **Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location images and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
 
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
+<!-- route: worldEditor.media -->
 
 Select a card to open it in the panel. An entity's or location's image opens the image panel, described below. Every other card opens on its own.
 
@@ -72,6 +76,7 @@ Select a card to open it in the panel. An entity's or location's image opens the
 
 ## Avatars
 <!-- keywords: add avatar, upload avatar, copy from library, rename avatar, replace avatar, delete avatar, used by, avatar store -->
+<!-- route: worldEditor.media -->
 
 The **World › Avatars** section holds the world's Avatars, in Simple and Advanced mode. It shows even when the world has no Avatar, unless a filter or a search is on.
 
@@ -86,6 +91,7 @@ Each entity still picks its Avatar in its own **Avatar** dropdown. See [World Av
 
 ## The image panel
 <!-- keywords: entity gallery, location background, reorder images, primary image, generate with ai, image tags, visibility rule, framed image, avatar link -->
+<!-- route: worldEditor.media -->
 
 An entity's or location's images open in one panel. A stack opens on its primary image. An image picked from **Largest** opens on that image.
 
