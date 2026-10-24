@@ -40,14 +40,14 @@ export function RequestStatusRow({ label, glyph, startedAt }: { label: string; g
 }
 
 /**
- * Floats a status row over the bottom edge of the narration frame, on a fade from the frame's fill.
+ * Floats a status row over the bottom edge of the narration frame, where the narration's `BOTTOM_FADE` clears room.
  * Its parent is the footer, positioned; the strip sits above it so the footer's height never changes.
  */
 export function RequestStatusStrip({ children }: { children: ReactNode }) {
   return (
     // bottom-full plus the column's gap-2 and the frame's 1px border; inset-x-px keeps it inside that border.
     // z-[5] sits over the narration but under the frame's own z-10 controls, such as Chat's Jump to Latest.
-    <div className="pointer-events-none absolute inset-x-px bottom-[calc(100%+0.5rem+1px)] z-[5] bg-gradient-to-t from-muted via-muted/90 to-transparent px-2 pb-1.5 pt-5">
+    <div className="pointer-events-none absolute inset-x-px bottom-[calc(100%+0.5rem+1px)] z-[5] px-2 pb-1.5">
       {children}
     </div>
   );

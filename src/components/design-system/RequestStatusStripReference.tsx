@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Pager } from '@/components/ui/pagination';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { RequestStatusRow, RequestStatusStrip } from '@/components/game/RequestStatusRow';
+import { BOTTOM_FADE, useBottomFade } from '@/components/game/useBottomFade';
 
 const NARRATION = [
   'The ferry scrapes against the landing. Rain runs off the rope rail and into the black water below.',
@@ -23,6 +25,8 @@ export function RequestStatusStripReference() {
   const [row, setRow] = useState<RowKey>('turn');
   const [startedAt] = useState(() => Date.now() - 12_000);
   const label = ROWS[row];
+  const viewport = useRef<HTMLDivElement>(null);
+  useBottomFade(viewport, Boolean(label));
   return (
     <Card role="region" aria-labelledby="status-strip-title">
       <CardHeader>
@@ -45,9 +49,13 @@ export function RequestStatusStripReference() {
           <ToggleGroupItem value="none">None</ToggleGroupItem>
         </ToggleGroup>
         <div className="flex h-48 flex-col gap-2">
-          <div className="narration-text min-h-0 flex-grow overflow-hidden border border-border bg-muted/80 p-2">
+          <ScrollArea
+            className="narration-text min-h-0 flex-grow border border-border bg-muted/80 p-2"
+            viewportRef={viewport}
+            viewportProps={label ? { className: BOTTOM_FADE } : undefined}
+          >
             <MarkdownRenderer text={NARRATION} />
-          </div>
+          </ScrollArea>
           <div className="relative flex flex-col gap-2">
             {label && (
               <RequestStatusStrip>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type UIEvent } from 'react';
 import { showsScrollArrow } from '@/lib/formaquestion/windowBox';
-import { TOP_FADE_DEPTH } from './floatingPieces';
+import { edgeFadeShare } from '@/lib/scrollEdgeFade';
 import type { HelpChat, HelpExchange } from './useHelpChat';
 
 /** How near the end, in pixels, the conversation must be for new text to keep it at the end. */
@@ -8,8 +8,7 @@ const FOLLOW_SLACK = 48;
 
 /** Writes how much of the top fade shows, from the scroll, where the scroller's fade reads it. */
 function syncFade(viewport: HTMLElement) {
-  const share = Math.min(Math.max(viewport.scrollTop / TOP_FADE_DEPTH, 0), 1);
-  viewport.closest<HTMLElement>('[data-fq-fade]')?.style.setProperty('--fq-fade', share.toFixed(3));
+  viewport.closest<HTMLElement>('[data-fq-fade]')?.style.setProperty('--fq-fade', edgeFadeShare(viewport.scrollTop).toFixed(3));
 }
 
 /**
