@@ -83,7 +83,7 @@ export function RequestStatusStripReference() {
       <CardContent className="grid gap-4">
         <ToggleGroup
           type="single"
-          aria-label="Status row"
+          aria-label="Status Row"
           className="justify-start"
           value={row}
           onValueChange={(next) => { if (next) setRow(next as RowKey); }}
@@ -110,7 +110,7 @@ export function RequestStatusStripReference() {
             <Pager page={3} pageCount={3} onPageChange={() => {}} className="justify-center" />
           </div>
         </div>
-        <ul aria-label="Status glyphs" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ul aria-label="Status Glyphs" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(Object.entries(GLYPH_USES) as [StatusGlyphKey, string][]).map(([glyph, use]) => (
             <li key={glyph} className="flex items-center gap-2 text-muted-foreground">
               <span aria-hidden className="flex size-4 shrink-0 items-center justify-center"><StatusGlyph glyph={glyph} /></span>
@@ -118,7 +118,7 @@ export function RequestStatusStripReference() {
             </li>
           ))}
         </ul>
-        <ul aria-label="Thinking header" className="grid gap-2 sm:grid-cols-2">
+        <ul aria-label="Thinking Header" className="grid gap-2 sm:grid-cols-2">
           {THINKING_FORMS.map(({ use, who }) => (
             <li key={use} className="flex items-center gap-1.5 text-meta text-muted-foreground">
               <ChevronRight aria-hidden className="h-3.5 w-3.5 rotate-90" />
