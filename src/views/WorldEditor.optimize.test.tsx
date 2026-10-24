@@ -45,7 +45,7 @@ vi.mock('@/lib/useDownscalePrompt', async (importOriginal) => {
           ...world,
           worldOverview: { ...world.worldOverview, thumbnail: WEBP },
           entities: world.entities.map((e) => ({ ...e, images: [{ data: WEBP }] })),
-          locations: world.locations.map((l) => ({ ...l, backgroundImage: WEBP })),
+          locations: world.locations.map((l) => ({ ...l, images: [{ data: WEBP }] })),
           dictionaries: world.dictionaries.map((d) => ({ ...d, thumbnail: WEBP })),
         };
       },
@@ -58,7 +58,7 @@ const WORLD = benchEditorWorld({
     name: 'Sedge Landing', description: '', author: '', thumbnail: PNG, bgm: null,
     systemPrompt: '', tags: [],
   },
-  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: PNG }],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: PNG }] }],
   entities: [{ id: 'resident', name: 'Odd Wick', images: [{ data: PNG }], locations: ['harbor'] }],
   dictionaries: [{ id: 'lore', name: 'Fen Lore', entries: [], thumbnail: PNG }],
 } as Partial<World>);
@@ -125,7 +125,7 @@ describe('Optimize Images', () => {
     await waitFor(() => expect(ctx().dictionaries[0].thumbnail).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
-    expect(ctx().locations[0].backgroundImage).toBe(WEBP);
+    expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
     await waitFor(() => expect(screen.getByRole('region', { name: 'Dictionaries' })).toHaveTextContent(formatMediaBytes(storedBytes(WEBP))));
     expect(screen.getByRole('region', { name: 'Dictionaries' })).not.toHaveTextContent(formatMediaBytes(storedBytes(PNG)));
   });
@@ -133,7 +133,7 @@ describe('Optimize Images', () => {
   it('undoes in one press', async () => {
     const { ctx } = renderMedia('advanced');
     fireEvent.click(optimizeButton());
-    await waitFor(() => expect(ctx().locations[0].backgroundImage).toBe(WEBP));
+    await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
@@ -141,7 +141,7 @@ describe('Optimize Images', () => {
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(PNG);
     expect(ctx().entities[0].images).toEqual([{ data: PNG }]);
-    expect(ctx().locations[0].backgroundImage).toBe(PNG);
+    expect(ctx().locations[0].images?.[0]?.data).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
 
     // Nothing earlier is left to undo.
@@ -150,7 +150,7 @@ describe('Optimize Images', () => {
     await act(async () => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
-    expect(ctx().locations[0].backgroundImage).toBe(WEBP);
+    expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
   });
 
   it('cancels when the editor closes mid-run and writes nothing', async () => {
@@ -171,7 +171,7 @@ describe('Optimize Images', () => {
   it('reveals what it touched on undo, not the tab the author ran it from', async () => {
     const { ctx } = renderMedia('advanced');
     fireEvent.click(optimizeButton());
-    await waitFor(() => expect(ctx().locations[0].backgroundImage).toBe(WEBP));
+    await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
     openEditorTab(/Entities/);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });

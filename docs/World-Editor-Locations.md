@@ -132,9 +132,20 @@ Simple mode also hides **AI-Facing Summary**.
 
 | Field | What it does |
 |---|---|
-| **Background Image** | The image behind the story while the player is here. Upload a file, or paste an address into **Or paste an image URL**. See [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when [image generation](Image-Generation#how-to-turn-on-image-generation) is on in Settings. |
+| **Background Image** | A gallery of images behind the story while the player is here. Upload a file, or paste an address into **Or paste an image URL**. See [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when [image generation](Image-Generation#how-to-turn-on-image-generation) is on in Settings. Drag a thumbnail to reorder. |
 | **Image Tags** | **Advanced mode only.** Booru tags for AI image generation |
 | **Ambient Sound** | **Advanced mode only.** A sound that plays while the player is here. Select **Add Sound** to pick a file. |
+
+### Background Visibility rules
+<!-- keywords: change background in game, wounded backdrop, night backdrop, conditional background, background per state, backdrop follows story -->
+
+Each background image can carry a [Visibility rule](World-Editor-Entities#visibility-rules), the same as an entity image. Select the cog on a thumbnail to set one.
+
+- 🖼️ In play, the backdrop shows the **first visible image**, counting from the left.
+- 🧍 A condition with no owner reads the **persona** the player plays. A location has no traits or stats of its own. Pick an entity to read that entity instead. A global trait or stat needs no owner.
+- 🌫️ When no image is visible, the story shows no backdrop.
+
+Example: put a *wounded* backdrop first with the rule *Health < 20%*, and a calm one after it with no rule. The backdrop swaps while the persona is hurt.
 
 ## What reaches the AI
 <!-- keywords: random events list, choices ignore rules, narrator vs other steps, hidden room details, short form used, ai misses details -->

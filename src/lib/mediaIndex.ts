@@ -2,8 +2,9 @@
  * Every media item a world holds, with its stored size, and the sections the Media tab lays them out in.
  * DOM-free: sizes come from string lengths, so nothing decodes to list.
  */
-import type { Entity, GameLocation, TraitRequirementRow, World } from '@/types';
+import type { Entity, GalleryImage, GameLocation, TraitRequirementRow, World } from '@/types';
 import { entityImages } from './entityImages';
+import { locationImages } from './locationImages';
 import { buildEntityTree, type EntityTreeNode } from './entityGroupTree';
 import { buildLocationTree, type LocationTreeNode } from './locationTree';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
@@ -21,7 +22,7 @@ export interface MediaParent {
 
 /** A slot inside its parent: a field, a gallery position, or an Avatar's store id. */
 export type MediaSlotKey =
-  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'background' | 'ambientSound' | `image:${number}` | `avatar:${string}`;
+  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'ambientSound' | `image:${number}` | `avatar:${string}`;
 
 export interface MediaItem {
   /** Stable for the item's slot: parent and slot key. */
@@ -39,7 +40,7 @@ export interface MediaItem {
   /** Images only. */
   budget?: ImageCap;
   overBudget: boolean;
-  /** An entity gallery image's Visibility rule rows. */
+  /** A gallery image's Visibility rule rows. */
   rules?: TraitRequirementRow[];
   galleryIndex?: number;
   /** Avatars only: the entities that pick it. */
@@ -92,21 +93,25 @@ const file = (parent: MediaParent, kind: MediaKind, key: MediaSlotKey, slot: str
 const entityParent = (e: Entity): MediaParent => ({ kind: 'entity', id: e.id, name: e.name });
 const locationParent = (l: GameLocation): MediaParent => ({ kind: 'location', id: l.id, name: l.name });
 
+/** One gallery's images, each with its position and rule. */
+const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[], cap: ImageCap): MediaItem[] =>
+  images.map((img, i) => image(parent, `image:${i}`, `Image ${i + 1}`, img.data, cap, {
+    galleryIndex: i, ...(img.requires?.length ? { rules: img.requires } : {}),
+  }));
+
 /** One entity's media: its gallery, then its sound, then its 3D Model. */
 function entityMedia(e: Entity): MediaItem[] {
   const parent = entityParent(e);
-  const items = entityImages(e).map((img, i) => image(parent, `image:${i}`, `Image ${i + 1}`, img.data, IMAGE_CAPS.entity, {
-    galleryIndex: i, ...(img.requires?.length ? { rules: img.requires } : {}),
-  }));
+  const items = galleryMedia(parent, entityImages(e), IMAGE_CAPS.entity);
   if (e.sound?.data) items.push(file(parent, 'sound', 'sound', 'Sound', e.sound.data, e.sound.name));
   if (e.model?.data) items.push(file(parent, 'model', 'model', '3D Model', e.model.data, e.model.name));
   return items;
 }
 
+/** One location's media: its gallery, then its ambient sound. */
 function locationMedia(l: GameLocation): MediaItem[] {
   const parent = locationParent(l);
-  const items: MediaItem[] = [];
-  if (l.backgroundImage) items.push(image(parent, 'background', 'Background Image', l.backgroundImage, IMAGE_CAPS.background));
+  const items = galleryMedia(parent, locationImages(l), IMAGE_CAPS.background);
   if (l.ambientSound?.data) items.push(file(parent, 'sound', 'ambientSound', 'Ambient Sound', l.ambientSound.data, l.ambientSound.name));
   return items;
 }
@@ -128,7 +133,7 @@ const BLANK_SOURCE: MediaSource = {
   world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail', IMAGE_CAPS.thumbnail)]),
   avatars: () => [],
   entity: (e) => (entityImages(e).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1', IMAGE_CAPS.entity)]),
-  location: (l) => (l.backgroundImage ? [] : [blankImage(locationParent(l), 'background', 'Background Image', IMAGE_CAPS.background)]),
+  location: (l) => (locationImages(l).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1', IMAGE_CAPS.background)]),
   // A dictionary's Cover Image is optional, so an empty one is not a gap.
   dictionaries: () => [],
 };

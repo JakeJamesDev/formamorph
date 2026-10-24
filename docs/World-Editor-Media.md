@@ -41,12 +41,12 @@ The cards sit in sections that follow your editor:
 | **World** | The **Thumbnail** and **Background Music** |
 | **World › Avatars** | Each Avatar in the world, once |
 | **Entities**, and one per entity group | Each entity's images, **Sound** and **3D Model** |
-| **Locations**, and one per location with sub-locations | Each location's **Background Image** and **Ambient Sound** |
+| **Locations**, and one per location with sub-locations | Each location's background images and **Ambient Sound** |
 | **Dictionaries** | Each dictionary's **Cover Image** |
 
 Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it are the name of the entity, location or dictionary, and the file's size.
 
-- 📚 **Stacks.** An entity with two or more images shows one card for all of them. The badge counts the images, and the size is their total. The total shows in the warning color when any of the images is over budget. A sound or 3D Model is always its own card.
+- 📚 **Stacks.** An entity or location with two or more images shows one card for all of them. The badge counts the images, and the size is their total. The total shows in the warning color when any of the images is over budget. A sound or 3D Model is always its own card.
 - 🔗 **Linked.** An image you linked by its address shows **Linked** in place of a size. It adds only its address to the world.
 - ⚠️ **Over budget.** A size in the warning color is over that image's size budget. **Optimize Images** shrinks it.
 - 🎚️ **Rules.** An image with Visibility rules shows how many it has. A stack counts the rules of all its images.
@@ -56,7 +56,7 @@ Only files that exist show. An empty slot makes no card.
 ## Optimize Images
 <!-- keywords: optimize images, shrink images, downscale, over budget, thumbnail budget, spinner, undo optimize -->
 
-**Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location backgrounds and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
+**Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location images and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
 
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
@@ -93,7 +93,7 @@ An entity's or location's images open in one panel. A stack opens on its primary
 - 🖼️ **Gallery.** The same gallery as the entity's **Profile** tab or the location's **Media** tab. Select a tile in the strip to frame it. Drag a tile to reorder; drag it to the front to make it the primary image. **Generate with AI** shows in both modes, and **Image Tags** in Advanced.
 - ➕ **Add tile.** It frames the empty slot. Upload there, and the frame moves to the new image.
 - 📋 **Framed image.** Under the gallery: its slot name, size and budget, then **Replace**, **Download** and **Remove**. Replace keeps the image's place and its Visibility rule.
-- 🎚️ **Visibility rule.** An entity's framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the **Profile** tab, and a rule set there shows here.
+- 🎚️ **Visibility rule.** The framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the entity's **Profile** tab or the location's **Media** tab, and a rule set there shows here. On a location, a condition with no owner reads the persona.
 
 Each change is one undo step.
 

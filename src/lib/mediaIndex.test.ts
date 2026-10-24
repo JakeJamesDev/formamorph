@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import {
   blankSections, buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaHolds, mediaSections,
-  sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, withAvatarsSection, type MediaFilter,
+  sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, withAvatarsSection, worldImageSlots, type MediaFilter,
 } from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
 import { measurePublishBytes } from './publishLimits';
@@ -22,7 +22,7 @@ function withoutMedia(world: World): World {
     if (e.model) e.model.data = '';
   }
   for (const l of w.locations) {
-    if (l.backgroundImage) l.backgroundImage = '';
+    for (const img of l.images ?? []) img.data = '';
     if (l.ambientSound) l.ambientSound.data = '';
   }
   for (const d of w.dictionaries) if (d.thumbnail) d.thumbnail = '';
@@ -42,9 +42,9 @@ describe('buildMediaIndex', () => {
       'sound entity:Odd Wick Sound',
       'model entity:Odd Wick 3D Model',
       'image entity:Bram Image 1',
-      'image location:Marsh Background Image',
-      'image location:Harbor Steps Background Image',
-      'image location:Lamp Room Background Image',
+      'image location:Marsh Image 1',
+      'image location:Harbor Steps Image 1',
+      'image location:Lamp Room Image 1',
       'sound location:Lamp Room Ambient Sound',
       'image dictionary:Fen Lore Cover Image',
     ]);
@@ -108,8 +108,8 @@ describe('mediaSections', () => {
       ['Entities', ['Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3', 'Odd Wick Sound', 'Odd Wick 3D Model']],
       // Crew holds only Hollow, which has no media, so only its subgroup makes a section.
       ['Entities › Crew › Deckhands', ['Bram Image 1']],
-      ['Locations', ['Marsh Background Image']],
-      ['Locations › Harbor Steps', ['Harbor Steps Background Image', 'Lamp Room Background Image', 'Lamp Room Ambient Sound']],
+      ['Locations', ['Marsh Image 1']],
+      ['Locations › Harbor Steps', ['Harbor Steps Image 1', 'Lamp Room Image 1', 'Lamp Room Ambient Sound']],
       ['Dictionaries', ['Fen Lore Cover Image']],
     ]);
   });
@@ -207,7 +207,7 @@ describe('groupSections by type', () => {
     expect(sections.map((s) => [s.path.join(' › '), names(s.items)])).toEqual([
       ['Images', [
         'World Thumbnail', 'Odd Wick Image 1', 'Odd Wick Image 2', 'Odd Wick Image 3', 'Bram Image 1',
-        'Marsh Background Image', 'Harbor Steps Background Image', 'Lamp Room Background Image', 'Fen Lore Cover Image',
+        'Marsh Image 1', 'Harbor Steps Image 1', 'Lamp Room Image 1', 'Fen Lore Cover Image',
       ]],
       ['Sounds', ['World Background Music', 'Odd Wick Sound', 'Lamp Room Ambient Sound']],
       ['3D Models', ['Odd Wick 3D Model']],
@@ -257,7 +257,7 @@ describe('blankSections', () => {
   it('reports each entity and location with no image, and no dictionary', () => {
     expect(where(blanks(mediaFixtureWorld()))).toEqual([
       'image entity:Hollow Image 1',
-      'image location:Bare Flat Background Image',
+      'image location:Bare Flat Image 1',
     ]);
   });
 
@@ -304,6 +304,41 @@ describe('blankSections', () => {
 
     expect(sorted.map((s) => s.id)).toEqual(['group:crew', 'locations']);
     expect(groupSections(blankSections(mediaFixtureWorld()), 'type').map((s) => s.path)).toEqual([['Images']]);
+  });
+});
+
+describe('location galleries', () => {
+  const HURT = [{ all: [{ kind: 'stat' as const, id: 'health', operator: '<' as const, value: 20, unit: 'percent' as const }] }];
+  const galleryWorld = () => {
+    const world = mediaFixtureWorld();
+    world.locations.find((l) => l.id === 'marsh')!.images = [
+      { data: fakeDataUrl('image/jpeg', IMAGE_CAPS.background.maxBytes * 2, 'a') },
+      { data: fakeDataUrl('image/jpeg', 700, 'b'), requires: HURT },
+    ];
+    return world;
+  };
+  const marshItems = () => buildMediaIndex(galleryWorld()).filter((i) => i.parent.id === 'marsh');
+
+  it('lists each image with its gallery position and rule', () => {
+    expect(marshItems().map((i) => [i.id, i.slot, i.galleryIndex, i.rules])).toEqual([
+      ['location:marsh:image:0', 'Image 1', 0, undefined],
+      ['location:marsh:image:1', 'Image 2', 1, HURT],
+    ]);
+  });
+
+  it('stacks a location with two or more images', () => {
+    const locations = mediaSections(galleryWorld()).find((s) => s.id === 'locations')!;
+    const stack = sectionCards(locations.items).find((c) => c.item.parent.id === 'marsh')!;
+    expect(stack.images?.map((i) => i.slot)).toEqual(['Image 1', 'Image 2']);
+  });
+
+  it('feeds every location image to the rules and size filters and the optimize walk', () => {
+    const pick = (filter: MediaFilter) => filterSections(mediaSections(galleryWorld()), filter)
+      .flatMap((s) => s.items).filter((i) => i.parent.id === 'marsh').map((i) => i.slot);
+    expect(pick('rules')).toEqual(['Image 2']);
+    expect(pick('overBudget')).toEqual(['Image 1']);
+    expect(worldImageSlots(galleryWorld()).filter((s) => s.path.startsWith('location:marsh:')).map((s) => s.path))
+      .toEqual(['location:marsh:image:0', 'location:marsh:image:1']);
   });
 });
 

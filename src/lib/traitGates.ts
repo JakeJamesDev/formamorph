@@ -282,7 +282,7 @@ type Switched = Exclude<TraitRequirement, StatRequirement | TimeRequirement>;
 
 /** The global traits and groups: the world's own, outside Blueprints. Read from the originals, else from the
  *  global tree. */
-function globalItems(input: Pick<GateInput, 'global' | 'originals'>): { traits: ReadonlySet<string>; groups: ReadonlySet<string> } {
+export function globalItems(input: Pick<GateInput, 'global' | 'originals'>): { traits: ReadonlySet<string>; groups: ReadonlySet<string> } {
   const world = input.originals ?? input.global;
   const groups = world.groups;
   const blueprints = blueprintsSubtreeIds(groups);

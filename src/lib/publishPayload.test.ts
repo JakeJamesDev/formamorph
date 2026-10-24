@@ -232,12 +232,12 @@ describe('linked images survive publishing', () => {
   it('leaves a world’s linked entity and location images alone in the published content', () => {
     const payload = worldPublishPayload(world({}, {
       entities: [{ id: 'e1', name: 'Mara', images: ['https://files.example/a.png'] }],
-      locations: [{ id: 'l1', name: 'Fen', backgroundImage: 'https://files.example/bg.png' }],
+      locations: [{ id: 'l1', name: 'Fen', images: [{ data: 'https://files.example/bg.png', requires: [{ all: [{ kind: 'trait', id: 't' }] }] }] }],
     }));
     const content = payload.contentData as World;
 
     expect(content.entities[0].images).toEqual(['https://files.example/a.png']);
-    expect(content.locations[0].backgroundImage).toBe('https://files.example/bg.png');
+    expect(content.locations[0].images).toEqual([{ data: 'https://files.example/bg.png', requires: [{ all: [{ kind: 'trait', id: 't' }] }] }]);
   });
 });
 

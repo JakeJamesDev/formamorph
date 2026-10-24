@@ -57,7 +57,7 @@ describe('downscaleWorldImages', () => {
     },
     stats: [],
     locations: [
-      { id: 'l1', name: 'Loc1', backgroundImage: 'BIG-bg' },
+      { id: 'l1', name: 'Loc1', images: [{ data: 'BIG-bg' }, { data: 'BIG-bg2', requires: WOUNDED }] },
       { id: 'l2', name: 'Loc2' },
     ],
     entities: [
@@ -78,8 +78,9 @@ describe('downscaleWorldImages', () => {
   it('re-encodes only the oversized image fields and passes everything else through', async () => {
     const out = await downscaleWorldImages(world, deps);
     expect(out.worldOverview.thumbnail).toBe('OPT:BIG-thumb');
-    expect(out.locations[0].backgroundImage).toBe('OPT:BIG-bg');
-    expect(out.locations[1].backgroundImage).toBeUndefined();
+    // A location's gallery is visited slot by slot too, rules kept.
+    expect(out.locations[0].images).toEqual([{ data: 'OPT:BIG-bg' }, { data: 'OPT:BIG-bg2', requires: WOUNDED }]);
+    expect(out.locations[1].images).toEqual([]);
     // Every slot in a gallery is visited, not just the primary, and each keeps its own rule.
     expect(out.entities[0].images).toEqual([{ data: 'OPT:BIG-e' }, { data: 'OPT:BIG-e2', requires: WOUNDED }]);
     expect(out.entities[1].images).toEqual([{ data: 'small-e', requires: WOUNDED }]); // within cap → untouched
@@ -95,7 +96,7 @@ describe('downscaleWorldImages', () => {
     };
     const out = await downscaleWorldImages(world, reencodeDeps);
     expect(out.worldOverview.thumbnail).toBe('WEBP:BIG-thumb');
-    expect(out.locations[0].backgroundImage).toBe('WEBP:BIG-bg');
+    expect(out.locations[0].images).toEqual([{ data: 'WEBP:BIG-bg' }, { data: 'WEBP:BIG-bg2', requires: WOUNDED }]);
     expect(out.entities[0].images).toEqual([{ data: 'WEBP:BIG-e' }, { data: 'WEBP:BIG-e2', requires: WOUNDED }]);
     expect(out.entities[1].images).toEqual([{ data: 'small-e', requires: WOUNDED }]); // within cap → untouched
   });
@@ -103,10 +104,10 @@ describe('downscaleWorldImages', () => {
   it('reports monotonic progress that ticks once per image-bearing slot (skipped ones included)', async () => {
     const calls: { done: number; total: number }[] = [];
     await downscaleWorldImages(world, deps, (done, total) => calls.push({ done, total }));
-    // 5 image slots: thumbnail, 1 background (l2 has none), and 3 across the two galleries. `total` is constant.
-    expect(calls.every((c) => c.total === 5)).toBe(true);
-    // First call is the 0/total prime; then done climbs 1→5, never repeating or skipping.
-    expect(calls.map((c) => c.done)).toEqual([0, 1, 2, 3, 4, 5]);
+    // 6 image slots: thumbnail, 2 in l1's gallery (l2 has none), and 3 across the two entity galleries. `total` is constant.
+    expect(calls.every((c) => c.total === 6)).toBe(true);
+    // First call is the 0/total prime; then done climbs 1→6, never repeating or skipping.
+    expect(calls.map((c) => c.done)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   it('an aborted signal stops the run before the next image and rejects with AbortError', async () => {
@@ -157,7 +158,7 @@ describe('downscaleWorldImages', () => {
     expect(out.dictionaries[0].thumbnail).toBe('OPT:BIG-book');
     expect(out.dictionaries[1]).toEqual(withBooks.dictionaries[1]);
     expect(caps).toEqual([IMAGE_CAPS.thumbnail]);
-    expect(new Set(calls)).toEqual(new Set([6]));
+    expect(new Set(calls)).toEqual(new Set([7]));
   });
 
   it('reports a zero total when the world has no images', async () => {

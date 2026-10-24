@@ -259,6 +259,47 @@ describe('Media tab image panel Visibility rules', () => {
   });
 });
 
+describe('Media tab image panel location rules', () => {
+  const SECOND = fakeDataUrl('image/webp', 700, 'w');
+  /** Marsh with two images, and Odd Wick as a persona whose Health a rule can read. */
+  const locationWorld = () => panelWorld((w) => {
+    w.entities.find((e) => e.id === 'wick')!.persona = true;
+    const marsh = w.locations.find((l) => l.id === 'marsh')!;
+    marsh.images = [...(marsh.images ?? []), { data: SECOND }];
+  });
+  const marsh = (bench: ReturnType<typeof open>) => bench.ctx().locations.find((l) => l.id === 'marsh')!;
+
+  it("stacks a multi-image location and edits the framed image's rule with the persona as host", async () => {
+    const bench = open('simple', locationWorld());
+    fireEvent.click(card('Locations', 'stack'));
+    fireEvent.click(tile('Image 2'));
+    fireEvent.click(within(framed()!).getByRole('button', { name: 'Add Requirement' }));
+
+    expect(await screen.findByText('Persona Stats')).toBeInTheDocument();
+    // Persona Stats lists first; Odd Wick Stats offers the same stat under its name.
+    fireEvent.click((await screen.findAllByRole('option', { name: /^Health/ }))[0]);
+
+    const [first, second] = marsh(bench).images!;
+    expect(first.requires).toBeUndefined();
+    // Stored with no owner: a location rule's owner-less Condition reads the played persona.
+    expect(second.requires).toEqual([{ all: [expect.objectContaining({ kind: 'stat', id: 'health' })] }]);
+    expect(second.requires![0].all[0]).not.toHaveProperty('owner');
+    expect(within(framed()!).getByText(/^Persona: Health/)).toBeInTheDocument();
+  });
+
+  it("shows the location panel's gallery with a rule cog on each image", () => {
+    open('simple', locationWorld());
+    fireEvent.click(card('Locations', 'stack'));
+    fireEvent.click(inPanel().getByRole('button', { name: 'Go to Marsh' }));
+    // Radix tabs switch on mouse down.
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name: 'Media' }));
+
+    expect(screen.getByRole('button', { name: 'Primary image' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Image 2' })).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-image-rule-cog]')).toHaveLength(2);
+  });
+});
+
 describe('Media tab image panel modes and parents', () => {
   it.each([
     ['simple', false],
@@ -271,15 +312,15 @@ describe('Media tab image panel modes and parents', () => {
     expect(inPanel().queryByText('Image Tags') !== null).toBe(tags);
   });
 
-  it("opens a location's background in the same panel, with its actions and no rule editor", () => {
+  it("opens a location's image in the same panel, with its actions and rule editor", () => {
     open('advanced');
     fireEvent.click(card('Locations', 'image'));
 
     expect(panel()).toHaveAttribute('data-media-image-panel', 'location:marsh');
-    expect(panel()).toHaveAttribute('data-media-panel', 'location:marsh:background');
-    expect(framed()).toHaveTextContent(/^Background Image/);
+    expect(panel()).toHaveAttribute('data-media-panel', 'location:marsh:image:0');
+    expect(framed()).toHaveTextContent(/^Image 1/);
     expect(within(framed()!).getByRole('button', { name: 'Replace' })).toBeInTheDocument();
-    expect(inPanel().queryByRole('button', { name: 'Add Requirement' })).toBeNull();
+    expect(within(framed()!).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
     expect(inPanel().getByRole('button', { name: 'Go to Marsh' })).toBeInTheDocument();
   });
 

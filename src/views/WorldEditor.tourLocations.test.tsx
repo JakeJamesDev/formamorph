@@ -222,7 +222,7 @@ describe('Authoring Tour — add steps', () => {
       name: 'The Salt Lantern',
       playerDescription: 'The village inn, warm and smelling of peat smoke and fried fish.',
       aiDescription: expect.stringMatching(/^A two-story inn on the harbor\./),
-      backgroundImage: 'data:image/webp;base64,saltLantern',
+      images: [{ data: 'data:image/webp;base64,saltLantern' }],
     });
     // The first tour location keeps its own text.
     expect(ctx().locations.filter((l) => l.name === 'The Tidewell')).toHaveLength(1);
@@ -334,7 +334,7 @@ describe('In Game — Locations', () => {
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(ctx().locations.at(-1)?.backgroundImage).toBe('data:image/webp;base64,tidewell');
+    expect(ctx().locations.at(-1)?.images?.[0]?.data).toBe('data:image/webp;base64,tidewell');
     expect(within(playerSees()).getByTestId('location-backdrop-image'))
       .toHaveStyle({ backgroundImage: 'url(data:image/webp;base64,tidewell)' });
     // The location block stays, with nothing of the picture in it.

@@ -7,6 +7,7 @@
  * that world held, and the caller decides whether that result is still current.
  */
 import { entityImages } from '@/lib/entityImages';
+import { locationImages } from '@/lib/locationImages';
 import type { GalleryImage } from '@/types';
 import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation, relabelDataUrl } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
@@ -81,10 +82,15 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   let locationsChanged = false;
   const locations: RuleWorld['locations'] = [];
   for (const location of world.locations ?? []) {
-    const next = location.backgroundImage ? await convert(location.backgroundImage) : location.backgroundImage;
-    const touched = next !== location.backgroundImage;
+    const images: GalleryImage[] = [];
+    let touched = false;
+    for (const img of locationImages(location)) {
+      const next = await convert(img.data);
+      if (next !== img.data) touched = true;
+      images.push({ ...img, data: next });
+    }
     locationsChanged ||= touched;
-    locations.push(touched ? { ...location, backgroundImage: next } : location);
+    locations.push(touched ? { ...location, images } : location);
   }
 
   const thumbnailChanged = nextThumbnail !== thumbnail;

@@ -113,6 +113,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A dictionary `key` or `secondaryKeys` as one comma-separated string | A list of keywords |
 | An entity `image` string | The first item of `images` |
 | An entity `images` list of strings | Each string as `{ "data": … }` |
+| A location `backgroundImage` string | The first item of `images` |
 | A location `entities` list | Each entity's `locations` |
 | A location `connections` list of names | Records in the top-level `connections` |
 | A connection with `from`, `to`, `twoWay` and `aiHint` | A connection with `a`, `b` and legs |
@@ -328,7 +329,7 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
 | `description` | | String | An older field. The player reads it when `playerDescription` is absent |
-| `backgroundImage` | | [Image](#media-fields) | The background |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. In play the backdrop shows the first visible image |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `locations` join the choices |
@@ -605,17 +606,17 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ## Media Fields
 <!-- keywords: base64, embed binary, encode image, huge file size, web address string, audio encoding, mime, asset object -->
 
-**Images** (`thumbnail`, location `backgroundImage`, a gallery image's `data`, book `thumbnail`) hold one string:
+**Images** (`thumbnail`, a gallery image's `data`, book `thumbnail`) hold one string:
 
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
 
-**Gallery images** (entity `images`) are objects:
+**Gallery images** (entity and location `images`) are objects:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `data` | ✓ | Image | The picture |
-| `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown |
+| `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown. On a location, a condition with no `owner` reads the played persona |
 
 **Background music** (`bgm`) is a base64 data URL.
 

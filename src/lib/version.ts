@@ -10,6 +10,7 @@ import { appendCurrentToHistory } from './turnHistory';
 import { migrateGlobalFields } from './globalSaveFields';
 import { DEFAULT_AVATAR_ID } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
+import { migrateLocationImages } from './locationImages';
 import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
 import { migrateStatCodeRoutes } from './statCodeRoutes';
@@ -102,6 +103,15 @@ function migrateEntityGalleries(world: Record<string, unknown>): void {
   if (!Array.isArray(world.entities)) return;
   world.entities = world.entities.map((e) =>
     e && typeof e === 'object' ? migrateEntityImages(e as Record<string, unknown>) : e,
+  );
+}
+
+/** Move every location's pre-gallery `backgroundImage` into slot 0 of `images` (Q47). Not version-gated, like
+ *  the entity fold: worlds stamped with the current version still carry the old field. */
+function migrateLocationGalleries(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.locations)) return;
+  world.locations = world.locations.map((l) =>
+    l && typeof l === 'object' ? migrateLocationImages(l as Record<string, unknown>) : l,
   );
 }
 
@@ -760,7 +770,7 @@ function migrateStatScripts(world: Record<string, unknown>): void {
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
- * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
+ * fold, the keyword-array migration, the entity- and location-gallery folds, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
  * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite, the stat-code route rewrite, the persona start-location drop and the legacy player-Avatar move run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Auto-binds legacy body stats to morphs,
@@ -773,6 +783,7 @@ export function migrateWorld(raw: unknown): World {
   foldDictionaryIntoBooks(world);
   migrateDictionaryKeys(world);
   migrateEntityGalleries(world);
+  migrateLocationGalleries(world);
   flipEntityLocationMembership(world);
   migrateLocationConnections(world);
   migrateConnectionLegs(world);

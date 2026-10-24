@@ -63,7 +63,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     scripts: "Scripts",
   },
   locations: {
-    backgroundImage: "Background Image",
+    images: "Background Image",
     ambientSound: "Ambient Sound",
     isStarting: "Starting Location",
     canvasPosition: "Position",
