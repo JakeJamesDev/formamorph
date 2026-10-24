@@ -139,18 +139,22 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
           )}
           <span className="truncate">{item.slot}</span>
         </h2>
-        <MediaFacts item={item} className="mt-1">
-          <span>{MEDIA_KIND_LABELS[item.kind].one}</span>
-          <span aria-hidden>·</span>
-        </MediaFacts>
+        {item.blank
+          ? <Hint className="mt-1">No image yet</Hint>
+          : (
+            <MediaFacts item={item} className="mt-1">
+              <span>{MEDIA_KIND_LABELS[item.kind].one}</span>
+              <span aria-hidden>·</span>
+            </MediaFacts>
+          )}
       </div>
-      <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>
+      {!item.blank && <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>}
       <div className="flex flex-wrap gap-2">
         <MediaActionRow
           className="contents"
           item={item}
           placeholders={placeholders}
-          {...(actsInItemPanel(item) ? { onReplace: (media: MediaAsset) => void replace(item, media), onRemove: () => void remove(item) } : {})}
+          {...(actsInItemPanel(item) ? { onReplace: (media: MediaAsset) => void replace(item, media), ...(item.blank ? {} : { onRemove: () => void remove(item) }) } : {})}
         />
         <GoToButton parent={item.parent} placeholders={placeholders} onGoTo={onGoTo} />
       </div>

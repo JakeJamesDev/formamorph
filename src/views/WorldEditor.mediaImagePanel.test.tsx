@@ -308,3 +308,69 @@ describe('Media tab image panel modes and parents', () => {
     expect(panel()).not.toHaveTextContent('Avatar:');
   });
 });
+
+describe('Media tab No Images filter', () => {
+  const header = () => document.querySelector<HTMLElement>('[data-media-header]')!;
+  const pickFilter = (name: string) => {
+    fireEvent.click(within(header()).getByRole('button', { name: /^Filter/ }));
+    fireEvent.click(screen.getByRole('button', { name }));
+  };
+  const blankEls = () => [...document.querySelectorAll<HTMLElement>('[data-media-card="blank"]')];
+  const blankCards = () => blankEls().map((c) => c.textContent);
+  const noThumbnail = () => panelWorld((w) => { w.worldOverview.thumbnail = ''; });
+
+  it('shows blank cards under No Images only, with the parent name and no size', () => {
+    open('simple', noThumbnail());
+    expect(blankCards()).toEqual([]);
+
+    pickFilter('No Images');
+    expect(blankCards()).toEqual(['Thumbnail', 'Hollow', 'Bare Flat']);
+
+    pickFilter('Linked');
+    expect(blankCards()).toEqual([]);
+    pickFilter('All Media');
+    expect(blankCards()).toEqual([]);
+  });
+
+  it('applies search to blank cards', () => {
+    open('simple', noThumbnail());
+    pickFilter('No Images');
+    fireEvent.change(screen.getByPlaceholderText('Search media'), { target: { value: 'Hollow' } });
+
+    expect(blankCards()).toEqual(['Hollow']);
+  });
+
+  it('opens a blank entity card on the add slot, and an upload lands in slot 0 as one undoable step', async () => {
+    const bench = open('simple', noThumbnail());
+    pickFilter('No Images');
+    fireEvent.click(blankEls()[1]);
+
+    expect(panel()).toHaveAttribute('data-media-image-panel', 'entity:empty');
+    expect(framed()).toBeNull();
+    const input = document.getElementById('image-upload-media-entity-image-empty') as HTMLInputElement;
+    await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
+
+    await waitFor(() => expect(bench.ctx().entities.find((e) => e.id === 'empty')!.images).toHaveLength(1));
+    expect(blankCards()).toEqual(['Thumbnail', 'Bare Flat']);
+    expect(panel()).toHaveAttribute('data-media-image-panel', 'entity:empty');
+    expect(panel()).toHaveAttribute('data-media-panel', 'entity:empty:image:0');
+
+    await undo();
+    expect(bench.ctx().entities.find((e) => e.id === 'empty')!.images ?? []).toHaveLength(0);
+    expect(blankCards()).toEqual(['Thumbnail', 'Hollow', 'Bare Flat']);
+  });
+
+  it('uploads into a blank world slot from its item panel', async () => {
+    const bench = open('simple', noThumbnail());
+    pickFilter('No Images');
+    fireEvent.click(blankEls()[0]);
+
+    expect(inPanel().queryByRole('button', { name: 'Remove' })).toBeNull();
+    const input = panel()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
+    await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
+
+    await waitFor(() => expect(bench.ctx().worldOverview.thumbnail).toMatch(/^data:/));
+    expect(blankCards()).toEqual(['Hollow', 'Bare Flat']);
+    expect(lastLabel(bench)).toBe('Add Thumbnail');
+  });
+});

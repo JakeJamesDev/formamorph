@@ -73,7 +73,7 @@ export function useMediaItemActions() {
   const step = useMediaStep();
 
   const replace = useCallback((item: MediaItem, media: MediaAsset) =>
-    step(mediaStepLabel('Replace', item), () => write(item, media)), [step, write]);
+    step(mediaStepLabel(item.blank ? 'Add' : 'Replace', item), () => write(item, media)), [step, write]);
   const remove = useCallback((item: MediaItem) =>
     step(mediaStepLabel('Remove', item), () => write(item, null)), [step, write]);
   return { replace, remove };

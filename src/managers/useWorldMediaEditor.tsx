@@ -8,7 +8,7 @@ import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
 import {
-  filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
+  blankSections, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
   type MediaFilter, type MediaItem, type MediaParent,
 } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
@@ -46,13 +46,19 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   const { grouping, setGrouping, largestFirst, setLargestFirst } = useMediaViewPrefs();
   // The filter lasts while the editor is open.
   const [filter, setFilter] = useState<MediaFilter>('all');
+  // Blank cards show under No Images and nowhere else.
+  const blankOnly = filter === 'noImages';
+  const blankSource = useMemo(
+    () => (blankOnly ? blankSections({ worldOverview, entities, entityGroups, locations, dictionaries }) : []),
+    [blankOnly, worldOverview, entities, entityGroups, locations, dictionaries],
+  );
   // What the gallery lays out, before the search narrows it.
   const shownSections = useMemo(() => {
-    const filtered = filterSections(groupSections(allSections, grouping), filter);
+    const filtered = filterSections(groupSections(blankOnly ? blankSource : allSections, grouping), filter);
     const sorted = largestFirst ? sortSectionsLargestFirst(filtered) : filtered;
     // Unfiltered, the Avatars section always shows, so the first Avatar has a way in.
     return filter === 'all' ? withAvatarsSection(sorted, grouping) : sorted;
-  }, [allSections, grouping, filter, largestFirst]);
+  }, [allSections, blankSource, blankOnly, grouping, filter, largestFirst]);
   const term = search.term.trim();
   const sections = useMemo(() => {
     if (!term) return shownSections;
@@ -63,7 +69,9 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   }, [shownSections, term, placeholders]);
 
   const allItems = useMemo(() => allSections.flatMap((s) => s.items), [allSections]);
-  const item = selectedId ? allItems.find((i) => i.id === selectedId) : undefined;
+  // A blank card's id is the one its filled slot takes, so an upload hands the selection to the real item.
+  const blankItems = useMemo(() => blankSource.flatMap((s) => s.items), [blankSource]);
+  const item = selectedId ? allItems.find((i) => i.id === selectedId) ?? blankItems.find((i) => i.id === selectedId) : undefined;
   const section = selectedId && !item ? shownSections.find((s) => sectionSelection(s.id) === selectedId && (s.items.length || !term)) : undefined;
   const held = !!item || !!section;
   // An undo or a removal elsewhere can take the selected item away.
@@ -110,6 +118,13 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
     )
     : item
     ? <MediaItemPanel item={item} placeholders={placeholders} onGoTo={onGoTo} />
+    : section && blankOnly
+      ? (
+        <div className="space-y-1">
+          <h2 className="text-title font-semibold">{sectionTitle(section)}</h2>
+          <Hint>{section.items.length} {section.items.length === 1 ? 'card has' : 'cards have'} no image</Hint>
+        </div>
+      )
     : section
       ? (
         <MediaSummaryPanel
@@ -134,7 +149,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
     : (
       // The list pane deselects on a bubbled click; cards select through their own handlers.
       <div onClick={(e) => e.stopPropagation()}>
-        {!allItems.length && <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>}
+        {!allItems.length && !blankOnly && <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>}
         <MediaGallery sections={sections} selectedId={selectedId} onSelect={onSelect} placeholders={placeholders} />
       </div>
     );
