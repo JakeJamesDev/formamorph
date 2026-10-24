@@ -11,7 +11,7 @@ While a turn runs, the player sees one muted line, "Generating Narration…", ne
 
 The status row gets a small **animated glyph** for each kind of request, in the Lucide stroke style. Narration shows a quill that writes, Plan a swinging compass needle, Stat Updates pumping bars, Choices a dot that takes a fork, and so on. After 3 seconds the row also shows how long the turn has run. The row leaves the footer flow: it becomes a full-width strip that floats above the footer on a short fade, so the Pager and the input never move.
 
-Eight glyphs come from animate-ui's icon registry. We write three ourselves (quill, masks, split) in the same format. A standalone mock with every glyph exists in `.scratch/status-glyphs/` (start the `scratch-status-glyphs` preview). The player approved its look on 2026-10-24.
+Eight glyphs come from animate-ui's icon registry. We write three ourselves (quill, masks, split) in the same format. The **Thinking** header above a reasoning model's scratchpad also trades its pulsing dot for a rising thought cloud of ours. A standalone mock with every glyph exists in `.scratch/status-glyphs/` (start the `scratch-status-glyphs` preview). The player approved its look on 2026-10-24.
 
 ## Rulings
 
@@ -35,12 +35,18 @@ Settled with the user on 2026-10-23 and 2026-10-24 in the grill.
 | Q13 | The overlay is a full-width strip: glyph, label, bar and timer, on a short fade from the panel background into the narration |
 | Q14 | The overlay works the same way in the Pages and Chat layouts |
 | Q15 | The narration gets no reserved bottom padding. The strip can cover the last streamed line while a request runs. This is an accepted trade-off |
+| Q16 | The **Thinking** header's pulsing dot becomes a **rising thought cloud** (ours): a cloud with three dots inside and two solid tail dots at the lower left. On one 2 s cycle, the small tail dot, the large tail dot, the cloud and the three inner dots each light in turn, 0.15 s apart, and stay lit. After a short hold, all six fade back together to a dim rest. The 400 ms loop pause applies |
+| Q17 | The thought cloud replaces the dot everywhere the Thinking header shows: the game's reasoning block and Formaquestion's answer header |
+| Q18 | The status strip does not switch to the thought cloud during a request's reasoning phase. It keeps one glyph per request |
+
+Placement answers to ticket 01, 2026-10-24: the strip anchors to the top of the whole footer group (like prompt, location suggestion, Pager), overlaying the bottom of the narration frame. Its fade starts from the narration frame's own fill. "Full width" is the narration frame's inner width.
 
 ### Glyph map
 
 | Glyph | Source | Request types |
 |---|---|---|
 | quill (Lucide `feather`) | ours | Narration |
+| rising thought cloud | ours | The Thinking header, not a request type (Q16, Q17) |
 | compass (`default-loop` variant) | animate-ui | Plan (`thinking`) |
 | masks (Lucide `drama`) | ours | Cast (`director`), Motivation (`character`), Character (`discoverEntity`); background Describing character |
 | split, with a dot that takes the left branch, then the right | ours | Choices |
@@ -91,7 +97,8 @@ The mock's pencil glyph is not used.
 
 - **One status-row component.** A new shared component renders the strip: glyph slot, label, the existing indeterminate bar, and an optional timer. The turn row, the Tool row and the background pass row all render through it. Its inputs are the glyph to show, the label text, and whether to show the timer with the turn's start time. It owns the 300 ms dwell, the crossfade and the timer.
 - **Glyph map.** A table maps every `AIRequestType` to a glyph key. It is typed as a complete record over the request type union, so a new request type fails typecheck until it gets a glyph. The editor request types map to sparkles. The background pass kinds map through a second small table (Q10). A Tool round maps to hammer.
-- **Glyph library.** A new folder holds the copied animate-ui wrapper (with the Q1b patch) and one file per glyph. Each glyph keeps animate-ui's variant shape: named parts, an `initial` and an `animate` variant, and the `default-loop` variant where animate-ui ships one. The wrapper's `loop` mode runs each glyph with a 400 ms `loopDelay`. Our three glyphs follow the same shape. The split glyph alternates its branch on each loop.
+- **Glyph library.** A new folder holds the copied animate-ui wrapper (with the Q1b patch) and one file per glyph. Each glyph keeps animate-ui's variant shape: named parts, an `initial` and an `animate` variant, and the `default-loop` variant where animate-ui ships one. The wrapper's `loop` mode runs each glyph with a 400 ms `loopDelay`. Our three glyphs and the thought cloud follow the same shape. The split glyph alternates its branch on each loop.
+- **Thinking header.** The shared Thinking label (used by the game's reasoning block and Formaquestion's answer header) renders the thought cloud in place of its pulsing dot while active, at the header's text size. The finished "Thought for Ns" line shows no glyph, as today.
 - **The wrapper's dependencies come with it.** The v2 wrapper imports a Slot primitive and an in-view hook. The ticket copies what the wrapper needs, or swaps it for the project's own Radix Slot where the shapes match. It adds no other animate-ui component.
 - **Reduced motion.** The glyphs honor `prefers-reduced-motion` through Motion's user setting, so a static first frame shows. No app setting.
 - **Timer.** The turn's start time comes from the moment the turn's first request starts. A Tool row in the same turn shares that start. The timer appears at 3 s and counts whole seconds.
@@ -118,7 +125,8 @@ The mock's pencil glyph is not used.
 
 - Step dots for the passes a turn will run (Q3).
 - An app setting to turn the animation off (Q7).
-- Glyphs anywhere outside the three in-game status rows: the Formaquestion help window, editor generate buttons, the TTS row, scene image jobs.
+- Glyphs anywhere outside the three in-game status rows and the Thinking header: the rest of the Formaquestion help window, editor generate buttons, the TTS row, scene image jobs.
+- A thinking glyph in the status strip (Q18).
 - A reserved bottom padding in the narration (Q15).
 - Any change to the label text.
 - Updating Motion or animate-ui sources after the copy; a later pull from upstream re-applies the Q1b patch.
