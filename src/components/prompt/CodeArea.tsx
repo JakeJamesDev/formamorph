@@ -316,6 +316,8 @@ export function CodeArea(props: CodeAreaProps) {
     return surface.readOnly ? readOnlyTree(tree) : tree;
   }, []);
 
+  // Texts the editor reported that the parent has not handed back yet.
+  const echoes = useRef<string[]>([]);
   const { ariaLabel, placeholder, slots } = props;
   useEffect(() => {
     let live = true;
@@ -346,7 +348,7 @@ export function CodeArea(props: CodeAreaProps) {
             goToUse: (use) => { leaveFullscreen(); navigation.goToUse(use); },
           };
         },
-        onChange: (next) => latest.current.onChange(next),
+        onChange: (next) => { echoes.current.push(next); latest.current.onChange(next); },
         onUpdate,
       });
       setSession(created);
@@ -355,7 +357,18 @@ export function CodeArea(props: CodeAreaProps) {
   }, [ariaLabel, placeholder, slots, onUpdate]);
 
   // The parent stays the single owner of the text: anything it writes lands in the editor here.
-  useEffect(() => { session?.setValue(props.value); }, [session, props.value]);
+  // A render that lags typing hands back an older text of the editor's own; writing it would erase the newer keys.
+  useEffect(() => {
+    const at = echoes.current.indexOf(props.value);
+    if (at >= 0) {
+      const stale = at < echoes.current.length - 1;
+      echoes.current = echoes.current.slice(at + 1);
+      if (stale) return;
+    } else {
+      echoes.current = [];
+    }
+    session?.setValue(props.value);
+  }, [session, props.value]);
   // A second gutter column is worth its width only where there is width to spare; inline, a problem is
   // read by hovering its squiggle.
   useEffect(() => { session?.setLintGutter(morph.mounted); }, [session, morph.mounted]);

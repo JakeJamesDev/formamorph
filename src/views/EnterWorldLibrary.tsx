@@ -224,7 +224,7 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAutho
   entitySelected: boolean;
   dictionaryTotal: number;
   worldAuthor?: string;
-  headingRef: RefObject<HTMLHeadingElement>;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   showBack: boolean;
   onEntityToggle: (entityId: string, selected: boolean) => void;
   onDictionaryToggle: (key: string, enabled: boolean) => void;
@@ -447,7 +447,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         role="region"
         aria-label="Library Additions List"
         aria-hidden={!listVisible}
-        {...(!listVisible ? { inert: '' } : {})}
+        inert={!listVisible}
         className={cn(
           'flex min-h-0 flex-col overflow-hidden',
           singlePane && 'col-start-1 row-start-1 transition-transform duration-200 ease-out motion-reduce:transition-none',
@@ -554,7 +554,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         role="region"
         aria-label="Addition Details"
         aria-hidden={!detailsVisible}
-        {...(!detailsVisible ? { inert: '' } : {})}
+        inert={!detailsVisible}
         className={cn(
           'z-10 min-h-0 overflow-hidden',
           singlePane && 'col-start-1 row-start-1 bg-background transition-transform duration-200 ease-out motion-reduce:transition-none',

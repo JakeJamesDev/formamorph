@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   $getRoot, $getSelection, $getSlot, $isElementNode, $isRangeSelection, $isTextNode, COMMAND_PRIORITY_LOW,
@@ -113,6 +113,9 @@ beforeEach(async () => {
   change.mockReset();
   render(<World />);
   await userEvent.click(screen.getByRole('tab', { name: 'Values' }));
+  // An author types with the field focused. Without it Lexical focuses the field on its first selection write,
+  // and jsdom moves the caret to the field's start when that happens.
+  await act(async () => { field().focus(); });
   change.mockReset();
 });
 afterEach(() => random.mockReset());
@@ -208,7 +211,7 @@ describe('other caret exits', () => {
 
   it('focus leaving the editor drops the space', async () => {
     await typeValue('Sedge Landing ');
-    await act(async () => { fireEvent.focusOut(field()); });
+    await act(async () => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
     expect(valueText()).toBe('Sedge Landing');
     expect(change).toHaveBeenLastCalledWith(`Welcome to ${TOWN} , friend.`);
   });

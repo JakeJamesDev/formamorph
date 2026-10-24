@@ -34,7 +34,7 @@ describe('the website community route', () => {
     await user.click(screen.getByRole('button', { name: 'Accept' }));
 
     expect(await screen.findByTestId('community-host')).toBeInTheDocument();
-    expect(host).toHaveBeenCalledWith(expect.objectContaining({
+    expect(host.mock.calls.map(([props]) => props)).toContainEqual(expect.objectContaining({
       presentation: 'embedded',
       capabilities: expect.objectContaining({
         localLibrary: false,
@@ -42,7 +42,7 @@ describe('the website community route', () => {
         comments: false,
         moderation: false,
       }),
-    }), {});
+    }));
   });
 
   it('keeps a direct listing destination outside the warning, then gives it to the shared browser', async () => {
@@ -54,9 +54,9 @@ describe('the website community route', () => {
     await user.click(screen.getByRole('button', { name: 'Accept' }));
 
     expect(await screen.findByTestId('community-host')).toBeInTheDocument();
-    expect(host).toHaveBeenLastCalledWith(expect.objectContaining({
+    expect(host.mock.lastCall?.[0]).toEqual(expect.objectContaining({
       listing: { id: 'e1', kind: 'entity' },
-    }), {});
+    }));
   });
 
   it('keeps a malformed destination unavailable instead of loading the catalog', async () => {

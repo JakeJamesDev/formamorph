@@ -395,9 +395,9 @@ type MenuTarget =
 const CanvasMenu = ({ sections, menuRef, frameRef }: {
   sections: CanvasMenuSection[];
   /** Lets the keydown scope count the portaled menu as the canvas (see `trackPointer`). */
-  menuRef: RefObject<HTMLDivElement>;
+  menuRef: RefObject<HTMLDivElement | null>;
   /** Where focus goes back to on close — the pane takes none of its own, so nothing else is left holding it. */
-  frameRef: RefObject<HTMLDivElement>;
+  frameRef: RefObject<HTMLDivElement | null>;
 }) => (
   <ContextMenuContent
     ref={menuRef}

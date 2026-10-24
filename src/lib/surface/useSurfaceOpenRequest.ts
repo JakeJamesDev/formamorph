@@ -33,7 +33,14 @@ export function useSurfaceOpenRequest(open: (steps: SurfaceSteps, clear: () => v
  */
 export function useSurfaceNav() {
   const [nav, setNav] = useState<{ key: string; steps: SurfaceSteps } | null>(null);
-  useEffect(() => { if (nav) setNav(null); }, [nav]);
+  // Clears once the commit settles. A dialog portal mounts its content in a layout-effect re-render of the same
+  // flush, and React 19 runs this effect before that render, so a plain clear would hide the landing from it.
+  useEffect(() => {
+    if (!nav) return;
+    let live = true;
+    queueMicrotask(() => { if (live) setNav(null); });
+    return () => { live = false; };
+  }, [nav]);
   const land = useCallback((steps: SurfaceSteps) => setNav({ key: randomUUID(), steps }), []);
   const target = nav ? targetRoute(nav.steps) : undefined;
   useTargetLanding(nav && landsOnPage(nav.steps) ? target : undefined, nav?.key);

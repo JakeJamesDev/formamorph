@@ -86,7 +86,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
   onGo: (route: SurfaceRoute) => void;
-  contentRef: RefObject<HTMLDivElement>;
+  contentRef: RefObject<HTMLDivElement | null>;
 }) {
   const folds = useAnswerFolds(exchange, settings, onSettingsChange);
   // The bubble follows an answer as it streams, and opens a finished answer at its top.

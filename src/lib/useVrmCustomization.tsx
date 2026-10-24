@@ -56,7 +56,7 @@ export interface VrmCustomization {
   /** Pass to `VRMViewer.onCapabilities` so the controls learn what the loaded model supports. */
   setCaps: (caps: VRMCapabilities) => void;
   /** Attach to the `VRMViewer` — the extras color revert reads its live material colors. */
-  vrmViewerRef: React.RefObject<VRMViewerHandle>;
+  vrmViewerRef: React.RefObject<VRMViewerHandle | null>;
   /** Spread onto `VRMViewer`: the morph/color/hair inputs the sliders drive, plus the animate toggle. */
   viewerProps: {
     bodyMorphValues: Record<string, number>;

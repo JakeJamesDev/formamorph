@@ -247,7 +247,9 @@ describe('which panel opens first', () => {
 
     show();
 
-    fireEvent.click(await screen.findByText('Changelog'));
+    // The Changelog tab stays disabled until the entries load, and a click on it does nothing.
+    await waitFor(() => expect(changelogTab()).toBeEnabled());
+    fireEvent.click(changelogTab()!);
 
     expect(await screen.findByText('The drowned quarter is walkable now.')).toBeInTheDocument();
   });

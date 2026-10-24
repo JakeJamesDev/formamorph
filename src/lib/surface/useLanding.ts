@@ -36,8 +36,14 @@ export function useLanding<T>(find: (target: T) => HTMLElement | null, options: 
         return;
       }
       const { pulse = true, block = 'nearest', focus = landingControl } = latest.current.options;
+      const control = focus(row);
+      // A disabled control cannot take focus. It may enable in a frame or two, once the data behind it loads.
+      if (control && 'disabled' in control && control.disabled && ++frames < LANDING_FRAMES) {
+        frame = requestAnimationFrame(look);
+        return;
+      }
       row.scrollIntoView({ block });
-      focus(row)?.focus({ preventScroll: true });
+      control?.focus({ preventScroll: true });
       if (pulse) cancelPulse = pulseLanding(row);
     };
     frame = requestAnimationFrame(look);

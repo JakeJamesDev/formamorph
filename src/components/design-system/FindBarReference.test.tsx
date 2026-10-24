@@ -41,7 +41,7 @@ it('navigates the production Find bar through local World Editor fields', async 
   await user.type(find, 'harbor');
 
   await waitFor(() => expect(screen.getByText('1 / 5')).toBeInTheDocument());
-  expect(screen.getByRole('textbox', { name: 'World Introduction' })).toHaveAttribute('data-find-current', 'true');
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'World Introduction' })).toHaveAttribute('data-find-current', 'true'));
 
   await user.keyboard('{Enter}');
   expect(screen.getByText('2 / 5')).toBeInTheDocument();
@@ -79,7 +79,7 @@ it('shows match-option and no-results states through the production controls', a
 
   await waitFor(() => expect(screen.getByText('No results')).toBeInTheDocument());
   expect(screen.getByRole('button', { name: 'Next match' })).toBeDisabled();
-  expect(screen.getByRole('status')).toHaveTextContent('The reference has no selected match.');
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('The reference has no selected match.'));
 });
 
 it('confirms local replacements and restores focus when the bar closes', async () => {

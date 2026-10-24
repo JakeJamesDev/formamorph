@@ -477,13 +477,15 @@ describe('the age gate in front of signing in', () => {
     expect(AuthService.isAuthenticated()).toBe(true);
     expect(requested.filter((url) => url.endsWith('/auth/login'))).toHaveLength(1);
     expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(1);
-    await waitFor(() => expect(requested.some((url) => url.endsWith('/policies'))).toBe(true));
-    const accountOrder = requested.filter((url) => /\/auth\/login$|\/policies(?:\/age-gate(?:\/accept)?)?$/.test(url));
-    expect(accountOrder).toEqual([
+    const accountCalls = () => requested.filter((url) => /\/auth\/login$|\/policies(?:\/age-gate(?:\/accept)?)?$/.test(url));
+    // The app re-reads the age-gate answer once the account is signed in, so that read ends the list.
+    await waitFor(() => expect(accountCalls()).toHaveLength(5));
+    expect(accountCalls()).toEqual([
       expect.stringMatching(/\/auth\/login$/),
       expect.stringMatching(/\/policies\/age-gate$/),
       expect.stringMatching(/\/policies\/age-gate\/accept$/),
       expect.stringMatching(/\/policies$/),
+      expect.stringMatching(/\/policies\/age-gate$/),
     ]);
 
     cleanup();

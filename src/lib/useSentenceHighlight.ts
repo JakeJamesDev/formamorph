@@ -19,7 +19,7 @@ function clearHighlight() {
  * no-ops when unsupported, disabled, or nothing is playing.
  */
 export function useSentenceHighlight(
-  containerRef: React.RefObject<HTMLElement>,
+  containerRef: React.RefObject<HTMLElement | null>,
   { activeSentenceIndex, sentenceTexts, enabled }: {
     activeSentenceIndex: number;
     sentenceTexts: string[];

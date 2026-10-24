@@ -38,7 +38,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                   data-base-ui-tooltip-trigger=""
                   data-idle="true"
                   data-state="closed"
-                  id="base-ui-:r10:"
+                  id="base-ui-_r_10_"
                   type="button"
                 >
                   <svg
@@ -134,7 +134,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                         aria-label="Edit"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:r1h:"
+                        id="base-ui-_r_1h_"
                       >
                         <svg
                           aria-hidden="true"
@@ -161,7 +161,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                         aria-label="Copy Text"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:r1i:"
+                        id="base-ui-_r_1i_"
                       >
                         <svg
                           aria-hidden="true"
@@ -193,7 +193,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                         aria-label="Rewind to Here"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent h-8 w-8 text-destructive hover:text-destructive"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:r1j:"
+                        id="base-ui-_r_1j_"
                       >
                         <svg
                           aria-hidden="true"
@@ -221,7 +221,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                         aria-label="More"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:r1k:"
+                        id="base-ui-_r_1k_"
                       >
                         <svg
                           aria-hidden="true"
@@ -446,7 +446,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 aria-label="Send"
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
                 data-base-ui-tooltip-trigger=""
-                id="base-ui-:r1d:"
+                id="base-ui-_r_1d_"
               >
                 <svg
                   aria-hidden="true"
@@ -516,7 +516,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   data-base-ui-tooltip-trigger=""
                   data-idle="true"
                   data-state="closed"
-                  id="base-ui-:r3:"
+                  id="base-ui-_r_3_"
                   type="button"
                 >
                   <svg
@@ -612,7 +612,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="Re-generate Narration"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:rk:"
+                        id="base-ui-_r_k_"
                       >
                         <svg
                           aria-hidden="true"
@@ -645,7 +645,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="Edit"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:rl:"
+                        id="base-ui-_r_l_"
                       >
                         <svg
                           aria-hidden="true"
@@ -672,7 +672,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="Text to Speech"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:rm:"
+                        id="base-ui-_r_m_"
                       >
                         <svg
                           aria-hidden="true"
@@ -696,7 +696,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="Copy Text"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:rn:"
+                        id="base-ui-_r_n_"
                       >
                         <svg
                           aria-hidden="true"
@@ -729,7 +729,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="More"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:ro:"
+                        id="base-ui-_r_o_"
                       >
                         <svg
                           aria-hidden="true"
@@ -847,7 +847,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="Re-generate Choices"
                         class="inline-flex items-center justify-center whitespace-nowrap text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-auto w-10 rounded-none border-0"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:rp:"
+                        id="base-ui-_r_p_"
                       >
                         <svg
                           aria-hidden="true"
@@ -1060,7 +1060,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                 aria-label="Send"
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
                 data-base-ui-tooltip-trigger=""
-                id="base-ui-:rg:"
+                id="base-ui-_r_g_"
               >
                 <svg
                   aria-hidden="true"

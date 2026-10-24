@@ -53,7 +53,7 @@ export const NavDisclosure = forwardRef<HTMLButtonElement, NavDisclosureProps>(f
       <div
         id={bodyId}
         aria-hidden={collapsed ? !open : undefined}
-        {...(collapsed && !open ? { inert: '' } : {})}
+        inert={collapsed && !open}
         className={cn(
           collapsed && 'grid transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none',
           !collapsed && 'h-full min-h-0',
