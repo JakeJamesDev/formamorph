@@ -1,6 +1,7 @@
 # Spec: Request Status Glyphs
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-24. Tickets 01–04 landed; the last landing is 25ca93b1c. Review: spec text corrected (Q19–Q21 ruled at close). Gates green on 2026-10-24.
 Spec session: request-status-glyphs — spec
 
 ## Problem Statement
@@ -29,7 +30,7 @@ Settled with the user on 2026-10-23 and 2026-10-24 in the grill.
 | Q6 | Each glyph pauses 400 ms between loops |
 | Q7 | With the OS **reduced motion** setting on, the glyph shows as a static icon. We add no app setting |
 | Q8 | A glyph stays at least 300 ms before the next one replaces it. The label changes at once |
-| Q9 | Our three glyphs (quill, masks, split) use animate-ui's variant format and the same wrapper. All glyphs share one loop path and one reduced-motion path |
+| Q9 | Our three glyphs (quill, masks, split) use animate-ui's variant format and the same wrapper. All glyphs share one loop path and one reduced-motion path (the thought cloud adds its own fully lit static frame for Q16a) |
 | Q10 | In the background pass row, Summarizing, Selecting memories and Writing diary show the book. Describing character shows the masks |
 | Q11 | The timer shows on the turn row and the Tool row, not on the background pass row |
 | Q12 | The status row leaves the footer flow. It becomes an overlay above the footer. Nothing in the layout moves when it appears or goes |
@@ -40,8 +41,11 @@ Settled with the user on 2026-10-23 and 2026-10-24 in the grill.
 | Q16a | Under reduced motion, the thought cloud shows fully lit and static, not its dim rest frame (answer to ticket 03, 2026-10-24) |
 | Q17 | The thought cloud replaces the dot everywhere the Thinking header shows: the game's reasoning block and Formaquestion's answer header |
 | Q18 | The status strip does not switch to the thought cloud during a request's reasoning phase. It keeps one glyph per request |
+| Q19 | Supersedes Q13's backdrop and Q15's "can cover" (ratified at close, 2026-10-24, from c32b12f24 and faec284d0). The strip has no backdrop of its own. Instead the narration masks itself: it is clear under the strip's bottom 1rem and fades in over 2.5rem above it, at every scroll position, while the strip shows. Text under the strip is hidden, not partly visible. Still no reserved padding |
+| Q20 | The Thinking header's thought cloud is 14px next to the 12px header text, the mock's size (ruled at close) |
+| Q21 | A partial re-roll shows the elapsed timer too. A re-roll is a wait like a turn (ruled at close) |
 
-Placement answers to ticket 01, 2026-10-24: the strip anchors to the top of the whole footer group (like prompt, location suggestion, Pager), overlaying the bottom of the narration frame. Its fade starts from the narration frame's own fill. "Full width" is the narration frame's inner width.
+Placement answers to ticket 01, 2026-10-24: the strip anchors to the top of the whole footer group (like prompt, location suggestion, Pager), overlaying the bottom of the narration frame. "Full width" is the narration frame's inner width.
 
 ### Glyph map
 
@@ -100,11 +104,11 @@ The mock's pencil glyph is not used.
 - **One status-row component.** A new shared component renders the strip: glyph slot, label, the existing indeterminate bar, and an optional timer. The turn row, the Tool row and the background pass row all render through it. Its inputs are the glyph to show, the label text, and whether to show the timer with the turn's start time. It owns the 300 ms dwell, the crossfade and the timer.
 - **Glyph map.** A table maps every `AIRequestType` to a glyph key. It is typed as a complete record over the request type union, so a new request type fails typecheck until it gets a glyph. The editor request types map to sparkles. The background pass kinds map through a second small table (Q10). A Tool round maps to hammer.
 - **Glyph library.** A new folder holds the copied animate-ui wrapper (unpatched, on React 19; Q1c) and one file per glyph. Each glyph keeps animate-ui's variant shape: named parts, an `initial` and an `animate` variant, and the `default-loop` variant where animate-ui ships one. The wrapper's `loop` mode runs each glyph with a 400 ms `loopDelay`. Our three glyphs and the thought cloud follow the same shape. The split glyph alternates its branch on each loop.
-- **Thinking header.** The shared Thinking label (used by the game's reasoning block and Formaquestion's answer header) renders the thought cloud in place of its pulsing dot while active, at the header's text size. The finished "Thought for Ns" line shows no glyph, as today.
+- **Thinking header.** The shared Thinking label (used by the game's reasoning block and Formaquestion's answer header) renders the thought cloud in place of its pulsing dot while active, at 14px (Q20). The finished "Thought for Ns" line shows no glyph, as today.
 - **The wrapper's dependencies come with it.** The v2 wrapper imports a Slot primitive and an in-view hook. The ticket copies what the wrapper needs, or swaps it for the project's own Radix Slot where the shapes match. It adds no other animate-ui component.
 - **Reduced motion.** The glyphs honor `prefers-reduced-motion` through Motion's user setting, so a static first frame shows. No app setting.
 - **Timer.** The turn's start time comes from the moment the turn's first request starts. A Tool row in the same turn shares that start. The timer appears at 3 s and counts whole seconds, with no minutes form ("75s"), after the bar. It never restarts mid-turn. A Tool row with no turn running shows no timer. The row takes an optional start time and owns its 1 s tick (answers to ticket 04, 2026-10-24).
-- **Placement.** The strip is positioned over the bottom edge of the narration area, anchored to the top of the footer, in both layouts. It is out of flow, so the footer's height never changes. A gradient from the panel background gives it a backdrop. The narration gets no reserved padding (Q15).
+- **Placement.** The strip is positioned over the bottom edge of the narration area, anchored to the top of the footer, in both layouts. It is out of flow, so the footer's height never changes. The strip has no backdrop; the narration masks itself under and above it while it shows (Q19). The narration gets no reserved padding.
 - **Copy.** The labels stay as they are today ("Generating Narration…", "Summarizing turn…"). This effort changes no label text.
 - **Third-party notice.** THIRD-PARTY-NOTICES gets an animate-ui entry with its license text (MIT plus the Commons Clause condition). The Commons Clause allows use inside a paid app. It forbids selling or redistributing the components themselves.
 - **Design system.** The strip and the glyph set are a new visual pattern (ADR 0008). They get a showcase entry, and the user approves them in the app, mobile form included, before the effort closes.
@@ -136,6 +140,6 @@ The mock's pencil glyph is not used.
 
 ## Further Notes
 
-- **Bundle cost is not measured yet.** Motion adds a runtime to the game bundle. The first ticket records the build size before and after.
-- **The Q15 cost is real.** During the Narration pass, the newest streamed line sits under the strip. The fade keeps it partly visible. If this reads badly in play, it is new evidence to reopen Q15.
+- **Bundle cost.** Ticket 02 measured Motion and the glyphs: the main chunk grew 175.5 kB (56.9 kB gzip).
+- **The Q19 cost is real.** During the Narration pass, the newest streamed line sits under the strip, masked out. If this reads badly in play, it is new evidence to reopen Q19.
 - The animate-ui keyframes in the mock were ported to the Web Animations API by hand. Under Q1 the shipped glyphs use animate-ui's own sources, so motion can differ slightly from the mock. The hammer had no duration in its source; the mock used Motion's 0.8 s default.

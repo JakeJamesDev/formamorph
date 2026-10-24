@@ -46,7 +46,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Request Status Strip:**
     - **The request status strip shows a small animated icon for each request, such as a compass for Plan.** The icon holds still when your system's reduced-motion setting is on.
     - **The request status strip shows a quill for Narration, a forking path for Choices, and masks for Cast and Motivation.** Between turns, memory and diary passes show a book. The Thinking header shows a thought cloud in place of its pulsing dot.
-  - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
+    - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
 - **⚙️ Backend**
