@@ -78,17 +78,10 @@ describe('World Editor app bar (desktop)', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull());
   });
 
-  it('shows Optimize Images as an icon button before the Test Bench in Advanced only', () => {
-    const { unmount } = renderWorldEditorBench(WORLD, 'simple');
+  it.each(['simple', 'advanced'] as const)('has no Optimize Images button in %s; the Test Bench follows the mode switch', (mode) => {
+    renderWorldEditorBench(WORLD, mode);
     expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
-    unmount();
-
-    renderWorldEditorBench(WORLD, 'advanced');
-    const optimize = button('Optimize Images');
-    expect(optimize).toBeEnabled();
-    expect(optimize).toHaveTextContent(/^$/);
-    expect(inOrder([screen.getByRole('combobox', { name: 'Editor mode' }), optimize, button(/^Test Bench/), button('Save')]))
-      .toBe(true);
+    expect(inOrder([screen.getByRole('combobox', { name: 'Editor mode' }), button(/^Test Bench/), button('Save')])).toBe(true);
   });
 
   it('keeps the Save menu open to use while a clean world disables the Save face', () => {
@@ -219,10 +212,10 @@ describe('World Editor footer (mobile)', () => {
   beforeEach(() => { undoMobile = asMobile(); });
   afterEach(() => undoMobile());
 
-  it('keeps Optimize Images as an icon in Advanced, and Export World in the Save menu', async () => {
+  it('has no Optimize Images in the footer, and keeps Export World in the Save menu', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
     expect(screen.queryByRole('button', { name: 'More world actions' })).toBeNull();
-    expect(button('Optimize Images')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
     expect(button('Save')).toBeInTheDocument();
     fireEvent.click(button('Save options'));
     expect(await screen.findByRole('button', { name: 'Export World' })).toBeInTheDocument();

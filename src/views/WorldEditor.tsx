@@ -55,10 +55,9 @@ import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
 import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { useAutoSave } from '@/components/editor/useAutoSave';
 import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
-import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useSettings } from '@/contexts/SettingsContext';
-import { ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -95,6 +94,7 @@ import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { useWorldMediaEditor } from '../managers/useWorldMediaEditor';
+import type { OptimizeControl } from '../managers/MediaHeader';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { NO_OVERVIEW_PANEL, overviewPanelFor, type OverviewPanel } from './overviewPanels';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from './placeholderPanelTabs';
@@ -227,9 +227,9 @@ const WorldEditorInner = ({
     updateWorldOverview({ thumbnail: w.worldOverview.thumbnail });
     setEntities(w.entities);
     setLocations(w.locations);
+    setDictionaries(w.dictionaries);
   };
-  // null = idle; 'scanning' = measuring before the choice dialog; then the live per-image encode progress.
-  const [optimizeProgress, setOptimizeProgress] = useState<{ done: number; total: number } | 'scanning' | null>(null);
+  const [optimizeProgress, setOptimizeProgress] = useState<OptimizeControl['progress']>(null);
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   // Cancels an in-flight optimize when the editor closes: without it the orphaned run keeps the shared encode
   // worker busy for the whole world and then writes its stale click-time snapshot back into GameDataContext,
@@ -1051,6 +1051,7 @@ const WorldEditorInner = ({
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
     publishBytes: bench.publishBytes,
+    optimize: { progress: optimizeProgress, onRun: () => { void optimizeImages(); } },
   });
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {
@@ -1251,25 +1252,6 @@ const WorldEditorInner = ({
       {findButton}
     </div>
   );
-  const optimizing = optimizeProgress !== null;
-  const optimizeTip = optimizeProgress === null ? OPTIMIZE_IMAGES_TIP
-    : optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`;
-  // aria-disabled keeps pointer events, so the tooltip shows the progress.
-  const optimizeButton = advanced && (
-    <Tip tip={optimizeTip}>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="aria-disabled:opacity-50"
-        aria-label="Optimize Images"
-        aria-disabled={optimizing}
-        aria-busy={optimizing}
-        onClick={() => { if (!optimizing) void optimizeImages(); }}
-      >
-        {optimizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
-      </Button>
-    </Tip>
-  );
   // Both modes and both layouts reach Export World here.
   const saveMenu = [{
     label: 'Export World',
@@ -1326,7 +1308,6 @@ const WorldEditorInner = ({
           <Separator orientation="vertical" className="mx-1 h-5" />
           {modeSelect}
           <Separator orientation="vertical" className="mx-1 h-5" />
-          {optimizeButton}
           {benchButton}
           <SaveSplitButton {...saveProps} />
         </>
@@ -1387,7 +1368,6 @@ const WorldEditorInner = ({
     <div className="p-3 border-t flex flex-wrap items-center gap-2">
       {tabActions}
       <div className="ml-auto flex items-center gap-2">
-        {optimizeButton}
         <SaveSplitButton {...saveProps} iconOnly />
       </div>
     </div>

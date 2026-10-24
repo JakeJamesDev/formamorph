@@ -52,6 +52,11 @@ Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it 
 
 Only files that exist show. An empty slot makes no card.
 
+## Optimize Images
+<!-- keywords: optimize images, shrink images, downscale, over budget, thumbnail budget, spinner, undo optimize -->
+
+**Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location backgrounds and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
+
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
 

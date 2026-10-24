@@ -16,11 +16,11 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 | --- | --- |
 | Left | The back arrow, **World Editor**, and the world's name |
 | Center | The **Search World** box |
-| Right | The **Undo**, **Redo** and **History** controls, the mode select, **Optimize Images** (Advanced mode only), the Test Bench, and **Save** |
+| Right | The **Undo**, **Redo** and **History** controls, the mode select, the Test Bench, and **Save** |
 
-**Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Autosave** checkbox, in both modes. The arrow works when **Save** is dim. In Advanced mode, **Optimize Images** is an icon button. It shows a spinner while it runs, and its tooltip shows the progress. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
+**Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Autosave** checkbox, in both modes. The arrow works when **Save** is dim. **Optimize Images** lives in the header of the **Media** tab, in both modes. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Optimize Images** (Advanced mode only) and the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
+On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right is the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
 
 Each tab has its own page.
 
@@ -147,7 +147,7 @@ History works while the editor is open during play. It clears when you close the
 
 The World Editor has two modes. **Simple** is the default.
 
-- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the **Scripts** tab, the placeholder bar and **Optimize Images**.
+- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the **Scripts** tab, and the placeholder bar.
 - **Advanced** shows every field.
 
 Simple mode also hides these panel tabs:

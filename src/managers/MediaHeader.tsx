@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
-import { ArrowDownWideNarrow, Check, Layers, ListFilter } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, ImageDown, Layers, ListFilter, Loader2 } from 'lucide-react';
+import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { HintInfo } from '@/components/SettingsRows';
 import { BAND_FILL, PUBLISH_SIZE_INFO } from '@/components/editor/IssuesInstrument';
 import { MENU_ROW } from '@/components/menuRow';
@@ -95,8 +96,38 @@ function FilterMenu({ filter, onChange }: { filter: MediaFilter; onChange: (filt
   );
 }
 
-/** The Media tab's header row: the Publish Size meter, then grouping, Largest First and the filter. */
-export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange }: {
+/** Null = idle; 'scanning' = measuring before the choice dialog; then the live per-image encode progress. */
+export interface OptimizeControl {
+  progress: { done: number; total: number } | 'scanning' | null;
+  onRun: () => void;
+}
+
+/** Optimize Images: a spinner on the icon and the count in the tooltip while it runs. */
+function OptimizeButton({ progress, onRun }: OptimizeControl) {
+  const running = progress !== null;
+  const tip = progress === null ? OPTIMIZE_IMAGES_TIP
+    : progress === 'scanning' ? 'Scanning…' : `Optimizing ${progress.done}/${progress.total}…`;
+  // aria-disabled keeps pointer events, so the tooltip shows the progress.
+  return (
+    <Tip tip={tip}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 shrink-0 aria-disabled:opacity-50"
+        aria-label="Optimize Images"
+        aria-disabled={running}
+        aria-busy={running}
+        onClick={() => { if (!running) onRun(); }}
+      >
+        {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
+      </Button>
+    </Tip>
+  );
+}
+
+/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter and Optimize Images. */
+export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, optimize }: {
   publishBytes: number | null;
   grouping: MediaGrouping;
   onGroupingChange: (grouping: MediaGrouping) => void;
@@ -104,6 +135,7 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
   onLargestFirstChange: (largestFirst: boolean) => void;
   filter: MediaFilter;
   onFilterChange: (filter: MediaFilter) => void;
+  optimize: OptimizeControl;
 }) {
   const byType = grouping === 'type';
   return (
@@ -120,6 +152,7 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
         <ArrowDownWideNarrow className="h-4 w-4" />
       </IconToggle>
       <FilterMenu filter={filter} onChange={onFilterChange} />
+      <OptimizeButton {...optimize} />
     </div>
   );
 }
