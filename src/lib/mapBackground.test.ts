@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  EMPTY_MAP_WIDTH, MIN_MAP_EDGE, coverFrame, firstMapFrame, locationsBounds, mapImages, moveFrame, resizeFrame, withMapImages,
+  EMPTY_MAP_WIDTH, MIN_MAP_EDGE, coverFrame, firstMapFrame, locationsBounds, mapGalleryStepLabel, mapImages, moveFrame, resizeFrame, withMapImages,
 } from './mapBackground';
 import { CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH } from './locationCanvas';
 import type { GameLocation, MapBackground } from '@/types';
@@ -94,5 +94,21 @@ describe('mapImages', () => {
   it('reads the gallery without blanks, and nothing from a world without one', () => {
     expect(mapImages({ mapBackground: { ...background, images: [{ data: '' }, { data: 'a' }] } })).toEqual([{ data: 'a' }]);
     expect(mapImages({})).toEqual([]);
+  });
+});
+
+describe('mapGalleryStepLabel', () => {
+  const a = { data: 'a' };
+  const b = { data: 'b' };
+  const c = { data: 'c' };
+
+  it('names each gallery change the card can make', () => {
+    expect(mapGalleryStepLabel([], [a])).toBe('Set Map Background');
+    expect(mapGalleryStepLabel([a, b], [a, b, c])).toBe('Add Image 3: Map Background');
+    expect(mapGalleryStepLabel([a, b, c], [a, c])).toBe('Remove Image 2: Map Background');
+    expect(mapGalleryStepLabel([a, b], [{ data: '' }, b])).toBe('Remove Image 1: Map Background');
+    expect(mapGalleryStepLabel([a, b, c], [c, a, b])).toBe('Reorder Images: Map Background');
+    expect(mapGalleryStepLabel([a, b], [a, c])).toBe('Replace Image 2: Map Background');
+    expect(mapGalleryStepLabel([a, b], [a, { ...b, requires: [] }])).toBe('Edit Map Background');
   });
 });

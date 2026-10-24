@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { readImageAspect } from '@/lib/imageAspect';
-import { firstMapFrame, mapImages, withMapImages } from '@/lib/mapBackground';
+import { firstMapFrame, mapGalleryStepLabel, mapImages, withMapImages } from '@/lib/mapBackground';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { GalleryImage, GameLocation, MapBackground, MapFrame, WorldOverview } from '@/types';
 import { useMediaStep } from './useMediaItemActions';
@@ -29,17 +29,17 @@ export function useMapBackground({ worldOverview, updateWorldOverview, locations
     return withMapImages(undefined, images, firstMapFrame(locations, await readImageAspect(first.data), visible));
   }, [background, locations]);
 
-  /** The gallery as the image panel writes it. */
-  const setImages = useCallback(async (images: GalleryImage[]) => {
-    const next = await resolve(images);
+  /** The gallery as the image panel or the canvas card writes it. */
+  const setImages = useCallback(async (images: GalleryImage[], visible?: MapFrame | null) => {
+    const next = await resolve(images, visible);
     if (mounted.current) write(next);
   }, [resolve, write, mounted]);
 
-  /** Set Background Image… fills slot 0; Replace swaps it and keeps its rule (Q76). */
-  const setPrimary = useCallback(async (data: string, visible?: MapFrame | null) => {
-    const [first, ...rest] = mapImages(worldOverview);
-    const next = await resolve([{ ...first, data }, ...rest], visible);
-    if (mounted.current) await step(first ? 'Replace Image 1: Map Background' : 'Set Map Background', () => write(next));
+  /** The canvas card's gallery: each change is its own History Step, however quickly the next follows. */
+  const setGallery = useCallback(async (images: GalleryImage[], visible?: MapFrame | null) => {
+    const label = mapGalleryStepLabel(mapImages(worldOverview), images);
+    const next = await resolve(images, visible);
+    if (mounted.current) await step(label, () => write(next));
   }, [worldOverview, resolve, step, write, mounted]);
 
   /** Remove Image: slot 0 leaves, and the frame and opacity go with the last image (Q77). */
@@ -55,5 +55,5 @@ export function useMapBackground({ worldOverview, updateWorldOverview, locations
     if (background) write({ ...background, opacity });
   }, [background, write]);
 
-  return { background, setImages, setPrimary, removePrimary, setFrame, setOpacity };
+  return { background, setImages, setGallery, removePrimary, setFrame, setOpacity };
 }

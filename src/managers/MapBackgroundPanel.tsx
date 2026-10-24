@@ -3,27 +3,28 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ValueSlider } from '@/components/SettingsRows';
 import { Tip } from '@/components/ui/tooltip';
-import { IMAGE_CAPS } from '@/lib/imageSlots';
-import { ImageUpload } from '@/lib/UtilityComponents';
+import type { GalleryImage, Placeholder, WorldOverview } from '@/types';
+import { MapBackgroundField } from './MapBackgroundField';
 
-/** What the canvas's Map Background card is open for: picking slot 0's image, or adjusting the frame. */
+/** What the canvas's Map Background card is open for: the gallery, or adjusting the frame. */
 export type MapBackgroundPanelMode = 'set' | 'adjust';
 
 /**
- * The canvas card for the Map Background. Set takes a file or a link for slot 0; Adjust shows the Opacity
- * slider and Remove Image while the image sits in front for dragging.
+ * The canvas card for the Map Background. Set shows the Media tab's gallery; Adjust shows the Opacity slider
+ * and Remove Image while the image takes the canvas's presses.
  */
-export function MapBackgroundPanel({ mode, replacing, opacity, onPick, onOpacity, onRemove, onClose }: {
+export function MapBackgroundPanel({ mode, overview, placeholders, opacity, onImagesChange, onOpacity, onRemove, onClose }: {
   mode: MapBackgroundPanelMode;
-  /** Slot 0 already holds an image. */
-  replacing: boolean;
+  overview: Pick<WorldOverview, 'mapBackground' | 'description' | 'name'>;
+  placeholders: Placeholder[];
   opacity: number;
-  onPick: (data: string) => void;
+  onImagesChange: (images: GalleryImage[]) => void;
   onOpacity: (opacity: number) => void;
   onRemove: () => void;
   onClose: () => void;
 }) {
   const percent = Math.round(opacity * 100);
+  const replacing = !!overview.mapBackground?.images.some((img) => img.data);
   return (
     <div className="space-y-3 rounded-md border bg-card p-3 shadow-md" data-map-background-panel={mode}>
       <div className="flex items-center gap-1">
@@ -38,10 +39,11 @@ export function MapBackgroundPanel({ mode, replacing, opacity, onPick, onOpacity
       </div>
       {mode === 'set'
         ? (
-          <ImageUpload
-            id="map-background"
-            cap={IMAGE_CAPS.map}
-            onChange={(data) => { if (data) onPick(data); }}
+          <MapBackgroundField
+            overview={overview}
+            onImagesChange={onImagesChange}
+            placeholders={placeholders}
+            imageId="canvas-map-background"
           />
         )
         : (
