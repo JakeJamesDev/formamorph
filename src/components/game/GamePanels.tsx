@@ -21,7 +21,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
 import { RequestStatusStrip } from './RequestStatusRow';
-import { BOTTOM_FADE, useBottomFade } from './useBottomFade';
+import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useTopFade } from './narrationFade';
 import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
@@ -612,10 +612,11 @@ export const MiddlePanel = ({
     setPending: setPendingAttachments,
   });
   const chatLayout = useNarrationLayout() === 'chat';
-  // The narration fades out under the status strip while it shows.
+  // The narration fades out above the status strip while it shows.
   const statusShowing = Boolean(progressBar);
+  const narrationFade = statusShowing ? NARRATION_FADE_UNDER_STRIP : NARRATION_FADE;
   const pagesViewport = useRef<HTMLDivElement>(null);
-  useBottomFade(pagesViewport, statusShowing && !chatLayout);
+  useTopFade(pagesViewport, chatLayout);
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
@@ -915,7 +916,7 @@ export const MiddlePanel = ({
                 actionsFor={actionsFor}
                 playerActionsFor={playerActionsFor}
                 onDeleteSceneImage={onDeleteSceneImage}
-                fadeBottom={statusShowing}
+                fadeUnderStrip={statusShowing}
                 latestFooter={
                   <>
                     <ScriptPromptLine store={scriptPrompts} layout="chat" className="mb-3" />
@@ -937,7 +938,7 @@ export const MiddlePanel = ({
           <ScrollArea
             className={narrationFrame}
             viewportRef={pagesViewport}
-            viewportProps={statusShowing ? { className: BOTTOM_FADE } : undefined}
+            viewportProps={{ className: narrationFade }}
           >
             {optionsControl}
             {commandPreview && (

@@ -20,9 +20,9 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
             [data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}
           </style>
           <div
-            class="w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block"
+            class="w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block [mask-image:linear-gradient(to_bottom,rgb(0_0_0/calc(1_-_var(--top-fade,0))),black_2rem)]"
             data-radix-scroll-area-viewport=""
-            style="overflow-x: hidden; overflow-y: scroll;"
+            style="overflow-x: hidden; overflow-y: scroll; --top-fade: 0.000;"
           >
             <div
               style="min-width: 100%; display: table;"
@@ -498,9 +498,9 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
             [data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}
           </style>
           <div
-            class="w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block"
+            class="w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block [mask-image:linear-gradient(to_bottom,rgb(0_0_0/calc(1_-_var(--top-fade,0))),black_2rem)]"
             data-radix-scroll-area-viewport=""
-            style="overflow-x: hidden; overflow-y: scroll;"
+            style="overflow-x: hidden; overflow-y: scroll; --top-fade: 0.000;"
           >
             <div
               style="min-width: 100%; display: table;"

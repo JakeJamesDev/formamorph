@@ -40,7 +40,7 @@ export function RequestStatusRow({ label, glyph, startedAt }: { label: string; g
 }
 
 /**
- * Floats a status row over the bottom edge of the narration frame, where the narration's `BOTTOM_FADE` clears room.
+ * Floats a status row over the bottom edge of the narration frame, where the narration's `NARRATION_FADE_UNDER_STRIP` clears room.
  * Its parent is the footer, positioned; the strip sits above it so the footer's height never changes.
  */
 export function RequestStatusStrip({ children }: { children: ReactNode }) {
