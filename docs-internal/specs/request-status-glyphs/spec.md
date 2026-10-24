@@ -37,6 +37,7 @@ Settled with the user on 2026-10-23 and 2026-10-24 in the grill.
 | Q14 | The overlay works the same way in the Pages and Chat layouts |
 | Q15 | The narration gets no reserved bottom padding. The strip can cover the last streamed line while a request runs. This is an accepted trade-off |
 | Q16 | The **Thinking** header's pulsing dot becomes a **rising thought cloud** (ours): a cloud with three dots inside and two solid tail dots at the lower left. On one 2 s cycle, the small tail dot, the large tail dot, the cloud and the three inner dots each light in turn, 0.15 s apart, and stay lit. After a short hold, all six fade back together to a dim rest. The 400 ms loop pause applies |
+| Q16a | Under reduced motion, the thought cloud shows fully lit and static, not its dim rest frame (answer to ticket 03, 2026-10-24) |
 | Q17 | The thought cloud replaces the dot everywhere the Thinking header shows: the game's reasoning block and Formaquestion's answer header |
 | Q18 | The status strip does not switch to the thought cloud during a request's reasoning phase. It keeps one glyph per request |
 
