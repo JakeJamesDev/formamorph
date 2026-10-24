@@ -196,6 +196,7 @@ export function RequirementRowsField({
         className={cn(
           'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
           (stat || time) && 'flex-wrap gap-y-1',
+          time && 'flex-nowrap rounded-2xl',
           requirement.not && 'border-dashed',
           unresolved && 'border-destructive text-destructive',
         )}
