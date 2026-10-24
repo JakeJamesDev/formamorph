@@ -27,7 +27,7 @@ export function TimeConditionControls({ requirement, accepts, onChange }: {
         const dayparts = daypartSet(v.filter(isDaypart));
         if (dayparts.length) onChange({ kind: 'time', dayparts });
       }}
-      className="h-8 shrink-0 flex-wrap"
+      className="h-auto min-w-0 flex-wrap gap-y-0.5"
     >
       {DAYPARTS.map((part) => {
         const next = toggled(part);

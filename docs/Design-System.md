@@ -2104,7 +2104,7 @@ A segmented control whose options turn on and off one by one, for a short pick-m
 - 🧩 **Component.** `ToggleGroup` with `type="multiple"` in [`toggle-group.tsx`](../src/components/ui/toggle-group.tsx), at the chip's `h-6 px-2 text-helper` size. The production use is [`TimeConditionControls.tsx`](../src/components/editor/TimeConditionControls.tsx).
 - 🔢 **Order.** Options keep one fixed order, such as clock order, whatever was picked first.
 - 🔒 **Never empty.** When one option is left on, it is disabled, so the value can't empty.
-- 📱 **Width.** The group wraps inside its chip on a narrow screen. It does not switch to a select.
+- 📱 **Width.** The group wraps inside its chip on a narrow screen, and the chip's remove button stays beside it. It does not switch to a select.
 - 🔊 **Name.** The group carries an `aria-label`; each option is a pressed or unpressed button.
 
 Open `#dev?modal=designSystem&tab=segmented-multi-select` for the time chip's controls with local state.
