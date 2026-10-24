@@ -580,6 +580,7 @@ export const MiddlePanel = ({
     setPlayerInput,
     isWaitingForAI,
     isRevealingNarration,
+    narrationSettled,
     isFlashing,
     isEditMode,
     setIsEditMode,
@@ -747,9 +748,11 @@ export const MiddlePanel = ({
     ? liveReasoning
     : currentAssistantMessage ? parseSavedReasoning(currentAssistantMessage.content) : null;
   const pageActions = currentAssistantMessage ? actionsFor({
-    index: currentPage - 1, isLatest: !isViewingPast, live: pageLive, hasImage: sceneImages.length > 0, text: pageNarration,
+  // The card holds its actions while live, so its row can open in place once the narration settles.
+    index: currentPage - 1, isLatest: !isViewingPast, live: false, hasImage: sceneImages.length > 0, text: pageNarration,
   }) : [];
   // The turn is live from submit, before its narration exists, until the reveal ends.
+  const pageChromeHeld = pageLive && !narrationSettled;
   const actionLineActions = actionLine === undefined ? [] : playerActionsFor({
     index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
   });
@@ -945,7 +948,7 @@ export const MiddlePanel = ({
               </>
             )}
             {!commandPreview && (actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text)) && (
-              <TurnCard actions={pageActions} turnNumber={currentPage} live={pageLive} style={revealStyle}>
+              <TurnCard actions={pageActions} turnNumber={currentPage} live={pageChromeHeld} style={revealStyle}>
                 {sceneTurnId && (
                   <ScenePlate
                     turnId={sceneTurnId}

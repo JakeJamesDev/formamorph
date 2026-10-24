@@ -270,6 +270,9 @@ function useProvideGameplay() {
   // which is true across the whole turn (setup/thinking/aux). The reveal view keys on this so the stale
   // last-turn text can't animate during setup (e.g. the re-generate flash).
   const [isRevealingNarration, setIsRevealingNarration] = useState(false);
+  // False from a turn's start until its narration's last word has faded in; the turn card's action row
+  // opens then, ahead of the choices.
+  const [narrationSettled, setNarrationSettled] = useState(true);
   // Formaquestion holds its Send while a turn generates. Leaving the game ends the turn.
   useEffect(() => { turnActivity.set(isWaitingForAI); }, [isWaitingForAI]);
   useEffect(() => () => turnActivity.set(false), []);
@@ -921,6 +924,8 @@ function useProvideGameplay() {
     setIsWaitingForAI,
     isRevealingNarration,
     setIsRevealingNarration,
+    narrationSettled,
+    setNarrationSettled,
     fullMessageHistory,
     setFullMessageHistory,
     displayedMessages,

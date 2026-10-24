@@ -5,7 +5,7 @@ import { CONTINUE_CHOICE } from '@/lib/choices';
 import { rowsGrew } from '@/lib/useRowReveal';
 import { setRevealTiming } from '@/lib/revealTimingStore';
 import { DEFAULT_DURATION, DEFAULT_STAGGER } from '@/lib/narrationRevealConfig';
-import { choiceWordCount, splitWords } from '@/lib/choices';
+import { choiceWordCount, parseStreamingChoices, splitWords } from '@/lib/choices';
 
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -111,6 +111,21 @@ describe('choice rows streaming', () => {
     expect(rowTexts('chat-choices')).toEqual(['Open fire now']);
     advance(3 * STAGGER);
     expect(rowTexts('chat-choices')).toEqual(['Open fire now', 'Call out']);
+  });
+});
+
+describe('streamed choice replies', () => {
+  it.each([
+    ['numbered', '1. Walk down the hall\n2. Call into the dark\n10. Light a match'],
+    ['bulleted', '- Walk down the hall\n* Call into the dark\n• Light a match'],
+    ['plain', 'Walk down the hall\nCall into the dark\nWait'],
+  ])('only grow the list as a %s reply arrives one character at a time, so the rows stream', (_, reply) => {
+    let prev: string[] = [];
+    for (let i = 1; i <= reply.length; i++) {
+      const next = parseStreamingChoices(reply.slice(0, i));
+      expect(rowsGrew(prev, next), `after ${JSON.stringify(reply.slice(0, i))}`).toBe(true);
+      prev = next;
+    }
   });
 });
 

@@ -131,11 +131,12 @@ describe('Chat bubble actions', () => {
     expect(disabled(await row(1), 'Rewind to Here')).toBe(true);
   });
 
-  it('gives a live turn no actions', async () => {
-    renderMiddlePanel({}, { turns: TURNS, settings: chat, gameplayText: 'The gull', seed: (g) => g.setIsRevealingNarration(true) });
+  it('keeps the action row of a live turn closed until its narration settles', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat, gameplayText: 'The gull', seed: (g) => { g.setIsRevealingNarration(true); g.setNarrationSettled(false); } });
     const turns = await screen.findAllByRole('article');
-    expect(within(turns[2]).queryByTestId('bubble-actions')).toBeNull();
-    expect(within(turns[1]).getByTestId('bubble-actions')).toBeTruthy();
+    expect(within(turns[2]).getByTestId('turn-actions').dataset.open).toBe('false');
+    expect(within(turns[2]).getByTestId('turn-actions').getAttribute('aria-hidden')).toBe('true');
+    expect(within(turns[1]).getByTestId('turn-actions').dataset.open).toBe('true');
   });
 
   it('keeps only the whole-story items in the top-right control', async () => {
@@ -247,7 +248,7 @@ describe('Chat bubble menus', () => {
   });
 
   it('gives a live turn no menu', async () => {
-    renderMiddlePanel({}, { turns: TURNS, settings: chat, gameplayText: 'The gull', seed: (g) => g.setIsRevealingNarration(true) });
+    renderMiddlePanel({}, { turns: TURNS, settings: chat, gameplayText: 'The gull', seed: (g) => { g.setIsRevealingNarration(true); g.setNarrationSettled(false); } });
     expect(rightClick(await narrationBubble(3))).toBe(true);
     expect(rightClick(await actionBubble(3))).toBe(true);
     expect(screen.queryByRole('menu')).toBeNull();

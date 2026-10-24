@@ -93,7 +93,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
   /** Fades the turns out at the bottom, under the request status strip. */
   fadeBottom?: boolean;
 }) {
-  const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, actionAttachments, scriptTells, currentPage, totalPages, setUserPage } = useGameplay();
+  const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
@@ -192,9 +192,11 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
             const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
             const { turnId } = turn;
             const images = (!liveReveal && turnId && sceneImages[turnId]) || [];
+            // The card holds its actions while live, so its row can open in place once the narration settles.
             const narrationActions = (turn.narration && actionsFor?.({
-              index: item.index, isLatest, live: liveReveal, hasImage: images.length > 0, text: narrationText,
+              index: item.index, isLatest, live: false, hasImage: images.length > 0, text: narrationText,
             })) || [];
+            const chromeHeld = liveReveal && !narrationSettled;
             // The turn is live from submit, before its narration exists, until the reveal ends.
             const playerActions = (turn.action !== null && playerActionsFor?.({
               index: item.index, live: isLatest && (liveReveal || (isWaitingForAI && !turn.narration)), text: turn.action,
@@ -225,7 +227,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                   <AttachmentThumbs attachments={turnAttachments(actionAttachments, turnId)} className="mb-3 justify-end" />
                 )}
                 {(turn.narration || (showReasoning && reasoning?.text)) && (
-                  <TurnCard actions={narrationActions} turnNumber={item.index + 1} live={liveReveal} style={revealStyle}>
+                  <TurnCard actions={narrationActions} turnNumber={item.index + 1} live={chromeHeld} style={revealStyle}>
                     {showReasoning && reasoning?.text && (
                       <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
                     )}

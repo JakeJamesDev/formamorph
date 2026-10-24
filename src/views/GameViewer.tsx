@@ -186,13 +186,14 @@ import { pickHistoryRecall, type HistoryPicks } from "../lib/historyRecall";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, sameCharacterName } from "../lib/entityMatch";
-import { keepSameRows, parseChoices } from "../lib/choices";
+import { keepSameRows, parseChoices, parseStreamingChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { revealActive } from "../lib/narrationRevealConfig";
 import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, TURN_TEST_ACTION, TURN_TEST_CHOICES, TURN_TEST_NARRATION, type RevealArrivalEvent } from "../lib/revealTestScripts";
 import { scriptedFetch } from "../lib/scriptedFetch";
+import { TURN_CHROME_ENTER_MS } from "../lib/turnChrome";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { appliedStatDeltas, applyRegen, sumDeltas } from "../lib/statChanges";
@@ -654,6 +655,7 @@ const GameViewer = ({
     setIsWaitingForAI,
     isRevealingNarration,
     setIsRevealingNarration,
+    setNarrationSettled,
     fullMessageHistory,
     setFullMessageHistory,
     setDisplayedMessages,
@@ -944,7 +946,7 @@ const GameViewer = ({
       CHOICES_TEST_CHOICES,
       REVEAL_TEST_PROFILES.steady.schedule(CHOICES_TEST_CHOICES.length),
       (slice) => {
-        const list = parseChoices(slice);
+        const list = parseStreamingChoices(slice);
         if (list.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) {
           setCommandChoices((prev) => (prev && !prev.settled && keepSameRows(prev.list, list) === prev.list ? prev : { list, settled: false }));
         }
@@ -1631,19 +1633,27 @@ const GameViewer = ({
     const target = partialRegenTarget();
     if (!target || !choicesEnabled) return;
     const { prev, action } = target;
+    // The new list streams in from empty; replacing the old one row by row would show it at once.
+    setChoices([]);
     void runPartialRegen(async (signal) => {
       const presentNames = new Set([
         ...(prev.entities ?? []),
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
-      const response = await requestChoices(
-        contextValues(),
-        sceneEntityOverride(currentLocation, sceneEntities),
-        action,
-        prev.narration ?? "",
-        signal,
-      );
+      let response = "";
+      try {
+        response = await requestChoices(
+          contextValues(),
+          sceneEntityOverride(currentLocation, sceneEntities),
+          action,
+          prev.narration ?? "",
+          signal,
+        );
+      } finally {
+        // A stopped or failed re-roll puts the turn's own choices back.
+        if (signal.aborted || !response) setChoices(prev.choices ?? []);
+      }
       if (signal.aborted) return;
       const choices = parseChoices(response);
       setChoices(choices);
@@ -2400,10 +2410,9 @@ const GameViewer = ({
       if (target) setSuggestedLocation(target);
     }
 
-    // Fade path: let the paced reveal finish playing out before the turn's results appear, so choices
-    // and stat changes don't pop in over a still-fading narration. The smooth crawl self-catches-up,
-    // so it needs no hold. (The reveal has been running in parallel with the post-narration passes.)
-    if (fadeRevealActive && !turn.written) await fadeReveal.drained();
+    // The turn's results wait for its end to land: the narration settled and its action row open, so the
+    // choices and stat changes never appear over a still-fading narration.
+    await landNarration(turn.written);
     // Stop pressed while the reveal was still draining — bail before committing choices/stats/snapshot.
     // abortGeneration already kept the narration.
     if (signal.aborted) return;
@@ -2605,6 +2614,12 @@ const GameViewer = ({
     setIsRevealingNarration(false);
     turnReasoningRef.current = { text: "", ms: 0 };
     setLiveReasoning({ text: "", ms: 0, active: false });
+    // A new turn end to land: its action row stays closed and its choices wait until then.
+    turnSeqRef.current++;
+    landingRef.current = null;
+    choicesHeldRef.current = true;
+    heldChoicesRef.current = null;
+    setNarrationSettled(false);
 
     // What the turn's own derivations carry between passes. The pipeline's material holds everything the
     // requests render from; these are the view-side reads that outlive a single pass.
@@ -3128,10 +3143,11 @@ const GameViewer = ({
         request,
         signal,
         advance,
-        // Choices are the interactive part: unblock the input the moment they land rather than when the
-        // rest of their batch settles.
+        // Choices are the interactive part: unblock the input the moment they show rather than when the rest
+        // of their batch settles. They show once the turn end lands, so Continue joins after them.
         onPassSettled: (id, outcome) => {
-          if (id === "choices" && outcome.ok && !signal.aborted) setChoicesReady(true);
+          if (id !== "choices" || !outcome.ok || signal.aborted) return;
+          void landNarration(plan.writtenNarration !== null).then(() => { if (!signal.aborted) setChoicesReady(true); });
         },
       });
 
@@ -3188,6 +3204,9 @@ const GameViewer = ({
     } finally {
       setIsWaitingForAI(false);
       setIsRevealingNarration(false);
+      // A turn that ended without landing (stopped, failed) still opens its row and lets choices through.
+      setNarrationSettled(true);
+      releaseChoices();
       setAiRequestType(null);
       scriptLocationRef.current = null;
       turnClockRef.current = null;
@@ -3780,13 +3799,54 @@ const GameViewer = ({
     return { sink, end };
   };
 
-  /** Live choices: each delta parses the list, and a retracted round clears it. */
+  // The turn end plays in order: the narration's last word fades in, its action row opens, then the choices
+  // stream. A turn holds its choices from its start until `landNarration` resolves.
+  const turnSeqRef = useRef(0);
+  const landingRef = useRef<{ turn: number; landed: Promise<void> } | null>(null);
+  const choicesHeldRef = useRef(false);
+  const heldChoicesRef = useRef<string[] | null>(null);
+
+  const releaseChoices = () => {
+    choicesHeldRef.current = false;
+    const held = heldChoicesRef.current;
+    heldChoicesRef.current = null;
+    if (held) setChoices((prev) => keepSameRows(prev, held));
+  };
+
+  /** Waits out the narration's reveal (none for written narration), opens the action row, then releases the
+   *  choices once it has opened. Called at the narration's end and again by the commit; the first call runs it. */
+  const landNarration = (written = false): Promise<void> => {
+    const turn = turnSeqRef.current;
+    if (landingRef.current?.turn === turn) return landingRef.current.landed;
+    const landed = (fadeRevealActive && !written ? fadeReveal.drained() : Promise.resolve()).then(() => {
+      if (turnSeqRef.current !== turn) return;
+      setNarrationSettled(true);
+      return new Promise<void>((resolve) => setTimeout(() => {
+        if (turnSeqRef.current === turn) releaseChoices();
+        resolve();
+      }, TURN_CHROME_ENTER_MS));
+    });
+    landingRef.current = { turn, landed };
+    return landed;
+  };
+
+  /** Starts landing the turn end as soon as the narration stream finishes. */
+  const landingListener: NarrationListener = (event) => {
+    if (event.type === "finished") void landNarration();
+  };
+
+  /** Live choices: each delta parses the list, and a retracted round clears it. Until the turn end lands they
+   *  wait in `heldChoicesRef`, so none shows before the narration settles and its action row opens. */
   const choicesSink: TransportSink = (event) => {
-    if (event.type === "retract") setChoices([]);
+    if (event.type === "retract") {
+      heldChoicesRef.current = null;
+      setChoices([]);
+    }
     if (event.type !== "delta") return;
-    // Not over a still-fading narration: the drain commits them.
-    const choicesList = parseChoices(stripReasoningLive(event.content));
-    if (choicesList.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setChoices((prev) => keepSameRows(prev, choicesList));
+    const choicesList = parseStreamingChoices(stripReasoningLive(event.content));
+    if (choicesList.length === 0) return;
+    if (choicesHeldRef.current) heldChoicesRef.current = choicesList;
+    else setChoices((prev) => keepSameRows(prev, choicesList));
   };
 
   /**
@@ -3927,7 +3987,7 @@ const GameViewer = ({
   const narrationSink = (): { sink: TransportSink; settled: () => Promise<string | undefined> } => {
     const output = startOutputRun();
     // An output script rewrites whole sentences, so the crawl must not show the raw tail.
-    const listeners = [revealListenerFor(output !== null), sceneListListener, historyListener];
+    const listeners = [revealListenerFor(output !== null), landingListener, sceneListListener, historyListener];
     // Opt-in streaming read-aloud needs a loaded model.
     if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudListener);
     const rewriting = output && rewriteSentences(output.rewrite, ...listeners);
@@ -4293,10 +4353,6 @@ const GameViewer = ({
     const profile = REVEAL_TEST_PROFILES[profileName];
     if (!profile) {
       toast.info(`Unknown profile. Try: ${Object.keys(REVEAL_TEST_PROFILES).join(', ')}`);
-      return;
-    }
-    if (!isGameStarted) {
-      toast.info('Start the game first, then run /turn test.');
       return;
     }
     void sendGameAction(TURN_TEST_ACTION, {

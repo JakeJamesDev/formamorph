@@ -67,6 +67,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Unchecking Native Reasoning under Settings → Output now turns reasoning off on every prompt.** Before, only prompts set to Global followed it, so planning prompts kept reasoning at Low. Each prompt keeps its own setting for when you check it again.
   - **Test Code on a linked stat now routes writes through `owner.stats` to the stat itself, as play does.** The stat panel and the Scripts tab now give one report for one script. A Blueprint trait's script cards and Find All Uses now list the entities that link it.
   - **Choices now stream word by word at the end of a turn in long stories, instead of appearing at once.** Long stories re-read the whole history on each narration sentence and choice word, which froze the screen. A row that still shows late keeps its pace.
+  - **The turn's action row now slides open after the narration finishes, and the choices stream in after it.** Before, the row appeared mid-stream and pushed the choices down, and numbered choices showed all at once. **Continue the Story** now comes last.
   - **The request status strip floats over the bottom of the narration, so the Pager and the action box stay still.** It works the same in Pages and Chat. A fade keeps the label readable over the text.
 
 ---
