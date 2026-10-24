@@ -4532,8 +4532,8 @@ describe('the lossless-WebP conversion rule', () => {
         thumbnail: image('image/jpeg'),
       } as WorldOverview,
       locations: [
-        { id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: image('image/gif') },
-        { id: 'quay', name: 'The Quay', backgroundImage: image('image/svg+xml') },
+        { id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: image('image/gif') }] },
+        { id: 'quay', name: 'The Quay', images: [{ data: image('image/svg+xml') }] },
       ],
       entities: [
         { ...resident, images: [{ data: image('image/png') }] },
@@ -4623,7 +4623,7 @@ describe('the mislabeled-image rule', () => {
       thumbnail: withBytes('image/png', JPEG_BYTES),
     } as WorldOverview,
     entities: [{ id: 'e1', name: 'Maren', images: [{ data: withBytes('image/jpeg', PNG_BYTES), requires: MAREN_RULE }] } as Entity],
-    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: withBytes('image/gif', JPEG_BYTES) }],
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: withBytes('image/gif', JPEG_BYTES) }] }],
   });
   const MAREN_RULE = [{ all: [{ kind: 'stat' as const, id: 'hp', operator: '<' as const, value: 20, unit: 'percent' as const }] }];
 
@@ -4648,7 +4648,7 @@ describe('the mislabeled-image rule', () => {
     expect(fixed.worldOverview?.thumbnail?.startsWith('data:image/jpeg;')).toBe(true);
     expect(fixed.entities?.[0].images?.[0].data.startsWith('data:image/png;')).toBe(true);
     expect(fixed.entities?.[0].images?.[0].requires).toEqual(MAREN_RULE);
-    expect(fixed.locations?.[0].backgroundImage?.startsWith('data:image/jpeg;')).toBe(true);
+    expect(fixed.locations?.[0].images?.[0].data.startsWith('data:image/jpeg;')).toBe(true);
     expect(only(fixed, 'image-mislabeled')).toEqual([]);
   });
 

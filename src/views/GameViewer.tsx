@@ -129,6 +129,7 @@ import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
+import { useLocationBackdrop } from "@/lib/useLocationBackdrop";
 import { useSeedAvatarOnSaveLoad } from "@/lib/useLibraryAvatars";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
@@ -5189,6 +5190,7 @@ const GameViewer = ({
   const viewLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
+  const backdrop = useLocationBackdrop(viewLocation);
 
   // Menu save/load handlers, extracted so the desktop (header) and mobile (tab-row) MenuModal instances share them.
   const handleMenuSave = (name: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) =>
@@ -5241,7 +5243,7 @@ const GameViewer = ({
     >
       {locationBackground && (
         <LocationBackdrop
-          image={viewLocation ? viewLocation.backgroundImage : "./default-background.jpg"}
+          image={backdrop}
           overlay={backgroundOverlay}
           overlayHidden={uiHidden}
         />

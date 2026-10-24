@@ -2,11 +2,16 @@ import { useCallback } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { entityImages } from '@/lib/entityImages';
+import { locationImages } from '@/lib/locationImages';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
-import type { MediaAsset } from '@/types';
+import type { GalleryImage, MediaAsset } from '@/types';
 
 /** A field's new value: the replacing file, or null to clear it. */
 type Write = MediaAsset | null;
+
+/** A replaced gallery image keeps its place and its rule; a removed one leaves with its rule. */
+const writeGallery = (images: readonly GalleryImage[], at: number, next: Write): GalleryImage[] =>
+  images.flatMap((img, i) => (i !== at ? [img] : next ? [{ ...img, data: next.data }] : []));
 
 /** "Remove Ambient Sound: Lamp Room", or "Replace Background Music" for world media. */
 export const mediaStepLabel = (verb: string, item: MediaItem): string =>
@@ -47,19 +52,14 @@ export function useMediaItemActions() {
       case 'entity': {
         if (key === 'sound' || key === 'model') editEntity(parent.id, (e) => ({ ...e, [key]: next ?? undefined }));
         const at = item.galleryIndex;
-        // A replaced gallery image keeps its place and its rule; a removed one leaves with its rule.
-        if (at !== undefined) {
-          editEntity(parent.id, (e) => ({
-            ...e,
-            images: entityImages(e).flatMap((img, i) => (i !== at ? [img] : next ? [{ ...img, data: next.data }] : [])),
-          }));
-        }
+        if (at !== undefined) editEntity(parent.id, (e) => ({ ...e, images: writeGallery(entityImages(e), at, next) }));
         return;
       }
       case 'location': {
         const location = locations.find((l) => l.id === parent.id);
         if (!location) return;
-        if (key === 'background') updateLocation({ ...location, backgroundImage: next?.data ?? '' });
+        const at = item.galleryIndex;
+        if (at !== undefined) updateLocation({ ...location, images: writeGallery(locationImages(location), at, next) });
         else if (key === 'ambientSound') updateLocation({ ...location, ambientSound: next ?? undefined });
         return;
       }

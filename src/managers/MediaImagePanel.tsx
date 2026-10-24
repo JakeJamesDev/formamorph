@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { ImageRuleEditor } from '@/components/editor/ImageRuleCog';
+import { ImageRuleEditor, LOCATION_RULE_HOST, useEntityRuleHost } from '@/components/editor/ImageRuleCog';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entityImages, withImageRule } from '@/lib/entityImages';
+import { locationImages } from '@/lib/locationImages';
 import { formatMediaBytes, mediaParentKey, totalBytes, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, Placeholder, TraitRequirementRow } from '@/types';
@@ -46,8 +47,8 @@ function PickedAvatar({ entity, avatar, onSelect }: {
 }
 
 /**
- * One entity's or location's images: the gallery frames one, and the framed image's size, actions and, for an
- * entity, Visibility rule editor sit below it. `framed` past the last image is the add tile's empty slot.
+ * One entity's or location's images: the gallery frames one, and the framed image's size, actions and
+ * Visibility rule editor sit below it. `framed` past the last image is the add tile's empty slot.
  */
 export function MediaImagePanel({ parent, images, framed, onFrame, avatar, placeholders, onGoTo, onSelect }: {
   parent: MediaParent;
@@ -72,9 +73,12 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   };
   const setRule = (rows: TraitRequirementRow[]) => {
     const at = item?.galleryIndex;
-    if (!entity || at === undefined) return;
-    editEntity(entity.id, (e) => ({ ...e, images: withImageRule(entityImages(e), at, rows) }));
+    if (at === undefined) return;
+    if (entity) editEntity(entity.id, (e) => ({ ...e, images: withImageRule(entityImages(e), at, rows) }));
+    else if (location) updateLocation({ ...location, images: withImageRule(locationImages(location), at, rows) });
   };
+  const entityHost = useEntityRuleHost(entity?.id);
+  const ruleHost = location ? LOCATION_RULE_HOST : entityHost;
   const removeFramed = (target: MediaItem) => {
     // The frame stays on the same position, clamped. Ids are positional, so the id holds before and after.
     const left = images.length - 1;
@@ -113,6 +117,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
           onChange={(field, value) => updateLocation({ ...location, [field]: value })}
           placeholders={placeholders}
           imageId={`media-location-image-${location.id}`}
+          frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
         />
       )}
 
@@ -128,7 +133,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
             onReplace={(media: MediaAsset) => void replace(item, media)}
             onRemove={() => removeFramed(item)}
           />
-          {entity && <ImageRuleEditor ownerId={entity.id} rows={item.rules ?? []} onChange={setRule} />}
+          {ruleHost && item.galleryIndex !== undefined && <ImageRuleEditor host={ruleHost} rows={item.rules ?? []} onChange={setRule} />}
         </div>
       )}
     </div>

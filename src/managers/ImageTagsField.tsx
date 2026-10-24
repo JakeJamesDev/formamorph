@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Eye, Plus, Star, TriangleAlert } from "lucide-react";
-import { ImageRuleCog, ImageRuleSummary, useHasRuleSource } from '@/components/editor/ImageRuleCog';
+import { ImageRuleCog, ImageRuleSummary, useHasRuleSource, type RuleHost } from '@/components/editor/ImageRuleCog';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import TagField from "@/components/prompt/TagField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -62,9 +62,9 @@ interface ImageWidgetProps {
   placeholders?: Placeholder[];
   /** The entity or location whose tags these are — see `ownerId` on `PlaceholderField`. */
   ownerId?: string;
-  /** The entity whose images carry Visibility rules. Set, each tile gets a cog, a badge and a summary where a
-   *  rule source exists; a location, whose one background has no rule, leaves it out. */
-  ruleOwnerId?: string;
+  /** Whose images carry Visibility rules. Set, each tile gets a cog, a badge and a summary where a rule source
+   *  exists. Keep the object stable across renders. */
+  ruleHost?: RuleHost;
   /** The framed slot, for a host that shows the framed image's details. Unset, the gallery keeps its own. */
   framed?: number;
   onFramedChange?: (index: number) => void;
@@ -104,7 +104,7 @@ const FRAME_WIDTH = { portrait: 'mx-auto max-w-[300px]', landscape: 'mx-auto max
 
 /** One image's Visibility rule as a tile edits it. */
 interface TileRule {
-  ownerId: string;
+  host: RuleHost;
   rows: TraitRequirementRow[];
   onChange: (rows: TraitRequirementRow[]) => void;
 }
@@ -229,7 +229,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
  */
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
-    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleOwnerId,
+    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleHost,
     framed, onFramedChange, ruleCog = true,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
@@ -277,13 +277,14 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
 
   /** Write one slot's Visibility rule; an emptied rule drops the field. */
   const setRule = (index: number, requires: TraitRequirementRow[]) => onImagesChange(withImageRule(shownImages, index, requires));
-  const rulable = gallery && !!ruleOwnerId;
+  const rulable = gallery && !!ruleHost;
   const tileRule = (i: number): TileRule | undefined => (rulable && ruleSourced && ruleCog
-    ? { ownerId: ruleOwnerId, rows: shownImages[i].requires ?? [], onChange: (rows) => setRule(i, rows) }
+    ? { host: ruleHost, rows: shownImages[i].requires ?? [], onChange: (rows) => setRule(i, rows) }
     : undefined);
   const framedRule = rulable && ruleSourced && ruleCog ? shownImages[showing]?.requires : undefined;
   const tileRuled = (i: number) => rulable && ruleSourced && !!shownImages[i].requires?.length;
-  const coverRuled = rulable && !!shownImages[0]?.requires?.length;
+  // Only an entity's primary stands in outside play, where no rule reads.
+  const coverRuled = rulable && ruleHost.kind === 'entity' && !!shownImages[0]?.requires?.length;
 
   /** Take a generated picture. It fills the open slot where there is one, and otherwise asks which picture it
    *  replaces, resolving false if the author decides it replaces none of them. */
@@ -440,7 +441,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
           )}
         </div>
       )}
-      {ruleOwnerId && framedRule?.length ? <ImageRuleSummary ownerId={ruleOwnerId} rows={framedRule} /> : null}
+      {ruleHost && framedRule?.length ? <ImageRuleSummary host={ruleHost} rows={framedRule} /> : null}
       {coverRuled && (
         <p data-image-rule-cover-warning="" className="flex items-start gap-1 text-helper text-warning">
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />

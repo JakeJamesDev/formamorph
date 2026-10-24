@@ -258,6 +258,8 @@ In play, the first visible image takes its place. The editor warns when the prim
 
 The narrator never sees the images or their rules.
 
+> 💡 **Locations have rules too.** A location's background images take the same rules. There, a condition with no owner reads the persona. See [Background Visibility rules](World-Editor-Locations#background-visibility-rules).
+
 ## SillyTavern cards
 <!-- keywords: field mapping, what converts, card fields, alternate greetings, example dialogue, v2 spec, user tag, char tag -->
 

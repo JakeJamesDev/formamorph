@@ -5,6 +5,7 @@
 import type { Entity, GalleryImage, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { entityImages } from './entityImages';
+import { locationImages } from './locationImages';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import { countWorldImages } from './mediaIndex';
 
@@ -115,7 +116,9 @@ export async function downscaleWorldImages(
   }
   const locations: World['locations'] = [];
   for (const l of world.locations ?? []) {
-    locations.push({ ...l, backgroundImage: (await opt(l.backgroundImage, IMAGE_CAPS.background)) ?? undefined });
+    const images: GalleryImage[] = [];
+    for (const img of locationImages(l)) images.push({ ...img, data: (await opt(img.data, IMAGE_CAPS.background)) ?? img.data });
+    locations.push({ ...l, images });
   }
 
   const dictionaries: World['dictionaries'] = [];

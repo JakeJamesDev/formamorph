@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
+import { LOCATION_RULE_HOST, type RuleHost } from '@/components/editor/ImageRuleCog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
@@ -26,17 +27,22 @@ const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, starting: 10, regen: 0, descriptors: [], ...extra });
 const healed: Trait = { id: 'healed', name: 'Healed', statChanges: [] };
 const wren: Entity = { id: 'wren', name: 'Wren', traits: [healed], stats: [stat('health', 'Health')] };
+const WREN_HOST = { kind: 'entity', id: 'wren' } as const;
 
 const lowHealth: TraitRequirementRow[] = [{ all: [{ kind: 'stat', id: 'health', operator: '<', value: 20, unit: 'percent' }] }];
 const notHealed: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'healed', not: true }] }];
 
 /** The gallery over Wren in a world of her own, as the World Editor's entity panel mounts it. */
-function Harness({ initial, inDialog = false, ruleCog }: { initial: GalleryImage[]; inDialog?: boolean; ruleCog?: boolean }) {
+function Harness({ initial, inDialog = false, ruleCog, host = WREN_HOST }: {
+  initial: GalleryImage[]; inDialog?: boolean; ruleCog?: boolean; host?: RuleHost;
+}) {
   const [images, setImages] = useState(initial);
-  const world = { traits: [], traitGroups: [], entities: [wren] };
+  // A location's rules read the played persona, so there Wren is one.
+  const cast = host.kind === 'location' ? [{ ...wren, persona: true }] : [wren];
+  const world = { traits: [], traitGroups: [], entities: cast };
   const store = {
     ...world, placeholders: [], stats: [],
-    gateInput: editorGateInput(world, startingGateStats({ stats: [], statGroups: [], entities: [wren] })),
+    gateInput: editorGateInput(world, startingGateStats({ stats: [], statGroups: [], entities: cast })),
     pinWorld: null,
   } as unknown as TraitStore;
   const gallery = (
@@ -49,7 +55,7 @@ function Harness({ initial, inDialog = false, ruleCog }: { initial: GalleryImage
       cap={IMAGE_CAPS.entity}
       kind="character"
       onTagsChange={vi.fn()}
-      ruleOwnerId="wren"
+      ruleHost={host}
       ruleCog={ruleCog}
     />
   );
@@ -68,6 +74,25 @@ const tile = (name: string | RegExp) => screen.getByRole('button', { name });
 /** The tile's wrapper, which holds its cog beside the button. */
 const tileBox = (name: string | RegExp) => tile(name).parentElement!;
 const cogOf = (name: string | RegExp) => within(tileBox(name)).getByRole('button', { name: 'Visibility Rule' });
+
+describe('Gallery Visibility rules on a location', () => {
+  it('names the persona as the owner of a Condition with no owner, once', async () => {
+    render(<Harness initial={[{ data: A }, { data: B }]} host={LOCATION_RULE_HOST} />);
+    fireEvent.click(cogOf('Image 2'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
+
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Persona', 'Wren']);
+    fireEvent.click(screen.getByRole('option', { name: 'Persona' }));
+    expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
+  });
+
+  it("reads a Condition with no owner as the persona's in the summary, and gives no cover warning", () => {
+    render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B }]} host={LOCATION_RULE_HOST} />);
+    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while Persona: Health < 20%');
+    expect(document.querySelector('[data-image-rule-cover-warning]')).toBeNull();
+  });
+});
 
 describe('Gallery Visibility rules', () => {
   it('opens the rows editor from a tile’s cog and stores the rule on that image only', async () => {
@@ -155,7 +180,7 @@ describe('Gallery Visibility rules', () => {
     render(
       <TooltipProvider>
         <ImageTagsField label="Image" images={[{ data: A }, { data: B }]} onImagesChange={vi.fn()} slots={4}
-          imageId="z" cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} ruleOwnerId="wren" />
+          imageId="z" cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} ruleHost={WREN_HOST} />
       </TooltipProvider>,
     );
     expect(screen.queryByRole('button', { name: 'Visibility Rule' })).toBeNull();

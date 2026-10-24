@@ -49,13 +49,13 @@ export const mediaFixtureWorld = (): World => ({
     { id: 'empty', name: 'Hollow', playerDescription: '', aiDescription: '', locations: [], groupId: 'crew' },
   ],
   locations: [
-    { id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: fakeDataUrl('image/jpeg', 700_000, 'h') },
+    { id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: fakeDataUrl('image/jpeg', 700_000, 'h') }] },
     {
       id: 'lamp', name: 'Lamp Room', parentId: 'harbor',
-      backgroundImage: fakeDataUrl('image/jpeg', 900, 'l'),
+      images: [{ data: fakeDataUrl('image/jpeg', 900, 'l') }],
       ambientSound: { data: fakeDataUrl('audio/ogg', 1_800, 'w'), type: 'audio/ogg' },
     },
-    { id: 'marsh', name: 'Marsh', backgroundImage: fakeDataUrl('image/jpeg', 800, 'm') },
+    { id: 'marsh', name: 'Marsh', images: [{ data: fakeDataUrl('image/jpeg', 800, 'm') }] },
     { id: 'bare', name: 'Bare Flat' },
   ],
   dictionaries: [

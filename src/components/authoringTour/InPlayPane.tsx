@@ -12,6 +12,7 @@ import { Hint } from '@/components/ui/typography';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { LocationTabBody } from '@/components/game/LocationTabBody';
 import { LocationBackdrop } from '@/components/game/LocationBackdrop';
+import { locationImages } from '@/lib/locationImages';
 import { EntityListRow } from '@/components/game/EntityListRow';
 import { EntityCardBody, EntityDescription } from '@/components/game/EntityCard';
 import { StatRow } from '@/components/game/StatRow';
@@ -136,7 +137,7 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
         <div className="space-y-2">
           {/* The location's picture sits behind the tab the way it sits behind the story, under the same fade. */}
           <div className="relative isolate overflow-hidden rounded-md border">
-            <LocationBackdrop image={surface.location?.backgroundImage} overlay={0.7} overlayHidden={false} />
+            <LocationBackdrop image={locationImages(surface.location)[0]?.data} overlay={0.7} overlayHidden={false} />
             <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
           </div>
           {surface.startsAt && <p className="text-label">{STARTS_LINES[surface.startsAt]}</p>}

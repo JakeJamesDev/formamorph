@@ -43,6 +43,7 @@ import {
 import { worldScriptList, type ListedScript } from '@/lib/worldScripts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImageData, entityImages } from '@/lib/entityImages';
+import { locationImages } from '@/lib/locationImages';
 import {
   dataUrlBytes, dataUrlMime, dataUrlRealMime, imageFormatLabel, isConvertibleImage, isRemoteImage,
   relabelDataUrl, sniffDataUrlMime,
@@ -3546,9 +3547,9 @@ const embeddedImageSlots = (world: RuleWorld): Array<{ item: FindingItem; url: s
   ...(world.entities ?? []).flatMap((e) => entityImageData(e).map((url) => ({
     item: { ...asItem(e, world), section: 'entities' as const }, url, cap: IMAGE_CAPS.entity,
   }))),
-  ...(world.locations ?? []).flatMap((l) => (l.backgroundImage
-    ? [{ item: namedItem(l.id, l.name, world, 'locations'), url: l.backgroundImage, cap: IMAGE_CAPS.background }]
-    : [])),
+  ...(world.locations ?? []).flatMap((l) => locationImages(l).map((img) => ({
+    item: namedItem(l.id, l.name, world, 'locations'), url: img.data, cap: IMAGE_CAPS.background,
+  }))),
 ];
 
 const worldOversizedImages: Rule = {
@@ -3621,8 +3622,12 @@ const imageMislabeled: Rule = {
       return next === images ? entity : { ...entity, images: next };
     }));
     out = withSlice(out, 'locations', mapChanged(world.locations ?? [], (location) => {
-      const next = location.backgroundImage ? relabelDataUrl(location.backgroundImage) : location.backgroundImage;
-      return next === location.backgroundImage ? location : { ...location, backgroundImage: next };
+      const images = locationImages(location);
+      const next = mapChanged(images, (img) => {
+        const data = relabelDataUrl(img.data);
+        return data === img.data ? img : { ...img, data };
+      });
+      return next === images ? location : { ...location, images: next };
     }));
     return out;
   },

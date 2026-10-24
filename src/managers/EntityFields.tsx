@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useEntityRuleHost } from '@/components/editor/ImageRuleCog';
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
@@ -297,28 +298,31 @@ export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId,
   frame?: GalleryFrameProps;
   /** The file inputs' id, unique per rendered widget. */
   imageId?: string;
-}) => (
-  <ImageWidget
-    label="Image"
-    tourAnchor="entity-image"
-    images={entityImages(value)}
-    onImagesChange={(list) => onChange('images', list)}
-    slots={Infinity}
-    imageId={imageId}
-    cap={IMAGE_CAPS.entity}
-    description={value.aiDescription || value.playerDescription}
-    kind="character"
-    fileSubject={labelPlaceholders(value.name, placeholders)}
-    tags={value.imageTags}
-    onTagsChange={(t) => onChange('imageTags', t)}
-    placeholders={placeholders}
-    ownerId={ownerId}
-    ruleOwnerId={value.id}
-    {...frame}
-  >
-    {children}
-  </ImageWidget>
-);
+}) => {
+  const ruleHost = useEntityRuleHost(value.id);
+  return (
+    <ImageWidget
+      label="Image"
+      tourAnchor="entity-image"
+      images={entityImages(value)}
+      onImagesChange={(list) => onChange('images', list)}
+      slots={Infinity}
+      imageId={imageId}
+      cap={IMAGE_CAPS.entity}
+      description={value.aiDescription || value.playerDescription}
+      kind="character"
+      fileSubject={labelPlaceholders(value.name, placeholders)}
+      tags={value.imageTags}
+      onTagsChange={(t) => onChange('imageTags', t)}
+      placeholders={placeholders}
+      ownerId={ownerId}
+      ruleHost={ruleHost}
+      {...frame}
+    >
+      {children}
+    </ImageWidget>
+  );
+};
 
 /** The picture gallery with its tags and generate controls, in one box. */
 export const EntityGalleryField = (props: EntityFieldGroupProps) => (

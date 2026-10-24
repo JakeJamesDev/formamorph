@@ -191,15 +191,15 @@ describe('Steps that match intent', () => {
       await nextTask();
       ctx().setEntities((prev) => prev.map((e) => ({ ...e, images: [{ data: 'data:image/webp;base64,BB' }] })));
       await nextTask();
-      ctx().setLocations((prev) => prev.map((l) => ({ ...l, backgroundImage: 'data:image/webp;base64,CC' })));
+      ctx().setLocations((prev) => prev.map((l) => ({ ...l, images: [{ data: 'data:image/webp;base64,CC' }] })));
     }));
-    expect(ctx().locations[0].backgroundImage).toBe('data:image/webp;base64,CC');
+    expect(ctx().locations[0].images).toEqual([{ data: 'data:image/webp;base64,CC' }]);
     expect(labels(history())).toEqual(['Optimize Images']);
 
     await act1(() => history().undo());
     expect(ctx().worldOverview.thumbnail).toBeNull();
     expect(ctx().entities[0].images).toBeUndefined();
-    expect(ctx().locations[0].backgroundImage).toBeUndefined();
+    expect(ctx().locations[0].images).toBeUndefined();
   });
 
   it('settles an open batch when the provider unmounts before the batch ends', async () => {

@@ -46,7 +46,7 @@ type AddTarget = number | 'new';
  * the targets an author can add, `statSections` the stats by owner, and `textOf` the rule text of one Condition.
  */
 export function RequirementRowsField({
-  rows, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside,
+  rows, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hostName,
 }: {
   rows: TraitRequirementRow[];
   states: readonly RowState[];
@@ -61,6 +61,8 @@ export function RequirementRowsField({
   /** The field's name, for a host whose rows are not a trait's requirement. */
   label?: string;
   labelAside?: ReactNode;
+  /** Who a Condition with no owner reads, as the owner page names it. Absent, the same owner as the host. */
+  hostName?: string;
 }) {
   const [target, setTarget] = useState<AddTarget | null>(null);
   const [picked, setPicked] = useState<RequirementOption | null>(null);
@@ -142,8 +144,8 @@ export function RequirementRowsField({
     return {
       key: requirementOwnerKey(choice?.owner),
       value: requirement,
-      name: choice?.name ?? 'Same Owner',
-      hint: choice ? undefined : 'Whoever has the trait',
+      name: choice?.name ?? hostName ?? 'Same Owner',
+      hint: choice || hostName ? undefined : 'Whoever has the trait',
       disabled: listed(requirement),
     };
   };

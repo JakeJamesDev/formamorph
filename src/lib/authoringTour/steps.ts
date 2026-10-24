@@ -19,6 +19,7 @@ import {
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
+import { locationImages } from '@/lib/locationImages';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
 import { connectionLegs, isTwoWay, travelEnds } from '@/lib/locationGraph';
@@ -419,9 +420,9 @@ const LOCATION_STEPS: readonly TourStep[] = [
     panelTab: 'media',
     title: 'Background Image',
     body: 'Add a picture of the place. Players see it behind the story while they’re here, and the AI never reads it.',
-    isComplete: (world, items) => !!tourLocation(world, items, 'location')?.backgroundImage,
+    isComplete: (world, items) => locationImages(tourLocation(world, items, 'location')).length > 0,
     useExample: async (api, world, items) => patchLocation(api, world, items, 'location', {
-      backgroundImage: await loadTourImage('tidewell'),
+      images: [{ data: await loadTourImage('tidewell') }],
     }),
     inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'location' }] },
   },
@@ -457,7 +458,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
       name: SALT_LANTERN.name,
       playerDescription: SALT_LANTERN.playerDescription,
       aiDescription: SALT_LANTERN.aiDescription,
-      backgroundImage: await loadTourImage('saltLantern'),
+      images: [{ data: await loadTourImage('saltLantern') }],
     }),
     inPlay: {
       sees: 'locationTab',

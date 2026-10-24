@@ -509,7 +509,10 @@ export interface GameLocation {
   aiSummary?: string;
   /** Legacy alias some views fall back to when `playerDescription` is absent. */
   description?: string;
-  backgroundImage?: Base64Data;
+  /** The location's gallery, in author order. In play the backdrop shows the first visible image. A rule's
+   *  owner-less Condition reads the played persona. Read it through `lib/locationImages`, which also covers
+   *  records written before the gallery. */
+  images?: GalleryImage[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   ambientSound?: MediaAsset;

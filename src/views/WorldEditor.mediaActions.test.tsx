@@ -81,7 +81,7 @@ const SLOTS: Slot[] = [
     read: (c) => c.entities.find((e) => e.id === 'wick')!.model?.data,
     file: () => new File(['new-model'], 'new.glb', { type: 'model/gltf-binary' }), label: '3D Model: Odd Wick',
   },
-  { what: 'a location background', section: 'Locations', kind: 'image', id: 'location:marsh:background', read: (c) => c.locations.find((l) => l.id === 'marsh')!.backgroundImage, file: webp, label: 'Background Image: Marsh' },
+  { what: 'a location background', section: 'Locations', kind: 'image', id: 'location:marsh:image:0', read: (c) => c.locations.find((l) => l.id === 'marsh')!.images?.[0]?.data, file: webp, label: 'Image 1: Marsh' },
   { what: 'a location ambient sound', section: 'Locations › Harbor Steps', kind: 'sound', id: 'location:lamp:ambientSound', read: (c) => c.locations.find((l) => l.id === 'lamp')!.ambientSound?.data, file: audio, label: 'Ambient Sound: Lamp Room' },
   { what: 'a dictionary cover', section: 'Dictionaries', kind: 'image', id: 'dictionary:lore:thumbnail', read: (c) => c.dictionaries.find((d) => d.id === 'lore')!.thumbnail, file: webp, label: 'Cover Image: Fen Lore' },
 ];
@@ -174,7 +174,7 @@ describe('Media tab Replace', () => {
 
   it('embeds a file over a linked image', async () => {
     const world = mediaFixtureWorld();
-    world.locations.find((l) => l.id === 'marsh')!.backgroundImage = 'https://example.com/marsh.png';
+    world.locations.find((l) => l.id === 'marsh')!.images = [{ data: 'https://example.com/marsh.png' }];
     const bench = renderWorldEditorBench(world, 'simple');
     openEditorTab(/^Media$/);
     fireEvent.click(card('Locations', 'image'));
@@ -182,7 +182,7 @@ describe('Media tab Replace', () => {
 
     await pickFile(webp());
 
-    await waitFor(() => expect(bench.ctx().locations.find((l) => l.id === 'marsh')!.backgroundImage).toMatch(/^data:image\/webp;base64,/));
+    await waitFor(() => expect(bench.ctx().locations.find((l) => l.id === 'marsh')!.images?.[0]?.data).toMatch(/^data:image\/webp;base64,/));
   });
 });
 

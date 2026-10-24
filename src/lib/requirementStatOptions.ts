@@ -22,6 +22,34 @@ export interface RequirementStatSection {
 export function requirementStatSections(
   input: Pick<GateInput, 'owners' | 'entities' | 'stats'>, hostId: OwnerId,
 ): RequirementStatSection[] {
+  const { section, playable, name } = sectionsOf(input);
+  const sections = [
+    { ...(hostId === null ? section('Global Stats', [null]) : section(`${name(hostId)} Stats`, [hostId])), own: true as const },
+    ...(hostId === null ? [] : [section('Global Stats', [null])]),
+    section('Persona Stats', playable, { kind: 'you' }),
+    ...input.entities
+      .filter((e) => e.id !== hostId)
+      .map((e) => section(`${e.name} Stats`, [e.id], { kind: 'entity', id: e.id, name: e.name })),
+  ];
+  return sections.filter((s) => s.options.length > 0);
+}
+
+/**
+ * The stats a location rule's Condition can read. The played persona hosts the rule, so its stats come first
+ * and name no owner (Q48); then the global stats, then each entity that has stats.
+ */
+export function personaHostStatSections(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>): RequirementStatSection[] {
+  const { section, playable } = sectionsOf(input);
+  const sections = [
+    { ...section('Persona Stats', playable), own: true as const },
+    section('Global Stats', [null]),
+    ...input.entities.map((e) => section(`${e.name} Stats`, [e.id], { kind: 'entity', id: e.id, name: e.name })),
+  ];
+  return sections.filter((s) => s.options.length > 0);
+}
+
+/** The section builder over `input`'s stats, the entities a persona can be, and an owner's name. */
+function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>) {
   const statsOf = (ownerId: OwnerId): GateStatSet => (input.stats && partOf(input.stats, ownerId)) ?? {};
   const playable = input.entities.filter(canBePlayer).map((e) => e.id);
   const name = (id: string) => input.entities.find((e) => e.id === id)?.name ?? input.owners.find((o) => o.id === id)?.name ?? '';
@@ -43,14 +71,5 @@ export function requirementStatSections(
     }
     return { heading, options };
   };
-
-  const sections = [
-    { ...(hostId === null ? section('Global Stats', [null]) : section(`${name(hostId)} Stats`, [hostId])), own: true as const },
-    ...(hostId === null ? [] : [section('Global Stats', [null])]),
-    section('Persona Stats', playable, { kind: 'you' }),
-    ...input.entities
-      .filter((e) => e.id !== hostId)
-      .map((e) => section(`${e.name} Stats`, [e.id], { kind: 'entity', id: e.id, name: e.name })),
-  ];
-  return sections.filter((s) => s.options.length > 0);
+  return { section, playable, name };
 }

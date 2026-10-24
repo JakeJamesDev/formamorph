@@ -54,7 +54,7 @@ const WORLD = benchEditorWorld({
     id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
     aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'], images: [{ data: PNG }],
   }],
-  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: JPEG }],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: JPEG }] }],
 } as unknown as Partial<World>);
 
 const setup = (world: World = WORLD) => renderWorldEditorBench(world, 'advanced');
@@ -76,7 +76,7 @@ type WorldPayload = Omit<World, 'id' | 'version'>;
 
 const imagesOf = (ctx: () => { getWorldData: () => WorldPayload }) => {
   const world = ctx().getWorldData();
-  return { portrait: world.entities[0].images?.[0].data, background: world.locations[0].backgroundImage };
+  return { portrait: world.entities[0].images?.[0].data, background: world.locations[0].images?.[0]?.data };
 };
 
 beforeEach(() => {
@@ -191,7 +191,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
       aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'],
       images: [{ data: image('image/png', 'E') }, { data: image('image/bmp', 'F') }],
     }],
-    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: image('image/png', 'G') }],
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: image('image/png', 'G') }] }],
   } as unknown as Partial<World>);
 
   it('converts the thumbnail, the gallery and the background in one run', async () => {
@@ -205,7 +205,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
     const world = ctx().getWorldData();
     expect(world.worldOverview.thumbnail).toBe(WEBP);
     expect(world.entities[0].images).toEqual([{ data: WEBP }, { data: WEBP }]);
-    expect(world.locations[0].backgroundImage).toBe(WEBP);
+    expect(world.locations[0].images?.[0]?.data).toBe(WEBP);
   });
 
   it('counts every image it kept, however many that is', async () => {
@@ -225,7 +225,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
 
 describe('WorldEditor — converting a GIF the browser can’t re-encode as animation', () => {
   const GIF_WORLD = benchEditorWorld({
-    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: GIF }],
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: GIF }] }],
   } as unknown as Partial<World>);
 
   afterEach(() => {
@@ -241,7 +241,7 @@ describe('WorldEditor — converting a GIF the browser can’t re-encode as anim
 
     await act(async () => { fireEvent.click(button); });
 
-    expect(ctx().getWorldData().locations[0].backgroundImage).toBe(GIF);
+    expect(ctx().getWorldData().locations[0].images?.[0]?.data).toBe(GIF);
     expect(encodeInWorker).not.toHaveBeenCalled();
     // Said as the reason it actually is: this GIF isn't one WebP couldn't shrink, it is one this browser
     // can't convert without costing the author the animation.
@@ -257,6 +257,6 @@ describe('WorldEditor — converting a GIF the browser can’t re-encode as anim
 
     await act(async () => { fireEvent.click(button); });
 
-    expect(ctx().getWorldData().locations[0].backgroundImage).toBe(WEBP);
+    expect(ctx().getWorldData().locations[0].images?.[0]?.data).toBe(WEBP);
   });
 });
