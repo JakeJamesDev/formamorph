@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { RequestStatusRow, RequestStatusStrip } from '@/components/game/RequestStatusRow';
-import { FALLBACK_GLYPH, REQUEST_GLYPHS, TOOL_GLYPH, type StatusGlyphKey } from '@/components/game/statusGlyphs/glyphMap';
+import { BACKGROUND_PASS_GLYPHS, REQUEST_GLYPHS, TOOL_GLYPH, type StatusGlyphKey } from '@/components/game/statusGlyphs/glyphMap';
 import { StatusGlyph } from '@/components/game/statusGlyphs/StatusGlyph';
+import { ThinkingLabel } from '@/components/game/ReasoningBlock';
 import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from '@/components/game/narrationFade';
 
 const NARRATION = [
@@ -18,7 +20,10 @@ const NARRATION = [
 // The Turn row steps through a turn's requests, so the glyph swap shows.
 const TURN_STEPS: ReadonlyArray<{ label: string; glyph: StatusGlyphKey }> = [
   { label: 'Generating Plan…', glyph: REQUEST_GLYPHS.thinking },
+  { label: 'Generating Cast…', glyph: REQUEST_GLYPHS.director },
   { label: 'Generating Storyboard…', glyph: REQUEST_GLYPHS.storyboard },
+  { label: 'Generating Narration…', glyph: REQUEST_GLYPHS.narration },
+  { label: 'Generating Choices…', glyph: REQUEST_GLYPHS.choices },
   { label: 'Generating Stat Updates…', glyph: REQUEST_GLYPHS.statUpdates },
   { label: 'Generating Location…', glyph: REQUEST_GLYPHS.locationChange },
   { label: 'Generating Clock…', glyph: REQUEST_GLYPHS.timePassed },
@@ -29,7 +34,7 @@ const TURN_STEP_MS = 2000;
 const ROWS = {
   turn: TURN_STEPS[0],
   tool: { label: 'Calling roll_dice…', glyph: TOOL_GLYPH },
-  background: { label: 'Summarizing turn…', glyph: FALLBACK_GLYPH },
+  background: { label: 'Summarizing turn…', glyph: BACKGROUND_PASS_GLYPHS.digest },
   none: null,
 } as const satisfies Record<string, { label: string; glyph: StatusGlyphKey } | null>;
 
@@ -43,8 +48,17 @@ const GLYPH_USES: Record<StatusGlyphKey, string> = {
   hourglass: 'Clock, Opening',
   sparkles: 'Everything else',
   hammer: 'Tool calls',
+  quill: 'Narration',
+  masks: 'Cast, Motivation, Character',
+  split: 'Choices',
 };
 type RowKey = keyof typeof ROWS;
+
+// The shared Thinking header while the model thinks, as the game and Formaquestion show it.
+const THINKING_FORMS = [
+  { use: 'Game', who: null },
+  { use: 'Formaquestion', who: 'Mascot' },
+] as const;
 
 export function RequestStatusStripReference() {
   const [row, setRow] = useState<RowKey>('turn');
@@ -101,6 +115,15 @@ export function RequestStatusStripReference() {
             <li key={glyph} className="flex items-center gap-2 text-muted-foreground">
               <span aria-hidden className="flex size-4 shrink-0 items-center justify-center"><StatusGlyph glyph={glyph} /></span>
               <span className="text-meta">{use}</span>
+            </li>
+          ))}
+        </ul>
+        <ul aria-label="Thinking header" className="grid gap-2 sm:grid-cols-2">
+          {THINKING_FORMS.map(({ use, who }) => (
+            <li key={use} className="flex items-center gap-1.5 text-meta text-muted-foreground">
+              <ChevronRight aria-hidden className="h-3.5 w-3.5 rotate-90" />
+              <ThinkingLabel active ms={0} who={who} />
+              <span className="ml-auto">{use}</span>
             </li>
           ))}
         </ul>

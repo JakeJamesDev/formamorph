@@ -5,6 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { reasoningExpandPref, setReasoningExpandPref } from '@/lib/reasoningCollapsePref';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { ThinkingGlyph } from './statusGlyphs/StatusGlyph';
 
 /**
  * The collapsible reasoning aside shown above a turn's narration: a reasoning model's (or the inline-thinking
@@ -38,12 +39,12 @@ export function ReasoningBlock({ text, ms, active }: { text: string; ms: number;
   );
 }
 
-/** The header of a reasoning block: a pulsing dot while the model thinks, then the time it took. */
+/** The header of a reasoning block: a thought cloud while the model thinks, then the time it took. */
 export function ThinkingLabel({ active, ms, who = null }: { active: boolean; ms: number; /** Who thinks, when the header names someone, as the Mascot does. */ who?: string | null }) {
   if (active) {
     return (
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse motion-reduce:animate-none" />
+        <span aria-hidden data-slot="thinking-glyph" className="inline-flex shrink-0"><ThinkingGlyph /></span>
         {thinkingLine(true, ms, who)}
       </span>
     );

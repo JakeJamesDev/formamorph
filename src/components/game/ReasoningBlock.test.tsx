@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ReasoningBlock } from './ReasoningBlock';
+import { ReasoningBlock, ThinkingLabel } from './ReasoningBlock';
 
 /**
  * The reasoning aside's open/closed behavior. Each turn mounts a fresh instance (the thinking-phase block
@@ -52,5 +52,25 @@ describe('ReasoningBlock', () => {
     const { rerender } = render(<ReasoningBlock text="turn two scratchpad" ms={2000} active={false} />);
     rerender(<ReasoningBlock text="turn two scratchpad" ms={0} active />);
     expect(screen.queryByText('turn two scratchpad')).not.toBeInTheDocument();
+  });
+});
+
+describe('ThinkingLabel', () => {
+  const glyph = (root: HTMLElement) => root.querySelector('[data-slot="thinking-glyph"]');
+  const pulse = (root: HTMLElement) => root.querySelector('.animate-pulse');
+
+  it.each([
+    [null, 'Thinking…', 'Thought for 3s'],
+    ['Mascot', 'Mascot is thinking…', 'Mascot thought for 3s'],
+  ] as const)('with speaker %s: the thought cloud while active, then the time with no glyph', (who, activeLine, doneLine) => {
+    const { container, rerender } = render(<ThinkingLabel active ms={0} who={who} />);
+    expect(screen.getByText(activeLine)).toBeInTheDocument();
+    expect(glyph(container)?.querySelector('svg')).toBeTruthy();
+    expect(glyph(container)?.getAttribute('aria-hidden')).toBe('true');
+    expect(pulse(container)).toBeNull();
+
+    rerender(<ThinkingLabel active={false} ms={3000} who={who} />);
+    expect(container.textContent).toBe(doneLine);
+    expect(container.querySelector('svg')).toBeNull();
   });
 });

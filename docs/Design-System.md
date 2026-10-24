@@ -1322,7 +1322,8 @@ The live reference opens the production line in a store of its own under a sampl
 | The row and the strip | `RequestStatusRow` and `RequestStatusStrip` in [`RequestStatusRow.tsx`](../src/components/game/RequestStatusRow.tsx) |
 | The background pass row | [`BackgroundPassStatus.tsx`](../src/components/game/BackgroundPassStatus.tsx) |
 | The host, in Pages and Chat | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
-| The glyph map and the glyphs | [`glyphMap.ts`](../src/components/game/statusGlyphs/glyphMap.ts) and [`StatusGlyph.tsx`](../src/components/game/statusGlyphs/StatusGlyph.tsx), over animate-ui's icons in `statusGlyphs/animate-ui/` |
+| The glyph map and the glyphs | [`glyphMap.ts`](../src/components/game/statusGlyphs/glyphMap.ts) and [`StatusGlyph.tsx`](../src/components/game/statusGlyphs/StatusGlyph.tsx), over animate-ui's icons in `statusGlyphs/animate-ui/` and ours (quill, masks, split, thought cloud) in `statusGlyphs/icons/` |
+| The Thinking header's thought cloud | `ThinkingGlyph`, shown by `ThinkingLabel` in [`ReasoningBlock.tsx`](../src/components/game/ReasoningBlock.tsx) in the game and in Formaquestion |
 | Isolated reference | [`RequestStatusStripReference.tsx`](../src/components/design-system/RequestStatusStripReference.tsx) |
 
 ### Responsive behavior
@@ -1338,7 +1339,7 @@ Pages, Chat, desktop and mobile use the same strip. The label truncates before t
 | Background pass | One pass name by precedence, such as *Summarizing turn…*. It shows only between turns, with **Show Silent Requests** on |
 | Idle | No strip. The narration shows to the frame's bottom edge |
 
-The live reference shows each row in its strip over a sample frame, above a Pager that stays still. Its Turn row steps through a turn's requests every 2 s, so the glyph swap shows. Below it, the glyph set loops with the requests each glyph serves.
+The live reference shows each row in its strip over a sample frame, above a Pager that stays still. Its Turn row steps through a turn's requests every 2 s, so the glyph swap shows. Below it, the glyph set loops with the requests each glyph serves, and the Thinking header's thought cloud.
 
 ### Writing review
 
