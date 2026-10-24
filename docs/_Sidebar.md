@@ -25,6 +25,7 @@
 - [✍️ Text Formatting](TextFormatting)
 - [🛠️ World Editor](WorldEditor)
   - [🌍 Overview](World-Editor-Overview)
+  - [📦 Media](World-Editor-Media)
   - [🎬 Openings](World-Editor-Openings)
   - [📊 Stats](World-Editor-Stats)
   - [🎭 Entities](World-Editor-Entities)

@@ -23,6 +23,7 @@ export const SURFACE_TARGETS = {
   avatar: ['finalize-character'],
   worldEditor: ['editor-mode', 'find-button', 'history'],
   'worldEditor.overview': ['thumbnail', 'background-music', 'custom-prompts'],
+  'worldEditor.media': ['list-toolbar'],
   'worldEditor.stats': ['list-toolbar'],
   'worldEditor.entities': ['list-toolbar'],
   'worldEditor.locations': ['list-toolbar'],

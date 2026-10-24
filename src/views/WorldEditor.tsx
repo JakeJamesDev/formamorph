@@ -94,6 +94,7 @@ import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
+import { useWorldMediaEditor } from '../managers/useWorldMediaEditor';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { NO_OVERVIEW_PANEL, overviewPanelFor, type OverviewPanel } from './overviewPanels';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from './placeholderPanelTabs';
@@ -126,6 +127,7 @@ import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
 import type { Entity, Dictionary, World, FocusFieldHint } from '@/types';
+import type { MediaParent, MediaParentKind } from '@/lib/mediaIndex';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
@@ -140,6 +142,11 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
   const surface = `worldEditor.${tab}`;
   return isSurfaceTarget(surface, 'list-toolbar') ? { [TARGET_ATTRIBUTE]: routeText(surface, 'list-toolbar') } : undefined;
 }
+
+/** The tab that holds each kind of media parent other than the world. */
+const MEDIA_PARENT_TABS: Record<Exclude<MediaParentKind, 'world'>, FindingSection> = {
+  entity: 'entities', location: 'locations', dictionary: 'dictionary',
+};
 
 const RAIL_STORAGE_KEY = 'formamorph.worldEditor.navRail';
 
@@ -1036,8 +1043,17 @@ const WorldEditorInner = ({
   const dictionaryParts = useListEditor(dictionaryEditor.adapter, {
     selectedId: selections.dictionary ?? null, onSelect: selectDictionaryItem, search,
   });
+  const selectMediaItem = useCallback((id: string | null) => select('media', id), [select]);
+  const goToMediaParent = useCallback((parent: MediaParent) => {
+    if (parent.kind === 'world') setActiveTab('overview');
+    else navigateToBenchItem(MEDIA_PARENT_TABS[parent.kind], parent.id);
+  }, [navigateToBenchItem]);
+  const mediaParts = useWorldMediaEditor({
+    selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
+  });
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {
+    media: mediaParts,
     traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
     entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts, tools: toolsParts,
   };

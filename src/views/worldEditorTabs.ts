@@ -1,4 +1,4 @@
-import { Code, Wrench, type LucideIcon } from 'lucide-react';
+import { Code, Images, Wrench, type LucideIcon } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 
@@ -25,6 +25,7 @@ export interface WorldEditorTab {
  *  `devRouter.test.ts`. */
 export const WORLD_EDITOR_TABS = [
   { value: 'overview', label: 'Overview', icon: ELEMENT_ICONS.world },
+  { value: 'media', label: 'Media', icon: Images },
   { value: 'entities', label: 'Entities', group: 'content', icon: ELEMENT_ICONS.entities },
   { value: 'locations', label: 'Locations', group: 'content', icon: ELEMENT_ICONS.location },
   { value: 'traits', label: 'Traits', group: 'content', icon: ELEMENT_ICONS.trait },

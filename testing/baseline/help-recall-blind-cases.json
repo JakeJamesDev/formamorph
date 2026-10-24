@@ -52,6 +52,8 @@
     { "id": "editor-b3", "page": "WorldEditor", "question": "how do I see the beginner walkthrough for making a setting again?", "section": "WorldEditor#how-to-restart-the-authoring-tour", "otherSections": ["Settings#data"] },
     { "id": "overview-b1", "page": "World-Editor-Overview", "question": "how do I give my setting a cover picture?", "section": "World-Editor-Overview#how-to-set-the-worlds-images" },
     { "id": "overview-b2", "page": "World-Editor-Overview", "question": "can a song play while people are in my setting?", "section": "World-Editor-Overview#how-to-add-background-music", "otherSections": ["World-Editor-Overview#the-left-column-how-your-world-is-listed"] },
+    { "id": "media-b1", "page": "World-Editor-Media", "question": "what is making my setting file so heavy?", "section": "World-Editor-Media#how-to-find-the-heaviest-files" },
+    { "id": "media-b2", "page": "World-Editor-Media", "question": "where do I see every picture and song in my setting at once?", "section": "World-Editor-Media#the-gallery" },
     { "id": "openings-b1", "page": "World-Editor-Openings", "question": "I wrote three different story starts, how do I make one come up more often than the others?", "section": "World-Editor-Openings#weights-and-chances" },
     { "id": "openings-b2", "page": "World-Editor-Openings", "question": "how do I write a start for when the player plays as one of my own characters?", "section": "World-Editor-Openings#how-to-add-a-self-opening", "otherSections": ["World-Editor-Openings#self-openings"] },
     { "id": "openings-b3", "page": "World-Editor-Openings", "question": "can a place have its own first scene?", "section": "World-Editor-Openings#location-openings" },

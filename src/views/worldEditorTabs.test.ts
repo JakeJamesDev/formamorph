@@ -6,9 +6,9 @@ const shape = (advanced: boolean) =>
   editorTabGroupsFor(advanced).map((group) => [group.label ?? null, group.tabs.map((tab) => tab.label)]);
 
 describe('editorTabGroupsFor', () => {
-  it('puts Overview alone ahead of the groups, with Dictionary alone in Vocabulary in Simple mode', () => {
+  it('puts Overview and Media ahead of the groups, with Dictionary alone in Vocabulary in Simple mode', () => {
     expect(shape(false)).toEqual([
-      [null, ['Overview']],
+      [null, ['Overview', 'Media']],
       ['Content', ['Entities', 'Locations', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary']],
     ]);
@@ -16,7 +16,7 @@ describe('editorTabGroupsFor', () => {
 
   it('adds Placeholders to Vocabulary, and Scripts and Tools under Logic, in Advanced mode', () => {
     expect(shape(true)).toEqual([
-      [null, ['Overview']],
+      [null, ['Overview', 'Media']],
       ['Content', ['Entities', 'Locations', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary', 'Placeholders']],
       ['Logic', ['Scripts', 'Tools']],
@@ -27,9 +27,9 @@ describe('editorTabGroupsFor', () => {
     expect(editorTabGroupsFor(false).some((group) => group.id === 'logic')).toBe(false);
   });
 
-  it('holds Overview alone in the landing slot, under no group name', () => {
+  it('holds Overview and Media in the landing slot, under no group name', () => {
     const [landing] = editorTabGroupsFor(true);
     expect(landing.label).toBeUndefined();
-    expect(landing.tabs.map((tab) => tab.value)).toEqual(['overview']);
+    expect(landing.tabs.map((tab) => tab.value)).toEqual(['overview', 'media']);
   });
 });

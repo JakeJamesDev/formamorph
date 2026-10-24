@@ -327,7 +327,8 @@ describe('Authoring Tour — completion', () => {
 describe('In Game — Locations', () => {
   it('Background Image: opens the Media tab, and the picture sits behind the Location tab', async () => {
     const { ctx } = await resumeAt('location-image');
-    expect(screen.getByRole('tab', { name: 'Media' })).toHaveAttribute('aria-selected', 'true');
+    // The location panel's own Media tab, apart from the editor's tab of the same name.
+    expect(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name: 'Media' })).toHaveAttribute('aria-selected', 'true');
     expect(noteButton('Next')).toBeDisabled();
     expect(within(playerSees()).queryByTestId('location-backdrop-image')).toBeNull();
 

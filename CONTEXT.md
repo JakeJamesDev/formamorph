@@ -250,6 +250,10 @@ _Avoid_: linter (internal only), validator
 The Test Bench instrument where an author pastes prose and sees what would fire — entity presence and dictionary activation — including non-activations with their near-miss reason.
 _Avoid_: matcher preview, dry run
 
+**Media tab**:
+The World Editor tab that lists every media item in a world (images, sounds, 3D Models and Avatars) with its stored size. A view over the fields that keep them, not a store. Copy names the entity, location or dictionary that keeps an item by its name, never as its owner; "owner" is the glossary term for traits, stats and placeholders.
+_Avoid_: assets tab, files, owner (for the entity, location or dictionary that keeps a media item)
+
 **Authoring Tour**:
 A guided run through the World Editor's Simple tabs in which a new author builds a new world one field at a time, seeing each field's effect in the In Game pane.
 _Avoid_: tutorial world, walkthrough, world-building tutorial

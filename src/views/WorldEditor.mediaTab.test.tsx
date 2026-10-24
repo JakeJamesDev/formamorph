@@ -1,0 +1,187 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
+import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
+import { buildMediaIndex, formatMediaBytes, totalBytes } from '@/lib/mediaIndex';
+import { downloadBlob } from '@/lib/downloadBlob';
+
+/** The Media tab: a gallery of every media item in the world, and the panel for the picked card. */
+
+vi.mock('../services/WorldStorageService', () => ({
+  default: {
+    initialize: vi.fn(),
+    getWorldMetadata: vi.fn().mockResolvedValue([]),
+    storeWorld: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+vi.mock('@/lib/jsonFileWorkerUtils', () => ({
+  serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
+}));
+vi.mock('react-toastify', () => ({
+  toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
+  ToastContainer: () => null,
+}));
+// The real viewers need a WebGL context jsdom has none of.
+vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
+vi.mock('@/views/ModelViewer', () => ({ default: () => <div data-testid="model-viewer" /> }));
+vi.mock('@/lib/downloadBlob', () => ({ downloadBlob: vi.fn() }));
+
+beforeEach(() => { localStorage.clear(); vi.mocked(downloadBlob).mockClear(); });
+
+const section = (name: string) => screen.getByRole('region', { name });
+/** A section's cards, each read as its kind (or "stack"), its count badge if any, and its text. */
+const cards = (name: string) => Array.from(section(name).querySelectorAll<HTMLElement>('[data-media-card]'))
+  .map((card) => `${card.dataset.mediaCard}: ${card.textContent}`);
+const card = (name: string, kind: string, index = 0) =>
+  section(name).querySelectorAll<HTMLElement>(`[data-media-card="${kind}"]`)[index];
+const panel = () => document.querySelector<HTMLElement>('[data-media-panel]');
+/** The open panel's Name field: a chip field on entities and locations, a plain input on a dictionary. */
+const shownName = () => {
+  const field = screen.getByLabelText('Name');
+  return field instanceof HTMLInputElement ? field.value : field.textContent;
+};
+
+const openMedia = (mode: 'simple' | 'advanced') => {
+  const bench = renderWorldEditorBench(mediaFixtureWorld(), mode);
+  openEditorTab(/^Media$/);
+  return bench;
+};
+
+const items = buildMediaIndex(mediaFixtureWorld());
+const size = (parent: string, slot: string) => formatMediaBytes(items.find((i) => i.parent.name === parent && i.slot === slot)!.bytes);
+
+describe('Media tab gallery', () => {
+  it("stacks an entity's three images into one card with their total, and keeps its sound and 3D Model apart", () => {
+    openMedia('advanced');
+    const wickImages = items.filter((i) => i.parent.name === 'Odd Wick' && i.kind === 'image');
+
+    expect(cards('Entities')).toEqual([
+      // Image 2's rule shows on the stack.
+      `stack: 1 rule3Odd Wick${formatMediaBytes(totalBytes(wickImages))}`,
+      `sound: Odd Wick${size('Odd Wick', 'Sound')}`,
+      `model: Odd Wick${size('Odd Wick', '3D Model')}`,
+    ]);
+  });
+
+  it('shows a stack total in the warning color only when one of its images is over budget', () => {
+    const world = mediaFixtureWorld();
+    world.entities[0].images!.push({ data: fakeDataUrl('image/png', 700_000, 'q') });
+    renderWorldEditorBench(world, 'advanced');
+    openEditorTab(/^Media$/);
+    const total = (name: string) => card(name, 'stack').lastElementChild!.lastElementChild!;
+
+    expect(total('Entities')).toHaveClass('text-warning');
+    expect(card('Entities', 'sound').lastElementChild!.lastElementChild!.querySelector('.text-warning')).toBeNull();
+  });
+
+  it('keeps a stack of images within budget in the plain color', () => {
+    openMedia('advanced');
+
+    expect(card('Entities', 'stack').lastElementChild!.lastElementChild!).not.toHaveClass('text-warning');
+  });
+
+  it('shows a one-image entity as a plain card, in its group\'s section', () => {
+    openMedia('advanced');
+
+    expect(cards('Entities › Crew › Deckhands')).toEqual([`image: Bram${size('Bram', 'Image 1')}`]);
+    expect(screen.queryByRole('region', { name: 'Entities › Crew' })).toBeNull();
+  });
+
+  it('shows Avatars, 3D Models and Ambient Sound in Simple mode', () => {
+    openMedia('simple');
+
+    expect(cards('World › Avatars')).toEqual([
+      `avatar: Fen Walker${size('World', 'Fen Walker')}`,
+      `avatar: Spare${size('World', 'Spare')}`,
+    ]);
+    expect(card('Entities', 'model')).toBeDefined();
+    expect(cards('Locations › Harbor Steps')).toContain(`sound: Lamp Room${size('Lamp Room', 'Ambient Sound')}`);
+  });
+
+  it('heads each section with its path and total', () => {
+    openMedia('advanced');
+    const world = items.filter((i) => i.parent.kind === 'world' && i.kind !== 'avatar');
+
+    expect(within(section('World')).getByRole('button', { name: `World ${formatMediaBytes(totalBytes(world))}` })).toBeInTheDocument();
+  });
+
+  it('narrows the cards to a search on parent and slot names', () => {
+    openMedia('advanced');
+    fireEvent.change(screen.getByPlaceholderText('Search media'), { target: { value: 'ambient' } });
+
+    expect(screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))).toEqual(['Locations › Harbor Steps']);
+    expect(cards('Locations › Harbor Steps')).toEqual([`sound: Lamp Room${size('Lamp Room', 'Ambient Sound')}`]);
+  });
+});
+
+describe('Media tab panels', () => {
+  it("opens a stack's primary image, with its size and budget", () => {
+    openMedia('advanced');
+    fireEvent.click(card('Entities', 'stack'));
+
+    expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:0');
+    expect(within(panel()!).getByRole('heading')).toHaveTextContent('Odd WickImage 1');
+    expect(panel()).toHaveTextContent(`Budget ${formatMediaBytes(600_000)}`);
+  });
+
+  it("titles an entity's sound with the entity, plays it, and downloads it under the entity and slot", async () => {
+    openMedia('advanced');
+    fireEvent.click(card('Entities', 'sound'));
+
+    expect(within(panel()!).getByRole('heading')).toHaveTextContent('Odd WickSound');
+    expect(panel()!.querySelector('audio')).toHaveAttribute('src', mediaFixtureWorld().entities[0].sound!.data);
+    fireEvent.click(within(panel()!).getByRole('button', { name: 'Download' }));
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'Odd Wick Sound.ogg'));
+  });
+
+  it('lists the entities that pick an Avatar, and shows it in the Avatar viewer', () => {
+    openMedia('advanced');
+    fireEvent.click(card('World › Avatars', 'avatar'));
+
+    const usedBy = within(panel()!).getAllByRole('button').map((b) => b.textContent);
+    expect(usedBy).toEqual(expect.arrayContaining(['Odd Wick', 'Bram', 'Go to Overview']));
+    fireEvent.click(card('World › Avatars', 'avatar', 1));
+    expect(panel()).toHaveTextContent('No entity uses this Avatar');
+  });
+
+  it('opens the 3D Model viewer for a 3D Model', () => {
+    openMedia('advanced');
+    fireEvent.click(card('Entities', 'model'));
+
+    expect(within(panel()!).getByTestId('model-viewer')).toBeInTheDocument();
+  });
+
+  it('summarizes a section by kind and lists its largest items', () => {
+    openMedia('advanced');
+    fireEvent.click(within(section('Entities')).getAllByRole('button')[0]);
+
+    expect(screen.getByRole('heading', { name: 'Entities' })).toBeInTheDocument();
+    const largest = screen.getByRole('list');
+    expect(within(largest).getAllByRole('button').map((b) => b.querySelector('.truncate')?.textContent)).toEqual([
+      'Odd Wick › 3D Model', 'Odd Wick › Sound', 'Odd Wick › Image 1', 'Odd Wick › Image 2', 'Odd Wick › Image 3',
+    ]);
+  });
+});
+
+describe('Media tab Go to', () => {
+  it.each([
+    ['an entity', 'Entities', 'model', 'Go to Odd Wick', 'Entities', 'Odd Wick'],
+    ['a location', 'Locations › Harbor Steps', 'sound', 'Go to Lamp Room', 'Locations', 'Lamp Room'],
+    ['a dictionary', 'Dictionaries', 'image', 'Go to Fen Lore', 'Dictionary', 'Fen Lore'],
+  ])('lands on %s that holds the item', (_what, sectionName, kind, label, tab, name) => {
+    openMedia('advanced');
+    fireEvent.click(card(sectionName, kind));
+    fireEvent.click(within(panel()!).getByRole('button', { name: label }));
+
+    expect(shownEditorTab()).toBe(tab);
+    expect(shownName()).toBe(name);
+  });
+
+  it('lands on the Overview for world media', () => {
+    openMedia('advanced');
+    fireEvent.click(card('World', 'sound'));
+    fireEvent.click(within(panel()!).getByRole('button', { name: 'Go to Overview' }));
+
+    expect(shownEditorTab()).toBe('Overview');
+  });
+});
