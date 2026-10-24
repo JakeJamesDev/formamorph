@@ -6,7 +6,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { RequestStatusRow, RequestStatusStrip } from '@/components/game/RequestStatusRow';
-import { BACKGROUND_PASS_GLYPHS, REQUEST_GLYPHS, TOOL_GLYPH, type StatusGlyphKey } from '@/components/game/statusGlyphs/glyphMap';
+import {
+  BACKGROUND_PASS_STATUS,
+  FALLBACK_STATUS,
+  REQUEST_STATUS,
+  TOOL_GLYPH,
+  requestLabel,
+  type StatusGlyphKey,
+} from '@/components/game/statusGlyphs/glyphMap';
 import { StatusGlyph } from '@/components/game/statusGlyphs/StatusGlyph';
 import { ThinkingLabel } from '@/components/game/ReasoningBlock';
 import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from '@/components/game/narrationFade';
@@ -17,41 +24,29 @@ const NARRATION = [
   'The ferryman points at the lantern and does not speak.',
 ].join('\n\n');
 
+type RowShown = { label: string; glyph: StatusGlyphKey };
+
 // The Turn row steps through a turn's requests, so the glyph swap shows.
-const TURN_STEPS: ReadonlyArray<{ label: string; glyph: StatusGlyphKey }> = [
-  { label: 'Generating Plan…', glyph: REQUEST_GLYPHS.thinking },
-  { label: 'Generating Cast…', glyph: REQUEST_GLYPHS.director },
-  { label: 'Generating Storyboard…', glyph: REQUEST_GLYPHS.storyboard },
-  { label: 'Generating Narration…', glyph: REQUEST_GLYPHS.narration },
-  { label: 'Generating Choices…', glyph: REQUEST_GLYPHS.choices },
-  { label: 'Generating Stat Updates…', glyph: REQUEST_GLYPHS.statUpdates },
-  { label: 'Generating Location…', glyph: REQUEST_GLYPHS.locationChange },
-  { label: 'Generating Clock…', glyph: REQUEST_GLYPHS.timePassed },
-  { label: 'Generating Memory…', glyph: REQUEST_GLYPHS.summary },
-];
+const TURN_STEPS: ReadonlyArray<RowShown> = (
+  ['thinking', 'director', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange', 'timePassed', 'summary'] as const
+).map((type) => ({ label: requestLabel(REQUEST_STATUS[type]), glyph: REQUEST_STATUS[type].glyph }));
 const TURN_STEP_MS = 2000;
 
 const ROWS = {
   turn: TURN_STEPS[0],
   tool: { label: 'Calling roll_dice…', glyph: TOOL_GLYPH },
-  background: { label: 'Summarizing turn…', glyph: BACKGROUND_PASS_GLYPHS.digest },
+  background: BACKGROUND_PASS_STATUS.digest,
   none: null,
-} as const satisfies Record<string, { label: string; glyph: StatusGlyphKey } | null>;
+} as const satisfies Record<string, RowShown | null>;
 
-// What each glyph serves. Keyed by glyph, so a new glyph fails typecheck until it is listed here.
-const GLYPH_USES: Record<StatusGlyphKey, string> = {
-  compass: 'Plan',
-  chartColumnIncreasing: 'Stat Updates',
-  bookOpen: 'Memory, Memory Select, Diary',
-  scroll: 'Storyboard',
-  mapPin: 'Location, Entity Location',
-  hourglass: 'Clock, Opening',
-  sparkles: 'Everything else',
-  hammer: 'Tool calls',
-  quill: 'Narration',
-  masks: 'Cast, Motivation, Character',
-  split: 'Choices',
-};
+// What each glyph serves, read from the maps the game uses.
+const GLYPH_USES = (() => {
+  const uses = new Map<StatusGlyphKey, Set<string>>();
+  const add = (glyph: StatusGlyphKey, use: string) => uses.set(glyph, (uses.get(glyph) ?? new Set()).add(use));
+  for (const { name, glyph } of [...Object.values(REQUEST_STATUS), FALLBACK_STATUS]) add(glyph, name);
+  add(TOOL_GLYPH, 'Tool calls');
+  return [...uses].map(([glyph, names]) => [glyph, [...names].join(', ')] as const);
+})();
 type RowKey = keyof typeof ROWS;
 
 // The shared Thinking header while the model thinks, as the game and Formaquestion show it.
@@ -111,7 +106,7 @@ export function RequestStatusStripReference() {
           </div>
         </div>
         <ul aria-label="Status Glyphs" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(Object.entries(GLYPH_USES) as [StatusGlyphKey, string][]).map(([glyph, use]) => (
+          {GLYPH_USES.map(([glyph, use]) => (
             <li key={glyph} className="flex items-center gap-2 text-muted-foreground">
               <span aria-hidden className="flex size-4 shrink-0 items-center justify-center"><StatusGlyph glyph={glyph} /></span>
               <span className="text-meta">{use}</span>

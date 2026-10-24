@@ -154,7 +154,7 @@ import {
 } from "../lib/backgroundPassQueue/backgroundPassQueue";
 import { BackgroundPassStatus } from "../components/game/BackgroundPassStatus";
 import { RequestStatusRow } from "../components/game/RequestStatusRow";
-import { TOOL_GLYPH, requestGlyph } from "../components/game/statusGlyphs/glyphMap";
+import { TOOL_GLYPH, requestLabel, requestStatus } from "../components/game/statusGlyphs/glyphMap";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
@@ -4937,26 +4937,8 @@ const GameViewer = ({
     const toolStatus = toolCallStatus(toolLookups);
     if (toolStatus && showSilentRequests) return <RequestStatusRow label={toolStatus} glyph={TOOL_GLYPH} startedAt={turnStartedAt} />;
     if (isWaitingForAI) {
-      const labels: Partial<Record<AIRequestType, string>> = {
-        thinking: "Plan",
-        director: "Cast",
-        character: "Motivation",
-        storyboard: "Storyboard",
-        narration: "Narration",
-        choices: "Choices",
-        statUpdates: "Stat Updates",
-        locationChange: "Location",
-        entityLocation: "Entity Location",
-        summary: "Memory",
-        milestoneSelect: "Memory Select",
-        diary: "Diary",
-        discoverEntity: "Character",
-        timePassed: "Clock",
-        openingTime: "Opening",
-        sceneTags: "Scene Tags",
-      };
-      const label = (aiRequestType && labels[aiRequestType]) ?? "Response";
-      return <RequestStatusRow label={`Generating ${label}…`} glyph={requestGlyph(aiRequestType)} startedAt={turnStartedAt} />;
+      const status = requestStatus(aiRequestType);
+      return <RequestStatusRow label={requestLabel(status)} glyph={status.glyph} startedAt={turnStartedAt} />;
     }
     // Null when no pass runs, so the footer floats no empty strip and the narration takes no strip fade.
     return showSilentRequests && passesRunning.size > 0 ? <BackgroundPassStatus running={passesRunning} /> : null;
