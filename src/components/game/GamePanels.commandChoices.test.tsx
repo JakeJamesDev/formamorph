@@ -99,7 +99,7 @@ describe('slash-command completion in the action box', () => {
   it('lists the commands on a slash, then the next word after each pick', () => {
     renderMiddlePanel({}, { turns: [] });
     type('/');
-    expect(rows()).toEqual(['choices', 'markdown']);
+    expect(rows()).toEqual(['choices', 'markdown', 'turn']);
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'Enter' });
     expect(box().value).toBe('/markdown ');
