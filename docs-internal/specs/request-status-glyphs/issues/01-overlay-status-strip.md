@@ -1,6 +1,6 @@
 # 01: Overlay Status Strip
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -21,12 +21,24 @@ Spec: Q12–Q15; stories 23–28, 29, 30.
 
 ## Acceptance criteria
 
-- [ ] All three rows render through the shared component; the GameViewer reroll tests and the BackgroundPassStatus tests pass unchanged
-- [ ] The footer's height is the same with a request running and with none, in Pages and Chat (a DOM read of the footer's height in both states)
+- [x] All three rows render through the shared component; the GameViewer reroll tests and the BackgroundPassStatus tests pass unchanged (`RequestStatusRow` in GameViewer's `progressBar` and in `BackgroundPassStatus`; `GameViewer.rerolls`, `GameViewer.passes`, `BackgroundPassStatus` green, test files untouched)
+- [x] The footer's height is the same with a request running and with none, in Pages and Chat (DOM read: Pages 88px idle and running at desktop and 375px mobile; Chat 48px idle and running)
 - [ ] With **Show Silent Requests** off, no Tool row and no background row shows
-- [ ] The strip has a showcase entry in the design-system dev route
-- [ ] Frames: `.scratch/frames/strip-pages-desktop-light.png`, `strip-pages-desktop-dark.png`, `strip-chat-desktop-light.png`, `strip-pages-mobile-dark.png`, each with a request running over narration text
-- [ ] How-to-Play's status-line text matches the new placement; changelog fragment written
+- [x] The strip has a showcase entry in the design-system dev route (`#dev?view=mainMenu&modal=designSystem&tab=status-strip`, rendered)
+- [x] Frames: `.scratch/frames/strip-pages-desktop-light.png`, `strip-pages-desktop-dark.png`, `strip-chat-desktop-light.png`, `strip-pages-mobile-dark.png`, each with a request running over narration text (held stream over the White Room fixture, 800×600 pane and 375×812)
+- [x] How-to-Play's status-line text matches the new placement; changelog fragment written ([How-to-Play.md](../../../../docs/How-to-Play.md) area table; `changelog.d/request-status-glyphs-01.md`)
 
 For you: approve the strip in the app (ADR 0008), desktop and mobile, by starting a turn in Pages and in Chat.
 For you: judge how much the strip hides of the newest streamed line during Narration (the Q15 trade-off).
+
+## Landed
+
+**Not verified**
+
+- **Show Silent Requests off hides the Tool row.** The background half is covered: `GameViewer.passes` "stays blank for the same running digest with it off" passes. No test drives a Tool round, and the preview cannot run one without a Tool-capable model. The gate line `toolStatus && showSilentRequests` is unchanged.
+
+**For you**
+
+- Approve the strip in the app (ADR 0008), desktop and mobile, by starting a turn in Pages and in Chat. Frames: `.scratch/request-status-glyphs-01/frames/strip-pages-desktop-light.png`, `.scratch/request-status-glyphs-01/frames/strip-pages-desktop-dark.png`, `.scratch/request-status-glyphs-01/frames/strip-chat-desktop-light.png`, `.scratch/request-status-glyphs-01/frames/strip-pages-mobile-dark.png`.
+- Judge how much the strip hides of the newest streamed line during Narration (the Q15 trade-off).
+- In Chat, the **Jump to Latest** pill draws above the strip and overlaps its label while both show: `.scratch/request-status-glyphs-01/frames/strip-chat-jump-pill-light.png`.

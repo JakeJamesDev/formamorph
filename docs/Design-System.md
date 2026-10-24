@@ -1291,6 +1291,58 @@ The live reference opens the production line in a store of its own under a sampl
 
 - **Unverified:** "Choose One", the reference description, its sample labels, and its status lines have terminology review only; vocabulary and grammar evidence is not recorded. The sample questions are creative prose and exempt.
 
+## Pattern: Request Status Strip
+
+> 📝 **Proposal.** The placement was settled with the user in the Request Status Glyphs spec (rulings Q12 to Q15). The user has not yet approved it in the showcase. Production already uses it, so approval is the next step.
+
+**Purpose:** Show which AI request is running without moving the footer.
+
+**Rule:**
+
+- One row at a time: the turn's request, a Tool round, or a background pass. **Show Silent Requests** gates the Tool and background rows.
+- The strip floats over the bottom edge of the narration frame, anchored to the top of the footer. It is out of flow, so the like prompt, the Pager and the action box never move.
+- The strip spans the frame's inner width. A fade from the frame's fill keeps the label readable over the text.
+- The narration gets no reserved padding. The strip can cover the newest line while a request runs.
+- The strip takes no pointer events, so the narration under it still scrolls and selects.
+
+**Density:** Compact. The label uses `text-meta` in the muted color. The bar is 4px tall and is the one accent.
+
+### Composition
+
+| Part | Holds | Notes |
+| --- | --- | --- |
+| **Glyph slot** | A 16px slot, hidden from assistive technology | Empty until the request glyphs land. |
+| **Label** | The request's name, such as *Generating Narration…* | It truncates at 60% of the row. |
+| **Bar** | The indeterminate progress bar | It fills the rest of the row. |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The row and the strip | `RequestStatusRow` and `RequestStatusStrip` in [`RequestStatusRow.tsx`](../src/components/game/RequestStatusRow.tsx) |
+| The background pass row | [`BackgroundPassStatus.tsx`](../src/components/game/BackgroundPassStatus.tsx) |
+| The host, in Pages and Chat | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| Isolated reference | [`RequestStatusStripReference.tsx`](../src/components/design-system/RequestStatusStripReference.tsx) |
+
+### Responsive behavior
+
+Pages, Chat, desktop and mobile use the same strip. The label truncates before the bar shrinks.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Turn request | *Generating* and the request's name, such as *Generating Choices…* |
+| Tool round | *Calling* and the Tool names. It shows only with **Show Silent Requests** on, and it takes the row over the turn request |
+| Background pass | One pass name by precedence, such as *Summarizing turn…*. It shows only between turns, with **Show Silent Requests** on |
+| Idle | No strip. The narration shows to the frame's bottom edge |
+
+The live reference shows each row in its strip over a sample frame, above a Pager that stays still.
+
+### Writing review
+
+- **Unverified:** the reference description and its toggle labels have terminology review only; vocabulary and grammar evidence is not recorded. The sample narration is creative prose and exempt.
+
 ## Pattern: Nested Prompt Navigation
 
 **Purpose:** Show the active prompt section while retaining the surrounding prompt list.

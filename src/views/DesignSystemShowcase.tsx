@@ -48,6 +48,7 @@ import { ContextMenuReferences } from '@/components/design-system/ContextMenuRef
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
+import { RequestStatusStripReference } from '@/components/design-system/RequestStatusStripReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
@@ -381,6 +382,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Inline Prompt Line',
     description: 'A script’s question or message in the turn column',
     Component: ScriptPromptLineReference,
+  },
+  {
+    id: 'status-strip',
+    label: 'Request Status Strip',
+    description: 'The running request’s row, floated over the narration',
+    Component: RequestStatusStripReference,
   },
   {
     id: 'owner-flyouts',
