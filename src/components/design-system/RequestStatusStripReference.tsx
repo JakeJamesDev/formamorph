@@ -21,6 +21,7 @@ type RowKey = keyof typeof ROWS;
 
 export function RequestStatusStripReference() {
   const [row, setRow] = useState<RowKey>('turn');
+  const [startedAt] = useState(() => Date.now() - 12_000);
   const label = ROWS[row];
   return (
     <Card role="region" aria-labelledby="status-strip-title">
@@ -48,7 +49,11 @@ export function RequestStatusStripReference() {
             <MarkdownRenderer text={NARRATION} />
           </div>
           <div className="relative flex flex-col gap-2">
-            {label && <RequestStatusStrip><RequestStatusRow label={label} /></RequestStatusStrip>}
+            {label && (
+              <RequestStatusStrip>
+                <RequestStatusRow label={label} startedAt={row === 'background' ? undefined : startedAt} />
+              </RequestStatusStrip>
+            )}
             <Pager page={3} pageCount={3} onPageChange={() => {}} className="justify-center" />
           </div>
         </div>
