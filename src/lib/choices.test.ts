@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { parseChoices, matchChoicesToAction, choiceRuns } from './choices';
+import { parseChoices, matchChoicesToAction, choiceRuns, keepSameRows } from './choices';
+
+describe('keepSameRows', () => {
+  it('keeps the previous list when a token leaves the parsed rows unchanged', () => {
+    const prev = parseChoices('1. Open the door\n2. Wait');
+    expect(keepSameRows(prev, parseChoices('1. Open the door\n2. Wait\n'))).toBe(prev);
+  });
+
+  it('takes the new list when a row grows, changes, or is added', () => {
+    const prev = ['Open the door', 'Wait'];
+    for (const next of [['Open the door', 'Wait here'], ['Open the gate', 'Wait'], ['Open the door', 'Wait', 'Run']]) {
+      expect(keepSameRows(prev, next)).toBe(next);
+    }
+  });
+});
 
 describe('parseChoices', () => {
   it('splits lines, trims, and drops empties', () => {

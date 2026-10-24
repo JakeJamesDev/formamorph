@@ -204,7 +204,7 @@ function mergedBandText(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: Ban
 /** The token cost of the whole digest band as it actually rides: one recap-question user line plus the
  *  merged digests (and the now-line closer, when set) as the assistant reply. 0 when there is nothing to
  *  say — no surviving digest and no note (no exchange is emitted). */
-function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: string, notes: MemoryNote[] = [], stamp?: BandStamp): number {
+export function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: string, notes: MemoryNote[] = [], stamp?: BandStamp): number {
   const body = mergedBandText(turns, notes, stamp);
   if (!body) return 0;
   const pair: ChatMessage[] = [
@@ -212,6 +212,44 @@ function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: stri
     { role: 'assistant', content: nowLine ? `${body}\n\n${nowLine}` : body },
   ];
   return estimateTokens(JSON.stringify(pair).length);
+}
+
+/** JSON-escaped length of `text`, without the quotes. */
+const escapedLength = (text: string) => JSON.stringify(text).length - 2;
+
+/**
+ * `bandExchangeCost` kept as a running sum, so the trim loop drops a turn in O(1) rather than rebuilding
+ * the band. Exact: a separator always sits between pieces, so the escaped length of the joined body is the
+ * sum of its pieces' plus one per join.
+ */
+export function bandCostTracker(turns: BandTurn[], recapPrompt: string, nowLine: string | undefined, notes: MemoryNote[], stamp: BandStamp | undefined) {
+  const overhead = JSON.stringify([{ role: 'user', content: recapPrompt }, { role: 'assistant', content: '' }]).length
+    + (nowLine ? escapedLength(`\n\n${nowLine}`) : 0);
+  const notePieces = bandPieces([], notes, stamp);
+  const turnLength = new Map<BandTurn, number>();
+  let chars = notePieces.reduce((sum, p) => sum + escapedLength(p.text), 0);
+  let count = notePieces.length;
+  for (const turn of turns) {
+    const [piece] = bandPieces([turn], [], stamp);
+    if (!piece) continue;
+    const length = escapedLength(piece.text);
+    turnLength.set(turn, length);
+    chars += length;
+    count++;
+  }
+  return {
+    /** The cost of the tracked turns less the ones passed to `remove`. */
+    cost(): number {
+      return count === 0 ? 0 : estimateTokens(overhead + chars + count - 1);
+    },
+    remove(turn: BandTurn) {
+      const length = turnLength.get(turn);
+      if (length === undefined) return;
+      turnLength.delete(turn);
+      chars -= length;
+      count--;
+    },
+  };
 }
 
 /** Join the band body into the planner's recap block (chronological, one piece per line). */
@@ -466,6 +504,7 @@ export function buildBandedHistory(args: {
     const raw = relevanceScores!.get(t.turnId!)! * (impFactor.get(t.turnId!) ?? 1);
     return stickyIds && t.turnId && stickyIds.has(t.turnId) ? raw * STICKY_BONUS : raw;
   };
+  const tracker = bandCostTracker(bandTurns, recapPrompt, nowLine, notes, stamp);
   const dropLowestEligible = (): boolean => {
     if (!scored) return false;
     const lastEligible = bandTurns.length - 1 - RANKED_RECENT_IMMUNE;
@@ -474,13 +513,17 @@ export function buildBandedHistory(args: {
     for (let i = 2; i <= lastEligible; i++) {
       if (rankScore(bandTurns[i]) < rankScore(bandTurns[lowest])) lowest = i;
     }
+    tracker.remove(bandTurns[lowest]);
     bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));
     turnsRelevanceDropped++;
     return true;
   };
   while (bandTokens > remaining && bandTurns.length > 0) {
-    if (!dropLowestEligible()) bandTurns = bandTurns.slice(1); // fall back: drop the oldest
-    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine, notes, stamp);
+    if (!dropLowestEligible()) { // fall back: drop the oldest
+      tracker.remove(bandTurns[0]);
+      bandTurns = bandTurns.slice(1);
+    }
+    bandTokens = tracker.cost();
   }
   // Always-on top-K cap (step 3): even a band that fits gets trimmed to the K most relevant memories.
   // Scored mode only, and the protected ends set the effective floor.

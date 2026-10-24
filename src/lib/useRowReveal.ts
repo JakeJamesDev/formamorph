@@ -28,6 +28,14 @@ interface RowState {
   targets: number[];
   /** Each word's animation delay, fixed at its first render so a later render can't restart it. */
   delays: Map<number, number>;
+  /** Whether the row has shown yet. */
+  seen?: boolean;
+}
+
+/** Moves a row's start and word targets later by `ms`. */
+function move(state: RowState, ms: number) {
+  state.start += ms;
+  state.targets = state.targets.map((t) => t + ms);
 }
 
 const STILL: RowReveal = { streaming: false, shown: () => true, row: () => undefined, word: () => undefined };
@@ -68,6 +76,17 @@ export function useRowReveal(
         state.targets.push(Math.max(now, prev === undefined ? state.start : prev + stagger));
       }
     });
+    // A row that first shows late (a stall held its wake timer) starts from now, and the rows after it move
+    // with it, so a stall delays the stream rather than showing its overdue words at once.
+    let shift = 0;
+    for (const i of [...states.current.keys()].sort((a, b) => a - b)) {
+      const state = states.current.get(i)!;
+      if (shift > 0) move(state, shift);
+      if (state.seen || state.start > now + 1) continue;
+      state.seen = true;
+      const late = now - state.start;
+      if (late > 0) { move(state, late); shift += late; }
+    }
   }
   useLayoutEffect(() => { committed.current = rows; });
 

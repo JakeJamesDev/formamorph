@@ -58,6 +58,19 @@ describe('choice rows streaming', () => {
     expect(rowTexts()).toEqual(LIST);
   });
 
+  it('streams a row that shows late after a stall, and holds the next row back by the same amount', () => {
+    const view = renderMiddlePanel(preview([]), { turns: [] });
+    act(() => view.setProps(preview(LIST)));
+    // The main thread is busy past the second row's start: its wake timer fires 500 ms late.
+    act(() => { now += 3 * STAGGER + 500; vi.advanceTimersByTime(3 * STAGGER + 500); });
+    expect(rowTexts()).toEqual(['Open fire now', 'Call out']);
+    expect(wordDelays('Call out')).toEqual([0, STAGGER]);
+    advance(2 * STAGGER - 1);
+    expect(rowTexts()).toEqual(['Open fire now', 'Call out']);
+    advance(1);
+    expect(wordDelays('Back away')).toEqual([0, STAGGER]);
+  });
+
   it('streams a row still being written as its words arrive', () => {
     const view = renderMiddlePanel(preview([]), { turns: [] });
     act(() => view.setProps(preview(['Open'])));
