@@ -18,7 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Entity Avatars:**
-    - **The World Overview holds several Avatars, and each world entity picks one in its Avatar dropdown.** Upload a file or copy one from your library, then rename or delete it. A delete names the entities that use it.
+    - **A world holds several Avatars in its Media tab, and each world entity picks one in its Avatar dropdown.** Upload or copy one from your library, then rename, replace, download or delete it. A delete names the entities that use it.
     - **Mark one library Avatar as your default from its tile menu, and User's Default shows it.** The tile gets a **Default** badge. With no default, User's Default shows the bundled Avatar.
     - **Library entities pick an Avatar from your Avatar library, and a library persona shows it while you play.** Adding one to a world copies its Avatar into the world once. Deleting a library Avatar names the library entities that use it, and they show no Avatar.
     - **Enter World shows the avatar step when the persona you pick has an Avatar.** The button switches between **Continue to Avatar** and **Start Game** as you change persona. You pick a library Avatar only under User's Default, starting on your default.
@@ -38,9 +38,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Media tab header shows Publish Size and lets you group, sort and filter the gallery.** Group by type, show the largest files first, or filter to linked, embedded, rule-bearing or over-budget images. An over-limit world's warning now opens this tab.
     - **The Media tab's panel can now replace or remove a sound, 3D Model, background, thumbnail or cover image.** A replaced file keeps its slot, and each change undoes in one step.
     - **Optimize Images moves into the World Editor's Media tab header in both modes, and now shrinks dictionary cover images.** The app bar no longer has the button. Sizes and the meter update when a run ends.
-    - **An entity's or location's image opens one Media tab panel with its gallery, and the framed image's actions sit below.** Reorder, generate, replace, download or remove images there. An entity's image also gets its Visibility rule editor and a link to its Avatar.
-    - **The Media tab now holds the world's Avatars, in Simple and Advanced mode.** Upload, copy from your library, rename, replace, download or delete an Avatar there. The Overview no longer has the section.
-    - **The Media tab filter has a No Images option that lists entities, locations and the world thumbnail with no image.** Select a blank card to add its first image. Dictionaries without a cover image stay out.
+    - **An entity's or location's image opens one Media tab panel with its gallery, and the framed image's actions sit below.** Reorder, generate, replace, download or remove images there. Each image also gets its Visibility rule editor, and an entity's links to its Avatar.
+    - **The Media tab's No Images filter lists entities, locations, the thumbnail and the Map Background with no image.** Select a blank card to add its first image. Dictionaries without a cover image stay out.
     - **Trait requirements and image Visibility rules can check the time of day, such as evening or night.** Pick **Time of Day**, then turn on the dayparts. The game checks once per turn, after the turn's time passes.
     - **In the World Editor, a location's background is now a gallery, and each image can take a Visibility rule.** In play the backdrop shows the first visible image. A condition with no owner reads your persona. Older worlds load with their background first.
     - **The Locations canvas can show a Map Background image, and the in-game Map draws it behind the locations.** Right-click the canvas to set it, then drag, resize and fade it under Adjust Background. In the Media tab, add more map images with Visibility rules so the map changes in play.
