@@ -94,8 +94,8 @@ describe('heavy text in the sandbox', () => {
         JSON.stringify(memories[1]), JSON.stringify(dictionaries.Lore.entries.Tides), Object.values(locations.Hill).slice(0, 5),
       ];`)).toEqual([
         ['id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'move', 'follow', 'unfollow', 'diary'],
-        ['id', 'name', 'description', 'summary', 'starting', 'present'],
-        ['id', 'name', 'description', 'summary', 'starting', 'present', 'move'],
+        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits'],
+        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'move'],
         ['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
         ['id', 'name', 'entries', 'placeholders'],
         ['Tides', 'The Wreck'],

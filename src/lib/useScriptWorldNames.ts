@@ -32,11 +32,13 @@ export function useScriptWorldNames(): ScriptWorldNames {
   const statGroups = gameData?.statGroups;
   const entities = gameData?.entities;
   const worldPlaceholders = gameData?.worldPlaceholders;
+  const connections = gameData?.connections;
   const onWorld = !!gameData;
   const world = useMemo<OpeningFoldWorld>(() => (onWorld ? {
-    stats, statGroups, traits, traitGroups, entities, entityGroups, placeholders: worldPlaceholders, placeholderGroups, dictionaries, locations,
+    stats, statGroups, traits, traitGroups, entities, entityGroups, placeholders: worldPlaceholders, placeholderGroups, dictionaries, locations, connections,
   } : { placeholders }), [
-    onWorld, stats, statGroups, traits, traitGroups, entities, entityGroups, worldPlaceholders, placeholderGroups, dictionaries, locations, placeholders,
+    onWorld, stats, statGroups, traits, traitGroups, entities, entityGroups, worldPlaceholders, placeholderGroups, dictionaries, locations, connections,
+    placeholders,
   ]);
   return { names, placeholderPlaces, world };
 }

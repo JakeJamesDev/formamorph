@@ -103,10 +103,16 @@ describe('the cards of a locations read', () => {
     expect(cardAt('const l = locations.In|n;')?.item).toEqual({ kind: 'location', locationId: 'inn' });
   });
 
-  it.each(['description', 'summary', 'starting', 'present'])('describes the %s field of an entry and of location', (field) => {
+  it.each(['description', 'summary', 'starting', 'present', 'parent', 'children', 'exits'])('describes the %s field of an entry and of location', (field) => {
     const caret = `${field.slice(0, 2)}|${field.slice(2)}`;
     expect(cardAt(`const v = locations.Inn.${caret};`)?.signature).toMatchObject({ path: `Location.${field}` });
     expect(cardAt(`const v = location.${caret};`)?.signature).toMatchObject({ path: `location.${field}` });
+  });
+
+  it.each([
+    ['location.exits[0].hi|nt;', 'hint'], ['locations.Inn.exits.find((e) => e.hint).na|me;', 'name'],
+  ])('describes an exit field in %s', (doc, field) => {
+    expect(cardAt(`const v = ${doc}`)?.signature).toMatchObject({ path: `Exit.${field}` });
   });
 
   it.each(['location', 'following', 'description', 'summary', 'aliases'])('describes the %s field of an entity entry', (field) => {

@@ -3,7 +3,7 @@ import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces }
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
 import type { RelationshipLines } from "./entityRelationships";
-import { effectiveDestinations } from "./locationGraph";
+import { effectiveDestinations, type LocationLink } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import { decodeChipKey, decodeVariant, tokenVariant, variableForToken } from "./promptVariables";
@@ -374,8 +374,8 @@ export function sublocationEntityRuns(
 }
 
 /** One place the player can move to, and how the trip is made. */
-export interface DestinationEntry {
-  location: GameLocation;
+export interface DestinationEntry<L extends LocationLink = GameLocation> {
+  location: L;
   /** The travel hint of the Connection leg that reaches this place. Absent for implicit travel and for a
    *  hintless leg. */
   hint?: string;
@@ -385,14 +385,14 @@ export interface DestinationEntry {
 /** The current location's effective destinations paired with the travel hint each one is reached by, in
  *  `lib/locationGraph` order. Exported so a surface that lists the destinations reads the same closed set the
  *  prompt block renders from — a second computation could disagree with where a player can actually go. */
-export function navigableDestinationEntries(
-  current: MaybeLocation,
-  locations: GameLocation[],
-  connections: Connection[],
-): DestinationEntry[] {
+export function navigableDestinationEntries<L extends LocationLink = GameLocation>(
+  current: Pick<GameLocation, "id"> | null,
+  locations: readonly L[],
+  connections: readonly Connection[],
+): DestinationEntry<L>[] {
   if (!current) return [];
   const byId = new Map(locations.map((l) => [l.id, l]));
-  const entries: DestinationEntry[] = [];
+  const entries: DestinationEntry<L>[] = [];
   for (const [id, via] of effectiveDestinations(current.id, locations, connections)) {
     const location = byId.get(id);
     if (!location) continue; // a Connection pointing at a deleted location reaches nowhere

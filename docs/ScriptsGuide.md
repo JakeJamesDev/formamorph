@@ -356,8 +356,8 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number` | `turn.number` | Read-only |
-| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present` | `locations.<Location>.present` | Read-only |
-| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
+| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits` | `locations.<Location>.present` | Read-only |
+| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
@@ -1067,6 +1067,9 @@ if (turn.number % 5 === 0 && !turn.action.startsWith('[')) stats.Stock.value = s
 | `summary` | The short AI summary, with each placeholder chip filled in |
 | `starting` | True when the game can start at the location |
 | `present` | The [entity entries](#entities) at the location. The persona comes first when the player is there, then the entities in `entities` order. An entity with no position of its own is in `present` at every location it lists |
+| `parent` | The code name of the location that holds this one. Empty at the top level |
+| `children` | The code names of the locations inside this one, in the editor's order |
+| `exits` | The places the AI can move the player to from here, each with a `name` (a code name) and a `hint` (the Connection's travel hint, or empty). It's the same list the AI picks from |
 
 In a world with no location, `location.id` and `location.name` are empty and `location.present` is an empty list. A name the world has no location for reads as a blank entry.
 
@@ -1076,7 +1079,13 @@ if (location.present.some((e) => e.name === "Mira")) self.value += 1;
 
 // Read another place.
 const mill = locations["Old Mill"].summary;
+
+// Walk to a random place the player can reach from here.
+const exit = location.exits[Math.floor(Math.random() * location.exits.length)];
+if (exit) location.move(exit.name);
 ```
+
+`location` and its `exits` keep reading where the turn started, even after `location.move` in the same script.
 
 In Test Code and the Test Bench, no entity has a position. Each entity is in `present` at every location it lists, and the persona is at the starting location.
 

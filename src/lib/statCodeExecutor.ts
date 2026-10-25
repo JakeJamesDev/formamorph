@@ -120,11 +120,28 @@ export interface SandboxPlace {
   name: string;
 }
 
+/** One place the router offers from a location, under its code name. */
+export interface SandboxExit {
+  name: string;
+  /** The Connection leg's travel hint, its placeholders filled in; empty for implicit travel or a hintless leg. */
+  hint: string;
+}
+
+/** Where a location sits in the tree and where travel from it goes, all by code name. */
+export interface SandboxLocationLinks {
+  /** Empty at the top level. */
+  parent: string;
+  children: readonly string[];
+  exits: readonly SandboxExit[];
+}
+
 /** One `locations` entry's input. Text left out reads empty; `starting` left out reads false. */
 export interface SandboxLocation extends SandboxPlace {
   description?: string;
   summary?: string;
   starting?: boolean;
+  /** Called on the run's first read of `parent`, `children` or `exits`. Left out, they read empty. */
+  links?: () => SandboxLocationLinks;
 }
 
 /** The world's locations a run can name, and where the turn stands. */
@@ -1541,12 +1558,28 @@ function standingOf({ locations, location: here }: SandboxPlaces, { byName, pers
   };
 }
 
+/** The link fields of a location entry, in the order its slots hold them. */
+const LINK_FIELDS = ['parent', 'children', 'exits'] as const satisfies readonly (keyof SandboxLocationLinks)[];
+
+const NO_LINKS: SandboxLocationLinks = { parent: '', children: [], exits: [] };
+
 /** The `locations` and `location` prelude, after the entities prelude: `present` holds its entries. The later of
  *  two locations sharing a name wins the key. */
 const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing: Standing, reads: HostReads): string => {
+  // One build per location, shared by its entry and `location`, on the first read of any link field.
+  const linkSlots = new Map<SandboxLocation, number[]>();
+  const slotsOf = (place: SandboxLocation): number[] => {
+    let slots = linkSlots.get(place);
+    if (!slots) {
+      let built: SandboxLocationLinks | undefined;
+      const { links = () => NO_LINKS } = place;
+      linkSlots.set(place, slots = LINK_FIELDS.map((field) => reads.deferred(() => (built ??= links())[field])));
+    }
+    return slots;
+  };
   const data = (place: SandboxLocation, prefix: string) => ({
     id: place.id, name: place.name, description: reads.text(place.description), summary: reads.text(place.summary), starting: !!place.starting,
-    ...standing.presentAt(place.id), prefix,
+    ...standing.presentAt(place.id), links: slotsOf(place), prefix,
   });
   const current = here ? locations.find((place) => place.id === here.id) ?? here : null;
   const blank = { ...data({ id: '', name: '' }, ''), persona: false, keys: [] };
@@ -1558,10 +1591,24 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
   };
   return [
     `const [locations, location] = ((spec, move, lockEntry, note, entities, persona) => {`,
+    `  const freeze = (value) => {`,
+    `    if (value && typeof value === 'object' && !Object.isFrozen(value)) for (const item of Object.values(Object.freeze(value))) freeze(item);`,
+    `    return value;`,
+    `  };`,
+    `  const linked = (target, slots, prefix) => {`,
+    `    ${JSON.stringify(LINK_FIELDS)}.forEach((field, at) => Object.defineProperty(target, field, {`,
+    `      enumerable: true, get: () => freeze(${HOST_READ}(slots[at])), set: () => note(prefix + field),`,
+    `    }));`,
+    `    return target;`,
+    `  };`,
     `  const entry = (data, extra) => {`,
     `    const present = Object.freeze([...(data.persona ? [persona] : []), ...data.keys.map((key) => entities[key])]);`,
-    `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present, ...extra };`,
-    `    return Object.freeze(lockEntry(out, ['description', 'summary'], data.prefix, note));`,
+    `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present };`,
+    `    const read = linked(lockEntry(out, ['description', 'summary'], data.prefix, note), data.links, data.prefix);`,
+    `    for (const [field, held] of Object.entries(extra)) {`,
+    `      Object.defineProperty(read, field, { enumerable: true, get: () => held, set: () => note(data.prefix + field) });`,
+    `    }`,
+    `    return Object.freeze(read);`,
     `  };`,
     `  const map = Object.create(null);`,
     `  for (const [key, data] of spec.locations) map[key] = entry(data, {});`,

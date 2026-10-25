@@ -21,7 +21,7 @@ import {
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -485,7 +485,7 @@ function placeholderMembersAt(
 }
 
 /** The members of one element of each array shape. */
-const ELEMENT_FIELDS: Record<ArrayElement, readonly SurfaceEntry[]> = { memory: MEMORY_ENTRY_FIELDS, entity: ENTITY_FIELDS };
+const ELEMENT_FIELDS: Record<ArrayElement, readonly SurfaceEntry[]> = { memory: MEMORY_ENTRY_FIELDS, entity: ENTITY_FIELDS, exit: LOCATION_EXIT_FIELDS };
 
 /** What a resolved expression carries after its dot, or null where nothing can be shown. A wrong list would
  *  claim the sandbox holds something it doesn't. */

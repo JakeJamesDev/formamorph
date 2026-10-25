@@ -30,13 +30,17 @@ const world: RuleWorld = {
   ],
   traits: [trait({ id: 'brave', name: 'Brave' }), trait({ id: 'calm', name: 'Calm' })],
   entities: [mira, tor],
-  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }, { id: 'reef', name: 'Reef' }],
+  connections: [{ id: 'tide-road', a: 'harbor', b: 'reef', aToB: { hint: 'at low tide' } }],
   statUpdates: [], dictionaries: [], placeholders: [],
 };
 
-/** `options` with the entry-value resolver as what it makes of a text, since each snapshot holds its own closure. */
-const comparable = ({ resolveEntryValue, ...options }: StatCodeRunOptions) =>
-  ({ ...options, resolved: resolveEntryValue?.('The tide') });
+/** `options` with each closure as what it makes, since each snapshot holds its own: the entry-value resolver's
+ *  text and each location's links. */
+const comparable = ({ resolveEntryValue, places, ...options }: StatCodeRunOptions) => ({
+  ...options, resolved: resolveEntryValue?.('The tide'),
+  places: places && { ...places, locations: places.locations.map(({ links, ...place }) => ({ ...place, links: links?.() })) },
+});
 
 const HOMES: Record<string, UnitHome> = {
   globalStat: { kind: 'globalStat', stat: world.stats[0] },

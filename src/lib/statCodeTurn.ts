@@ -1,5 +1,5 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, OwnedTraitStates, Placeholder,
+  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, OwnedTraitStates, Placeholder,
   PlayerStat, Script, Trait,
 } from '@/types';
 import {
@@ -43,8 +43,10 @@ export interface StatCodeTraitResult {
 
 /** The world's locations as authored, and where the turn stands. */
 export interface StatePlaces {
-  locations: readonly Pick<GameLocation, 'id' | 'name' | 'aiDescription' | 'aiSummary' | 'isStarting'>[];
+  locations: readonly Pick<GameLocation, 'id' | 'name' | 'aiDescription' | 'aiSummary' | 'isStarting' | 'parentId'>[];
   location: SandboxPlace | null;
+  /** The world's Connections, which the exits read as the router does. Absent ⇒ none. */
+  connections?: readonly Connection[];
 }
 
 /** Authored text as the AI reads it: chips resolved, an entity's own against that entity. */

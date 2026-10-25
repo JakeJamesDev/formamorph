@@ -6,7 +6,7 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
@@ -452,6 +452,15 @@ describe('array elements', () => {
     expect(inserts(tree, 'Location', 'present', 'present')).toBe('location.present');
   });
 
+  it('lists the exits list first, then an exit’s fields, under the location and each locations row', () => {
+    for (const steps of [['Location', 'exits'], ['Locations', 'Old Mill', 'exits'], ['Locations', 'Dock', 'exits']]) {
+      expect(levelAt(tree, ...steps)).toEqual(['exits', 'name', 'hint']);
+    }
+    expect(inserts(tree, 'Location', 'exits', 'hint')).toBe('location.exits[0]?.hint');
+    expect(inserts(tree, 'Locations', 'Old Mill', 'parent')).toBe('locations["Old Mill"].parent');
+    expect(inserts(tree, 'Location', 'children')).toBe('location.children');
+  });
+
   it.each([
     [['Memories', 'memories[0]', 'text'], 'memories[0]?.text', '0'],
     [['Location', 'present', 'following'], 'location.present[0]?.following', '0'],
@@ -477,7 +486,7 @@ describe('array elements', () => {
 
   // The menu and the cards read one element shape, so every element leaf has the card of the field it names.
   const elementLeaves = variableTreeLeaves(tree).filter((field) => field.insert.includes('[0]'));
-  it('has element leaves to check', () => { expect(elementLeaves.length).toBe(MEMORY_ENTRY_FIELDS.length + presentFields.length * 3); });
+  it('has element leaves to check', () => { expect(elementLeaves.length).toBe(MEMORY_ENTRY_FIELDS.length + (presentFields.length + LOCATION_EXIT_FIELDS.length) * 3); });
   it.each(elementLeaves.map((field) => [field.insert, field]))('gives %s the card of its field', (insert, field) => {
     const card = codeCard(insert, insert.lastIndexOf(`.${field.label}`) + 2, { surface: STAT_CODE_SURFACE });
     expect(card).toMatchObject({ description: field.info, signature: { type: field.detail } });

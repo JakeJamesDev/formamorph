@@ -46,7 +46,7 @@ describe('the Tool script surface matches the sandbox', () => {
 
 describe('no verb on the surface', () => {
   it('offers the fields of each world value and none of its calls', () => {
-    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present']);
+    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits']);
     expect(labelsAt('return clock.|')).toEqual(['day', 'daypart', 'hour', 'minute', 'deltaHours', 'elapsedHours', 'previous']);
     expect(labelsAt('return memories.|')).toEqual([]);
     expect(labelsAt('return entities.Mara.|', named)).not.toEqual(expect.arrayContaining(['move']));
