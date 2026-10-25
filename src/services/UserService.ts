@@ -1,6 +1,7 @@
 import type { FeedItem, FollowedUser, LikeGiven, LinkedAccount, ProfileCreation, PublicProfile } from '@/types';
 import { kindOf } from '@/lib/catalogKinds';
 import { likeCountOf } from '@/lib/likeCount';
+import { moderationStatus } from '@/lib/listingModeration';
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
 import { authHeaders } from '@/services/authRequest';
@@ -28,6 +29,8 @@ interface RawCreation {
   updated_at: string;
   created_at: string;
   quarantined_at?: string | null;
+  moderation_state?: string;
+  has_pending_update?: boolean;
 }
 
 /**
@@ -142,6 +145,7 @@ class UserService {
       // A timestamp on the row is the whole signal; the server has already decided whether this reader
       // may see the row at all.
       quarantined: Boolean(row.quarantined_at),
+      moderation: moderationStatus(row),
     }));
   }
 

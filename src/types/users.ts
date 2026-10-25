@@ -1,5 +1,6 @@
 import type { CatalogKind } from '@/lib/catalogKinds';
 import type { LikeCount } from '@/lib/likeCount';
+import type { ModerationStatus } from '@/lib/listingModeration';
 import type { SupporterFlair } from './supporter';
 
 /**
@@ -69,6 +70,8 @@ export interface ProfileCreation {
    * not shown the listing at all, rather than shown it marked.
    */
   quarantined: boolean;
+  /** Where it stands in review. `live` for a player and on a server without review. */
+  moderation: ModerationStatus;
 }
 
 /** Somebody the reader follows, as the manage list shows them. */

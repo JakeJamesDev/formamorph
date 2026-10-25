@@ -118,6 +118,20 @@ describe('reading somebody’s creations', () => {
     expect(own.likes).toEqual({ visibility: 'private', likes: 12 });
     expect(plain.likes).toEqual({ visibility: 'public', likes: 3 });
   });
+
+  it('reads each row\'s review status, and live from a server without review', async () => {
+    signedIn(null);
+    respondWith([
+      row({ moderation_state: 'pending' }),
+      row({ moderation_state: 'pending', quarantined_at: '2026-10-01T00:00:00.000Z' }),
+      row({ moderation_state: 'approved', has_pending_update: true }),
+      row({}),
+    ]);
+
+    const statuses = (await UserService.fetchCreations('u1')).map((creation) => creation.moderation);
+
+    expect(statuses).toEqual(['pending', 'resubmitted', 'updatePending', 'live']);
+  });
 });
 
 describe('reading a profile by name', () => {

@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import WorldStorageService, { type ListingDetails } from "@/services/WorldStorageService";
 import { type WorldRecord } from "@/components/WorldDetails";
 import { KIND_LABELS } from "@/lib/catalogKinds";
+import { publishedMessage } from "@/lib/listingModeration";
 import { PolicyDialog } from "@/components/menu/PolicyDialog";
 import { usePublishPolicies } from "@/lib/usePublishPolicies";
 import PolicyService, { TERMS_REQUIRED } from "@/services/PolicyService";
@@ -258,7 +259,7 @@ export function PublishModal({
       // No refetch: the modal closes here and reloads its listings on the next open, so re-reading them
       // only to discard them is a round-trip the user waits on.
       onOpenChange(false);
-      toast.success(`${KIND_LABELS[kind].one} ${targetId ? 'updated' : 'published'} successfully!`);
+      toast.success(publishedMessage(kind, Boolean(targetId), created));
     } catch (error) {
       // The gate can be raised, or an acceptance reset, after this modal read its policy state. The
       // server is the authority, so its refusal reopens the popup rather than showing a dead error.
