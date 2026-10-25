@@ -12,7 +12,7 @@ import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -432,6 +432,7 @@ export function buildVariableTree(
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
+    { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },

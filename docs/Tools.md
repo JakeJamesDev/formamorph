@@ -235,12 +235,13 @@ A script reads `args` and the same globals a world script reads. Each entry has 
 | `dictionaries` | Every dictionary, with `entries` | [Dictionaries](ScriptsGuide#dictionaries) |
 | `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](ScriptsGuide#stats), [Traits](ScriptsGuide#traits), [Placeholders](ScriptsGuide#placeholders), [Persona](ScriptsGuide#persona) |
 | `clock` | The story clock. It reads the opening outside a game | [The Story Clock](ScriptsGuide#the-story-clock) |
+| `turn` | The player's action and the turn number. A call the AI makes in a turn reads that turn | [Turn](ScriptsGuide#turn) |
 | `notes` | The player's notes as one text | [Notes](ScriptsGuide#notes) |
 | `console` | `log()` | None |
 
 A Tool script has none of the calls that write. A call to `memories.add`, `memories.pin`, an entry verb, `location.move`, `entities.<Entity>.move`, `follow`, `unfollow` or `diary` is a "not a function" error. A write to a field is ignored and the read keeps its value. The Tool does not fail, and **Try It** lists the write as ignored. `self`, `owner`, `trait`, `narration`, `player`, `discover` and `clock.advance` are not available.
 
-In the World Editor and outside a game, `memories` is an empty list and `clock` reads the opening. The sample world in Settings keeps a played state with a persona, notes, three memories and day 3 evening.
+In the World Editor and outside a game, `memories` is an empty list and `clock` reads the opening. The sample world in Settings keeps a played state with a persona, notes, three memories and day 3 evening. Its `turn` reads `"Look around."` at turn `4`.
 
 #### Args
 

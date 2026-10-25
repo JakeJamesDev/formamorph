@@ -678,7 +678,7 @@ describe('a box tests itself', () => {
     await user.click(screen.getByRole('button', { name: testButton('Before the AI') }));
 
     await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 3'));
-    expect(executeStatCode.mock.calls[0][3]).not.toHaveProperty('turn');
+    expect(executeStatCode.mock.calls[0][3]).not.toHaveProperty('readings');
   });
 
   // The before box runs at turn start, so it has consumed no hours and, with none elapsed, stands on the

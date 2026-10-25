@@ -9,7 +9,7 @@
  */
 import type { StatCodeFailure, StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
+import { SAMPLE_SENTENCE, sampleTurn } from '@/lib/scriptTestSamples';
 import { askedBy, type ScriptPromptHost } from '@/lib/scriptPrompts';
 import {
   ruleScripts, scriptFinding, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
@@ -93,7 +93,7 @@ export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(worl
 /** The Bench's snapshot of `world` at turn one for a `timing` run: Test Code's clock, the authored enabled map and
  *  the open cast, with no editor overlays (Q2, Q6). */
 export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming): SandboxSnapshot =>
-  snapshotOf({ ...openingStateOf(world), clock: turnOneClock(timing) }, { openCast: true });
+  snapshotOf({ ...openingStateOf(world), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true });
 
 /**
  * Run each filled script once, in its own timing, and report the ones that fail, then the ones whose writes

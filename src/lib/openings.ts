@@ -203,6 +203,15 @@ export function drawUnseenOpening(pool: readonly PoolEntry[], shown: readonly st
   return { ownerId: entry.ownerId, opening: entry.opening, shown: [...seen, poolKey(entry)] };
 }
 
+/** The world's own row an editor run opens on: its heaviest Opening Action, the first on a tie. Null when the
+ *  world's drawable rows are all narrations; the default when the list is off or has no drawable row. */
+export function heaviestWorldOpening(overview: Overview): Opening | null {
+  const rows = openingsEnabled(overview) ? drawable(overview, null) : [];
+  if (!rows.length) return DEFAULT_OPENING;
+  const actions = rows.filter((e) => e.opening.kind === 'action');
+  return actions.reduce<PoolEntry | null>((best, e) => (best && best.weight >= e.weight ? best : e), null)?.opening ?? null;
+}
+
 /** The opening a new playthrough of this world starts on. */
 export function resolveOpening(overview: Overview, random: () => number = Math.random): Opening {
   return drawOpening(openingPool({ overview }), random);

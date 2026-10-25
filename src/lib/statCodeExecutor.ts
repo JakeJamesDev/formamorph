@@ -287,8 +287,14 @@ export interface SandboxEntity {
 /** One owner's stats as its `stats` map reads them: each entry's turn inputs and enabled flag by stat id. */
 export interface SandboxStats {
   stats: readonly Stat[];
-  turn?: Readonly<Record<string, StatTurnInputs>>;
+  readings?: Readonly<Record<string, StatTurnInputs>>;
   enabled?: Readonly<Record<string, boolean>>;
+}
+
+/** What `turn` reads: the player's action and the turn number on the `memories[].turn` scale. */
+export interface SandboxTurn {
+  action: string;
+  number: number;
 }
 
 /** One entry of a book's `entries`, by its code name. */
@@ -394,8 +400,8 @@ function marshalStat(stat: Stat, inputs: StatTurnInputs | undefined, enabled: bo
 type StatEntry = ReturnType<typeof marshalStat>;
 
 /** Each owner's entries in stat order. */
-const marshalStats = ({ stats, turn, enabled }: SandboxStats): StatEntry[] =>
-  stats.map((stat) => marshalStat(stat, turn?.[stat.id], enabled?.[stat.id] !== false));
+const marshalStats = ({ stats, readings, enabled }: SandboxStats): StatEntry[] =>
+  stats.map((stat) => marshalStat(stat, readings?.[stat.id], enabled?.[stat.id] !== false));
 
 /** The entries a `stats` map keys, in stat order. */
 function keyedStatEntries(entries: readonly StatEntry[]): StatEntry[] {
@@ -1275,7 +1281,10 @@ const nonNumberFailure = (what: string) => failure(what, 'non-number');
  *  reads as its default: a flat hour, an untouched turn, an empty map. */
 export interface StatCodeRunOptions {
   clock?: StatClock;
-  turn?: Readonly<Record<string, StatTurnInputs>>;
+  /** Each stat's turn inputs by stat id. */
+  readings?: Readonly<Record<string, StatTurnInputs>>;
+  /** Absent, `turn` reads an empty action at turn 0. */
+  turn?: SandboxTurn;
   /** The live stat-enabled map. A stat set false here reads `enabled: false`. */
   enabled?: Readonly<Record<string, boolean>>;
   /** The map's top-level keys, in authored order. Absent, the map is empty. */
@@ -1326,7 +1335,7 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 const MOVE_TURN = '__formamorphMoveTurn';
 
 /** The globals a read-only run reads through its view, the surface of a user Tool (Q24). */
-const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'stats', 'traits', 'placeholders', 'dictionaries'] as const;
+const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries'] as const;
 
 const READ_ONLY_VIEW_OF = '__formamorphReadOnlyView';
 
@@ -1476,6 +1485,8 @@ const worldPrelude = (
 ].join('\n');
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
+
+const NO_TURN: SandboxTurn = { action: '', number: 0 };
 
 /** Who an unknown entry's diary can name: every entity but the persona, by id, else by name, then the discovered. */
 const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity, discovered: readonly SandboxPlace[]): SandboxPlace[] => [
@@ -1639,7 +1650,7 @@ export const executeStatCode = async (
    *  write is ignored. */
   currentStat: Stat | null,
   {
-    clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], resolveEntryValue,
+    clock, readings, turn = NO_TURN, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], resolveEntryValue,
     narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args, openCast = false,
     memories = [], notes = '', readOnly = false,
   }: StatCodeRunOptions = {},
@@ -1657,7 +1668,7 @@ export const executeStatCode = async (
     const keyed = keyedEntities(entities, persona);
     const place = ownerPlace(keyed, owner);
     const standing = standingOf(places, keyed);
-    const statsData = marshalStats({ stats, turn, enabled });
+    const statsData = marshalStats({ stats, readings, enabled });
     const keyedStats = keyedStatEntries(statsData);
     const ownerStatsData = owner?.stats ? marshalStats(owner.stats) : [];
     const keyedOwnerStats = keyedStatEntries(ownerStatsData);
@@ -1677,7 +1688,7 @@ export const executeStatCode = async (
     const worldIndex = !currentStat || ownIndex >= 0 ? -1 : stats.findIndex((stat) => stat.id === self.id);
     const selfData = ownIndex >= 0 ? ownerStatsData[ownIndex]
       : worldIndex >= 0 ? statsData[worldIndex]
-        : marshalStat(self, turn?.[self.id], enabled?.[self.id] !== false);
+        : marshalStat(self, readings?.[self.id], enabled?.[self.id] !== false);
     // The sandbox variable of the map `self` is an entry of.
     const selfMap = ownIndex >= 0 ? (keyedOwnerStats.includes(selfData) ? OWNER_STATS : null)
       : worldIndex >= 0 && keyedStats.includes(selfData) ? 'stats' : null;
@@ -1741,6 +1752,7 @@ export const executeStatCode = async (
       `  Object.defineProperty(clock, 'advance', { value: advance, enumerable: true });`,
       `  return Object.freeze(clock);`,
       `})(${LOCK_FIELDS}, ${ADVANCE_CLOCK});`,
+      `const turn = Object.freeze((${LOCK_FIELDS})(${JSON.stringify({ action: turn.action, number: turn.number })}, ['action', 'number'], 'turn.', ${LOOSE_NOTE}));`,
       ...(narration ? [
         // `sent` and `buffered` freeze, so code can neither swap nor grow them.
         `const narration = Object.seal((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.sent), Object.freeze(entry.buffered), entry))(`,

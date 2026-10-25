@@ -17,6 +17,7 @@ import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { blueprintItemIds } from '@/lib/traitTree';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import { turnOneClock } from '@/lib/statCodeTiming';
+import { sampleTurn } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
 import { openingHomeOf, openingStateOf, type OpeningFoldWorld } from '@/lib/openingState';
@@ -201,7 +202,9 @@ const worldWriteLines = (
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
   world: OpeningFoldWorld, timing: ScriptTiming, overlays: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> = {},
-): SandboxSnapshot => snapshotOf({ ...openingStateOf(world), clock: turnOneClock(timing) }, { openCast: true, ...overlays });
+): SandboxSnapshot => snapshotOf(
+  { ...openingStateOf(world), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
+);
 
 /**
  * Runs `code` from the `timing` box of `home` on `world` at turn one. Applies nothing. With `pendingPersona`, a

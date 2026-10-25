@@ -355,6 +355,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
+| `turn` | `action`, `number` | `turn.number` | Read-only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
@@ -1006,6 +1007,27 @@ The timings are ordered against each other, though: everything a Before the AI s
 ```js
 // A long rest takes eight hours, whatever the AI measured.
 if (traits.Resting.enabled) clock.advance(8 * 60);
+```
+
+### Turn
+<!-- keywords: player action, what the player typed, player input, turn count, turn counter, every fifth turn, ooc, what did the player say -->
+
+`turn` holds what the player did and which turn it is. Its fields are read-only: a write to one is ignored and reported.
+
+| Field | What it is |
+| --- | --- |
+| `turn.action` | The player's action this turn, without spaces at the ends. OOC square brackets stay in. Images are never in it. |
+| `turn.number` | The turn number, on the same scale as `memories[].turn`. The opening turn is `1`. |
+
+- **The opening turn reads the opening.** `turn.action` is the opening text the AI gets: the player's edit, else the drawn opening. An Opening Narration reads `""`.
+- **Undo and re-roll rewind it.** A re-rolled turn reads the same action and number it read the first time.
+- **A switch the player makes reads an empty action.** Between turns, it reads the number of the last turn that ended; during a turn, that turn's number. Before the opening turn, `turn.number` is `0`.
+- **A switch inside a turn reads that turn.** A trait a script or a gate switches reads the same `turn` as the scripts around it.
+- **Test Code reads a sample.** Test Code and the Test Bench read `"Look around."` at turn `2`. An At Game Start script reads the world's heaviest Opening Action at turn `1`.
+
+```js
+// Every fifth turn the market restocks, unless the player only gave an OOC direction.
+if (turn.number % 5 === 0 && !turn.action.startsWith('[')) stats.Stock.value = stats.Stock.max;
 ```
 
 ### Location

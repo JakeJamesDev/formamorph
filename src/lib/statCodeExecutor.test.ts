@@ -150,17 +150,17 @@ describe('executeStatCode self and turn inputs', () => {
   const me = makeStat({ id: 'me', name: 'Mood', value: 40 });
   const other = makeStat({ id: 'other', name: 'Health', value: 70 });
   const stats = [other, me];
-  const run = (code: string, turn?: StatCodeRunOptions['turn']) =>
-    executeStatCode(code, stats, me, { turn });
+  const run = (code: string, readings?: StatCodeRunOptions['readings']) =>
+    executeStatCode(code, stats, me, { readings });
 
   it('injects self as the very entry that sits in stats', async () => {
     expect((await run('return self === stats.Mood ? 1 : 0;')).value).toBe(1);
   });
 
   /** The whole `delta` of `target` as the sandbox reads it. */
-  const readDelta = async (turn?: StatCodeRunOptions['turn'], target = 'self') => {
+  const readDelta = async (readings?: StatCodeRunOptions['readings'], target = 'self') => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const res = await executeStatCode(`console.log(JSON.stringify(${target}.delta));`, stats, me, { turn });
+    const res = await executeStatCode(`console.log(JSON.stringify(${target}.delta));`, stats, me, { readings });
     expect(res.error).toBeNull();
     return JSON.parse(String(log.mock.calls[0]?.[0]));
   };

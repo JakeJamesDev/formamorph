@@ -31,7 +31,7 @@ const state: SandboxState = {
   },
   places: { locations: [{ id: 'dock', name: 'Dock' }], location: { id: 'dock', name: 'Dock' } },
 };
-const turn = {
+const readings = {
   global: { hp: { delta: { regen: { value: 1 } } } },
   owners: { bram: { grit: { delta: { regen: { value: 2 } } } } },
 };
@@ -51,7 +51,7 @@ const HOMES: Record<string, UnitHome> = {
 const bramEntry = {
   id: 'bram', name: 'Bram', inScene: false, description: '', summary: '', aliases: [], locationIds: [],
   traits: [expect.objectContaining({ id: 'grim', name: 'Grim', enabled: true, acquired: true })],
-  stats: { stats: [expect.objectContaining({ id: 'grit', value: 3 })], turn: turn.owners.bram, enabled: { grit: false } },
+  stats: { stats: [expect.objectContaining({ id: 'grit', value: 3 })], readings: readings.owners.bram, enabled: { grit: false } },
 };
 
 /** What each Owner kind assembles as `owner` and `self`. */
@@ -74,7 +74,7 @@ const unitAt = (home: UnitHome, timing: RunTiming): ScriptRunUnit => ({
 });
 
 describe('the options a snapshot assembles', () => {
-  const snapshot = snapshotOf(state, { turn });
+  const snapshot = snapshotOf(state, { readings });
 
   describe.each(TIMINGS)('at %s', (timing) => {
     it.each(OWNER_ROWS)('for a %s', (name, owner, self) => {
@@ -83,7 +83,7 @@ describe('the options a snapshot assembles', () => {
       expect(options.selfTrait).toEqual(self);
       expect(options.clock).toBe(clock);
       expect(options.enabled).toEqual({ hp: true });
-      expect(options.turn).toEqual(turn.global);
+      expect(options.readings).toEqual(readings.global);
       expect(options.entities).toEqual([expect.objectContaining(bramEntry), expect.objectContaining({ id: 'sela', name: 'Sela', traits: [] })]);
       expect(options.persona).toEqual(expect.objectContaining({ id: '', name: '' }));
       expect(options.traits?.map((t) => [t.name, t.enabled])).toEqual([['Brave', true], ['Calm', false]]);
@@ -112,14 +112,14 @@ describe('the options a snapshot assembles', () => {
 
   it('reads an untouched turn when built with no turn readings', () => {
     const options = optionsFor(snapshotOf(state), unitAt(HOMES['entity stat'], 'after'));
-    expect(options.turn).toBeUndefined();
-    expect(options.owner?.stats?.turn).toBeUndefined();
+    expect(options.readings).toBeUndefined();
+    expect(options.owner?.stats?.readings).toBeUndefined();
   });
 
   it('gives an Owner outside the cast an entry of its own, where its traits read as not held', () => {
     const offstage: UnitHome = { kind: 'trait', trait: grim, entityId: 'ghost' };
     const options = optionsFor(snapshot, unitAt(offstage, 'after'));
-    expect(options.owner).toEqual({ id: 'ghost', name: '', type: '', pronouns: '', inScene: false, traits: [], stats: { stats: [], turn: {}, enabled: {} } });
+    expect(options.owner).toEqual({ id: 'ghost', name: '', type: '', pronouns: '', inScene: false, traits: [], stats: { stats: [], readings: {}, enabled: {} } });
     expect(options.selfTrait).toEqual({ id: 'grim', name: 'Grim', enabled: false, acquired: false });
   });
 });
@@ -189,7 +189,7 @@ describe('ownerOfHome', () => {
 });
 
 describe('switchesOf', () => {
-  const snapshot = snapshotOf(state, { turn });
+  const snapshot = snapshotOf(state, { readings });
 
   it('names each switch by id: world traits by code name, entity rows by the cast, owner rows by the unit’s Owner', () => {
     expect(snapshot.switchesOf({ home: HOMES['entity stat'] }, {
