@@ -1,4 +1,5 @@
 /** DEV only: serves `FeedbackService` from an in-memory board while the dev route has `fixture=feedback`. */
+import { FEEDBACK_SEARCH_MAX } from '@/components/menu/FeedbackSearchInput';
 import { getDevRoute } from '@/lib/devRouter';
 import type { FeedbackSort } from '@/lib/feedbackPresentation';
 import AuthService from '@/services/AuthService';
@@ -107,6 +108,12 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
   ];
 }
 
+/** The server's search words: distinct, lower-cased, 3+ characters or a 2-letter capital word (AI, UI). */
+export function searchWords(search: string | undefined): string[] {
+  const kept = (search ?? '').trim().slice(0, FEEDBACK_SEARCH_MAX).split(/\s+/).filter((word) => word.length >= 3 || /^[A-Z]{2}$/.test(word));
+  return [...new Set(kept.map((word) => word.toLowerCase()))];
+}
+
 const SORTS: Record<FeedbackSort, (a: FeedbackThread, b: FeedbackThread) => number> = {
   newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
   oldest: (a, b) => a.createdAt.localeCompare(b.createdAt),
@@ -144,15 +151,20 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
     },
     async list({ type, page = 1, limit = 20, status, category, scope, sort, search }) {
       const statuses = status ? [status].flat() : [];
-      const term = search?.trim().toLowerCase();
+      const words = searchWords(search);
+      const hits = (thread: FeedbackThread): number => {
+        const text = `${thread.title} ${thread.body}`.toLowerCase();
+        return words.filter((word) => text.includes(word)).length;
+      };
       const me = viewerId();
       const rows = board.map((entry) => entry.thread).filter((thread) =>
         thread.type === type
         && (!statuses.length || statuses.includes(thread.status))
         && (!category || thread.category === category)
         && (scope === 'all' || thread.reporter.id === me)
-        && (!term || `${thread.title} ${thread.body}`.toLowerCase().includes(term)));
-      rows.sort(SORTS[(sort ?? 'newest') as FeedbackSort]);
+        && (!words.length || hits(thread) > 0));
+      const order = SORTS[(sort ?? 'newest') as FeedbackSort];
+      rows.sort((a, b) => hits(b) - hits(a) || order(a, b));
       return { threads: rows.slice((page - 1) * limit, page * limit), total: rows.length };
     },
     async fetchThread(id) {

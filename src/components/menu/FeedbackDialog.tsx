@@ -19,6 +19,10 @@ import {
 } from "@/lib/feedbackDraft";
 import { collectDiagnostics, DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
+import { isStaff } from "@/lib/roles";
+import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
+import { SimilarQuestions } from "@/components/menu/SimilarQuestions";
+import AuthService from "@/services/AuthService";
 import FeedbackService from "@/services/FeedbackService";
 import { FEEDBACK_TYPES, type BugDiagnostics, type FeedbackCategory, type FeedbackType } from "@/types";
 
@@ -108,6 +112,9 @@ export function FeedbackDialog({
   const [isSending, setIsSending] = useState(false);
   // Set when this opening started from stored writing rather than a blank form, so the dialog can say so.
   const [restored, setRestored] = useState(false);
+  // A similar question opened over the form; the form stays mounted underneath with the draft.
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null);
+  const [similarRefresh, setSimilarRefresh] = useState(0);
 
   // No chip family: this is prose, and an authored world's placeholders mean nothing here.
   const plainVocab = useMemo(() => plainVocabulary(), []);
@@ -134,6 +141,7 @@ export function FeedbackDialog({
     setBody(draft?.body ?? initialBody ?? '');
     setIsSending(false);
     setRestored(draft !== null);
+    setOpenThreadId(null);
     filedRef.current = false;
     setDiagnostics(collectDiagnostics());
   });
@@ -199,7 +207,17 @@ export function FeedbackDialog({
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0">
-          <div className="space-y-4">
+          {openThreadId && (
+            <FeedbackThreadView
+              threadId={openThreadId}
+              isAdmin={isStaff(AuthService.getCurrentUser())}
+              onBack={() => setOpenThreadId(null)}
+              onChanged={() => setSimilarRefresh((n) => n + 1)}
+            />
+          )}
+
+          {/* Hidden, not unmounted, under an open thread: Back returns to the same draft and caret. */}
+          <div className="space-y-4" hidden={openThreadId !== null}>
             {restored && (
               <p className="rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground">
                 Picked up where you left off — this was still unsent. Discard it below to start fresh.
@@ -224,6 +242,10 @@ export function FeedbackDialog({
                 placeholder={copy.titlePlaceholder}
               />
             </div>
+
+            {type === 'question' && (
+              <SimilarQuestions title={title} onOpen={setOpenThreadId} refreshKey={similarRefresh} />
+            )}
 
             <div className="space-y-2">
               <label className="text-label font-medium">Category</label>
@@ -261,20 +283,22 @@ export function FeedbackDialog({
 
         {/* Closing keeps the writing, so the footer says "Close" and discarding is its own deliberate
             button — offered only when there is something to lose. */}
-        <DialogFooter className="sm:justify-between">
-          <Button
-            variant="ghost"
-            className={hasDraftContent({ title, body }) ? 'text-destructive hover:text-destructive' : 'invisible'}
-            onClick={discardDraft}
-            disabled={isSending || !hasDraftContent({ title, body })}
-          >
-            Discard Draft
-          </Button>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>Close</Button>
-            <Button onClick={submit} disabled={isSending}>{isSending ? 'Sending…' : copy.submit}</Button>
-          </div>
-        </DialogFooter>
+        {!openThreadId && (
+          <DialogFooter className="sm:justify-between">
+            <Button
+              variant="ghost"
+              className={hasDraftContent({ title, body }) ? 'text-destructive hover:text-destructive' : 'invisible'}
+              onClick={discardDraft}
+              disabled={isSending || !hasDraftContent({ title, body })}
+            >
+              Discard Draft
+            </Button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>Close</Button>
+              <Button onClick={submit} disabled={isSending}>{isSending ? 'Sending…' : copy.submit}</Button>
+            </div>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
