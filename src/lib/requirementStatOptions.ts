@@ -8,6 +8,8 @@ import type { RequirementOwner } from '@/types';
 /** One owner's stats in the picker. */
 export interface RequirementStatSection {
   heading: string;
+  /** The owner alone, such as `Ash` for the heading `Ash Stats`. */
+  owner: string;
   /** The host's own owner, whose Conditions name no owner. Offered off-world, where nothing else is. */
   own?: true;
   options: RequirementOption[];
@@ -24,12 +26,12 @@ export function requirementStatSections(
 ): RequirementStatSection[] {
   const { section, playable, name } = sectionsOf(input);
   const sections = [
-    { ...(hostId === null ? section('Global Stats', [null]) : section(`${name(hostId)} Stats`, [hostId])), own: true as const },
-    ...(hostId === null ? [] : [section('Global Stats', [null])]),
-    section('Persona Stats', playable, { kind: 'you' }),
+    { ...(hostId === null ? section('Global', [null]) : section(name(hostId), [hostId])), own: true as const },
+    ...(hostId === null ? [] : [section('Global', [null])]),
+    section('Persona', playable, { kind: 'you' }),
     ...input.entities
       .filter((e) => e.id !== hostId)
-      .map((e) => section(`${e.name} Stats`, [e.id], { kind: 'entity', id: e.id, name: e.name })),
+      .map((e) => section(e.name, [e.id], { kind: 'entity', id: e.id, name: e.name })),
   ];
   return sections.filter((s) => s.options.length > 0);
 }
@@ -41,9 +43,9 @@ export function requirementStatSections(
 export function personaHostStatSections(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>): RequirementStatSection[] {
   const { section, playable } = sectionsOf(input);
   const sections = [
-    { ...section('Persona Stats', playable), own: true as const },
-    section('Global Stats', [null]),
-    ...input.entities.map((e) => section(`${e.name} Stats`, [e.id], { kind: 'entity', id: e.id, name: e.name })),
+    { ...section('Persona', playable), own: true as const },
+    section('Global', [null]),
+    ...input.entities.map((e) => section(e.name, [e.id], { kind: 'entity', id: e.id, name: e.name })),
   ];
   return sections.filter((s) => s.options.length > 0);
 }
@@ -54,7 +56,7 @@ function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>) {
   const playable = input.entities.filter(canBePlayer).map((e) => e.id);
   const name = (id: string) => input.entities.find((e) => e.id === id)?.name ?? input.owners.find((o) => o.id === id)?.name ?? '';
 
-  const section = (heading: string, ids: readonly OwnerId[], named?: RequirementOwner): RequirementStatSection => {
+  const section = (owner: string, ids: readonly OwnerId[], named?: RequirementOwner): RequirementStatSection => {
     const seen = new Set<string>();
     const options: RequirementOption[] = [];
     for (const ownerId of ids) {
@@ -69,7 +71,7 @@ function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>) {
         });
       }
     }
-    return { heading, options };
+    return { heading: `${owner} Stats`, owner, options };
   };
   return { section, playable, name };
 }

@@ -1,6 +1,6 @@
 # 02: Requires Picker Categories
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -29,13 +29,23 @@ Ship with it: the Requires picker description on the World Editor traits wiki pa
 
 ## Acceptance criteria
 
-- [ ] In a world with more than 15 targets, the Requires picker opens on the categories with counts.
-- [ ] The stats owner level lists owners in today's order.
-- [ ] Rows on an owner page don't repeat the owner name in their breadcrumb.
-- [ ] Off-world, only categories with targets show.
-- [ ] The owner choice page returns to the drilled page.
-- [ ] Image Visibility rules and location rules show the same drill-down.
-- [ ] Each rule above has a rendered field test, and each test fails when its rule is broken.
-- [ ] A trait's Requires picker in a large bundled world: `.scratch/frames/requires-root.png` and `.scratch/frames/requires-stats-owner.png`, light theme, at desktop width.
+- [x] In a world with more than 15 targets, the Requires picker opens on the categories with counts. (`RequirementRowsField.categories.test.tsx` "opens on the categories…"; live in Rampage: Traits 9, Any Trait in a Group 2, Stats 8)
+- [x] The stats owner level lists owners in today's order. ("lists the stat owners in the order of the old sections"; Rampage: The Creature, Global, Persona)
+- [x] Rows on an owner page don't repeat the owner name in their breadcrumb. ("drops the owner from the breadcrumb on its page and keeps it in root search")
+- [x] Off-world, only categories with targets show. ("shows only the categories that have targets off-world")
+- [x] The owner choice page returns to the drilled page. ("returns from the owner choice page to the drilled page")
+- [ ] Image Visibility rules and location rules show the same drill-down. (Shared `RequirementRowsField`; no rendered test of those two hosts)
+- [x] Each rule above has a rendered field test, and each test fails when its rule is broken. (Mutated the owner key and the lifted breadcrumb; both tests went red. Image and location hosts have no test of their own.)
+- [x] A trait's Requires picker in a large bundled world: `.scratch/frames/requires-root.png` and `.scratch/frames/requires-stats-owner.png`, light theme, at desktop width. (Rampage; the pane clipped at 800 px, so the count column is cut off in the frames)
 
 For you: add a few Conditions in a large world and judge whether finding a target is faster than before.
+
+## Landed
+
+**Not verified**
+- Image Visibility rules and location rules: they share the field, but no test renders those hosts.
+- Frames: the pane cut the popover at 800 px wide, so counts are off-frame.
+
+**For you**
+- Add a few Conditions in a large world and judge whether finding a target is faster than before.
+- Q25 behavior change: back from the owner choice page now keeps the typed search in every Requires picker.

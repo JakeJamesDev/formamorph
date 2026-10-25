@@ -266,6 +266,22 @@ const flatGroups = <V,>({ nodes, path }: Level<V>) => {
   return headed(groups, path);
 };
 
+/** The titles of the pages above a page's one row, outermost first. */
+const loneTitles = <V,>(page: BreadcrumbPickerPage<V>): string[] => {
+  const next = page.children.find((n) => leaves([n]).length > 0);
+  return [page.heading, ...(next && isPage(next) ? loneTitles(next) : [])];
+};
+
+/** A lone row lifted onto its parent: the titles of the pages it skipped lead its breadcrumb, unless it starts with them. */
+const liftedRow = <V,>(row: BreadcrumbPickerRow<V>, page: BreadcrumbPickerPage<V>, path: readonly string[]) => {
+  const crumb = dropShown(row.breadcrumb, path) ?? [];
+  const titles = loneTitles(page);
+  // A page named for its one row, such as "Time of Day", adds nothing before it.
+  if (titles.at(-1) === row.name) titles.pop();
+  const starts = titles.every((t, i) => crumb[i] === t);
+  return rowItem(row, starts ? crumb : [...titles, ...crumb]);
+};
+
 /** The level's own rows: a row per page, a lone-row page as that row, and each section's rows. */
 const browseGroups = <V,>({ nodes, path }: Level<V>) => {
   const groups: ListGroup<V>[] = [];
@@ -283,7 +299,7 @@ const browseGroups = <V,>({ nodes, path }: Level<V>) => {
       groups.push({ key: `pages:${i}`, items: loose });
     }
     loose.push(rows.length === 1
-      ? levelRow(rows[0], path)
+      ? liftedRow(rows[0], n, path)
       : { kind: 'page', page: n, count: rows.filter((r) => !r.disabled).length });
   }
   return headed(groups, path);
