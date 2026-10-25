@@ -1,6 +1,7 @@
 # Picker Categories
 
-Status: ready-for-agent
+Status: done
+Status note: closed 2026-10-25. Tickets 01–02 done; last landing d25a0bea4, then perf fix 424154a05. Review: spec text corrected. Closed red: GameViewer.editorExit, MainMenu.surfaceRequest, WorldEditor.autoSave, WorldEditor.historyOrigin, WorldEditor.overviewPanel, PlaceholderSectionList, Formaquestion.settings, FormaquestionMascotTab, SettingsModal.landing, SettingsModal.promptOptions (timeouts under load).
 Spec session: picker-categories — spec
 
 ## Problem Statement
@@ -88,11 +89,11 @@ Settled for ticket 01 on 2026-10-25.
 - **Drill state.** The picker owns a stack of open pages. The stack resets to the root each time the popover opens (Q11). A pick leaves the stack as it is (Q10).
 - **Pass-through.** A page with one child opens that child at once. The header names the page it skipped, for example "Stats › Ruby" (Q7). A category with one leaf row renders that row at the root (Q8).
 - **Counts.** A page row's hint is the count of enabled leaf rows under it (Q12, Q14).
-- **Search.** Root search runs over every leaf row in the tree and shows the flat list with full breadcrumbs (Q2). Page search runs over the leaf rows under the open page (Q9). Each page keeps its own search text. Opening a page starts with an empty search.
+- **Search.** Root search runs over every leaf row in the tree and shows the flat list with full breadcrumbs (Q2). Page search runs over the leaf rows under the open page (Q9). Each page keeps its own search text, also across the owner choice page (Q25). Opening a page starts with an empty search.
 - **Breadcrumbs on a page.** On an owner page, a row's breadcrumb drops the segments the page path already shows (Q13). Root search shows the full breadcrumb.
 - **Caller page.** The caller's `page` (the requirement field's owner choice page) still replaces the list. When it closes, the picker returns to the page on top of the stack (Q10).
 - **Look.** A page row uses DrillPicker's row look: the name, then a chevron. The page header uses the owner page's back-arrow header (Q16).
-- **Requirement Rows field.** The field builds the tree from the sections it builds today. Traits and Any Trait in a Group split by the first breadcrumb segment (World or the owner name). Stats split by the existing stat sections, in today's order (Q3, Q6, Q15). Time of Day and Playing As are categories of their own. Empty categories and owners drop out.
+- **Requirement Rows field.** The field builds the tree from the sections it builds today. Traits and Any Trait in a Group split by each option's owner id, World first (Q22). Stats split by the existing stat sections, in today's order (Q3, Q6, Q15). Time of Day and Playing As are categories of their own. Empty categories and owners drop out.
 - **No data change.** No world, save, or export shape changes. The Condition a row adds is the same as today.
 - **Showcase.** The Breadcrumb Picker reference in the design-system showcase gains a drill-down example.
 
