@@ -237,6 +237,12 @@ export function buildMemoryLedger(args: {
   };
 }
 
+/** How many turns `history` holds closed, on the scale of `memories[].turn`. */
+export function closedTurns(history: readonly ChatMessage[]): number {
+  const at = history.findLastIndex((message) => message.role === 'assistant');
+  return at < 0 ? 0 : Math.ceil(at / 2);
+}
+
 /** The ledger's live rows as `memories` reads them, oldest first. Times come from the resolver the row stamps
  *  use, at the row's history position: a turn's own, a Custom line's anchor. */
 export function scriptMemories(ledger: MemoryLedger, history: ChatMessage[], calendar?: WorldCalendar): SandboxMemory[] {

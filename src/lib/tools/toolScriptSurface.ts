@@ -24,7 +24,7 @@ export function argEntry(param: ToolParam): SurfaceEntry {
 
 /** The script globals a user Tool reads, in the order an author meets them (spec: Surface). */
 const USER_TOOL_GLOBALS = [
-  'stats', 'clock', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+  'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
 ];
 
 const fieldsOnly = (entries: readonly SurfaceEntry[]) => entries.filter((entry) => !isMethodEntry(entry));
@@ -33,6 +33,7 @@ const fieldsOnly = (entries: readonly SurfaceEntry[]) => entries.filter((entry) 
 const USER_TOOL_GLOBAL: Readonly<Record<string, Partial<SurfaceEntry>>> = {
   stats: { info: 'The global stats by name. An entity’s own are on its entry. Use stats["Two Words"] for a name with a space.' },
   clock: { detail: shapeOf(fieldsOnly(CLOCK_MEMBERS)), info: 'The story clock. In the World Editor and with no world open, it reads the opening.' },
+  turn: { info: 'The player’s action and the turn number. A call the AI makes in a turn reads that turn. Between turns, the action is empty.' },
   location: { detail: shapeOf(fieldsOnly(LOCATION_MEMBERS)), info: 'The location the turn is at, with the fields of a locations entry' },
   memories: {
     info: 'The story’s memories as the Memory panel lists them, oldest first. Each entry has its id, turn, day, daypart, text, Custom flag and pins. It’s empty in the World Editor and with no world open.',

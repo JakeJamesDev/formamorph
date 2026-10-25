@@ -85,7 +85,7 @@ export interface TurnReadings {
 
 export interface SnapshotOptions {
   /** This turn's asks, regen and previous values. Absent, every stat reads an untouched turn. */
-  turn?: TurnReadings;
+  readings?: TurnReadings;
   /** An editor run's cast, which has no discovered entities: a `diary` name the cast lacks is a warning. */
   openCast?: boolean;
   /** Test Code's overlay: `persona` is a stand-in holding every trait, placeholder and stat a persona-capable
@@ -225,7 +225,7 @@ function pendingPersonaOf(
   };
 }
 
-function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] }: SnapshotOptions): Board {
+function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats = [] }: SnapshotOptions): Board {
   const placeholderDefs = state.placeholders?.placeholders ?? [];
   const { world } = state.ownerTraits;
   const before = runtimeStateOf(state);
@@ -239,9 +239,9 @@ function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] 
   const placeholderSet = state.placeholders && withLibraryPlaceholders(withBooksInPlay(state.placeholders), state.ownerTraits.library ?? []);
   const sandbox = placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
   const scopeStats = (stats: readonly Stat[], enabled: SandboxStats['enabled'], inputs: TurnReadings['global'] | undefined): SandboxStats =>
-    ({ stats: statCodeNamed(stats, placeholderDefs), ...(inputs ? { turn: inputs } : {}), enabled });
-  const owned = new Map((state.owners ?? []).map((owner) => [owner.id, scopeStats(owner.stats, owner.enabled, turn && (turn.owners?.[owner.id] ?? {}))]));
-  const ownerStats = (id: string): SandboxStats => owned.get(id) ?? { stats: [], ...(turn ? { turn: {} } : {}), enabled: {} };
+    ({ stats: statCodeNamed(stats, placeholderDefs), ...(inputs ? { readings: inputs } : {}), enabled });
+  const owned = new Map((state.owners ?? []).map((owner) => [owner.id, scopeStats(owner.stats, owner.enabled, readings && (readings.owners?.[owner.id] ?? {}))]));
+  const ownerStats = (id: string): SandboxStats => owned.get(id) ?? { stats: [], ...(readings ? { readings: {} } : {}), enabled: {} };
   const resolve = state.resolveText ?? AS_AUTHORED;
   const { entities = [], library = [], discovered = [] } = state.ownerTraits;
   const authored = new Map([...entities, ...library, ...discovered].map((entity) => [entity.id, entity]));
@@ -256,7 +256,7 @@ function boardOf(state: SandboxState, { turn, pendingPersona, assumedStats = [] 
   const globalStats = assumed.length ? [...state.stats, ...assumed] : state.stats;
   const globalEnabled = assumed.length ? { ...state.enabled, ...activeStatEnabled(assumed, []) } : state.enabled;
   return {
-    stats: scopeStats(globalStats, globalEnabled, turn?.global),
+    stats: scopeStats(globalStats, globalEnabled, readings?.global),
     traits, inPlay, placeholderDefs, ownerStats,
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners),
@@ -312,7 +312,8 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       : unit.switched === 'sample' ? sampleSwitchedTrait(read.traits, firstTraitId(), selfTrait && { entry: selfTrait, owner: owner?.name ?? '' })
         : switchedTraitEntry(read, unit.switched);
     return {
-      clock: state.clock, ...(read.stats.turn ? { turn: read.stats.turn } : {}), enabled: read.stats.enabled,
+      clock: state.clock, ...(read.stats.readings ? { readings: read.stats.readings } : {}), ...(state.turn && { turn: state.turn }),
+      enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
       ...(owner && { owner }), dictionaries: read.dictionaries, ...(read.resolveEntryValue && { resolveEntryValue: read.resolveEntryValue }),
       ...(unit.prompts && { prompts: unit.prompts }),

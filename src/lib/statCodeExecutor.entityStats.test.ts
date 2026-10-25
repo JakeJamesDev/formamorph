@@ -16,7 +16,7 @@ const bram: SandboxEntity = {
   id: 'bram', name: 'Bram', traits: [],
   stats: {
     stats: [trust, stock],
-    turn: { t: { previous: { ...trust, value: 55 }, delta: { regen: { value: 0 } } } },
+    readings: { t: { previous: { ...trust, value: 55 }, delta: { regen: { value: 0 } } } },
     enabled: { k: false },
   },
 };

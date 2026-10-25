@@ -128,6 +128,13 @@ const isOpening = (input: TurnPlanInput): boolean => !input.isGameStarted;
 export const effectiveActionFor = (input: TurnPlanInput): string =>
   isOpening(input) ? 'START GAME' : input.action;
 
+/** What a script's `turn.action` reads: the action the narration gets, trimmed. A written page one reads empty. */
+export const scriptActionFor = (input: TurnPlanInput): string => {
+  if (!isOpening(input)) return input.action.trim();
+  if (input.writtenNarration?.trim()) return '';
+  return (input.action === 'START GAME' ? input.prompts.openingCue : input.action).trim();
+};
+
 /**
  * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the
  * Background Pass Queue, which works on a turn that has already been stored, and the standalone

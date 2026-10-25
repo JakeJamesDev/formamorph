@@ -18,7 +18,7 @@ describe('the user Tool script’s Variable menu', () => {
 
   it('lists the converged globals and no old ones', () => {
     expect(labels(menu(names))).toEqual([
-      'Arguments', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Locations', 'Location', 'Memories', 'notes',
+      'Arguments', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes',
     ]);
   });
 

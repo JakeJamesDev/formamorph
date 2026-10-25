@@ -6,8 +6,9 @@ import type { ChatMessage } from '@/types';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { sampleChipScene, sampleDictionaries, samplePersona, sampleWorld } from '@/lib/chipValues/sampleScene';
 import { serializeTurnContent } from '@/lib/turnDigest';
-import { buildMemoryLedger, scriptMemories } from '@/lib/memoryView';
+import { buildMemoryLedger, closedTurns, scriptMemories } from '@/lib/memoryView';
 import { NO_OPENING_PICKS, openingStateOf } from '@/lib/openingState';
+import { SAMPLE_ACTION } from '@/lib/scriptTestSamples';
 import { buildToolSnapshot, type ToolScriptSource, type ToolSnapshot } from './toolSnapshot';
 
 /** The sample world's past turns: each one a digest, some with a diary entry. */
@@ -35,6 +36,8 @@ function sampleScriptSource(scene: ChipScene, history: ChatMessage[]): ToolScrip
       ownerTraits: { ...opening.ownerTraits, inSceneIds: scene.inSceneIds },
       clock: { deltaHours: 0, elapsedHours: scene.time?.elapsed ?? 0 },
       memories: scriptMemories(ledger, history),
+      // An in-turn Tool call: the sample turns closed, the next one in progress.
+      turn: { action: SAMPLE_ACTION, number: closedTurns(history) + 1 },
     },
     authored: null,
   };

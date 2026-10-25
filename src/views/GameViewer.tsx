@@ -14,7 +14,7 @@ import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { type SandboxMemory, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
+import { type SandboxMemory, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
@@ -147,6 +147,7 @@ import {
   milestoneSelectPass,
   sceneTagsPass,
   summaryPass,
+  scriptActionFor,
 } from "../lib/turnPipeline/turnPasses";
 import {
   createBackgroundPassQueue, digestTarget,
@@ -180,7 +181,7 @@ import {
 import { buildStamper, daypartAt, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
-import { buildMemoryLedger, scriptMemories } from "../lib/memoryView";
+import { buildMemoryLedger, closedTurns, scriptMemories } from "../lib/memoryView";
 import { buildRelevanceScores, EMBED_BATCH_BOUND_MS, EMBED_BOUND_MS, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
 import { selectSemanticRehydrations } from "../lib/semanticRehydration";
@@ -1498,6 +1499,12 @@ const GameViewer = ({
   const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
     owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities)], persona, customPersona),
   });
+  /** The `turn.action` a re-rolled turn reads: history's "START GAME" proxy stands for the opening cue. */
+  const rerolledAction = (action: string): string => {
+    if (action !== "START GAME") return action.trim();
+    if (openingTurnActionRef.current !== null) return openingTurnActionRef.current;
+    return openingSessionRef.current.drawn?.opening.kind === "narration" ? "" : resolveDrawn(openingCue()).trim();
+  };
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
@@ -1507,7 +1514,9 @@ const GameViewer = ({
   // the start writes, so it must not run them again.
   const newPlaythroughRef = useRef(false);
   useEffect(() => {
-    if (saveLoads > 0) newPlaythroughRef.current = false;
+    if (saveLoads === 0) return;
+    newPlaythroughRef.current = false;
+    openingTurnActionRef.current = null;
   }, [saveLoads]);
   // A completed turn dispatches several state updates together (finalized message, applied stat changes,
   // advanced time). Saving the snapshot synchronously alongside them captures a stale, half-applied state
@@ -1625,6 +1634,8 @@ const GameViewer = ({
     } catch (error) {
       addSystemLogEntry((error as Error).message);
     } finally {
+      // A stats re-roll holds its turn's reading; whatever ended the run, the next run reads between turns.
+      turnReadRef.current = null;
       setIsWaitingForAI(false);
       setAiRequestType(null);
       if (abortControllerRef.current === controller) abortControllerRef.current = null;
@@ -1697,6 +1708,8 @@ const GameViewer = ({
         setOwnedTraits(preTurn.ownedTraits ?? {});
       };
       toPreTurn();
+      // The replayed turn is still the latest in history, so its number is the closed count.
+      turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current) };
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
@@ -2194,10 +2207,14 @@ const GameViewer = ({
   // Set beside `prepareTurnStartCode`, once per render.
   const toolScriptSourceRef = useRef<((base: TurnCodeState | null) => ToolScriptSource) | null>(null);
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
-  const toolWorld = useCallback(
-    () => buildToolSnapshot(liveScene(), dictionaries, toolMemorySource(), toolScriptSourceRef.current?.(null)),
-    [liveScene, dictionaries, toolMemorySource],
-  );
+  const toolWorld = useCallback(() => {
+    const source = toolScriptSourceRef.current?.(null);
+    // A call outside the turn's requests reads between turns, even while a turn runs.
+    const between = source?.state
+      ? { ...source, state: { ...source.state, turn: { action: "", number: closedTurns(fullMessageHistoryRef.current) } } }
+      : source;
+    return buildToolSnapshot(liveScene(), dictionaries, toolMemorySource(), between);
+  }, [liveScene, dictionaries, toolMemorySource]);
   // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
   useHelpWorldSource(toolWorld, getWorldData);
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
@@ -2714,6 +2731,8 @@ const GameViewer = ({
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
       turnMemoriesRef.current = scriptMemoriesRef.current;
+      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1 };
+      if (isOpeningTurn) openingTurnActionRef.current = turnReadRef.current.action;
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
       );
@@ -3214,6 +3233,7 @@ const GameViewer = ({
       scriptLocationRef.current = null;
       turnClockRef.current = null;
       turnMemoriesRef.current = null;
+      turnReadRef.current = null;
       // Release the turn's controller (unless a newer turn already replaced it).
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -3314,6 +3334,10 @@ const GameViewer = ({
   scriptMemoriesRef.current = scriptMemoryList;
   // The list every run of a turn reads, taken once as the turn starts (Q40). Null between turns, where the live list stands.
   const turnMemoriesRef = useRef<SandboxMemory[] | null>(null);
+  // The turn in progress as `turn` reads it; between turns, null and the last closed turn reads instead.
+  const turnReadRef = useRef<SandboxTurn | null>(null);
+  // The opening turn's `turn.action` this session, so a page-one stat re-roll reads it again.
+  const openingTurnActionRef = useRef<string | null>(null);
   // The story hours a running turn's clock advances reached, which its later runs read (Q45). Null when the
   // turn has not advanced the clock, and between turns.
   const turnClockRef = useRef<number | null>(null);
@@ -3408,6 +3432,7 @@ const GameViewer = ({
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
           notes: liveScene().notes,
+          turn: turnReadRef.current ?? { action: "", number: closedTurns(fullMessageHistoryRef.current) },
         };
         const turn: StatCodeTurn = {
           state,
@@ -3563,7 +3588,10 @@ const GameViewer = ({
       }, 'switch', { traitWorld: world });
       if (!prepared) return;
       try {
-        const turn = fromWorld === world ? prepared.turn : { ...prepared.turn, switchedFrom: fromWorld };
+        // No action caused a player's switch, so it reads none, even while a turn runs.
+        const read = { action: "", number: turnReadRef.current?.number ?? closedTurns(fullMessageHistoryRef.current) };
+        const played = { ...prepared.turn, state: { ...prepared.turn.state, turn: read } };
+        const turn = fromWorld === world ? played : { ...played, switchedFrom: fromWorld };
         const result = await runSwitchScripts(turn, events);
         if (result && mounted.current) landBetweenTurns(prepared.finish(result).world);
       } catch (error) {

@@ -10,7 +10,7 @@ import { phValues } from '@/test/placeholderValues';
 import { statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
 import { executeStatCode, type StatCodeResult } from './statCodeExecutor';
 import {
-  CLOCK_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
+  CLOCK_MEMBERS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
   TRAIT_ENTRY_FIELDS,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
@@ -125,6 +125,7 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   stats: STAT_FIELDS,
   owner: ENTITY_FIELDS,
   clock: CLOCK_MEMBERS,
+  turn: TURN_MEMBERS,
   locations: LOCATION_ENTRY_FIELDS,
   location: LOCATION_MEMBERS,
   discover: [],

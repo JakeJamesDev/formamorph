@@ -44,7 +44,7 @@ export const DEFAULT_CODE_RIDER = [
  * drift test holds it to the sandbox's own list.
  */
 export const SANDBOX_GLOBAL_NAMES = [
-  'self', 'owner', 'stats', 'clock', 'locations', 'location', 'discover', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+  'self', 'owner', 'stats', 'clock', 'turn', 'locations', 'location', 'discover', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
 ] as const;
 
 const GLOBALS = SANDBOX_GLOBAL_NAMES.join('|');

@@ -17,6 +17,7 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   stats: scripts('stats'),
   owner: scripts('owner'),
   clock: scripts('the-story-clock'),
+  turn: scripts('turn'),
   // The Location section covers both until the Guide gains its own Locations heading.
   locations: scripts('location'),
   location: scripts('location'),
@@ -41,7 +42,7 @@ export const ARGS_GUIDE_LINK: DocTarget = tools('args');
  *  Guide, as a Script's card links them (Q24). */
 export const TOOL_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   args: ARGS_GUIDE_LINK,
-  ...Object.fromEntries((['stats', 'clock', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries'] as const)
+  ...Object.fromEntries((['stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries'] as const)
     .map((name) => [name, STAT_CODE_GUIDE_LINKS[name]])),
 };
 

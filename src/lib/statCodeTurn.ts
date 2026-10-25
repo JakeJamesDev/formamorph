@@ -4,7 +4,7 @@ import type {
 } from '@/types';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
-  type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
+  type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
 import { statCodeNamed } from './statCodeNames';
@@ -82,6 +82,8 @@ export interface SandboxState {
   memories?: readonly SandboxMemory[];
   /** The player's notes. Absent, `notes` is empty, as in the editor. */
   notes?: string;
+  /** What `turn` reads. Absent, an empty action at turn 0. */
+  turn?: SandboxTurn;
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */
@@ -628,7 +630,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     return withStateGateStats(state, gateStatsOf({ ...before, stats: mainStats, entityStats: ownerStats }, world));
   };
   const snapshot = snapshotOf(state, {
-    turn: { global: globalRun.inputs, owners: Object.fromEntries(entityRuns.map((run) => [run.owner.id, run.inputs])) },
+    readings: { global: globalRun.inputs, owners: Object.fromEntries(entityRuns.map((run) => [run.owner.id, run.inputs])) },
   });
   /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
   const whoRan = ({ stat, trait, script, args }: ScriptUnit) => (stat ? `Stat ${stat.name}`

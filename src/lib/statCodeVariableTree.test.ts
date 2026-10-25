@@ -6,7 +6,7 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
@@ -113,7 +113,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Locations', 'Location', 'discover', 'Memories', 'notes']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Turn', 'Locations', 'Location', 'discover', 'Memories', 'notes']);
   });
 
   it('inserts discover directly, with no group around the one call', () => {
@@ -268,6 +268,12 @@ describe('entities, the persona and dictionaries', () => {
     expect(levelAt(tree, 'Clock', 'previous')).toEqual(CLOCK_PREVIOUS_FIELDS.map((entry) => entry.name));
     expect(inserts(tree, 'Clock', 'previous', 'daypart')).toBe('clock.previous.daypart');
   });
+
+  it('opens turn to its action and number, each read-only', () => {
+    expect(levelAt(tree, 'Turn')).toEqual(['action', 'number']);
+    expect(inserts(tree, 'Turn', 'number')).toBe('turn.number');
+    expect(childrenOf(pick(tree, 'Turn')).map((node) => node.kind === 'field' && node.access)).toEqual(['readOnly', 'readOnly']);
+  });
 });
 
 /** Mira holding two stats, as the stat box hands her to the editor. */
@@ -406,6 +412,7 @@ describe('field info', () => {
     [['This Stat', 'delta', 'actual'], DELTA_FIELDS],
     [['Clock'], CLOCK_MEMBERS],
     [['Clock', 'previous'], CLOCK_PREVIOUS_FIELDS],
+    [['Turn'], TURN_MEMBERS],
     [['Location'], LOCATION_MEMBERS],
     [['Locations', 'Old Mill'], LOCATION_ENTRY_FIELDS],
     [['Memories'], MEMORY_MEMBERS],
