@@ -41,8 +41,9 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 | Mark on the reply | Accepted |
 | Help window button | Ask the Community |
 | Replace-draft confirm | Replace your unsent draft? · Replace · Keep Draft |
-| Edit warning, into a question | The accepted answer, status and diagnostics reset. Its replies and votes stay. |
-| Edit warning, into a bug | Only the reporter and staff can reply to a bug. Existing replies and votes stay. |
+| Edit warning, every target | Today's sentence: "Moving this to a X sets its status back to Open[, and deletes the version and platform…]. Its replies and votes stay." |
+| Edit warning, into a bug | Today's sentence, then: Only the reporter and staff can reply to a bug. |
+| Edit warning, out of an answered question | The first sentence adds "clears the accepted answer" (ticket 05). |
 
 `gameplay`, `editor`, `community` and `other` reuse the existing labels. `setup` and `account` are new. **Answered** takes the success badge style and **Closed** the muted style, as Resolved and Won’t Fix do. "Accepted" also labels a policy in Manage Users; the two surfaces never show together.
 
@@ -91,10 +92,10 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
   - The dev-route tab lists for the feedback hub and the admin feedback panel.
   - The surface label for the hub's Questions tab, the help doc's Feedback section, and its surface map entry.
 - **Votable-board predicate.** Where the client branches on "is a suggestion" to decide reply rights, votes, the votes sort or the vote UI, it uses one shared predicate that is true for suggestions and questions. Branches that mean "is a bug" (diagnostics, staff rewrite of the text) stay.
-- **Defaults per type.** Questions open on scope Everyone's, status Unanswered, sort Most Voted (Q12). The user filter defaults today hard-code Newest for every type, so the default sort becomes per type.
+- **Defaults per type.** Questions open on scope Everyone's, status Unanswered, sort Most Voted (Q12). The staff queue opens on Unanswered, Most Voted. Unanswered means `open` only. The user filter defaults today hard-code Newest for every type, so the default sort becomes per type.
 - **Accepted answer in the thread view.** The view reads `acceptedAnswer` from every thread response and draws the pinned copy under the question body with the same comment renderer. The **Accepted** mark goes on the reply whose id matches. Accept and clear sit in the reply's action area, for the asker and staff, on questions only.
   - The view updates parts of the thread locally today: a comment delete filters, a comment edit replaces, a type change writes the thread, and status and vote replies replace it. After a delete or edit of the accepted reply, and after a type change, the view refetches the thread so the pinned copy cannot go stale.
-- **Status control.** On a question the staff Select offers Open and Closed, with Answered shown disabled so the control reads correctly on an answered question. Closing locks the thread on the server, so the view reads the lock from the response.
+- **Status control.** On a question the staff Select offers Open and Closed (ticket 04), with Answered shown disabled (ticket 05) so the control reads correctly on an answered question. Closing locks the thread on the server, so the view reads the lock from the response.
 - **Duplicate check.** The new-question dialog calls the list with `type=question`, `scope=all`, no status filter, a short debounce, and a small limit, once the title has a few characters. The server's word search (Q19) ranks the results. Responses that resolve after unmount or after a newer keystroke are dropped. This runs only for questions.
 - **Thread pane in the dialog (Q20).** Selecting a duplicate result swaps the dialog's form for the existing thread view, with **Back** above it. The draft stays in place. Voting and replying work in the pane as they do in the hub. This works wherever the dialog opens, including the help window in a game or the editor, where no feedback hub exists.
 - **Feedback opener.** The bug-report store widens into a feedback opener whose state is `{ open, type, fill }`. Its two users today, the error-details host and the bug report host, move to it. The host passes the type to the dialog. The Formaquestion button calls it with type `question` and the exchange's question as the title: whitespace collapsed to single spaces, then cut to the title limit.
