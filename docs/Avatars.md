@@ -78,20 +78,6 @@ To tie a slider to a stat, open the stat in the World Editor and pick the key in
 
 > Hair meshes give one key only: `LENGTH`, for **Hair Length**. Stats can't drive a hair mesh's keys.
 
-## How to Change Your Profile Image
-<!-- keywords: picture, photo, pfp, icon, account picture, upload, crop, display pic, user portrait, animated gif, account face, take off my pic, reposition, initial letter shown -->
-<!-- route: profile -->
-
-You need a Community Creations account.
-
-1. On the main menu, select the round button at the bottom left. **User Profile** opens.
-2. Select your profile image.
-3. Select a `.png`, `.jpg`, `.webp` or `.gif` file, up to 10 MB.
-4. In **Position Your Picture**, drag the image to move it. Scroll, or use the **Zoom** slider, to zoom. The circle shows what everyone sees.
-5. Select **Save**.
-
-To remove it, select **Remove your profile image**. With no picture, your initial shows in its place. See [The User Profile Dialog](Community-Creations#the-user-profile-dialog).
-
 ## Character Customization
 <!-- keywords: creator screen, rotate the model, spin view, stop it moving, sliders missing, clothing recolor, body grows with stats, hide model in game, transformation -->
 <!-- route: avatar -->
