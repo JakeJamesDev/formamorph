@@ -100,6 +100,18 @@ describe('dropping blueprint chips at import', () => {
     expect(out.book.placeholders?.[0].values[0].text).toBe('');
   });
 
+  it('drops them from an entity’s pronouns and relationship labels', () => {
+    // A partial entity; only the texts under test matter here.
+    const card = {
+      id: 'kit', name: 'Kit', pronouns: `${G} they`,
+      relationships: [{ targetId: 'ada', label: `${G} rival` }, { targetId: 'bo', label: `friend in ${T}` }],
+    } as unknown as Entity;
+    const { entity, dropped } = dropEntityBlueprintChips(card, blueprints);
+    expect(dropped).toBe(2);
+    expect(entity.pronouns).toBe(' they');
+    expect(entity.relationships).toEqual([{ targetId: 'ada', label: ' rival' }, { targetId: 'bo', label: `friend in ${T}` }]);
+  });
+
   it('hands back the same record when nothing drops', () => {
     const plain = { id: 'kit', name: 'Kit', aiDescription: `In ${T}.` } as Entity;
     expect(dropEntityBlueprintChips(plain, blueprints)).toEqual({ entity: plain, dropped: 0 });
