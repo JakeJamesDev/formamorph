@@ -1,6 +1,7 @@
 # Spec: Listing review (client)
 
 Status: ready-for-agent
+Spec session: listing-review — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/listing-review/spec.md`. That spec holds the rulings (Q1–Q28), the moderation states and the API contract. This spec follows them.
 
