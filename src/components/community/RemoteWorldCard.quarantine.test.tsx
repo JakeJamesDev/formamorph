@@ -158,3 +158,38 @@ describe('the admin controls', () => {
     expect(onView).not.toHaveBeenCalled();
   });
 });
+
+describe('the review badges', () => {
+  it('marks a new listing that waits for review', () => {
+    show(world({ moderation_state: 'pending' }), author);
+
+    expect(screen.getByText('Pending Review')).toBeTruthy();
+    expect(screen.getByText('Players can see it after a mod approves it')).toBeTruthy();
+    expect(screen.queryByText('Quarantined')).toBeNull();
+  });
+
+  it('marks a fixed rejected listing as resubmitted, with its deadline', () => {
+    show(quarantined({ moderation_state: 'pending' }), author);
+
+    expect(screen.getByText('Resubmitted')).toBeTruthy();
+    expect(screen.getByText(/Deleted on/)).toBeTruthy();
+    expect(screen.queryByText('Quarantined')).toBeNull();
+  });
+
+  it('keeps the quarantine notice for a rejected listing', () => {
+    show(quarantined({ moderation_state: 'rejected' }), author);
+
+    expect(screen.getByText('Quarantined')).toBeTruthy();
+    expect(screen.queryByText('Resubmitted')).toBeNull();
+  });
+
+  it('shows nothing new for a live listing or a server without review', () => {
+    show(world({ moderation_state: 'approved' }), author);
+    expect(screen.queryByText('Pending Review')).toBeNull();
+    cleanup();
+
+    show(world(), author);
+    expect(screen.queryByText('Pending Review')).toBeNull();
+    expect(screen.queryByText('Resubmitted')).toBeNull();
+  });
+});

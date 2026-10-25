@@ -23,6 +23,7 @@ const creation = (over: Partial<ProfileCreation> = {}): ProfileCreation => ({
   updatedAt: '2026-03-14T00:00:00.000Z',
   createdAt: '2026-03-14T00:00:00.000Z',
   quarantined: false,
+  moderation: 'live',
   ...over,
 });
 
@@ -277,6 +278,34 @@ describe('a quarantined listing', () => {
     await screen.findByText('Sedge Landing');
 
     expect(screen.queryByText('Hidden')).toBeNull();
+  });
+});
+
+describe('a listing in review', () => {
+  it('is marked pending review while it waits', async () => {
+    listing([creation({ moderation: 'pending' })]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+
+    expect(await screen.findByText('Pending Review')).toBeTruthy();
+  });
+
+  it('is marked resubmitted, not hidden, once its author fixed it', async () => {
+    listing([creation({ quarantined: true, moderation: 'resubmitted' })]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+
+    expect(await screen.findByText('Resubmitted')).toBeTruthy();
+    expect(screen.queryByText('Hidden')).toBeNull();
+  });
+
+  it('stays hidden when rejected', async () => {
+    listing([creation({ quarantined: true, moderation: 'rejected' })]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+
+    expect(await screen.findByText('Hidden')).toBeTruthy();
+    expect(screen.queryByText('Resubmitted')).toBeNull();
   });
 });
 

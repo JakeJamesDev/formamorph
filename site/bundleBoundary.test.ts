@@ -158,7 +158,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 62: `uuid`, the one ID helper, which the age gate flow now reads.
     // 63: `filesFrom`, the file-input reset the profile image picker reads; a type-only leaf, no toast.
     // 64: `responseBody`, the string-only leaf `responseError` reads to cut an HTML error page to its title.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(64);
+    // 66: `listingModeration` and the `quarantine` date helpers it reads, for the review badges in the creations list.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(66);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

@@ -16,7 +16,8 @@ import { KIND_LABELS, kindOf, kindHasMorphArt, kindHasThumbnail, showsMorphArt }
 import { KindArt } from "@/components/community/KindArt";
 import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
-import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
+import { isQuarantined } from "@/lib/quarantine";
+import { ModerationMarker } from "@/components/community/ModerationMarker";
 import WorldStorageService from "@/services/WorldStorageService";
 import { useListingPrefetch } from "@/lib/useListingPrefetch";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -96,11 +97,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   // Whether to offer the moderation controls at all. What the server will actually allow is narrower —
   // staff moderate the room, not each other — and is checked per listing below.
   const viewerIsStaff = isStaff(currentUser);
-  // Quarantined listings only reach a card at all for their author or a moderator — the server hides them
-  // from everyone else — so the badge is always addressed to somebody who can act on it.
   const quarantined = isQuarantined(world);
-  const deadline = quarantineDeadline(world);
-  const daysLeft = quarantineDaysLeft(world);
 
   // Check if the world is owned by the current user
   // Staff moderate the room, not each other: whether these controls do anything depends on who published
@@ -279,20 +276,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
         <CardTags tags={world.tags || []} onHide={onHideTag} omitEmpty={isAvatar} />
       </div>
 
-      {/* Only its author and the admins ever see this card, so the deadline is said plainly rather than
-          hinted at — the author has something to do about it and a date by which to do it. */}
-      {quarantined && (
-        <div className="mb-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-meta">
-          <p className="flex items-center gap-1 font-medium text-warning">
-            <ShieldAlert className="h-3 w-3 shrink-0" /> Quarantined
-          </p>
-          {deadline && (
-            <p className="text-muted-foreground">
-              Deleted on {deadline}{daysLeft !== null && ` — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
-            </p>
-          )}
-        </div>
-      )}
+      <ModerationMarker listing={world} className="mb-2" />
 
       {(manageAddons || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">

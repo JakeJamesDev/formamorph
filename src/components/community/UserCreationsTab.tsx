@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Download, EyeOff, MessageSquare } from "lucide-react";
+import { Clock, Download, EyeOff, MessageSquare } from "lucide-react";
+import { MODERATION_LABELS, type ModerationStatus } from "@/lib/listingModeration";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -14,6 +15,12 @@ import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { parseServerDate } from "@/lib/serverDate";
+
+/** The review states the row marks, and the tone of each. A resubmitted listing shows this, not Hidden. */
+const REVIEW_TONES: Partial<Record<ModerationStatus, string>> = {
+  pending: "text-foreground",
+  resubmitted: "text-warning",
+};
 
 /** Most recently updated first, so an author's active work leads. */
 function byUpdatedDesc(a: ProfileCreation, b: ProfileCreation): number {
@@ -215,7 +222,12 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
                     <span className="sr-only">comments</span>
                   </span>
                   {/* Only ever reaches its own author or the staff — everybody else isn't shown the row. */}
-                  {item.quarantined && (
+                  {item.moderation in REVIEW_TONES ? (
+                    <span className={cn("inline-flex items-center gap-1", REVIEW_TONES[item.moderation])}>
+                      <Clock className="h-3 w-3" aria-hidden />
+                      {MODERATION_LABELS[item.moderation]}
+                    </span>
+                  ) : item.quarantined && (
                     <span className="inline-flex items-center gap-1 text-destructive">
                       <EyeOff className="h-3 w-3" aria-hidden />
                       Hidden

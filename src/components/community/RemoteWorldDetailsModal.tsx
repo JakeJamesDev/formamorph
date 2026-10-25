@@ -44,6 +44,7 @@ import { useWorldDownloadPlan } from "@/lib/useWorldDownloadPlan";
 import { useMountedRef } from "@/lib/useMountedRef";
 import type { DownloadPlan } from "@/lib/useDownloadCoordinator";
 import { PlaceBadges } from "@/components/PlaceBadges";
+import { ModerationMarker } from "@/components/community/ModerationMarker";
 import { placementsBy } from "@/lib/contests";
 import { Tip } from "@/components/ui/tooltip";
 import { VrmFileDetails } from "@/components/VrmFileDetails";
@@ -587,6 +588,7 @@ export function RemoteWorldDetailsModal({
           </div>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
           {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine onSelect={onOpenContest} />}
+          {world && <ModerationMarker listing={world} showStaffQuarantine={false} className="mr-8" />}
         </DialogHeader>
 
         {world && (
