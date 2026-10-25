@@ -129,6 +129,7 @@ const LocationConnections = ({ location, children }: { location: GameLocation; c
                 name: `Travel Hint ${word.toLowerCase()} ${partnerName}`,
               }))}
               idPrefix={`connection-${connection.id}`}
+              placeholders={placeholders}
               onChange={updateConnection}
             />
           </div>

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionTitle } from '@/components/ui/typography';
 import { TravelHintPair } from '@/components/editor/TravelHintPair';
-import type { Connection } from '@/types';
+import type { Connection, Placeholder } from '@/types';
+
+const NO_PLACEHOLDERS: Placeholder[] = [];
 
 const SAMPLES: { title: string; connection: Connection }[] = [
   { title: 'Linked', connection: { id: 'linked', a: 'quay', b: 'garden', aToB: { hint: 'along the footbridge' }, bToA: { hint: 'along the footbridge' } } },
@@ -20,7 +22,7 @@ function Sample({ title, connection: initial }: { title: string; connection: Con
   return (
     <section aria-label={title} className="space-y-2 rounded-md border p-3">
       <SectionTitle>{title}</SectionTitle>
-      <TravelHintPair connection={connection} legs={legs} idPrefix={`travel-hints-${connection.id}`} onChange={setConnection} />
+      <TravelHintPair connection={connection} legs={legs} idPrefix={`travel-hints-${connection.id}`} onChange={setConnection} placeholders={NO_PLACEHOLDERS} />
     </section>
   );
 }

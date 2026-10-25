@@ -1,8 +1,9 @@
 import type {
-  Dictionary, DictionaryEntry, Entity, EntityGroup, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview,
+  Connection, Dictionary, DictionaryEntry, Entity, EntityGroup, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 import { entitiesInTreeOrder } from './entityGroupTree';
 import { locationRows } from './locationTree';
+import { connectionHints } from './connectionEditing';
 import {
   decodePlaceholderToken, hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, PLACEHOLDER_PATH_SEPARATOR,
 } from './placeholders';
@@ -103,6 +104,7 @@ export interface PlacementWorld {
   entities?: Entity[];
   entityGroups?: EntityGroup[];
   locations?: GameLocation[];
+  connections?: Connection[];
   traits?: Trait[];
   traitGroups?: TraitGroup[];
   stats?: Stat[];
@@ -121,9 +123,9 @@ const entryTexts = (b: Dictionary) => (b.entries ?? []).flatMap(entryFieldTexts)
 const valueTexts = (placeholders: Placeholder[] | undefined) => (placeholders ?? []).flatMap((p) => (p.values ?? []).map((v) => v.text));
 
 /**
- * Every chip-bearing text of a world in document order: entities, locations and traits as their trees list
- * them, then trait groups, stats, dictionaries, the overview's prompt fields, and last the placeholders'
- * own values. The same fields the gameplay priming pass rolls across, so every chip that can roll in play
+ * Every chip-bearing text of a world in document order: entities and locations as their trees list them,
+ * the connections' Travel Hints, traits as their tree lists them, then trait groups, stats, dictionaries,
+ * the overview's prompt fields, and last the placeholders' own values. The same fields the gameplay priming pass rolls across, so every chip that can roll in play
  * can carry a letter — and the letters run down the editor's lists, so `(A)` is always above `(B)`.
  */
 export function worldPlacementTexts(world: PlacementWorld): string[] {
@@ -132,6 +134,7 @@ export function worldPlacementTexts(world: PlacementWorld): string[] {
   return [
     ...entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? []).flatMap(entityTexts),
     ...locationRows(world.locations ?? []).flatMap((row) => locationTexts(row.location)),
+    ...(world.connections ?? []).flatMap(connectionHints),
     ...inAuthoredOrder(traits, traitOrderIndex(traits, world.traitGroups ?? [])).flatMap(traitTexts),
     ...(world.traitGroups ?? []).flatMap(traitTexts),
     ...(world.stats ?? []).flatMap(statTexts),
@@ -153,6 +156,7 @@ export function dictionaryPlacementTexts(book: Dictionary): string[] {
 
 const entityPlacements = cachedPlacements(entityTexts);
 const locationPlacements = cachedPlacements(locationTexts);
+const connectionPlacements = cachedPlacements(connectionHints);
 const traitPlacements = cachedPlacements(traitTexts);
 const statPlacements = cachedPlacements(statTexts);
 const entryPlacements = cachedPlacements(entryFieldTexts);
@@ -167,6 +171,7 @@ export function worldPlacementLetters(world: PlacementWorld): PlacementLetters {
   return lettersOf([
     ...entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? []).map(entityPlacements),
     ...locationRows(world.locations ?? []).map((row) => locationPlacements(row.location)),
+    ...(world.connections ?? []).map(connectionPlacements),
     ...inAuthoredOrder(traits, traitOrderIndex(traits, world.traitGroups ?? [])).map(traitPlacements),
     ...(world.traitGroups ?? []).map(traitPlacements),
     ...(world.stats ?? []).map(statPlacements),

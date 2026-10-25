@@ -133,7 +133,7 @@ A placeholder that can't roll locks the choice on **World**.
 | **Unique** | The name plus a letter, one sequence per placeholder | `Town Name (A)`, `Town Name (B)` … `Town Name (AA)` |
 | **Labeled** | The label you typed in Chip Options | `Hometown` |
 
-The letters follow the order of the world: entities first, in the order of the Entities tree. Then locations, traits, trait groups, stats, dictionaries, the world's own prompt fields and openings, and last the placeholders' own values.
+The letters follow the order of the world: entities first, in the order of the Entities tree. Then locations, then the Travel Hints, connection by connection: first the trip away from the location you made the connection from, then the trip back. Then traits, trait groups, stats, dictionaries, the world's own prompt fields and openings, and last the placeholders' own values.
 
 - **Letters aren't stored.** Remove the first chip, and the next one becomes **(A)**. A letter tells two chips apart, but it isn't a permanent name.
 - **Give a Unique chip a Label** in Chip Options when you want a name that stays. Only Unique chips have the **Label** field.
@@ -194,6 +194,7 @@ Chips resolve **both** in the text the AI reads and in the text the player sees.
 - the pronouns of an entity
 - stat descriptors and dictionary entries
 - image tags
+- the Travel Hints of connections
 - openings
 - both readme tabs
 - the world's AI-Facing Description

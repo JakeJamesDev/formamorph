@@ -1,6 +1,7 @@
 import { randomUUID } from '@/lib/uuid';
 import type { Connection, ConnectionLeg, GameLocation, LegKey } from '@/types';
 import { isTwoWay, otherLeg } from '@/lib/locationGraph';
+import { placementIdsIn, remintPlaceholderPlacements } from '@/lib/placeholders';
 
 /**
  * Editing Connections from one end of them.
@@ -86,9 +87,25 @@ export function withLink(connection: Connection, first: LegKey): Connection {
   return withHint(connection, otherLeg(first), connection[first]?.hint ?? '');
 }
 
-/** The record with `text` written back into the leg after `first`. The caller holds the text the link replaced. */
+const TRAVEL_HINT_KEY = 'travelHint:';
+
+/** The find bar's field key for one leg's Travel Hint. */
+export const travelHintFieldKey = (connectionId: string, leg: LegKey): string => `${TRAVEL_HINT_KEY}${connectionId}:${leg}`;
+
+/** Whether a find bar field key names a Travel Hint. */
+export const isTravelHintFieldKey = (fieldKey: string): boolean => fieldKey.startsWith(TRAVEL_HINT_KEY);
+
+/** The record's Travel Hints, `a → b` first, blanks left out. */
+export function connectionHints(connection: Connection): string[] {
+  return [connection.aToB?.hint, connection.bToA?.hint].filter((hint): hint is string => !!hint);
+}
+
+/** The record with `text` written back into the leg after `first`. The caller holds the text the link replaced.
+ *  Placements `text` shares with the first leg get fresh ids, so each direction rolls on its own. */
 export function withUnlink(connection: Connection, first: LegKey, text: string): Connection {
-  return withHint(connection, otherLeg(first), text);
+  const shared = placementIdsIn(connection[first]?.hint ?? '');
+  const kept = new Map([...placementIdsIn(text)].filter((id) => !shared.has(id)).map((id) => [id, id]));
+  return withHint(connection, otherLeg(first), remintPlaceholderPlacements(text, kept));
 }
 
 /** Every Connection touching `locationId`, each turned into the view that location sees. A self-link is

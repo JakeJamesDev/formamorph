@@ -76,10 +76,11 @@ describe('sameLetters', () => {
 });
 
 describe('the document walk', () => {
-  it('runs entities, locations, traits, stats, dictionaries, then placeholder values', () => {
+  it('runs entities, locations, travel hints, traits, stats, dictionaries, then placeholder values', () => {
     const texts = worldPlacementTexts({
       entities: [{ id: 'e', name: 'ent', aliases: ['ent-alias'], playerDescription: 'ent-pd', pronouns: 'ent-pro' }],
       locations: [{ id: 'l', name: 'loc', aiSummary: 'loc-ais' }],
+      connections: [{ id: 'c', a: 'l', b: 'l2', aToB: { hint: 'hint-ab' }, bToA: { hint: 'hint-ba' } }],
       traits: [{ id: 't', name: 'trait', statChanges: [] }],
       traitGroups: [{ id: 'g', name: 'group', parentId: null }],
       stats: [{
@@ -92,7 +93,8 @@ describe('the document walk', () => {
       placeholders: [P('p', 'ph', ['value'])],
     });
     expect(texts).toEqual([
-      'ent', 'ent-alias', 'ent-pd', 'ent-pro', 'loc', 'loc-ais', 'trait', 'group', 'stat', 'stat-desc', 'band-lo', 'band-hi',
+      'ent', 'ent-alias', 'ent-pd', 'ent-pro', 'loc', 'loc-ais', 'hint-ab', 'hint-ba', 'trait', 'group', 'stat', 'stat-desc',
+      'band-lo', 'band-hi',
       'entry', 'k1', 'val', 'sys', 'value',
     ]);
   });
@@ -147,6 +149,7 @@ describe('the document walk', () => {
     const world = {
       entities: [{ id: 'e', name: chip('town', 'p-ent') }],
       locations: [{ id: 'l', name: chip('town', 'p-loc') }],
+      connections: [{ id: 'c', a: 'l', b: 'l2', aToB: { hint: `to ${chip('town', 'p-hint')}` } }],
       traits: [{ id: 't', name: chip('town', 'p-trait'), statChanges: [] }],
       stats: [{ id: 's', name: chip('town', 'p-stat'), type: 'number' as const, description: '', min: 0, max: 1, regen: 0, descriptors: [] }],
       dictionaries: [{ id: 'd', name: 'book', entries: [{ id: 'en', name: chip('town', 'p-entry'), key: [], value: '' }] }],
@@ -155,13 +158,15 @@ describe('the document walk', () => {
     };
     const letters = worldPlacementLetters(world);
     expect([...letters]).toEqual([...placementLetters(worldPlacementTexts(world))]);
-    expect(letters.get('p-value')).toBe('G');
+    expect(letters.get('p-hint')).toBe('C');
+    expect(letters.get('p-trait')).toBe('D');
+    expect(letters.get('p-value')).toBe('H');
 
     // A chip added to the entity, which the walk already read once, moves every later letter.
     const edited = { ...world, entities: [{ id: 'e', name: `${chip('town', 'p-ent')} ${chip('town', 'p-new')}` }] };
     const after = worldPlacementLetters(edited);
     expect(after.get('p-new')).toBe('B');
-    expect(after.get('p-value')).toBe('H');
+    expect(after.get('p-value')).toBe('I');
     expect([...after]).toEqual([...placementLetters(worldPlacementTexts(edited))]);
   });
 

@@ -11,6 +11,7 @@ import {
   withLink,
   withUnlink,
 } from './connectionEditing';
+import { collectPlaceholderPlacements, encodePlaceholderToken } from './placeholders';
 import type { Connection, GameLocation } from '@/types';
 
 const loc = (id: string, over: Partial<GameLocation> = {}): GameLocation => ({
@@ -154,6 +155,32 @@ describe('withUnlink', () => {
   it('drops the field for a blank restored text', () => {
     const next = withUnlink(conn({ aToB: { hint: 'up' }, bToA: { hint: 'up' } }), 'aToB', '');
     expect(next.bToA).toEqual({});
+  });
+
+  describe('with chips', () => {
+    const door = (placementId: string) => encodePlaceholderToken({ id: 'door', mode: 'unique', placementId });
+    const placementsOf = (text: string | undefined) =>
+      collectPlaceholderPlacements([text ?? '']).unique.map((u) => u.placementId);
+
+    it('gives the copied chips fresh placements, so each direction rolls on its own', () => {
+      const text = `through the ${door('p1')} door`;
+      const linked = withLink(conn({ aToB: { hint: text } }), 'aToB');
+      expect(linked.bToA?.hint).toBe(text);
+
+      const next = withUnlink(linked, 'aToB', text);
+      expect(next.aToB?.hint).toBe(text);
+      const [fresh] = placementsOf(next.bToA?.hint);
+      expect(fresh).toBeDefined();
+      expect(fresh).not.toBe('p1');
+      expect(next.bToA?.hint).toBe(`through the ${door(fresh)} door`);
+      expect(hintsLinked(next)).toBe(false);
+    });
+
+    it('keeps the placements of held text the first leg never had', () => {
+      const linked = conn({ aToB: { hint: `the ${door('p1')} door` }, bToA: { hint: `the ${door('p1')} door` } });
+      const held = `back past the ${door('p2')} door`;
+      expect(withUnlink(linked, 'aToB', held).bToA?.hint).toBe(held);
+    });
   });
 });
 

@@ -591,8 +591,8 @@ function useProvideGameData() {
   // The document's placement letters, rewalked on every edit and kept by identity while nothing changed,
   // so a keystroke that adds no chip leaves every chip field's vocabulary alone.
   const placementLetters = useStablePlacementLetters(useMemo(
-    () => worldPlacementLetters({ entities, entityGroups, locations, traits, traitGroups, stats, dictionaries, worldOverview, placeholders: worldPlaceholders }),
-    [entities, entityGroups, locations, traits, traitGroups, stats, dictionaries, worldOverview, worldPlaceholders],
+    () => worldPlacementLetters({ entities, entityGroups, locations, connections, traits, traitGroups, stats, dictionaries, worldOverview, placeholders: worldPlaceholders }),
+    [entities, entityGroups, locations, connections, traits, traitGroups, stats, dictionaries, worldOverview, worldPlaceholders],
   ));
 
   // Per-keystroke and canonical: unedited records match by identity, and key order or emptied fields don't count.

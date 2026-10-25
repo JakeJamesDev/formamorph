@@ -445,7 +445,6 @@ const GameViewer = ({
     statGroups: authoredStatGroups,
     traits: authoredTraits,
     locations: authoredLocations,
-    connections,
     dictionaries,
     placeholders: worldPlaceholders,
     placeholderOwners,
@@ -723,7 +722,7 @@ const GameViewer = ({
   // an entity/location/stat/trait/dictionary name is a plain string with no chips left in it. The `raw*`
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
-    entities, locations, stats, traits, traitGroups, dictionary, globalStats, viewStats,
+    entities, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder,

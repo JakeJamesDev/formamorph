@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { hintsLinked, withHint, withLink, withUnlink } from '@/lib/connectionEditing';
-import type { Connection, LegKey } from '@/types';
-import { WorldInput } from '@/components/editor/WorldField';
+import type { Connection, LegKey, Placeholder } from '@/types';
+import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import type { ChipFocusHandle } from '@/components/prompt/ChipInput';
 import { fieldFrame } from '@/lib/historyField';
 
 /** One hint box: the leg it edits, its visible label, and its accessible name. */
@@ -39,8 +40,10 @@ const COPIES = 'Copies the first Travel Hint';
  * A Connection's Travel Hint boxes, first leg on top, with a vertical link toggle beside a two-way pair.
  * Linked, the first box writes both legs and the second box shows its text read-only.
  */
-export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: {
+export function TravelHintPair({ connection, legs, idPrefix, onChange, focus, placeholders }: {
   connection: Connection;
+  /** The world's placeholders. A connection has no owner, so its chips offer only global ones. */
+  placeholders: Placeholder[];
   /** The legs the record has, in display order. The first is the one a link copies from. */
   legs: TravelHintLeg[];
   idPrefix: string;
@@ -49,7 +52,7 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
   focus?: TravelHintFocus | null;
 }) {
   const [records, setRecords] = useState<Record<string, LinkRecord>>({});
-  const boxes = useRef<Partial<Record<LegKey, HTMLInputElement | null>>>({});
+  const boxes = useRef<Partial<Record<LegKey, ChipFocusHandle | null>>>({});
 
   useEffect(() => {
     if (focus) boxes.current[focus.leg]?.focus();
@@ -86,21 +89,20 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
     <div className="flex gap-1">
       <div className="min-w-0 flex-1 space-y-2">
         {legs.map(({ key, label, name }) => {
-          const id = `${idPrefix}-${key}`;
           const copy = linked && key === second?.key;
           return (
             <div key={key} className="space-y-1" {...fieldFrame('connections', connection.id, key)}>
-              <Label htmlFor={id} className="flex items-center gap-1">{label}</Label>
-              <WorldInput
-                id={id}
-                ref={(node) => { boxes.current[key] = node; }}
+              <Label className="flex items-center gap-1" onClick={() => boxes.current[key]?.focus()}>{label}</Label>
+              <PlaceholderNameField
+                focusRef={(handle) => { boxes.current[key] = handle; }}
                 value={copy ? firstHint : connection[key]?.hint ?? ''}
+                placeholders={placeholders}
                 readOnly={copy}
-                aria-describedby={copy ? describedBy : undefined}
+                ariaDescribedBy={copy ? describedBy : undefined}
                 className={cn(copy && 'bg-muted text-muted-foreground')}
-                onChange={(e) => editHint(key, e.target.value)}
+                onChange={(text) => editHint(key, text)}
                 placeholder="Travel Hint, e.g. through the shimmering portal"
-                aria-label={name}
+                ariaLabel={name}
               />
             </div>
           );

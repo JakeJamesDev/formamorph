@@ -266,6 +266,12 @@ export function collectPlaceholderPlacements(texts: string[]): {
   return { worldIds, unique: [...unique.values()] };
 }
 
+/** Every chip's placement id in `text`, whatever its mode. */
+export function placementIdsIn(text: string): Set<string> {
+  TOKEN_RE.lastIndex = 0;
+  return new Set([...text.matchAll(TOKEN_RE)].map((m) => m[3]));
+}
+
 /**
  * Roll every choice a fresh playthrough would reach across `texts`, keeping any `existing` rolls (so a loaded
  * save's frozen values are preserved). Pure: the caller persists the result.

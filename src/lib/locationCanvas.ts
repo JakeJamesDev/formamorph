@@ -136,9 +136,15 @@ export function implicitCanvasEdges(
 export function buildLocationCanvas(
   locations: GameLocation[],
   connections: Connection[],
-  opts: { resolveName?: (location: GameLocation) => string; focus?: Iterable<string> } = {},
+  opts: {
+    resolveName?: (location: GameLocation) => string;
+    /** How a hint reads on its arrow. */
+    describeHint?: (hint: string) => string;
+    focus?: Iterable<string>;
+  } = {},
 ): LocationCanvasMap {
   const resolveName = opts.resolveName ?? ((location: GameLocation) => location.name);
+  const describeHint = opts.describeHint ?? ((hint: string) => hint);
   const known = new Set(locations.map((l) => l.id));
   const parentOf = (loc: GameLocation) => holderOf(locations, loc);
   const childrenOf = new Map<string | null, GameLocation[]>();
@@ -225,7 +231,7 @@ export function buildLocationCanvas(
     const paired = isTwoWay(connection);
     const shared = paired && connection.aToB?.hint === connection.bToA?.hint;
     for (const { key, from, to, leg } of connectionLegs(connection)) {
-      const label = shared && key === "bToA" ? undefined : leg.hint;
+      const label = shared && key === "bToA" ? undefined : leg.hint && describeHint(leg.hint);
       edges.push({
         id: `connection:${connection.id}:${key}`,
         source: from,

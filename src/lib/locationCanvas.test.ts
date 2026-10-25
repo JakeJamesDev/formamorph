@@ -9,6 +9,8 @@ import {
   type CanvasIntent,
 } from "./locationCanvas";
 import { connectionsAt, withHint } from "./connectionEditing";
+import { describePlaceholders, encodePlaceholderToken } from "./placeholders";
+import { phValues } from "@/test/placeholderValues";
 import { buildLocationTree, flattenLocationTree } from "./locationTree";
 import type { Connection, GameLocation } from "@/types";
 
@@ -300,6 +302,17 @@ describe("buildLocationCanvas edges", () => {
     const oneWay: Connection = { id: "c6", a: "shore", b: "landing", bToA: { hint: "up the jetty" } };
     expect(canvas([landing, shore], [oneWay]).edges.map((e) => [e.label, e.labelOuter ?? false]))
       .toEqual([["up the jetty", false]]);
+  });
+
+  it("reads a chip-bearing hint through describeHint, and still shares one label for a linked pair", () => {
+    const door = encodePlaceholderToken({ id: "door", mode: "unique", placementId: "p1" });
+    const hint = `through the ${door} door`;
+    const linked: Connection = { id: "c7", a: "shore", b: "landing", aToB: { hint }, bToA: { hint } };
+    const placeholders = [{ id: "door", name: "Door Color", values: phValues(["red", "blue"]) }];
+    const map = buildLocationCanvas([landing, shore], [linked], {
+      describeHint: (text) => describePlaceholders(text, placeholders),
+    });
+    expect(map.edges.map((e) => e.label)).toEqual(["through the {red|blue} door", undefined]);
   });
 
   it("names the Connection each solid arrow came from, so a click can reach the record", () => {

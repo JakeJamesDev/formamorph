@@ -10,6 +10,7 @@ import {
   applyRuleFix, ownerWorldOf, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
   MATCHING_RULES, RULES, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type RuleWorld,
 } from './rules';
+import { primeOpeningRolls } from './opening';
 import { syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { placeholderSelection } from '@/lib/placeholderTree';
@@ -448,6 +449,33 @@ describe('reference-integrity rules', () => {
     }), 'chip-unknown-placeholder');
     expect(found).toHaveLength(1);
     expect(found[0].items[0]).toMatchObject({ id: 'overview', section: 'overview' });
+  });
+
+  describe('a chip in a Travel Hint', () => {
+    const hinted = (id: string) => base({
+      locations: [...base().locations, { id: 'landing', name: 'Landing' }] as GameLocation[],
+      connections: [{ id: 'c1', a: 'harbor', b: 'landing', bToA: { hint: `past the {{ph:${id}:unique:pl1}} buoy` } }],
+      placeholders: [{ id: 'p1', name: 'Buoy Color', values: phValues(['red']) }],
+    });
+
+    it('is flagged when its placeholder is gone, filed under the location the leg leaves', () => {
+      const found = only(hinted('gone'), 'chip-unknown-placeholder');
+      expect(found).toHaveLength(1);
+      expect(found[0].items[0]).toEqual({ id: 'landing', name: 'Landing → Harbor Steps Travel Hint', section: 'locations' });
+    });
+
+    it('counts as a placement of its placeholder', () => {
+      expect(only(hinted('p1'), 'placeholder-unused')).toEqual([]);
+      expect(only(hinted('p1'), 'chip-unknown-placeholder')).toEqual([]);
+      expect(only(base({ placeholders: [{ id: 'p1', name: 'Buoy Color', values: phValues(['red']) }] }), 'placeholder-unused'))
+        .toHaveLength(1);
+    });
+
+    it('is rolled when the Bench primes an opening', () => {
+      const w = hinted('p1');
+      const rolled = { ...w, placeholders: [{ id: 'p1', name: 'Buoy Color', values: phValues(['red', 'green']) }] };
+      expect(Object.values(primeOpeningRolls(rolled, {}, (values) => values[1].text).unique ?? {})).toEqual(['green']);
+    });
   });
 
   it('reads a chip in a stat description or descriptor as a placement, since both fields resolve', () => {

@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
+import { locationTabForField } from '@/views/locationPanelTabs';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { placementLetters } from '@/lib/placementLetters';
 import { isOpeningFieldKey, openingFieldKey } from '@/lib/openings';
 import { collectSearchTargets, findMatches, refusesBlueprintInsert, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
-import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
 const LOOSE = { matchCase: false, wholeWord: false };
@@ -430,6 +431,34 @@ describe('findMatches — chips', () => {
     const summary = replaceAll(matches, () => 'N');
     expect(summary.chips).toBe(1);
     expect(summary.replaced).toBe(2);
+  });
+});
+
+describe('Travel Hints', () => {
+  const places: GameLocation[] = [{ id: 'quay', name: 'Quay' }, { id: 'garden', name: 'Hill Garden' }];
+  const hinted = (connection: Connection) => sources({
+    locations: places, connections: [connection], updateConnection: (c) => written.push(c),
+  });
+  let written: Connection[] = [];
+  beforeEach(() => { written = []; });
+
+  it('finds each unlinked leg on the panel of the location it leaves, as a chip field', () => {
+    const { src } = hinted({ id: 'c1', a: 'quay', b: 'garden', aToB: { hint: 'up the steps' }, bToA: { hint: 'down the steps' } });
+    const hits = findMatches(collectSearchTargets(src), 'steps', LOOSE).map(({ target }) => target);
+    expect(hits.map((t) => [t.itemId, t.fieldLabel, t.chipCapable, locationTabForField(t.fieldKey)])).toEqual([
+      ['quay', 'Travel Hint to Hill Garden', true, 'presence'],
+      ['garden', 'Travel Hint to Quay', true, 'presence'],
+    ]);
+    hits[1].write('down the stair');
+    expect(written).toEqual([{ id: 'c1', a: 'quay', b: 'garden', aToB: { hint: 'up the steps' }, bToA: { hint: 'down the stair' } }]);
+  });
+
+  it('finds a linked pair once, and a replace there writes both legs', () => {
+    const { src } = hinted({ id: 'c1', a: 'quay', b: 'garden', aToB: { hint: 'by the bridge' }, bToA: { hint: 'by the bridge' } });
+    const matches = findMatches(collectSearchTargets(src), 'bridge', LOOSE);
+    expect(matches.map((m) => m.target.itemId)).toEqual(['quay']);
+    replaceAll(matches, () => 'ferry');
+    expect(written.at(-1)).toMatchObject({ aToB: { hint: 'by the ferry' }, bToA: { hint: 'by the ferry' } });
   });
 });
 

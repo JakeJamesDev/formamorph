@@ -1,6 +1,6 @@
 # 01: Travel Hint Chips
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -24,15 +24,24 @@ A connection's Travel Hint boxes become single-line chip fields. The author inse
 
 Ship with it: the supported-fields list and the placement-letter order in the World Editor Placeholders help page name Travel Hints. A changelog fragment.
 
-- [ ] A chip inserted by typeahead, palette click and drag lands in a Travel Hint box.
-- [ ] A canvas edge click still focuses the matching leg's box.
-- [ ] Linking copies the first leg's tokens with the same placement ids.
-- [ ] Unlinking re-mints the second leg's placement ids, and the link toggle then reads unlinked.
-- [ ] A Unique chip in a linked hint resolves to one value in both directions of location context.
-- [ ] A Unique chip in a hint keeps one value across renders and turns (priming covers hints).
-- [ ] Location context resolves a hint with the current location's pin over the roll.
-- [ ] The editor canvas edge label shows the braces form; the game map shows no label.
-- [ ] Placement letters, Test Bench chip owners and world search each include connection hints, each proven by a test that fails with the hint removed from that list.
-- [ ] The help page lists Travel Hints.
+- [x] A chip inserted by typeahead, palette click and drag lands in a Travel Hint box. `TravelHintPair.test` (three cases, real Lexical field).
+- [x] A canvas edge click still focuses the matching leg's box. `TravelHintPair.test` "focuses the leg a canvas arrow asks for" (mutation-checked); live edge click in the preview focused "Travel Hint to Garden".
+- [x] Linking copies the first leg's tokens with the same placement ids. `connectionEditing.test` "with chips"; preview frame `travel-hint-linked.jpg` shows one letter (A) in both boxes.
+- [x] Unlinking re-mints the second leg's placement ids, and the link toggle then reads unlinked. `connectionEditing.test` (mutation-checked); preview frame `travel-hint-unlinked.jpg` shows (A)/(B), toggle `aria-pressed=false`.
+- [x] A Unique chip in a linked hint resolves to one value in both directions of location context. `useResolvedWorld.travelHints.test`, real providers.
+- [x] A Unique chip in a hint keeps one value across renders and turns (priming covers hints). Same test, across renders and moves; fails with hints dropped from the priming list. No turn was stepped.
+- [x] Location context resolves a hint with the current location's pin over the roll. `useResolvedWorld.travelHints.test` "down by gas light" vs "up by oil light".
+- [x] The editor canvas edge label shows the braces form; the game map shows no label. `locationCanvas.test` plus the live canvas (`past the {red|blue} door`); the game map's existing `label: undefined` is unchanged.
+- [x] Placement letters, Test Bench chip owners and world search each include connection hints, each proven by a test that fails with the hint removed from that list. `placementLetters.test`, `rules.test` "a chip in a Travel Hint", `worldSearch.test` "Travel Hints"; each went red with its list entry removed.
+- [x] The help page lists Travel Hints. `docs/World-Editor-Placeholders.md`: Where chips work, and the letter order.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Type `{` in a Travel Hint on a location's Presence tab and on the canvas inspector: the menu and chips should feel like a name field. Frames: `.scratch/placeholder-text-fields-01/frames/travel-hint-linked.jpg`, `.scratch/placeholder-text-fields-01/frames/travel-hint-unlinked.jpg`.
+- In play, check a route's `— via` line in the AI Context instrument reads the rolled value.
 
 ## Comments
