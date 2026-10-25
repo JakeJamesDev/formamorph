@@ -191,6 +191,7 @@ The placeholder's **Pins** tab gathers every pin aimed at it. A change there is 
 Chips resolve **both** in the text the AI reads and in the text the player sees. Type `{` in each field that has the chip picker:
 
 - names and descriptions of entities, locations, stats and traits
+- the pronouns of an entity
 - stat descriptors and dictionary entries
 - image tags
 - openings

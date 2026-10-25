@@ -269,7 +269,7 @@ describe('In Game — Entities', () => {
     await resumeAt('entity-pronouns');
     useExample();
 
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Pronouns' })).toHaveValue('she/her'));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Pronouns' })).toHaveTextContent('she/her'));
     expect(within(playerSees()).getByRole('heading', { name: 'Maren' })).toBeInTheDocument();
     expect(within(playerSees()).getByText('Players never see the Pronouns')).toBeInTheDocument();
     await waitFor(() => expect(marks(narration())).toEqual(['she/her']));

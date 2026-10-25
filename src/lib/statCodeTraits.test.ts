@@ -111,6 +111,12 @@ describe('entityTraitNames', () => {
     ]);
   });
 
+  it('reads pronouns as the placeholder name, since an editor run has no rolls', () => {
+    const pair: Placeholder = { id: 'ph-pair', name: 'Pair', values: [{ id: 'v-her', text: 'she/her' }] };
+    const keeper: Entity = { id: 'k', name: 'Keeper', pronouns: '{{ph:ph-pair:world:p1}}' };
+    expect(entityTraitNames({ traits: [], traitGroups: [], entities: [keeper] }, [pair])[0].pronouns).toBe('Pair');
+  });
+
   // Play reads the set in its own order, so only the tab position follows the tree.
   it('places each of an entity’s traits, owned or linked, in its own tree under its group names', () => {
     const groups: TraitGroup[] = [

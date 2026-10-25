@@ -175,8 +175,13 @@ describe('resolveEntityTexts', () => {
     });
   });
 
+  it('resolves pronouns in the entity’s scope', () => {
+    const keeper: Entity = { id: 'k', name: 'Vera', pronouns: tok(TOWN.id) };
+    expect(resolveEntityTexts([keeper], byOwner)[0].pronouns).toBe('Sedge');
+  });
+
   it('keeps the array and each entity when no text holds a chip', () => {
-    const plain: Entity[] = [{ id: 'p', name: 'Plain', aiDescription: 'No chips.' }];
+    const plain: Entity[] = [{ id: 'p', name: 'Plain', aiDescription: 'No chips.', pronouns: 'she/her' }];
     expect(resolveEntityTexts(plain, byOwner)).toBe(plain);
   });
 });

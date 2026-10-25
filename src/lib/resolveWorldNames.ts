@@ -39,16 +39,18 @@ export function resolveEntityNames(entities: Entity[], resolve: (text: string, e
 /** Resolves one entity's own text with that entity as the Character Name. */
 export type ResolveEntityText = (entity: Entity, text: string) => string;
 
-/** Each entity's descriptions and summary, resolved with that entity as their owner. Names stay as they are. */
+/** Each entity's descriptions, summary and pronouns, resolved with that entity as their owner. Names stay as they are. */
 export function resolveEntityTexts(entities: readonly Entity[], resolve: ResolveEntityText): Entity[] {
   return mapPreservingIdentity(entities, (e) => {
     const own: ResolveText = (text) => resolve(e, text);
     const playerDescription = one(e.playerDescription, own);
     const aiDescription = one(e.aiDescription, own);
     const aiSummary = one(e.aiSummary, own);
+    const pronouns = one(e.pronouns, own);
     return playerDescription === e.playerDescription && aiDescription === e.aiDescription && aiSummary === e.aiSummary
+      && pronouns === e.pronouns
       ? e
-      : { ...e, playerDescription, aiDescription, aiSummary };
+      : { ...e, playerDescription, aiDescription, aiSummary, pronouns };
   });
 }
 

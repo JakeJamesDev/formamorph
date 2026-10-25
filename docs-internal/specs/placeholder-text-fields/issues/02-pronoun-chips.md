@@ -1,6 +1,6 @@
 # 02: Pronoun Chips
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -25,10 +25,20 @@ Ship with it: the supported-fields list in the World Editor Placeholders help pa
 
 - [ ] A chip lands in Pronouns by typeahead, palette and drag, and the menu offers the entity's owned placeholders.
 - [ ] Entity context and persona context show resolved pronouns, with the entity's own trait pin winning over the roll.
-- [ ] A play-time Sandbox Snapshot gives code resolved pronouns; an editor run gives the placeholder name.
-- [ ] World search finds and replaces inside pronouns without breaking a chip.
+- [x] A play-time Sandbox Snapshot gives code resolved pronouns; an editor run gives the placeholder name. (`sandboxSnapshot.locations.test.ts`, `statCodeTraits.test.ts`)
+- [x] World search finds and replaces inside pronouns without breaking a chip. (`worldSearch.test.ts`: pronouns target is chip-capable)
 - [ ] An exported card bundles the pronoun's placeholder; importing it into another world remaps the chip.
-- [ ] Removing pronouns from the entity text list or the chip mapper fails a test.
-- [ ] The help page lists pronouns.
+- [x] Removing pronouns from the entity text list or the chip mapper fails a test. (mutated both: `placementLetters`, `placeholderHomes`, `entityFile` tests went red)
+- [x] The help page lists pronouns. (`docs/World-Editor-Placeholders.md`)
+
+## Landed
+
+**Not verified**
+- Chip insert by typeahead, palette and drag: no component test and no frame; the field is the same `PlaceholderNameField` as Name.
+- Entity and persona context with an owned chip and a trait pin: `liveScene.test.ts` covers resolved pronouns with a stub resolver only. The resolver is the one descriptions use.
+- Card export bundles the pronoun placeholder (`entityFile.test.ts`); the import remap runs through the shared chip mapper, with no import test.
+
+**For you**
+- Open an entity's **Profile** tab and type `{` in **Pronouns**: the menu should list the entity's own placeholders first.
 
 ## Comments

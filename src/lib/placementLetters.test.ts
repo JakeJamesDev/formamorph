@@ -78,7 +78,7 @@ describe('sameLetters', () => {
 describe('the document walk', () => {
   it('runs entities, locations, traits, stats, dictionaries, then placeholder values', () => {
     const texts = worldPlacementTexts({
-      entities: [{ id: 'e', name: 'ent', aliases: ['ent-alias'], playerDescription: 'ent-pd' }],
+      entities: [{ id: 'e', name: 'ent', aliases: ['ent-alias'], playerDescription: 'ent-pd', pronouns: 'ent-pro' }],
       locations: [{ id: 'l', name: 'loc', aiSummary: 'loc-ais' }],
       traits: [{ id: 't', name: 'trait', statChanges: [] }],
       traitGroups: [{ id: 'g', name: 'group', parentId: null }],
@@ -92,7 +92,7 @@ describe('the document walk', () => {
       placeholders: [P('p', 'ph', ['value'])],
     });
     expect(texts).toEqual([
-      'ent', 'ent-alias', 'ent-pd', 'loc', 'loc-ais', 'trait', 'group', 'stat', 'stat-desc', 'band-lo', 'band-hi',
+      'ent', 'ent-alias', 'ent-pd', 'ent-pro', 'loc', 'loc-ais', 'trait', 'group', 'stat', 'stat-desc', 'band-lo', 'band-hi',
       'entry', 'k1', 'val', 'sys', 'value',
     ]);
   });

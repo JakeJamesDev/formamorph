@@ -105,10 +105,10 @@ describe('collectSearchTargets', () => {
     expect(targetFor(targets, 'descriptors[0].description')).toMatchObject({ value: 'Winded', chipCapable: true });
   });
 
-  it('reaches an entity’s pronouns as plain text and writes a replace to that entity', () => {
+  it('reaches an entity’s pronouns as a chip field and writes a replace to that entity', () => {
     const { src, writes } = sources({ entities: [entity({ pronouns: 'she/her' })] });
     const target = targetFor(collectSearchTargets(src), 'pronouns');
-    expect(target).toMatchObject({ itemId: 'e1', tab: 'entities', fieldLabel: 'Pronouns', chipCapable: false });
+    expect(target).toMatchObject({ itemId: 'e1', tab: 'entities', fieldLabel: 'Pronouns', chipCapable: true });
     target.write('they/them');
     expect(writes.at(-1)).toEqual(['entity', expect.objectContaining({ id: 'e1', pronouns: 'they/them' })]);
   });
