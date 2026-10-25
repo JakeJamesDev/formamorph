@@ -21,6 +21,7 @@ The field builds the tree from the sections it builds today:
 - **Stats** opens an owner level from the existing stat sections, in today's order: the host's own first, then Global, then Persona, then each entity (Q3, Q15).
 - **Time of Day** and **Playing As** are categories of their own. Time of Day has one target, so it shows as a row at the root (Q8).
 - Empty categories and owners drop out, so off-world the picker shows only what has targets.
+- An owner page's heading equals its rows' first breadcrumb segment exactly ("World", the owner name). Ticket 01 drops breadcrumb segments by that match (Q13). Stat leaf sections keep today's headings, such as "Ash Stats", so the flat list matches today's list.
 
 The owner choice page that opens after a target with several owners returns to the drilled page when you go back or pick (Q10). The Condition a row adds is the same as today; no world, save or export shape changes.
 
