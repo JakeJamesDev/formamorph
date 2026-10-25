@@ -21,3 +21,4 @@ An author fixes a rejected listing and it goes back to the queue. Its quarantine
 - [ ] Approving a quarantined `pending` listing clears all three quarantine columns and sets `listed_at`.
 - [ ] `DELETE /:id/quarantine` on a `rejected` listing approves it and writes `listing_approved`.
 - [ ] The quarantine sweep still deletes a `rejected` listing at its deadline.
+- [ ] From ticket 02's review: approve and reject refuse a mod acting on their own listing (one submitted before a promotion), with `403`, so staff never review their own work (story 32).
