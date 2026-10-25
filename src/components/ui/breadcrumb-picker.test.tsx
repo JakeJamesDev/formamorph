@@ -366,6 +366,23 @@ describe('BreadcrumbPicker drill-down', () => {
     expect(items()).toEqual(ROOT_ITEMS);
   });
 
+  it('leads a lifted lone row’s breadcrumb with the page it skipped, unless it already starts there', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 14 }, (_, i) => rowOf(`n${i}`, `Note ${i}`));
+    const tree = [
+      page('notes', 'Notes', [section(many)]),
+      page('stats', 'Stats', [
+        page('s:you', 'Persona', [section([rowOf('mood-you', 'Mood')], 'Persona Stats')]),
+        page('s:mira', 'Mira', [section([rowOf('mood-mira', 'Mood')], 'Mira Stats')]),
+        page('s:ash', 'Ash', [section([rowOf('kind', 'Kind', ['Ash', 'Heart'])], 'Ash Stats')]),
+      ]),
+    ];
+    render(<TreeField tree={tree} />);
+    await user.click(target());
+    await user.click(pageRow('Stats'));
+    expect(items()).toEqual(['MoodPersona', 'MoodMira', 'KindAsh › Heart']);
+  });
+
   it('opens straight into a lone root category, with no way back', async () => {
     const user = userEvent.setup();
     const many = Array.from({ length: 16 }, (_, i) => rowOf(`n${i}`, `Note ${i}`));

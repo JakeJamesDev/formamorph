@@ -1037,6 +1037,8 @@ export interface RequirementOption {
   /** The owners the row can name instead of the same owner: You, then every entity that owns the target. None
    *  for a global target. */
   owners: RequirementOwnerOption[];
+  /** The entity whose tree holds the target; absent for the world. */
+  home?: { id: string; name: string };
 }
 
 export interface RequirementOptions {
@@ -1082,8 +1084,11 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       .filter((o) => (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
   ]);
-  const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = []): RequirementOption =>
-    ({ requirement, label: requirementText(requirement, idx).text, breadcrumb, owners });
+  const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = [], owner?: GateScopeTree): RequirementOption =>
+    ({
+      requirement, label: requirementText(requirement, idx).text, breadcrumb, owners,
+      ...(owner?.id != null ? { home: { id: owner.id, name: owner.name } } : {}),
+    });
 
   const seen = new Set<string>();
   const traits: RequirementOption[] = [];
@@ -1093,8 +1098,8 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       const id = node.leaf?.id ?? node.group?.id;
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      if (node.leaf && !skip.has(id)) traits.push(option({ kind: 'trait', id }, breadcrumbOf(owner, node.leaf.groupId), ownersOf(id, 'trait')));
-      if (node.group && !deadGroup(id)) groups.push(option({ kind: 'group', id }, breadcrumbOf(owner, node.group.parentId), ownersOf(id, 'group')));
+      if (node.leaf && !skip.has(id)) traits.push(option({ kind: 'trait', id }, breadcrumbOf(owner, node.leaf.groupId), ownersOf(id, 'trait'), owner));
+      if (node.group && !deadGroup(id)) groups.push(option({ kind: 'group', id }, breadcrumbOf(owner, node.group.parentId), ownersOf(id, 'group'), owner));
     }
   }
   const personas = input.entities.filter((e) => e.persona).map((e) => option({ kind: 'playingAs', id: e.id }, ['Persona']));

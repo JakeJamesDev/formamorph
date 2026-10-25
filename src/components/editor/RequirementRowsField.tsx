@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import {
-  BreadcrumbPicker, BreadcrumbPickerHeader, BreadcrumbPickerList, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
+  BreadcrumbPicker, BreadcrumbPickerHeader, BreadcrumbPickerList, type BreadcrumbPickerNode, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { StatConditionControls } from '@/components/editor/StatConditionControls';
@@ -129,14 +129,31 @@ export function RequirementRowsField({
     })),
   });
   // Off-world only the entity's own stats exist to read.
-  const statTargets = statSections.filter((s) => !offWorld || s.own).map((s) => targets(s.heading, s.options));
-  const searchable = joinAnd(['traits', 'groups', ...(statTargets.length ? ['stats'] : []), 'time of day', ...(offWorld ? [] : ['personas'])]);
-  const sections = [
-    targets('Traits', options.traits),
-    targets('Any Trait in a Group', options.groups),
-    ...statTargets,
-    targets('Time of Day', [TIME_OPTION]),
-    ...(offWorld ? [] : [targets('Playing As', options.personas)]),
+  const shownStats = statSections.filter((s) => !offWorld || s.own);
+  const searchable = joinAnd(['traits', 'groups', ...(shownStats.length ? ['stats'] : []), 'time of day', ...(offWorld ? [] : ['personas'])]);
+  // One owner page per home, the world first and then in tree order; pages key on the owner's id, not its name.
+  const ownerPages = (prefix: string, list: RequirementOption[]): BreadcrumbPickerNode<RequirementOption>[] => {
+    const homes = new Map<string, { heading: string; list: RequirementOption[] }>();
+    for (const option of list) {
+      const id = option.home?.id ?? '';
+      const home = homes.get(id) ?? { heading: option.home?.name ?? 'World', list: [] };
+      home.list.push(option);
+      homes.set(id, home);
+    }
+    return [...homes].sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : 0)).map(([id, home]): BreadcrumbPickerNode<RequirementOption> => ({
+      kind: 'page', key: `${prefix}:${id}`, heading: home.heading, children: [{ kind: 'section', rows: targets('', home.list).rows }],
+    }));
+  };
+  const category = (key: string, heading: string, children: BreadcrumbPickerNode<RequirementOption>[]): BreadcrumbPickerNode<RequirementOption>[] =>
+    (children.length ? [{ kind: 'page', key, heading, children }] : []);
+  const tree: BreadcrumbPickerNode<RequirementOption>[] = [
+    ...category('traits', 'Traits', ownerPages('traits', options.traits)),
+    ...category('groups', 'Any Trait in a Group', ownerPages('groups', options.groups)),
+    ...category('stats', 'Stats', shownStats.map((s, i): BreadcrumbPickerNode<RequirementOption> => ({
+      kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options) }],
+    }))),
+    ...category('time', 'Time of Day', [{ kind: 'section', ...targets('Time of Day', [TIME_OPTION]) }]),
+    ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...targets('Playing As', options.personas) }])),
   ];
 
   const ownerRow = (option: RequirementOption, choice: RequirementOwnerOption | null): BreadcrumbPickerRow<TraitRequirement> => {
@@ -245,7 +262,7 @@ export function RequirementRowsField({
   };
   const picker = (key: AddTarget, trigger: ReactElement) => (
     <BreadcrumbPicker
-      sections={sections}
+      tree={tree}
       onPick={pick}
       open={target === key}
       onOpenChange={(next) => changeTarget(next ? key : null)}

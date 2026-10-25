@@ -121,18 +121,20 @@ describe('TraitRequiresField owner choice', () => {
     expect(await screen.findByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('goes back to the targets with the search cleared, and closing the picker forgets the target', async () => {
+  // Q25: the search belongs to the page, so it survives a trip to the owner choice page.
+  it('goes back to the targets with the search kept, and closing the picker forgets the target and the search', async () => {
     render(<Harness trait={traits[3]} />);
     openPicker();
     fireEvent.change(screen.getByPlaceholderText('Search traits, groups, time of day, and personas'), { target: { value: 'pal' } });
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
-    expect(screen.getByPlaceholderText('Search traits, groups, time of day, and personas')).toHaveValue('');
-    expect(screen.getByRole('option', { name: /^Wizard/ })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search traits, groups, time of day, and personas')).toHaveValue('pal');
+    expect(screen.queryByRole('option', { name: /^Wizard/ })).toBeNull();
     fireEvent.click(screen.getByRole('option', { name: /^Paladin/ }));
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     openPicker();
-    expect(await screen.findByPlaceholderText('Search traits, groups, time of day, and personas')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Search traits, groups, time of day, and personas')).toHaveValue('');
+    expect(screen.getByRole('option', { name: /^Wizard/ })).toBeInTheDocument();
   });
 
   it('offers a same-owner requirement on an owned trait and names its group owners', async () => {

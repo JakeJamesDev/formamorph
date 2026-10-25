@@ -49,6 +49,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The request status strip shows how long the turn has run, after 3 seconds.** The timer counts the whole turn, not each request. Background passes show no timer.
   - **Placeholders:**
     - **An entity's Pronouns field now takes placeholder chips.** Type `{` or drag a chip in. The AI and play-time scripts read the pronouns the entity's own placeholders resolve to.
+  - **Requires Picker:**
+    - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
 - **⚙️ Backend**
