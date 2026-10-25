@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { devFeedbackFixtures, devFeedbackMethods } from './devFeedbackStub';
+import { devFeedbackFixtures, devFeedbackMethods, searchWords } from './devFeedbackStub';
 
 vi.mock('@/services/AuthService', () => ({ default: { getCurrentUser: vi.fn(() => ({ id: 'me' })) } }));
 
@@ -16,6 +16,16 @@ describe('the dev feedback board', () => {
 
     const found = await stub.list({ type: 'question', scope: 'all', search: 'username' });
     expect(found.total).toBe(1);
+  });
+
+  it('searches by words as the server does, best match first', async () => {
+    const stub = devFeedbackMethods(devFeedbackFixtures());
+
+    // "a" and "do" drop; "change" and "location" both hit one question, "change" alone the other.
+    const found = await stub.list({ type: 'question', scope: 'all', search: 'Can a stat change location do' });
+    expect(found.threads.map((thread) => thread.id)).toEqual(['dev-question-open', 'dev-question-mine']);
+
+    expect(searchWords('AI ui Ui the THE')).toEqual(['ai', 'the']);
   });
 
   it('locks a question staff close, and unlocks it on reopen', async () => {
