@@ -1,0 +1,40 @@
+# 02: Requires Picker Categories
+
+Status: ready-for-agent
+Blocked by: 01
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
+
+It maps sections the field already builds onto the tree from ticket 01. The design is settled, so Sonnet.
+
+## Parent
+
+`docs-internal/specs/picker-categories/spec.md`
+
+## What to build
+
+The Requirement Rows field turns on the drill-down from ticket 01. Every picker that adds a Condition gets it: a trait's **Requires**, an image's Visibility rules, and location rules.
+
+The field builds the tree from the sections it builds today:
+
+- **Traits** and **Any Trait in a Group** open an owner level: World, then each owner, split by the first breadcrumb segment. Each owner opens a flat list with group breadcrumbs (Q6).
+- **Stats** opens an owner level from the existing stat sections, in today's order: the host's own first, then Global, then Persona, then each entity (Q3, Q15).
+- **Time of Day** and **Playing As** are categories of their own. Time of Day has one target, so it shows as a row at the root (Q8).
+- Empty categories and owners drop out, so off-world the picker shows only what has targets.
+
+The owner choice page that opens after a target with several owners returns to the drilled page when you go back or pick (Q10). The Condition a row adds is the same as today; no world, save or export shape changes.
+
+Ship with it: the Requires picker description on the World Editor traits wiki page, if it describes the list, and a changelog fragment.
+
+## Acceptance criteria
+
+- [ ] In a world with more than 15 targets, the Requires picker opens on the categories with counts.
+- [ ] The stats owner level lists owners in today's order.
+- [ ] Rows on an owner page don't repeat the owner name in their breadcrumb.
+- [ ] Off-world, only categories with targets show.
+- [ ] The owner choice page returns to the drilled page.
+- [ ] Image Visibility rules and location rules show the same drill-down.
+- [ ] Each rule above has a rendered field test, and each test fails when its rule is broken.
+- [ ] A trait's Requires picker in a large bundled world: `.scratch/frames/requires-root.png` and `.scratch/frames/requires-stats-owner.png`, light theme, at desktop width.
+
+For you: add a few Conditions in a large world and judge whether finding a target is faster than before.
