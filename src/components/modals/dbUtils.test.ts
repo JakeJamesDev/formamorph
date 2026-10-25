@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { transactionDone } from '@/lib/idb';
 
 /**
  * The save DB opens a connection per operation unless `initDB` caches it. Autosave issues several
@@ -45,9 +46,13 @@ describe('getAllSaveRecords', () => {
 
     await vi.waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
     expect(warn.mock.calls[0][0]).toContain('id b');
+    const keyReads = vi.spyOn(IDBObjectStore.prototype, 'getAllKeys');
     await db.getAllSaveRecords();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // The second read's warn pass has opened its key read; a later readwrite on the store waits for it.
+    await vi.waitFor(() => expect(keyReads).toHaveBeenCalledTimes(1));
+    await transactionDone((await db.initDB()).transaction([db.STORE_NAME], 'readwrite'));
     expect(warn).toHaveBeenCalledTimes(1); // once per key, not on every read
+    keyReads.mockRestore();
     warn.mockRestore();
   });
 });

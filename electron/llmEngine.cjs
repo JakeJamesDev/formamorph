@@ -113,9 +113,10 @@ const withTimeout = (promise, ms) => {
 
 /**
  * One engine over its own `llama-server`. `spawn` starts processes (the fake server's seam), `binaryPath`
- * finds the bundled build, `workRoot` holds each start's preset and empty model cache.
+ * finds the bundled build, `workRoot` holds each start's preset and empty model cache. `onChatEvent(name)` hears a
+ * proxied chat's `hangup` and its end: `dropped`, `stopped` or `forwarded`.
  */
-function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.binaryPath, platform = process.platform, workRoot = os.tmpdir(), listProcesses = () => llamaServer.listProcesses({ platform }) } = {}) {
+function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.binaryPath, platform = process.platform, workRoot = os.tmpdir(), listProcesses = () => llamaServer.listProcesses({ platform }), onChatEvent = () => {} } = {}) {
   let state = stoppedState();
   const statusListeners = new Set();
   // The live start (see `start`). Null while stopped.
@@ -325,7 +326,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       if (shaped.droppedImages > 0) res.setHeader(IMAGES_DROPPED_HEADER, String(shaped.droppedImages));
       // A client that hangs up mid-count stops the counting too. The socket ends before it is destroyed.
       let hungUp = false;
-      const onHangup = () => { hungUp = true; };
+      const onHangup = () => { if (!hungUp) onChatEvent('hangup'); hungUp = true; };
       req.socket.once('end', onHangup).once('close', onHangup);
       const gone = () => hungUp || req.socket.destroyed;
       let fitted;
@@ -337,8 +338,8 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       } finally {
         req.socket.off('end', onHangup).off('close', onHangup);
       }
-      if (gone() || res.destroyed || res.writableEnded) return;
-      if (fitted.stop) return sendJson(res, 400, fitted.stop);
+      if (gone() || res.destroyed || res.writableEnded) return onChatEvent('dropped');
+      if (fitted.stop) { onChatEvent('stopped'); return sendJson(res, 400, fitted.stop); }
       const data = JSON.stringify(fitted.body);
       const up = http.request({
         host: '127.0.0.1', port: l.server.port, method: 'POST', path: '/v1/chat/completions',
@@ -372,6 +373,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       // A client that hangs up cancels the upstream request rather than letting it decode to the end.
       res.on('close', () => { if (!res.writableFinished) up.destroy(); });
       up.end(data);
+      onChatEvent('forwarded');
     }, () => sendJson(res, 400, { error: { message: 'The request body could not be read.' } }));
   }
 

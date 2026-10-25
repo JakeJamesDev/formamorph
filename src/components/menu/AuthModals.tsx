@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { toast } from "react-toastify";
 import { AlertTriangle, Key, LogOut } from "lucide-react";
 import {
@@ -55,8 +56,9 @@ export function AuthModals({
   showProfileDialog, setShowProfileDialog,
   currentUser, onLogout,
   onUnreadChange, onAvatarChanged, onNotificationsRead, onOpenListing,
-  initialTab, requestKey,
+  initialTab, requestKey: landingKey,
 }: AuthModalsProps) {
+  const requestKey = useRequestKey(landingKey);
   // Held locally as well as on the host: the header has to change the moment the crop is saved, and the
   // host's copy arrives a render later.
   const [avatarUrl, setAvatarUrl] = useState<string | null>((currentUser?.avatarUrl as string | null) ?? null);

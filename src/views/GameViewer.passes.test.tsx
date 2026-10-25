@@ -13,6 +13,19 @@ import type { ChatMessage, Entity } from '@/types';
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
+/** Every AI request the view sent, as the promise of its reply. */
+const transports = vi.hoisted((): Promise<unknown>[] => []);
+vi.mock('@/lib/aiRequest/requestTransport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/aiRequest/requestTransport')>();
+  return {
+    ...actual,
+    transportRequest: (...args: Parameters<typeof actual.transportRequest>) => {
+      const reply = actual.transportRequest(...args);
+      transports.push(reply);
+      return reply;
+    },
+  };
+});
 vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn(), dismiss: vi.fn(), isActive: vi.fn() }),
   ToastContainer: () => null,
@@ -97,8 +110,7 @@ describe('the Background Pass Status row', () => {
 
   it('stays blank for the same running digest with it off', async () => {
     const endpoint = await playUntilDigestHeld(false);
-    // The request is in flight; the row would show by now.
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
+    // The queue publishes the pass as it starts it, and the store's re-render is synchronous.
     expect(screen.queryByText('Summarizing turn…')).toBeNull();
     endpoint.release();
   });
@@ -136,7 +148,12 @@ describe('regenerating a memory', () => {
 
     await view.unmountView();
     endpoint.release();
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
+    // Every request has settled; the write would follow in the same chain, which a 0 ms flush drains.
+    await act(async () => {
+      await Promise.allSettled(transports);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(transports.length).toBeGreaterThan(0);
     expect(memoryEditsNow()).toEqual({});
   });
 });

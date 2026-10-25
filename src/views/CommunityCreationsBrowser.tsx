@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
+import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { responseError } from '@/services/responseError';
@@ -234,10 +235,11 @@ interface CommunityCreationsBrowserProps {
 const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries, models,
   refreshEntities, refreshDictionaries, refreshModels,
-  isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, requestKey, openListing, onListingOpened, listing: controlledListing,
+  isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, requestKey: landingKey, openListing, onListingOpened, listing: controlledListing,
   onListingChange, onListingUnavailable, detailsAction, promptLibrary,
   events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
+  const requestKey = useRequestKey(landingKey);
   // Stated here rather than in an effect, because the catalog request below goes out in an effect of
   // its own: a shell that sends its guests to sign-in is not an Install and must name none.
   setShellOffersGuestLikes(capabilities.guestLikes);

@@ -65,8 +65,12 @@ describe('World Editor save shortcut', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     expect(press(window, { ctrlKey: true })).toBe(true);
-    await new Promise((r) => { setTimeout(r, 50); });
-    expect(storeWorld).not.toHaveBeenCalled();
+    // A later save queues behind any the clean press started, so its landing means the press had its turn.
+    await editName();
+    press(window, { ctrlKey: true });
+    await screen.findByRole('button', { name: 'Saved' });
+    expect(storeWorld).toHaveBeenCalledTimes(1);
+    expect(storeWorld.mock.calls[0][0]).toMatchObject({ name: 'Renamed World' });
     expect(toast.success).not.toHaveBeenCalled();
   });
 
