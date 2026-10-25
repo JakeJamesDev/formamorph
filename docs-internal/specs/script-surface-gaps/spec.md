@@ -64,6 +64,7 @@ Settled with the user on 2026-10-25 through a grill and an agent review of its f
 | Q45 | `previous.hidden` reads the turn-start state, read-only. `hidden` reads back within the run, as `value` and the bounds do. A non-boolean write fails the run as a bad write, as trait `enabled` does. Every assignment is a write, changed or not; a write to a switched-off stat or an unknown name drops and lists as `value` does (ticket 05 ruling) |
 | Q46 | A World Tool's `hidden` write replays on a stats re-roll: the save's per-stat trigger-write row gains an optional `hidden` boolean. An additive save-shape change, refining Q4 (user, via ticket 05) |
 | Q47 | The save envelope's `openingCue` holds the cue of every Opening Action start, edited or not, and `""` for an Opening Narration start: a present field is authoritative, an absent one marks an older save. A full re-roll of page 1 is a new opening turn whose cue replaces the saved one. The field does not rewind with undo, like `persona` (ticket 02 ruling) |
+| Q48 | An exit's `hint` is the Connection leg's hint with placeholders filled in, `''` for an implicit or hintless exit. `exits` follows the router's order; `children` follows authored location order. A `parentId` naming no location reads `parent` as `''`. `parent`, `children` and `exits` are deferred per entry and built on first read (ticket 08 ruling) |
 
 ## Surface
 
