@@ -106,6 +106,24 @@ describe('collectSearchTargets', () => {
     expect(targetFor(targets, 'descriptors[0].description')).toMatchObject({ value: 'Winded', chipCapable: true });
   });
 
+  it('reaches each relationship label as a chip field named for its target', () => {
+    const ph: Placeholder = { id: 'p1', name: 'Hometown', values: phValues(['Sedge', 'Fen']) };
+    const chipName = encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'place-1' });
+    const { src } = sources({
+      placeholders: [ph],
+      entities: [
+        entity({ relationships: [{ targetId: 'you', label: 'friend' }, { targetId: 'e2', label: 'rival' }, { targetId: 'gone', label: 'ghost' }] }),
+        entity({ id: 'e2', name: chipName }),
+      ],
+    });
+    const targets = collectSearchTargets(src);
+    expect(targetFor(targets, 'relationships[0].label')).toMatchObject({
+      itemId: 'e1', tab: 'entities', fieldLabel: 'Relationship to Persona', value: 'friend', chipCapable: true,
+    });
+    expect(targetFor(targets, 'relationships[1].label').fieldLabel).toBe('Relationship to {Sedge|Fen}');
+    expect(targetFor(targets, 'relationships[2].label').fieldLabel).toBe('Relationship to Unknown Entity');
+  });
+
   it('reaches an entity’s pronouns as a chip field and writes a replace to that entity', () => {
     const { src, writes } = sources({ entities: [entity({ pronouns: 'she/her' })] });
     const target = targetFor(collectSearchTargets(src), 'pronouns');
@@ -470,6 +488,15 @@ describe('replaceAll', () => {
     expect(summary).toMatchObject({ replaced: 3, fields: 1, skipped: 0 });
     expect(writes).toHaveLength(1);
     expect(writes[0][1]).toMatchObject({ aiDescription: 'marsh, marsh, and marsh' });
+  });
+
+  it('replaces inside a relationship label and keeps its chip and the other rows', () => {
+    const token = encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'place-1' });
+    const relationships = [{ targetId: 'you', label: 'old friend' }, { targetId: 'e2', label: `old ${token} rival` }];
+    const { src, writes } = sources({ entities: [entity({ relationships }), entity({ id: 'e2', name: 'Bram' })] });
+    const matches = findMatches(collectSearchTargets(src), 'old', LOOSE).filter((m) => m.target.fieldKey === 'relationships[1].label');
+    replaceAll(matches, () => 'new');
+    expect(writes[0][1]).toMatchObject({ relationships: [relationships[0], { targetId: 'e2', label: `new ${token} rival` }] });
   });
 
   it('leaves a chip token intact when replacing text around it', () => {

@@ -56,6 +56,7 @@ const TAB_BY_FIELD: Record<string, EntityPanelTab> = {
   imageTags: 'profile',
   'aliases[]': 'profile',
   pronouns: 'profile',
+  'relationships[].label': 'profile',
   playerDescription: 'descriptions',
   aiDescription: 'descriptions',
   aiSummary: 'descriptions',

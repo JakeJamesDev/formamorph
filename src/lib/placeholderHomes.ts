@@ -485,12 +485,15 @@ export function mapEntityChips<T extends Entity>(entity: T, map: (text: string) 
     ...(entity.aiSummary !== undefined ? { aiSummary: one(entity.aiSummary) } : {}),
     ...(entity.imageTags !== undefined ? { imageTags: one(entity.imageTags) } : {}),
     ...(entity.pronouns !== undefined ? { pronouns: one(entity.pronouns) } : {}),
+    ...(entity.relationships ? { relationships: entity.relationships.map((r) => ({ ...r, label: one(r.label) ?? r.label })) } : {}),
     ...(entity.openings ? { openings: entity.openings.map((o) => ({ ...o, text: one(o.text) ?? o.text })) } : {}),
   };
   const same = next.name === entity.name && sameTexts(next.aliases, entity.aliases)
     && next.playerDescription === entity.playerDescription && next.aiDescription === entity.aiDescription
     && next.aiSummary === entity.aiSummary && next.imageTags === entity.imageTags
-    && next.pronouns === entity.pronouns && sameTexts(next.openings?.map((o) => o.text), entity.openings?.map((o) => o.text));
+    && next.pronouns === entity.pronouns
+    && sameTexts(next.relationships?.map((r) => r.label), entity.relationships?.map((r) => r.label))
+    && sameTexts(next.openings?.map((o) => o.text), entity.openings?.map((o) => o.text));
   return same ? entity : next;
 }
 

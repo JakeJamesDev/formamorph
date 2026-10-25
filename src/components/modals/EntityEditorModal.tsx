@@ -143,6 +143,7 @@ const EntityEditorModal = ({
       const e = entityRef.current;
       return directChipTargets([
         e?.name, ...(e?.aliases ?? []), e?.playerDescription, e?.aiDescription, e?.aiSummary, e?.imageTags, e?.pronouns,
+        ...(e?.relationships ?? []).map((r) => r.label),
       ].filter((t): t is string => !!t));
     },
     ...(ownId && { owner: { kind: 'entity' as const, id: ownId } }),

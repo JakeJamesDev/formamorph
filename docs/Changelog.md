@@ -50,6 +50,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Placeholders:**
     - **An entity's Pronouns field now takes placeholder chips.** Type `{` or drag a chip in. The AI and play-time scripts read the pronouns the entity's own placeholders resolve to.
     - **A connection's Travel Hints now take placeholder chips in the World Editor.** Linked hints share one roll both ways. Unlink them, and each direction rolls on its own. The editor's map shows the values in braces.
+    - **An entity's Relationship labels now take placeholder chips.** Type `{` or drag a chip in. Each label resolves with the entity's own placeholders, even when its line prints on the persona's block.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.

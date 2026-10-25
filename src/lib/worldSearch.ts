@@ -3,7 +3,8 @@ import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } fr
 import { builtinLabel } from '@/lib/builtinPlaceholders';
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { foldSeparators, labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
-import { placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
+import { allPlaceholders, placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
+import { PERSONA_TARGET_LABEL, UNKNOWN_TARGET_LABEL, YOU_TARGET } from '@/lib/entityRelationships';
 import { withPinnedValue } from '@/lib/placeholderPins';
 import { acceptsBlueprintChips, dropBlueprintChips } from '@/lib/blueprintChips';
 import {
@@ -235,6 +236,13 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   });
 
   // ── Entities ──────────────────────────────────────────────────────────────
+  // A relationship row is named by its target, a chip-bearing name in braces.
+  const everyPlaceholder = allPlaceholders(src);
+  const relationshipTargetName = (targetId: string) => {
+    if (targetId === YOU_TARGET) return PERSONA_TARGET_LABEL;
+    const target = src.entities?.find((e) => e.id === targetId);
+    return target ? describePlaceholders(target.name, everyPlaceholder) : UNKNOWN_TARGET_LABEL;
+  };
   (src.entities ?? []).forEach((entity) => {
     const where = { tab: 'entities', itemId: entity.id, itemLabel: labeled(entity.name, 'Entity') };
     const { add, addEach } = bind(`entity:${entity.id}`, entity, src.updateEntity);
@@ -246,6 +254,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: true }, 'pronouns', 'Pronouns', entity.pronouns, (r, v) => ({ ...r, pronouns: v }));
     add({ ...where, chipCapable: false }, 'type', 'Type', entity.type, (r, v) => ({ ...r, type: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', entity.imageTags, (r, v) => ({ ...r, imageTags: v }));
+    (entity.relationships ?? []).forEach(({ targetId, label }, i) => {
+      add({ ...where, chipCapable: true }, `relationships[${i}].label`, `Relationship to ${relationshipTargetName(targetId)}`, label,
+        (r, v) => ({ ...r, relationships: (r.relationships ?? []).map((row, j) => (j === i ? { ...row, label: v } : row)) }));
+    });
     (entity.openings ?? []).forEach((opening, i) => {
       add({ ...where, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
         (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));

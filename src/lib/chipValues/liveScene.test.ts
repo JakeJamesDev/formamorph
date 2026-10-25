@@ -75,6 +75,34 @@ describe('the live adapter', () => {
     expect(values('<ENTITIES>')).not.toContain('{{char}}');
   });
 
+  describe('relationship labels', () => {
+    // Each owner reads its own roll for the Role chip; the world-level resolve reads another.
+    const ROLE = '{{ph:role:world:p1}}';
+    const roles: Record<string, string> = { wren: 'first mate', oar: 'rival', keel: '' };
+    const labeled = (persona: Entity, played: Entity[]) => chipValues(liveChipScene(sources({
+      persona: { source: 'world', entity: persona }, playedEntities: played,
+      resolve: (text) => text.replaceAll(ROLE, 'stranger'),
+      resolveEntity: (entity, text) => text.replaceAll(ROLE, roles[entity.id] ?? 'unknown'),
+    })))('<PERSONA>') ?? '';
+    const holds = (id: string, name: string): Entity => ({
+      id, name, persona: true, relationships: [{ targetId: 'harbormaster', label: ROLE }],
+    });
+
+    it("resolves a played entity's label in its own scope when its line moves onto the persona's block", () => {
+      const wren = holds('wren', 'Wren');
+      expect(labeled(wren, [wren])).toContain("Harbormaster is Wren's first mate");
+      const oar = holds('oar', 'Oar');
+      const block = labeled({ id: 'wren', name: 'Wren', persona: true }, [{ id: 'wren', name: 'Wren', persona: true }, oar]);
+      expect(block).toContain("Harbormaster is Wren's rival");
+      expect(block).not.toContain('stranger');
+    });
+
+    it('prints no line for a label that resolves to blank', () => {
+      const keel = holds('keel', 'Keel');
+      expect(labeled(keel, [keel])).not.toContain('Harbormaster is');
+    });
+  });
+
   it("nests the Stats chip and each present entity's stats under their authored groups, headings resolved", () => {
     const nerve: StatGroup = { id: 'nerve', name: 'Nerve', aiDescription: 'Steady on {{deck}}.', parentId: null };
     const back: StatGroup = { id: 'back', name: 'Back', parentId: null };

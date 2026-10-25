@@ -129,6 +129,7 @@ const EntityManager = ({
                   entity={editingEntity}
                   entities={entitiesInTreeOrder(entityGroups, entities)}
                   labelOf={(e) => labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}
+                  placeholders={placeholders}
                   onChange={(relationships) => writeWhole(withRelationships(editingEntity, relationships))}
                 />
               </>

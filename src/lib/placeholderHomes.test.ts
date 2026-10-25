@@ -221,12 +221,16 @@ describe('duplicateEntityPlaceholders', () => {
       aiSummary: chip('eyes', 'e'),
       imageTags: chip('eyes', 'f'),
       pronouns: chip('eyes', 'g'),
+      relationships: [{ targetId: 'you', label: chip('eyes', 'h') }],
     });
     const copy = duplicateEntityPlaceholders(src);
     const fresh = copy.placeholders?.[0].id;
     expect(fresh).toBeDefined();
     expect(fresh).not.toBe('eyes');
-    for (const text of [copy.name, copy.aliases?.[0], copy.playerDescription, copy.aiDescription, copy.aiSummary, copy.imageTags, copy.pronouns]) {
+    for (const text of [
+      copy.name, copy.aliases?.[0], copy.playerDescription, copy.aiDescription, copy.aiSummary, copy.imageTags, copy.pronouns,
+      copy.relationships?.[0].label,
+    ]) {
       expect(decodePlaceholderToken(text!.match(/\{\{ph:[^}]+\}\}/)![0])?.id).toBe(fresh);
     }
     // The source is untouched.
@@ -414,6 +418,18 @@ describe('adoptEntityPlaceholders', () => {
     const { entity } = adoptEntityPlaceholders(card, [P('w-weather', 'Weather', ['rain', 'sun'])]);
     expect(chipIds(entity.openings![0].text)).toEqual([entity.placeholders?.[0].id, 'w-weather']);
     expect(entity.openings![0]).toMatchObject({ id: 'o1', kind: 'narration' });
+  });
+
+  it('re-aims the chips in an entity’s relationship labels at the defs they land on', () => {
+    const card: Entity = {
+      id: 'card', name: 'Molly',
+      relationships: [{ targetId: 'you', label: `${chip('eyes', 'a')} kin from ${chip('shared', 'b')}` }],
+      placeholders: [P('eyes', 'Eyes', ['amber'])],
+      sharedPlaceholders: [P('shared', 'Weather', ['rain', 'sun'])],
+    };
+    const { entity } = adoptEntityPlaceholders(card, [P('w-weather', 'Weather', ['rain', 'sun'])]);
+    expect(chipIds(entity.relationships![0].label)).toEqual([entity.placeholders?.[0].id, 'w-weather']);
+    expect(entity.relationships![0].targetId).toBe('you');
   });
 
   it('adds a shared def the world has no match for, and re-aims a chip inside an owned value at it', () => {

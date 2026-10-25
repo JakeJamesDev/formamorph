@@ -78,7 +78,8 @@ describe('sameLetters', () => {
 describe('the document walk', () => {
   it('runs entities, locations, travel hints, traits, stats, dictionaries, then placeholder values', () => {
     const texts = worldPlacementTexts({
-      entities: [{ id: 'e', name: 'ent', aliases: ['ent-alias'], playerDescription: 'ent-pd', pronouns: 'ent-pro' }],
+      entities: [{ id: 'e', name: 'ent', aliases: ['ent-alias'], playerDescription: 'ent-pd', pronouns: 'ent-pro',
+        relationships: [{ targetId: 'you', label: 'ent-rel' }] }],
       locations: [{ id: 'l', name: 'loc', aiSummary: 'loc-ais' }],
       connections: [{ id: 'c', a: 'l', b: 'l2', aToB: { hint: 'hint-ab' }, bToA: { hint: 'hint-ba' } }],
       traits: [{ id: 't', name: 'trait', statChanges: [] }],
@@ -93,8 +94,8 @@ describe('the document walk', () => {
       placeholders: [P('p', 'ph', ['value'])],
     });
     expect(texts).toEqual([
-      'ent', 'ent-alias', 'ent-pd', 'ent-pro', 'loc', 'loc-ais', 'hint-ab', 'hint-ba', 'trait', 'group', 'stat', 'stat-desc',
-      'band-lo', 'band-hi',
+      'ent', 'ent-alias', 'ent-pd', 'ent-pro', 'ent-rel', 'loc', 'loc-ais', 'hint-ab', 'hint-ba', 'trait', 'group', 'stat',
+      'stat-desc', 'band-lo', 'band-hi',
       'entry', 'k1', 'val', 'sys', 'value',
     ]);
   });
