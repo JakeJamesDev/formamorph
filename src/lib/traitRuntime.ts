@@ -254,6 +254,9 @@ export function codeDeltaFor(stat: PlayerStat, written: CodeBounds, active: read
 export const sameCodeDelta = (a: CodeBoundDeltas = {}, b: CodeBoundDeltas = {}): boolean =>
   CODE_BOUND_KEYS.every((field) => (a[field] ?? 0) === (b[field] ?? 0));
 
+/** Whether two stats agree on being hidden, an absent flag reading as shown. */
+export const sameHidden = (a: Pick<PlayerStat, 'hidden'>, b: Pick<PlayerStat, 'hidden'>): boolean => (a.hidden === true) === (b.hidden === true);
+
 /** `stat` carrying exactly `codeDelta`, re-derived under `active`, with `value` clamped in. */
 export function withCodeDelta(
   stat: PlayerStat,

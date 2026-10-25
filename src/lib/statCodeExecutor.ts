@@ -51,7 +51,7 @@ export const CODE_BOUND_FIELDS = ['min', 'max', 'regen'] as const satisfies read
 export type CodeBoundField = (typeof CODE_BOUND_FIELDS)[number];
 
 /** The fields a write reaches on every stat, whatever route reaches it. Every other stat field is read-only. */
-export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
+export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS, 'hidden'];
 
 /** The one field on a trait entry a write reaches. The switch lands after the run. */
 export const TRAIT_WRITABLE_FIELD = 'enabled';
@@ -61,7 +61,7 @@ export const PLACEHOLDER_WRITABLE_FIELD = 'value';
 
 /** What one run wrote to one stat other than `self`. The value is as written: the turn clamps it once every
  *  writer's bounds have landed. */
-export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>>;
+export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>> & { hidden?: boolean };
 
 export interface StatCodeResult {
   /** The value the code set, by return or by `self.value`, as written: the turn clamps it once every bound
@@ -72,6 +72,8 @@ export interface StatCodeResult {
   kind?: StatCodeFailure;
   /** The bounds the code assigned on `self`, changed or not. Absent when it assigned none. */
   bounds?: CodeBounds;
+  /** The `hidden` the code assigned on `self`, changed or not. Absent when it assigned none. */
+  hidden?: boolean;
   /** The global stats other than `self` the code wrote through `stats`, in map order. Absent when it wrote none. */
   statWrites?: StatWrite[];
   /** The entity stats other than `self` the code wrote, by owner: the run's own owner first, then each other
@@ -321,7 +323,7 @@ export interface ValueAndMax {
   max: number;
 }
 
-/** The plain 8-field shape of a stat, with none of the turn-relative parts `self` and `stats` entries add.
+/** The plain shape of a stat, with none of the turn-relative parts `self` and `stats` entries add.
  *  What `previous` marshals down to. */
 export interface StatSnapshot {
   id: string;
@@ -332,6 +334,7 @@ export interface StatSnapshot {
   max: number;
   value: number;
   regen: number;
+  hidden: boolean;
 }
 
 /** The numbers a stat carries, and the fields of every `delta` source. */
@@ -366,6 +369,7 @@ const marshalSnapshot = (stat: Stat): StatSnapshot => ({
   max: stat.max || 100,
   value: stat.value || 0,
   regen: stat.regen || 0,
+  hidden: stat.hidden === true,
 });
 
 /** `value` clamped to the range an authored `stat` holds after a run's own bound writes, the min floored at
@@ -409,8 +413,8 @@ function keyedStatEntries(entries: readonly StatEntry[]): StatEntry[] {
   return entries.filter((entry) => owner.get(entry.name) === entry);
 }
 
-/** A `stats` entry for a name no stat has: every field blank, and off. */
-const blankStatEntry = (template: StatEntry): unknown => ({ ...(blankOf(template) as object), enabled: false });
+/** A `stats` entry for a name no stat has: every field blank, so off and shown. */
+const blankStatEntry = (template: StatEntry): unknown => blankOf(template);
 
 /** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data.
  *  A list `value` marks an Object, and is what `pin` takes on that entry. */
@@ -582,10 +586,11 @@ const trackedMapPrelude = (spec: TrackedMapSpec): string => [
   `})(JSON.stringify, Object.keys);`,
 ].join('\n');
 
-/** `entry` with every string emptied and every number zeroed, at every depth. */
+/** `entry` with every string emptied, every number zeroed and every boolean false, at every depth. */
 const blankOf = (entry: unknown): unknown => {
   if (typeof entry === 'string') return '';
   if (typeof entry === 'number') return 0;
+  if (typeof entry === 'boolean') return false;
   if (typeof entry !== 'object' || entry === null) return entry;
   return Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, blankOf(value)]));
 };
@@ -1188,8 +1193,11 @@ function readPlaceholderWrites(
   return { writes, unknown, unknownOwned, readOnly };
 }
 
-const isWritableField = (field: unknown): field is 'value' | CodeBoundField =>
+const isWritableField = (field: unknown): field is 'value' | CodeBoundField | 'hidden' =>
   typeof field === 'string' && SELF_WRITABLE_FIELDS.includes(field);
+
+/** Why a stat write fails its run. */
+type StatWriteError = { error: string; kind: StatCodeFailure };
 
 /** What a run wrote through one stat map. */
 interface StatMapWrites {
@@ -1200,15 +1208,16 @@ interface StatMapWrites {
 }
 
 /** What the run wrote through one stat map, from its reader's rows. A value is a write when it changed; a
- *  bound is a write whenever it was assigned. A write is kept on a live stat, and dropped and reported on an
- *  unknown name or a switched-off stat. Any write that is not a finite number fails the run. `readOnly` lists
- *  the read-only fields on the map's entries; a `self` that is an entry reports under its path in the map. */
+ *  bound or `hidden` is a write whenever it was assigned. A write is kept on a live stat, and ignored and
+ *  reported on an unknown name or a switched-off stat. A number field written anything but a finite number,
+ *  or `hidden` anything but a boolean, fails the run. `readOnly` lists the read-only fields on the map's
+ *  entries; a `self` that is an entry reports under its path in the map. */
 function readStatWrites(
   rows: unknown,
   entries: readonly StatEntry[],
   /** How code names the map. */
   root: string,
-): StatMapWrites | { error: string } {
+): StatMapWrites | StatWriteError {
   const byName = new Map(entries.map((entry) => [entry.name, entry]));
   const writes: StatWrite[] = [];
   const unknown: string[] = [];
@@ -1221,14 +1230,21 @@ function readStatWrites(
     if (readOnlyFields === null) { readOnly.push(path); continue; }
     readOnly.push(...readOnlyPaths(path, readOnlyFields));
     const entry = byName.get(name);
-    const fields: Partial<StatNumbers> = {};
+    const fields: Partial<StatNumbers> & { hidden?: boolean } = {};
     for (const pair of Array.isArray(assigned) ? assigned : []) {
       if (!Array.isArray(pair) || !isWritableField(pair[0])) continue;
-      const [field, number] = pair as [keyof StatNumbers, unknown];
+      const [field, written] = pair as [keyof StatNumbers | 'hidden', unknown];
+      if (field === 'hidden') {
+        if (typeof written !== 'boolean') return { error: `${path}.hidden must be true or false`, kind: 'bad-write' };
+        fields.hidden = written;
+        continue;
+      }
       // An unknown name has no value to keep, so any assignment through it is a write.
-      if (field === 'value' && entry && Object.is(number, entry.value)) continue;
-      if (typeof number !== 'number' || !Number.isFinite(number)) return { error: `${path}.${field} must be a finite number` };
-      fields[field] = number;
+      if (field === 'value' && entry && Object.is(written, entry.value)) continue;
+      if (typeof written !== 'number' || !Number.isFinite(written)) {
+        return { error: `${path}.${field} must be a finite number`, kind: 'non-number' };
+      }
+      fields[field] = written;
     }
     const written = Object.keys(fields);
     if (!written.length) continue;
@@ -1247,7 +1263,7 @@ function readEntityStatWrites(
   dump: string,
   { byName, persona }: KeyedEntities,
   statEntriesOf: (entity: SandboxEntity) => StatEntry[],
-): (Omit<StatMapWrites, 'writes'> & { owners: OwnerStatWrites[] }) | { error: string } {
+): (Omit<StatMapWrites, 'writes'> & { owners: OwnerStatWrites[] }) | StatWriteError {
   const parsed: unknown = JSON.parse(dump);
   const out = { owners: [] as OwnerStatWrites[], unknown: [] as string[], disabled: [] as string[], readOnly: [] as string[] };
   for (const row of Array.isArray(parsed) ? parsed : []) {
@@ -1779,7 +1795,7 @@ export const executeStatCode = async (
       readOnly ? readOnlyCode(code, !!args) : code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,
-      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES})];`,
+      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES}), ${selfRead('hidden')}];`,
     ].join('\n');
 
     return await runInSandbox(program, ({ vm, result, consoleOutput, timedOut }): StatCodeResult => {
@@ -1800,11 +1816,14 @@ export const executeStatCode = async (
 
       // Each half is read by its own handle and typeof, never through a JSON dump: a dump turns
       // `undefined` and `NaN` into `null`, which would erase the difference between them.
-      const readSlot = (index: number): { type: string; number: number; text: string } => {
+      const readSlot = (index: number): { type: string; number: number; text: string; flag: boolean } => {
         const handle = vm.getProp(result.value, index);
         try {
           const type = vm.typeof(handle);
-          return { type, number: type === 'number' ? vm.getNumber(handle) : NaN, text: type === 'string' ? vm.getString(handle) : '' };
+          return {
+            type, number: type === 'number' ? vm.getNumber(handle) : NaN, text: type === 'string' ? vm.getString(handle) : '',
+            flag: type === 'boolean' && vm.dump(handle) === true,
+          };
         } finally {
           handle.dispose();
         }
@@ -1835,12 +1854,13 @@ export const executeStatCode = async (
       const entitiesDump = readDump(4 + CODE_BOUND_FIELDS.length);
       const statsDump = readDump(5 + CODE_BOUND_FIELDS.length);
       const dictionariesDump = readDump(6 + CODE_BOUND_FIELDS.length);
-      const assignedBounds: unknown = JSON.parse(readDump(7 + CODE_BOUND_FIELDS.length));
+      const selfAssigned: unknown = JSON.parse(readDump(7 + CODE_BOUND_FIELDS.length));
       const ownerStatsDump = readDump(8 + CODE_BOUND_FIELDS.length);
       const loose: unknown = JSON.parse(readDump(9 + CODE_BOUND_FIELDS.length));
       const entityStatsDump = readDump(10 + CODE_BOUND_FIELDS.length);
       const assignedSentence = readSlot(11 + CODE_BOUND_FIELDS.length);
       const worldWrites = readWorldWrites(readDump(12 + CODE_BOUND_FIELDS.length));
+      const selfHidden = readSlot(13 + CODE_BOUND_FIELDS.length);
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
@@ -1858,19 +1878,22 @@ export const executeStatCode = async (
         return nonNumberFailure('self.value must be a number');
       }
       // A bound the code assigned is a write, changed or not; one it left alone keeps the pipeline's result.
+      const wroteSelf = (field: string) => !!currentStat && Array.isArray(selfAssigned) && selfAssigned.includes(field);
       const bounds: CodeBounds = {};
       for (const [field, slot] of currentStat ? boundSlots : []) {
-        const assigned = Array.isArray(assignedBounds) && assignedBounds.includes(field);
-        if (!assigned && slot.type === 'number' && Object.is(slot.number, selfData[field])) continue;
+        if (!wroteSelf(field) && slot.type === 'number' && Object.is(slot.number, selfData[field])) continue;
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
         bounds[field] = slot.number;
       }
+      // `hidden` is a write whenever it was assigned, as a bound is.
+      if (wroteSelf('hidden') && selfHidden.type !== 'boolean') return failure('self.hidden must be true or false', 'bad-write');
+      const hidden = wroteSelf('hidden') ? { hidden: selfHidden.flag } : {};
       const statWrites = readStatWrites(JSON.parse(statsDump), keyedStats, 'stats');
-      if ('error' in statWrites) return nonNumberFailure(statWrites.error);
+      if ('error' in statWrites) return failure(statWrites.error, statWrites.kind);
       const ownerStatWrites = readStatWrites(JSON.parse(ownerStatsDump), keyedOwnerStats, 'owner.stats');
-      if ('error' in ownerStatWrites) return nonNumberFailure(ownerStatWrites.error);
+      if ('error' in ownerStatWrites) return failure(ownerStatWrites.error, ownerStatWrites.kind);
       const entityStatWrites = readEntityStatWrites(entityStatsDump, keyed, statEntriesOf);
-      if ('error' in entityStatWrites) return nonNumberFailure(entityStatWrites.error);
+      if ('error' in entityStatWrites) return failure(entityStatWrites.error, entityStatWrites.kind);
       const ownerRows: OwnerStatWrites[] = [
         ...(owner && ownerStatWrites.writes.length ? [{ ownerId: owner.id ?? '', writes: ownerStatWrites.writes }] : []),
         ...entityStatWrites.owners,
@@ -1898,6 +1921,7 @@ export const executeStatCode = async (
         value,
         error: null,
         ...(Object.keys(bounds).length ? { bounds } : {}),
+        ...hidden,
         ...(statWrites.writes.length ? { statWrites: statWrites.writes } : {}),
         ...(ownerRows.length ? { ownerStatWrites: ownerRows } : {}),
         ...(unknownStatWrites.length ? { unknownStatWrites } : {}),

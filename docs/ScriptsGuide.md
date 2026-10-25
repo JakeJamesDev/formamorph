@@ -351,8 +351,8 @@ A script can use only these objects. A word in angle brackets stands for a name 
 
 | Object | Members | Read | Write |
 | --- | --- | --- | --- |
-| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
-| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
+| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `previous`, `delta` | `self.value` | `self.value = <n>` |
+| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number` | `turn.number` | Read-only |
@@ -387,7 +387,7 @@ Follow these rules:
 - **An entity's scripts read its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's script, `owner` is the entity the run is for. In a global stat's script, it's an empty entry: reads are blank, and a write is ignored and reported.
 - **Another entity's stats are under `entities.<Entity>.stats`.** The played persona's are under `persona.stats`.
 - **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
-- **`self` and every `stats` entry take writes to `value`, `min`, `max` and `regen`.** So does every stat entry under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`. Their other fields are read-only.
+- **`self` and every `stats` entry take writes to `value`, `min`, `max`, `regen` and `hidden`.** So does every stat entry under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`. Their other fields are read-only.
 - **A name that its timing does not add is unknown.** `narration` in a Before the AI script, and `player` in a During AI Output script, show an error underline. A `narration` read fails the run with "not defined". A `player` call in During AI Output throws "can't run in During AI Output".
 
 ## Writing Scripts
@@ -481,7 +481,8 @@ Each stat in the `stats` map, `self` included, exposes the following properties.
 | `value` | Current value, with this turn's AI change and regen applied |
 | `enabled` | False while a trait's stat toggle switches the stat off. Read-only |
 | `regen` | Regen per story hour, with traits applied |
-| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
+| `hidden` | True when the stat is hidden from the player. The AI still reads it. See [Hiding and Showing a Stat](#hiding-and-showing-a-stat) |
+| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`, `hidden`. Read-only |
 | `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
 
 A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is ignored and reported. A live stat wins a code name over a switched-off one. Between stats in the same state, the later one wins.
@@ -491,7 +492,7 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 ### Writing to `self`
 <!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify own stat, underlined write, scale with level up, this keyword -->
 
-`self` is the stat the code belongs to. In a global stat's code, it is the same entry that sits in `stats`, so `self.value` and `stats[self.name].value` read the same. In an entity stat's code, it is the same entry that sits in `owner.stats`, so `self.value` and `owner.stats[self.name].value` read the same. A write through either path is one write. Four of its fields take writes:
+`self` is the stat the code belongs to. In a global stat's code, it is the same entry that sits in `stats`, so `self.value` and `stats[self.name].value` read the same. In an entity stat's code, it is the same entry that sits in `owner.stats`, so `self.value` and `owner.stats[self.name].value` read the same. A write through either path is one write. Five of its fields take writes:
 
 | Write | Effect |
 | --- | --- |
@@ -499,6 +500,7 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 | `self.min = n` | Sets the floor to `n` now, but never below the authored min. Later changes move it from `n` |
 | `self.max = n` | Sets the cap to `n` now. Later changes move it from `n` |
 | `self.regen = n` | Sets regen per story hour to `n` now. Later changes move it from `n` |
+| `self.hidden = true` | Hides the stat from the player. `false` shows it. See [Hiding and Showing a Stat](#hiding-and-showing-a-stat) |
 
 A field you do not write keeps what the turn gave it. So a script can move the cap and leave the value to the AI:
 
@@ -517,7 +519,7 @@ A bound write works like a value write. After `self.max = 20`, the cap reads 20 
 | The AI raises the max by 5 | 25 |
 | The code writes `self.max = 40` | 40 |
 
-No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Every other field of `self` is read-only. To write a stat other than `self`, see [Writing to Other Stats](#writing-to-other-stats).
+No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Writing anything but `true` or `false` to `hidden` fails the run. Every other field of `self` is read-only. To write a stat other than `self`, see [Writing to Other Stats](#writing-to-other-stats).
 
 ### Writing to Other Stats
 <!-- keywords: move another stat, change another stat, hub stat, one event many stats, write stats map, damage health from a roll, raise luck on a twenty, cap another stat, change another stat's max, change another stat's regen, change an entity's stat, drain an npc, push a global stat from an entity's code, cross-owner write, owner order, entity's own stats, npc stat code, two scripts write one stat, which write wins, order of stats, last write wins, target does not see the write, blueprint stat code, each owner's copy, two writers warning, two boxes write one field -->
@@ -547,7 +549,7 @@ An entity's stat can move a global stat too. This code runs on a stat of The Cre
 stats["Alert Level"].value += owner.stats.Rage.value / 10;
 ```
 
-Every stat entry on every route takes writes to the same four fields as `self`: `value`, `min`, `max` and `regen`. They work as they do on `self`. A value clamps to the target's range. A bound sets the number now, and later changes move it from there. A min never goes below the authored min. `stats.Health.max = 20` makes the cap 20 now, and a trait that adds 10 later makes it 30. `null` fails the run.
+Every stat entry on every route takes writes to the same five fields as `self`: `value`, `min`, `max`, `regen` and `hidden`. They work as they do on `self`. A value clamps to the target's range. A bound sets the number now, and later changes move it from there. A min never goes below the authored min. `stats.Health.max = 20` makes the cap 20 now, and a trait that adds 10 later makes it 30. `null` fails the run.
 
 | Rule | What it means |
 | --- | --- |
@@ -576,6 +578,28 @@ The [Test Bench](Test-Bench#issues) warns when more than one box writes the same
 - A Blueprint stat's box counts once for each owner. Each owner's own copy of the stat is judged on its own, so two owners don't clash on their own stats. A Blueprint box that writes a global stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
 
 A warning isn't an error. Owner order, then stat order, already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
+
+### Hiding and Showing a Stat
+<!-- keywords: reveal a stat, unhide, unlock a stat, show a stat later, secret stat, stat appears mid story, hide a stat, remove from panel, hidden stat, show to the player -->
+
+`hidden` is the stat's **Hidden** setting during play. A hidden stat is off the player's panel, with its change chips and its lines on trait cards. The AI still reads it, and its regen and scripts still run.
+
+```javascript
+// A world script: show Rage once Anger reaches 50.
+if (!stats.Rage.hidden) return;
+if (stats.Anger.value >= 50) {
+  stats.Rage.hidden = false;
+  player.tell('A new stat: Rage.');
+}
+```
+
+- **It applies with the other stat writes.** It applies after the run, in run order, so a later write wins. Later in the same run, the entry reads what you set.
+- **A During AI Output write waits.** It applies with the After the AI scripts' writes, before those scripts run.
+- **A shown stat shows this turn's changes.** It appears with its change chips for this turn.
+- **The game adds no notice.** Call `player.tell` or `player.toast` to tell the player.
+- **It persists for the playthrough.** The save keeps it, and an undo or a re-roll takes it back with the turn.
+- **`previous.hidden` reads the turn start.** Compare it with `hidden` to find the turn that showed the stat.
+- **A user Tool can't write it.** The write is ignored and reported, as every user Tool write is.
 
 ### Reading This Turn
 <!-- keywords: old value, how much it moved, overflow, wasted gain, halve damage, multiply narrator change, before and after, excess past maximum, requested amount -->

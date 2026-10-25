@@ -104,9 +104,9 @@ describe('writes on every stat route', () => {
 
   it('still names a read-only field on every route, with the path it was reached by', () => {
     expect(messages('entities.Creature.stats.Hunger.name = "x";\nreturn 1;', owned))
-      .toEqual(['entities.Creature.stats.Hunger.name can’t be written. Only entities.Creature.stats.Hunger.value, entities.Creature.stats.Hunger.min, entities.Creature.stats.Hunger.max, entities.Creature.stats.Hunger.regen can.']);
+      .toEqual(['entities.Creature.stats.Hunger.name can’t be written. Only entities.Creature.stats.Hunger.value, entities.Creature.stats.Hunger.min, entities.Creature.stats.Hunger.max, entities.Creature.stats.Hunger.regen, entities.Creature.stats.Hunger.hidden can.']);
     expect(messages('persona.stats.Trust.previous.value = 1;\nreturn 1;', owned)[0])
-      .toBe('persona.stats.Trust.previous can’t be written. Only persona.stats.Trust.value, persona.stats.Trust.min, persona.stats.Trust.max, persona.stats.Trust.regen can.');
+      .toBe('persona.stats.Trust.previous can’t be written. Only persona.stats.Trust.value, persona.stats.Trust.min, persona.stats.Trust.max, persona.stats.Trust.regen, persona.stats.Trust.hidden can.');
     expect(messages('stats.Destruction.id = "x";\nreturn 1;', owned)[0]).toMatch(/^stats\.Destruction\.id can’t be written/);
     expect(messages('owner.stats.Hunger.valeu = 1;\nreturn 1;', owned))
       .toEqual(['owner.stats.Hunger has no field “valeu”. Did you mean “value”?']);
@@ -175,7 +175,7 @@ describe('self follows the owner', () => {
   it('reads owner.stats.<own name> as the running stat in an owned box', () => {
     expect(messages('owner.stats.Rage = 5;\nreturn 1;', owned)).toEqual(['Write to self.value instead.']);
     expect(messages('owner.stats["Rage"].name = "x";\nreturn 1;', owned))
-      .toEqual(['owner.stats["Rage"].name can’t be written. Only self.value, self.min, self.max, self.regen can.']);
+      .toEqual(['owner.stats["Rage"].name can’t be written. Only self.value, self.min, self.max, self.regen, self.hidden can.']);
     expect(messages('const me = owner.stats.Rage;\nme.name = "x";\nreturn 1;', owned)[0]).toMatch(/Only self\.value/);
   });
 

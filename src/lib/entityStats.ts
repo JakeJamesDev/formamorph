@@ -163,7 +163,7 @@ export function withOwnerCodeResults(
   values: EntityStatValues, results: Readonly<Record<string, OwnerCodeResult>> | undefined, inForce: OwnerStatTraits,
 ): EntityStatValues {
   const moved = Object.entries(results ?? {})
-    .filter(([id, r]) => values[id] && (r.moved.length || r.boundsChanged.length || r.inForce));
+    .filter(([id, r]) => values[id] && (r.moved.length || r.boundsChanged.length || r.hiddenChanged.length || r.inForce));
   if (!moved.length) return values;
   return {
     ...values,

@@ -221,7 +221,7 @@ describe('statCodeCompletions', () => {
   it('offers the stat fields after a dot', () => {
     const offered = labels('const me = stats[self.name];\nreturn me.|');
     expect(offered).toEqual([
-      'id', 'name', 'type', 'description', 'enabled', 'min', 'max', 'value', 'regen', 'previous', 'delta',
+      'id', 'name', 'type', 'description', 'enabled', 'min', 'max', 'value', 'regen', 'hidden', 'previous', 'delta',
     ]);
   });
 
@@ -254,7 +254,7 @@ describe('statCodeCompletions', () => {
 
   it('offers the whole stat’s fields after previous, and none of its own turn-relative ones', () => {
     for (const doc of ['return self.previous.|', 'return stats[0].previous.|']) {
-      expect(labels(doc), doc).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen']);
+      expect(labels(doc), doc).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'hidden']);
     }
   });
 
@@ -727,7 +727,7 @@ describe('the stats map in stat code', () => {
     const options = { statNames, selfName: 'Mood' };
     expect(messages('stats.Mood.valeu = 5;', options)).toEqual(['stats.Mood has no field “valeu”. Did you mean “value”?']);
     expect(messages('stats["Mood"].name = "x";', options))
-      .toEqual(['stats["Mood"].name can’t be written. Only self.value, self.min, self.max, self.regen can.']);
+      .toEqual(['stats["Mood"].name can’t be written. Only self.value, self.min, self.max, self.regen, self.hidden can.']);
     expect(messages('const me = self;\nme.delta.ai.value = 1;', options)[0]).toMatch(/^me\.delta can’t be written/);
   });
 
@@ -735,9 +735,9 @@ describe('the stats map in stat code', () => {
     const options = { statNames, selfName: 'Mood' };
     expect(messages('stats.Health.valeu = 5;\nreturn 2;', options)).toEqual(['stats.Health has no field “valeu”. Did you mean “value”?']);
     expect(messages('stats.Health.previous.value = 1;\nreturn 2;', options))
-      .toEqual(['stats.Health.previous can’t be written. Only stats.Health.value, stats.Health.min, stats.Health.max, stats.Health.regen can.']);
+      .toEqual(['stats.Health.previous can’t be written. Only stats.Health.value, stats.Health.min, stats.Health.max, stats.Health.regen, stats.Health.hidden can.']);
     expect(messages('const hp = stats.Health;\nhp.delta.ai.value = 1;\nreturn 2;', options))
-      .toEqual(['hp.delta can’t be written. Only hp.value, hp.min, hp.max, hp.regen can.']);
+      .toEqual(['hp.delta can’t be written. Only hp.value, hp.min, hp.max, hp.regen, hp.hidden can.']);
   });
 
   it('says nothing after a chain that continues past the one lookup', () => {

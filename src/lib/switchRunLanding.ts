@@ -1,7 +1,7 @@
 import type { CascadeOffTraitIds, EntityStatValues, OwnedTraitStates, PlayerStat, Trait } from '@/types';
 import { ownStatsRecordKey, recordKey, recordKeyTrait } from './ownedTraitState';
 import type { OwnerId } from './scope';
-import { ownerStatTraitsInForce, sameCodeDelta, withCodeDelta, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
+import { ownerStatTraitsInForce, sameCodeDelta, sameHidden, withCodeDelta, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 
 /** One trait as one owner holds it. */
 interface Slot { ownerId: OwnerId; traitId: string }
@@ -102,7 +102,7 @@ const addInto = (into: Map<string, number>, record: Record<string, number> | und
 };
 
 /** `latest` with the run's stat movement from `start` to `ran` laid over it, less `undo`, under the traits in
- *  force. Every stat re-derives when the traits in force moved. */
+ *  force. A `hidden` the run flipped applies too. Every stat re-derives when the traits in force moved. */
 function landStats(
   start: readonly PlayerStat[], ran: readonly PlayerStat[], latest: PlayerStat[], undo: ReadonlyMap<string, number> | undefined,
   active: readonly Trait[], traitsMoved: boolean,
@@ -116,9 +116,11 @@ function landStats(
     const move = from && to ? to.value - from.value : 0;
     const back = undo?.get(stat.id) ?? 0;
     const bounds = !!from && !!to && !sameCodeDelta(from.codeDelta, to.codeDelta);
-    if (!move && !back && !bounds && !traitsMoved) return stat;
+    const flipped = !!from && !!to && !sameHidden(from, to);
+    if (!move && !back && !bounds && !flipped && !traitsMoved) return stat;
     changed = true;
-    return withCodeDelta(stat, bounds ? to?.codeDelta : stat.codeDelta, stat.value + move - back, active);
+    const shown = flipped ? { ...stat, hidden: to?.hidden === true } : stat;
+    return withCodeDelta(shown, bounds ? to?.codeDelta : stat.codeDelta, stat.value + move - back, active);
   });
   return changed ? out : latest;
 }
