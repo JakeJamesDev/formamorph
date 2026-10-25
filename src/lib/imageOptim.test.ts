@@ -12,6 +12,7 @@ import {
 } from './imageOptim';
 import type { Entity, TraitRequirementRow, World } from '@/types';
 import { applyEntityImagesOptimize, type ImageCodec } from './imageOptimCore';
+import { worldImageItems } from './mediaIndex';
 
 const WOUNDED: TraitRequirementRow[] = [{ all: [{ kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' }] }];
 
@@ -181,6 +182,32 @@ describe('downscaleWorldImages', () => {
     expect(new Set(totals)).toEqual(new Set([8]));
     // A world without one keeps the field absent.
     expect((await downscaleWorldImages(world, deps)).worldOverview).not.toHaveProperty('mapBackground');
+  });
+
+  it('shrinks every image slot the media index lists, each under its own cap', async () => {
+    const seen = new Map<string, unknown>();
+    const capDeps: DownscaleDeps = {
+      shouldEncode: (url, cap) => { seen.set(url, cap); return Promise.resolve(true); },
+      optimize: (url) => Promise.resolve(`OPT:${url}`),
+    };
+    const frame = { x: 0, y: 0, width: 10, height: 10 };
+    const everything = {
+      ...world,
+      worldOverview: {
+        ...world.worldOverview,
+        mapBackground: { images: [{ data: 'BIG-map', requires: WOUNDED }], frame, opacity: 1 },
+      },
+      dictionaries: [{ id: 'd1', name: 'Lore', entries: [], thumbnail: 'BIG-book' }],
+    } as unknown as World;
+    const listed = worldImageItems(everything);
+    expect(new Set(listed.map((i) => i.parent.kind))).toEqual(new Set(['world', 'map', 'entity', 'location', 'dictionary']));
+
+    const out = await downscaleWorldImages(everything, capDeps);
+    const after = worldImageItems(out);
+    expect(after.map((i) => i.id)).toEqual(listed.map((i) => i.id));
+    expect(after.map((i) => i.value)).toEqual(listed.map((i) => `OPT:${i.value}`));
+    expect(after.map((i) => i.rules)).toEqual(listed.map((i) => i.rules));
+    for (const i of listed) expect(seen.get(i.value)).toEqual(i.budget);
   });
 
   it('reports a zero total when the world has no images', async () => {

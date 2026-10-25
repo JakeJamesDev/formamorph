@@ -4,10 +4,8 @@ import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ImageRuleEditor, LOCATION_RULE_HOST, useEntityRuleHost } from '@/components/editor/ImageRuleCog';
 import { useGameData } from '@/contexts/GameDataContext';
-import { entityImages, withImageRule } from '@/lib/entityImages';
-import { locationImages } from '@/lib/locationImages';
-import { mapImages } from '@/lib/mapBackground';
 import { formatMediaBytes, mediaParentKey, totalBytes, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
+import { mediaParentSpec } from '@/lib/mediaParents';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, Placeholder, TraitRequirementRow } from '@/types';
 import { EntityImageWidget } from './EntityFields';
@@ -68,7 +66,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   const { entities, editEntity, locations, updateLocation, worldOverview, updateWorldOverview } = useGameData();
   const map = useMapBackground({ worldOverview, updateWorldOverview, locations });
   const isMap = parent.kind === 'map';
-  const { replace, remove } = useMediaItemActions();
+  const { replace, remove, setRules } = useMediaItemActions();
   const entity = parent.kind === 'entity' ? entities.find((e) => e.id === parent.id) : undefined;
   const location = parent.kind === 'location' ? locations.find((l) => l.id === parent.id) : undefined;
   const item = images[framed];
@@ -76,15 +74,10 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   const editField = (field: string, value: unknown) => {
     if (entity) editEntity(entity.id, (e) => ({ ...e, [field]: value }));
   };
-  const setRule = (rows: TraitRequirementRow[]) => {
-    const at = item?.galleryIndex;
-    if (at === undefined) return;
-    if (entity) editEntity(entity.id, (e) => ({ ...e, images: withImageRule(entityImages(e), at, rows) }));
-    else if (location) updateLocation({ ...location, images: withImageRule(locationImages(location), at, rows) });
-    else if (isMap) void map.setImages(withImageRule(mapImages(worldOverview), at, rows));
-  };
+  const setRule = (rows: TraitRequirementRow[]) => { if (item) setRules(item, rows); };
   const entityHost = useEntityRuleHost(entity?.id);
-  const ruleHost = location || isMap ? LOCATION_RULE_HOST : entityHost;
+  const hostKind = mediaParentSpec(parent.kind).ruleHost;
+  const ruleHost = hostKind === 'location' ? LOCATION_RULE_HOST : hostKind === 'entity' ? entityHost : undefined;
   const removeFramed = (target: MediaItem) => {
     // The frame stays on the same position, clamped. Ids are positional, so the id holds before and after.
     const left = images.length - 1;

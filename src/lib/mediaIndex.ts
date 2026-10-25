@@ -8,7 +8,8 @@ import { locationImages } from './locationImages';
 import { mapImages } from './mapBackground';
 import { buildEntityTree, type EntityTreeNode } from './entityGroupTree';
 import { buildLocationTree, type LocationTreeNode } from './locationTree';
-import { IMAGE_CAPS, type ImageCap } from './imageSlots';
+import type { ImageCap } from './imageSlots';
+import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
@@ -93,19 +94,22 @@ const file = (parent: MediaParent, kind: MediaKind, key: MediaSlotKey, slot: str
   ...(fileName ? { fileName } : {}),
 });
 
+/** The size budget of a parent's images. */
+const capOf = (parent: MediaParent): ImageCap => mediaParentSpec(parent.kind).cap;
+
 const entityParent = (e: Entity): MediaParent => ({ kind: 'entity', id: e.id, name: e.name });
 const locationParent = (l: GameLocation): MediaParent => ({ kind: 'location', id: l.id, name: l.name });
 
 /** One gallery's images, each with its position and rule. */
-const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[], cap: ImageCap): MediaItem[] =>
-  images.map((img, i) => image(parent, `image:${i}`, `Image ${i + 1}`, img.data, cap, {
+const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[]): MediaItem[] =>
+  images.map((img, i) => image(parent, `image:${i}`, `Image ${i + 1}`, img.data, capOf(parent), {
     galleryIndex: i, ...(img.requires?.length ? { rules: img.requires } : {}),
   }));
 
 /** One entity's media: its gallery, then its sound, then its 3D Model. */
 function entityMedia(e: Entity): MediaItem[] {
   const parent = entityParent(e);
-  const items = galleryMedia(parent, entityImages(e), IMAGE_CAPS.entity);
+  const items = galleryMedia(parent, entityImages(e));
   if (e.sound?.data) items.push(file(parent, 'sound', 'sound', 'Sound', e.sound.data, e.sound.name));
   if (e.model?.data) items.push(file(parent, 'model', 'model', '3D Model', e.model.data, e.model.name));
   return items;
@@ -114,13 +118,13 @@ function entityMedia(e: Entity): MediaItem[] {
 /** One location's media: its gallery, then its ambient sound. */
 function locationMedia(l: GameLocation): MediaItem[] {
   const parent = locationParent(l);
-  const items = galleryMedia(parent, locationImages(l), IMAGE_CAPS.background);
+  const items = galleryMedia(parent, locationImages(l));
   if (l.ambientSound?.data) items.push(file(parent, 'sound', 'ambientSound', 'Ambient Sound', l.ambientSound.data, l.ambientSound.name));
   return items;
 }
 
-const blankImage = (parent: MediaParent, key: MediaSlotKey, slot: string, budget: ImageCap): MediaItem => ({
-  id: itemId(parent, key), key, kind: 'image', parent, slot, value: '', bytes: 0, linked: false, budget, overBudget: false, blank: true,
+const blankImage = (parent: MediaParent, key: MediaSlotKey, slot: string): MediaItem => ({
+  id: itemId(parent, key), key, kind: 'image', parent, slot, value: '', bytes: 0, linked: false, budget: capOf(parent), overBudget: false, blank: true,
 });
 
 /** What each parent kind contributes to the sections: its media, or its empty image slots. */
@@ -134,11 +138,11 @@ interface MediaSource {
 }
 
 const BLANK_SOURCE: MediaSource = {
-  world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail', IMAGE_CAPS.thumbnail)]),
+  world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail')]),
   avatars: () => [],
-  map: (w) => (mapImages(w.worldOverview).length ? [] : [blankImage(MAP_PARENT, 'image:0', 'Image 1', IMAGE_CAPS.map)]),
-  entity: (e) => (entityImages(e).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1', IMAGE_CAPS.entity)]),
-  location: (l) => (locationImages(l).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1', IMAGE_CAPS.background)]),
+  map: (w) => (mapImages(w.worldOverview).length ? [] : [blankImage(MAP_PARENT, 'image:0', 'Image 1')]),
+  entity: (e) => (entityImages(e).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1')]),
+  location: (l) => (locationImages(l).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1')]),
   // A dictionary's Cover Image is optional, so an empty one is not a gap.
   dictionaries: () => [],
 };
@@ -146,7 +150,7 @@ const BLANK_SOURCE: MediaSource = {
 function worldMedia(w: MediaWorld): MediaItem[] {
   const o = w.worldOverview;
   const items: MediaItem[] = [];
-  if (o.thumbnail) items.push(image(WORLD_PARENT, 'thumbnail', 'Thumbnail', o.thumbnail, IMAGE_CAPS.thumbnail));
+  if (o.thumbnail) items.push(image(WORLD_PARENT, 'thumbnail', 'Thumbnail', o.thumbnail, capOf(WORLD_PARENT)));
   if (o.bgm) items.push(file(WORLD_PARENT, 'sound', 'bgm', 'Background Music', o.bgm));
   return items;
 }
@@ -161,7 +165,7 @@ function avatarMedia(w: MediaWorld): MediaItem[] {
 function dictionaryMedia(w: MediaWorld): MediaItem[] {
   return w.dictionaries.flatMap((d) => {
     const parent: MediaParent = { kind: 'dictionary', id: d.id, name: d.name };
-    return d.thumbnail ? [image(parent, 'thumbnail', 'Cover Image', d.thumbnail, IMAGE_CAPS.thumbnail)] : [];
+    return d.thumbnail ? [image(parent, 'thumbnail', 'Cover Image', d.thumbnail, capOf(parent))] : [];
   });
 }
 
@@ -218,7 +222,7 @@ function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
 }
 
 const MEDIA_SOURCE: MediaSource = {
-  world: worldMedia, avatars: avatarMedia, map: (w) => galleryMedia(MAP_PARENT, mapImages(w.worldOverview), IMAGE_CAPS.map), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia,
+  world: worldMedia, avatars: avatarMedia, map: (w) => galleryMedia(MAP_PARENT, mapImages(w.worldOverview)), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia,
 };
 
 /** The selection id of a section's header, apart from any item's. */
@@ -235,8 +239,8 @@ export const buildMediaIndex = (w: MediaWorld): MediaItem[] => mediaSections(w).
 
 export type ImageSlot = { url: string; cap: ImageCap; path: string };
 
-/** Every image in a world with its budget, from the index: the optimize scan and walk read the same list as the gallery. */
-export function worldImageSlots(w: Partial<MediaWorld>): ImageSlot[] {
+/** Every image item in a world with its budget: the optimize scan and walk read the same list as the gallery. */
+export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: ImageCap })[] {
   const index = buildMediaIndex({
     worldOverview: w.worldOverview ?? ({} as MediaWorld['worldOverview']),
     entities: w.entities ?? [],
@@ -244,8 +248,12 @@ export function worldImageSlots(w: Partial<MediaWorld>): ImageSlot[] {
     dictionaries: w.dictionaries ?? [],
     entityGroups: w.entityGroups,
   });
-  return index.flatMap((i) => (i.kind === 'image' && i.budget ? [{ url: i.value, cap: i.budget, path: i.id }] : []));
+  return index.filter((i): i is MediaItem & { budget: ImageCap } => i.kind === 'image' && !!i.budget);
 }
+
+/** Every image in a world as a scan slot: its data, budget and item id. */
+export const worldImageSlots = (w: Partial<MediaWorld>): ImageSlot[] =>
+  worldImageItems(w).map((i) => ({ url: i.value, cap: i.budget, path: i.id }));
 
 /** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
 export const countWorldImages = (w: Partial<MediaWorld>): number => worldImageSlots(w).length;
@@ -297,8 +305,7 @@ export const largestItems = (items: readonly MediaItem[], count: number): MediaI
   [...items].sort((a, b) => b.bytes - a.bytes).slice(0, count);
 
 /** Only a gallery's images stack (an entity's, a location's, the Map Background's); every other item is its own card. */
-export const canStack = (item: MediaItem): boolean =>
-  item.kind === 'image' && (item.parent.kind === 'entity' || item.parent.kind === 'location' || item.parent.kind === 'map');
+export const canStack = (item: MediaItem): boolean => item.kind === 'image' && mediaParentSpec(item.parent.kind).stacks;
 
 /** A section's cards: one parent's images stack when there are two or more, and every other item is its own card. */
 export interface MediaCardGroup {
@@ -312,7 +319,7 @@ export function sectionCards(items: readonly MediaItem[]): MediaCardGroup[] {
   const stacks = new Map<string, MediaItem[]>();
   for (const item of items) {
     if (!canStack(item)) { cards.push({ item }); continue; }
-    const key = `${item.parent.kind}:${item.parent.id}`;
+    const key = mediaParentKey(item.parent);
     const images = stacks.get(key);
     if (images) { images.push(item); continue; }
     const fresh = [item];
