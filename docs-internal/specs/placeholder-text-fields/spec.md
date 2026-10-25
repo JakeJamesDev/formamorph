@@ -24,6 +24,14 @@ Settled in the grill on 2026-10-25, then checked against the code by a review pa
 - **Q1 Scope.** Travel Hint, Pronouns and Relationship Label get chip support. Entity Type stays plain, because stat code reads it as a code key, like a name. The dictionary book Description and Script Name stay plain, because they are editor-only text.
 - **Q2 Link.** Linking two Travel Hints copies the first leg's chips exactly, placement ids included. A Unique chip then draws one roll that both directions share.
 - **Q2b Unlink.** Unlinking gives the second leg fresh placement ids. Each direction then rolls on its own, and the pair no longer reads as linked.
+- **Q2c Unlink scope (ticket 01).** Unlink re-mints only the placement ids the second leg's restored text shares with the first leg. A held text with its own placements keeps them and their rolls.
+- **Q9 Letter order (ticket 01).** Connection hints take placement letters right after locations, in connection order, the A-to-B leg before the B-to-A leg.
+- **Q10 Test Bench owner (ticket 01).** Each leg is its own chip owner, filed under its departure location and named "<From> → <To> Travel Hint".
+- **Q11 Search (ticket 01).** Each unlinked leg is a search target under its departure location, labeled "Travel Hint to <To>". A linked pair is one target on the first leg, and a replace there writes both legs, as typing in the first box does. Search never unlinks a pair.
+- **Q12 Label search (ticket 03).** Each relationship label is a search target under the holding entity, labeled "Relationship to <Target>": "Relationship to Persona" for the You row, "Relationship to Unknown Entity" for a dangling target. A chip-bearing target name shows in the braces form.
+- **Q13 Label scope route (ticket 03).** Labels join the entity text resolver, which both chip scenes run on every entity before the relationship cast. The cast itself doesn't change.
+- **Q14 Placed ids (ticket 03).** The entity editor modal's placed-ids list includes relationship labels, as it does pronouns.
+- **Q15 Focus handle (tickets 01, 03).** Ticket 01 owns the chip field focus handle. Ticket 03 builds against the same names and prepares after 01 lands.
 - **Q3 Canvas.** The editor map canvas shows a chip-bearing hint as values in braces (the `describePlaceholders` form). The AI Context instrument already shows resolved text and keeps doing so. The game map shows no hint labels.
 - **Q4 Code.** Play-time stat code reads pronouns resolved in the entity's scope, like descriptions and aliases. Editor runs have no rolls and read placeholder names, like entity names.
 - **Q5 Chips only.** Pronouns accept chips and nothing more. Making pronouns follow a name roll is out of scope (see Further Notes).
