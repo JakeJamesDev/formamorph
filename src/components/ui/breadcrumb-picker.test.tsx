@@ -516,3 +516,23 @@ describe('BreadcrumbPicker drill-down', () => {
     expect(items()).toEqual(ROOT_ITEMS);
   });
 });
+
+describe('BreadcrumbPicker search cost', () => {
+  it('renders no row again while the search narrows, since the list filters rows it already holds', async () => {
+    const user = userEvent.setup();
+    const renderText = vi.fn((text: string) => text);
+    render(
+      <TooltipProvider>
+        <BreadcrumbPicker tree={TREE} onPick={() => {}} renderText={renderText} searchPlaceholder="Search targets" ariaLabel="Target" />
+      </TooltipProvider>,
+    );
+    await user.click(target());
+    await user.type(search(), 'bo');
+    expect(items()).toEqual(['BraveAsh › Bond', 'BoldAsh › Bond']);
+    renderText.mockClear();
+
+    await user.type(search(), 'ld');
+    expect(items()).toEqual(['BoldAsh › Bond']);
+    expect(renderText).not.toHaveBeenCalled();
+  });
+});
