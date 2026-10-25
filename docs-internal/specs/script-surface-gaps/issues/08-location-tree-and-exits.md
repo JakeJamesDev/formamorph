@@ -1,6 +1,6 @@
 # 08: Location Tree And Exits
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -15,14 +15,24 @@ Spec: Q15, Q29, Q30, stories 40–43.
 
 ## Acceptance criteria
 
-- [ ] A child location reads its parent's code name; a top-level one reads empty; a parent lists its children
-- [ ] `location.exits` lists the router's destinations for the current location, with a Connection's hint, and a one-way Connection lists only its own direction
-- [ ] `locations[location.exits[0].name]` reads that location's entry
-- [ ] `JSON.stringify(location)` returns text and does not throw
-- [ ] After `location.move("Old Mill")` in a Before the AI script, `location.name` and `location.exits` still read the starting location
-- [ ] Test Code and a user Tool read the fields for the authored world
-- [ ] Hover cards, the Variable menu and the Scripts guide list `parent`, `children` and `exits`
+- [x] A child location reads its parent's code name; a top-level one reads empty; a parent lists its children: `sandboxSnapshot.locationLinks.test.ts` "reads a child’s parent…", plus the missing-parent case
+- [x] `location.exits` lists the router's destinations for the current location, with a Connection's hint, and a one-way Connection lists only its own direction: `sandboxSnapshot.locationLinks.test.ts` router-order and one-way cases
+- [x] `locations[location.exits[0].name]` reads that location's entry: `sandboxSnapshot.locationLinks.test.ts` "names exits by the keys of locations"
+- [x] `JSON.stringify(location)` returns text and does not throw: `sandboxSnapshot.locationLinks.test.ts` "turns the current location into text"
+- [x] After `location.move("Old Mill")` in a Before the AI script, `location.name` and `location.exits` still read the starting location: `sandboxSnapshot.locationLinks.test.ts` Before the AI world-script run
+- [x] Test Code and a user Tool read the fields for the authored world: `sandboxSnapshot.locationLinks.test.ts` opening-state and read-only Tool runs; `useScriptWorldNames.test.ts` checks the editor passes Connections
+- [x] Hover cards, the Variable menu and the Scripts guide list `parent`, `children` and `exits`: `codeCards.location.test.ts`, `statCodeVariableTree.test.ts` exits group and element-card sweep; guide table and field rows
 
 ## Blocked by
 
 - None (can start immediately)
+
+## Landed
+
+**Not verified**
+
+- None. No live-preview frame: every criterion is a script read, covered by unit runs.
+
+**For you**
+
+- In the World Editor, run Test Code with `return location.exits;` on a world with Connections, and check the list matches where the AI can move you.

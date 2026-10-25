@@ -110,7 +110,7 @@ function ownerPrefix(owner: CodeMapOwner): string {
 }
 
 /** The type an element of each array shape has. */
-const ELEMENT_ROOT: Record<ArrayElement, string> = { memory: 'Memory', entity: 'Entity' };
+const ELEMENT_ROOT: Record<ArrayElement, string> = { memory: 'Memory', entity: 'Entity', exit: 'Exit' };
 
 /** What a member's path starts with: the type an entry of a map has, or the exact path of a one-off object. */
 function memberRootName(value: CodeValue): string {

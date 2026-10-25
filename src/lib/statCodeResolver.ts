@@ -63,8 +63,8 @@ export type CodeValue =
   /** An exact path the surface lists members for, like `Math` or `scene.location`. */
   | { is: 'listed'; path: string };
 
-/** The element shapes an array can hold: a `memories` entry, or an entity entry as `present` holds. */
-export type ArrayElement = 'memory' | 'entity';
+/** The element shapes an array can hold: a `memories` entry, an entity entry as `present` holds, or an exit. */
+export type ArrayElement = 'memory' | 'entity' | 'exit';
 
 export type CodeStatValue = Extract<CodeValue, { is: 'stat' }>;
 type ArrayValue = Extract<CodeValue, { is: 'array' }>;
@@ -122,6 +122,10 @@ const SAME_ARRAY = new Set(['filter', 'slice', 'reverse', 'sort', 'splice', 'toR
 
 /** A location's `present`, the entity entries standing there. */
 const present = (path: string | null): CodeValue => ({ is: 'array', of: 'entity', path });
+
+/** A location's list under `key`: `present` or `exits`, at `path` when it has one. */
+const locationList = (key: string, path: string | null): CodeValue | null =>
+  key === 'present' ? present(path) : key === 'exits' ? { is: 'array', of: 'exit', path } : null;
 
 /** The methods whose callback takes an element as its first parameter. */
 const ELEMENT_CALLBACK = new Set([
@@ -263,8 +267,8 @@ export function codeResolver(
       case 'entityMap': return { is: 'entity', key };
       case 'dictionaryMap': return { is: 'dictionary', key };
       case 'locationMap': return { is: 'locationEntry', key };
-      case 'locationEntry': return key === 'present' ? present(null) : null;
-      case 'listed': return base.path === 'location' && key === 'present' ? present('location.present') : null;
+      case 'locationEntry': return locationList(key, null);
+      case 'listed': return base.path === 'location' ? locationList(key, `location.${key}`) : null;
       case 'entity': return ownerMap({ route: 'entity', entity: base.key }, key);
       case 'persona': return ownerMap({ route: 'persona' }, key);
       case 'owner': return ownerMap({ route: 'owner' }, key);

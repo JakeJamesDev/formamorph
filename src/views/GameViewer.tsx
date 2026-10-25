@@ -3424,7 +3424,7 @@ const GameViewer = ({
             }).world,
           },
           owners,
-          places: { locations, location: here && { id: here.id, name: here.name } },
+          places: { locations, location: here && { id: here.id, name: here.name }, connections },
           positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
           followers: entityFollowers,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),

@@ -88,7 +88,7 @@ describe('the options a snapshot assembles', () => {
       expect(options.persona).toEqual(expect.objectContaining({ id: '', name: '' }));
       expect(options.traits?.map((t) => [t.name, t.enabled])).toEqual([['Brave', true], ['Calm', false]]);
       expect(options.places).toEqual({
-        locations: [{ id: 'dock', name: 'Dock', description: '', summary: '', starting: false }], location: { id: 'dock', name: 'Dock' },
+        locations: [{ id: 'dock', name: 'Dock', description: '', summary: '', starting: false, links: expect.any(Function) }], location: { id: 'dock', name: 'Dock' },
       });
       expect(options.args).toEqual(name === 'World Tool' ? { n: 1 } : undefined);
       expect(options.narration).toEqual(timing === 'output' ? narration : undefined);

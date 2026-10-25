@@ -24,7 +24,7 @@ import type { Entity, EntityStatValues, OwnedTraitPicks, Placeholder, Trait, Wor
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
   'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries' | 'locations'
-  | 'worldOverview'
+  | 'connections' | 'worldOverview'
 >>;
 
 /** What the player picked at the entry step: the global trait ids and each owner's trait ids. */
@@ -99,7 +99,7 @@ export function openingFold(world: OpeningFoldWorld, picks: OpeningPicks = NO_OP
     placeholders: {
       placeholders: allPlaceholders(world), owners: placeholderOwners(world), dictionaries: world.dictionaries ?? [], rolls: {},
     },
-    places: { locations, location: start && { id: start.id, name: start.name } },
+    places: { locations, location: start && { id: start.id, name: start.name }, connections: world.connections ?? [] },
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
   };

@@ -67,7 +67,7 @@ describe('openingStateOf', () => {
     expect(state.clock).toEqual({ deltaHours: 0, elapsedHours: 0 });
     expect(state.placeholders).toMatchObject({ rolls: {} });
     expect(state.placeholders?.pins).toBeUndefined();
-    expect(state.places).toEqual({ locations: world.locations, location: { id: 'gate', name: 'Gate' } });
+    expect(state.places).toEqual({ locations: world.locations, location: { id: 'gate', name: 'Gate' }, connections: [] });
     expect(state.ownerTraits.discovered).toBeUndefined();
   });
 
@@ -84,7 +84,7 @@ describe('openingStateOf', () => {
   });
 
   it('stands nowhere in a world with no locations', () => {
-    expect(openingStateOf({ ...world, locations: [] }).places).toEqual({ locations: [], location: null });
+    expect(openingStateOf({ ...world, locations: [] }).places).toEqual({ locations: [], location: null, connections: [] });
   });
 
   it('hands play every seeded entity and the traits its log names', () => {

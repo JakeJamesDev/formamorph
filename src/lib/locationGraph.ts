@@ -11,6 +11,9 @@ import type { Connection, ConnectionLeg, GameLocation, LegKey } from "@/types";
  * before the graph existed.
  */
 
+/** The fields of a location the graph reads. */
+export type LocationLink = Pick<GameLocation, "id" | "parentId">;
+
 /** Order-independent key for a pair of location ids — the identity a pair's implicit link is looked up by. */
 export function pairKey(a: string, b: string): string {
   return [a, b].sort().join("|");
@@ -23,7 +26,7 @@ export interface ParentIndex {
   childrenOf: Map<string, string[]>;
 }
 
-export function parentIndex(locations: GameLocation[]): ParentIndex {
+export function parentIndex(locations: readonly LocationLink[]): ParentIndex {
   const parentOf = new Map<string, string>();
   const childrenOf = new Map<string, string[]>();
   for (const loc of locations) {
@@ -96,7 +99,7 @@ export function travelEnds(connection: Connection): [string, string] {
   return connection.bToA && !connection.aToB ? [connection.b, connection.a] : [connection.a, connection.b];
 }
 
-const authoredPairs = (connections: Connection[]) => new Set(connections.map((c) => pairKey(c.a, c.b)));
+const authoredPairs = (connections: readonly Connection[]) => new Set(connections.map((c) => pairKey(c.a, c.b)));
 
 /** The implicit pairs an authored Connection has replaced — what an editor surface must show as no longer
  *  free, so an author narrowing travel to one way can see they did. */
@@ -121,8 +124,8 @@ export type DestinationVia =
  */
 export function effectiveDestinations(
   id: string,
-  locations: GameLocation[],
-  connections: Connection[],
+  locations: readonly LocationLink[],
+  connections: readonly Connection[],
 ): Map<string, DestinationVia> {
   const authored = authoredPairs(connections);
   const out = new Map<string, DestinationVia>();

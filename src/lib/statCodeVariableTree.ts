@@ -12,7 +12,7 @@ import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -193,14 +193,22 @@ const PRESENT_ELEMENT_FIELDS = ENTITY_FIELDS.filter((entry) => !isMethodEntry(en
 const presentGroup = (path: Path, entry: SurfaceEntry, at: Path): VariableGroup =>
   group(entry, [field(path, entry), ...fields(indexed(at), PRESENT_ELEMENT_FIELDS)]);
 
-/** A locations entry's fields, `present` opening to its element's. */
+/** `exits`: the list itself, then an exit's fields on its first element. */
+const exitsGroup = (path: Path, entry: SurfaceEntry, at: Path): VariableGroup =>
+  group(entry, [field(path, entry), ...fields(indexed(at), LOCATION_EXIT_FIELDS)]);
+
+/** The drill of a location's lists: `present` and `exits` open to their element's fields. */
+const locationListGroup = (path: Path, entry: SurfaceEntry, at: Path): VariableGroup | undefined =>
+  entry.name === 'present' ? presentGroup(path, entry, at) : entry.name === 'exits' ? exitsGroup(path, entry, at) : undefined;
+
+/** A locations entry's fields, `present` and `exits` opening to their element's. */
 const locationEntryFields = (path: Path): VariableNode[] =>
-  fields(path, LOCATION_ENTRY_FIELDS, (entry, at) => (entry.name === 'present' ? presentGroup(path, entry, at) : undefined));
+  fields(path, LOCATION_ENTRY_FIELDS, (entry, at) => locationListGroup(path, entry, at));
 
 // A move to where the turn stands runs as inserted in any turn with a location.
 const locationFields = (): VariableNode[] => fields(root('location'), LOCATION_MEMBERS, (entry, at) => {
   if (entry.name === 'move') return callField(field(root('location'), entry), 'location.name');
-  return entry.name === 'present' ? presentGroup(root('location'), entry, at) : undefined;
+  return locationListGroup(root('location'), entry, at);
 });
 
 /** A call at the top level, `name(arg)`. */

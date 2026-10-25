@@ -53,6 +53,15 @@ export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'summary', detail: 'string', info: 'Short AI summary of the location, its placeholders filled in' },
   { name: 'starting', detail: 'boolean', info: 'True when the game can start at the location' },
   { name: 'present', detail: 'array', info: 'The entities at the location, each an entry of entities, the persona first when the player is there' },
+  { name: 'parent', detail: 'string', info: 'Code name of the location this one is inside, or empty at the top level' },
+  { name: 'children', detail: 'string[]', info: 'Code names of the locations inside this one, in the order the editor lists them' },
+  { name: 'exits', detail: 'array', info: 'Where the AI can move the player from the location, each exit with a code name and travel hint' },
+]);
+
+/** The members of one entry in a location's `exits`. */
+export const LOCATION_EXIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'name', detail: 'string', info: 'Code name of the location the exit leads to, a key of locations' },
+  { name: 'hint', detail: 'string', info: 'Travel hint of the Connection the exit takes, its placeholders filled in, or empty when it has none' },
 ]);
 
 /** The members of `location`: the fields of a `locations` entry for where the turn stands, and the move. */
@@ -63,6 +72,9 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'summary', detail: 'string', info: 'Short AI summary of the location the turn is at, its placeholders filled in' },
   { name: 'starting', detail: 'boolean', info: 'True when the game can start at the location the turn is at' },
   { name: 'present', detail: 'array', info: 'The entities at the turn’s location, the persona first, or none in a world with no location' },
+  { name: 'parent', detail: 'string', info: 'Code name of the location the turn’s location is inside, or empty at the top level' },
+  { name: 'children', detail: 'string[]', info: 'Code names of the locations inside the turn’s location, in the order the editor lists them' },
+  { name: 'exits', detail: 'array', info: 'Where the AI can move the player this turn, each exit with a code name and travel hint' },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 

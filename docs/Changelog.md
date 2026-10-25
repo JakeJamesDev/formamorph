@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can now read the hour and minute of the story clock, with `clock.hour` and `clock.minute`.** `clock.previous` has both for the start of the turn. They match the clock in the panel. Hover cards and the Variable menu list them.
     - **Scripts can now read the player's action and the turn number, with `turn.action` and `turn.number`.** The number matches each memory's turn, and undo and re-roll rewind it. Between turns, the action is empty. Test Code reads a sample action.
     - **Scripts can now hide or show a stat during play, with `hidden`.** The stat leaves or joins the panel with this turn's changes. Undo takes it back. Hover cards and the Variable menu list it.
+    - **Scripts can now read a location's parent, children and exits, with `location.parent`, `.children` and `.exits`.** Each exit has the place's name and travel hint, from the same list the AI picks a move from. Hover cards and the Variable menu list them.
   - **Feedback Questions:**
     - **Feedback has a Questions tab, where you ask the community, reply and vote on questions you share.** It opens on everyone's unanswered questions, most voted first. **Ask a Question** opens the form. Staff can move a thread between bug, suggestion and question.
     - **While you type a question's title, the Feedback dialog lists Similar Questions.** Select one to read it, vote and reply in the dialog. **Back** returns to your draft.

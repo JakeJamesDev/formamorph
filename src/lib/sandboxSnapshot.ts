@@ -6,10 +6,12 @@
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import {
   executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
+import { navigableDestinationEntries } from './locationContext';
+import { parentIndex } from './locationGraph';
 import {
   codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
 } from './statCodePlaceholders';
@@ -153,11 +155,30 @@ const withBooksInPlay = (set: StatCodePlaceholderSet): StatCodePlaceholderSet =>
 const AS_AUTHORED: ResolveText = (text) => text;
 
 /** `places` under the code names scripts reach them by, their text resolved. */
-function codePlaces({ locations, location }: StatePlaces, placeholders: readonly Placeholder[], resolve: ResolveText): SandboxPlaces {
+function codePlaces(
+  { locations, location, connections = [] }: StatePlaces, placeholders: readonly Placeholder[], resolve: ResolveText,
+): SandboxPlaces {
   const named = (place: SandboxPlace): SandboxPlace => ({ id: place.id, name: statCodeName(place.name, placeholders) });
+  // Built on the first read of any location's links, so a run that reads none builds no index.
+  let index: { nameOf: Map<string, string>; childrenOf: ReadonlyMap<string, string[]> } | undefined;
+  const indexOf = () => (index ??= {
+    nameOf: new Map(locations.map((place) => [place.id, statCodeName(place.name, placeholders)])),
+    childrenOf: parentIndex(locations).childrenOf,
+  });
+  const linksOf = (place: StatePlaces['locations'][number]) => (): SandboxLocationLinks => {
+    const { nameOf, childrenOf } = indexOf();
+    const codeName = (id: string) => nameOf.get(id) ?? '';
+    return {
+      parent: place.parentId ? codeName(place.parentId) : '',
+      children: (childrenOf.get(place.id) ?? []).map(codeName),
+      exits: navigableDestinationEntries(place, locations, connections)
+        .map(({ location: exit, hint }) => ({ name: codeName(exit.id), hint: resolve(hint ?? '', null) })),
+    };
+  };
   return {
     locations: locations.map((place) => ({
       ...named(place), description: resolve(place.aiDescription ?? '', null), summary: resolve(place.aiSummary ?? '', null), starting: !!place.isStarting,
+      links: linksOf(place),
     })),
     location: location && named(location),
   };
