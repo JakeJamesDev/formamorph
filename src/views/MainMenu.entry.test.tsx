@@ -369,7 +369,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Wolf' }));
     // The entity node's nav row appears once the library data loads; it reads its pick count.
-    fireEvent.click(await screen.findByRole('button', { name: /^Wolf/ }, { timeout: 3000 }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Wolf/ }));
     expect(await screen.findByRole('checkbox', { name: 'Loyal' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /Oath/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));

@@ -81,7 +81,7 @@ describe('executeStatCode', () => {
     const res = await executeStatCode('while (true) {}', [], makeStat({}));
     expect(res.value).toBeNull();
     expect(res.error).toMatch(/timed out/i);
-  }, 15_000);
+  });
 
   it('provides a console.log shim inside the VM', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});

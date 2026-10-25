@@ -24,7 +24,7 @@ const fields = () => screen.getAllByLabelText('Stat code').filter((element) => e
 /** The live editor, once its chunk has loaded and the linter has marked the typo. */
 async function linted() {
   const field = await waitFor(() => { expect(fields()).toHaveLength(1); return fields()[0]; });
-  await waitFor(() => expect(field.querySelector('.cm-lintRange-error')?.textContent).toBe('Helth'), { timeout: 3000 });
+  await waitFor(() => expect(field.querySelector('.cm-lintRange-error')?.textContent).toBe('Helth'));
   return field;
 }
 

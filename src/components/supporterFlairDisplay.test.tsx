@@ -1,15 +1,19 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { onFakeClock } from '@/test/fakeClock';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SupporterBadge } from './SupporterBadge';
-import { TooltipProvider } from './ui/tooltip';
+import { TOOLTIP_DELAY_MS, TooltipProvider } from './ui/tooltip';
 import { UserAvatar } from './UserAvatar';
 import { UserName } from './UserName';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import type { SupporterFlair } from '@/types';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const name = (supporter: SupporterFlair | null | undefined, role?: string) =>
   render(
@@ -53,6 +57,7 @@ describe('a name with no flair', () => {
   });
 });
 
+
 describe('the badge tooltip', () => {
   const hover = async (since: string | null) => {
     render(<TooltipProvider><SupporterBadge tier="supporter" since={since} /></TooltipProvider>);
@@ -78,8 +83,10 @@ describe('the badge tooltip', () => {
   });
 
   it('shows no tenure when the start is null', async () => {
-    await hover(null);
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    render(<TooltipProvider><SupporterBadge tier="supporter" since={null} /></TooltipProvider>);
+    vi.useFakeTimers();
+    await onFakeClock((user) => user.hover(screen.getByText('Supporter')));
+    await act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
 
     expect(screen.queryByText(/Supporting for/)).toBeNull();
   });

@@ -346,15 +346,21 @@ describe('World Editor find reveal on unmount', () => {
     const lookups = vi.spyOn(HTMLElement.prototype, 'querySelectorAll');
     const rowLookups = () => lookups.mock.calls.filter(([selector]) => selector === '[data-editor-row-selected]').length;
 
-    // A hit on Overview, which has no tree: the row lookup finds nothing and keeps retrying.
-    fireEvent.change(searchWorldField(), { target: { value: 'Sedge' } });
-    await waitFor(() => expect(rowLookups()).toBeGreaterThan(1));
+    // The retries run on a clock that moves only when told, so every one still queued gets its turn.
+    vi.useFakeTimers();
+    try {
+      // A hit on Overview, which has no tree: the row lookup finds nothing and keeps retrying.
+      fireEvent.change(searchWorldField(), { target: { value: 'Sedge' } });
+      await vi.waitFor(() => expect(rowLookups()).toBeGreaterThan(1), { timeout: 10_000 });
 
-    cleanup();
-    const atUnmount = rowLookups();
-    await new Promise((resolve) => setTimeout(resolve, 200));
+      cleanup();
+      const atUnmount = rowLookups();
+      await vi.runAllTimersAsync();
 
-    expect(rowLookups()).toBe(atUnmount);
-    lookups.mockRestore();
+      expect(rowLookups()).toBe(atUnmount);
+    } finally {
+      vi.useRealTimers();
+      lookups.mockRestore();
+    }
   });
 });

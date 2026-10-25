@@ -35,9 +35,6 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// The ordered case walks the tour from its first step, which outlasts the default window under the whole suite's load.
-vi.setConfig({ testTimeout: 15_000 });
-
 const storeWorld = vi.mocked(WorldStorageService.storeWorld);
 
 /** A New World overview over the harness's one starting location, which the tour must never adopt. */
@@ -77,7 +74,7 @@ const row = (name: string) => screen.getAllByText(name)
 
 const openTour = async () => {
   const view = renderWorldEditorBench(WORLD, 'simple', { newWorld: true });
-  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
   await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
   return view;

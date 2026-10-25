@@ -95,7 +95,7 @@ describe('executeStatCode on the async engine', () => {
       .resolves.toEqual({ value: 5, error: null });
     const result = await executeStatCode('player.confirm("Wait?"); while (true) {}', [], makeStat({}), { prompts });
     expect(result).toMatchObject({ value: null, kind: 'timeout' });
-  }, 15_000);
+  });
 
   it('fails the script as canceled when the player closes the prompt, and lands no write', async () => {
     const prompts: ScriptPromptHost = { prompt: () => Promise.reject(new PromptCanceled()) };

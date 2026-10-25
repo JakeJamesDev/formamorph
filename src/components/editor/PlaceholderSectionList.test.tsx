@@ -127,19 +127,38 @@ describe('PlaceholderSectionList', () => {
 
 describe('PlaceholderSectionList — many closed pickers over one long list', () => {
   // A pin editor holds one picker per pin, each over every placeholder: 200 pickers over 1,000 rows.
-  const rows = Array.from({ length: 1000 }, (_, i) => ({ token: chip(`ph${i}`), label: `Placeholder ${i}`, color: undefined }));
+  const rowsOf = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ token: chip(`ph${i}`), label: `Placeholder ${i}`, color: undefined }));
+  const pickers = (rows: ReturnType<typeof rowsOf>) => (
+    <>
+      {Array.from({ length: 200 }, (_, i) => (
+        <PlaceholderSectionList key={i} rows={rows} selectedId={`ph${(i * 5) % rows.length}`} onSelect={() => {}} />
+      ))}
+    </>
+  );
 
-  it('mounts closed in well under a second, each trigger reading its own pick', () => {
-    const t0 = performance.now();
-    render(
-      <>
-        {Array.from({ length: 200 }, (_, i) => (
-          <PlaceholderSectionList key={i} rows={rows} selectedId={`ph${i * 5}`} onSelect={() => {}} />
-        ))}
-      </>,
-    );
-    const ms = performance.now() - t0;
+  it('mounts closed, each trigger reading its own pick', () => {
+    render(pickers(rowsOf(1000)));
     expect(screen.getByRole('button', { name: 'Placeholder 995' })).toBeInTheDocument();
-    expect(ms).toBeLessThan(500);
+  });
+
+  // A closed picker that built its rows would mount 4× the elements for 4× the list, a ratio near 4.
+  it('mounts closed at a cost that does not grow with the list', () => {
+    const mountMs = (rows: ReturnType<typeof rowsOf>) => {
+      const t0 = performance.now();
+      const view = render(pickers(rows));
+      const ms = performance.now() - t0;
+      view.unmount();
+      return ms;
+    };
+    const median = (times: number[]) => [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)];
+    const lists = [rowsOf(250), rowsOf(1000)];
+    lists.forEach(mountMs);
+    // The two lists take turns, so a load spike hits both.
+    const times = lists.map((): number[] => []);
+    for (let run = 0; run < 5; run++) lists.forEach((rows, at) => times[at].push(mountMs(rows)));
+    const [short, long] = times.map(median);
+    console.info(`200 closed pickers: 250 rows ${short.toFixed(1)} ms, 1,000 rows ${long.toFixed(1)} ms`);
+    expect(long).toBeLessThan(2 * short);
   });
 });

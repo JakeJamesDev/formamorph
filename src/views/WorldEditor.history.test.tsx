@@ -438,20 +438,18 @@ const TOGGLED_WORLD: World = benchEditorWorld({
   traits: [{ id: 't-dry', name: 'Dry Boots', statChanges: [], statToggles: [{ statId: 's-damp', enabled: false }] }],
 } as Partial<World>);
 const flask = () => screen.getByRole('button', { name: /^Test Bench/ });
-/** Outlasts the pass debounce, so the badge has had its chance to move. */
-const settled = { timeout: 2000 };
 
 describe('the Test Bench after an undo', () => {
   it('updates its findings after Ctrl+Z as it does after any edit', async () => {
     renderWorldEditorBench(TOGGLED_WORLD, 'advanced');
     openEditorTab(/Stats/);
-    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench'), settled);
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench'));
 
     await removeStat('Damp');
-    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench, 1 new finding'), settled);
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench, 1 new finding'));
 
     expect(await chord('z')).toBe(true);
     expect(rows()).toEqual(['Warmth', 'Damp', 'Dread']);
-    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench'), settled);
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench'));
   });
 });

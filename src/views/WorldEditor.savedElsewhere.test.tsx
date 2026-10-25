@@ -38,10 +38,18 @@ const type = async (chars: number) => {
 const pressSave = () => fireEvent.keyDown(window, { key: 's', ctrlKey: true });
 
 let otherTab: BroadcastChannel;
+/** Posts as another tab and resolves once this tab's listeners, the editor's first, have heard it. */
+const postFromOtherTab = (message: { worldId: string; deleted?: boolean }) => act(async () => {
+  const heard = new Promise<void>((resolve) => {
+    const stop = onWorldChangedElsewhere(() => { stop(); resolve(); });
+  });
+  otherTab.postMessage(message);
+  await heard;
+});
 /** Another tab writes `worldId`, as its save or import does. */
-const savedElsewhere = (worldId = 'w1') => act(() => { otherTab.postMessage({ worldId }); });
+const savedElsewhere = (worldId = 'w1') => postFromOtherTab({ worldId });
 const dialog = () => screen.findByRole('alertdialog', { name: TITLE });
-/** Lets a message already posted arrive and render. */
+/** Lets the commits after a heard message or a press run. */
 const settle = () => act(() => new Promise<void>((resolve) => { setTimeout(resolve, 50); }));
 
 const openOptedIn = async () => {
@@ -211,7 +219,7 @@ describe('Reload', () => {
 });
 
 const DELETED = 'World Deleted in Another Tab';
-const deletedElsewhere = () => act(() => { otherTab.postMessage({ worldId: 'w1', deleted: true }); });
+const deletedElsewhere = () => postFromOtherTab({ worldId: 'w1', deleted: true });
 const deletedDialog = () => screen.findByRole('alertdialog', { name: DELETED });
 
 describe('a delete of the open world in another tab', () => {

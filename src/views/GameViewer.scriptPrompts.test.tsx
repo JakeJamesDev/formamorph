@@ -60,7 +60,7 @@ async function send(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
-const settled = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+const settled = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 const tells = () => screen.queryAllByTestId('script-tell').map((line) => line.textContent);
 const valueOf = () => live().globalStats.find((s) => s.id === 'health')?.value;
 
@@ -77,7 +77,7 @@ describe('script prompts in play', () => {
     await settled();
     expect(valueOf()).toBe(11);
     expect(screen.queryByTestId('script-prompt')).toBeNull();
-  }, 30_000);
+  });
 
   it('keeps each tell with its turn, pages it with that turn, and never sends it', async () => {
     renderGameViewer(world(), { inGameplay: <Probe /> });
@@ -101,7 +101,7 @@ describe('script prompts in play', () => {
 
     expect(bodies.length).toBeGreaterThan(2);
     expect(bodies.filter((body) => body.includes('The bell tolls'))).toEqual([]);
-  }, 30_000);
+  });
 
   it('replaces a turn’s tells with the re-rolled ones on Re-generate Stats', async () => {
     const ask: Script = { id: 'ask', timing: 'before', code: 'if (player.confirm("Ring it?")) stats.Health.value += 1;' };
@@ -119,7 +119,7 @@ describe('script prompts in play', () => {
     await settled();
     await waitFor(() => expect(tells()).toEqual(['Health is 10.']));
     expect(Object.values(live().scriptTells)).toEqual([[{ text: 'Health is 10.', timing: 'after' }]]);
-  }, 30_000);
+  });
 
   it('cancels the open prompt on Stop, so the stopped turn ends', async () => {
     const failure = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -133,7 +133,7 @@ describe('script prompts in play', () => {
     await waitFor(() => expect(live().isWaitingForAI).toBe(false));
     expect(screen.queryByTestId('script-prompt')).toBeNull();
     failure.mockRestore();
-  }, 30_000);
+  });
 
   it('cancels an open prompt when the game unmounts', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -144,5 +144,5 @@ describe('script prompts in play', () => {
     await screen.findByRole('group', { name: 'Ring it?' });
     unmountView();
     expect(scriptPrompts.pending()).toEqual([]);
-  }, 30_000);
+  });
 });

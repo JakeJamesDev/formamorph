@@ -107,8 +107,9 @@ describe('Media tab Map Background', () => {
     const input = framed()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
-    await waitFor(() => expect(map(bench)!.images[1].data).toMatch(/^data:image\/webp;base64,/));
-    expect(map(bench)!.images[1].data).not.toBe(RUINED);
+    // The old image is WebP data too, so wait for the change itself.
+    await waitFor(() => expect(map(bench)!.images[1].data).not.toBe(RUINED));
+    expect(map(bench)!.images[1].data).toMatch(/^data:image\/webp;base64,/);
     expect(map(bench)!.images[1].requires).toEqual([ruled]);
     expect(map(bench)).toMatchObject({ frame: FRAME, opacity: 0.6 });
     expect(lastLabel(bench)).toBe('Replace Image 2: Map Background');

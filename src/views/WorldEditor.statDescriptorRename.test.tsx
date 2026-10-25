@@ -28,8 +28,6 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-vi.setConfig({ testTimeout: 15_000 });
-
 const WORLD = benchEditorWorld({});
 
 const texts = (stat: Stat) => stat.descriptors.map((d) => d.description);

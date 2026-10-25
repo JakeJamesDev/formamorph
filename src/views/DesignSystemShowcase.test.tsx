@@ -484,12 +484,12 @@ describe('surface app bar reference', () => {
     await user.click(within(region).getByRole('button', { name: 'Save' }));
     expect(within(region).getByText('Last action: Save.')).toBeInTheDocument();
     expect(within(region).getByRole('button', { name: 'Saving…' })).toBeInTheDocument();
-    expect(await within(region).findByRole('button', { name: 'Saved' }, { timeout: 2000 })).toBeInTheDocument();
+    expect(await within(region).findByRole('button', { name: 'Saved' })).toBeInTheDocument();
 
     await user.click(within(region).getByRole('checkbox', { name: 'Fail Saves' }));
     await user.click(within(region).getByRole('button', { name: 'Make a Change' }));
     await user.click(within(region).getByRole('button', { name: 'Save' }));
-    expect(await within(region).findByRole('button', { name: 'Failed' }, { timeout: 2000 })).toBeEnabled();
+    expect(await within(region).findByRole('button', { name: 'Failed' })).toBeEnabled();
 
     await user.click(within(region).getByRole('button', { name: 'Save options' }));
     await user.click(await screen.findByRole('button', { name: 'Export World' }));

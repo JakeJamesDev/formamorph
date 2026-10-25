@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { onFakeClock } from '@/test/fakeClock';
 import { useState } from 'react';
 import { BookOpen, Braces, ChartColumn, Globe, MapPin, Users } from 'lucide-react';
 import { Tabs } from '@/components/ui/tabs';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { TOOLTIP_DELAY_MS, TooltipProvider } from '@/components/ui/tooltip';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { NavRail, type NavRailGroup } from './NavRail';
 
@@ -60,14 +61,17 @@ const toggle = () => screen.getByRole('button', { name: /^(Collapse|Expand)$/ })
 const width = () => rail().parentElement?.style.width;
 /** The open flyout naming `text`, or null. The row's own label is a span; the flyout is a div. */
 const flyout = (text: string) => screen.queryByText(text, { selector: 'div' });
-/** Waits out the shared tooltip delay, so an absent flyout is absent for good. */
-const pastTipDelay = () => new Promise((resolve) => { setTimeout(resolve, 600); });
+/** Runs the fake clock through the shared tooltip delay, so an absent flyout is absent for good. */
+const pastTipDelay = () => act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
 /** The rail's children in order, read as tab names and separators. */
 const railSequence = () => Array.from(rail().children).map((child) =>
   (child.getAttribute('role') === 'tab' ? child.textContent : child.hasAttribute('data-rail-separator') ? '|' : '?'));
 
 beforeEach(() => localStorage.clear());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe('NavRail', () => {
   it('draws one tab per item in order, a line between groups, and nothing for an empty group', () => {
@@ -196,9 +200,9 @@ describe('NavRail', () => {
   });
 
   it('shows no flyout while expanded', async () => {
-    const user = userEvent.setup();
     render(<Host />);
-    await user.hover(within(rail()).getByRole('tab', { name: 'Entities' }));
+    vi.useFakeTimers();
+    await onFakeClock((user) => user.hover(within(rail()).getByRole('tab', { name: 'Entities' })));
     await pastTipDelay();
     expect(flyout('Entities')).toBeNull();
   });
@@ -226,9 +230,9 @@ describe('NavRail', () => {
   });
 
   it('shows no flyout for focus that a click brought', async () => {
-    const user = userEvent.setup();
     render(<Host autoCollapsed />);
-    await user.click(within(rail()).getByRole('tab', { name: 'Stats' }));
+    vi.useFakeTimers();
+    await onFakeClock((user) => user.click(within(rail()).getByRole('tab', { name: 'Stats' })));
     expect(within(rail()).getByRole('tab', { name: 'Stats' })).toHaveFocus();
     await pastTipDelay();
     expect(flyout('Stats')).toBeNull();

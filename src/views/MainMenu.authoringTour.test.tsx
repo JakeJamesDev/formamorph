@@ -55,7 +55,7 @@ describe('Start Authoring Tour from Settings', () => {
     fireEvent.click(await within(settings).findByRole('button', { name: 'Start Authoring Tour' }));
 
     const editor = await screen.findByRole('dialog', { name: 'World Editor' });
-    await screen.findByRole('dialog', { name: TOUR_STEPS[0].title }, { timeout: 3000 });
+    await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
     expect(screen.queryByRole('dialog', { name: /Settings/ })).not.toBeInTheDocument();
     const name = within(editor).getByLabelText(/World Name/) as HTMLInputElement;
     expect(name.value).toBe('New World');

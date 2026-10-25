@@ -39,7 +39,7 @@ const NEW_WORLD = benchEditorWorld({
 
 const startTour = async () => {
   renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
-  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
   return screen.findByRole('dialog', { name: 'World Name' });
 };

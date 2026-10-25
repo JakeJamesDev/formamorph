@@ -82,7 +82,7 @@ describe('instancePid', () => {
   it('lists this OS’s real process table, this process under its parent', async () => {
     const rows = await llamaServer.listProcesses();
     expect(rows.find((r) => r.pid === process.pid)?.ppid).toBe(process.ppid);
-  }, 30000);
+  });
 
   it('keeps a name with spaces whole', () => {
     expect(parseProcessRows('12 3 Formamorph Engine Helper.exe')).toEqual([{ pid: 12, ppid: 3, name: 'Formamorph Engine Helper.exe' }]);

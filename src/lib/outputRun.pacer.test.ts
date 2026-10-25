@@ -22,8 +22,8 @@ const turn = statCodeTurnOf({
 });
 
 const settle = () => new Promise<void>((resolve) => { setImmediate(resolve); });
-// A wall-clock bound: each wait spans real QuickJS runs, whose tick count grows on a slower machine.
-async function until(done: () => boolean, ms = 5000) {
+// A wall-clock hang guard, matching `asyncUtilTimeout`: each wait spans real QuickJS runs, whose tick count grows on a slower machine.
+async function until(done: () => boolean, ms = 10_000) {
   const deadline = performance.now() + ms;
   while (!done() && performance.now() < deadline) await act(settle);
   expect(done()).toBe(true);

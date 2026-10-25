@@ -161,7 +161,7 @@ describe('runStatCodeTurn', () => {
       stats: [stat({ id: 'a', value: 50, scripts: boxScripts({ after: 'self.value = 9; while (true) {}' }) })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(50);
-  }, 15_000);
+  });
 
   it('writes another stat of the same owner beside its own', async () => {
     const out = await runStatCodeTurn(turn({

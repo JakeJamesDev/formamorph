@@ -67,7 +67,7 @@ describe('Authoring Tour Play', () => {
     fireEvent.click(await screen.findByText('Brinewell'));
     fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
 
-    const step = await screen.findByRole('dialog', { name: 'Play Your World' }, { timeout: 3000 });
+    const step = await screen.findByRole('dialog', { name: 'Play Your World' });
     fireEvent.click(within(step).getByRole('button', { name: 'Play' }));
 
     const intro = await screen.findByRole('dialog', { name: 'Introduction' });
@@ -106,7 +106,7 @@ describe('Authoring Tour Play', () => {
     fireEvent.click(await screen.findByText('Brinewell'));
     fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
 
-    const step = await screen.findByRole('dialog', { name: 'Play Your World' }, { timeout: 3000 });
+    const step = await screen.findByRole('dialog', { name: 'Play Your World' });
     fireEvent.click(within(step).getByRole('button', { name: 'Play' }));
 
     // The unblocked case shows the Introduction inside this same default window.
@@ -127,7 +127,7 @@ describe('Authoring Tour Play', () => {
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Brinewell'));
     fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
-    const step = await screen.findByRole('dialog', { name: 'Play Your World' }, { timeout: 3000 });
+    const step = await screen.findByRole('dialog', { name: 'Play Your World' });
 
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(WorldStorageService, 'getWorldMetadata').mockRejectedValueOnce(new Error('storage closed'));

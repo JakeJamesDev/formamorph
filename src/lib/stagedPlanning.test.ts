@@ -492,12 +492,17 @@ describe('runStagedPlanning', () => {
 
   it('runs character passes concurrently and keeps intents in cast order despite out-of-order completion', async () => {
     let storyboardMsg = '';
+    const completed: string[] = [];
+    let orcDone = () => {};
+    const orcFinished = new Promise<void>((resolve) => { orcDone = resolve; });
     const request: StagedRequestFn = async (_s, m, type) => {
       if (type === 'director') return 'Scene: A cave.\nCast:\n- Goblin - snarling\n- Orc - roaring';
       if (type === 'character') {
         const isGoblin = JSON.stringify(m).includes('Goblin');
         // Goblin (cast-first) resolves LAST — order must come from cast position, not completion.
-        await new Promise((r) => setTimeout(r, isGoblin ? 20 : 5));
+        if (isGoblin) await orcFinished;
+        else orcDone();
+        completed.push(isGoblin ? 'Goblin' : 'Orc');
         return isGoblin ? 'Goblin intent' : 'Orc intent';
       }
       if (type === 'storyboard') { storyboardMsg = m[0].content; return 'The cave stirs.'; }
@@ -507,6 +512,7 @@ describe('runStagedPlanning', () => {
     expect(storyboardMsg).toContain('Goblin intent');
     expect(storyboardMsg).toContain('Orc intent');
     // Cast order (Goblin before Orc) is preserved even though Orc's call resolved first.
+    expect(completed).toEqual(['Orc', 'Goblin']);
     expect(storyboardMsg.indexOf('Goblin intent')).toBeLessThan(storyboardMsg.indexOf('Orc intent'));
     expect(res.turnPlan).toContain('The cave stirs.');
   });

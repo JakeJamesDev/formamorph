@@ -91,7 +91,7 @@ afterEach(() => vi.restoreAllMocks());
 async function playTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 }
 
 describe('an On Call write in staged planning', () => {
@@ -105,7 +105,7 @@ describe('an On Call write in staged planning', () => {
     expect(systemOf(sent.CHARACTER[0])).toContain('at Lighthouse.');
     expect(systemOf(sent.STORYBOARD[0])).toContain('at Lighthouse.');
     expect(systemOf(sent.NARRATOR[0])).toContain('at Lighthouse.');
-  }, 30_000);
+  });
 
   it('shows a stat write in the stat values of the passes after it', async () => {
     renderGameViewer(world([directorTool('stats.Mark.value = 42;')]));
@@ -115,7 +115,7 @@ describe('an On Call write in staged planning', () => {
     expect(systemOf(sent.DIRECTOR[0])).toMatch(/Mark\D*3\b/);
     expect(systemOf(sent.CHARACTER[0])).toMatch(/Mark\D*42\b/);
     expect(systemOf(sent.STORYBOARD[0])).toMatch(/Mark\D*42\b/);
-  }, 30_000);
+  });
 
   it('shows a clock advance in the time of the passes after it', async () => {
     renderGameViewer(world([directorTool('clock.advance(480);')]));
@@ -126,7 +126,7 @@ describe('an On Call write in staged planning', () => {
     expect(systemOf(sent.DIRECTOR[0])).toContain('It is Day 1, morning.');
     expect(systemOf(sent.CHARACTER[0])).toContain('It is Day 1, afternoon.');
     expect(systemOf(sent.STORYBOARD[0])).toContain('It is Day 1, afternoon.');
-  }, 30_000);
+  });
 
   it('shows a character pass write in the storyboard built after it', async () => {
     renderGameViewer(world([{ ...directorTool('stats.Mark.value = 42;'), offeredTo: ['character'] }]));
@@ -135,7 +135,7 @@ describe('an On Call write in staged planning', () => {
     await playTurn('I mark it.');
     expect(systemOf(sent.CHARACTER[0])).toMatch(/Mark\D*3\b/);
     expect(systemOf(sent.STORYBOARD[0])).toMatch(/Mark\D*42\b/);
-  }, 30_000);
+  });
 
   it('sends every staged request byte-equal when the call wrote nothing', async () => {
     const idle = directorTool("return 'Nothing moves.';");
@@ -153,5 +153,5 @@ describe('an On Call write in staged planning', () => {
     expect(called.CHARACTER[0]).toBe(plain.CHARACTER[0]);
     expect(called.STORYBOARD[0]).toBe(plain.STORYBOARD[0]);
     expect(called.NARRATOR[0]).toBe(plain.NARRATOR[0]);
-  }, 30_000);
+  });
 });

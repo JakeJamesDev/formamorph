@@ -67,7 +67,7 @@ async function clickBrave() {
 }
 
 describe('memories in play', () => {
-  it('reads the ledger’s live rows oldest first, the deleted row absent, verdicts and the Custom line in place', { timeout: 30_000 }, async () => {
+  it('reads the ledger’s live rows oldest first, the deleted row absent, verdicts and the Custom line in place', async () => {
     renderGameViewer(world(), { inGameplay: <Probe /> });
     await screen.findByPlaceholderText(/Type your action/);
     act(() => seed());

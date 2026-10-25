@@ -16,9 +16,7 @@ const otherTab = () => {
   return { post: (data: unknown) => channel.postMessage(data), heard };
 };
 /** Resolves once `check` holds, polling across tasks as messages arrive. */
-const until = (check: () => boolean) => vi.waitFor(() => { if (!check()) throw new Error('not yet'); });
-/** Lets messages already posted arrive. */
-const settle = () => new Promise<void>((resolve) => { setTimeout(resolve, 50); });
+const until = (check: () => boolean) => vi.waitFor(() => { if (!check()) throw new Error('not yet'); }, { timeout: 10_000 });
 
 const stops: (() => void)[] = [];
 const listen = () => {
@@ -60,9 +58,11 @@ describe('worldChangeSignal', () => {
     const other = otherTab();
     announceWorldSaved('w1');
     await until(() => other.heard.length === 1);
-    await settle();
+    // A message from one sender reaches a channel in order, so a marker heard here means `w1` would have been too.
+    other.post({ worldId: 'marker' });
+    await until(() => heard.length > 0);
     expect(other.heard).toEqual([{ worldId: 'w1' }]);
-    expect(heard).toEqual([]);
+    expect(heard).toEqual(['marker']);
   });
 
   it('reaches other tabs with no listener open here', async () => {
@@ -81,8 +81,13 @@ describe('worldChangeSignal', () => {
     stops.pop()!();
     expect(close).toHaveBeenCalledTimes(1);
     close.mockRestore();
-    otherTab().post({ worldId: 'w1' });
-    await settle();
+    const sender = otherTab();
+    const witness = otherTab();
+    sender.post({ worldId: 'w1' });
+    // A round trip after the witness hears `w1`: by then this tab's channel, were it open, has heard it too.
+    await until(() => witness.heard.length === 1);
+    witness.post({ worldId: 'marker' });
+    await until(() => sender.heard.length === 1);
     expect(heard).toEqual([]);
   });
 
@@ -92,8 +97,8 @@ describe('worldChangeSignal', () => {
     other.post(null);
     other.post({ worldId: 7 });
     other.post({ worldId: 'w3' });
-    await until(() => heard.length === 1);
-    await settle();
+    // One sender's messages arrive in order, so the two before `w3` were already handled.
+    await until(() => heard.length > 0);
     expect(heard).toEqual(['w3']);
   });
 });

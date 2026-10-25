@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import PlaceholderPaletteBar from './PlaceholderPaletteBar';
@@ -204,7 +204,7 @@ describe('PlaceholderPaletteBar click target', () => {
     expect(insert).toHaveBeenCalledTimes(1);
     expect(decodePlaceholderToken(insert.mock.calls[0][0])?.id).toBe('town');
     // Past the provider's deferred focus check, so a release would have landed by now.
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await act(() => new Promise((resolve) => { setTimeout(resolve, 20); }));
     expect(screen.getByRole('button', { name: 'Field' })).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Town' })).toHaveAttribute('aria-disabled', 'false');
   });
@@ -223,7 +223,7 @@ describe('PlaceholderPaletteBar click target', () => {
 
     // A hand's press and release are never in the same tick, so the field's focus departure settles between them.
     await user.pointer({ keys: '[MouseLeft>]', target: town });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await act(() => new Promise((resolve) => { setTimeout(resolve, 20); }));
     await user.pointer({ keys: '[/MouseLeft]', target: town });
 
     expect(insert).toHaveBeenCalledTimes(1);

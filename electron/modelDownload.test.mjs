@@ -32,7 +32,9 @@ const servers = [];
  */
 function rangeServer(body, opts = {}) {
   const state = { requests: [], concurrent: 0, maxConcurrent: 0, throttled: new Set() };
+  // The first `barrier` ranges wait until that many are open at once; after that, nothing waits.
   const barrier = opts.barrier || 0;
+  let barrierMet = false;
   const waiting = [];
 
   const release = () => { while (waiting.length) waiting.pop()(); };
@@ -65,8 +67,16 @@ function rangeServer(body, opts = {}) {
     if (barrier && !isProbe) {
       state.concurrent++;
       state.maxConcurrent = Math.max(state.maxConcurrent, state.concurrent);
-      if (state.concurrent >= barrier) release();
-      else await new Promise((r) => { waiting.push(r); setTimeout(r, 200); });
+      if (state.concurrent >= barrier) {
+        barrierMet = true;
+        release();
+      } else if (!barrierMet) {
+        // A hang guard for a downloader that never opens `barrier` ranges at once.
+        await new Promise((r) => {
+          const guard = setTimeout(r, 10_000);
+          waiting.push(() => { clearTimeout(guard); r(); });
+        });
+      }
       state.concurrent--;
     }
 
@@ -99,7 +109,7 @@ const partPath = () => path.join(tmp, `${FILE_NAME}.part`);
 const sidecarPath = () => `${partPath()}.json`;
 const readSidecar = () => JSON.parse(fs.readFileSync(sidecarPath(), 'utf8'));
 
-async function waitFor(predicate, ms = 3000) {
+async function waitFor(predicate, ms = 10_000) {
   const deadline = Date.now() + ms;
   for (;;) {
     const value = predicate();

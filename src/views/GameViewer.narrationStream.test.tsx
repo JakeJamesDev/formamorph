@@ -82,6 +82,8 @@ describe('the streamed narration in history', () => {
       model.send(token);
       await settle();
     }
+    // The second sentence is in history before the stream ends, so the end cannot fold into its render.
+    await waitFor(() => expect(narrationOf(latest()[1])).toBe('The door creaks. Wind'));
     model.end();
     await waitFor(() => expect(narrationOf(latest()[1])).toBe('The door creaks. Wind howls'));
 
@@ -93,7 +95,7 @@ describe('the streamed narration in history', () => {
       .filter((text, i, all) => text !== all[i - 1]);
     expect(streamed.slice(0, 2)).toEqual(['The door', 'The door creaks. Wind']);
     expect(streamed).not.toContain('The door creaks.');
-  }, 30_000);
+  });
 
   it('leaves no lone user turn when Stop lands before any narration text', async () => {
     const model = await startOpeningTurn();
@@ -105,5 +107,5 @@ describe('the streamed narration in history', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stop generating' }));
     await waitFor(() => expect(latest()).toEqual([]));
     expect(histories.some((h) => h.some((m) => m.role === 'assistant'))).toBe(false);
-  }, 30_000);
+  });
 });

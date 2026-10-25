@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorView } from '@codemirror/view';
 import { CodeArea } from './CodeArea';
@@ -9,7 +9,8 @@ import { completionCard } from '@/lib/codeCards';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { TOOLTIP_DELAY_MS, TooltipProvider } from '@/components/ui/tooltip';
+import { CARET_PAUSE_MS } from './codeCaretCard';
 import { StatCodeTemplateDialog } from '@/components/modals/StatCodeTemplateDialog';
 import { statBoxLookup, type CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { statCodeOwners } from '@/lib/statCodeTargets';
@@ -42,7 +43,10 @@ beforeEach(() => {
   );
   vi.spyOn(EditorView.prototype, 'coordsAtPos').mockImplementation((pos: number) => ({ left: pos, right: pos + 1, top: 0, bottom: 10 }));
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 /** Rests the pointer on the first `text` in the field, as a reader does before a card opens. */
 function hover(field: HTMLElement, text: string) {
@@ -53,6 +57,20 @@ function hover(field: HTMLElement, text: string) {
 
 const card = () => document.querySelector<HTMLElement>('[data-code-card]');
 const openCard = () => waitFor(() => { expect(card()).toBeTruthy(); return card()!; });
+/** Runs the fake clock past the hover delay and the caret pause, so a card that was going to open has. */
+const pastCardDelays = () => act(() => vi.advanceTimersByTimeAsync(Math.max(TOOLTIP_DELAY_MS, CARET_PAUSE_MS)));
+
+/** Types on a fake clock. Testing Library releases its zero-delay drain only for a `jest` global, so one stands in. */
+async function typeOnFakeClock(text: string) {
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  const scope = globalThis as { jest?: unknown };
+  scope.jest = { advanceTimersByTime: vi.advanceTimersByTime };
+  try {
+    await user.keyboard(text);
+  } finally {
+    delete scope.jest;
+  }
+}
 
 describe('hover cards in the code editor', () => {
   it('shows the signature, the access badge and the description of a stat field', async () => {
@@ -408,11 +426,10 @@ describe('cards from a tap', () => {
     const watch = new MutationObserver(() => document.querySelectorAll('[data-code-card]').forEach((node) => seen.add(node)));
     watch.observe(document.body, { childList: true, subtree: true });
     try {
+      vi.useFakeTimers();
       tap(field, 'regen');
       hover(field, 'regen');
-      await openCard();
-      // Past both the hover delay and the caret pause.
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await pastCardDelays();
       expect(document.querySelectorAll('[data-code-card]')).toHaveLength(1);
       expect(seen.size).toBe(1);
     } finally {
@@ -430,15 +447,14 @@ describe('cards from a tap', () => {
   });
 
   it('closes the card when the author types', async () => {
-    const user = userEvent.setup();
     render(<Harness initial="self.regen = 0;" />);
     const field = await editor('Stat code');
     const view = tap(field, 'regen');
     await openCard();
-    await user.keyboard('x');
-    await waitFor(() => expect(card()).toBeNull());
+    vi.useFakeTimers();
+    await typeOnFakeClock('x');
     // The pause never re-opens it for text still being typed.
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await pastCardDelays();
     expect(card()).toBeNull();
     expect(view.state.doc.toString()).toContain('x');
   });
@@ -460,18 +476,20 @@ describe('cards from a tap', () => {
   it('opens nothing for a drag that the browser took as a scroll', async () => {
     render(<Harness initial="self.regen = 0;" />);
     const field = await editor('Stat code');
+    vi.useFakeTimers();
     fireEvent.pointerDown(field, { pointerType: 'touch' });
     caretIn(field, 'regen');
     fireEvent.pointerCancel(field, { pointerType: 'touch' });
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await pastCardDelays();
     expect(card()).toBeNull();
   });
 
   it('opens nothing for a caret move that no tap made', async () => {
     render(<Harness initial="self.regen = 0;" />);
     const field = await editor('Stat code');
+    vi.useFakeTimers();
     caretIn(field, 'regen');
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await pastCardDelays();
     expect(card()).toBeNull();
   });
 });

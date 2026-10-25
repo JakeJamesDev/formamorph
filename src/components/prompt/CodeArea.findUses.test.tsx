@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorView } from '@codemirror/view';
 import { CodeArea } from './CodeArea';
@@ -54,7 +54,10 @@ beforeEach(() => {
   );
   vi.spyOn(EditorView.prototype, 'coordsAtPos').mockImplementation((pos: number) => ({ left: pos, right: pos + 1, top: 0, bottom: 10 }));
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 function hover(field: HTMLElement, text: string) {
   const at = field.textContent!.indexOf(text);
@@ -91,9 +94,11 @@ describe('Find All Uses on a code card', () => {
 
   it('keeps the pinned card open while the pointer crosses other names', async () => {
     await findFatigueUses(navigation());
-    hover(await editorIn(), 'stats');
-    // Past the hover delay, when a card on `stats` would have replaced it.
-    await new Promise((resolve) => setTimeout(resolve, TOOLTIP_DELAY_MS + 50));
+    const field = await editorIn();
+    vi.useFakeTimers();
+    hover(field, 'stats');
+    // At the hover delay, when a card on `stats` would have replaced it.
+    await act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
     expect(usesList()).toBeTruthy();
     expect(within(card()!).queryByText('(global)')).toBeNull();
   });

@@ -76,7 +76,7 @@ describe('a stored LM Studio record after a model swap', () => {
     expect(view.result.current.reasoningCapability?.tools).toBe(true);
     await act(async () => { view.result.current.setNativeReasoning({ enabled: true, level: 'high' }); });
 
-    await waitFor(() => expect(view.result.current.reasoningCapability?.tools).toBe(false), { timeout: 4000 });
+    await waitFor(() => expect(view.result.current.reasoningCapability?.tools).toBe(false));
     const record = view.result.current.reasoningCapability;
     expect(record?.reasons).toBe(false);
     // Replaced, not merged: the old model's budget answer does not survive onto the new model.

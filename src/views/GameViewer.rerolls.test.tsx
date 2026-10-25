@@ -87,7 +87,7 @@ async function playOneTurn(held: ReadonlySet<'choices' | 'stats'>) {
   await waitFor(() => {
     expect(screen.getByRole('button', { name: 'Re-generate Choices' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled();
-  }, { timeout: 8000 });
+  });
   return endpoint;
 }
 

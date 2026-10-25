@@ -178,13 +178,12 @@ describe('the tab strip', () => {
 });
 
 describe('the Scripts section', () => {
-  /** A script row's editor, once its CodeMirror chunk has landed. Several editors fetch that chunk here, and
-   *  under the whole suite's load they take longer than the default window allows. */
+  /** A script row's editor, once its CodeMirror chunk has landed. */
   const editorIn = (row: HTMLElement) => waitFor(() => {
     const field = within(row).getAllByRole('textbox').find((el) => el.closest('.cm-editor'));
     expect(field).toBeTruthy();
     return field as HTMLElement;
-  }, { timeout: 10000 });
+  });
   const rowOf = (label: string) => screen.getByRole('group', { name: label });
   const rows = () => screen.queryAllByRole('group').filter((el) => el.hasAttribute('data-script-id'));
 

@@ -51,17 +51,37 @@ describe('placeholder value pin sources — how a value row names its placeholde
     expect(owned).toEqual(['Molly › Pinner = Calm']);
   });
 
-  // 400 placeholders with 40 values each: 16,000 value rows over one placeholder list.
+  // 400 placeholders with `values` values each, every value pinning; a fresh list each call, so no name carries over.
+  const longList = (values: number): Placeholder[] => Array.from({ length: 400 }, (_, i) => ({
+    id: `ph${i}`, name: `Placeholder ${i}`,
+    values: Array.from({ length: values }, (_, j) => ({ id: `ph${i}-v${j}`, text: `Value ${j}`, pins: [{ placeholderId: 'ph0', value: 'x' }] })),
+  }));
+
+  const timeMs = (values: number) => {
+    const placeholders = longList(values);
+    const started = performance.now();
+    valueRows({ placeholders });
+    return performance.now() - started;
+  };
+
+  const median = (times: number[]) => [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)];
+
   it('names the rows of a long placeholder list in one pass', () => {
-    const placeholders: Placeholder[] = Array.from({ length: 400 }, (_, i) => ({
-      id: `ph${i}`, name: `Placeholder ${i}`,
-      values: Array.from({ length: 40 }, (_, j) => ({ id: `ph${i}-v${j}`, text: `Value ${j}`, pins: [{ placeholderId: 'ph0', value: 'x' }] })),
-    }));
-    const t0 = performance.now();
-    const rows = valueRows({ placeholders });
-    const ms = performance.now() - t0;
+    const rows = valueRows({ placeholders: longList(40) });
     expect(rows).toHaveLength(16000);
     expect(rows[16000 - 1].label).toBe('Placeholder 399 = Value 39');
-    expect(ms).toBeLessThan(100);
+
+    // One and 40 values per placeholder take turns, so a load spike hits both. Naming each placeholder once,
+    // 40x the rows cost about 2x; naming every row cost 40x.
+    timeMs(1);
+    timeMs(40);
+    const one: number[] = [];
+    const forty: number[] = [];
+    for (let run = 0; run < 7; run++) {
+      one.push(timeMs(1));
+      forty.push(timeMs(40));
+    }
+    console.info(`value row names: 400 rows ${median(one).toFixed(1)} ms, 16,000 rows ${median(forty).toFixed(1)} ms`);
+    expect(median(forty)).toBeLessThan(9 * median(one));
   });
 });

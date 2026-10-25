@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { onFakeClock } from '@/test/fakeClock';
+import { TOOLTIP_DELAY_MS, TooltipProvider } from '@/components/ui/tooltip';
 import { HistoryControlsReference } from './HistoryControlsReference';
 
 const renderReference = () => render(
@@ -12,6 +13,8 @@ const renderReference = () => render(
 
 const desktop = () => screen.getByRole('region', { name: 'Desktop sample' });
 const mobile = () => screen.getByRole('region', { name: 'Mobile sample' });
+/** Runs the fake clock through the provider's open delay. */
+const pastOpenDelay = () => act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
 const open = (sample: HTMLElement) => fireEvent.click(within(sample).getByRole('button', { name: 'History' }));
 const list = (sample: HTMLElement) => within(sample).getByRole('dialog', { name: 'History' });
 const MARA_LABEL = 'Edit Entity Mara Featherstonehaugh of the Lantern Docks';
@@ -153,7 +156,10 @@ describe('the row tip', () => {
       return this.textContent?.includes(text) ? 400 : 0;
     });
   };
-  afterEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   const maraRow = () => within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player Description` });
   /** The open tip's popup, found by the name it spells out in full. */
@@ -198,15 +204,15 @@ describe('the row tip', () => {
     renderReference();
     open(desktop());
     const rows = within(list(desktop()));
-    await userEvent.hover(rows.getByRole('button', { name: 'Edit Stat Hunger: Description' }));
-    // Past the provider's open delay.
-    await act(() => new Promise((done) => { setTimeout(done, 600); }));
+    vi.useFakeTimers();
+    await onFakeClock((user) => user.hover(rows.getByRole('button', { name: 'Edit Stat Hunger: Description' })));
+    await pastOpenDelay();
     expect(document.querySelector('[data-step-tip]')).toBeNull();
 
     rows.getByRole('button', { name: 'Edit Locations' }).focus();
-    await userEvent.tab();
+    await onFakeClock((user) => user.tab());
     expect(rows.getByRole('button', { name: /^Edit World: Thumbnail/ })).toHaveFocus();
-    await act(() => new Promise((done) => { setTimeout(done, 600); }));
+    await pastOpenDelay();
     expect(document.querySelector('[data-step-tip]')).toBeNull();
   });
 

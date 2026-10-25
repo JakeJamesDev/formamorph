@@ -5,7 +5,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
 import WorldStorageService from '@/services/WorldStorageService';
-import { WORLD_CHANGE_CHANNEL } from '@/lib/worldChangeSignal';
+import { onWorldChangedElsewhere, WORLD_CHANGE_CHANNEL } from '@/lib/worldChangeSignal';
 import type { World } from '@/types';
 
 /**
@@ -47,6 +47,15 @@ const deletedElsewhere = async (ctx: () => Handle) => {
 };
 /** Lets a message already posted arrive and render. */
 const settle = () => act(() => new Promise<void>((resolve) => { setTimeout(resolve, 50); }));
+/** Posts a marker behind every message already sent, and waits until this tab has heard and rendered it. */
+const drainChannel = async () => {
+  let heard!: () => void;
+  const arrived = new Promise<void>((resolve) => { heard = resolve; });
+  const stop = onWorldChangedElsewhere((worldId) => { if (worldId === 'marker') heard(); });
+  otherTab.postMessage({ worldId: 'marker' });
+  await act(() => arrived);
+  stop();
+};
 
 beforeEach(() => {
   otherTab = new BroadcastChannel(WORLD_CHANGE_CHANNEL);
@@ -61,7 +70,7 @@ describe('another tab writes the open world', () => {
   it('is heard with no editor open, and only for this world', async () => {
     const ctx = await mount();
     await savedElsewhere(ctx, 'another-world');
-    await settle();
+    await drainChannel();
     expect(ctx().worldChangedElsewhere).toBeNull();
     await savedElsewhere(ctx);
   });
@@ -70,7 +79,7 @@ describe('another tab writes the open world', () => {
     const ctx = await mount();
     act(() => ctx().updateWorldOverview({ name: 'Brinewell' }));
     await act(async () => { await ctx().saveWorld(); });
-    await settle();
+    await drainChannel();
     expect(ctx().worldChangedElsewhere).toBeNull();
   });
 });

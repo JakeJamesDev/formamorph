@@ -41,5 +41,5 @@ describe('the prelude cost (Q37, Q48)', () => {
     expect(full).toBeLessThanOrEqual(3 * empty);
     const read = await executeStatCode('return Object.keys(dictionaries.Lore.entries).length;', [], null, { dictionaries: [book], args: {} });
     expect(read.reply).toBe('10000');
-  }, 60_000);
+  });
 });

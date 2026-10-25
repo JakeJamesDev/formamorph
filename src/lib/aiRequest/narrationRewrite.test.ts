@@ -11,6 +11,23 @@ const deltas = (...steps: string[]): TransportEvent[] => {
 };
 const done = (text: string): TransportEvent => ({ type: 'done', text, raw: text, reasoningText: '', finishReason: 'stop' });
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const flush = () => sleep(0);
+
+/** Rewrites the test settles itself: each held call waits until `releaseAll`, which also settles any call a
+ *  release starts, so no real timer races the assertions. */
+function heldRewrites(holds: (sentence: string) => boolean = () => true) {
+  const waiting: (() => void)[] = [];
+  const rewrite: SentenceRewrite = (sentence) =>
+    (holds(sentence) ? new Promise<string>((resolve) => waiting.push(() => resolve(sentence))) : sentence);
+  const releaseAll = async () => {
+    await flush();
+    while (waiting.length) {
+      waiting.shift()!();
+      await flush();
+    }
+  };
+  return { rewrite, releaseAll, waiting };
+}
 
 /** A Narration Stream feeding rewritten events to one listener. */
 function wire(rewrite: SentenceRewrite) {
@@ -98,46 +115,44 @@ describe('rewriteSentences', () => {
       return `<${sentence}>`;
     });
     feed([opened, ...deltas('Hm. Plan')]);
-    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    await vi.waitFor(() => expect(seen).toHaveLength(1), { timeout: 10_000 });
     feed([{ type: 'retract' }, ...deltas('One. Two. Th', 'ree.'), done('One. Two. Three.')]);
     await final();
     expect(seen).toEqual([[], [], ['<One.>'], ['<One.>', '<Two.>']]);
   });
 
   it('drops queued work when the request is canceled', async () => {
-    const { heard, feed, final } = wire(async (sentence) => {
-      await sleep(20);
-      return sentence;
-    });
+    const held = heldRewrites();
+    const { heard, feed, final } = wire(held.rewrite);
     feed([opened, ...deltas('One. Two. Three. Fo')]);
+    await flush();
+    expect(held.waiting).toHaveLength(1);
     feed([{ type: 'canceled' }]);
     expect(await final()).toBeUndefined();
-    await sleep(80);
+    await held.releaseAll();
     expect(heard.at(-1)).toEqual({ type: 'canceled' });
     expect(sentences(heard)).toEqual([]);
   });
 
   it('restarts the round on a retract, and drops the old round\'s pending sentences', async () => {
-    const { heard, feed, final } = wire(async (sentence) => {
-      await sleep(sentence === 'Let me check.' ? 30 : 0);
-      return sentence;
-    });
+    const held = heldRewrites((sentence) => sentence === 'Let me check.');
+    const { heard, feed, final } = wire(held.rewrite);
     feed([opened, ...deltas('Let me check. Hm'), { type: 'retract' }, ...deltas('The door creaks.', ' Wind'), done('The door creaks. Wind')]);
+    await held.releaseAll();
     expect(await final()).toBe('The door creaks. Wind');
-    await sleep(60);
     expect(sentences(heard)).toEqual([[0, 'The door creaks.'], [1, 'Wind']]);
     expect(heard.find((e) => e.type === 'retract')).toEqual({ type: 'retract', hadPartial: true });
   });
 
   it('stops waiting and drops queued work when the view abandons the request', async () => {
-    const { heard, feed, final, abandon } = wire(async (sentence) => {
-      await sleep(20);
-      return sentence;
-    });
+    const held = heldRewrites();
+    const { heard, feed, final, abandon } = wire(held.rewrite);
     feed([opened, ...deltas('One. Two. Th'), done('One. Two. Three.')]);
+    await flush();
+    expect(held.waiting).toHaveLength(1);
     abandon();
     await expect(final()).resolves.toBeUndefined();
-    await sleep(80);
+    await held.releaseAll();
     expect(sentences(heard)).toEqual([]);
     expect(heard.some((e) => e.type === 'finished')).toBe(false);
   });

@@ -1,11 +1,12 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { onFakeClock } from '@/test/fakeClock';
 import * as React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { Slot } from '@radix-ui/react-slot';
 import {
-  FlashTip, Tip, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipProvider, TooltipTrigger,
+  FlashTip, Tip, TOOLTIP_DELAY_MS, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipProvider, TooltipTrigger,
 } from './tooltip';
 
 /** Live Base UI tooltip roots and portals, counted by pass-through wrappers. */
@@ -35,8 +36,17 @@ vi.mock('@base-ui/react/tooltip', async (importOriginal) => {
 /** The app mounts the provider once at its root, so every case here runs through it. */
 const renderTip = (ui: React.ReactElement) => render(<TooltipProvider>{ui}</TooltipProvider>);
 
-/** Longer than the provider's 400 ms open delay, so a tip that was going to open has done so. */
-const pastOpenDelay = () => new Promise((resolve) => setTimeout(resolve, 500));
+
+/** Hovers on a fake clock and runs it through the open delay, so a tip that was going to open has done so. */
+const hoverPastOpenDelay = async (control: Element) => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    await onFakeClock((user) => user.hover(control));
+    await act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
+  } finally {
+    vi.useRealTimers();
+  }
+};
 
 describe('a tip on a control', () => {
   it('shows its text when the control is focused', async () => {
@@ -347,8 +357,7 @@ describe('a tip when the pointer presses or drags', () => {
     const control = screen.getByRole('button');
     fireEvent.pointerDown(document.body);
 
-    await userEvent.hover(control);
-    await pastOpenDelay();
+    await hoverPastOpenDelay(control);
     expect(screen.queryByText('Delete world')).toBeNull();
 
     fireEvent.pointerUp(document.body);
@@ -362,8 +371,7 @@ describe('a tip when the pointer presses or drags', () => {
     renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
     const control = screen.getByRole('button');
     fireEvent.pointerDown(document.body);
-    await userEvent.hover(control);
-    await pastOpenDelay();
+    await hoverPastOpenDelay(control);
     expect(screen.queryByText('Delete world')).toBeNull();
 
     fireEvent.pointerCancel(document.body);
@@ -418,8 +426,7 @@ describe('a tip when the pointer presses or drags', () => {
       const control = screen.getByRole('button');
       fireEvent.pointerDown(document.body);
 
-      await userEvent.hover(control);
-      await pastOpenDelay();
+      await hoverPastOpenDelay(control);
       expect(screen.queryByText('Undo step list')).toBeNull();
 
       fireEvent.pointerUp(document.body);
@@ -535,8 +542,7 @@ describe('a tip when focus or the window changes', () => {
     fireEvent.pointerDown(document.body);
     fireEvent.blur(screen.getByRole('textbox'));
 
-    await userEvent.hover(screen.getByRole('button', { name: 'Delete world' }));
-    await pastOpenDelay();
+    await hoverPastOpenDelay(screen.getByRole('button', { name: 'Delete world' }));
 
     expect(screen.queryByText('Delete world', { selector: 'div' })).toBeNull();
   });

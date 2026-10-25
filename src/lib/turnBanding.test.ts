@@ -857,8 +857,24 @@ describe('bandCostTracker', () => {
 
   it('keeps trimming a long band fast enough to run on every render', () => {
     const long = Array.from({ length: 3000 }, (_, i) => bandTurn(i, { summary: `summary of turn ${i} `.repeat(4) }));
-    const started = performance.now();
-    buildBandedHistory({ turns: long, contextWindow: 4096, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: 0, keywords: [], actionEntities: [], recapPrompt: RECAP });
-    expect(performance.now() - started).toBeLessThan(250);
+    const timeMs = (contextWindow: number) => {
+      const started = performance.now();
+      buildBandedHistory({ turns: long, contextWindow, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: 0, keywords: [], actionEntities: [], recapPrompt: RECAP });
+      return performance.now() - started;
+    };
+    const median = (times: number[]) => [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)];
+    // The same band trimmed to 4,096 tokens and kept whole take turns, so a load spike hits both. Rebuilding
+    // the band per drop makes the trim cost hundreds of times the build.
+    const [trim, whole] = [4096, 10_000_000];
+    timeMs(trim);
+    timeMs(whole);
+    const times: [number[], number[]] = [[], []];
+    for (let run = 0; run < 7; run++) {
+      times[0].push(timeMs(trim));
+      times[1].push(timeMs(whole));
+    }
+    const [trimmed, kept] = times.map(median);
+    console.info(`band of 3,000 turns: trimmed ${trimmed.toFixed(1)} ms, kept whole ${kept.toFixed(1)} ms`);
+    expect(trimmed).toBeLessThan(9 * kept);
   });
 });

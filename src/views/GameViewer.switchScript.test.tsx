@@ -81,7 +81,7 @@ async function playTurn() {
   stubEndpoint();
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: 'I wait.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 }
 
 describe('When a Trait Switches in play', () => {
@@ -94,7 +94,7 @@ describe('When a Trait Switches in play', () => {
     await waitFor(() => expect(vigorNow()).toBe(30));
   });
 
-  it('runs when the turn’s settle turns a trait off whose stat gate closed', { timeout: 30_000 }, async () => {
+  it('runs when the turn’s settle turns a trait off whose stat gate closed', async () => {
     // Brave needs Vigor at 40 or more; the before box drops Vigor to 10, so the turn's settle switches Brave off.
     const gated: Trait = { ...brave, requires: [{ all: [{ kind: 'stat', id: 'vigor', operator: '>=', value: 40, unit: 'raw' }] }] };
     const drop = { ...vigor, scripts: [{ id: 'drop', timing: 'before' as const, code: 'return 10;' }] };
@@ -122,7 +122,7 @@ describe('When a Trait Switches in play', () => {
       await screen.findByRole('group', { name: 'Rally?' });
     }
 
-    it('lands the run’s own switches and keeps a toggle the player made meanwhile', { timeout: 30_000 }, async () => {
+    it('lands the run’s own switches and keeps a toggle the player made meanwhile', async () => {
       await openRally();
       await clickTrait('Keen');
       await waitFor(() => expect(vigorNow()).toBe(52));
@@ -132,7 +132,7 @@ describe('When a Trait Switches in play', () => {
       expect(vigorNow()).toBe(67);
     });
 
-    it('lets the player’s toggle win a trait the run also switched, stat changes included', { timeout: 30_000 }, async () => {
+    it('lets the player’s toggle win a trait the run also switched, stat changes included', async () => {
       await openRally();
       await clickTrait('Calm');
       await waitFor(() => expect(vigorNow()).toBe(60));
@@ -146,7 +146,7 @@ describe('When a Trait Switches in play', () => {
       expect(logLines.filter((line) => line.includes('(by '))).toEqual(['Acquired trait: Bold (by Brave)']);
     });
 
-    it('lands a nested run’s switches, and a run the player’s toggle fired, each on its own', { timeout: 30_000 }, async () => {
+    it('lands a nested run’s switches, and a run the player’s toggle fired, each on its own', async () => {
       // Bold's own switch-on, nested in Brave's run, switches Lucky on; Keen's, fired by the player, switches Sharp on.
       await openRally({
         bold: plus('bold', 'Bold', 5, onSwitch('if (trait.enabled) traits.Lucky.enabled = true;')),
@@ -172,7 +172,7 @@ describe('When a Trait Switches in play', () => {
     const latestTurn = () => parseTurnContent(history.findLast((m) => m.role === 'assistant')?.content ?? '');
     const pinned = () => notes.map((note) => note.text);
 
-    it('land on the latest turn when the player toggles the trait', { timeout: 30_000 }, async () => {
+    it('land on the latest turn when the player toggles the trait', async () => {
       renderGameViewer(notingWorld(), { inGameplay: <Probe /> });
       await playTurn();
       await clickBrave();
@@ -182,7 +182,7 @@ describe('When a Trait Switches in play', () => {
       expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
     });
 
-    it('land on the turn whose settle switched the trait off', { timeout: 30_000 }, async () => {
+    it('land on the turn whose settle switched the trait off', async () => {
       // Brave needs Vigor at 40 or more; the before box drops Vigor to 10, so the turn's settle switches Brave off.
       const gated: Trait = { ...brave, requires: [{ all: [{ kind: 'stat', id: 'vigor', operator: '>=', value: 40, unit: 'raw' }] }] };
       const drop = { ...vigor, scripts: [{ id: 'drop', timing: 'before' as const, code: 'return 10;' }] };
@@ -196,7 +196,7 @@ describe('When a Trait Switches in play', () => {
       expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
     });
 
-    it('land on the turn once it ends, for a toggle while the turn runs', { timeout: 30_000 }, async () => {
+    it('land on the turn once it ends, for a toggle while the turn runs', async () => {
       renderGameViewer(notingWorld(), { inGameplay: <Probe /> });
       await playTurn();
       // The second turn's narration waits until the toggle has run.
@@ -218,7 +218,7 @@ describe('When a Trait Switches in play', () => {
       await clickBrave();
       await waitFor(() => expect(traitsOn).toEqual(['brave']));
       release();
-      await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']), { timeout: 8000 });
+      await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']));
       const turns = history.filter((m) => m.role === 'assistant');
       expect(turns).toHaveLength(2);
       expect(notes[0].id).toContain(latestTurn()?.turnId);
@@ -227,7 +227,7 @@ describe('When a Trait Switches in play', () => {
       expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
     });
 
-    it('land once, with the batch, for a switch a Before the AI script makes', { timeout: 30_000 }, async () => {
+    it('land once, with the batch, for a switch a Before the AI script makes', async () => {
       const rouse: Script = { id: 'rouse', timing: 'before', code: 'traits.Brave.enabled = true;' };
       renderGameViewer({ ...notingWorld(), scripts: [rouse, noting] }, { inGameplay: <Probe /> });
       await playTurn();
@@ -238,11 +238,11 @@ describe('When a Trait Switches in play', () => {
     });
   });
 
-  it('does not run for a setup pick, nor on a load of a save', { timeout: 30_000 }, async () => {
+  it('does not run for a setup pick, nor on a load of a save', async () => {
     const played = renderGameViewer(world(), { inGameplay: <Probe />, initialTraits: ['brave'] });
     await playTurn();
     expect(vigorNow()).toBe(50);
-    await waitFor(async () => expect(await getAllSaveRecords()).toHaveLength(1), { timeout: 8000 });
+    await waitFor(async () => expect(await getAllSaveRecords()).toHaveLength(1));
     const [save] = await getAllSaveRecords();
     played.unmount();
     cleanup();

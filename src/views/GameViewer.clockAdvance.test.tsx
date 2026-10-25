@@ -109,7 +109,7 @@ afterEach(() => vi.restoreAllMocks());
 async function playTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 }
 
 const SLEEP = onCallTool('clock.advance(480);');
@@ -125,7 +125,7 @@ describe('a clock advance mid-turn', () => {
     expect(narrationSystem(sent.narration[0])).toContain('It is Day 1, midday.');
     await waitFor(() => expect(gameTime).toBe(4));
     expect(valueOf('end')).toBe(4);
-  }, 30_000);
+  });
 
   it('shows a Planning On Call advance in the narration built after it', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
@@ -137,7 +137,7 @@ describe('a clock advance mid-turn', () => {
     expect(narrationSystem(sent.narration[0])).toContain('It is Day 1, afternoon.');
     await waitFor(() => expect(gameTime).toBe(8));
     expect(valueOf('end')).toBe(8);
-  }, 30_000);
+  });
 
   it('charges the clock, regen and starvation once for a Before and an On Call advance together', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
@@ -151,7 +151,7 @@ describe('a clock advance mid-turn', () => {
     expect(valueOf('end')).toBe(9);
     expect(valueOf('rest')).toBe(9);
     expect(valueOf('health')).toBe(500 - 5 * 9);
-  }, 30_000);
+  });
 
   it('shows an advance to a later Tool call in the same request', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
@@ -163,7 +163,7 @@ describe('a clock advance mid-turn', () => {
     await playTurn('I sleep.');
     expect(sent.toolReplies[0]).toContain('Now: Day 1, morning');
     expect(sent.toolReplies[2]).toContain('Now: Day 1, afternoon');
-  }, 30_000);
+  });
 
   it('shows an advance the narration made in the prompts after it', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'inline');
@@ -174,7 +174,7 @@ describe('a clock advance mid-turn', () => {
     // The narration was already being written at turn start; the choices come after the advance.
     expect(narrationSystem(sent.narration[0])).toContain('It is Day 1, morning.');
     expect(sent.choices[0]).toContain('It is Day 1, afternoon.');
-  }, 30_000);
+  });
 
   it('starts a later On Call run at the time an earlier advance reached', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
@@ -185,7 +185,7 @@ describe('a clock advance mid-turn', () => {
 
     await playTurn('I sleep.');
     expect(valueOf('mark')).toBe(1);
-  }, 30_000);
+  });
 
   it('puts the clock back to turn start on a regenerate, so the turn charges it once', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
@@ -196,13 +196,13 @@ describe('a clock advance mid-turn', () => {
     await waitFor(() => expect(gameTime).toBe(8));
 
     fireEvent.click(screen.getByRole('button', { name: 'Re-generate Narration' }));
-    await waitFor(() => expect(sent.narration).toHaveLength(3), { timeout: 8000 });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+    await waitFor(() => expect(sent.narration).toHaveLength(3));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
     // The regenerated turn reads its own start, four hours in, and ends where the first try did.
     expect(narrationSystem(sent.narration[2])).toBe(narrationSystem(sent.narration[1]));
     expect(gameTime).toBe(8);
     expect(valueOf('end')).toBe(8);
-  }, 30_000);
+  });
 
   it('writes the narration at the place a Planning On Call move put the turn', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
@@ -211,7 +211,7 @@ describe('a clock advance mid-turn', () => {
 
     await playTurn('I climb.');
     expect(narrationSystem(sent.narration[0])).toContain('You are at Lighthouse.');
-  }, 30_000);
+  });
 
   it('sends the narration request byte-equal when the Planning call wrote nothing', async () => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
@@ -228,5 +228,5 @@ describe('a clock advance mid-turn', () => {
 
     expect(called.toolCalls).toBe(1);
     expect(called.narration[0]).toBe(plain.narration[0]);
-  }, 30_000);
+  });
 });
