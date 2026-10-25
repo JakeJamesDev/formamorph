@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import type { VariantProps } from 'class-variance-authority';
 import { Check, ChevronDown, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { selectTriggerVariants } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
+import { useStableCallback } from '@/lib/useStableCallback';
 import { cn } from '@/lib/utils';
 
 /** One pickable row. Rows are unique by `key`, so two rows may pick the same `value`. */
@@ -135,57 +136,63 @@ function PickerCommand<V>({
   const inputRef = useRef<HTMLInputElement>(null);
   // A drill step remounts this list; the search keeps the keyboard's place.
   useEffect(() => { if (focusOnMount) inputRef.current?.focus(); }, [focusOnMount]);
+  const pickRow = useStableCallback(onPick);
+  const openPage = useStableCallback((key: string) => onOpenPage?.(key));
 
-  const item = (entry: ListItem<V>) => {
-    if (entry.kind === 'page') {
-      const { page, count } = entry;
-      return (
+  // Rows render once per list, not per keystroke: cmdk filters them itself, so typing re-renders only the input.
+  const rows = useMemo(() => {
+    const item = (entry: ListItem<V>) => {
+      if (entry.kind === 'page') {
+        const { page, count } = entry;
+        return (
+          <CommandItem
+            key={`page:${page.key}`}
+            value={`page:${page.key}`}
+            aria-label={`${plain(page.heading)}, ${count} available, opens a page`}
+            className={cn('gap-2', checks && 'pl-8')}
+            onSelect={() => openPage(page.key)}
+          >
+            <span className="min-w-0 flex-1 truncate">{render(page.heading)}</span>
+            <span className="shrink-0 text-meta text-muted-foreground">{count}</span>
+            <span aria-hidden className="shrink-0 text-muted-foreground">›</span>
+          </CommandItem>
+        );
+      }
+      const { row: r, breadcrumb } = entry;
+      const path = breadcrumbPath(breadcrumb, plain);
+      const checked = checks && Object.is(r.value, value);
+      const cmdItem = (
         <CommandItem
-          key={`page:${page.key}`}
-          value={`page:${page.key}`}
-          aria-label={`${plain(page.heading)}, ${count} available, opens a page`}
+          key={r.key}
+          value={r.key}
+          keywords={[plain(r.name), path ?? '']}
+          disabled={r.disabled}
+          data-state={checks ? (checked ? 'checked' : 'unchecked') : undefined}
           className={cn('gap-2', checks && 'pl-8')}
-          onSelect={() => onOpenPage?.(page.key)}
+          onSelect={() => pickRow(r.value, r)}
         >
-          <span className="min-w-0 flex-1 truncate">{render(page.heading)}</span>
-          <span className="shrink-0 text-meta text-muted-foreground">{count}</span>
-          <span aria-hidden className="shrink-0 text-muted-foreground">›</span>
+          {checks && (
+            <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+              {checked && <Check className="h-4 w-4" aria-hidden />}
+            </span>
+          )}
+          <BreadcrumbLabel name={r.name} breadcrumb={breadcrumb} render={render} />
+          {r.hint && <span className="shrink-0 text-meta text-muted-foreground">{render(r.hint)}</span>}
         </CommandItem>
       );
-    }
-    const { row: r, breadcrumb } = entry;
-    const path = breadcrumbPath(breadcrumb, plain);
-    const checked = checks && Object.is(r.value, value);
-    const cmdItem = (
-      <CommandItem
-        key={r.key}
-        value={r.key}
-        keywords={[plain(r.name), path ?? '']}
-        disabled={r.disabled}
-        data-state={checks ? (checked ? 'checked' : 'unchecked') : undefined}
-        className={cn('gap-2', checks && 'pl-8')}
-        onSelect={() => onPick(r.value, r)}
-      >
-        {checks && (
-          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-            {checked && <Check className="h-4 w-4" aria-hidden />}
-          </span>
-        )}
-        <BreadcrumbLabel name={r.name} breadcrumb={breadcrumb} render={render} />
-        {r.hint && <span className="shrink-0 text-meta text-muted-foreground">{render(r.hint)}</span>}
-      </CommandItem>
-    );
-    return <BreadcrumbTip key={r.key} breadcrumb={breadcrumb} plainText={plain}>{cmdItem}</BreadcrumbTip>;
-  };
+      return <BreadcrumbTip key={r.key} breadcrumb={breadcrumb} plainText={plain}>{cmdItem}</BreadcrumbTip>;
+    };
+    return groups.map((g) => g.items.length > 0 && (
+      <CommandGroup key={g.key} heading={g.heading}>{g.items.map(item)}</CommandGroup>
+    ));
+  }, [groups, value, checks, render, plain, pickRow, openPage]);
 
   return (
     <Command filter={filterRows}>
       <CommandInput ref={inputRef} placeholder={searchPlaceholder} value={search} onValueChange={onSearch} onKeyDown={onInputKeyDown} />
       <CommandList>
         <CommandEmpty>{empty ? 'Nothing to pick' : 'No matches'}</CommandEmpty>
-        {groups.map((g) => g.items.length > 0 && (
-          <CommandGroup key={g.key} heading={g.heading}>{g.items.map(item)}</CommandGroup>
-        ))}
+        {rows}
       </CommandList>
     </Command>
   );
@@ -330,18 +337,25 @@ interface DrillFrame {
 }
 
 const ROOT: readonly DrillFrame[] = [{ key: '', search: '' }];
+const KEY_SEPARATOR = '\u0000';
 
 function BreadcrumbPickerTree<V>({ tree, frames, onFrames, ...list }: Omit<BreadcrumbPickerListProps<V>, 'sections'> & {
   tree: readonly BreadcrumbPickerNode<V>[];
   frames: readonly DrillFrame[];
   onFrames: (frames: readonly DrillFrame[]) => void;
 }) {
-  const drill = leaves(tree).length > DRILL_CUTOFF;
-  const keys = frames.slice(1).map((f) => f.key);
-  const level = drill ? openLevel(tree, keys) : { nodes: tree, path: [], depth: 0 };
+  const drill = useMemo(() => leaves(tree).length > DRILL_CUTOFF, [tree]);
+  // The open pages as one value, so typing, which changes only a frame's search, keeps the level and its rows.
+  const keyPath = frames.slice(1).map((f) => f.key).join(KEY_SEPARATOR);
+  const level = useMemo(() => (drill
+    ? openLevel(tree, keyPath ? keyPath.split(KEY_SEPARATOR) : [])
+    : { nodes: tree, path: [], depth: 0 }), [tree, drill, keyPath]);
   const { depth } = level;
+  const keys = frames.slice(1).map((f) => f.key);
   const open = frames.slice(0, depth + 1);
   const search = open[depth].search;
+  const browse = drill && search === '';
+  const groups = useMemo(() => (browse ? browseGroups(level) : flatGroups(level)), [browse, level]);
   const setSearch = (next: string) => onFrames([...open.slice(0, -1), { ...open[depth], search: next }]);
   const openPage = (key: string) => onFrames([...open, { key, search: '' }]);
   const back = () => onFrames(open.slice(0, -1));
@@ -361,7 +375,7 @@ function BreadcrumbPickerTree<V>({ tree, frames, onFrames, ...list }: Omit<Bread
       )}
       <PickerCommand
         key={keys.slice(0, depth).join('\n')}
-        groups={drill && search === '' ? browseGroups(level) : flatGroups(level)}
+        groups={groups}
         search={search}
         onSearch={setSearch}
         onOpenPage={openPage}
