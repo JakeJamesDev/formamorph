@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { useGameplay } from '@/contexts/GameplayContext';
@@ -144,43 +144,58 @@ describe('a persona change’s switch run', () => {
   });
 
   describe('to a library persona', () => {
-    /** Holds the library read of Wren until `land` runs. */
+    /** Holds the library read of Wren until `land` runs; `served` settles once every read of Wren has returned. */
     async function holdWrenLoad() {
       await EntityStorageService.storeEntity({ id: wren.id, name: wren.name, data: wren });
       const read = EntityStorageService.getEntityData.bind(EntityStorageService);
       let land = () => {};
       const landed = new Promise<void>((resolve) => { land = resolve; });
-      vi.spyOn(EntityStorageService, 'getEntityData').mockImplementation(async (id) => {
-        if (id === wren.id) await landed;
-        return read(id);
+      const reads: Promise<unknown>[] = [];
+      vi.spyOn(EntityStorageService, 'getEntityData').mockImplementation((id) => {
+        const result = (async () => {
+          if (id === wren.id) await landed;
+          return read(id);
+        })();
+        if (id === wren.id) reads.push(result);
+        return result;
       });
-      return () => land();
+      return {
+        land: () => land(),
+        asked: () => reads.length,
+        served: () => Promise.allSettled(reads),
+      };
     }
     const readsWren = `${inCast} stats.Vigor.value = (persona.name === "Wren" ? 1 : 0) + (inCast("Wren") ? 10 : 0) + (inCast("Ash") ? 100 : 0);`;
 
     it('runs once the persona loads, and reads it', async () => {
-      const land = await holdWrenLoad();
+      const load = await holdWrenLoad();
       renderGameViewer(world(readsWren), {
         inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
       });
       await screen.findByPlaceholderText(/Type your action/);
+      const before = load.asked();
       await changePersona('Wren');
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // The change asked for Wren. The settle that fires the run turns Sworn off in the same render, so it waits too.
+      await waitFor(() => expect(load.asked()).toBeGreaterThan(before));
+      expect(traitsOn).toEqual(['sworn']);
       expect(vigorNow()).toBe(50);
-      land();
+      load.land();
       await waitFor(() => expect(vigorNow()).toBe(11));
     });
 
     it('never runs when the view closes while the persona loads', async () => {
-      const land = await holdWrenLoad();
+      const load = await holdWrenLoad();
       const played = renderGameViewer(world(readsWren), {
         inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
       });
       await screen.findByPlaceholderText(/Type your action/);
+      const before = load.asked();
       await changePersona('Wren');
-      played.unmountView();
-      land();
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await waitFor(() => expect(load.asked()).toBeGreaterThan(before));
+      await played.unmountView();
+      load.land();
+      // Every read of Wren has returned; a 0 ms flush lets what follows it land.
+      await act(async () => { await load.served(); await new Promise((resolve) => setTimeout(resolve, 0)); });
       expect(vigorNow()).toBe(50);
       expect(traitsOn).toEqual(['sworn']);
     });

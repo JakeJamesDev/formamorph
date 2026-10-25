@@ -13,6 +13,7 @@ import { resolveModelType } from '@/lib/UtilityComponents';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { useHeldModelBlob } from '@/lib/useHeldModelBlob';
 import { cn } from '@/lib/utils';
+import { trackWork } from '@/lib/pendingWork';
 import {
   MEDIA_KIND_LABELS, formatMediaBytes, kindBreakdown, largestItems, namedBySlot, totalBytes,
   type MediaItem, type MediaParent,
@@ -96,7 +97,7 @@ function AvatarPanel({ item, placeholders, onGoTo }: {
       <MediaActionRow
         item={item}
         placeholders={placeholders}
-        onReplace={(media) => void replace(id, media)}
+        onReplace={(media) => void trackWork(replace(id, media))}
         onRemove={() => ask(id)}
         removeLabel="Delete"
       />

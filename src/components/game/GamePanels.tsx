@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
@@ -183,7 +184,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const isMobile = useIsMobile();
   const [showEntityView, setShowEntityView] = React.useState(true);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
-  React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, requestKey]);
+  const landingKey = useRequestKey(requestKey);
+  React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, landingKey]);
 
   // The shared pick when it has something to show, else the played entity, else the first showable scene
   // entity. The stat panel's (None) and a pick with nothing to show both leave the view on that fallback.

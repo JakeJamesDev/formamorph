@@ -83,6 +83,15 @@ describe('a surface request on the main menu', () => {
     expect(registry.get().dialog).toBe('settings');
   });
 
+  it('keeps a tab the player picks before the landing clears', async () => {
+    renderMenu();
+    requester.send('settings.output');
+    expect(registry.get().tabs).toEqual(['settings.output']);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Display' }));
+    await settle();
+    expect(registry.get().tabs).toEqual(['settings.display']);
+  });
+
   it('opens Load Game for a game surface, since no game is running', async () => {
     renderMenu();
     requester.send('gameViewer.memory');

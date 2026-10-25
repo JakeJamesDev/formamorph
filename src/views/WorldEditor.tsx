@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type MutableRefObject, type ReactNode } from 'react';
+import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
 import { useHistoryChords } from '@/components/editor/useHistoryChords';
@@ -160,7 +161,7 @@ export interface EditorExit {
 
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
-  initialTab, initialBenchTab, initialTarget, requestKey, leaveRef, exitRef,
+  initialTab, initialBenchTab, initialTarget, requestKey: landingKey, leaveRef, exitRef,
 }: {
   onClose: () => void;
   /** A tab an outside request selects. */
@@ -277,6 +278,7 @@ const WorldEditorInner = ({
   const offerAnchor = useTourAnchor(offerPending ? TOUR_STEPS[0].anchor : null);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const tabGroups = useMemo(() => editorTabGroupsFor(advanced), [advanced]);
+  const requestKey = useRequestKey(landingKey);
   const [activeTab, setActiveTab] = useState(initialTab ?? "overview");
   const [sectionsOpen, setSectionsOpen] = useState(false);
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);

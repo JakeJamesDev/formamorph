@@ -154,12 +154,14 @@ describe('a clean close in the in-play editor', () => {
     fireEvent.change(within(editor).getByDisplayValue(FULL_COUNT), { target: { value: 'Brinewell' } });
     await waitFor(() => expect(within(editor).getByRole('button', { name: 'Saving…' })).toBeInTheDocument());
 
+    // The click decides: a clean close that skipped the wait is already gone.
     fireEvent.click(within(editor).getByRole('button', { name: 'Close' }));
-    await act(() => new Promise<void>((resolve) => { setTimeout(resolve, 50); }));
     expect(screen.getByRole('dialog', { name: 'World Editor' })).toBeInTheDocument();
 
     await act(async () => { finish(); });
     expect(await screen.findByText('Unsaved changes')).toBeInTheDocument();
+    // An editor that closed before the save ended cannot ask after it.
+    expect(screen.getByRole('dialog', { name: 'World Editor' })).toBeInTheDocument();
   });
 });
 
@@ -174,9 +176,18 @@ describe('a save of the open world in another tab, in the in-play editor', () =>
     await editName('Brinewell');
     act(() => { otherTab.postMessage({ worldId: WORLD.id }); });
     const asked = await screen.findByRole('alertdialog', { name: TITLE });
-    fireEvent.keyDown(asked, { key: 'Escape' });
+    // The top layer takes Escape and marks it handled, whether it dismisses or not.
+    expect(fireEvent.keyDown(asked, { key: 'Escape' })).toBe(false);
+    expect(screen.getByRole('alertdialog', { name: TITLE })).toBeInTheDocument();
+    // Radix arms its outside-press listener on a 0 ms timer and decides a mouse press on its click.
+    await act(() => new Promise<void>((resolve) => { setTimeout(resolve, 0); }));
+    let heard = 0;
+    const hear = () => { heard += 1; };
+    document.body.addEventListener('dismissableLayer.pointerDownOutside', hear);
     fireEvent.pointerDown(document.body);
-    await act(() => new Promise<void>((resolve) => { setTimeout(resolve, 50); }));
+    fireEvent.click(document.body);
+    document.body.removeEventListener('dismissableLayer.pointerDownOutside', hear);
+    expect(heard).toBeGreaterThan(0);
     expect(screen.getByRole('alertdialog', { name: TITLE })).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'World Editor' })).toBeInTheDocument();
   });
@@ -193,8 +204,8 @@ describe('a save of the open world in another tab, in the in-play editor', () =>
     expect(watch.stop()).toBe(false);
     expect(screen.queryByText('Unsaved changes')).toBeNull();
     fireEvent.click(within(asked).getByRole('button', { name: 'Keep Mine' }));
+    // The render that closes the alert is the one a returning prompt would open in.
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
-    await act(() => new Promise<void>((resolve) => { setTimeout(resolve, 50); }));
     expect(screen.queryByText('Unsaved changes')).toBeNull();
     expect(screen.getByRole('dialog', { name: 'World Editor' })).toBeInTheDocument();
   });

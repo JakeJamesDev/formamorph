@@ -40,12 +40,16 @@ export const isCpuStart = (args) => argValue(args, '--device') === 'none';
  * `scenarioFor(args)` names the recorded scenario a router start replays: `loaded`, `kvFail` or `cpu`.
  * `listDevices` overrides the recorded `--list-devices` text. `stepMs` paces the replayed events.
  * `holdReply` keeps each chat reply open (a stream after its first frame); `chatHangups` gets each one the
- * caller ends. `tokenizeMs` delays each `/tokenize` answer. `chatExtraTokens` adds to a chat prompt's count.
+ * caller ends. `holdTokenize` keeps every `/tokenize` answer back, listed in `heldTokenize`, until
+ * `releaseTokenize()`. `chatExtraTokens` adds to a chat prompt's count.
  */
-export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2, holdReply = false, tokenizeMs = 0, chatExtraTokens = 0 } = {}) {
+export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2, holdReply = false, holdTokenize = false, chatExtraTokens = 0 } = {}) {
   const calls = [];
   const chatRequests = [];
   const chatHangups = [];
+  const heldTokenize = [];
+  let releaseTokenize = () => {};
+  const tokenizeGate = holdTokenize ? new Promise((r) => { releaseTokenize = r; }) : null;
   const templateRequests = [];
   const routers = [];
   let nextPid = 40000;
@@ -139,7 +143,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
       }
       if (req.method === 'POST' && url.pathname === '/tokenize') {
         const payload = await body(req);
-        if (tokenizeMs) await new Promise((r) => later(tokenizeMs, r));
+        if (tokenizeGate) { heldTokenize.push(payload); await tokenizeGate; }
         return json(res, 200, { tokens: Array.from({ length: countFakeTokens(payload.content) }, (_, i) => i) });
       }
       if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
@@ -188,6 +192,9 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     calls,
     chatRequests,
     chatHangups,
+    heldTokenize,
+    /** Answers every held `/tokenize`, and every later one at once. */
+    releaseTokenize: () => releaseTokenize(),
     templateRequests,
     routers,
     /** Router starts so far, newest last (list-devices runs excluded). */

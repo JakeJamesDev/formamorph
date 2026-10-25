@@ -1,4 +1,5 @@
 import { PromptNavigationRail } from './PromptNavigationRail';
+import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from '../theme-provider';
@@ -210,7 +211,7 @@ const MODE_SELECT_TARGETS: Record<string, TargetAttribute> & { data: TargetAttri
   data: targetAttribute('settings.data', 'settings-mode'),
 };
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, initialTarget, requestKey, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, initialTarget, requestKey: landingKey, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -271,6 +272,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     else if (wantsAdvancedTab) setModeState('advanced');
   }, [devRoute, routeMode, wantsAdvancedTab]);
   useEffect(() => { if (forcedMode) setModeState(forcedMode); }, [forcedMode]);
+  const requestKey = useRequestKey(landingKey);
   useEffect(() => {
     if (requestKey && wantsAdvancedTab) setModeState('advanced');
     // Only a new request switches the mode; the player's own switch afterwards stands.

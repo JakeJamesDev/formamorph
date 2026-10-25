@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import { blobHash } from '@/lib/blobHash';
+import { hasPendingWork } from '@/lib/pendingWork';
 import type { World } from '@/types';
 
 /**
@@ -288,8 +289,10 @@ describe('an Avatar panel', () => {
       const steps = bench.historyState().cursor;
       const input = panel().querySelector<HTMLInputElement>('input[type="file"]')!;
       fireEvent.change(input, { target: { files: [replacement] } });
+      expect(hasPendingWork()).toBe(true);
       openAvatarCard(1);
-      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+      // The read and any Replace it hands off are tracked to their end; waitFor lets React commit meanwhile.
+      await waitFor(() => expect(hasPendingWork()).toBe(false));
 
       expect(bench.ctx().worldOverview.vrmStore?.heron.file).toEqual(FILE);
       expect(bench.historyState().cursor).toBe(steps);

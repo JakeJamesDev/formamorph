@@ -39,10 +39,11 @@ let workRoot = null;
 function setup(fakeOptions = {}, { platform = 'win32', binaryPath = ({ cpu } = {}) => (cpu ? 'llama-server-cpu' : 'llama-server') } = {}) {
   const fake = createFakeLlamaServer(fakeOptions);
   workRoot = mkdtempSync(path.join(os.tmpdir(), 'engine-test-'));
-  engine = createEngine({ spawn: fake.spawn, binaryPath, platform, workRoot, listProcesses: fake.listProcesses });
+  const chatEvents = [];
+  engine = createEngine({ spawn: fake.spawn, binaryPath, platform, workRoot, listProcesses: fake.listProcesses, onChatEvent: (e) => chatEvents.push(e) });
   const seen = [];
   engine.onStatus((s) => seen.push(s));
-  return { fake, seen };
+  return { fake, seen, chatEvents };
 }
 
 afterEach(async () => {
@@ -500,11 +501,11 @@ describe('Context Overflow', () => {
   const tokensOf = (messages) => countFakeTokens(renderChatMl(messages));
 
   async function ready(policy, fakeOptions) {
-    const { fake } = setup(fakeOptions);
+    const { fake, chatEvents } = setup(fakeOptions);
     const port = await freePort();
     expect(await engine.start({ ...SETTINGS, contextSize: N_CTX, modelPath: MODEL, port, contextOverflow: policy })).toMatchObject({ status: 'ready' });
     const chat = (body) => fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST', body: JSON.stringify(body) });
-    return { fake, port, chat };
+    return { fake, port, chat, chatEvents };
   }
   const sent = (fake) => fake.chatRequests.at(-1);
 
@@ -637,17 +638,21 @@ describe('Context Overflow', () => {
   });
 
   it('stops counting and sends nothing when the client hangs up mid-count', async () => {
-    // Slower than expect.poll's 50 ms beat, so the hangup lands inside the first count.
-    const { fake, port } = await ready('truncateMiddle', { tokenizeMs: 200 });
+    // The first count's tokenize stays held until the engine has seen the hangup.
+    const { fake, port, chatEvents } = await ready('truncateMiddle', { holdTokenize: true });
     // node:http, not fetch: the test environment's AbortSignal is not the one Node's fetch takes.
     const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/v1/chat/completions' });
     req.on('error', () => {});
     req.end(JSON.stringify({ messages: story, max_tokens: 64 }));
-    await expect.poll(() => fake.templateRequests.length).toBe(1);
+    await expect.poll(() => fake.heldTokenize.length).toBe(1);
     req.destroy();
-    // Three tokenize delays: an engine still counting would have sent its next template request by then.
-    await new Promise((r) => setTimeout(r, 600));
+    await expect.poll(() => chatEvents).toEqual(['hangup']);
+    fake.releaseTokenize();
+    // The engine's end for this request: anything it would have sent upstream went out before it.
+    await expect.poll(() => chatEvents.length).toBe(2);
+    expect(chatEvents).toEqual(['hangup', 'dropped']);
     expect(fake.templateRequests).toHaveLength(1);
+    expect(fake.heldTokenize).toHaveLength(1);
     expect(fake.chatRequests).toHaveLength(0);
   });
 
@@ -897,7 +902,7 @@ describe('VRAM viewer fields from the load log', () => {
     const { fake, seen } = setup();
     await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
     fake.routers[0].child.crash();
-    await new Promise((resolve) => { const check = () => (seen.at(-1).status === 'error' ? resolve() : setTimeout(check, 5)); check(); });
+    await expect.poll(() => seen.at(-1).status).toBe('error');
     expect(seen.at(-1)).toMatchObject({ engineVramMB: null, serverPid: null, deviceVramTotalMB: 24138 });
   });
 

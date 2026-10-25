@@ -3,6 +3,7 @@ import { Download, ExternalLink, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { fileToDataUrl } from '@/lib/imageDrop';
+import { trackWork } from '@/lib/pendingWork';
 import { toastError } from '@/lib/linkToast';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -81,7 +82,7 @@ export function MediaActionRow({ item, placeholders, onReplace, onRemove, remove
     const file = e.target.files?.[0];
     // Cleared so picking the same file again still fires.
     e.target.value = '';
-    if (file) void take(file);
+    if (file) void trackWork(take(file));
   };
 
   return (
