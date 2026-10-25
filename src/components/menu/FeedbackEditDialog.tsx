@@ -14,7 +14,7 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { CATEGORY_OPTIONS, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 import { categoryForType, changedFields, type EditDraft } from "@/lib/feedbackEditing";
 import FeedbackService from "@/services/FeedbackService";
-import type { FeedbackCategory, FeedbackThread, FeedbackType } from "@/types";
+import { FEEDBACK_TYPES, type FeedbackCategory, type FeedbackThread, type FeedbackType } from "@/types";
 
 /** Mirrors the server's caps so the fields agree with what it will accept. */
 const TITLE_MAX = 120;
@@ -134,7 +134,7 @@ export function FeedbackEditDialog({
                   <Select value={draft.type} onValueChange={pickType}>
                     <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(['bug', 'suggestion'] as const).map((value) => (
+                      {FEEDBACK_TYPES.map((value) => (
                         <SelectItem key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].one}</SelectItem>
                       ))}
                     </SelectContent>
@@ -164,7 +164,7 @@ export function FeedbackEditDialog({
               <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-meta text-muted-foreground">
                 Moving this to a {FEEDBACK_TYPE_LABELS[draft.type as FeedbackType].one.toLowerCase()} sets its status
                 back to Open{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
-                Its replies and votes stay.
+                Its replies and votes stay.{draft.type === 'bug' && ' Only the reporter and staff can reply to a bug.'}
               </p>
             )}
           </div>

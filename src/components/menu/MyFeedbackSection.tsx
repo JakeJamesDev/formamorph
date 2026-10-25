@@ -14,10 +14,10 @@ interface MyFeedbackSectionProps {
   onChanged?: () => void;
 }
 
-/** The profile dialog's Feedback tab. Both branches under one tab, the same shape the Admin Panel uses —
- *  they are the same surface with different vocabularies, and side by side they cost the strip two slots. */
+/** The profile dialog's Feedback tab. Every branch under one tab, the same shape the Admin Panel uses —
+ *  they are the same surface with different vocabularies, and side by side they would cost the strip three slots. */
 export function MyFeedbackSection({ active, initialTab = 'bugs', requestKey, onChanged }: MyFeedbackSectionProps) {
-  // Both panels stay mounted, so a switch keeps each branch's search, filters, and page. Closing the
+  // Every panel stays mounted, so a switch keeps each branch's search, filters, and page. Closing the
   // dialog unmounts them, so the next open starts on defaults.
   const [tab, setTab] = useState<MyFeedbackTabKey>(initialTab);
   useEffect(() => { if (requestKey) setTab(initialTab); }, [initialTab, requestKey]);
@@ -25,9 +25,10 @@ export function MyFeedbackSection({ active, initialTab = 'bugs', requestKey, onC
   return (
     <div className="min-w-0">
       <Tabs surfaceTabs="feedbackHub" value={tab} onValueChange={(value) => setTab(value as MyFeedbackTabKey)} className="w-full min-w-0">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="bugs">Bugs</TabsTrigger>
           <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+          <TabsTrigger value="questions">Questions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bugs" forceMount className="min-w-0 data-[state=inactive]:hidden">
@@ -36,6 +37,10 @@ export function MyFeedbackSection({ active, initialTab = 'bugs', requestKey, onC
 
         <TabsContent value="suggestions" forceMount className="min-w-0 data-[state=inactive]:hidden">
           <MyFeedbackTab active={active && tab === 'suggestions'} type="suggestion" onChanged={onChanged} />
+        </TabsContent>
+
+        <TabsContent value="questions" forceMount className="min-w-0 data-[state=inactive]:hidden">
+          <MyFeedbackTab active={active && tab === 'questions'} type="question" onChanged={onChanged} />
         </TabsContent>
       </Tabs>
     </div>

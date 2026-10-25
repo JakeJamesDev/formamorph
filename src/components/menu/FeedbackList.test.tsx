@@ -249,6 +249,15 @@ describe('votes on the list', () => {
     expect(screen.getByText('3')).toBeTruthy();
   });
 
+  it('offers a vote button on a question', async () => {
+    stubList([report({ type: 'question', category: 'setup', title: 'How do I use a local model?', votes: 7 })]);
+
+    render(<PagedList type="question" active onOpen={() => {}} />);
+
+    expect(await screen.findByRole('button', { name: /Vote for How do I use a local model\?/ })).toBeTruthy();
+    expect(screen.getByText('7')).toBeTruthy();
+  });
+
   it('offers none on a bug', async () => {
     // A bug is not a popularity contest — one person hitting it is reason enough to fix it.
     stubList([report()]);

@@ -47,6 +47,14 @@ const COPY: Record<FeedbackType, {
     submit: 'Send Suggestion',
     sent: 'Suggestion filed — you can follow it under Suggestions in your profile',
   },
+  question: {
+    description: 'Everyone can read, answer and vote on questions, so check the list below for yours first. Replies land under Questions in your profile.',
+    titlePlaceholder: 'What you want to know, in a line',
+    bodyLabel: 'What you tried',
+    bodyPlaceholder: 'Where you got stuck, and what you tried already',
+    submit: 'Post Question',
+    sent: 'Question posted — you can follow it under Questions in your profile',
+  },
 };
 
 interface FeedbackDialogProps {
@@ -84,7 +92,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics: BugDiagnostics }) {
 }
 
 /**
- * File a bug report or a suggestion. Opened from the menu footer, from in-game, and from either feedback
+ * File a bug report, a suggestion or a question. Opened from the menu footer, from in-game, and from either feedback
  * tab in the profile dialog.
  *
  * One dialog with a tab rather than two: the forms differ by a dropdown's contents and whether anything
@@ -199,7 +207,7 @@ export function FeedbackDialog({
             )}
 
             <Tabs value={type} onValueChange={(value) => switchType(value as FeedbackType)}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 {FEEDBACK_TYPES.map((value) => (
                   <TabsTrigger key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].tab}</TabsTrigger>
                 ))}
@@ -245,8 +253,8 @@ export function FeedbackDialog({
               />
             </div>
 
-            {/* Bugs only. A suggestion is about the game, not about the machine it was written on, so there
-                is nothing to disclose because nothing is collected. */}
+            {/* Bugs only. A suggestion or question is about the game, not about the machine it was written
+                on, so there is nothing to disclose because nothing is collected. */}
             {type === 'bug' && <DiagnosticsPanel diagnostics={diagnostics} />}
           </div>
         </ScrollArea>

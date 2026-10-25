@@ -13,7 +13,7 @@ export interface FeedbackPage {
 }
 
 /**
- * User-filed feedback: bug reports and suggestions, and the comment thread on each.
+ * User-filed feedback: bug reports, suggestions and questions, and the comment thread on each.
  *
  * The one channel running user→admin. Reading is open to any signed-in account on both branches; who may
  * write differs, and the server is the authority on that whatever this asks for.
@@ -24,11 +24,11 @@ class FeedbackService {
   }
 
   /**
-   * File a bug report or a suggestion.
+   * File a bug report, a suggestion or a question.
    *
    * Diagnostics are collected here so every caller sends the same block — and only for a bug, since a
-   * suggestion is about the game rather than the machine it was written on. The server drops them from a
-   * suggestion regardless; not sending them is what makes the promise true on this side too.
+   * suggestion or question is about the game rather than the machine it was written on. The server drops
+   * them from those regardless; not sending them is what makes the promise true on this side too.
    */
   async file(draft: FeedbackDraft): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback`, {
@@ -117,7 +117,7 @@ class FeedbackService {
     await unwrap(response, 'Failed to delete the comment');
   }
 
-  /** Vote for a suggestion, or take the vote back. */
+  /** Vote for a suggestion or question, or take the vote back. */
   async setVote(id: string, voted: boolean): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/vote`, {
       method: 'PUT',

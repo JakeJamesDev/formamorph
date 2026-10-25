@@ -10,19 +10,20 @@ interface FeedbackTabProps {
   initialTab?: FeedbackSubTab;
 }
 
-/** Admin Panel → Feedback. Both branches under one tab: they are the same surface with different
- *  vocabularies, and side by side they cost the strip two of its six slots. */
+/** Admin Panel → Feedback. Every branch under one tab: they are the same surface with different
+ *  vocabularies, and side by side they would cost the strip three of its slots. */
 export function FeedbackTab({ active, initialTab = 'bugs' }: FeedbackTabProps) {
-  // Both panels stay mounted, so a switch keeps each branch's search, filters, and page. Closing the
+  // Every panel stays mounted, so a switch keeps each branch's search, filters, and page. Closing the
   // dialog unmounts them, so the next open starts on defaults.
   const [tab, setTab] = useState<FeedbackSubTab>(initialTab);
 
   return (
     <div className="py-4 min-w-0">
       <Tabs value={tab} onValueChange={(value) => setTab(value as FeedbackSubTab)} className="w-full min-w-0">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="bugs">Bugs</TabsTrigger>
           <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+          <TabsTrigger value="questions">Questions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bugs" forceMount className="min-w-0 data-[state=inactive]:hidden">
@@ -31,6 +32,10 @@ export function FeedbackTab({ active, initialTab = 'bugs' }: FeedbackTabProps) {
 
         <TabsContent value="suggestions" forceMount className="min-w-0 data-[state=inactive]:hidden">
           <FeedbackQueueTab active={active && tab === 'suggestions'} type="suggestion" />
+        </TabsContent>
+
+        <TabsContent value="questions" forceMount className="min-w-0 data-[state=inactive]:hidden">
+          <FeedbackQueueTab active={active && tab === 'questions'} type="question" />
         </TabsContent>
       </Tabs>
     </div>

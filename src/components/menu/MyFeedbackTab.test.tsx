@@ -105,6 +105,14 @@ describe('the file button', () => {
     expect(await screen.findByRole('button', { name: /Suggest Something/ })).toBeTruthy();
   });
 
+  it('offers to ask a question on the question tab', async () => {
+    stubList();
+
+    render(<MyFeedbackTab active type="question" />);
+
+    expect(await screen.findByRole('button', { name: /Ask a Question/ })).toBeTruthy();
+  });
+
   it('opens the dialog on this tab’s branch', async () => {
     // Landing on Bug from the Suggestions tab would be wrong every time.
     stubList();
@@ -234,6 +242,12 @@ describe('what the tab says when nothing shows', () => {
     empty();
     render(<MyFeedbackTab active type="suggestion" />);
     expect(await screen.findByText('No suggestions match this filter.')).toBeTruthy();
+  });
+
+  it('words it for questions', async () => {
+    empty();
+    render(<MyFeedbackTab active type="question" />);
+    expect(await screen.findByText('No questions match this filter.')).toBeTruthy();
   });
 
   it('keeps the scope label once the status filter is All', async () => {

@@ -1,7 +1,7 @@
 import type { SupporterFlair } from './supporter';
 
-/** The two branches of the feedback tree. Mirrors the server's `CHECK` constraint. */
-export const FEEDBACK_TYPES = ['bug', 'suggestion'] as const;
+/** The three branches of the feedback tree. Mirrors the server's `CHECK` constraint. */
+export const FEEDBACK_TYPES = ['bug', 'suggestion', 'question'] as const;
 export type FeedbackType = (typeof FEEDBACK_TYPES)[number];
 
 /** What a bug report is about. Mirrors the server's per-type `CHECK`. */
@@ -12,7 +12,11 @@ export type BugCategory = (typeof BUG_CATEGORIES)[number];
 export const SUGGESTION_CATEGORIES = ['gameplay', 'writing', 'editor', 'community', 'interface', 'other'] as const;
 export type SuggestionCategory = (typeof SUGGESTION_CATEGORIES)[number];
 
-export type FeedbackCategory = BugCategory | SuggestionCategory;
+/** What a question is about: where the asker is stuck. */
+export const QUESTION_CATEGORIES = ['gameplay', 'editor', 'setup', 'community', 'account', 'other'] as const;
+export type QuestionCategory = (typeof QUESTION_CATEGORIES)[number];
+
+export type FeedbackCategory = BugCategory | SuggestionCategory | QuestionCategory;
 
 /** Where a bug sits in triage. Mirrors the server's per-type `CHECK`. */
 export const BUG_STATUSES = ['open', 'need_info', 'confirmed', 'resolved', 'wontfix'] as const;
@@ -23,7 +27,19 @@ export type BugStatus = (typeof BUG_STATUSES)[number];
 export const SUGGESTION_STATUSES = ['open', 'considering', 'planned', 'declined', 'done'] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
 
-export type FeedbackStatus = BugStatus | SuggestionStatus;
+/** Where a question sits. `answered` comes only from accepting a reply, never from the status route. */
+export const QUESTION_STATUSES = ['open', 'answered', 'closed'] as const;
+export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
+
+export type FeedbackStatus = BugStatus | SuggestionStatus | QuestionStatus;
+
+/**
+ * Whether a type is a public board: open to replies from anyone signed in, and to votes.
+ *
+ * @param type - The thread's type
+ * @returns True for suggestions and questions
+ */
+export const isVotableBoard = (type: FeedbackType): boolean => type === 'suggestion' || type === 'question';
 
 /** What the client reports about itself, shown to the reporter before it is sent. Bugs only. */
 export interface BugDiagnostics {
@@ -51,7 +67,7 @@ export interface FeedbackReporter {
   supporter?: SupporterFlair | null;
 }
 
-/** One piece of feedback — a bug report or a suggestion — as any reader of it sees it. */
+/** One piece of feedback — a bug report, a suggestion or a question — as any reader of it sees it. */
 export interface FeedbackThread {
   id: string;
   type: FeedbackType;
@@ -60,17 +76,17 @@ export interface FeedbackThread {
   body: string;
   status: FeedbackStatus;
   reporter: FeedbackReporter;
-  /** Always empty on a suggestion: none is collected. */
+  /** Always empty on a suggestion or question: none is collected. */
   diagnostics: BugDiagnostics;
   /** Whether an admin has closed it to further replies. */
   locked: boolean;
   /** Set once it has been rewritten, so the thread can say "edited" beside the date. */
   editedAt?: string | null;
-  /** Suggestions only; a bug is never voted for. */
+  /** Votable boards only; a bug is never voted for. */
   votes: number;
   /** Whether the vote count includes this reader's. */
   voted: boolean;
-  /** Replies on it, both branches. Absent from a server that predates it. */
+  /** Replies on it, every branch. Absent from a server that predates it. */
   commentCount?: number;
   createdAt: string;
   updatedAt: string;

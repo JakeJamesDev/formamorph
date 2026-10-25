@@ -7,7 +7,7 @@ import type { ChangelogDraft } from '@/lib/listingChangelog';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { PROMPT_TEXT_KEYS, type PromptValues } from '@/lib/promptPresets';
 import { buildSharedPreset, serializeSharedJson } from '@/lib/promptPresetShare';
-import type { Entity, FeedbackThread, Stat, Trait } from '@/types';
+import type { Entity, FeedbackThread, FeedbackType, Stat, Trait } from '@/types';
 
 const PARAGRAPH = 'The lantern road climbs past the old mill, where the river turns twice before it reaches the harbor. '
   + 'Travelers stop at the ford to water their horses, and the miller sells bread to anyone who asks.';
@@ -15,17 +15,23 @@ const PARAGRAPH = 'The lantern road climbs past the old mill, where the river tu
 /** Prose of `count` paragraphs, as an author would write a long description. */
 const prose = (count: number) => Array.from({ length: count }, () => PARAGRAPH).join('\n\n');
 
-export function devFeedbackThread(): FeedbackThread {
+/** A sample title and category per branch, so a form opened on any branch reads like one of its own. */
+const FEEDBACK_SAMPLES: Record<FeedbackType, Pick<FeedbackThread, 'title' | 'category'>> = {
+  bug: { title: 'The map stops panning after a long session', category: 'visuals' },
+  suggestion: { title: 'Let me pin a stat to the top of the panel', category: 'interface' },
+  question: { title: 'Can a stat change when the player enters a location?', category: 'editor' },
+};
+
+export function devFeedbackThread(type: FeedbackType = 'bug'): FeedbackThread {
   const at = new Date().toISOString();
   return {
     id: 'dev-feedback-thread',
-    type: 'bug',
-    title: 'The map stops panning after a long session',
-    category: 'visuals',
+    type,
+    ...FEEDBACK_SAMPLES[type],
     body: prose(6),
     status: 'open',
     reporter: { id: 'dev-user', username: 'Sample Player' },
-    diagnostics: { version: '3.1.2', platform: 'browser', system: 'Windows 11' },
+    diagnostics: type === 'bug' ? { version: '3.1.2', platform: 'browser', system: 'Windows 11' } : {},
     locked: false,
     votes: 0,
     voted: false,

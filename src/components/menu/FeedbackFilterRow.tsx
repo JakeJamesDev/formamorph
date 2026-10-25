@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Bug, Lightbulb, ListFilter, RotateCcw } from "lucide-react";
+import { Bug, Lightbulb, ListFilter, MessageCircleQuestion, RotateCcw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -130,6 +130,9 @@ export function StaffFilterRow({ type, filters }: StaffFilterRowProps) {
   );
 }
 
+/** The file button's icon, per branch. */
+const FILE_ICONS: Record<FeedbackType, typeof Bug> = { bug: Bug, suggestion: Lightbulb, question: MessageCircleQuestion };
+
 interface UserFilterRowProps {
   type: FeedbackType;
   filters: FeedbackFilters<UserFilterValues>;
@@ -141,7 +144,7 @@ interface UserFilterRowProps {
 /** A profile tab's filter row: search and scope, then Filters with Status, Category and Sort, then the file button. */
 export function UserFilterRow({ type, filters, fileLabel, onFile }: UserFilterRowProps) {
   const { values, set } = filters;
-  const FileIcon = type === 'bug' ? Bug : Lightbulb;
+  const FileIcon = FILE_ICONS[type];
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
       <FeedbackSearchInput value={filters.search} onSearch={filters.setSearch} label={SEARCH_LABELS[type]} className={SEARCH_CLASS} />

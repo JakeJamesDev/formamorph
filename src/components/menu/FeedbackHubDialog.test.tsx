@@ -7,7 +7,7 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 // The branch panel has its own coverage; stubbing it keeps this file about the dialog's own shell.
 vi.mock('./MyFeedbackTab', () => ({
   MyFeedbackTab: ({ type, active }: { type: string; active: boolean }) => (
-    <div data-testid={type === 'bug' ? 'bugs' : 'suggestions'} data-active={active} />
+    <div data-testid={`${type}s`} data-active={active} />
   ),
 }));
 
@@ -33,6 +33,13 @@ describe('the feedback dialog', () => {
     render(<FeedbackHubDialog open onOpenChange={() => {}} initialTab="suggestions" />);
 
     expect(await screen.findByTestId('suggestions')).toBeTruthy();
+  });
+
+  it('lands on Questions when pointed at it', async () => {
+    render(<FeedbackHubDialog open onOpenChange={() => {}} initialTab="questions" />);
+
+    expect((await screen.findByTestId('questions')).getAttribute('data-active')).toBe('true');
+    expect(screen.getByTestId('bugs').getAttribute('data-active')).toBe('false');
   });
 
   it('fetches nothing while it is closed', () => {

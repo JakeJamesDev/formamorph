@@ -18,6 +18,7 @@ import { devChangelogDraft, devFeedbackThread, devPickerRows, devPresetShareJson
 import { useDevRoute } from '@/lib/devRouter';
 import { IMAGE_CAPS } from '@/lib/imageSlots';
 import { APP_VERSION } from '@/lib/version';
+import { FEEDBACK_TYPES } from '@/types';
 
 const clearRouteOnClose = (open: boolean) => { if (!open) window.location.hash = '#dev'; };
 const ignore = () => {};
@@ -44,14 +45,16 @@ function Pasted({ text, children }: { text: string; children: ReactNode }) {
 }
 
 export default function DevPaneRoutes() {
-  switch (useDevRoute()?.modal) {
+  const route = useDevRoute();
+  switch (route?.modal) {
     case 'eventForm': return <EventFormDialog open onOpenChange={clearRouteOnClose} />;
     case 'podium': return <PodiumDialog open onOpenChange={clearRouteOnClose} contest={devContestSamples()[1]} />;
     case 'sentMessages': return <SentMessagesDialog open onOpenChange={clearRouteOnClose} username="Sample Player" />;
     case 'suspend': return <SuspendDialog open onOpenChange={clearRouteOnClose} username="Sample Player" alreadySuspended={false} onConfirm={ignore} />;
     case 'feedbackForm': {
-      const { title, body } = devFeedbackThread();
-      return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialTitle={title} initialBody={body} />;
+      const type = FEEDBACK_TYPES.find((value) => value === route.tab) ?? 'bug';
+      const { title, body } = devFeedbackThread(type);
+      return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialType={type} initialTitle={title} initialBody={body} />;
     }
     case 'feedbackEdit': return <FeedbackEditDialog open onOpenChange={clearRouteOnClose} thread={devFeedbackThread()} mayEditProse mayRefile onSaved={ignore} />;
     case 'changelogEntry': return <ChangelogEntryDialog open onOpenChange={clearRouteOnClose} entry={devChangelogDraft()} onSubmit={ignore} />;

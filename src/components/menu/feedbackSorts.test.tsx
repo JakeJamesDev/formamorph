@@ -65,6 +65,10 @@ describe('which sorts a branch offers', () => {
     expect(sortsFor('suggestion')).toEqual(['newest', 'oldest', 'active', 'votes']);
     expect(sortsFor('bug')).toEqual(['newest', 'oldest', 'active']);
   });
+
+  it('gives questions every sort, votes included', () => {
+    expect(sortsFor('question')).toEqual(['newest', 'oldest', 'active', 'votes']);
+  });
 });
 
 describe('the sort control on the staff queue', () => {
@@ -84,6 +88,12 @@ describe('the sort control on the staff queue', () => {
 
     render(<FeedbackQueueTab active type="suggestion" />);
     await waitFor(() => expect(lastQuery()).toMatchObject({ type: 'suggestion', sort: 'votes' }));
+  });
+
+  it('opens Questions on Unanswered, Most Voted', async () => {
+    render(<FeedbackQueueTab active type="question" />);
+
+    await waitFor(() => expect(lastQuery()).toMatchObject({ type: 'question', sort: 'votes', status: 'open' }));
   });
 
   it('sends the sort a staff member picks on Bugs', async () => {
@@ -114,6 +124,12 @@ describe('the sort control on the user tab', () => {
 
     render(<MyFeedbackTab active type="suggestion" />);
     await waitFor(() => expect(lastQuery()).toMatchObject({ type: 'suggestion', sort: 'newest' }));
+  });
+
+  it('opens Questions on Everyone’s, Unanswered, Most Voted', async () => {
+    render(<MyFeedbackTab active type="question" />);
+
+    await waitFor(() => expect(lastQuery()).toMatchObject({ type: 'question', scope: 'all', status: 'open', sort: 'votes' }));
   });
 
   it.each([

@@ -16,12 +16,12 @@ import { FeedbackEditDialog } from "@/components/menu/FeedbackEditDialog";
 import { mayEditProse, mayRefile } from "@/lib/feedbackEditing";
 import { badgeRole } from "@/lib/roles";
 import {
-  FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, STATUS_OPTIONS, formatFeedbackDate,
+  FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, SET_STATUS_OPTIONS, formatFeedbackDate,
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
-import type { BugDiagnostics, FeedbackDetail, FeedbackStatus } from "@/types";
+import { isVotableBoard, type BugDiagnostics, type FeedbackDetail, type FeedbackStatus } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 
 const COMMENT_MAX = 4000;
@@ -42,7 +42,7 @@ interface FeedbackThreadViewProps {
   onDeleted?: () => void;
 }
 
-/** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion. */
+/** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
 function Diagnostics({ diagnostics }: { diagnostics: BugDiagnostics }) {
   const rows = (Object.keys(DIAGNOSTIC_LABELS) as (keyof BugDiagnostics)[])
     .map((key) => [DIAGNOSTIC_LABELS[key], diagnostics[key]] as const)
@@ -219,15 +219,15 @@ export function FeedbackThreadView({
 
   const { thread, comments } = detail;
   const status = FEEDBACK_STATUS_STYLES[thread.status];
-  const isSuggestion = thread.type === 'suggestion';
+  const votable = isVotableBoard(thread.type);
   // Who owns which part of a report: a bug's words are the team's to make useful, a suggestion's stay
   // its author's, and the filing is triage either way. The server decides the same thing again.
   const canEditProse = mayEditProse(thread, viewer);
   const canRefile = mayRefile(viewer);
-  // Who may write: an admin anywhere, anyone on an open suggestion, the reporter on their own bug. A lock
+  // Who may write: an admin anywhere, anyone on an open votable board, the reporter on their own bug. A lock
   // closes it to everyone but the admins. The server enforces the same rules — this only keeps a box off
   // screen that would be refused.
-  const canWrite = isAdmin || (!thread.locked && (isSuggestion || thread.reporter.id === myId));
+  const canWrite = isAdmin || (!thread.locked && (votable || thread.reporter.id === myId));
 
   /** Why the reply box is absent, in the reader's terms. */
   const closedReason = thread.locked
@@ -244,7 +244,7 @@ export function FeedbackThreadView({
             <Select value={thread.status} onValueChange={(value) => changeStatus(value as FeedbackStatus)}>
               <SelectTrigger className="w-40" aria-label="Status"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS[thread.type].map((option) => (
+                {SET_STATUS_OPTIONS[thread.type].map((option) => (
                   <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -312,9 +312,9 @@ export function FeedbackThreadView({
         </p>
         <div className="text-label min-w-0"><MarkdownRenderer text={thread.body} /></div>
 
-        {/* Suggestions only, and votable even when locked: closing a discussion doesn't make the idea
-            less wanted. */}
-        {isSuggestion && (
+        {/* Votable boards only, and votable even when locked: closing a discussion doesn't make it less
+            wanted. */}
+        {votable && (
           <Button
             variant={thread.voted ? 'default' : 'outline'}
             size="sm"
