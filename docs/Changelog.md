@@ -87,6 +87,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The turn's action row now slides open after the narration finishes, and the choices stream in after it.** Before, the row appeared mid-stream and pushed the choices down, and numbered choices showed all at once. **Continue the Story** now comes last.
   - **The request status strip floats over the bottom of the narration, so the Pager and the action box stay still.** It works the same in Pages and Chat. A fade keeps the label readable over the text.
   - **One drag of a World Editor slider or color picker now undoes in one step.** A drag that started while another field had focus used to split into many undo steps.
+  - **The Test Bench's AI Context tab now reads each entity's text with that entity's own traits and placeholders.** Descriptions, pronouns and relationship labels show what play shows, and Character Name shows the entity's name. A location's pins still win, as in play.
 - **🛠️ Developer tooling**
   - **`npm test` passes on a busy machine and lists slow tests with how much load slowed each.** Timeouts now catch only hangs. Delay checks run on a fake clock, and speed checks compare sizes instead of timing a budget. A file that only timed out reruns alone once.
 

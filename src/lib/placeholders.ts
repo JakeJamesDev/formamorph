@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import {
-  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, characterAsPlayer, hasBuiltin, labelBuiltins, renderBuiltins,
+  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, characterAsPlayer, hasBuiltin, labelBuiltins, renderBuiltins, withCharacterName,
   type BuiltinPlaceholder, type BuiltinRender,
 } from './builtinPlaceholders';
 import { withEffectiveCopies, type CopyLookup } from './blueprints';
@@ -804,11 +804,13 @@ export function describePlaceholders(
   pins?: Record<string, string>,
   /** The copy lookup of the owner whose text this is, as {@link ResolveOptions.copies}. */
   copies?: CopyLookup,
+  /** The owner's name, which the Character Name shows in place of its label. */
+  character?: string,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
   const byId = new Map(withEffectiveCopies(placeholders).map((p) => [p.id, p]));
   const described = describeText(text, { byId, copies, pins, depth: 0, seen: new Set() });
-  return labelBuiltins(described);
+  return labelBuiltins(character === undefined ? described : withCharacterName(described, character));
 }
 
 /** How many levels of nested chips a describe pass walks. Deep enough to show a character's parts, shallow

@@ -11,7 +11,7 @@
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
+import { allPinRows, bindBlueprintPins, collectPinLayers, collectPins, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith, statTraitsInForce, type TraitWorld } from '@/lib/traitRuntime';
@@ -337,3 +337,61 @@ export const resolveLensText = (
   /** The owner's copy lookup, for its trait text. */
   copies?: CopyLookup,
 ): string => describePlaceholders(text, placeholders ?? [], pins, copies);
+
+/** One owner's scope under the lens: the pins its own text reads, and its blueprint copies. */
+export interface LensOwnerScope {
+  pins: Record<string, string>;
+  copies: CopyLookup;
+  /** The trait with its blueprint pins traced to this owner's copies. */
+  bind: (trait: Trait) => Trait;
+}
+
+/**
+ * Each entity's scope as a fresh game under the lens reads it. The Custom Persona entity plays, so it reads
+ * the lens's own pins. Any other entity lays its default traits over the lens PC's, so it wins in its own
+ * text, and the lens location and stat bands still lay over both, as `ownerPins` lays them in play. The walk
+ * is not `ownerPins` itself: the lens's played layer is its PC's traits, which no save's trait state holds.
+ */
+export function lensOwnerScopes(world: LensWorld, lens: BenchLens): (ownerId: string) => LensOwnerScope {
+  const placeholders = allPlaceholders(world);
+  const blueprints = lensBlueprints(world);
+  const { owners } = resolveOwners(ownerWorldOf(world), { source: 'none' });
+  const active = activeTraitsFor(world, lens.pc);
+  const played = lensPinTraits(world, active);
+  const stats = lensStartingStats(world, world.stats ?? [], active);
+  const playedScope: LensOwnerScope = {
+    pins: lens.pins, copies: lens.copies, bind: (trait) => bindBlueprintPins(trait, blueprints, LENS_READER),
+  };
+  const cache = new Map<string, LensOwnerScope>();
+  return (ownerId) => {
+    const owner = owners.find((b) => b.id === ownerId);
+    if (!owner || owner.isPlayer) return playedScope;
+    let scope = cache.get(ownerId);
+    if (!scope) {
+      const reader = readerFor({ source: 'none' }, owner.entity, false);
+      const bind = (trait: Trait) => bindBlueprintPins(trait, blueprints, reader);
+      const defaults = new Set(defaultPicks(owner.traits, owner.groups));
+      const own = inAuthoredOrder(owner.traits.filter((t) => defaults.has(t.id)), traitOrderIndex(owner.traits, owner.groups))
+        .map(bind).filter((t) => t.placeholderPins?.length);
+      const pins = own.length
+        ? collectPins({ traits: [...played, ...own], statTraits: played, location: lens.location, stats, placeholders })
+        : lens.pins;
+      scope = { pins, copies: copyLookup(blueprints, reader), bind };
+      cache.set(ownerId, scope);
+    }
+    return scope;
+  };
+}
+
+/** An entity's own text as the lens reads it, with the entity's described name as the Character Name. */
+export function resolveLensEntityText(
+  entity: { name: string },
+  text: string,
+  placeholders: Placeholder[] | undefined,
+  scope: Pick<LensOwnerScope, 'pins' | 'copies'>,
+): string {
+  const all = placeholders ?? [];
+  // The name has no owner, so a Character Name inside it reads as nothing, as play reads it.
+  const character = describePlaceholders(entity.name, all, scope.pins, scope.copies, '');
+  return describePlaceholders(text, all, scope.pins, scope.copies, character);
+}

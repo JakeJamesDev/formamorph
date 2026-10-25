@@ -52,6 +52,9 @@ export interface AuthoredSceneOptions {
   resolve?: (text: string, copies?: CopyLookup) => string;
   /** An entity's own text under `resolve`'s rolls and pins. Absent with `resolve` given, `resolve` alone reads it. */
   resolveEntity?: ResolveEntityText;
+  /** An entity's own trait text under that trait's pins over the entity's. Absent, a given `resolveEntity`
+   *  reads it, else the trait's own pins do. */
+  resolveOwned?: ResolveOwnedTraitText;
 }
 
 
@@ -91,13 +94,14 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   );
   const copiesOf = (reader: CopyReader | undefined) => (reader ? copyLookup(blueprints, reader) : undefined);
   // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Character Name.
-  const resolveOwned: ResolveOwnedTraitText = options.resolveEntity
+  const ownTraitText: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
     : (trait, text, owner) => {
       const tree = treeOf.get(owner.id);
       const reader = tree && readerOf(tree);
       return resolveEntityText(owner, text, { placeholders, rolls: {}, pins: ownPins(trait, reader), copies: copiesOf(reader) });
     };
+  const resolveOwned = options.resolveOwned ?? ownTraitText;
   const withLinks = withOwnerTrees(entities, trees);
   const cast = resolveEntity
     ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)

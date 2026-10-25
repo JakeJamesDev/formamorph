@@ -15,6 +15,7 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, knownPulledIds } from '@/lib/chipValues/chipValues';
 import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
+import { traitScopedPins } from '@/lib/placeholderPins';
 import {
   contextDelivery, knownEntityIds, navigableDestinationEntries, reachableEntityIds, scopedChipOpts, sublocationEntityIds,
   type ContextDelivery,
@@ -26,7 +27,7 @@ import type { ValueLookup } from '@/lib/promptValues';
 import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
-import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
+import { lensActiveTraits, lensOwnerScopes, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
 import type { RuleWorld } from './rules';
 
 /** The slices of the authored world this instrument reads. */
@@ -194,11 +195,20 @@ function lensStats(world: AiContextWorld, lens: BenchLens): PlayerStat[] {
 /** The world's opening as the lens PC meets it: its location, traits and stats, every chip read through its pins. */
 function lensScene(world: AiContextWorld, lens: BenchLens) {
   const placeholders = allPlaceholders(world);
+  const scopeOf = lensOwnerScopes(world, lens);
   return authoredChipScene(world, {
     location: lens.location,
     activeTraitIds: activeTraitIds(world, lens),
     stats: lensStats(world, lens),
     resolve: (text: string, copies?: CopyLookup) => resolveLensText(text, placeholders, lens.pins, copies),
+    // Each entity's text reads its own scope, and its trait's text that trait's pins over it, as play reads them.
+    resolveEntity: (entity, text) => resolveLensEntityText(entity, text, placeholders, scopeOf(entity.id)),
+    resolveOwned: (trait, text, owner) => {
+      const scope = scopeOf(owner.id);
+      return resolveLensEntityText(owner, text, placeholders, {
+        pins: traitScopedPins(scope.bind(trait), scope.pins, placeholders), copies: scope.copies,
+      });
+    },
   });
 }
 
