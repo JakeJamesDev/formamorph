@@ -239,6 +239,8 @@ function useProvideGameplay() {
   const [pendingAttachments, setPendingAttachments] = useState<ImageAttachment[]>([]);
   // What scripts told the player, by turn id, beside the history so no request carries it (Q23).
   const [scriptTells, setScriptTells] = useState<TellMap>({});
+  // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
+  const [openingCue, setOpeningCue] = useState<string | null>(null);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const libraryDictionaries = useMemo(() => libraryBooksInPlay(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
@@ -490,6 +492,7 @@ function useProvideGameplay() {
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
         ...(Object.keys(scriptTells).length ? { scriptTells } : {}),
+        ...(openingCue !== null ? { openingCue } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -508,7 +511,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, openingCue, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -608,6 +611,7 @@ function useProvideGameplay() {
           // Absent on a save written with no attachments ⇒ none.
           setActionAttachments(restoreAttachments(migrated.actionAttachments));
           setScriptTells(restoreTells(migrated.scriptTells));
+          setOpeningCue(typeof migrated.openingCue === 'string' ? migrated.openingCue : null);
           setPendingAttachments([]);
           addSystemLogEntry(`Game loaded from "${saveName}"`);
           setSaveLoads((n) => n + 1);
@@ -659,6 +663,7 @@ function useProvideGameplay() {
             // A legacy save predates attachments ⇒ none.
             setActionAttachments({});
             setScriptTells({});
+            setOpeningCue(null);
             setPendingAttachments([]);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
             setSaveLoads((n) => n + 1);
@@ -879,6 +884,8 @@ function useProvideGameplay() {
     setActionAttachments,
     scriptTells,
     setScriptTells,
+    openingCue,
+    setOpeningCue,
     pendingAttachments,
     setPendingAttachments,
     setSceneImages,

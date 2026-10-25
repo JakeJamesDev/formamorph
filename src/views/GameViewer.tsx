@@ -712,6 +712,8 @@ const GameViewer = ({
     setPendingAttachments,
     scriptTells,
     setScriptTells,
+    openingCue: openingTurnAction,
+    setOpeningCue: setOpeningTurnAction,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -1502,7 +1504,7 @@ const GameViewer = ({
   /** The `turn.action` a re-rolled turn reads: history's "START GAME" proxy stands for the opening cue. */
   const rerolledAction = (action: string): string => {
     if (action !== "START GAME") return action.trim();
-    if (openingTurnActionRef.current !== null) return openingTurnActionRef.current;
+    if (openingTurnAction !== null) return openingTurnAction;
     return openingSessionRef.current.drawn?.opening.kind === "narration" ? "" : resolveDrawn(openingCue()).trim();
   };
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
@@ -1514,9 +1516,7 @@ const GameViewer = ({
   // the start writes, so it must not run them again.
   const newPlaythroughRef = useRef(false);
   useEffect(() => {
-    if (saveLoads === 0) return;
-    newPlaythroughRef.current = false;
-    openingTurnActionRef.current = null;
+    if (saveLoads > 0) newPlaythroughRef.current = false;
   }, [saveLoads]);
   // A completed turn dispatches several state updates together (finalized message, applied stat changes,
   // advanced time). Saving the snapshot synchronously alongside them captures a stale, half-applied state
@@ -2732,7 +2732,7 @@ const GameViewer = ({
       scriptLocationRef.current = turnLocation;
       turnMemoriesRef.current = scriptMemoriesRef.current;
       turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1 };
-      if (isOpeningTurn) openingTurnActionRef.current = turnReadRef.current.action;
+      if (isOpeningTurn) setOpeningTurnAction(turnReadRef.current.action);
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
       );
@@ -3336,8 +3336,6 @@ const GameViewer = ({
   const turnMemoriesRef = useRef<SandboxMemory[] | null>(null);
   // The turn in progress as `turn` reads it; between turns, null and the last closed turn reads instead.
   const turnReadRef = useRef<SandboxTurn | null>(null);
-  // The opening turn's `turn.action` this session, so a page-one stat re-roll reads it again.
-  const openingTurnActionRef = useRef<string | null>(null);
   // The story hours a running turn's clock advances reached, which its later runs read (Q45). Null when the
   // turn has not advanced the clock, and between turns.
   const turnClockRef = useRef<number | null>(null);
@@ -4838,6 +4836,7 @@ const GameViewer = ({
       // A new game always holds a reference; None is a choice, and absence means a save from before personas.
       const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
       setPersonaRef(personaPick.ref);
+      setOpeningTurnAction(null);
       // Drawn now, so page one reads the Wildcard values every later turn reads.
       setSessionPersona(personaPick.libraryEntity ?? null);
       setEntityImageIndex({});
@@ -4921,6 +4920,7 @@ const GameViewer = ({
     addLogEntry,
     setRuntimeDictionaries,
     setPersonaRef,
+    setOpeningTurnAction,
     setSessionPersona,
     setSessionLibraryAdditions,
     setDiscoveredEntities,
