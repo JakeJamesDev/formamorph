@@ -44,6 +44,10 @@ Settled for ticket 01 on 2026-10-25.
 - **Q18 One root category.** Q7 applies to the root too. A root with one category opens straight into it. The header names the category and shows no back arrow, since back would land on the same page.
 - **Q19 Back key.** Backspace in an empty search goes back one level. Escape still closes the popover.
 - **Q20 Page row name.** A page row's accessible name reads "Traits, 12 available, opens a page".
+- **Q22 Owner split.** Requirement options carry their owner (id and name; none for the world). The field builds Traits and Any Trait in a Group owner pages from that field, not from the breadcrumb, so the breadcrumb text doesn't change. This replaces ticket 02's "split by the first breadcrumb segment".
+- **Q23 Stat page names.** A Stats owner page is titled with the owner's name, without the " Stats" suffix ("Ash", "Global", "Persona"), so the header reads "Stats › Ash". The leaf section keeps its "Ash Stats" heading for the flat list.
+- **Q24 Lifted rows keep their place.** A row lifted onto its parent by Q17 shows the titles of the pages it skipped as the start of its breadcrumb, unless its breadcrumb already starts with them (Q13 in reverse). A lone stat "Mood" on Persona shows the breadcrumb "Persona". A skipped title equal to the row's own name is dropped. The flat list is unchanged.
+- **Q25 Search survives the owner page.** Back from the owner choice page, and after a pick there, the list keeps the search text it had (Q10, and each page keeps its own search). This replaces the old behavior, where the search cleared on return, for every Requires picker, small ones included.
 - **Q21 Counts and cutoff.** The cutoff counts every leaf row, disabled ones included. A page with no leaf rows doesn't show. A page whose rows are all disabled still shows, with a count of 0 (Q14).
 
 ## User Stories
