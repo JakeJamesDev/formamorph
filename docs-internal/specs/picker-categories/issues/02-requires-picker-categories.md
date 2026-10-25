@@ -1,6 +1,6 @@
 # 02: Requires Picker Categories
 
-Status: ready-for-human
+Status: done
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,11 +17,11 @@ The Requirement Rows field turns on the drill-down from ticket 01. Every picker 
 
 The field builds the tree from the sections it builds today:
 
-- **Traits** and **Any Trait in a Group** open an owner level: World, then each owner, split by the first breadcrumb segment. Each owner opens a flat list with group breadcrumbs (Q6).
+- **Traits** and **Any Trait in a Group** open an owner level: World, then each owner, split by the option's owner id (Q22). Each owner opens a flat list with group breadcrumbs (Q6).
 - **Stats** opens an owner level from the existing stat sections, in today's order: the host's own first, then Global, then Persona, then each entity (Q3, Q15).
 - **Time of Day** and **Playing As** are categories of their own. Time of Day has one target, so it shows as a row at the root (Q8).
 - Empty categories and owners drop out, so off-world the picker shows only what has targets.
-- An owner page's heading equals its rows' first breadcrumb segment exactly ("World", the owner name). Ticket 01 drops breadcrumb segments by that match (Q13). Stat leaf sections keep today's headings, such as "Ash Stats", so the flat list matches today's list.
+- An owner page is titled with the owner's name, or "World". Ticket 01 drops a leading breadcrumb segment that matches a page title (Q13); a world row in a group has no "World" segment, so nothing drops. Stat leaf sections keep today's headings, such as "Ash Stats", so the flat list matches today's list.
 
 The owner choice page that opens after a target with several owners returns to the drilled page when you go back or pick (Q10). The Condition a row adds is the same as today; no world, save or export shape changes.
 
