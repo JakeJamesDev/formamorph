@@ -24,3 +24,5 @@ Mods list pending new listings, download their content, approve them into the ca
 - [ ] Every route uses `canModerate` with the staff ladder; a mod on an admin's listing is refused.
 - [ ] A pending contest entry holds the author's one contest slot, and approving it after the contest deadline works.
 - [ ] `readPodium` refuses an entry that is not `approved`.
+- [ ] From ticket 01's review: `PUT /:id/addons/:componentId/review` refuses a component its caller cannot see (pending or quarantined) the way other visibility checks do.
+- [ ] From ticket 01's review: the in-circulation SQL clause, now repeated in `World.getAll`, the author totals and `Follow`, has one shared helper.
