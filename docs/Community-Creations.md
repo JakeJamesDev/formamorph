@@ -65,6 +65,20 @@ You can enter one world per contest. Only a world can enter. To enter a world yo
 
 To report a comment, select its **Report comment** button. To report a person, open their profile and select **Report Profile**.
 
+## How to Change Your Profile Image
+<!-- keywords: picture, photo, pfp, icon, account picture, upload, crop, display pic, user portrait, animated gif, account face, take off my pic, reposition, initial letter shown -->
+<!-- route: profile -->
+
+You need a Community Creations account.
+
+1. On the main menu, select the round button at the bottom left. **User Profile** opens.
+2. Select your profile image.
+3. Select a `.png`, `.jpg`, `.webp` or `.gif` file, up to 10 MB.
+4. In **Position Your Picture**, drag the image to move it. Scroll, or use the **Zoom** slider, to zoom. The circle shows what everyone sees.
+5. Select **Save**.
+
+To remove it, select **Remove your profile image**. With no picture, your initial shows in its place. See [The User Profile Dialog](#the-user-profile-dialog).
+
 ## How to Delete Your Account
 <!-- keywords: remove, close, erase, cancel, deactivate, my data, profile, gdpr, unregister, terminate membership, wipe my info, leave for good, right to erasure, undo deletion, privacy request -->
 <!-- route: profile.settings -->
@@ -408,7 +422,7 @@ Read the policy any time at [formamorph.ai/privacy](https://formamorph.ai/privac
 
 ### The User Profile Dialog
 
-Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](Avatars#how-to-change-your-profile-image).
+Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](#how-to-change-your-profile-image).
 
 The header has **Log Out**. Your email, **Change Password** and **Delete Account** are on the **Settings** tab.
 
