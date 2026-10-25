@@ -41,10 +41,16 @@ const COPY: Record<FeedbackType, {
     emptySearch: 'No suggestions match this search.',
     button: 'Suggest Something',
   },
+  question: {
+    emptyMine: 'You haven’t asked anything yet.',
+    emptyAll: 'Nothing has been asked yet.',
+    emptySearch: 'No questions match this search.',
+    button: 'Ask a Question',
+  },
 };
 
 /**
- * Profile → Bugs / Suggestions. One branch of the tree from the reader's side: their own threads, or
+ * Profile → Bugs / Suggestions / Questions. One branch of the tree from the reader's side: their own threads, or
  * everyone's. No triage controls either way — moving something through triage is the team's call, even
  * when the reader happens to be on the team.
  */

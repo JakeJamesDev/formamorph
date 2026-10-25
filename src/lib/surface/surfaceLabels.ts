@@ -126,6 +126,7 @@ const ENTRIES: [string, string][] = [
   ['publish.prompt', KIND_LABELS.prompt.one],
   ['feedbackHub.bugs', FEEDBACK_TYPE_LABELS.bug.many],
   ['feedbackHub.suggestions', FEEDBACK_TYPE_LABELS.suggestion.many],
+  ['feedbackHub.questions', FEEDBACK_TYPE_LABELS.question.many],
   ['profile.messages', 'Messages'],
   ['profile.notifications', 'Notifications'],
   ['profile.terms', 'Terms'],

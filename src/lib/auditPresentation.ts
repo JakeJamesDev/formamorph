@@ -104,6 +104,7 @@ const KIND_NOUNS: Record<string, string> = {
   account: 'account',
   bug: 'bug report',
   suggestion: 'suggestion',
+  question: 'question',
 };
 
 /** The actions the clock does: a deadline passing, and the sweeper erasing an account. */

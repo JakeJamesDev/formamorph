@@ -35,7 +35,7 @@ const fillDraft = () => {
   setField('feedbackBody', 'Pressing save just spins.');
 };
 
-const send = () => fireEvent.click(screen.getByRole('button', { name: /Send (Report|Suggestion)/ }));
+const send = () => fireEvent.click(screen.getByRole('button', { name: /Send (Report|Suggestion)|Post Question/ }));
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -291,6 +291,29 @@ describe('the two branches', () => {
 
     expect(screen.getByRole('button', { name: /Send Suggestion/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Send Report/ })).toBeNull();
+  });
+});
+
+describe('a question', () => {
+  const pickTab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
+
+  it('files with the question type and its category', async () => {
+    const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
+
+    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    pickTab('Question');
+    fillDraft();
+    send();
+
+    await waitFor(() => expect(file).toHaveBeenCalledWith(expect.objectContaining({ type: 'question', category: 'gameplay' })));
+  });
+
+  it('asks in its own words, with no diagnostics panel', async () => {
+    render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+
+    expect(screen.getByRole('button', { name: 'Post Question' })).toBeTruthy();
+    expect(screen.getByLabelText('What you tried')).toBeTruthy();
+    expect(screen.queryByText('Sent with your report')).toBeNull();
   });
 });
 

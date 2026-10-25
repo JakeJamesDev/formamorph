@@ -145,4 +145,43 @@ describe('moving between the branches', () => {
 
     expect(screen.getByLabelText('Kind')).toBeTruthy();
   });
+
+  /** Opens the Kind select by keyboard (Radix ignores jsdom's missing pointer events) and picks `label`. */
+  const pickKind = async (label?: string) => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+    fireEvent.keyDown(screen.getByLabelText('Kind'), { key: 'Enter' });
+    const options = await screen.findAllByRole('option');
+    if (label) {
+      const option = options.find((item) => item.textContent === label) as HTMLElement;
+      fireEvent.pointerDown(option, { pointerType: 'mouse' });
+      fireEvent.pointerUp(option, { pointerType: 'mouse' });
+      fireEvent.click(option);
+    }
+    return options.map((option) => option.textContent);
+  };
+
+  it('offers all three branches', async () => {
+    show({ mayEditProse: false });
+
+    expect(await pickKind()).toEqual(['Bug Report', 'Suggestion', 'Question']);
+  });
+
+  it('warns that only the reporter and staff reply once it is a bug', async () => {
+    show({ mayEditProse: false, thread: thread({ type: 'question', category: 'setup' }) });
+
+    await pickKind('Bug Report');
+
+    expect(await screen.findByText(/Moving this to a bug report sets its status back to Open\. Its replies and votes stay\. Only the reporter and staff can reply to a bug\./)).toBeTruthy();
+  });
+
+  it('keeps the plain warning when it becomes a question', async () => {
+    show({ mayEditProse: false });
+
+    await pickKind('Question');
+
+    const warning = await screen.findByText(/Moving this to a question sets its status back to Open/);
+    expect(warning.textContent).toContain('deletes the version and platform it was filed with');
+    expect(warning.textContent).not.toContain('Only the reporter and staff');
+  });
 });

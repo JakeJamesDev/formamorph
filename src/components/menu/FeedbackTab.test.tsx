@@ -55,6 +55,29 @@ describe('the two branches', () => {
   });
 });
 
+describe('the questions branch', () => {
+  it('has its own tab beside the other two', () => {
+    render(<FeedbackTab active />);
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Bugs', 'Suggestions', 'Questions']);
+  });
+
+  it('shows the question queue when picked', () => {
+    render(<FeedbackTab active />);
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Questions' }));
+
+    expect(shown('question')).toEqual({ panel: 'active', fetching: 'true' });
+    expect(shown('bug')).toEqual({ panel: 'inactive', fetching: 'false' });
+  });
+
+  it('opens on it when the dev-router asks', () => {
+    render(<FeedbackTab active initialTab="questions" />);
+
+    expect(shown('question')).toEqual({ panel: 'active', fetching: 'true' });
+  });
+});
+
 describe('what fetches', () => {
   it('lets the branch on screen fetch', () => {
     render(<FeedbackTab active />);

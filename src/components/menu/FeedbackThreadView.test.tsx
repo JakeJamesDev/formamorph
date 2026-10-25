@@ -525,6 +525,66 @@ describe('a suggestion thread', () => {
   });
 });
 
+describe('a question thread', () => {
+  const question = (over: Partial<FeedbackThread> = {}) =>
+    report({ type: 'question', category: 'setup', title: 'How do I use a local model?', diagnostics: {}, ...over });
+
+  /** Opens the staff status Select by keyboard and reads its options. */
+  const statusOptions = async () => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+    fireEvent.keyDown(screen.getByLabelText('Status'), { key: 'Enter' });
+    return (await screen.findAllByRole('option')).map((option) => option.textContent);
+  };
+
+  it('lets anyone signed in reply', async () => {
+    signedInAs('passer-by');
+    stubThread({ thread: question() });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('How do I use a local model?');
+
+    expect(screen.getByLabelText('Reply')).toBeTruthy();
+  });
+
+  it('shows the asker’s own vote and sends a change of it', async () => {
+    signedInAs('u1');
+    stubThread({ thread: question({ votes: 1, voted: true }) });
+    const setVote = vi.spyOn(FeedbackService, 'setVote').mockResolvedValue(question({ votes: 0, voted: false }));
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Voted · 1/ }));
+
+    await waitFor(() => expect(setVote).toHaveBeenCalledWith('b1', false));
+    expect(await screen.findByRole('button', { name: /Vote · 0/ })).toBeTruthy();
+  });
+
+  it('offers staff Open and Closed, never Answered', async () => {
+    // Answered comes only from accepting a reply; the server refuses it on the status route.
+    stubThread({ thread: question() });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    await screen.findByText('How do I use a local model?');
+
+    expect(await statusOptions()).toEqual(['Open', 'Closed']);
+  });
+
+  it('reads the lock from the reply when staff close it', async () => {
+    stubThread({ thread: question() });
+    vi.spyOn(FeedbackService, 'setStatus').mockResolvedValue(question({ status: 'closed', locked: true }));
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    await screen.findByText('How do I use a local model?');
+    await statusOptions();
+    const option = screen.getAllByRole('option').find((item) => item.textContent === 'Closed') as HTMLElement;
+    fireEvent.pointerDown(option, { pointerType: 'mouse' });
+    fireEvent.pointerUp(option, { pointerType: 'mouse' });
+    fireEvent.click(option);
+
+    expect(await screen.findByLabelText('Unlock thread')).toBeTruthy();
+  });
+});
+
 describe('a locked thread', () => {
   const locked = (over: Partial<FeedbackThread> = {}) =>
     report({ type: 'suggestion', category: 'gameplay', locked: true, ...over });

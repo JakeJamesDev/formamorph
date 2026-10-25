@@ -97,10 +97,10 @@ You are logged out immediately. The account is erased seven days later. To cance
 
 1. Log in.
 2. On the main menu, select the round **Feedback** button at the bottom left.
-3. Open the **Bugs** or **Suggestions** tab.
-4. Select **Report a Bug** or **Suggest Something**.
+3. Open the **Bugs**, **Suggestions** or **Questions** tab.
+4. Select **Report a Bug**, **Suggest Something** or **Ask a Question**.
 5. Fill in **Title**, **Category** and the description.
-6. Select **Send Report** or **Send Suggestion**.
+6. Select **Send Report**, **Send Suggestion** or **Post Question**.
 
 In a game, **Send Feedback** in the menu opens the form directly. See [Bugs and Suggestions](#bugs-and-suggestions).
 
@@ -450,7 +450,7 @@ To cancel, log in before that date. The **Deletion Cancelled** notice opens and 
 A suspended account can't be deleted from here. Select **Open Feedback** to ask the team.
 
 ## Bugs and Suggestions
-<!-- keywords: ticket status, track my ticket, known issues, roadmap, upvote an idea, dev response, planned features, what data is sent -->
+<!-- keywords: ticket status, track my ticket, known issues, roadmap, upvote an idea, dev response, planned features, what data is sent, ask a question, community help, unanswered, me too -->
 <!-- route: feedbackHub -->
 
 Select the round **Feedback** button at the bottom left of the main menu. It shows when you are logged in. The steps to send one are in [How to Report a Bug or Suggest Something](#how-to-report-a-bug-or-suggest-something).
@@ -459,10 +459,11 @@ Select the round **Feedback** button at the bottom left of the main menu. It sho
 |---|---|
 | **Bugs** | Your bug reports, or all of them with **All Reports**. **Report a Bug** opens the form. Only you and the team reply to your report. |
 | **Suggestions** | Everyone's suggestions, or yours with **Mine**. **Suggest Something** opens the form. Anyone can reply and vote. Sort by **Newest** or **Most voted**. |
+| **Questions** | Everyone's questions, or yours with **Mine**. **Ask a Question** opens the form. Anyone can reply, and a vote says you have the same question. The tab opens on **Unanswered**, sorted by **Most Voted**. |
 
 A bug report includes your app version and platform. Nothing about your worlds or saves goes with it. The form keeps an unsent draft.
 
-Staff set each item's status. A bug is **Open**, **Need Info**, **Confirmed**, **Resolved** or **Won't Fix**. A suggestion is **Open**, **Considering**, **Planned**, **Declined** or **Done**. Replies show in the item's thread, under **Bugs** or **Suggestions**.
+Staff set each item's status. A bug is **Open**, **Need Info**, **Confirmed**, **Resolved** or **Won't Fix**. A suggestion is **Open**, **Considering**, **Planned**, **Declined** or **Done**. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.
 
 ## Related
 

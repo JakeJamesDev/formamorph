@@ -16,7 +16,7 @@ interface FeedbackQueueTabProps {
 }
 
 /**
- * Admin Panel → Bugs / Suggestions. The whole queue for one branch: filter by state, sort, open a
+ * Admin Panel → Bugs / Suggestions / Questions. The whole queue for one branch: filter by state, sort, open a
  * thread, answer it and triage it.
  */
 export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {

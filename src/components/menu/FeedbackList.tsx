@@ -11,7 +11,7 @@ import {
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { cn } from "@/lib/utils";
-import type { FeedbackCategory, FeedbackStatus, FeedbackThread, FeedbackType } from "@/types";
+import { isVotableBoard, type FeedbackCategory, type FeedbackStatus, type FeedbackThread, type FeedbackType } from "@/types";
 
 const PAGE_SIZE = 10;
 
@@ -167,9 +167,9 @@ export function FeedbackList({
             return (
               <div key={thread.id} className="relative flex items-stretch gap-2 rounded-md border min-w-0">
                 {thread.unread && <UnreadEdge kind="feedback" />}
-                {/* Suggestions only. A bug is not a popularity contest — one person hitting it is
+                {/* Votable boards only. A bug is not a popularity contest — one person hitting it is
                     reason enough to fix it. */}
-                {thread.type === 'suggestion' && (
+                {isVotableBoard(thread.type) && (
                   <Button
                     variant="ghost"
                     className={cn(

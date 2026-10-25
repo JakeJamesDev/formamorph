@@ -15,7 +15,8 @@ export type DevView = (typeof DEV_VIEWS)[number];
 /** Dev-only routes for panes whose real host needs a server, an admin session, or a deep click path.
  *  `customCode` opens MainMenu's Custom Code Execution dialog on canned stat code when the selected world has none; the
  *  rest mount one pane on canned props (`DevPaneRoutes`). The podium and the sent list still load from the
- *  server, so they show their empty state without one. Players never navigate to these. */
+ *  server, so they show their empty state without one. `feedbackForm` opens on the branch `tab=` names
+ *  (`bug`, `suggestion`, `question`). Players never navigate to these. */
 export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
@@ -140,8 +141,9 @@ export const DEV_MODAL_TABS = {
   // The account dialog: admin messages, the follow feed, the terms, and the account settings. Log Out is a
   // header button rather than a tab, so it is not routable.
   profile: ['messages', 'notifications', 'terms', 'settings'],
-  // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch.
-  feedbackHub: ['bugs', 'suggestions'],
+  // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch. Add
+  // `fixture=feedback` to serve a canned board (`devFeedbackStub.ts`); the admin feedback route takes it too.
+  feedbackHub: ['bugs', 'suggestions', 'questions'],
   // The admin tools: accounts, broadcasts, the publish policies, the events calendar, the feedback
   // queues, the report queue, and the log. `tab=events` serves a canned calendar (`devEventSample.ts`),
   // so the tab's three groups are reachable without a live server; which of its two role views appears
@@ -218,7 +220,7 @@ export const DEV_MODAL_TABS = {
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice', 'privacyPolicy'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
-  adminPanelFeedback: ['bugs', 'suggestions'],
+  adminPanelFeedback: ['bugs', 'suggestions', 'questions'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
   // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).

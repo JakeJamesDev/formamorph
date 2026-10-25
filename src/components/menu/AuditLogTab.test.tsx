@@ -253,6 +253,11 @@ describe('what each entry reads as', () => {
       action: 'feedback_deleted',
       target: { kind: 'suggestion', name: 'Let me rename a save' },
     })).toBe('root-admin deleted the suggestion “Let me rename a save” by trouble');
+
+    expect(line({
+      action: 'feedback_deleted',
+      target: { kind: 'question', name: 'How do I use a local model?' },
+    })).toBe('root-admin deleted the question “How do I use a local model?” by trouble');
   });
 
   it('reads the whole arc of a quarantine', () => {
