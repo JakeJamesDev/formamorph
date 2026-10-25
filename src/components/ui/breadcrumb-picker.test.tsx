@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { BreadcrumbPicker, type BreadcrumbPickerSection } from './breadcrumb-picker';
+import { BreadcrumbPicker, type BreadcrumbPickerNode, type BreadcrumbPickerRow, type BreadcrumbPickerSection } from './breadcrumb-picker';
 
 // Ash and Mira both hold Brave, so two rows pick the same value.
 const SECTIONS: BreadcrumbPickerSection<string>[] = [
@@ -234,5 +234,268 @@ describe('BreadcrumbPicker trigger and page', () => {
     await user.click(row(/^Health/));
     expect(screen.getByText('Page for Health')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Search traits')).toBeNull();
+  });
+});
+
+const rowOf = (key: string, name: string, breadcrumb?: string[], disabled?: boolean): BreadcrumbPickerRow<string> =>
+  ({ key, value: key, name, breadcrumb, disabled });
+const section = (rows: BreadcrumbPickerRow<string>[], heading?: string): BreadcrumbPickerNode<string> => ({ kind: 'section', heading, rows });
+const page = (key: string, heading: string, children: BreadcrumbPickerNode<string>[]): BreadcrumbPickerNode<string> =>
+  ({ kind: 'page', key, heading, children });
+
+// Mira holds one trait, so it reads as a row on the Traits page.
+const TRAITS = page('traits', 'Traits', [
+  page('t:world', 'World', [section([rowOf('steady', 'Steady', ['World']), rowOf('calm', 'Calm', ['World']), rowOf('locked', 'Locked', ['World'], true)])]),
+  page('t:ash', 'Ash', [section([
+    rowOf('brave', 'Brave', ['Ash', 'Bond']), rowOf('bold', 'Bold', ['Ash', 'Bond']), rowOf('storm', 'Storm Touched', ['Ash', 'Lineage', 'Storms', 'Sky']),
+  ])]),
+  page('t:mira', 'Mira', [section([rowOf('kind', 'Kind', ['Mira', 'Heart'])])]),
+]);
+// One owner, every row already added.
+const GROUPS = page('groups', 'Any Trait in a Group', [
+  page('g:world', 'World', [section([rowOf('habits', 'Habits', ['World'], true), rowOf('moods', 'Moods', ['World'], true)])]),
+]);
+const STATS = page('stats', 'Stats', [
+  page('s:ash', 'Ash', [section([rowOf('hunger', 'Hunger'), rowOf('thirst', 'Thirst'), rowOf('rage', 'Rage'), rowOf('gold', 'Gold')], 'Ash Stats')]),
+  page('s:mira', 'Mira', [section([rowOf('hope', 'Hope'), rowOf('fear', 'Fear')], 'Mira Stats')]),
+  page('s:ghost', 'Ghost', [section([], 'Ghost Stats')]),
+]);
+const TIME = page('time', 'Time of Day', [section([rowOf('time', 'Time of Day')])]);
+const PERSONAS = page('personas', 'Playing As', [section([rowOf('rook', 'Rook', undefined, true), rowOf('vale', 'Vale')])]);
+// 15 leaf rows, then 16, then 18.
+const AT_CUTOFF = [TRAITS, GROUPS, STATS];
+const OVER_CUTOFF = [TRAITS, GROUPS, STATS, TIME];
+const TREE = [TRAITS, GROUPS, STATS, TIME, PERSONAS];
+
+/** A tree picker whose picks land, with an optional caller page for a picked row. */
+function TreeField({ tree = TREE, onPick = () => {}, closeOnPick, withPage }: {
+  tree?: BreadcrumbPickerNode<string>[];
+  onPick?: (value: string) => void;
+  closeOnPick?: boolean;
+  withPage?: boolean;
+}) {
+  const [value, setValue] = useState('');
+  const [picked, setPicked] = useState<string | null>(null);
+  return (
+    <TooltipProvider>
+      <BreadcrumbPicker
+        tree={tree}
+        value={value}
+        onPick={(v) => { setValue(v); onPick(v); if (withPage) setPicked(v); }}
+        closeOnPick={closeOnPick}
+        page={picked && <Button type="button" onClick={() => setPicked(null)}>Done With {picked}</Button>}
+        placeholder="Pick a target…"
+        searchPlaceholder="Search targets"
+        ariaLabel="Target"
+      />
+    </TooltipProvider>
+  );
+}
+
+const target = () => screen.getByRole('combobox', { name: 'Target' });
+const search = () => screen.getByPlaceholderText('Search targets');
+// A page row reads by its accessible name; a target row by its text.
+const items = () => screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent);
+const opens = (name: string, count: number) => `${name}, ${count} available, opens a page`;
+const pageRow = (name: string) => screen.getByRole('option', { name: new RegExp(`^${name}, \\d+ available, opens a page$`) });
+const header = (path: string) => screen.getByText(path);
+
+const ROOT_ITEMS = [opens('Traits', 6), opens('Any Trait in a Group', 0), opens('Stats', 6), 'Time of Day', opens('Playing As', 1)];
+
+describe('BreadcrumbPicker drill-down', () => {
+  it('shows the flat list from the tree at 15 rows, grouped as the sections were', async () => {
+    const user = userEvent.setup();
+    render(<TreeField tree={AT_CUTOFF} />);
+    await user.click(target());
+    expect(screen.queryByRole('option', { name: /opens a page/ })).toBeNull();
+    expect(items()).toHaveLength(15);
+    expect(screen.getAllByRole('group').map((g) => within(g).getAllByRole('option').length)).toEqual([7, 2, 4, 2]);
+    expect(screen.getByRole('group', { name: 'Any Trait in a Group' })).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Traits' })).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['SteadyWorld', 'CalmWorld', 'LockedWorld', 'BraveAsh › Bond', 'BoldAsh › Bond', 'Storm TouchedAsh › … › Sky', 'KindMira › Heart']);
+    expect(screen.getByRole('group', { name: 'Ash Stats' })).toBeInTheDocument();
+  });
+
+  it('opens on the root page above 15 rows, with counts that leave out disabled rows', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<TreeField tree={OVER_CUTOFF} />);
+    await user.click(target());
+    expect(items()).toEqual(ROOT_ITEMS.slice(0, 4));
+    unmount();
+
+    render(<TreeField />);
+    await user.click(target());
+    expect(items()).toEqual(ROOT_ITEMS);
+  });
+
+  it('opens a page on click, under a header naming it, and drops the path from row breadcrumbs', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.click(pageRow('Traits'));
+    expect(header('Traits')).toBeInTheDocument();
+    // Mira's lone trait is a row here, keeping Mira since the path doesn't name it; the empty owner shows nothing.
+    expect(items()).toEqual([opens('World', 2), opens('Ash', 3), 'KindMira › Heart']);
+
+    await user.click(pageRow('Ash'));
+    expect(header('Traits › Ash')).toBeInTheDocument();
+    expect(items()).toEqual(['BraveBond', 'BoldBond', 'Storm TouchedLineage › … › Sky']);
+    expect(search()).toHaveFocus();
+  });
+
+  it('hides an empty page and shows a lone section without its heading', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.click(pageRow('Stats'));
+    expect(items()).toEqual([opens('Ash', 4), opens('Mira', 2)]);
+    await user.click(pageRow('Ash'));
+    expect(items()).toEqual(['Hunger', 'Thirst', 'Rage', 'Gold']);
+    expect(screen.queryByRole('group', { name: 'Ash Stats' })).toBeNull();
+  });
+
+  it('opens straight through a page with one choice, and its header names the skipped page', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.click(pageRow('Any Trait in a Group'));
+    expect(header('Any Trait in a Group › World')).toBeInTheDocument();
+    expect(items()).toEqual(['Habits', 'Moods']);
+    // Back skips the passed-through page too.
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(items()).toEqual(ROOT_ITEMS);
+  });
+
+  it('opens straight into a lone root category, with no way back', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 16 }, (_, i) => rowOf(`n${i}`, `Note ${i}`));
+    render(<TreeField tree={[page('notes', 'Notes', [section(many)])]} />);
+    await user.click(target());
+    expect(header('Notes')).toBeInTheDocument();
+    expect(items()).toHaveLength(16);
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    await user.keyboard('{Backspace}');
+    expect(items()).toHaveLength(16);
+  });
+
+  it('picks a one-row category at the root without opening a page', async () => {
+    const user = userEvent.setup();
+    const onPick = vi.fn();
+    render(<TreeField onPick={onPick} />);
+    await user.click(target());
+    await user.click(screen.getByRole('option', { name: 'Time of Day' }));
+    expect(onPick).toHaveBeenCalledWith('time');
+    expect(target()).toHaveTextContent('Time of Day');
+  });
+
+  it('goes back one level by the arrow', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.click(pageRow('Traits'));
+    await user.click(pageRow('Ash'));
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(header('Traits')).toBeInTheDocument();
+    expect(items()).toEqual([opens('World', 2), opens('Ash', 3), 'KindMira › Heart']);
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(items()).toEqual(ROOT_ITEMS);
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  });
+
+  it('drills with Enter and goes back with Backspace in an empty search', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.keyboard('{Enter}');
+    expect(header('Traits')).toBeInTheDocument();
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(header('Traits › Ash')).toBeInTheDocument();
+
+    // Backspace edits a search that holds text.
+    await user.keyboard('b{Backspace}');
+    expect(header('Traits › Ash')).toBeInTheDocument();
+    expect(search()).toHaveValue('');
+    await user.keyboard('{Backspace}');
+    expect(header('Traits')).toBeInTheDocument();
+    await user.keyboard('{Backspace}');
+    expect(items()).toEqual(ROOT_ITEMS);
+    expect(search()).toHaveFocus();
+  });
+
+  it('searches every page from the root, with full breadcrumbs under the section headings', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.type(search(), 'old');
+    expect(items()).toEqual(['BoldAsh › Bond', 'Gold']);
+    expect(within(screen.getByRole('group', { name: 'Traits' })).getByRole('option')).toHaveTextContent('Bold');
+    expect(within(screen.getByRole('group', { name: 'Ash Stats' })).getByRole('option')).toHaveTextContent('Gold');
+  });
+
+  it('searches only the open page, from an empty search', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.click(pageRow('Traits'));
+    expect(search()).toHaveValue('');
+    await user.type(search(), 'old');
+    expect(items()).toEqual(['BoldAsh › Bond']);
+
+    // Owners split no group on the page: their names already show in the breadcrumbs.
+    fireEvent.change(search(), { target: { value: 'l' } });
+    expect(items()).toEqual(['SteadyWorld', 'CalmWorld', 'LockedWorld', 'BoldAsh › Bond', 'Storm TouchedAsh › … › Sky']);
+    expect(screen.queryByRole('group', { name: 'World' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+
+    await user.clear(search());
+    await user.click(pageRow('Ash'));
+    await user.type(search(), 'bo');
+    expect(items()).toEqual(['BraveBond', 'BoldBond']);
+  });
+
+  it('stays on the open page after a pick that leaves the popover open', async () => {
+    const user = userEvent.setup();
+    const onPick = vi.fn();
+    render(<TreeField closeOnPick={false} onPick={onPick} />);
+    await user.click(target());
+    await user.click(pageRow('Traits'));
+    await user.click(pageRow('Ash'));
+    await user.click(screen.getByRole('option', { name: /^Bold/ }));
+    expect(onPick).toHaveBeenCalledWith('bold');
+    expect(header('Traits › Ash')).toBeInTheDocument();
+    expect(items()).toEqual(['BraveBond', 'BoldBond', 'Storm TouchedLineage › … › Sky']);
+  });
+
+  it('returns to the open page and its search when a caller page closes', async () => {
+    const user = userEvent.setup();
+    render(<TreeField closeOnPick={false} withPage />);
+    await user.click(target());
+    await user.click(pageRow('Traits'));
+    await user.click(pageRow('Ash'));
+    await user.type(search(), 'bo');
+    await user.click(screen.getByRole('option', { name: /^Bold/ }));
+    expect(screen.queryByPlaceholderText('Search targets')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Done With bold' }));
+    expect(header('Traits › Ash')).toBeInTheDocument();
+    expect(search()).toHaveValue('bo');
+    expect(items()).toEqual(['BraveBond', 'BoldBond']);
+  });
+
+  it('opens at the root every time', async () => {
+    const user = userEvent.setup();
+    render(<TreeField />);
+    await user.click(target());
+    await user.click(pageRow('Stats'));
+    await user.click(pageRow('Mira'));
+    await user.click(screen.getByRole('option', { name: 'Hope' }));
+    expect(screen.queryByRole('listbox')).toBeNull();
+    await user.click(target());
+    expect(items()).toEqual(ROOT_ITEMS);
+
+    await user.click(pageRow('Traits'));
+    await user.keyboard('{Escape}');
+    await user.click(target());
+    expect(items()).toEqual(ROOT_ITEMS);
   });
 });

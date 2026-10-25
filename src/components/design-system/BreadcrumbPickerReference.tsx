@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { BreadcrumbPicker, type BreadcrumbPickerSection } from '@/components/ui/breadcrumb-picker';
+import { BreadcrumbPicker, type BreadcrumbPickerNode, type BreadcrumbPickerSection } from '@/components/ui/breadcrumb-picker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Hint, SectionTitle } from '@/components/ui/typography';
 
@@ -34,11 +34,35 @@ const DISABLED_SECTIONS: BreadcrumbPickerSection<string>[] = [{
 
 const NO_SECTIONS: BreadcrumbPickerSection<string>[] = [{ rows: [] }];
 
+const section = (rows: ReturnType<typeof row>[], heading?: string): BreadcrumbPickerNode<string> => ({ kind: 'section', heading, rows });
+const page = (key: string, heading: string, children: BreadcrumbPickerNode<string>[]): BreadcrumbPickerNode<string> =>
+  ({ kind: 'page', key, heading, children });
+
+// Over 15 rows, so it opens on its categories. Stats has one owner, so it opens straight into Global.
+const DRILL_TREE: BreadcrumbPickerNode<string>[] = [
+  page('traits', 'Traits', [
+    page('traits:world', 'World', [section([row('steady', 'Steady', ['World']), row('restless', 'Restless', ['World']), row('lucky', 'Lucky', ['World'], true)])]),
+    page('traits:rook', 'Rook', [section([
+      row('rook-scarred', 'Scarred', ['Rook']), row('rook-wary', 'Wary', ['Rook', 'Habits']),
+      row('rook-owl', 'Night Owl', ['Rook', 'Habits']), row('rook-cold', 'Cold Sleeper', ['Rook', 'Habits', 'Rest']),
+    ])]),
+    page('traits:mira', 'Mira Vance', [section([
+      row('mira-scarred', 'Scarred', ['Mira Vance']), row('mira-wounded', 'Wounded', ['Mira Vance', 'Injuries', 'Old']),
+    ])]),
+  ]),
+  page('stats', 'Stats', [
+    page('stats:global', 'Global', [section([row('focus', 'Focus'), row('warmth', 'Warmth'), row('fatigue', 'Fatigue'), row('gold', 'Gold')], 'Global Stats')]),
+  ]),
+  page('time', 'Time of Day', [section([row('time', 'Time of Day')])]),
+  page('personas', 'Playing As', [section([row('as-rook', 'Rook'), row('as-mira', 'Mira Vance')])]),
+];
+
 /** One labeled picker bound to local state. */
-function PickerSample({ title, note, sections, initial, placeholder, disabled }: {
+function PickerSample({ title, note, sections, tree, initial, placeholder, disabled }: {
   title: string;
   note: string;
-  sections: BreadcrumbPickerSection<string>[];
+  sections?: BreadcrumbPickerSection<string>[];
+  tree?: BreadcrumbPickerNode<string>[];
   initial?: string;
   placeholder: string;
   disabled?: boolean;
@@ -50,7 +74,7 @@ function PickerSample({ title, note, sections, initial, placeholder, disabled }:
       <SectionTitle id={labelId}>{title}</SectionTitle>
       <Hint>{note}</Hint>
       <BreadcrumbPicker
-        sections={sections}
+        {...(tree ? { tree } : { sections: sections ?? [] })}
         value={value}
         onPick={setValue}
         placeholder={placeholder}
@@ -76,6 +100,7 @@ export function BreadcrumbPickerReference() {
         <PickerSample title="Disabled Row" note="A disabled row stays visible and can't be picked." sections={DISABLED_SECTIONS} initial="Focus" placeholder="Pick a stat…" />
         <PickerSample title="Empty" note="An empty list shows Nothing to pick." sections={NO_SECTIONS} placeholder="Pick a trait…" />
         <PickerSample title="Unavailable" note="A disabled field doesn't open." sections={TRAIT_SECTIONS} placeholder="Pick a trait…" disabled />
+        <PickerSample title="Drill-Down" note="Over 15 rows, the list opens on its categories. Search on the first page reads every row. Backspace in an empty search goes back." tree={DRILL_TREE} placeholder="Pick a target…" />
         <PickerSample title="No Matches" note="Type zzz in the search field." sections={TRAIT_SECTIONS} placeholder="Pick a trait…" />
       </CardContent>
     </Card>

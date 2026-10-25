@@ -629,6 +629,19 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 - **Caller page.** A caller can replace the list with its own page, such as Add Requirement's owner page.
 - **Check column.** A picker with a value reserves a check column. Every row that holds the value shows a check.
 
+### Drill-down
+
+A caller can pass a tree of pages in place of flat sections. The drill-down is opt-in.
+
+- **Cutoff.** With 15 rows or fewer, the picker shows the flat list. With more, it opens on the root page.
+- **Page rows.** A page row shows its name, then a count of the enabled rows under it, then `›`. Disabled rows don't count.
+- **Header.** An open page shows a back arrow, then its path, such as `Stats › Ruby`. This is the same header as the Requires owner page.
+- **One choice.** A page with one child page opens straight through it. The header still names the skipped page. A root with one category opens into it and has no back arrow.
+- **One row.** A page with one row shows that row in its place.
+- **Search.** Search on the root page reads every row and shows full breadcrumbs. Search on a page reads only that page's rows.
+- **Breadcrumbs.** On a page, rows drop the segments the path already shows.
+- **Place.** A pick keeps the open page. The picker opens on the root page each time.
+
 ### Row layout and collapse
 
 - The name comes first and keeps its width up to about 65% of the row. Past that it truncates.
@@ -649,7 +662,7 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 
 ### Keyboard and responsive behavior
 
-Arrow keys move through rows, Enter picks the row, and Escape closes the picker with no change. A field trigger's popover matches the trigger width, with a minimum of 16rem, and stays inside the viewport. Long lists scroll inside the popover.
+Arrow keys move through rows, Enter picks the row or opens a page, and Escape closes the picker with no change. Backspace in an empty search goes back one page. A field trigger's popover matches the trigger width, with a minimum of 16rem, and stays inside the viewport. Long lists scroll inside the popover.
 
 ### Production mapping
 

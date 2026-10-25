@@ -1,6 +1,6 @@
 # 01: Breadcrumb Picker Drill-Down
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -30,16 +30,25 @@ Ship with it: a drill-down example in the Breadcrumb Picker reference of the des
 
 ## Acceptance criteria
 
-- [ ] A picker with no tree renders and behaves as before; the existing picker tests pass unchanged.
-- [ ] With a tree over 15 leaf rows, the picker opens on the root page; at 15 or fewer it shows the flat list.
-- [ ] Page rows show a count that leaves out disabled rows.
-- [ ] A one-child page opens straight through, and its header names the skipped page.
-- [ ] A one-row category is picked at the root without opening a page.
-- [ ] Back returns one level, by the arrow and by keyboard.
-- [ ] Root search finds rows on every page with full breadcrumbs; page search finds only that page's rows.
-- [ ] Rows on a page drop the breadcrumb segments the page path shows.
-- [ ] A pick keeps the open page; a caller page returns to it when closed; reopening starts at the root.
-- [ ] Each rule above has a rendered picker test, and each test fails when its rule is broken.
-- [ ] The showcase shows a drill-down example: `.scratch/frames/showcase-drill-root.png` and `.scratch/frames/showcase-drill-page.png`, light and dark, at desktop width.
+- [x] A picker with no tree renders and behaves as before; the existing picker tests pass unchanged. (The earlier `breadcrumb-picker.test.tsx` cases are unedited and green, and so are the RequirementRowsField tests.)
+- [x] With a tree over 15 leaf rows, the picker opens on the root page; at 15 or fewer it shows the flat list. (Tests: "shows the flat list from the tree at 15 rows" and "opens on the root page above 15 rows".)
+- [x] Page rows show a count that leaves out disabled rows. (Test: "opens on the root page above 15 rows". An all-disabled page reads 0.)
+- [x] A one-child page opens straight through, and its header names the skipped page. (Tests: "opens straight through a page with one choice" and, for Q18, "opens straight into a lone root category".)
+- [x] A one-row category is picked at the root without opening a page. (Test: "picks a one-row category at the root". For Q17 on a page: "opens a page on click".)
+- [x] Back returns one level, by the arrow and by keyboard. (Tests: "goes back one level by the arrow" and "drills with Enter and goes back with Backspace".)
+- [x] Root search finds rows on every page with full breadcrumbs; page search finds only that page's rows. (Tests: "searches every page from the root" and "searches only the open page".)
+- [x] Rows on a page drop the breadcrumb segments the page path shows. (Test: "opens a page on click … drops the path from row breadcrumbs".)
+- [x] A pick keeps the open page; a caller page returns to it when closed; reopening starts at the root. (Tests: "stays on the open page after a pick", "returns to the open page and its search" and "opens at the root every time".)
+- [x] Each rule above has a rendered picker test, and each test fails when its rule is broken. (Two mutation runs, 21 mutations in total. Each one turned its own test red.)
+- [x] The showcase shows a drill-down example: `.scratch/frames/showcase-drill-root.png` and `.scratch/frames/showcase-drill-page.png`, light and dark, at desktop width. (Frames: `.scratch/picker-categories-01/frames/showcase-drill-root.png` and `showcase-drill-page.png`, plus their `-dark` twins. The page frame shows Traits › Rook.)
 
-For you: open the showcase's Breadcrumb Picker example and check that the drill feels like the Chip Options picker.
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- For you: open the showcase's Breadcrumb Picker example and check that the drill feels like the Chip Options picker.
+- The Requires owner page now uses the shared `BreadcrumbPickerHeader`. Check that it looks the same as before.

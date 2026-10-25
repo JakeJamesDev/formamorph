@@ -1,10 +1,10 @@
 import { useId, useState, type ReactElement, type ReactNode } from 'react';
-import { ArrowLeftRight, ChevronLeft, Plus, X } from 'lucide-react';
+import { ArrowLeftRight, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import {
-  BreadcrumbPicker, BreadcrumbPickerList, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
+  BreadcrumbPicker, BreadcrumbPickerHeader, BreadcrumbPickerList, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { StatConditionControls } from '@/components/editor/StatConditionControls';
@@ -152,14 +152,9 @@ export function RequirementRowsField({
   // Its own list, so the target search never carries over to the owner page.
   const ownerPage = picked && (
     <div>
-      <div className="flex items-center gap-1 border-b px-2 py-1.5 text-label">
-        <Button type="button" variant="ghost" size="xs" className="h-7 w-7 shrink-0 p-0" aria-label="Back to targets" onClick={() => setPicked(null)}>
-          <ChevronLeft className="h-4 w-4" aria-hidden />
-        </Button>
-        <span className="min-w-0 truncate">
-          Requires <PlaceholderText text={picked.label} placeholders={placeholders} /> on
-        </span>
-      </div>
+      <BreadcrumbPickerHeader backLabel="Back to targets" onBack={() => setPicked(null)}>
+        Requires <PlaceholderText text={picked.label} placeholders={placeholders} /> on
+      </BreadcrumbPickerHeader>
       <BreadcrumbPickerList
         sections={[{ rows: [ownerRow(picked, null), ...picked.owners.map((choice) => ownerRow(picked, choice))] }]}
         onPick={add}
