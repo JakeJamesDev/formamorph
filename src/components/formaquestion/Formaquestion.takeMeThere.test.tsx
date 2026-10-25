@@ -28,9 +28,9 @@ const conversation = () => screen.getByRole('log', { name: 'Conversation' });
 /** The window, or null once it has closed. */
 const helpWindow = () => document.getElementById('formaquestion-window');
 const takeMeThere = () => within(conversation()).queryByRole('button', { name: 'Take Me There' });
-/** The source links, in order: the group's buttons less its toggle and Take Me There. */
+/** The source links, in order: the group's buttons less its toggle, Take Me There and Ask the Community. */
 const sourceNames = () => within(within(conversation()).getByRole('group', { name: 'Sources' })).getAllByRole('button')
-  .filter((button) => !button.hasAttribute('aria-expanded') && button.textContent !== 'Take Me There')
+  .filter((button) => !button.hasAttribute('aria-expanded') && !['Take Me There', 'Ask the Community'].includes(button.textContent ?? ''))
   .map((button) => button.textContent);
 
 function setScreenWidth(width: number) {

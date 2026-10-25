@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { ChevronRight, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
@@ -11,6 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { withoutAttachment } from '@/lib/actionAttachments';
+import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
+import { openFeedback, questionFromHelp } from '@/lib/feedbackOpener';
+import { requestSignIn } from '@/lib/signInStore';
+import AuthService from '@/services/AuthService';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { withReaderLinks } from '@/lib/docs/docsReader';
@@ -111,6 +115,24 @@ function TakeMeThere({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** True when a finished answer shows Ask the Community. Questions live on the community server. */
+const asksCommunity = (exchange: HelpExchange) => COMMUNITY_ENABLED && exchange.status !== 'writing';
+
+/** Opens a new community question titled with the player's question; signed out, it asks for sign-in first. */
+function AskTheCommunity({ question }: { question: string }) {
+  const ask = (event: MouseEvent<HTMLButtonElement>) => {
+    const opener = event.currentTarget;
+    const open = () => openFeedback('question', questionFromHelp(question), opener);
+    if (AuthService.token) open();
+    else requestSignIn({ onSignedIn: open });
+  };
+  return (
+    <Button variant="outline" size="xs" className="h-6 px-1.5" onClick={ask}>
+      Ask the Community
+    </Button>
+  );
+}
+
 /** The source links of an answer, wrapped. */
 function SourceLinks({ guide, sections, onOpen }: { guide: Guide; sections: readonly DocSection[]; onOpen: (id: string) => void }) {
   return (
@@ -163,6 +185,7 @@ export function AnswerToggles({ guide, exchange, folds, who, onOpen, onGo }: {
       )}
       {listed.length > 0 && <SourcesPopover guide={guide} label={listLabel} sections={listed} onOpen={onOpen} />}
       {listed.length > 0 && route && <TakeMeThere onClick={() => onGo(route)} />}
+      {asksCommunity(exchange) && <AskTheCommunity question={exchange.question} />}
     </>
   );
 }
@@ -189,6 +212,7 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
   const waitLine = status === 'writing' && !answer && stage && !(reasoning && stage === 'waiting') ? stageLine(stage, who) : null;
   const { listed, listLabel } = answerList(exchange);
+  const sourced = listed.length > 0;
   const fold = folds.sources;
   const components = useMemo(() => readerComponents(onOpen, insertAction), [onOpen]);
   const reduceMotion = usePrefersReducedMotion();
@@ -227,14 +251,15 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
           {matches.length > 0 && <SectionRows guide={guide} sections={matches} onOpen={onOpen} />}
         </div>
       )}
-      {toggles && listed.length > 0 && (
-        <div role="group" aria-label={listLabel} className="flex flex-col gap-1">
-          {/* The footer row: the list's toggle, then Take Me There. */}
+      {toggles && (sourced || asksCommunity(exchange)) && (
+        <div role={sourced ? 'group' : undefined} aria-label={sourced ? listLabel : undefined} className="flex flex-col gap-1">
+          {/* The footer row: the list's toggle, Take Me There, then Ask the Community. */}
           <div className="flex flex-wrap items-center gap-2">
-            <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
-            {route && <TakeMeThere onClick={() => onGo(route)} />}
+            {sourced && <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />}
+            {sourced && route && <TakeMeThere onClick={() => onGo(route)} />}
+            {asksCommunity(exchange) && <AskTheCommunity question={question} />}
           </div>
-          {fold.open && <SourceLinks guide={guide} sections={listed} onOpen={onOpen} />}
+          {sourced && fold.open && <SourceLinks guide={guide} sections={listed} onOpen={onOpen} />}
         </div>
       )}
     </div>

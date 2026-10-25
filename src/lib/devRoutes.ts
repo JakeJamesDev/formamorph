@@ -16,7 +16,8 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `customCode` opens MainMenu's Custom Code Execution dialog on canned stat code when the selected world has none; the
  *  rest mount one pane on canned props (`DevPaneRoutes`). The podium and the sent list still load from the
  *  server, so they show their empty state without one. `feedbackForm` opens on the branch `tab=` names
- *  (`bug`, `suggestion`, `question`). Players never navigate to these. */
+ *  (`bug`, `suggestion`, `question`), on a canned fill; over a stored draft it opens the Replace-draft confirm.
+ *  Players never navigate to these. */
 export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 

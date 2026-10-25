@@ -16,7 +16,7 @@ import { ThemedToastContainer } from './ThemedToastContainer';
 import { FeedbackDialog } from './menu/FeedbackDialog';
 import AuthService from '@/services/AuthService';
 import { closeErrorDetails, DetailedError } from '@/lib/errorDetails';
-import { closeBugReport } from '@/lib/bugReportStore';
+import { closeFeedback } from '@/lib/feedbackOpener';
 import { saveFeedbackDraft } from '@/lib/feedbackDraft';
 import { toastError } from '@/lib/linkToast';
 
@@ -34,7 +34,7 @@ afterEach(() => {
   act(() => {
     toast.dismiss();
     closeErrorDetails();
-    closeBugReport();
+    closeFeedback();
   });
   cleanup();
   AuthService.token = null;
@@ -76,15 +76,20 @@ describe('Report Bug in Error Details', () => {
     expect(sent.diagnostics).toEqual(expect.objectContaining({ platform: 'Browser' }));
   });
 
-  it('replaces an unsent draft, and the filled report becomes the draft a later opening shows', async () => {
+  it('asks before it replaces an unsent draft, and the filled report becomes the draft a later opening shows', async () => {
     saveFeedbackDraft({ type: 'suggestion', title: 'Old idea', category: 'gameplay', body: 'Half written' });
-    await reportBug();
+    await openDetails();
+    fireEvent.click(screen.getByRole('button', { name: 'Report Bug' }));
+    await screen.findByRole('alertdialog', { name: 'Replace your unsent draft?' });
+    expect(titleValue()).toBe('Old idea');
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    await screen.findByRole('dialog', { name: 'Send Feedback' });
 
     expect(titleValue()).toBe('ComfyUI rejected the workflow');
     expect(screen.getByRole('tab', { name: 'Bug' }).getAttribute('data-state')).toBe('active');
     expect(screen.queryByText(/Picked up where you left off/)).toBeNull();
 
-    act(() => closeBugReport());
+    act(() => closeFeedback());
     cleanup();
     // The toast may be gone by now; the report itself keeps the details.
     render(<FeedbackDialog open onOpenChange={() => {}} />);

@@ -1,7 +1,9 @@
 import {
-  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
+  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { getFeedbackState, subscribeFeedback } from '@/lib/feedbackOpener';
+import { getSignInState, subscribeSignIn } from '@/lib/signInStore';
 import { coverShieldedLayer, ensureShieldedLayer } from '@/components/ui/shielded-layer';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useDevRoute } from '@/lib/devRouter';
@@ -211,8 +213,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const [settingsTab, setSettingsTab] = useState<FormaquestionSettingsTab>('general');
   // The Open Wiki confirm: where Open would go, while the dialog is up. It is an app dialog, so it covers the layer.
   const [wikiAsk, setWikiAsk] = useState<WikiTarget | null>(null);
+  // The shared Feedback dialog and sign-in are app dialogs that Ask the Community opens over the window.
+  const feedbackOpen = useSyncExternalStore(subscribeFeedback, () => getFeedbackState().open);
+  const signingIn = useSyncExternalStore(subscribeSignIn, () => getSignInState().phase !== 'idle');
   // The Guide full screen covers the screen on both, so the window stays where it is and sinks under it.
-  const covered = (sheet && dialog !== null) || guideMorph.mounted || wikiAsk !== null;
+  const covered = (sheet && dialog !== null) || guideMorph.mounted || wikiAsk !== null || feedbackOpen || signingIn;
   // Before paint, so the dialog's first frame already draws above the sheet.
   useLayoutEffect(() => {
     if (!covered) return;

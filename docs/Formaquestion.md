@@ -49,6 +49,20 @@ The button opens the screen, dialog or tab that the top source under **Sources**
 - When the button needs you to close a World Editor that has unsaved changes, the editor asks first, as it does when you close it. A jump to **Settings** opens over the editor and does not ask.
 - The button does not show when the answer is not from the guide, when the top source has no screen, or when the answer stopped or failed.
 
+## How to Ask the Community
+<!-- keywords: ask the community, ask people, ask other players, post a question, community question, answer not enough, still stuck, forum, ask a human -->
+<!-- route: formaquestion.ask#question-field -->
+
+1. Ask a question.
+2. When the answer is not enough, select **Ask the Community** under the answer.
+3. Add what you tried, and select **Post Question**.
+
+The **Send Feedback** dialog opens over the help window on a new question. Your question to the help window is already its title. Other players can answer it and vote on it, and replies show under **Questions** in your profile.
+
+- The button shows once the answer is done. It also shows when the answer stopped or failed. It does not show while the answer is writing.
+- When you have an unsent draft, the dialog asks first. Select **Replace** to start the new question, or **Keep Draft** to go back to your draft.
+- When you are signed out, the button asks you to sign in first.
+
 ## How to Ask About a Screenshot
 <!-- keywords: image, picture, paste, upload, attach, what is this, screen capture, photo, snip, print screen, vision model, clipboard, identify button, show my screen, drag file -->
 <!-- route: formaquestion.ask#question-field -->
@@ -391,6 +405,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - **Take Me There**, next to **Sources**, opens the screen that the top source describes. See [How to Go to the Screen an Answer Describes](#how-to-go-to-the-screen-an-answer-describes).
+- **Ask the Community**, under a finished answer, opens a new community question with your question as its title. See [How to Ask the Community](#how-to-ask-the-community).
 - **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your saves. It holds nothing from your worlds either, unless **test_script** or one of your **My Tools** reads the world you have open. See [Tools](#tools).

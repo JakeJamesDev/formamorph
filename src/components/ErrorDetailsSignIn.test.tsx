@@ -19,7 +19,7 @@ import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
 import AuthService from '@/services/AuthService';
 import { AGE_GATE_VERSION, acceptAgeGate } from '@/lib/ageGate';
 import { closeErrorDetails, DetailedError } from '@/lib/errorDetails';
-import { closeBugReport } from '@/lib/bugReportStore';
+import { closeFeedback } from '@/lib/feedbackOpener';
 import { toastError } from '@/lib/linkToast';
 
 /** Stands in for the game view: a turn typed but not sent, which a remount would drop. */
@@ -53,7 +53,7 @@ afterEach(() => {
   act(() => {
     toast.dismiss();
     closeErrorDetails();
-    closeBugReport();
+    closeFeedback();
   });
   cleanup();
   AuthService.token = null;
