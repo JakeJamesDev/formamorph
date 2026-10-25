@@ -192,6 +192,7 @@ Chips resolve **both** in the text the AI reads and in the text the player sees.
 
 - names and descriptions of entities, locations, stats and traits
 - the pronouns of an entity
+- the relationship labels of an entity
 - stat descriptors and dictionary entries
 - image tags
 - the Travel Hints of connections

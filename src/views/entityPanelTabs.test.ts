@@ -18,6 +18,7 @@ describe('entityTabForField', () => {
     expect(entityTabForField('type')).toBe('profile');
     expect(entityTabForField('imageTags')).toBe('profile');
     expect(entityTabForField('pronouns')).toBe('profile');
+    expect(entityTabForField('relationships[2].label')).toBe('profile');
   });
 
   it('puts any alias on Profile, whichever chip the hit is in', () => {

@@ -3,6 +3,10 @@ import type { Entity, EntityRelationship } from '@/types';
 /** The target id that reads as whoever the player plays. */
 export const YOU_TARGET = 'you';
 
+/** What a relationship row names its You target, and a target the world lacks. */
+export const PERSONA_TARGET_LABEL = 'Persona';
+export const UNKNOWN_TARGET_LABEL = 'Unknown Entity';
+
 /** Whether the entity plays only when picked: a persona-only Persona, or the Custom Persona entity. Its You
  *  row would read as itself whenever it plays, so it never renders. */
 export const playsOnlyWhenPicked = (entity: Entity) => !!entity.customPersona || (!!entity.persona && !!entity.personaOnly);

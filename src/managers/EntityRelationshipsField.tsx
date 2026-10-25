@@ -5,23 +5,26 @@ import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SelectOptions } from '@/components/SelectOptions';
 import { Tip } from '@/components/ui/tooltip';
-import { WorldInput } from '@/components/editor/WorldField';
+import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import type { ChipFocusHandle } from '@/components/prompt/ChipInput';
 import { fieldFrame } from '@/lib/historyField';
-import { YOU_TARGET, playsOnlyWhenPicked } from '@/lib/entityRelationships';
-import type { Entity, EntityRelationship } from '@/types';
+import { PERSONA_TARGET_LABEL, UNKNOWN_TARGET_LABEL, YOU_TARGET, playsOnlyWhenPicked } from '@/lib/entityRelationships';
+import type { Entity, EntityRelationship, Placeholder } from '@/types';
 
-const PERSONA_ROW = { value: YOU_TARGET, label: 'Persona', role: 'Persona’s Role' };
-const UNKNOWN_ROW = { value: '', label: 'Unknown Entity', role: 'Unknown Entity’s Role' };
+const PERSONA_ROW = { value: YOU_TARGET, label: PERSONA_TARGET_LABEL, role: `${PERSONA_TARGET_LABEL}’s Role` };
+const UNKNOWN_ROW = { value: '', label: UNKNOWN_TARGET_LABEL, role: `${UNKNOWN_TARGET_LABEL}’s Role` };
 
 /** The Relationships list of an entity's Profile tab: one row per target with its role label and **Remove**,
  *  and a select that adds a target the entity doesn't use yet, Persona first. The Persona row isn't offered to
  *  an entity that plays only when picked. A row whose target the world lacks shows as an unknown entity, so it
  *  can be removed. */
-export default function EntityRelationshipsField({ entity, entities, labelOf, onChange }: {
+export default function EntityRelationshipsField({ entity, entities, labelOf, onChange, placeholders }: {
   entity: Entity;
   /** The world's entities, in the order the select lists them. */
   entities: Entity[];
   labelOf: (entity: Entity) => string;
+  /** The placeholders a label can take; the menu offers the entity's own. */
+  placeholders: Placeholder[];
   onChange: (relationships: EntityRelationship[]) => void;
 }) {
   const relationships = useMemo(() => entity.relationships ?? [], [entity.relationships]);
@@ -39,7 +42,7 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
   }, [targets, relationships]);
   // The row just added takes focus, so the author types its label next.
   const [added, setAdded] = useState<string | null>(null);
-  const addedRef = useRef<HTMLInputElement>(null);
+  const addedRef = useRef<ChipFocusHandle>(null);
   const focusNewRow = useRef(false);
 
   const setLabel = (targetId: string, label: string) =>
@@ -54,14 +57,17 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
         return (
           <div key={targetId} className="flex items-center gap-2" {...fieldFrame('relationships', targetId, 'label')}>
             <span className="w-1/3 min-w-0 shrink-0 truncate font-medium">{target.label}</span>
-            <WorldInput
-              ref={targetId === added ? addedRef : undefined}
-              aria-label={target.role}
-              value={label}
-              onChange={(e) => setLabel(targetId, e.target.value)}
-              placeholder="mother, friend, rival"
-              className="min-w-0 flex-1"
-            />
+            <div className="min-w-0 flex-1">
+              <PlaceholderNameField
+                focusRef={targetId === added ? addedRef : undefined}
+                ariaLabel={target.role}
+                value={label}
+                onChange={(v) => setLabel(targetId, v)}
+                placeholders={placeholders}
+                ownerId={entity.id}
+                placeholder="mother, friend, rival"
+              />
+            </div>
             <Tip tip="Remove this relationship">
               <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onChange(relationships.filter((r) => r.targetId !== targetId))}>
                 Remove
