@@ -131,9 +131,8 @@ export function daypart(hour: number, calendar?: WorldCalendar): Daypart {
   return 'night';
 }
 
-/** The daypart after `elapsed` story hours. */
-export const daypartAt = (elapsed: number, calendar?: WorldCalendar): Daypart =>
-  daypart(dayAndHour(elapsed, calendar).hour, calendar);
+/** The daypart after `elapsed` story hours, read off the rounded minute the clock stamp and scripts share. */
+export const daypartAt = (elapsed: number, calendar?: WorldCalendar): Daypart => clockReading(elapsed, calendar).daypart;
 
 /** The daypart a story opens at when nothing set its hour: what authoring lenses read. */
 export const OPENING_DAYPART: Daypart = daypart(DEFAULT_START_HOUR);
@@ -149,13 +148,23 @@ export function formatAbsolute(elapsed: number, calendar?: WorldCalendar): strin
  *  the log never enters context. Accumulated in whole minutes so a measured 15m delta shows, and so a
  *  moment just short of midnight rolls the day instead of printing `24:00`. */
 export function formatClock(elapsed: number, calendar?: WorldCalendar): string {
+  const { day, hour, minute } = clockReading(elapsed, calendar);
+  return `Day ${day}, ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/** Day, hour and minute after `elapsed` story hours, all from one rounded minute count, so `formatClock`'s
+ *  stamp, a script's `clock` and its daypart agree and the minute never reads 60. */
+export function clockReading(elapsed: number, calendar?: WorldCalendar): { day: number; hour: number; minute: number; daypart: Daypart } {
   const { hoursPerDay, startHour } = resolve(calendar);
   const minutesPerDay = hoursPerDay * 60;
   const total = Math.round((Math.max(0, elapsed) + startHour) * 60);
   const within = total % minutesPerDay;
-  const hh = String(Math.floor(within / 60)).padStart(2, '0');
-  const mm = String(within % 60).padStart(2, '0');
-  return `Day ${Math.floor(total / minutesPerDay) + 1}, ${hh}:${mm}`;
+  return {
+    day: Math.floor(total / minutesPerDay) + 1,
+    hour: Math.floor(within / 60),
+    minute: within % 60,
+    daypart: daypart(within / 60, calendar),
+  };
 }
 
 const NUMBER_WORDS = ['', '', 'two', 'three', 'four', 'five', 'six'];

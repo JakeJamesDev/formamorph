@@ -231,8 +231,8 @@ describe('statCodeCompletions', () => {
   });
 
   it('offers the clock members after clock, and day and daypart after clock.previous', () => {
-    expect(labels('return clock.|')).toEqual(['day', 'daypart', 'deltaHours', 'elapsedHours', 'previous', 'advance']);
-    expect(labels('return clock.previous.|')).toEqual(['day', 'daypart']);
+    expect(labels('return clock.|')).toEqual(['day', 'daypart', 'hour', 'minute', 'deltaHours', 'elapsedHours', 'previous', 'advance']);
+    expect(labels('return clock.previous.|')).toEqual(['day', 'daypart', 'hour', 'minute']);
   });
 
   it('offers the four members after delta, and the four numbers after each member', () => {
@@ -774,14 +774,18 @@ describe('the stats map in stat code', () => {
       expect(problem.message).toBe('clock.previous has no field “dayparts”. Did you mean “daypart”?');
     });
 
-    it('flags time and previous.hour, which the clock does not carry', () => {
+    it('flags time and previous.week, which the clock does not carry', () => {
       expect(messages('return clock.time;')).toEqual(['clock has no field “time”.']);
-      expect(messages('return clock.previous.hour;')).toEqual(['clock.previous has no field “hour”.']);
+      expect(messages('return clock.previous.week;')).toEqual(['clock.previous has no field “week”.']);
+    });
+
+    it('accepts hour and minute on clock and clock.previous', () => {
+      expect(statCodeDiagnostics('return clock.hour + clock.minute + clock.previous.hour + clock.previous.minute;')).toEqual([]);
     });
 
     it('reads the same clock through optional chaining and spacing', () => {
-      expect(messages('return clock?.previous?.hour;')).toEqual(['clock.previous has no field “hour”.']);
-      expect(messages('return clock . previous . hour;')).toEqual(['clock.previous has no field “hour”.']);
+      expect(messages('return clock?.previous?.week;')).toEqual(['clock.previous has no field “week”.']);
+      expect(messages('return clock . previous . week;')).toEqual(['clock.previous has no field “week”.']);
       expect(statCodeDiagnostics('return clock?.previous?.day;')).toEqual([]);
     });
 

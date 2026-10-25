@@ -42,6 +42,14 @@ describe('executeStatCode world writes', () => {
     expect(res.value).toBe(0);
   });
 
+  it('keeps hour and minute at the run-start reading after an advance', async () => {
+    const res = await executeStatCode(
+      'const h = clock.hour * 60 + clock.minute; clock.advance(120); return (clock.hour * 60 + clock.minute) - h;',
+      [health], health, { places, clock: { deltaHours: 1, elapsedHours: 5 } },
+    );
+    expect(res.value).toBe(0);
+  });
+
   it('discovers each name once, in first-call order, a description filling in a bare call', async () => {
     const res = await run('discover(" Tor "); discover("Mira", "The innkeeper."); discover("Tor", " A smith. "); discover("Mira");');
     expect(res.worldWrites).toEqual({ discover: [{ name: 'Tor', description: 'A smith.' }, { name: 'Mira', description: 'The innkeeper.' }] });
