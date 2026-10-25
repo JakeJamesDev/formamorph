@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDestinationsContext, buildEntityContext, buildLocationContext } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
+import { YOU_TARGET } from '@/lib/entityRelationships';
 import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup } from '@/types';
 import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import {
@@ -379,5 +380,85 @@ describe('a blueprint chip in the PC’s trait text', () => {
   it('reads the blueprint itself with no Custom Persona entity', () => {
     const data = context(at('loc-harbor', 't-sedge'), { traits: worn, placeholders: [hairColor, garb] });
     expect(block(data, 'traits').text).toContain('Wears {tabard|robe}.');
+  });
+});
+
+describe('an entity’s own scope', () => {
+  // Wren owns her eyes and pronouns. Her later default trait wins in her own text; the earlier one's card
+  // still reads its own pin.
+  const EYES = '{{ph:w-eyes:world:p1}}';
+  const PRONOUNS = '{{ph:w-pro:world:p2}}';
+  const eyes: Placeholder = { id: 'w-eyes', name: 'Eyes', values: phValues(['amber', 'gray', 'green']) };
+  const pronouns: Placeholder = { id: 'w-pro', name: 'Pronouns', values: phValues(['she/her', 'they/them']) };
+  const dusk: Trait = {
+    id: 't-dusk', name: 'Dusk-Eyed', isDefault: true, statChanges: [], order: 0, aiDescription: `Eyes go ${EYES} at dusk.`,
+    placeholderPins: [{ placeholderId: 'w-eyes', value: 'amber' }],
+  };
+  const sea: Trait = {
+    id: 't-sea', name: 'Sea-Eyed', isDefault: true, statChanges: [], order: 1,
+    placeholderPins: [{ placeholderId: 'w-eyes', value: 'gray' }, { placeholderId: 'w-pro', value: 'they/them' }],
+  };
+  const wren: Entity = {
+    id: 'e-wren', name: 'Wren', locations: ['loc-harbor'], placeholders: [eyes, pronouns], traits: [dusk, sea],
+    aiDescription: `{{char}} has ${EYES} eyes.`, pronouns: PRONOUNS,
+    relationships: [{ targetId: YOU_TARGET, label: `${EYES}-eyed ward` }],
+  };
+  const you: Entity = { id: 'e-you', name: 'You', customPersona: true };
+  const scoped = (over: Partial<AiContextWorld> = {}) => context(at('loc-harbor', 't-sedge'), { entities: [...entities, wren, you], ...over });
+
+  it('reads a description’s owned chip and Character Name as play does', () => {
+    expect(block(scoped(), 'entities').text).toContain('Wren has gray eyes.');
+  });
+
+  it('reads pronouns with an owned chip in the owner’s scope', () => {
+    expect(block(scoped(), 'entities').text).toContain('they/them');
+  });
+
+  it('reads a relationship label in the owner’s scope on the persona’s block', () => {
+    const text = block(scoped(), 'persona').text;
+    expect(text).toContain("Wren's gray-eyed ward");
+  });
+
+  it('keeps a trait’s own pin on its own text over the entity’s', () => {
+    expect(block(scoped(), 'entities').text).toContain('Eyes go amber at dusk.');
+  });
+
+  it('names the entity in its Character Name with the chips in its name read in its scope', () => {
+    const titled = { ...wren, name: `Wren the ${EYES}-Eyed` };
+    expect(block(scoped({ entities: [...entities, titled, you] }), 'entities').text).toContain('Wren the gray-Eyed has gray eyes.');
+  });
+
+  it('reads the Custom Persona entity’s own text with the lens’s pins, its traits among them', () => {
+    const hazel: Trait = {
+      id: 't-hazel', name: 'Hazel-Eyed', isDefault: true, statChanges: [], order: 0,
+      placeholderPins: [{ placeholderId: 'w-eyes', value: 'green' }],
+    };
+    const self = { ...you, traits: [hazel], aiDescription: `Eyes of ${EYES}.` };
+    const data = scoped({ entities: [...entities, wren, self] });
+    expect(block(data, 'persona').text).toContain('Eyes of green.');
+    expect(block(data, 'entities').text).toContain('Wren has gray eyes.');
+  });
+
+  it('lets a starting stat’s band pin win over the entity’s trait, as play lays them', () => {
+    const banded = stats.map((s) => (s.id === 's-nerve'
+      ? { ...s, descriptors: [{ id: 'd-low', threshold: 10, description: 'Rattled', placeholderPins: [{ placeholderId: 'w-eyes', value: 'green' }] }] }
+      : s));
+    expect(block(scoped({ stats: banded }), 'entities').text).toContain('Wren has green eyes.');
+  });
+
+  it('reads a blueprint chip through the entity’s own copy', () => {
+    const garb: Placeholder = { id: 'garb', name: 'Garb', values: [{ id: 'v-tabard', text: 'tabard' }, { id: 'v-robe', text: 'robe' }] };
+    const copy: Placeholder = {
+      id: 'w-garb', name: 'Garb', values: [], blueprintId: 'garb',
+      valueOverrides: { 'v-tabard': { text: { value: 'oilskin', blueprint: 'tabard' } }, 'v-robe': { removed: true } },
+    };
+    const clad = { ...wren, placeholders: [eyes, pronouns, copy], aiDescription: 'Wears {{ph:garb:world:p9}}.' };
+    const text = block(scoped({ entities: [...entities, clad, you], placeholders: [hairColor, garb] }), 'entities').text;
+    expect(text).toContain('Wears oilskin.');
+  });
+
+  it('lets the lens location’s pin win over the entity’s trait, as play lays them', () => {
+    const harbor = locations.map((l) => (l.id === 'loc-harbor' ? { ...l, placeholderPins: [{ placeholderId: 'w-eyes', value: 'green' }] } : l));
+    expect(block(scoped({ locations: harbor }), 'entities').text).toContain('Wren has green eyes.');
   });
 });

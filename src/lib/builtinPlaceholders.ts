@@ -151,6 +151,9 @@ const CHARACTER_RE = new RegExp(CHARACTER_NAME.source, 'g');
 /** Write every Character Name as the Persona Name, for text the player has. */
 export const characterAsPlayer = (text: string): string => text.replace(CHARACTER_RE, PLAYER_NAME.token);
 
+/** Write every Character Name in the text as `name`. */
+export const withCharacterName = (text: string, name: string): string => text.replace(CHARACTER_RE, () => name);
+
 const PLAYER_NAME_RE = new RegExp(PLAYER_NAME.source, 'g');
 
 /** The values-map key a chip Header reads the Persona Name from. Prompt text never looks it up. */
