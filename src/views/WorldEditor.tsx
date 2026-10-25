@@ -192,7 +192,7 @@ const WorldEditorInner = ({
   const {
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
-    stats, statGroups, locations, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
+    stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups, worldTools,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
@@ -481,13 +481,13 @@ const WorldEditorInner = ({
     if (!searching) return [];
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
-      worldOverview, stats, statGroups, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders, placeholderGroups,
-      updateWorldOverview, updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait,
-      updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
+      worldOverview, stats, statGroups, entities, entityGroups, locations, connections, traits, traitGroups, dictionaries, placeholders,
+      placeholderGroups, updateWorldOverview, updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation,
+      updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     }).filter((t) => reachable.has(t.tab));
-  }, [searching, visibleTabs, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, traits, traitGroups,
-      dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
-      updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
+  }, [searching, visibleTabs, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
+      traitGroups, dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
+      updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
       updatePlaceholderGroup]);
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, type ReactNode, type Ref } from 'react';
 import PromptField from './PromptField';
-import ChipInput from './ChipInput';
+import ChipInput, { type ChipFocusHandle } from './ChipInput';
 import { promptVocabulary, usePlaceholderChipVocabulary, worldPromptVocabulary } from '@/lib/chipVocabulary';
 import type { PromptVariable } from '@/lib/promptVariables';
 import { layerValues, type TokenValues } from '@/lib/promptValues';
@@ -235,6 +235,7 @@ export default PlaceholderField;
  */
 export const PlaceholderNameField = ({
   value, onChange, placeholders, ownerId, trait, placeholder, ariaLabel, className, readOnly = false, onFocus, onBlur, onSubmit,
+  focusRef, ariaDescribedBy,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -251,6 +252,9 @@ export const PlaceholderNameField = ({
   onFocus?: () => void;
   onBlur?: () => void;
   onSubmit?: () => void;
+  /** Receives the field's focus call, for a caller that focuses it from elsewhere. */
+  focusRef?: Ref<ChipFocusHandle>;
+  ariaDescribedBy?: string;
 }) => {
   const vocab = usePlaceholderChipVocabulary(placeholders, ownerId, { trait });
   const enabled = placeholders.length > 0 && !readOnly;
@@ -267,6 +271,8 @@ export const PlaceholderNameField = ({
       onFocus={onFocus}
       onBlur={onBlur}
       onSubmit={onSubmit}
+      focusRef={focusRef}
+      ariaDescribedBy={ariaDescribedBy}
     />
   );
 };

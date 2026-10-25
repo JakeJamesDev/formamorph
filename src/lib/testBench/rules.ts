@@ -14,7 +14,7 @@ import {
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
-import { travelEnds } from '@/lib/locationGraph';
+import { connectionLegs, travelEnds } from '@/lib/locationGraph';
 import {
   allPinRows, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId, pinsTargeting,
   valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
@@ -802,6 +802,10 @@ interface ChipOwner {
   texts: Array<string | undefined>;
 }
 
+/** A location by id, as its tree row names it. */
+const locationLabel = (id: string, world: RuleWorld): string =>
+  labelOf(world.locations?.find((l) => l.id === id)?.name, world);
+
 const chipOwners = (world: RuleWorld): ChipOwner[] => [
   {
     item: { id: 'overview', name: world.worldOverview?.name || 'Overview', section: 'overview' },
@@ -815,6 +819,15 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
     item: namedItem(l.id, l.name, world, 'locations'),
     texts: [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags],
   })),
+  // Each leg is filed under the location it leaves, whose panel shows that box first.
+  ...(world.connections ?? []).flatMap((c) => connectionLegs(c).map(({ from, to, leg }) => ({
+    item: {
+      id: from,
+      name: `${locationLabel(from, world)} → ${locationLabel(to, world)} Travel Hint`,
+      section: 'locations' as const,
+    },
+    texts: [leg.hint],
+  }))),
   ...allEntries(world).map((entry) => ({
     item: { ...entryItem(entry, world), section: 'dictionary' as const },
     texts: [entry.name, ...(entry.key ?? []), ...(entry.secondaryKeys ?? []), entry.value],

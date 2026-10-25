@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import {
   $getRoot, $createTextNode, $selectAll, LineBreakNode,
   KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, COMMAND_PRIORITY_LOW,
@@ -117,9 +117,28 @@ function useFocusEnd() {
   };
 }
 
-function Surface({ placeholder, ariaLabel, className, multiline }: {
+/** What a caller can do to the field from outside it, as an input's ref allows. */
+export interface ChipFocusHandle {
+  focus: () => void;
+}
+
+/** Hands `handle` a focus call that focuses at once, as an input's does, with the caret at the end. */
+function FocusHandlePlugin({ handle }: { handle: Ref<ChipFocusHandle> }) {
+  const [editor] = useLexicalComposerContext();
+  const focusEnd = useFocusEnd();
+  useImperativeHandle(handle, () => ({
+    focus: () => {
+      editor.getRootElement()?.focus({ preventScroll: true });
+      focusEnd();
+    },
+  }));
+  return null;
+}
+
+function Surface({ placeholder, ariaLabel, ariaDescribedBy, className, multiline }: {
   placeholder?: string;
   ariaLabel?: string;
+  ariaDescribedBy?: string;
   className?: string;
   multiline?: boolean;
 }) {
@@ -171,6 +190,7 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
             ref={editableRef}
             className={cn(INPUT_CLASS, className)}
             aria-label={ariaLabel}
+            aria-describedby={ariaDescribedBy}
             style={multiline && hintFloor ? { minHeight: hintFloor } : undefined}
           />
         )}
@@ -194,7 +214,7 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
   );
 }
 
-const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onFocus, onBlur, multiline = false, children, autoFocus = false, onCancel, ownerId }: {
+const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onFocus, onBlur, multiline = false, children, autoFocus = false, onCancel, ownerId, focusRef, ariaDescribedBy }: {
   value: string;
   onChange: (v: string) => void;
   vocabulary: ChipVocabulary;
@@ -204,6 +224,8 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
   placeholder?: string;
   /** Names the editor for a screen reader — Lexical renders a `div`, so `<label htmlFor>` cannot reach it. */
   ariaLabel?: string;
+  /** The id of the element that describes the editor. */
+  ariaDescribedBy?: string;
   className?: string;
   readOnly?: boolean;
   /** Character that opens the insert menu; pass `undefined` to leave typing untouched. */
@@ -222,6 +244,8 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
   autoFocus?: boolean;
   /** Escape pressed with no menu open — abandon the edit. */
   onCancel?: () => void;
+  /** Receives the field's focus call. */
+  focusRef?: Ref<ChipFocusHandle>;
 }) => {
   const dragKey = useRef<string | null>(null);
   const initialConfig = useMemo(
@@ -240,7 +264,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocabulary}>
         <PromptDragContext.Provider value={dragKey}>
-          <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} multiline={multiline} />
+          <Surface placeholder={placeholder} ariaLabel={ariaLabel} ariaDescribedBy={ariaDescribedBy} className={className} multiline={multiline} />
           <FieldHistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
           {vocabulary.refuses && <RefusedChipPastePlugin vocab={vocabulary} />}
@@ -248,6 +272,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           {(onFocus || onBlur) && <FocusPlugin onFocus={onFocus} onBlur={onBlur} />}
           {autoFocus && <AutoFocusPlugin />}
           {onCancel && <CancelPlugin onCancel={onCancel} />}
+          {focusRef && <FocusHandlePlugin handle={focusRef} />}
           <EditablePlugin readOnly={readOnly} />
           <ChipInsertTargetPlugin vocab={vocabulary} ownerId={ownerId} />
           <ChipDragPlugin dragKey={dragKey} vocab={readOnly ? undefined : vocabulary} />

@@ -9,8 +9,10 @@ import { acceptsBlueprintChips, dropBlueprintChips } from '@/lib/blueprintChips'
 import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
 } from '@/lib/worldPrompt';
+import { hintsLinked, travelHintFieldKey, withHint, withLink } from '@/lib/connectionEditing';
+import { connectionLegs } from '@/lib/locationGraph';
 import type {
-  Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 
 /**
@@ -95,6 +97,8 @@ export interface SearchSources {
   entities: Entity[];
   entityGroups: EntityGroup[];
   locations: GameLocation[];
+  /** The travel links, when the host edits them. */
+  connections?: Connection[];
   traits: Trait[];
   traitGroups: TraitGroup[];
   dictionaries: Dictionary[];
@@ -105,6 +109,7 @@ export interface SearchSources {
   updateEntity: (entity: Entity) => void;
   updateEntityGroup: (group: EntityGroup) => void;
   updateLocation: (location: GameLocation) => void;
+  updateConnection?: (connection: Connection) => void;
   updateTrait: (trait: Trait) => void;
   updateTraitGroup: (group: TraitGroup) => void;
   updateDictionary: (book: Dictionary) => void;
@@ -266,6 +271,25 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
         (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
     });
   });
+
+  // A leg is found on the panel of the location it leaves. A linked pair is one target on its first leg,
+  // whose write carries through the link as typing in the first box does.
+  const locationName = (id: string) => labeled(src.locations?.find((l) => l.id === id)?.name, 'Location');
+  if (src.updateConnection) {
+    const update = src.updateConnection;
+    (src.connections ?? []).forEach((connection) => {
+      const linked = hintsLinked(connection);
+      const { add } = bind(`connection:${connection.id}`, connection, update);
+      connectionLegs(connection).forEach(({ key, from, to, leg }) => {
+        if (linked && key === 'bToA') return;
+        add(
+          { tab: 'locations', itemId: from, itemLabel: locationName(from), chipCapable: true },
+          travelHintFieldKey(connection.id, key), `Travel Hint to ${locationName(to)}`, leg.hint,
+          (r, v) => (linked ? withLink(withHint(r, key, v), key) : withHint(r, key, v)),
+        );
+      });
+    });
+  }
 
   // ── Traits ────────────────────────────────────────────────────────────────
   (src.traits ?? []).forEach((trait) => {

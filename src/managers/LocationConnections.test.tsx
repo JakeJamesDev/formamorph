@@ -49,6 +49,33 @@ vi.mock('@/components/ui/select', () => ({
   },
 }));
 
+// The hint boxes are Lexical editors, which these link-state cases do not need; they stand in as a real
+// controlled input with the same props, so the typing stays genuine. TravelHintPair.test drives the real field.
+vi.mock('@/components/prompt/PlaceholderField', async () => {
+  const { useImperativeHandle, useRef } = await import('react');
+  return {
+    PlaceholderNameField: ({ value, onChange, placeholder, ariaLabel, ariaDescribedBy, readOnly, className, focusRef }: {
+      value: string; onChange: (v: string) => void; placeholder?: string; ariaLabel?: string; ariaDescribedBy?: string;
+      readOnly?: boolean; className?: string; focusRef?: React.Ref<{ focus: () => void }>;
+    }) => {
+      const input = useRef<HTMLInputElement>(null);
+      useImperativeHandle(focusRef, () => ({ focus: () => input.current?.focus() }));
+      return (
+        <input
+          ref={input}
+          aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
+          readOnly={readOnly}
+          className={className}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    },
+  };
+});
+
 const noPlaceholders: never[] = [];
 let unrelated = 0;
 /** A write elsewhere in the world, such as a keystroke in another field: it re-renders every reader of the context. */

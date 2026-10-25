@@ -11,7 +11,7 @@ import { entitiesInPlay } from '@/lib/entityPresence';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
-  resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
+  resolveConnectionHints, resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames, type ResolveEntityText,
 } from '@/lib/resolveWorldNames';
 import type {
@@ -51,7 +51,7 @@ export interface ResolvedWorld {
   /** The save names a persona its source no longer holds. False while a library read is in flight. */
   personaUnresolved: boolean;
   locations: GameLocation[];
-  /** The authored travel links, forwarded as-is: endpoints are ids and carry no name to resolve. */
+  /** The authored travel links, each Travel Hint resolved against world-level pins. */
   connections: Connection[];
   stats: Stat[];
   traits: Trait[];
@@ -144,7 +144,7 @@ export function useResolvedAuthoredWorld(
   personaName: string | null = null,
 ) {
   const {
-    playStats: rawStats, locations: rawLocations, connections, playEntities: rawEntities,
+    playStats: rawStats, locations: rawLocations, connections: rawConnections, playEntities: rawEntities,
     traits: rawTraits, traitGroups: rawTraitGroups,
   } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
@@ -209,6 +209,7 @@ export function useResolvedAuthoredWorld(
   // produces no new identities and nothing downstream re-renders for this.
   const entities = useMemo(() => resolveEntityNames(rawEntities, resolveNameOf), [rawEntities, resolveNameOf]);
   const locations = useMemo(() => resolveLocationNames(rawLocations, resolvePH), [rawLocations, resolvePH]);
+  const connections = useMemo(() => resolveConnectionHints(rawConnections, resolvePH), [rawConnections, resolvePH]);
   const stats = useMemo(() => resolveStatNames(rawStats, resolvePH), [rawStats, resolvePH]);
   const traits = useMemo(
     () => resolveTraitNames(rawTraits, (t) => (text) => resolveTraitText(t, text)),

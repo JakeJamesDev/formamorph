@@ -5,6 +5,7 @@ import { ImageIcon, Pin } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { isOpeningFieldKey } from '@/lib/openings';
+import { isTravelHintFieldKey } from '@/lib/connectionEditing';
 import { tabForField } from './findFocus';
 
 export const LOCATION_PANEL_TABS = [
@@ -35,5 +36,6 @@ const TAB_BY_FIELD: Record<string, LocationPanelTab> = {
 /** The tab holding `fieldKey`, or `null` for a key no tab claims. */
 export function locationTabForField(fieldKey: string): LocationPanelTab | null {
   if (isOpeningFieldKey(fieldKey)) return 'openings';
+  if (isTravelHintFieldKey(fieldKey)) return 'presence';
   return tabForField(fieldKey, TAB_BY_FIELD);
 }

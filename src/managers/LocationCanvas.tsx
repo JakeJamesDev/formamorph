@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/context-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
+import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, canvasFocus, CANVAS_GRID,
@@ -60,7 +61,7 @@ import {
 import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
-import type { Connection, Entity, GameLocation, LegKey } from '@/types';
+import type { Connection, Entity, GameLocation, LegKey, Placeholder } from '@/types';
 import { CanvasControlButton, CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 import { MapBackgroundLayer, type MapGesture } from '@/components/MapBackgroundLayer';
@@ -310,8 +311,9 @@ const DIRECTIONS: { value: ConnectionDirection; Icon: typeof ArrowRight; label: 
  * describe making the trip, and whether the link exists at all. Every control hands its intent back, so the
  * panel decides nothing about what an edit means.
  */
-const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
+const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose, placeholders }: {
   connection: Connection;
+  placeholders: Placeholder[];
   /** The leg whose arrow was clicked last. */
   focus: TravelHintFocus | null;
   nameOf: (id: string) => string;
@@ -374,6 +376,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
           };
         })}
         idPrefix={`canvas-connection-${connection.id}`}
+        placeholders={placeholders}
         onChange={(next, typedLeg) => onIntent(updateIntent(next), typedLeg)}
         focus={focus}
       />
@@ -884,8 +887,11 @@ const CanvasInner = ({
   );
 
   const map = useMemo(
-    () => buildLocationCanvas(locations, connections, { resolveName }),
-    [locations, connections, resolveName],
+    () => buildLocationCanvas(locations, connections, {
+      resolveName,
+      describeHint: (hint) => describePlaceholders(hint, placeholders),
+    }),
+    [locations, connections, resolveName, placeholders],
   );
 
   const entityLabel = useCallback(
@@ -1570,6 +1576,7 @@ const CanvasInner = ({
                 connection={selectedConnection}
                 focus={hintFocus?.connectionId === selectedConnection.id ? hintFocus : null}
                 nameOf={nameOf}
+                placeholders={placeholders}
                 onIntent={applyIntent}
                 onClose={() => setSelectedConnectionId(null)}
               />

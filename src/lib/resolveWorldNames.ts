@@ -1,4 +1,6 @@
-import type { DictionaryEntry, Entity, GameLocation, StatDescriptor, StatGroup, Trait, TraitGroup } from '@/types';
+import type {
+  Connection, ConnectionLeg, DictionaryEntry, Entity, GameLocation, StatDescriptor, StatGroup, Trait, TraitGroup,
+} from '@/types';
 import { hasPlaceholders } from './placeholders';
 import { mapPreservingIdentity } from './utils';
 
@@ -88,6 +90,19 @@ export function resolveLocationNames(locations: GameLocation[], resolve: Resolve
   return mapPreservingIdentity(locations, (l) => {
     const name = one(l.name, resolve);
     return name === l.name ? l : { ...l, name: name ?? '' };
+  });
+}
+
+/** Resolve each leg's Travel Hint. A connection has no owner, so `resolve` carries world-level pins. */
+export function resolveConnectionHints(connections: Connection[], resolve: ResolveText): Connection[] {
+  const leg = (l: ConnectionLeg | undefined): ConnectionLeg | undefined => {
+    const hint = one(l?.hint, resolve);
+    return !l || hint === l.hint ? l : { ...l, hint };
+  };
+  return mapPreservingIdentity(connections, (c) => {
+    const aToB = leg(c.aToB);
+    const bToA = leg(c.bToA);
+    return aToB === c.aToB && bToA === c.bToA ? c : { ...c, ...(aToB ? { aToB } : {}), ...(bToA ? { bToA } : {}) };
   });
 }
 
