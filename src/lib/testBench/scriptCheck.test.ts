@@ -240,7 +240,7 @@ describe('the on-demand script check', () => {
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'while (true) {}' }) }),
     ]));
     expect(found.message).toContain('times out');
-  }, 15000);
+  });
 
   it('runs each coded stat against the world’s authored values, so a run mirrors turn one (Q8)', async () => {
     // Vigor opens at its authored 80, so code reading it sees 80.
@@ -431,7 +431,7 @@ describe('the on-demand script check', () => {
         ['“Tide” (At Game Start) on the world times out — it never finishes, so the run changes nothing',
           [{ id: 'world|w2', name: 'Tide', section: 'scripts' }]],
       ]);
-    }, 15000);
+    });
 
     it('runs a trait script with the trait as self, and names it on the Traits tab', async () => {
       const at = (code: string) => checkScripts({ ...base([]), traits: [brave([{ id: 't', timing: 'after', code }])] });
@@ -480,7 +480,7 @@ describe('the on-demand script check', () => {
       const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'if (player.confirm("Drink?")) throw new Error("drank");' }) }),
       ]), prompts.host);
-      await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
+      await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
       prompts.store.answer(prompts.store.pending()[0].id, true);
       expect((await checking).map((f) => f.message)).toEqual(['“Mood · After the AI” throws when it runs, so the stat keeps its manual value']);
     });
@@ -499,7 +499,7 @@ describe('the on-demand script check', () => {
       // The sandbox runs one prompting script at a time, so each prompt opens after the last is answered.
       const askers: (string | undefined)[] = [];
       for (let asked = 0; asked < 4; asked += 1) {
-        await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
+        await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
         const [{ id, request }] = prompts.store.pending();
         askers.push('asker' in request ? request.asker : undefined);
         prompts.store.answer(id, true);
@@ -513,7 +513,7 @@ describe('the on-demand script check', () => {
       const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'player.confirm("Drink?"); return 1;' }) }),
       ]), prompts.host);
-      await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
+      await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
       prompts.store.cancel(prompts.store.pending()[0].id);
       expect((await checking).map((f) => f.message)).toEqual([
         '“Mood · After the AI” asked the player and the prompt was closed, so the run changes nothing',

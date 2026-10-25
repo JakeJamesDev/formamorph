@@ -354,10 +354,7 @@ describe('Settings → Prompts chip jumps', () => {
     expect(onSystemEditor()).toBe(true);
     expect(onHub()).toBe(false);
     // The reveal retries on a timer until the editor's chips have mounted.
-    await waitFor(
-      () => expect(document.querySelector('[data-chip-token].editor-find-target')).not.toBeNull(),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(document.querySelector('[data-chip-token].editor-find-target')).not.toBeNull());
     expect(scrollTo).toHaveBeenCalled();
   });
 

@@ -117,7 +117,7 @@ async function sendTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
-const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 async function playTurn(action: string) {
   await sendTurn(action);
   await turnDone();
@@ -129,7 +129,7 @@ async function seedHistory() {
 }
 
 describe('memory verdicts in play', () => {
-  it('lands forget, pin, edit and remove on the pins, the overrides and the deleted set, and the Memory Manager shows them', { timeout: 30_000 }, async () => {
+  it('lands forget, pin, edit and remove on the pins, the overrides and the deleted set, and the Memory Manager shows them', async () => {
     renderGameViewer(world([after('memories[0].forget(); memories[1].pin(); memories[2].edit("The harbor burned."); memories[3].remove();')]), { inGameplay: <Probe /> });
     await seedHistory();
     stubEndpoint();
@@ -149,7 +149,7 @@ describe('memory verdicts in play', () => {
     expect(within(dialog).getAllByRole('button', { name: 'Pin This Memory' })).toHaveLength(1);
   });
 
-  it('drops a pin on a Custom line and edits it in place', { timeout: 30_000 }, async () => {
+  it('drops a pin on a Custom line and edits it in place', async () => {
     renderGameViewer(world([after('const line = memories.find((m) => m.custom); line.pin(); line.edit("The bridge is fixed.");')]), { inGameplay: <Probe /> });
     await seedHistory();
     act(() => play?.setMemoryNotes([{ id: 'n1', text: 'The bridge is out.', anchorTurn: 4 }]));
@@ -161,7 +161,7 @@ describe('memory verdicts in play', () => {
     expect(edits).toEqual({});
   });
 
-  it('runs the Before and After scripts of one turn over one capture, whatever the panel does between them', { timeout: 30_000 }, async () => {
+  it('runs the Before and After scripts of one turn over one capture, whatever the panel does between them', async () => {
     // Before writes 1 when the first row has no verdict; After adds 10 when it still reads none.
     const verdict = '(memories[0].pinned || memories[0].forgotten)';
     renderGameViewer(world([
@@ -182,7 +182,7 @@ describe('memory verdicts in play', () => {
     expect(vigorNow()).toBe(11);
   });
 
-  it('lands a switch run’s verdict at once, and its edit of a Custom line before the first turn', { timeout: 30_000 }, async () => {
+  it('lands a switch run’s verdict at once, and its edit of a Custom line before the first turn', async () => {
     const brave = { id: 'brave', name: 'Brave', statChanges: [], playerToggle: true };
     const switched: Script = { id: 'sw', timing: 'switch', code: 'const m = memories[0]; if (m.custom) m.edit("The bridge is fixed."); else m.forget();' };
     renderGameViewer({ ...world([switched]), traits: [brave] }, { inGameplay: <Probe /> });
@@ -199,7 +199,7 @@ describe('memory verdicts in play', () => {
     await waitFor(() => expect(pins).toEqual({ t1: 'drop' }));
   });
 
-  it.each(['call', 'after'] as const)('lands a %s World Tool’s forget when its turn commits', { timeout: 30_000 }, async (timing) => {
+  it.each(['call', 'after'] as const)('lands a %s World Tool’s forget when its turn commits', async (timing) => {
     localStorage.setItem('FORMAMORPH_thinkingMode', 'inline');
     localStorage.setItem('FORMAMORPH_toolsEnabled', 'true');
     localStorage.setItem('FORMAMORPH_reasoningSupport', JSON.stringify({
@@ -229,11 +229,11 @@ describe('memory verdicts in play', () => {
     /** A turn in the chat layout, whose stat re-roll sits in a menu: done once the turn is stored and play is idle. */
     async function playChatTurn(action: string, turns: number) {
       await sendTurn(action);
-      await waitFor(() => expect(turnIds()).toHaveLength(turns), { timeout: 8000 });
-      await waitFor(() => expect(play?.isWaitingForAI).toBe(false), { timeout: 8000 });
+      await waitFor(() => expect(turnIds()).toHaveLength(turns));
+      await waitFor(() => expect(play?.isWaitingForAI).toBe(false));
     }
 
-    it('keeps the verdict and the edit after a rewind past the turn that wrote them', { timeout: 40_000 }, async () => {
+    it('keeps the verdict and the edit after a rewind past the turn that wrote them', async () => {
       localStorage.setItem('FORMAMORPH_narrationLayout', 'chat');
       renderGameViewer(world([after('if (memories.length) { memories[0].edit("Rewritten."); memories[0].forget(); }')]), { inGameplay: <Probe /> });
       stubEndpoint();

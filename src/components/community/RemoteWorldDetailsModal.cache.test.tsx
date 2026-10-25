@@ -8,6 +8,22 @@ import { putCachedDetails } from '@/lib/listingDetailsCache';
 import { type ChangelogEntry } from '@/lib/listingChangelog';
 import { type WorldRecord } from '@/components/WorldDetails';
 
+/** Every disk read the modal starts, so a test can wait for them to land. */
+const diskReads = vi.hoisted(() => [] as Promise<unknown>[]);
+vi.mock('@/lib/listingDetailsCache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/listingDetailsCache')>();
+  return {
+    ...actual,
+    getCachedDetails: (listingId: string) => {
+      const read = actual.getCachedDetails(listingId);
+      diskReads.push(read);
+      return read;
+    },
+  };
+});
+/** Lets every disk read started so far land, and the renders it sets off run. */
+const diskReadsLanded = () => act(async () => { await Promise.allSettled(diskReads); });
+
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/useCachedThumbnail', () => ({ useCachedThumbnail: () => ({ src: '' }) }));
 vi.mock('@/components/game/MarkdownRenderer', () => ({
@@ -43,6 +59,7 @@ const answers = new Map<string, (read: ListingDetailsRead) => void>();
 
 beforeEach(() => {
   answers.clear();
+  diskReads.length = 0;
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue({ data: [], total: 0 } as never);
   vi.spyOn(WorldStorageService, 'readListingDetails').mockImplementation(
@@ -134,8 +151,7 @@ describe('a listing opened before', () => {
     const view = render(modal('w1', { changelog_count: 3 }));
     const record = () => seen.push(screen.getByRole('radio', { name: 'Changelog' }).getAttribute('aria-checked') === 'true');
     record();
-    // Long enough for the disk read to land.
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    await diskReadsLanded();
     record();
 
     await answer('w1', { status: 'ok', details: details('From today.') });
@@ -150,7 +166,7 @@ describe('a listing opened before', () => {
   it('falls back to a disagreeing cached entry when the server does not answer', async () => {
     await putCachedDetails('w1', details('From the last visit.'));
     render(modal('w1', { changelog_count: 3 }));
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    await diskReadsLanded();
 
     await answer('w1', { status: 'unreachable' });
 
@@ -163,7 +179,7 @@ describe('a listing opened before', () => {
     // Switched before the disk read for w1 can answer; w2 has nothing cached and no answer yet.
     const view = render(modal('w1'));
     view.rerender(modal('w2'));
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    await diskReadsLanded();
 
     expect(screen.getByText('Listing w2')).toBeInTheDocument();
     expect(screen.queryByText('Only true of w1.')).toBeNull();

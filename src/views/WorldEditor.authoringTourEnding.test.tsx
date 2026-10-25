@@ -54,8 +54,6 @@ const tourBar = () => screen.queryByRole('region', { name: 'Authoring Tour' });
 /** The Save face, which reads Saved for a moment after the tour's own save. */
 const saveButton = () => screen.getByRole('button', { name: /^Saved?$/ });
 
-/** Waits out the tutorial layer's appear delay, so a note that was going to show has had its chance. */
-const pastAppearDelay = () => act(() => new Promise((r) => { setTimeout(r, TUTORIAL_APPEAR_DELAY_MS + 200); }));
 
 /** Opens the editor on a world whose tour stopped at `stepId`, the way a returning author finds it. */
 const resumeAt = (stepId: string, mode: 'simple' | 'advanced' = 'simple', props = {}) => {
@@ -68,7 +66,7 @@ const resumeAt = (stepId: string, mode: 'simple' | 'advanced' = 'simple', props 
 /** Starts the tour on a new world and names it, so the World Name step's Next is ready. */
 const startTour = async () => {
   const view = renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
-  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
   const first = await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
   fireEvent.click(within(first).getByRole('button', { name: 'Use Example' }));
@@ -143,9 +141,15 @@ describe('Authoring Tour mode step', () => {
     fireEvent.click(within(tourBar()!).getByRole('button', { name: 'End Tour' }));
     touring.unmount();
 
-    renderWorldEditorBench(NEW_WORLD, 'simple');
-    await pastAppearDelay();
-    expect(screen.queryByRole('dialog', { name: 'Simple vs. Advanced' })).not.toBeInTheDocument();
+    // The whole appear delay on a clock that moves only when told, so a note that was going to show has.
+    vi.useFakeTimers();
+    try {
+      renderWorldEditorBench(NEW_WORLD, 'simple');
+      await act(() => vi.advanceTimersByTimeAsync(TUTORIAL_APPEAR_DELAY_MS));
+      expect(screen.queryByRole('dialog', { name: 'Simple vs. Advanced' })).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('leaves the Simple vs. Advanced note for an author who ended the tour before it', async () => {
@@ -155,7 +159,7 @@ describe('Authoring Tour mode step', () => {
     touring.unmount();
 
     renderWorldEditorBench(NEW_WORLD, 'simple');
-    expect(await screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Simple vs. Advanced' })).toBeInTheDocument();
   });
 });
 

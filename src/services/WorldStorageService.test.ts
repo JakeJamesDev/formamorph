@@ -447,8 +447,14 @@ describe('local world storage (IndexedDB)', () => {
       otherTab.onmessage = (event) => { heard.push(event.data); };
     });
     afterEach(() => { otherTab.close(); });
-    /** Lets messages already posted arrive. */
-    const settle = () => new Promise<void>((resolve) => { setTimeout(resolve, 50); });
+    /** Lets messages already posted arrive: posts a marker behind them and waits for it, then drops it. */
+    const settle = async () => {
+      const marker = new BroadcastChannel(WORLD_CHANGE_CHANNEL);
+      marker.postMessage({ worldId: 'marker' });
+      marker.close();
+      await vi.waitFor(() => expect(heard).toContainEqual({ worldId: 'marker' }));
+      heard = heard.filter((message) => (message as { worldId: string }).worldId !== 'marker');
+    };
 
     it('after a stored world is written, and not for a write that fails', async () => {
       await expect(

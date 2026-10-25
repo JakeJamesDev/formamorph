@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { onFakeClock } from '@/test/fakeClock';
+import { TOOLTIP_DELAY_MS, TooltipProvider } from '@/components/ui/tooltip';
 import { TruncatedText } from './TruncatedText';
 
 const NAME = 'The Long Road Between Two Quiet Harbors';
@@ -14,9 +15,11 @@ const setWidths = (scroll: number, client: number) => {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   delete (Element.prototype as { scrollWidth?: number }).scrollWidth;
   delete (Element.prototype as { clientWidth?: number }).clientWidth;
 });
+
 
 const show = () => render(<TooltipProvider><TruncatedText text={NAME} /></TooltipProvider>);
 
@@ -31,9 +34,10 @@ describe('TruncatedText', () => {
   it('shows no tooltip when the text fits', async () => {
     setWidths(120, 120);
     show();
-    await userEvent.hover(screen.getByText(NAME));
-    // Past the shared open delay, a live tip would be up.
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    vi.useFakeTimers();
+    await onFakeClock((user) => user.hover(screen.getByText(NAME)));
+    // At the shared open delay, a live tip would be up.
+    await act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
     expect(tipFor()).toBeNull();
   });
 });

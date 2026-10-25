@@ -69,7 +69,7 @@ afterEach(() => vi.restoreAllMocks());
 async function playTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 }
 
 const valueOf = (id: string) => stats.find((s) => s.id === id)?.value;
@@ -90,7 +90,7 @@ describe('During AI Output in play', () => {
     expect(narrationBodies).toHaveLength(2);
     expect(narrationBodies[0]).not.toContain(LINK);
     expect(narrationBodies[1]).toContain(LINK);
-  }, 30_000);
+  });
 
   it('keeps the rewritten link in the saved turn but strips it from the next request by default', async () => {
     renderGameViewer(world([outputScript]), { inGameplay: <Probe /> });
@@ -102,7 +102,7 @@ describe('During AI Output in play', () => {
     await playTurn('I wait more.');
     expect(narrationBodies[1]).toContain(NARRATION);
     expect(narrationBodies[1]).not.toContain('](');
-  }, 30_000);
+  });
 
   it('lands the sum of a script\'s per-sentence writes once, before the After scripts read it', async () => {
     renderGameViewer(world([outputScript]), { inGameplay: <Probe /> });
@@ -112,7 +112,7 @@ describe('During AI Output in play', () => {
     // Three sentences, one Health each: 10 + 3, and the After script saw all three.
     expect(valueOf('health')).toBe(13);
     expect(valueOf('mirror')).toBe(26);
-  }, 30_000);
+  });
 
   it('leaves the narration as the model wrote it in a world with no output script', async () => {
     renderGameViewer(world([]), { inGameplay: <Probe /> });
@@ -123,7 +123,7 @@ describe('During AI Output in play', () => {
     expect(savedNarration()).toBe(NARRATION);
     expect(valueOf('health')).toBe(10);
     expect(valueOf('mirror')).toBe(20);
-  }, 30_000);
+  });
 
   it('passes a sentence unchanged when its script throws, and the turn goes on', async () => {
     const failure = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -134,5 +134,5 @@ describe('During AI Output in play', () => {
     await playTurn('I wait.');
     expect(savedNarration()).toBe(NARRATION);
     expect(failure).toHaveBeenCalledWith(expect.stringMatching(/Broken filter.*During AI Output/), expect.stringContaining('boom'));
-  }, 30_000);
+  });
 });

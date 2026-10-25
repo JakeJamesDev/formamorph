@@ -109,7 +109,7 @@ describe('World Editor app bar (desktop)', () => {
   });
 
   it('shows no save-state text beside Save, whose face walks Save, Saving…, Saved, then the muted Save', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers();
     try {
       let finish!: () => void;
       vi.mocked(WorldStorageService.storeWorld).mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
@@ -122,19 +122,20 @@ describe('World Editor app bar (desktop)', () => {
       expect(announced(button('Save'))).toBe('');
 
       fireEvent.click(button('Save'));
-      const saving = await screen.findByRole('button', { name: 'Saving…' });
+      const saving = await vi.waitFor(() => screen.getByRole('button', { name: 'Saving…' }), { timeout: 10_000 });
       expect(saving).toHaveAttribute('aria-disabled', 'true');
       expect(announced(saving)).toBe('Saving');
 
+      await vi.waitFor(() => expect(finish).toBeTypeOf('function'), { timeout: 10_000 });
       await act(async () => { finish(); });
-      const saved = await screen.findByRole('button', { name: 'Saved' });
+      const saved = screen.getByRole('button', { name: 'Saved' });
       expect(saved).toHaveClass('bg-success', 'text-success-foreground');
       expect(saved).toBeEnabled();
       expect(announced(saved)).toBe('Saved');
 
-      act(() => { vi.advanceTimersByTime(SAVED_HOLD_MS - 50); });
+      act(() => { vi.advanceTimersByTime(SAVED_HOLD_MS - 1); });
       expect(button('Saved')).toBeInTheDocument();
-      act(() => { vi.advanceTimersByTime(50); });
+      act(() => { vi.advanceTimersByTime(1); });
       expect(button('Save')).toBeDisabled();
       expect(announced(button('Save'))).toBe('');
       expect(saveState()).toBeNull();

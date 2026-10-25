@@ -62,7 +62,7 @@ const UNNAMED_WORLD: World = benchEditorWorld({
 } as unknown as Partial<World>);
 
 /** The offer waits out the tutorial layer's appear delay. */
-const findOffer = () => screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+const findOffer = () => screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
 
 const openTourOn = async (world: World, mode: 'simple' | 'advanced' = 'simple') => {
   const view = renderWorldEditorBench(world, mode, { newWorld: true });
@@ -108,7 +108,7 @@ describe('Authoring Tour offer', () => {
     const { ctx } = renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
     await waitFor(() => expect(ctx().worldId).toBe('w1'));
     act(() => { ctx().loadWorldData({ ...NEW_WORLD, id: 'imported' }); });
-    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 2000 });
+    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' });
     expect(screen.queryByRole('dialog', { name: 'Take the Authoring Tour?' })).not.toBeInTheDocument();
   });
 
@@ -121,7 +121,7 @@ describe('Authoring Tour offer', () => {
 
     renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
     // The mode note is next in line, so its arrival shows the offer had its chance and stayed away.
-    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 2000 });
+    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' });
     expect(screen.queryByRole('dialog', { name: 'Take the Authoring Tour?' })).not.toBeInTheDocument();
   });
 
@@ -315,7 +315,7 @@ describe('Authoring Tour mode, End Tour and resume', () => {
     first.unmount();
 
     renderWorldEditorBench(NEW_WORLD, 'simple');
-    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 2000 });
+    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' });
     expect(tourBar()).not.toBeInTheDocument();
   });
 
@@ -353,7 +353,7 @@ describe('Authoring Tour mode, End Tour and resume', () => {
     other.unmount();
 
     renderWorldEditorBench(NEW_WORLD, 'simple');
-    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 2000 });
+    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' });
     expect(tourBar()).not.toBeInTheDocument();
   });
 });

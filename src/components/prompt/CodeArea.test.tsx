@@ -597,19 +597,13 @@ describe('CodeArea', () => {
   it('underlines a name the sandbox does not provide', async () => {
     render(<Harness initial="return elapsedHrs;" />);
     const field = await editor();
-    await waitFor(
-      () => expect(field.querySelector('.cm-lintRange-error')?.textContent).toBe('elapsedHrs'),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(field.querySelector('.cm-lintRange-error')?.textContent).toBe('elapsedHrs'));
   });
 
   it('marks a warning as a warning, leaving the names it recognizes unflagged', async () => {
     render(<Harness initial="const total = clock.elapsedHours * 2;" />);
     const field = await editor();
-    await waitFor(
-      () => expect(field.querySelector('.cm-lintRange-warning')).toBeTruthy(),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(field.querySelector('.cm-lintRange-warning')).toBeTruthy());
     expect(field.querySelector('.cm-lintRange-error')).toBeNull();
   });
 
@@ -624,7 +618,7 @@ describe('CodeArea', () => {
     );
     await waitFor(() => expect(fields()).toHaveLength(2));
     const [sound, flawed] = fields();
-    await waitFor(() => expect(flawed.querySelector('.cm-lintRange-error')).toBeTruthy(), { timeout: 3000 });
+    await waitFor(() => expect(flawed.querySelector('.cm-lintRange-error')).toBeTruthy());
     expect(sound.querySelectorAll('[class*="cm-lintRange"]')).toHaveLength(0);
   });
 
@@ -632,9 +626,9 @@ describe('CodeArea', () => {
     const { rerender } = render(<Harness initial="return stats.Helth.value;" statNames={['Health']} />);
     const field = await editor();
     const marks = () => [...field.querySelectorAll('.cm-lintRange-error')].map(mark => mark.textContent);
-    await waitFor(() => expect(marks()).toEqual(['Helth']), { timeout: 3000 });
+    await waitFor(() => expect(marks()).toEqual(['Helth']));
     rerender(<Harness initial="return stats.Helth.value;" statNames={['Health', 'Helth']} />);
-    await waitFor(() => expect(marks()).toEqual([]), { timeout: 3000 });
+    await waitFor(() => expect(marks()).toEqual([]));
   });
 
   describe('the stat code Variable menu', () => {
@@ -1013,11 +1007,11 @@ describe('CodeArea', () => {
       const { rerender } = render(<Harness initial="return args.name + self.value;" surface={SCRIPT} />);
       const field = await editor();
       const marks = () => [...field.querySelectorAll('.cm-lintRange-error')].map(mark => mark.textContent);
-      await waitFor(() => expect(marks()).toEqual(['self']), { timeout: 3000 });
+      await waitFor(() => expect(marks()).toEqual(['self']));
 
       const widened = { ...SCRIPT, globals: [...SCRIPT.globals, { name: 'self', detail: 'object', info: 'Test.' }] };
       rerender(<Harness initial="return args.name + self.value;" surface={widened} />);
-      await waitFor(() => expect(marks()).toEqual([]), { timeout: 3000 });
+      await waitFor(() => expect(marks()).toEqual([]));
     });
   });
 

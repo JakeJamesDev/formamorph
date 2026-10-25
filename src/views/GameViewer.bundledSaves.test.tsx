@@ -42,7 +42,7 @@ function Probe() {
 /** Close the readme the world shows on entry, as a player does before typing. */
 async function closeReadme(world: World) {
   if (!world.worldOverview.readme?.trim()) return;
-  const readme = await screen.findByRole('dialog', { name: 'Readme' }, { timeout: 8000 });
+  const readme = await screen.findByRole('dialog', { name: 'Readme' });
   fireEvent.click(within(readme).getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Readme' })).toBeNull());
 }
@@ -51,7 +51,7 @@ async function closeReadme(world: World) {
 async function playTurn(action: string) {
   const box = await screen.findByPlaceholderText(/Type your action/);
   fireEvent.change(box, { target: { value: action } });
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled(), { timeout: 8000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled());
   const before = assistantTurns;
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(assistantTurns).toBe(before + 1), { timeout: 15_000 });
@@ -85,7 +85,7 @@ async function playSaveAcross(before: World, after: World) {
   await playTurn('I look around.');
   const savedTurns = assistantTurns;
   // Wait for the autosave that holds the played turn; it replaces any earlier one.
-  await waitFor(async () => expect((await getAllSaveRecords()).map(turnsIn)).toEqual([savedTurns]), { timeout: 8000 });
+  await waitFor(async () => expect((await getAllSaveRecords()).map(turnsIn)).toEqual([savedTurns]));
   const [save] = await getAllSaveRecords();
   played.unmount();
   cleanup();
@@ -97,7 +97,7 @@ async function playSaveAcross(before: World, after: World) {
   expect(assistantTurns).toBe(savedTurns);
   await playTurn('I keep going.');
   // Wait for this turn's autosave too, so it can't land after the next test clears the store.
-  await waitFor(async () => expect((await getAllSaveRecords()).map(turnsIn)).toEqual([assistantTurns]), { timeout: 8000 });
+  await waitFor(async () => expect((await getAllSaveRecords()).map(turnsIn)).toEqual([assistantTurns]));
   expect(vi.mocked(toast.error)).not.toHaveBeenCalled();
 }
 

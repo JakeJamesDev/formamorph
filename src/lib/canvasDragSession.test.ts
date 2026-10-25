@@ -163,8 +163,9 @@ function groupedWorld(n: number): GameLocation[] {
   return world;
 }
 
-/** Milliseconds for a drag's worth of pointer moves, each asking what a frame of the canvas asks. */
-function dragCostMs(n: number): number {
+/** A drag over a map of `n` locations: each call times a drag's worth of pointer moves, each asking what a
+ *  frame of the canvas asks. */
+function dragOver(n: number): () => number {
   const session = beginCanvasDrag(groupedWorld(n));
   const frame = (i: number) => {
     const at = { x: 20 + i * 7, y: 40 + i * 5 };
@@ -172,19 +173,27 @@ function dragCostMs(n: number): number {
     multiDropIntents(session, [{ id: "g0c0", position: at }]);
   };
   for (let i = 0; i < 3; i++) frame(i);
-  let best = Infinity;
-  for (let trial = 0; trial < 5; trial++) {
+  return () => {
     const start = performance.now();
     for (let i = 0; i < 20; i++) frame(i);
-    best = Math.min(best, performance.now() - start);
+    return performance.now() - start;
+  };
+}
+
+const median = (times: number[]) => [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)];
+
+/** The median of each drag's trials, the drags taking turns so a load spike hits both. */
+function medianPair(drags: readonly (() => number)[], runs = 7): number[] {
+  const times = drags.map((): number[] => []);
+  for (let run = 0; run < runs; run++) {
+    for (const [at, drag] of drags.entries()) times[at].push(drag());
   }
-  return best;
+  return times.map(median);
 }
 
 describe("drag frame cost", () => {
   it("grows in step with the map, not with its square", () => {
-    const small = dragCostMs(400);
-    const large = dragCostMs(1600);
+    const [small, large] = medianPair([dragOver(400), dragOver(1600)]);
     // A map four times the size costs ~4x per frame; a per-location rebuild of the ancestry costs ~16x.
     expect(large / small).toBeLessThan(9);
   });

@@ -82,7 +82,7 @@ async function playOpening(world: World) {
   stubEndpoint();
   fireEvent.change(box, { target: { value: 'I walk the pier.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeEnabled(), { timeout: 8000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeEnabled());
   return view;
 }
 
@@ -92,7 +92,7 @@ const regenerateOpening = async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Re-generate Narration' }));
   await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).not.toHaveValue(''));
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(narrations.length).toBe(before + 1), { timeout: 8000 });
+  await waitFor(() => expect(narrations.length).toBe(before + 1));
   return narrations.at(-1)!;
 };
 
@@ -115,7 +115,7 @@ describe('a new game with a start script', () => {
     expect(narrations[0]).toContain('Vigor: 50/100');
   });
 
-  it('runs again when page one is regenerated, over the pre-game state it restores', { timeout: 30_000 }, async () => {
+  it('runs again when page one is regenerated, over the pre-game state it restores', async () => {
     await playOpening(worldWith([startScript]));
     const regenerated = await regenerateOpening();
     expect(regenerated).toContain('Vigor: 60/100');
@@ -123,22 +123,22 @@ describe('a new game with a start script', () => {
 });
 
 describe('a new game whose opening is redone', () => {
-  it('keeps the start write when only the stats of page one are re-rolled', { timeout: 30_000 }, async () => {
+  it('keeps the start write when only the stats of page one are re-rolled', async () => {
     await playOpening(worldWith([startScript]));
 
     const before = statRequests.length;
     fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
-    await waitFor(() => expect(statRequests.length).toBe(before + 1), { timeout: 8000 });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+    await waitFor(() => expect(statRequests.length).toBe(before + 1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 
     // The next turn's prompt reads the stat the re-roll left.
     fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I ring the bell.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(narrations).toHaveLength(2), { timeout: 8000 });
+    await waitFor(() => expect(narrations).toHaveLength(2));
     expect(narrations[1]).toContain('Vigor: 60/100');
   });
 
-  it('runs the start script once on the retry of an opening that failed', { timeout: 30_000 }, async () => {
+  it('runs the start script once on the retry of an opening that failed', async () => {
     narrationFailures = 1;
     const world = worldWith([startScript]);
     renderGameViewer(world);
@@ -146,22 +146,22 @@ describe('a new game whose opening is redone', () => {
     stubEndpoint();
     fireEvent.change(box, { target: { value: 'I walk the pier.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(narrations).toHaveLength(1), { timeout: 8000 });
+    await waitFor(() => expect(narrations).toHaveLength(1));
     // The failed opening puts back the pre-start state; the player sends the action again.
     fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I walk the pier.' } });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled(), { timeout: 8000 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(narrations).toHaveLength(2), { timeout: 8000 });
+    await waitFor(() => expect(narrations).toHaveLength(2));
     expect(narrations[1]).toContain('Vigor: 60/100');
     expect(narrations[1]).not.toContain('Vigor: 70/100');
   });
 });
 
 describe('a loaded save', () => {
-  it('regenerates page one with the start write applied once', { timeout: 30_000 }, async () => {
+  it('regenerates page one with the start write applied once', async () => {
     const world = worldWith([startScript]);
     const played = await playOpening(world);
-    await waitFor(async () => expect(await getAllSaveRecords()).toHaveLength(1), { timeout: 8000 });
+    await waitFor(async () => expect(await getAllSaveRecords()).toHaveLength(1));
     const [save] = await getAllSaveRecords();
     played.unmount();
     cleanup();

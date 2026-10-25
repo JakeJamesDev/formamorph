@@ -228,7 +228,7 @@ describe('streamAiToolLoop: what reaches the reply', () => {
     const controller = new AbortController();
     const transport = scripted([(signal) => hangingResponse(signal, [frame({ content: 'The ' })])]);
     // A held delta never arrives while the body is open, so this backstop ends the stream for a clean failure.
-    const backstop = setTimeout(() => controller.abort(), 200);
+    const backstop = setTimeout(() => controller.abort(), 10_000);
 
     const events: AiToolLoopEvent[] = [];
     for await (const event of streamAiToolLoop(spec(), { execute, fetchImpl: transport.fetchImpl, signal: controller.signal })) {
@@ -419,7 +419,7 @@ describe('streamAiToolLoop: Stop', () => {
   it('aborts after a tools-offered round streamed text: done carries the text the consumer already saw', async () => {
     const controller = new AbortController();
     const transport = scripted([(signal) => hangingResponse(signal, [frame({ content: 'The ' }), frame({ content: 'door' })])]);
-    const backstop = setTimeout(() => controller.abort(), 200);
+    const backstop = setTimeout(() => controller.abort(), 10_000);
 
     const events: AiToolLoopEvent[] = [];
     for await (const event of streamAiToolLoop(spec(), { execute, fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
@@ -454,11 +454,11 @@ describe('streamAiToolLoop: Stop', () => {
     const transport = scripted([callFrames(['slow', {}]), proseFrames('never')]);
     // The script blocks the thread, so the Stop press queued behind it is seen once the deadline returns.
     const stopping: AiToolLoopOptions['execute'] = async (tool, args) => {
+      setTimeout(() => controller.abort(), 0);
       const result = await runToolCall(tool, args, snapshot);
       await new Promise((resolve) => setTimeout(resolve, 0));
       return result;
     };
-    setTimeout(() => controller.abort(), 20);
 
     const events = await run(transport, { execute: stopping, signal: controller.signal }, spec([slow]));
 

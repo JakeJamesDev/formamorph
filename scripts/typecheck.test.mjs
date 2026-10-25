@@ -43,7 +43,7 @@ describe('typecheck', () => {
     expect(run).toMatchObject({ state: 'warm' });
     expect(run.status).not.toBe(0);
     expect(run.output).toMatch(/use\.ts.*error TS2322/);
-  }, 60_000);
+  });
 
   it('still reports an error in a file that was clean when the seed was made', () => {
     const parent = tempParent();
@@ -58,7 +58,7 @@ describe('typecheck', () => {
     expect(run).toMatchObject({ state: 'seeded' });
     expect(run.status).not.toBe(0);
     expect(run.output).toMatch(/use\.ts.*error TS2362/);
-  }, 60_000);
+  });
 
   it('fails on a planted error when seeded from a file another worktree wrote back', () => {
     const parent = tempParent();
@@ -76,7 +76,7 @@ describe('typecheck', () => {
     expect(run.status).not.toBe(0);
     expect(run.output).toMatch(/use\.ts.*error TS2322/);
     expect(readFileSync(path.join(main, SEED)).equals(written)).toBe(true);
-  }, 60_000);
+  });
 
   it('fails on a planted error when seeded from a half-written file', () => {
     const parent = tempParent();
@@ -92,7 +92,7 @@ describe('typecheck', () => {
     expect(run).toMatchObject({ state: 'seeded' });
     expect(run.status).not.toBe(0);
     expect(run.output).toMatch(/use\.ts.*error TS2322/);
-  }, 60_000);
+  });
 
   it("keeps the main checkout's own runs apart from the seed", () => {
     const main = project(tempParent(), 'main');
@@ -100,7 +100,7 @@ describe('typecheck', () => {
     expect(typecheck({ root: main, mainRoot: main })).toMatchObject({ state: 'warm', status: 0, published: false });
     expect(existsSync(path.join(main, BUILD_INFO))).toBe(true);
     expect(existsSync(path.join(main, SEED))).toBe(false);
-  }, 60_000);
+  });
 });
 
 describe.runIf(process.platform === 'win32')('sameDrive', () => {

@@ -129,7 +129,7 @@ const NEW_WORLD = benchEditorWorld({
 describe('Authoring Tour anchors (mobile)', () => {
   it('points the Save note at the footer Save icon', async () => {
     renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
-    const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+    const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
     fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
     const first = await screen.findByRole('dialog', { name: 'World Name' });
     fireEvent.click(within(first).getByRole('button', { name: 'Use Example' }));

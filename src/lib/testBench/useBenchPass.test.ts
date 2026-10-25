@@ -94,7 +94,7 @@ describe('useBenchPass', () => {
   it('measures the content a publish sends: the stored copy, version stamped, tags included', async () => {
     withWorker();
     const { result } = renderHook(() => useBenchPass(clean));
-    await vi.waitFor(() => expect(result.current.bytes).not.toBeNull());
+    await vi.waitFor(() => expect(result.current.bytes).not.toBeNull(), { timeout: 10_000 });
 
     // A world with no tags publishes `"tags":[]` in its overview, and the stored copy carries `version`. The
     // server counts both, so the editor's bare world is the wrong thing to measure.
@@ -183,7 +183,7 @@ describe('useBenchPass', () => {
     FakeWorker.failLoad = true;
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { result } = renderHook(() => useBenchPass(broken));
-    await vi.waitFor(() => expect(result.current.findings).toHaveLength(1));
+    await vi.waitFor(() => expect(result.current.findings).toHaveLength(1), { timeout: 10_000 });
   });
 
   it('hands a pass that breaks to the error boundary rather than checking forever', async () => {
@@ -197,18 +197,18 @@ describe('useBenchPass', () => {
     }
     const unreadable = { ...broken, entities: [null] } as unknown as RuleWorld;
     renderHook(() => useBenchPass(unreadable), { wrapper: Boundary });
-    await vi.waitFor(() => expect(shown).toHaveLength(1));
+    await vi.waitFor(() => expect(shown).toHaveLength(1), { timeout: 10_000 });
   });
 
   it('runs in-thread where there is no worker', async () => {
     const { result } = renderHook(() => useBenchPass(broken));
-    await vi.waitFor(() => expect(result.current.findings).toHaveLength(1));
+    await vi.waitFor(() => expect(result.current.findings).toHaveLength(1), { timeout: 10_000 });
   });
 
   it('stops the worker when the editor closes', async () => {
     withWorker();
     const { result, unmount } = renderHook(() => useBenchPass(clean));
-    await vi.waitFor(() => expect(result.current.bytes).not.toBeNull());
+    await vi.waitFor(() => expect(result.current.bytes).not.toBeNull(), { timeout: 10_000 });
     unmount();
     expect(FakeWorker.all.every((w) => w.terminated)).toBe(true);
   });

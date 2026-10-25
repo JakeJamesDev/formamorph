@@ -201,13 +201,9 @@ describe('a vLLM server proving it separates its reasoning', () => {
 
   beforeEach(() => { vllmFetch.mockClear(); vi.stubGlobal('fetch', vllmFetch); });
 
-  // The unprompted resolve is debounced by 1200 ms, so this one waits past that rather than the default.
   it('names the dialect and leaves the budget unanswered before any reply', async () => {
     const view = await engagedSettings();
-    await waitFor(
-      () => expect(view.result.current.reasoningCapability?.dialect).toBe('vllm'),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(view.result.current.reasoningCapability?.dialect).toBe('vllm'));
     expect(view.result.current.reasoningCapability?.budget).toBeNull();
   });
 

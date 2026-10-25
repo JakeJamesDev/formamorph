@@ -185,6 +185,13 @@ export default defineConfig({
     // 5-second tests ran 4.6 s idle and timed out under a peer's load. Half the threads keeps the wall
     // time and gives every fork a thread of its own.
     maxWorkers: '50%',
+    // Timeouts catch hangs, not slowness: load stretches a test, and the slow-test report flags it.
+    // A fake-timer test's `waitFor` never expires on its own, so this is also how long its miss takes.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    expect: { poll: { timeout: 10_000 } },
+    slowTestThreshold: 2000,
+    reporters: ['default', './scripts/slowTestReporter.mjs'],
     // A new jsdom per file is a large share of the suite's CPU, so plain .ts tests run in node. A .ts test
     // that needs the DOM opts in with `// @vitest-environment jsdom`.
     projects: [

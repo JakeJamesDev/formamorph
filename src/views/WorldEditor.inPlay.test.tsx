@@ -41,7 +41,7 @@ const worldWith = (systemPrompt: string): World => benchEditorWorld({
 
 const startTour = async (world: World) => {
   const view = renderWorldEditorBench(world, 'simple', { newWorld: true });
-  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
   await screen.findByRole('dialog', { name: 'World Name' });
   return view;
@@ -142,7 +142,7 @@ describe('In Game — the dock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pop Out' }));
     expect(dockedBench()).not.toBeNull();
 
-    const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
+    const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' });
     fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
     await screen.findByRole('dialog', { name: 'World Name' });
     expect(inPlay()).not.toBeNull();

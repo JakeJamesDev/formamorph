@@ -35,8 +35,6 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-vi.setConfig({ testTimeout: 15_000 });
-
 const storeWorld = vi.mocked(WorldStorageService.storeWorld);
 
 /** A New World overview over the harness's one starting location. */

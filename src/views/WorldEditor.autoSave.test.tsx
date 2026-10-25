@@ -112,14 +112,14 @@ describe('the change threshold', () => {
 
 describe('the idle pause', () => {
   it('saves one action once 30 s pass', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     const bench = await openOptedIn();
+    // A clock that moves only when told, so the pause is exact however slow the machine runs.
+    vi.useFakeTimers();
     act(() => bench.ctx().addStat(stat(1)));
-    await nextTask();
-    await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1000));
+    await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1));
     expect(storeWorld).not.toHaveBeenCalled();
-    await act(() => vi.advanceTimersByTimeAsync(1000));
-    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    await vi.waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1), { timeout: 10_000 });
   });
 });
 
@@ -307,17 +307,15 @@ describe('a failed autosave', () => {
 describe('the idle pause setting', () => {
   it('saves one action after the chosen pause, not the default one', async () => {
     localStorage.setItem('FORMAMORPH_editorAutoSaveIdleSeconds', '90');
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     const bench = await openOptedIn();
+    vi.useFakeTimers();
     act(() => bench.ctx().addStat(stat(1)));
-    await nextTask();
     await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS * 2));
     expect(storeWorld).not.toHaveBeenCalled();
-    await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1000));
+    await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1));
     expect(storeWorld).not.toHaveBeenCalled();
-    // The whole pause on the faked clock, so the save never rests on waitFor's own faked timeout.
-    await act(() => vi.advanceTimersByTimeAsync(1000));
-    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    await vi.waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1), { timeout: 10_000 });
   });
 });
 

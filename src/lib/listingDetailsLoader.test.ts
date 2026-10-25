@@ -44,7 +44,7 @@ describe('loading a listing’s details', () => {
     answer({ status: 'ok', details: details('Update 1') });
 
     expect(await load.fresh).toEqual({ status: 'ok', details: details('Update 1') });
-    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Update 1')));
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Update 1')), { timeout: 10_000 });
   });
 
   it('hands back the cached details before the server answers', async () => {
@@ -65,7 +65,7 @@ describe('loading a listing’s details', () => {
     answer({ status: 'ok', details: details('Today') });
     await load.fresh;
 
-    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')));
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')), { timeout: 10_000 });
   });
 
   it('drops the entry when the listing is gone for this reader', async () => {
@@ -77,7 +77,7 @@ describe('loading a listing’s details', () => {
     answer({ status: 'gone' });
     await load.fresh;
 
-    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toBeNull());
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toBeNull(), { timeout: 10_000 });
   });
 
   it('keeps the entry when the server does not answer', async () => {
@@ -160,7 +160,7 @@ describe('an open after a prefetch', () => {
     vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(4));
 
     prefetchListing('w1');
-    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')));
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')), { timeout: 10_000 });
     vi.setSystemTime(Date.now() + PREFETCH_REUSE_MS - 1000);
 
     expect(await loadListingDetails('w1').fresh).toEqual({ status: 'ok', details: details('Today') });
@@ -179,7 +179,7 @@ describe('an open after a prefetch', () => {
     vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(4));
 
     prefetchListing('w1');
-    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')));
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')), { timeout: 10_000 });
     vi.setSystemTime(Date.now() + PREFETCH_REUSE_MS + 1000);
 
     await loadListingDetails('w1').fresh;
@@ -223,8 +223,8 @@ describe('an open after a prefetch', () => {
     forgetListingPrefetch();
     answer({ status: 'ok', details: details('Before the purge') });
     await load.fresh;
-    await new Promise((resolve) => setTimeout(resolve, 20));
 
+    // A write the read started would already hold the store: this later read-write transaction waits for it.
     expect(await getCachedDetails('w1')).toBeNull();
   });
 

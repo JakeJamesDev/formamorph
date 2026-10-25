@@ -33,7 +33,7 @@ function openSettings(mode: 'light' | 'dark', stored: { light?: string; dark?: s
 const field = (name: RegExp) => screen.queryByRole('button', { name });
 
 /** The timed tutorial swallows Escape if it lands over an open picker, so the picker opens after it and outlives it. */
-const tutorial = () => screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 3000 });
+const tutorial = () => screen.findByRole('dialog', { name: 'Simple vs. Advanced' });
 async function openPicker(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
   const tip = await tutorial();
   await user.click(await screen.findByRole('button', { name }));

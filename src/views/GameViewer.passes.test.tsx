@@ -84,7 +84,7 @@ describe('the Background Pass Status row', () => {
     const endpoint = stubEndpoint(new Set(['digest']));
     fireEvent.change(box, { target: { value: 'I ring the bell.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(endpoint.calls.digest).toHaveLength(1), { timeout: 8000 });
+    await waitFor(() => expect(endpoint.calls.digest).toHaveLength(1));
     return endpoint;
   }
 
@@ -93,7 +93,7 @@ describe('the Background Pass Status row', () => {
     expect(await screen.findByText('Summarizing turn…')).toBeInTheDocument();
     endpoint.release();
     await waitFor(() => expect(screen.queryByText('Summarizing turn…')).toBeNull());
-  }, 30_000);
+  });
 
   it('stays blank for the same running digest with it off', async () => {
     const endpoint = await playUntilDigestHeld(false);
@@ -101,7 +101,7 @@ describe('the Background Pass Status row', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
     expect(screen.queryByText('Summarizing turn…')).toBeNull();
     endpoint.release();
-  }, 30_000);
+  });
 });
 
 describe('a diary written under a variant name', () => {
@@ -114,11 +114,11 @@ describe('a diary written under a variant name', () => {
     const endpoint = stubEndpoint(new Set());
     act(() => seedHistory(storedTurn({ entities: ['Aldric'] })));
 
-    await waitFor(() => expect(endpoint.calls.diary).toHaveLength(1), { timeout: 8000 });
+    await waitFor(() => expect(endpoint.calls.diary).toHaveLength(1));
     const request = userMessageOf(endpoint.calls.diary[0]);
     expect(request).toContain('Aldric');
     expect(request).toContain('A scarred veteran who guards the bell tower.');
-  }, 30_000);
+  });
 });
 
 describe('regenerating a memory', () => {
@@ -132,11 +132,11 @@ describe('regenerating a memory', () => {
     await user.click(await screen.findByRole('tab', { name: 'Memory' }));
     await user.click(await screen.findByRole('button', { name: 'Manage Memories' }));
     await user.click(await screen.findByRole('button', { name: 'Have the Story Write This Memory Again' }));
-    await waitFor(() => expect(endpoint.calls.digest).toHaveLength(1), { timeout: 8000 });
+    await waitFor(() => expect(endpoint.calls.digest).toHaveLength(1));
 
     await view.unmountView();
     endpoint.release();
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
     expect(memoryEditsNow()).toEqual({});
-  }, 30_000);
+  });
 });

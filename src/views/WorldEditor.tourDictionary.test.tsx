@@ -33,9 +33,6 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// The dev route replays every earlier step, which outlasts the default window under the whole suite's load.
-vi.setConfig({ testTimeout: 15_000 });
-
 const storeWorld = vi.mocked(WorldStorageService.storeWorld);
 
 /** A New World: a placeholder name and the seeded Default book. */

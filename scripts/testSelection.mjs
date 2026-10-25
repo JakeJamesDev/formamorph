@@ -55,6 +55,7 @@ export const GRAPH_COVERED = {
   'electron/modelMove.test.mjs': 'reads only its own temp folder',
   'electron/modelScan.test.mjs': 'reads only its own temp folder',
   'scripts/typecheck.test.mjs': 'reads only its own temp folder',
+  'scripts/slowTestReporter.mjs': 'reads only its timing cache in node_modules/.cache',
   'scripts/versionSiteImages.test.mjs': 'reads only its own temp folder',
   'scripts/fetchLlamaServer.test.mjs': 'reads its recorded asset list and its own temp folders',
   'scripts/moveReach.test.mjs':'reads its own temp folder and walks src/lib/uuid.ts, whose closure it never asserts',

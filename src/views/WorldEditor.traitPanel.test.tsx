@@ -146,7 +146,7 @@ describe('the World Editor trait panel tabs', () => {
     await waitFor(() => {
       const editor = within(row).getAllByRole('textbox').find((el) => el.closest('.cm-editor'));
       expect(editor && (editor === document.activeElement || editor.contains(document.activeElement))).toBe(true);
-    }, { timeout: 10000 });
+    });
   });
 
   it('leaves Simple mode three tabs, with Stat Availability gone from Stats', () => {

@@ -111,10 +111,7 @@ describe('WorldEditor — converting a world’s images to lossless WebP', () =>
     setup();
     const button = await openBench();
     await act(async () => { fireEvent.click(button); });
-    await waitFor(
-      () => expect(screen.queryByText(/converting it to lossless WebP/)).toBeNull(),
-      { timeout: 2000 },
-    );
+    await waitFor(() => expect(screen.queryByText(/converting it to lossless WebP/)).toBeNull());
   });
 
   it('drops a conversion of images the author edited while it was running', async () => {

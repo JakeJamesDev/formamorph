@@ -67,13 +67,13 @@ beforeEach(() => {
 /** The game holding `on`, Rage and Focus, with the turn's snapshot saving the same. */
 const turnHeld = (on: string[], rage: number, focus: number) => ({ on, rage, focus, saved: { on, rage, focus } });
 
-const reRollReady = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled(), { timeout: 8000 });
+const reRollReady = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
 
 async function playTurn(endpoint: { statCalls: () => number }) {
   const calls = endpoint.statCalls();
   fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I wait.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(endpoint.statCalls()).toBe(calls + 1), { timeout: 8000 });
+  await waitFor(() => expect(endpoint.statCalls()).toBe(calls + 1));
   await reRollReady();
 }
 
@@ -91,7 +91,7 @@ describe('the per-turn settle in play', () => {
 
     // The re-roll replays the turn from its pre-turn state, where Calm was on, and settles once more.
     fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
-    await waitFor(() => expect(endpoint.statCalls()).toBe(3), { timeout: 8000 });
+    await waitFor(() => expect(endpoint.statCalls()).toBe(3));
     await reRollReady();
     await waitFor(() => expect(seen).toEqual(turnHeld([], 75, 50)));
 
@@ -101,5 +101,5 @@ describe('the per-turn settle in play', () => {
     expect(log.filter(({ text }) => text.startsWith('Trait switched'))).toEqual([
       { text: 'Trait switched on: Calm', repeat: 0 }, { text: 'Trait switched off: Calm', repeat: 1 }, { text: 'Trait switched on: Calm', repeat: 0 },
     ]);
-  }, 30_000);
+  });
 });

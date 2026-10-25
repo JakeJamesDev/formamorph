@@ -34,9 +34,6 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// A case walks up to seven saved steps, which outlasts the default window under the whole suite's load.
-vi.setConfig({ testTimeout: 15_000 });
-
 const storeWorld = vi.mocked(WorldStorageService.storeWorld);
 
 /** A New World overview over the harness's one location and one entity, which the tour must never adopt. */

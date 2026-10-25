@@ -69,6 +69,8 @@ async function openSearch() {
 
 /** Waits this long on real timers, inside act. */
 const settle = (ms: number) => act(() => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));
+/** Runs the fake clock to the end of the typing pause. */
+const pastPause = () => act(() => vi.advanceTimersByTimeAsync(SEMANTIC_PAUSE_MS));
 const type = (text: string) => fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: text } });
 const resultHeadings = () => within(screen.getByRole('list', { name: 'Search Results' })).getAllByRole('button').map((row) => row.querySelector('span')?.textContent);
 const headingOf: Record<string, string> = { [PANEL]: 'The Panel', [ADD_TRAIT]: 'How to Add a Trait' };
@@ -109,9 +111,10 @@ describe('the Search tab with Semantic Search', () => {
   it('finds nothing by meaning when the switch is off, and never embeds', async () => {
     storeSemantic(false);
     await openSearch();
+    vi.useFakeTimers();
     type('jot down remarks');
     expect(screen.getByRole('status')).toHaveTextContent('No sections match “jot down remarks”');
-    await settle(SEMANTIC_PAUSE_MS + 100);
+    await pastPause();
     expect(screen.getByRole('status')).toHaveTextContent('No sections match “jot down remarks”');
     expect(model.embed).not.toHaveBeenCalled();
   });
@@ -130,11 +133,12 @@ describe('the Search tab with Semantic Search', () => {
     model.cached = false;
     storeSemantic(true);
     await openSearch();
+    vi.useFakeTimers();
     type('jot down remarks');
-    await settle(SEMANTIC_PAUSE_MS + 100);
+    await pastPause();
     expect(screen.getByRole('status')).toHaveTextContent('No sections match “jot down remarks”');
     type('add a trait');
-    await settle(SEMANTIC_PAUSE_MS + 100);
+    await pastPause();
     expect(resultHeadings()[0]).toBe(headingOf[ADD_TRAIT]);
     expect(screen.queryByRole('status')).toBeNull();
     expect(model.load).not.toHaveBeenCalled();
@@ -165,12 +169,12 @@ describe('the Search tab with Semantic Search', () => {
   });
 
   it('starts no ranking when the window closes during the pause', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     storeSemantic(true);
     const view = await openSearch();
+    vi.useFakeTimers();
     type('jot down remarks');
     view.unmount();
-    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    await pastPause();
     expect(model.embed).not.toHaveBeenCalled();
   });
 });

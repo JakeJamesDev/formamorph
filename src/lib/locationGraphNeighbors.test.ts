@@ -239,36 +239,42 @@ describe("travel on a hub with many children", () => {
   const hubWorld = (children: number) => [
     loc("hub", undefined, true), ...Array.from({ length: children }, (_, i) => loc(`c${i}`, "hub")),
   ];
+  const cut = [oneWay("cut", "c0", "c1")];
   const time = (fn: () => void) => {
     const start = performance.now();
     fn();
     return performance.now() - start;
   };
-  const best = (fn: () => void) => Math.min(...Array.from({ length: 3 }, () => time(fn)));
+  const median = (times: number[]) => [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)];
+  /** The median time of `fn` on each hub, the hubs taking turns so a load spike hits both. */
+  const medianPair = (sizes: readonly number[], fn: (locations: GameLocation[]) => void, runs = 7) => {
+    const worlds = sizes.map(hubWorld);
+    const times = worlds.map((): number[] => []);
+    for (let run = 0; run < runs; run++) {
+      for (const [at, locations] of worlds.entries()) times[at].push(time(() => fn(locations)));
+    }
+    return times.map(median);
+  };
 
   it("grows linearly with the child count", () => {
-    const cut = [oneWay("cut", "c0", "c1")];
-    const walk = (children: number) => {
-      const locations = hubWorld(children);
-      return best(() => {
-        reachableFromStarts(locations, cut);
-        effectiveDestinations("c5", locations, cut);
-      });
-    };
+    const [small, large] = medianPair([4_000, 16_000], (locations) => {
+      reachableFromStarts(locations, cut);
+      effectiveDestinations("c5", locations, cut);
+    });
     // 4x the children: linear costs about 4x, quadratic about 16x. The 5 ms floor keeps timer noise out.
-    expect(walk(16_000)).toBeLessThan(Math.max(walk(4_000), 5) * 10);
+    expect(large).toBeLessThan(Math.max(small, 5) * 10);
   });
 
   it("finds one child's destinations and the reachable set without listing every sibling pair", () => {
     // 20,000 children make 200 million sibling pairs: listing them takes minutes, a lookup takes milliseconds.
     const locations = hubWorld(20_000);
-    const cut = [oneWay("cut", "c0", "c1")];
-    expect(time(() => {
-      const out = effectiveDestinations("c5", locations, cut);
-      expect(out.size).toBe(20_000); // every sibling but itself, plus the parent
-    })).toBeLessThan(1000);
-    expect(time(() => {
-      expect(reachableFromStarts(locations, cut).size).toBe(20_001);
-    })).toBeLessThan(1000);
+    expect(effectiveDestinations("c5", locations, cut).size).toBe(20_000); // every sibling but itself, plus the parent
+    expect(reachableFromStarts(locations, cut).size).toBe(20_001);
+    // 4x the children: a lookup costs about 4x, listing sibling pairs about 16x.
+    const [smallLookup, largeLookup] = medianPair([5_000, 20_000], (hub) => effectiveDestinations("c5", hub, cut));
+    const [smallReach, largeReach] = medianPair([5_000, 20_000], (hub) => reachableFromStarts(hub, cut));
+    console.info(`hub travel, 5,000 / 20,000 children: destinations ${smallLookup.toFixed(1)} / ${largeLookup.toFixed(1)} ms, reachable ${smallReach.toFixed(1)} / ${largeReach.toFixed(1)} ms`);
+    expect(largeLookup).toBeLessThan(Math.max(smallLookup, 5) * 9);
+    expect(largeReach).toBeLessThan(Math.max(smallReach, 5) * 9);
   });
 });

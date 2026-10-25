@@ -66,6 +66,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -99,14 +100,16 @@ describe.each(TABS)('search in $name, $type', ({ type, renderTab, empty }) => {
     render(renderTab(type));
     await pageTo(3);
 
+    vi.useFakeTimers();
     type_(type, 'T');
     type_(type, 'Thr');
     type_(type, 'Thread 1');
-    await act(() => new Promise((resolve) => setTimeout(resolve, FEEDBACK_SEARCH_DELAY_MS - 100)));
+    await act(() => vi.advanceTimersByTimeAsync(FEEDBACK_SEARCH_DELAY_MS - 1));
     expect(searchesSent().filter(Boolean)).toEqual([]);
 
-    await waitFor(() => expect(lastCall()).toMatchObject({ search: 'Thread 1', page: 1 }), { timeout: 300 });
-    expect(await screen.findByText('Page 1 of 2')).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(lastCall()).toMatchObject({ search: 'Thread 1', page: 1 });
+    expect(screen.getByText('Page 1 of 2')).toBeTruthy();
     expect(searchesSent().filter(Boolean)).toEqual(['Thread 1']);
     expect(screen.getByText('Thread 18')).toBeTruthy();
   });
@@ -179,12 +182,13 @@ describe.each(TABS)('search in $name, $type', ({ type, renderTab, empty }) => {
 
 describe('the search input', () => {
   it('drops typing cut off by unmount', async () => {
+    vi.useFakeTimers();
     const onSearch = vi.fn();
     const { unmount } = render(<FeedbackSearchInput value="" onSearch={onSearch} label="Search Reports" />);
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Thread 1' } });
     unmount();
-    await new Promise((resolve) => setTimeout(resolve, FEEDBACK_SEARCH_DELAY_MS + 50));
+    await vi.advanceTimersByTimeAsync(FEEDBACK_SEARCH_DELAY_MS);
 
     expect(onSearch).not.toHaveBeenCalled();
   });

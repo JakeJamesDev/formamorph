@@ -77,7 +77,7 @@ async function clickTrait(name: string) {
 }
 
 describe('a persona change’s switch run', () => {
-  it('reads the new persona, its name and its stats', { timeout: 30_000 }, async () => {
+  it('reads the new persona, its name and its stats', async () => {
     renderGameViewer(world('stats.Vigor.value = persona.name === "Mira" ? persona.stats.Grit.value : 1;'), {
       inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
     });
@@ -86,7 +86,7 @@ describe('a persona change’s switch run', () => {
     await waitFor(() => expect(vigorNow()).toBe(23));
   });
 
-  it('reads the new cast: the persona that left is gone from `entities`, the one that came is in it', { timeout: 30_000 }, async () => {
+  it('reads the new cast: the persona that left is gone from `entities`, the one that came is in it', async () => {
     await EntityStorageService.storeEntity({ id: wren.id, name: wren.name, data: wren });
     renderGameViewer(world(`${inCast} stats.Vigor.value = (inCast("Wren") ? 1 : 0) + (inCast("Mira") ? 10 : 0);`, [drifter]), {
       inGameplay: <Probe />, initialTraits: ['drifter'], initialPersona: { ref: { source: 'library', entityId: wren.id }, libraryEntity: wren },
@@ -100,7 +100,7 @@ describe('a persona change’s switch run', () => {
     const oath: Trait = { id: 'oath', name: 'Oath', statChanges: [] };
     const readsOath = 'stats.Vigor.value = trait.name === "Oath" && !trait.enabled ? 7 : 3;';
 
-    it('a library persona’s, which leave the trait scope', { timeout: 30_000 }, async () => {
+    it('a library persona’s, which leave the trait scope', async () => {
       const oathWren: Entity = { ...wren, traits: [oath] };
       await EntityStorageService.storeEntity({ id: oathWren.id, name: oathWren.name, data: oathWren });
       renderGameViewer(world(readsOath, []), {
@@ -112,7 +112,7 @@ describe('a persona change’s switch run', () => {
       await waitFor(() => expect(vigorNow()).toBe(7));
     });
 
-    it('a persona-only world persona’s', { timeout: 30_000 }, async () => {
+    it('a persona-only world persona’s', async () => {
       renderGameViewer({ ...world(readsOath, []), entities: [{ ...ash, traits: [oath] }, mira] }, {
         inGameplay: <Probe />, initialPersona: { ref: { source: 'world', entityId: 'ash' } }, initialOwnedTraits: { ash: ['oath'] },
       });
@@ -121,7 +121,7 @@ describe('a persona change’s switch run', () => {
       await waitFor(() => expect(vigorNow()).toBe(7));
     });
 
-    it('runs the trait’s own script on its switch-off', { timeout: 30_000 }, async () => {
+    it('runs the trait’s own script on its switch-off', async () => {
       const own: Trait = { ...oath, scripts: [{ id: 'own', timing: 'switch', code: 'stats.Vigor.value = trait.enabled ? 1 : 9;' }] };
       renderGameViewer({ ...harborWorld({ stats: [vigor], entities: [{ ...ash, traits: [own] }, mira] }), traits: [] }, {
         inGameplay: <Probe />, initialPersona: { ref: { source: 'world', entityId: 'ash' } }, initialOwnedTraits: { ash: ['oath'] },
@@ -132,7 +132,7 @@ describe('a persona change’s switch run', () => {
     });
   });
 
-  it('reads a gate on playing the new world persona as open', { timeout: 30_000 }, async () => {
+  it('reads a gate on playing the new world persona as open', async () => {
     const kin: Trait = { id: 'kin', name: 'Kin', statChanges: [], playerToggle: true, requires: [{ all: [{ kind: 'playingAs', id: 'mira' }] }] };
     renderGameViewer(world('stats.Vigor.value = traits.Kin.available ? 7 : 3;', [sworn, kin]), {
       inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
@@ -158,7 +158,7 @@ describe('a persona change’s switch run', () => {
     }
     const readsWren = `${inCast} stats.Vigor.value = (persona.name === "Wren" ? 1 : 0) + (inCast("Wren") ? 10 : 0) + (inCast("Ash") ? 100 : 0);`;
 
-    it('runs once the persona loads, and reads it', { timeout: 30_000 }, async () => {
+    it('runs once the persona loads, and reads it', async () => {
       const land = await holdWrenLoad();
       renderGameViewer(world(readsWren), {
         inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
@@ -171,7 +171,7 @@ describe('a persona change’s switch run', () => {
       await waitFor(() => expect(vigorNow()).toBe(11));
     });
 
-    it('never runs when the view closes while the persona loads', { timeout: 30_000 }, async () => {
+    it('never runs when the view closes while the persona loads', async () => {
       const land = await holdWrenLoad();
       const played = renderGameViewer(world(readsWren), {
         inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
@@ -186,7 +186,7 @@ describe('a persona change’s switch run', () => {
     });
   });
 
-  it('leaves a toggle’s run on the live cast', { timeout: 30_000 }, async () => {
+  it('leaves a toggle’s run on the live cast', async () => {
     const brave: Trait = { id: 'brave', name: 'Brave', statChanges: [], playerToggle: true };
     renderGameViewer(world(`${inCast} stats.Vigor.value = persona.stats.Grit.value + (inCast("Mira") ? 100 : 0);`, [brave]), {
       inGameplay: <Probe />, initialPersona: { ref: { source: 'world', entityId: 'ash' } },

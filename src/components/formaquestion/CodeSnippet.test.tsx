@@ -56,7 +56,7 @@ describe('help code blocks', () => {
     expect(writeText).toHaveBeenCalledExactlyOnceWith('return stats.hp - 1;');
     expect(await flashTip()).toHaveTextContent('Copied');
     expect(screen.getByRole('status')).toHaveTextContent('Copied');
-    await waitFor(() => expect(queryFlashTip()).toBeNull(), { timeout: 3000 });
+    await waitFor(() => expect(queryFlashTip()).toBeNull());
     expect(success).not.toHaveBeenCalled();
   });
 

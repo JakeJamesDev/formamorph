@@ -406,7 +406,7 @@ describe('Try It', () => {
     render(<Harness initial={userStore([weather({ params: [], handler: { kind: 'script', code: 'return nobody.name;' } })])} />);
     await user.click(list().getByRole('button', { name: 'get_weather' }));
     await user.click(tryIt().getByRole('button', { name: 'Run' }));
-    const alert = await tryIt().findByRole('alert', {}, { timeout: 5000 });
+    const alert = await tryIt().findByRole('alert');
     expect(alert).toHaveTextContent(/^The script failed: .*nobody/);
     expect(alert.textContent).not.toContain('{');
   });

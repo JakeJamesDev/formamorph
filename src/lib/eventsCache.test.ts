@@ -105,7 +105,7 @@ describe('an admin change to an event', () => {
     list().mockResolvedValue([serverEvent({ id: 'second' })]);
 
     invalidateEvents();
-    await vi.waitFor(() => expect(seen).toContainEqual(['second']));
+    await vi.waitFor(() => expect(seen).toContainEqual(['second']), { timeout: 10_000 });
 
     unsubscribe();
   });
