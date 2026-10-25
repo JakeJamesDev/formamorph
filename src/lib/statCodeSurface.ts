@@ -23,15 +23,19 @@ const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) =
 export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the start of this turn' },
   { name: 'daypart', detail: 'string', info: 'Daypart at the start of this turn' },
+  { name: 'hour', detail: 'number', info: 'Hour of the day at the start of this turn, from 0' },
+  { name: 'minute', detail: 'number', info: 'Minute of the hour at the start of this turn, 0 to 59' },
 ]);
 
 /** The members of `clock`: the story clock at the end of the turn, then `previous` for its start. Read-only. */
 export const CLOCK_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the end of this turn' },
   { name: 'daypart', detail: 'string', info: 'Daypart at the end of this turn: night, dawn, morning, midday, afternoon or evening' },
+  { name: 'hour', detail: 'number', info: 'Hour of the day at the end of this turn, from 0' },
+  { name: 'minute', detail: 'number', info: 'Minute of the hour at the end of this turn, 0 to 59' },
   { name: 'deltaHours', detail: 'number', info: 'Story hours this turn consumed' },
   { name: 'elapsedHours', detail: 'number', info: 'Total story hours at the end of this turn' },
-  { name: 'previous', detail: shapeOf(CLOCK_PREVIOUS_FIELDS), info: 'Clock at the start of this turn, with day and daypart' },
+  { name: 'previous', detail: shapeOf(CLOCK_PREVIOUS_FIELDS), info: 'Clock at the start of this turn, with day, daypart, hour and minute' },
   { name: 'advance', detail: '(minutes) => void', info: 'Sets how long this turn takes, in story minutes, in place of the AI’s measure. Calls in one turn add up. The clock reads the same for the rest of the script.' },
 ]);
 

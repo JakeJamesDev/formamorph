@@ -7,7 +7,7 @@ import { hasEntityKey, statsByCodeName } from './statCodeNames';
 import {
   PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel, type PlaceholderPathRoot,
 } from './statCodePaths';
-import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
+import { clockReading, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 import { SCRIPT_TIMING_LABEL } from './scripts';
 
 // Stat code sees only the marshalled stat data below.
@@ -27,16 +27,18 @@ export interface StatClock {
 const clockObject = (clock?: StatClock) => {
   const deltaHours = Math.max(0, clock?.deltaHours ?? FLAT_HOURS_PER_TURN);
   const elapsedHours = Math.max(0, clock?.elapsedHours ?? deltaHours);
-  const end = dayAndHour(elapsedHours, clock?.calendar);
+  const end = clockReading(elapsedHours, clock?.calendar);
   // A turn spans time, so its start can sit in a different day/daypart than its end — a long sleep begins
   // in the afternoon and ends at night. Both readings are exposed; neither is derivable from the other.
-  const start = dayAndHour(Math.max(0, elapsedHours - deltaHours), clock?.calendar);
+  const start = clockReading(Math.max(0, elapsedHours - deltaHours), clock?.calendar);
   return {
     day: end.day,
-    daypart: daypart(end.hour, clock?.calendar),
+    daypart: end.daypart,
+    hour: end.hour,
+    minute: end.minute,
     deltaHours,
     elapsedHours,
-    previous: { day: start.day, daypart: daypart(start.hour, clock?.calendar) },
+    previous: { day: start.day, daypart: start.daypart, hour: start.hour, minute: start.minute },
   };
 };
 
@@ -1734,7 +1736,7 @@ export const executeStatCode = async (
       worldPrelude(places, diaryCast(entities, persona, discovered), openCast, memories, reads),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
-      `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
+      `  Object.freeze(lock(clock.previous, ['day', 'daypart', 'hour', 'minute'], 'clock.previous.', ${LOOSE_NOTE}));`,
       `  lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE});`,
       `  Object.defineProperty(clock, 'advance', { value: advance, enumerable: true });`,
       `  return Object.freeze(clock);`,

@@ -139,11 +139,11 @@ describe('ref', () => {
 
 describe('inventedNames', () => {
   it('names each clock field the sandbox does not have', () => {
-    expect(inventedNames('if (clock.time >= 20 || clock.days > 14 || clock.previous.hour < 5) {}')).toEqual(['clock.time', 'clock.days', 'clock.previous.hour']);
+    expect(inventedNames('if (clock.time >= 20 || clock.days > 14 || clock.previous.week < 5) {}')).toEqual(['clock.time', 'clock.days', 'clock.previous.week']);
   });
 
   it('names an unknown clock field read in bracket form or through optional chaining', () => {
-    expect(inventedNames('if (clock["time"] > 20 || clock?.days > 14 || clock.previous?.["hour"] < 5) {}')).toEqual(['clock.time', 'clock.days', 'clock.previous.hour']);
+    expect(inventedNames('if (clock["time"] > 20 || clock?.days > 14 || clock.previous?.["week"] < 5) {}')).toEqual(['clock.time', 'clock.days', 'clock.previous.week']);
   });
 
   it('reads an arrow as no comparison', () => {

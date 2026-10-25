@@ -354,7 +354,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
-| `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
+| `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
@@ -982,8 +982,12 @@ The timings are ordered against each other, though: everything a Before the AI s
 | `clock.elapsedHours` | Total story hours so far, counting this turn |
 | `clock.day` | Day number (1-based) at the **end** of the turn |
 | `clock.daypart` | Time of day at the **end** of the turn |
+| `clock.hour` | Hour of the day (from 0) at the **end** of the turn |
+| `clock.minute` | Minute of the hour (0 to 59) at the **end** of the turn |
 | `clock.previous.day` | Day number at the **start** of the turn |
 | `clock.previous.daypart` | Time of day at the **start** of the turn |
+| `clock.previous.hour` | Hour of the day at the **start** of the turn |
+| `clock.previous.minute` | Minute of the hour at the **start** of the turn |
 
 `clock.daypart` and `clock.previous.daypart` are one of six words: `night`, `dawn`, `morning`, `midday`, `afternoon`, `evening`.
 

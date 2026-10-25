@@ -24,7 +24,7 @@ describe('codeCard: globals and their members', () => {
   it.each([
     ['return se|lf.value;', '(global) self: Stat'],
     ['return st|ats.Health.value;', '(global) stats: object'],
-    ['return cl|ock.day;', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous, advance } [readOnly]'],
+    ['return cl|ock.day;', '(global) clock: { day, daypart, hour, minute, deltaHours, elapsedHours, previous, advance } [readOnly]'],
     ['return self.va|lue;', '(property) Stat.value: number [writable]'],
     ['self.re|gen = 0;', '(property) Stat.regen: number [writable]'],
     ['return self.na|me;', '(property) Stat.name: string [readOnly]'],
@@ -236,7 +236,7 @@ describe('codeCard: a Tool script', () => {
     ['return ar|gs.size;', '(global) args: { size } [readOnly]'],
     ['return args.si|ze;', '(property) args.size: number [readOnly]'],
     ['return location.na|me;', '(property) location.name: string [readOnly]'],
-    ['return cl|ock.day;', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous } [readOnly]'],
+    ['return cl|ock.day;', '(global) clock: { day, daypart, hour, minute, deltaHours, elapsedHours, previous } [readOnly]'],
     ['return no|tes;', '(global) notes: string [readOnly]'],
     ['return entities.Mara.loca|tion;', '(property) Entity.location: string [readOnly]'],
     ['return traits.Brave.ena|bled;', '(property) Trait.enabled: boolean [readOnly]'],
@@ -270,7 +270,7 @@ describe('completionCard: the card for an option the list offers', () => {
   }
 
   it.each([
-    ['return clo|', 'clock', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous, advance } [readOnly]'],
+    ['return clo|', 'clock', '(global) clock: { day, daypart, hour, minute, deltaHours, elapsedHours, previous, advance } [readOnly]'],
     ['return self.re|', 'regen', '(property) Stat.regen: number [writable]'],
     ['return stats.He|', 'Health', '(stat) stats.Health: Stat'],
     ['return stats["He|', 'Health', '(stat) stats.Health: Stat'],
