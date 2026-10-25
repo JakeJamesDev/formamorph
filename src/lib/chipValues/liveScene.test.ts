@@ -65,6 +65,16 @@ describe('the live adapter', () => {
     expect(chipValues(scene)('<ENTITIES|inscene.name>')).toBe('Harbormaster, the ferryman');
   });
 
+  it('sends an entity’s pronouns resolved in its own scope', () => {
+    const pronouned = { ...harbormaster, pronouns: '{{char}} goes by they/them' };
+    const values = chipValues(liveChipScene(sources({
+      entities: [pronouned], allEntities: [pronouned],
+      resolveEntity: (_entity, text) => text.replaceAll('{{char}}', 'Harbormaster'),
+    })));
+    expect(values('<ENTITIES>')).toContain('Harbormaster goes by they/them');
+    expect(values('<ENTITIES>')).not.toContain('{{char}}');
+  });
+
   it("nests the Stats chip and each present entity's stats under their authored groups, headings resolved", () => {
     const nerve: StatGroup = { id: 'nerve', name: 'Nerve', aiDescription: 'Steady on {{deck}}.', parentId: null };
     const back: StatGroup = { id: 'back', name: 'Back', parentId: null };

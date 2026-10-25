@@ -220,12 +220,13 @@ describe('duplicateEntityPlaceholders', () => {
       aiDescription: chip('eyes', 'd'),
       aiSummary: chip('eyes', 'e'),
       imageTags: chip('eyes', 'f'),
+      pronouns: chip('eyes', 'g'),
     });
     const copy = duplicateEntityPlaceholders(src);
     const fresh = copy.placeholders?.[0].id;
     expect(fresh).toBeDefined();
     expect(fresh).not.toBe('eyes');
-    for (const text of [copy.name, copy.aliases?.[0], copy.playerDescription, copy.aiDescription, copy.aiSummary, copy.imageTags]) {
+    for (const text of [copy.name, copy.aliases?.[0], copy.playerDescription, copy.aiDescription, copy.aiSummary, copy.imageTags, copy.pronouns]) {
       expect(decodePlaceholderToken(text!.match(/\{\{ph:[^}]+\}\}/)![0])?.id).toBe(fresh);
     }
     // The source is untouched.

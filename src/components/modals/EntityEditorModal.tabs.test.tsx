@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within, cleanup } from '@testing-library/react';
+import { render, screen, within, cleanup, act } from '@testing-library/react';
+import { $createParagraphNode, $createTextNode, $getRoot, getNearestEditorFromDOMNode } from 'lexical';
 import userEvent from '@testing-library/user-event';
 import EntityEditorModal from './EntityEditorModal';
 import EntityManager from '@/managers/EntityManager';
@@ -143,7 +144,13 @@ describe('the two entity editors', () => {
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
     await userEvent.click(screen.getByRole('radio', { name: 'Persona-Only' }));
     expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', persona: true, personaOnly: true });
-    await userEvent.type(screen.getByLabelText('Pronouns'), 'x');
+    // Pronouns is a chip field: write through its composer, as the pulse test does.
+    const editor = getNearestEditorFromDOMNode(screen.getByLabelText('Pronouns'));
+    await act(async () => {
+      editor?.update(() => {
+        $getRoot().clear().append($createParagraphNode().append($createTextNode('x')));
+      }, { discrete: true });
+    });
     expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', pronouns: 'x' });
   });
 

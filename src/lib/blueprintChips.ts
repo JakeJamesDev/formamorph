@@ -86,6 +86,7 @@ export function dropEntityBlueprintChips(entity: Entity, blueprints: ReadonlySet
     aiDescription: d.one(entity.aiDescription),
     aiSummary: d.one(entity.aiSummary),
     imageTags: d.one(entity.imageTags),
+    pronouns: d.one(entity.pronouns),
     ...(entity.openings ? { openings: entity.openings.map((o) => ({ ...o, text: d.one(o.text) })) } : {}),
     ...(entity.placeholders ? {
       placeholders: owned.map((p) => (acceptsBlueprintChips({ kind: 'values', placeholderId: p.id }, { placeholders: owned })

@@ -12,6 +12,7 @@ import type { Entity, GameLocation, PersonaRef } from '@/types';
 const hero: Entity = { id: 'hero', name: 'Hero', persona: true, aiDescription: 'The one who plays.' };
 const mira: Entity = {
   id: 'mira', name: 'Mira', locations: ['gate'], aiDescription: 'A tall CHIP.', aiSummary: 'CHIP, the miller.', aliases: ['CHIP of the weir'],
+  pronouns: 'CHIP/hers',
 };
 const tor: Entity = { id: 'tor', name: 'Tor', locations: ['mill', 'gate'] };
 const sela: Entity = { id: 'sela', name: 'Sela', aiDescription: 'A stranger.' };
@@ -74,9 +75,9 @@ describe('the snapshot’s locations in play', () => {
   });
 
   it('reads entity and location text with its chips resolved', async () => {
-    const code = 'const m = entities.Mira; const l = locations["Old Mill"]; return [m.description, m.summary, m.aliases, l.description, l.summary, l.starting, location.description];';
+    const code = 'const m = entities.Mira; const l = locations["Old Mill"]; return [m.description, m.summary, m.aliases, m.pronouns, l.description, l.summary, l.starting, location.description];';
     expect(await read(playState(), code)).toEqual([
-      'A tall Mira.', 'Mira, the miller.', ['Mira of the weir'], 'A mill by world.', 'A mill.', true, 'A mill by world.',
+      'A tall Mira.', 'Mira, the miller.', ['Mira of the weir'], 'Mira/hers', 'A mill by world.', 'A mill.', true, 'A mill by world.',
     ]);
   });
 });

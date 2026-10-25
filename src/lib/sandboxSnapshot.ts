@@ -171,6 +171,7 @@ function playFields(
   return {
     description: resolve(entity.aiDescription ?? '', entity), summary: resolve(entity.aiSummary ?? '', entity),
     aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
+    pronouns: resolve(entity.pronouns ?? '', entity),
     ...(at ? { locationId: at } : {}), locationIds: entity.locations ?? [],
     ...(followers?.includes(entity.id) ? { following: true } : {}),
   };

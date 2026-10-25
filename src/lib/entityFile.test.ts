@@ -120,6 +120,14 @@ describe('buildEntityCardData', () => {
     expect(parseEntityCardData(card).name).toContain('{{ph:town:world:p1}}');
   });
 
+  it('bundles the placeholders the pronouns use', () => {
+    const pair = { id: 'pair', name: 'Pronouns', values: phValues(['she/her', 'he/him']) };
+    const unused = { id: 'unused', name: 'Weather', values: phValues(['Rain']) };
+    const card = buildEntityCardData({ id: 'p', name: 'Guard', pronouns: '{{ph:pair:world:p1}}' }, [pair, unused]);
+    expect(card.sharedPlaceholders).toEqual([pair]);
+    expect(parseEntityCardData(card).pronouns).toBe('{{ph:pair:world:p1}}');
+  });
+
   it('writes the entity’s own placeholders as they are, and the shared defs they and its chips reach', () => {
     const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain', 'Sun']) };
     const unused = { id: 'unused', name: 'Season', values: phValues(['Spring']) };

@@ -37,7 +37,7 @@ const WORLD: World = benchEditorWorld({
     descriptors: [{ id: 'd-low', threshold: 3, description: 'Tense' }, { id: 'd-high', threshold: 10, description: 'Calm' }],
   }],
   entities: [{
-    id: 'resident', name: 'Odd Wick', pronouns: 'he/him', playerDescription: 'The lamp-keeper.',
+    id: 'resident', name: 'Odd Wick', pronouns: 'he/him', type: 'keeper', playerDescription: 'The lamp-keeper.',
     aiDescription: 'Keeps the lamps.', aiSummary: 'A lamp-keeper.', locations: ['harbor'],
   }],
   placeholders: [{ id: 'weather', name: 'Weather', values: [{ id: 'v-fog', text: 'fog' }] }],
@@ -64,7 +64,8 @@ const ringed = (name = LANDING_PULSE_CLASS) => {
 };
 const noRing = () => document.querySelectorAll(`.${LANDING_PULSE_CLASS}, .${LANDING_RING_CLASS}`);
 
-const pronouns = () => screen.getByPlaceholderText('she/her, he/him, it/its') as HTMLInputElement;
+// Type stays a plain text box; Pronouns is a chip field.
+const typeBox = () => screen.getByPlaceholderText('Enter entity type') as HTMLInputElement;
 /** Clicks into a plain field and types, as two author actions. */
 const typeIn = async (field: HTMLInputElement, text: string) => {
   await step(() => field.focus());
@@ -127,18 +128,18 @@ describe('the field pulse after undo and redo', () => {
   it('pulses the text field the author edited, after undo and after redo', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openWick();
-    await typeIn(pronouns(), 'they/them');
+    await typeIn(typeBox(), 'they/them');
     await leaveFor(/Stats/);
 
     await undo();
-    expect(ctx().entities[0].pronouns).toBe('he/him');
+    expect(ctx().entities[0].type).toBe('keeper');
     expect(shownEditorTab()).toMatch(/Entities/);
-    expect(ringed()).toContainElement(pronouns());
+    expect(ringed()).toContainElement(typeBox());
 
     await leaveFor(/Stats/);
     await redo();
-    expect(pronouns().value).toBe('they/them');
-    expect(ringed()).toContainElement(pronouns());
+    expect(typeBox().value).toBe('they/them');
+    expect(ringed()).toContainElement(typeBox());
   });
 
   it('pulses the prompt field the author edited', async () => {
@@ -207,11 +208,11 @@ describe('the field pulse after undo and redo', () => {
   it('leaves focus on the element that held it before the undo', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openWick();
-    await typeIn(pronouns(), 'they/them');
+    await typeIn(typeBox(), 'they/them');
     const trigger = await leaveFor(/Stats/);
 
     await undo();
-    expect(ringed()).toContainElement(pronouns());
+    expect(ringed()).toContainElement(typeBox());
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -254,10 +255,10 @@ describe('the field pulse after undo and redo', () => {
   it('restarts the pulse on a second quick undo, while the author is already on the field', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openWick();
-    await typeIn(pronouns(), 'they');
+    await typeIn(typeBox(), 'they');
     // Past the typing pause, so the second edit is its own Step.
     clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_000);
-    await step(() => { fireEvent.change(pronouns(), { target: { value: 'they/them' } }); });
+    await step(() => { fireEvent.change(typeBox(), { target: { value: 'they/them' } }); });
 
     // Each start draws a new ring.
     const starts: (HTMLElement | null)[] = [];
@@ -267,24 +268,24 @@ describe('the field pulse after undo and redo', () => {
     })));
     observer.observe(document.body, { subtree: true, childList: true });
     await undo();
-    expect(pronouns().value).toBe('they');
+    expect(typeBox().value).toBe('they');
     await undo();
     observer.disconnect();
-    expect(pronouns().value).toBe('he/him');
+    expect(typeBox().value).toBe('keeper');
     expect(starts).toHaveLength(2);
-    expect(starts[1]).toContainElement(pronouns());
-    expect(document.activeElement).toBe(pronouns());
+    expect(starts[1]).toContainElement(typeBox());
+    expect(document.activeElement).toBe(typeBox());
   });
 
   it('draws the still ring under reduced motion', async () => {
     stubReducedMotion();
     renderWorldEditorBench(WORLD, 'advanced');
     openWick();
-    await typeIn(pronouns(), 'they/them');
+    await typeIn(typeBox(), 'they/them');
     await leaveFor(/Stats/);
 
     await undo();
-    expect(ringed(LANDING_RING_CLASS)).toContainElement(pronouns());
+    expect(ringed(LANDING_RING_CLASS)).toContainElement(typeBox());
     expect(document.querySelectorAll(`.${LANDING_PULSE_CLASS}`)).toHaveLength(0);
   });
 });
