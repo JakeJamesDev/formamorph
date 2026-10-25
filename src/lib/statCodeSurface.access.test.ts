@@ -38,7 +38,8 @@ const run = (code: string) => executeStatCode(code, [gold], rage, {
 const sample = (entry: SurfaceEntry) =>
   ({ number: '7', string: '"x"', boolean: 'false' } as Record<string, string>)[entry.detail] ?? '{}';
 
-const statLanded = (out: StatCodeResult) => out.value !== null || !!out.bounds || !!out.statWrites || !!out.ownerStatWrites;
+const statLanded = (out: StatCodeResult) =>
+  out.value !== null || !!out.bounds || out.hidden !== undefined || !!out.statWrites || !!out.ownerStatWrites;
 const traitLanded = (out: StatCodeResult) => !!out.traits || !!out.entities?.some((entity) => entity.traits);
 
 /** The fields that carry an access, by whether a write reaches them as the badge says. */
@@ -60,9 +61,9 @@ describe('stat field access matches the sandbox', () => {
     }
   });
 
-  it('writes value, min, max and regen on every route', () => {
+  it('writes value, min, max, regen and hidden on every route', () => {
     expect(STAT_FIELDS.filter((entry) => entry.access === 'writable').map((entry) => entry.name).sort())
-      .toEqual(['max', 'min', 'regen', 'value']);
+      .toEqual(['hidden', 'max', 'min', 'regen', 'value']);
   });
 });
 

@@ -12,7 +12,7 @@ import type { StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import type { StatCodeOwners } from './statCodeTraits';
 import {
-  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, traitForceScope, traitSwitchEvents, withCodeDelta,
+  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, traitForceScope, traitSwitchEvents, withCodeDelta,
   type AppliedTraitValues, type CodeTraitSwitch, type TraitForceState, type TraitSwitchEvent, type TraitWorld,
 } from './traitRuntime';
 import {
@@ -184,7 +184,7 @@ export function splitOwnerTurns(rows: readonly OwnerCodeTurn[]): { owners: Owner
 }
 
 /** What one entity owner's code and the run's trait switches did to its stats. */
-export type OwnerCodeResult = Pick<StatCodeTurnResult, 'stats' | 'moved' | 'boundsChanged'> & {
+export type OwnerCodeResult = Pick<StatCodeTurnResult, 'stats' | 'moved' | 'boundsChanged' | 'hiddenChanged'> & {
   /** The owner's stat traits in force after the switches; absent when code switched no trait. */
   inForce?: Trait[];
 };
@@ -197,6 +197,8 @@ export interface StatCodeTurnResult {
   moved: string[];
   /** Ids of the stats whose code delta the run changed, in stat order. */
   boundsChanged: string[];
+  /** Ids of the stats the run hid or showed, in stat order. */
+  hiddenChanged: string[];
   /** Where two stats touched one placeholder, the later stat's action is the one here. */
   pinWrites: PinWrites;
   /** Absent when code switched no trait. */
@@ -242,8 +244,8 @@ export function withPinWrites(codePins: CodePins, pinWrites: PinWrites): CodePin
 }
 
 /** Lay a turn's code result onto the latest stats, which may have moved since the run read its snapshot:
- *  only a value the run moved and the code delta it changed carry over, re-derived onto the latest bases.
- *  After a trait switch every stat re-derives, under the traits the switch left in force. */
+ *  only a value the run moved, the code delta it changed and the `hidden` it flipped apply, re-derived
+ *  onto the latest bases. After a trait switch every stat re-derives, under the traits the switch left in force. */
 export function overlayStatCodeResult(
   latest: readonly PlayerStat[],
   result: OwnerCodeResult & { traits?: Pick<StatCodeTraitResult, 'inForce'> },
@@ -255,9 +257,10 @@ export function overlayStatCodeResult(
   return latest.map((stat) => {
     const run = coded.get(stat.id);
     const value = run && result.moved.includes(stat.id) ? run.value : stat.value;
-    if (run && result.boundsChanged.includes(stat.id)) return withCodeDelta(stat, run.codeDelta, value, inForce);
-    if (switched) return withCodeDelta(stat, stat.codeDelta, value, inForce);
-    return value === stat.value ? stat : { ...stat, value };
+    const withHidden = run && result.hiddenChanged.includes(stat.id) ? { ...stat, hidden: run.hidden === true } : stat;
+    if (run && result.boundsChanged.includes(stat.id)) return withCodeDelta(withHidden, run.codeDelta, value, inForce);
+    if (switched) return withCodeDelta(withHidden, stat.codeDelta, value, inForce);
+    return value === stat.value ? withHidden : { ...withHidden, value };
   });
 }
 
@@ -339,10 +342,10 @@ interface ScriptWrites {
 }
 
 /** One stat's fields a box wrote. */
-type TargetWrite = Pick<StatWrite, 'id' | 'value' | keyof CodeBounds>;
+type TargetWrite = Pick<StatWrite, 'id' | 'value' | keyof CodeBounds | 'hidden'>;
 
 /** A target's merged write, as `settleWrites` lays it on. */
-type SettledWrite = { value: number | null; bounds: CodeBounds | null };
+type SettledWrite = { value: number | null; bounds: CodeBounds | null; hidden: boolean | null };
 
 /** What one run wrote, by target scope: its own stat first, under `ownerId`; its `stats` writes under global
  *  scope; then each entity's. A world script has no stat of its own. */
@@ -351,8 +354,11 @@ function targetWrites(stat: PlayerStat | null, result: StatCodeResult, ownerId: 
   const add = (id: OwnerId, writes: readonly TargetWrite[] = []) => {
     if (writes.length) out.set(id, [...out.get(id) ?? [], ...writes]);
   };
-  if (stat && (result.value !== null || result.bounds)) {
-    add(ownerId, [{ id: stat.id, ...result.bounds, ...(result.value === null ? {} : { value: result.value }) }]);
+  if (stat && (result.value !== null || result.bounds || result.hidden !== undefined)) {
+    add(ownerId, [{
+      id: stat.id, ...result.bounds, ...(result.value === null ? {} : { value: result.value }),
+      ...(result.hidden === undefined ? {} : { hidden: result.hidden }),
+    }]);
   }
   add(null, result.statWrites);
   for (const row of result.ownerStatWrites ?? []) add(row.ownerId, row.writes);
@@ -381,12 +387,13 @@ function statWritesByOwner(writers: readonly (ScriptWrites | undefined)[]): Map<
     for (const [ownerId, targets] of writes?.stats ?? []) {
       const owner = out.get(ownerId) ?? new Map<string, SettledWrite>();
       out.set(ownerId, owner);
-      for (const { id, value, ...bounds } of targets) {
-        const at = owner.get(id) ?? { value: null, bounds: null };
+      for (const { id, value, hidden, ...bounds } of targets) {
+        const at = owner.get(id) ?? { value: null, bounds: null, hidden: null };
         const written = Object.fromEntries(CODE_BOUND_FIELDS.flatMap((field) => (bounds[field] === undefined ? [] : [[field, bounds[field]]])));
         owner.set(id, {
           value: value ?? at.value,
           bounds: Object.keys(written).length ? { ...at.bounds, ...written } : at.bounds,
+          hidden: hidden ?? at.hidden,
         });
       }
     }
@@ -521,18 +528,20 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
   };
 }
 
-/** The ids of the stats in `now` whose value or code delta differs from `start`, matched by id. */
-function changedStats(start: readonly PlayerStat[], now: readonly PlayerStat[]): { moved: string[]; boundsChanged: string[] } {
+/** The ids of the stats in `now` whose value, code delta or `hidden` differs from `start`, matched by id. */
+function changedStats(start: readonly PlayerStat[], now: readonly PlayerStat[]): Pick<StatCodeTurnResult, 'moved' | 'boundsChanged' | 'hiddenChanged'> {
   const was = new Map(start.map((stat) => [stat.id, stat]));
   const moved: string[] = [];
   const boundsChanged: string[] = [];
+  const hiddenChanged: string[] = [];
   for (const stat of now) {
     const before = was.get(stat.id);
     if (!before) continue;
     if (stat.value !== before.value) moved.push(stat.id);
     if (!sameCodeDelta(before.codeDelta, stat.codeDelta)) boundsChanged.push(stat.id);
+    if (!sameHidden(before, stat)) hiddenChanged.push(stat.id);
   }
-  return { moved, boundsChanged };
+  return { moved, boundsChanged, hiddenChanged };
 }
 
 /** Runs chained from `start` to `now`, one after the other, as one run's result over `start`. The later step
@@ -724,17 +733,17 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const result = settleWrites(
       owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, ownerWrites.get(owner.id) ?? new Map(), inForce,
     );
-    const settled = result.moved.length || result.boundsChanged.length ? result : { ...result, stats: owner.stats };
+    const settled = result.moved.length || result.boundsChanged.length || result.hiddenChanged.length ? result : { ...result, stats: owner.stats };
     return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
   const withSentence = sentence === undefined ? {} : { sentence };
-  const { stats, moved, boundsChanged } = settleWrites(state.stats, switched.state.stats, mainWrites, active);
-  if (!traitResult && moved.length === 0 && boundsChanged.length === 0) {
-    return { stats: state.stats, moved, boundsChanged, pinWrites, gateStats, ...withOwners, ...withSentence, ...withWorld };
+  const { stats, moved, boundsChanged, hiddenChanged } = settleWrites(state.stats, switched.state.stats, mainWrites, active);
+  if (!traitResult && moved.length === 0 && boundsChanged.length === 0 && hiddenChanged.length === 0) {
+    return { stats: state.stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...withOwners, ...withSentence, ...withWorld };
   }
   return {
-    stats, moved, boundsChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners, ...withSentence,
+    stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners, ...withSentence,
     ...withWorld,
   };
 }
@@ -760,23 +769,26 @@ function settleWrites(
   current: readonly PlayerStat[],
   writes: ReadonlyMap<string, SettledWrite>,
   active: readonly Trait[],
-): { stats: PlayerStat[]; moved: string[]; boundsChanged: string[] } {
+): Pick<StatCodeTurnResult, 'moved' | 'boundsChanged' | 'hiddenChanged'> & { stats: PlayerStat[] } {
   const moved: string[] = [];
   const boundsChanged: string[] = [];
+  const hiddenChanged: string[] = [];
   const stats = current.map((stat, i) => {
     const write = writes.get(stat.id);
     const codeDelta = write?.bounds && codeDeltaFor(stat, write.bounds, active);
     // A value-only write keeps the bounds as they stand, which a trait switch may have moved.
-    const next = !write ? stat
+    const landed = !write ? stat
       : !codeDelta ? { ...stat, value: clamp(write.value ?? stat.value, stat.min, stat.max) }
         : withCodeDelta(stat, codeDelta, write.value ?? stat.value, active);
+    const hiddenWrite = write?.hidden ?? null;
+    const next = hiddenWrite === null || sameHidden(stat, { hidden: hiddenWrite }) ? landed : { ...landed, hidden: hiddenWrite };
     if (codeDelta && !sameCodeDelta(codeDelta, stat.codeDelta)) boundsChanged.push(stat.id);
     if (next.value !== start[i].value) moved.push(stat.id);
-    return next.value === stat.value && !boundsChanged.includes(stat.id) ? stat : next;
+    if (!sameHidden(next, start[i])) hiddenChanged.push(stat.id);
+    return next.value === stat.value && !boundsChanged.includes(stat.id) && next.hidden === stat.hidden ? stat : next;
   });
-  return { stats, moved, boundsChanged };
+  return { stats, moved, boundsChanged, hiddenChanged };
 }
-
 /** One stat's switches: through `traits`, then through each entity's `traits`. */
 interface StatTraitWrites {
   world: readonly TraitWrite[];

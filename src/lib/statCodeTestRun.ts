@@ -161,8 +161,8 @@ const switchLine = (at: string, { name, enabled }: TraitWrite) => `${at}${name} 
  *  map the code wrote through. */
 const statWriteLines = (map: string, { name, ...fields }: StatWrite) =>
   SELF_WRITABLE_FIELDS.flatMap((field) => {
-    const number = fields[field as keyof typeof fields];
-    return typeof number === 'number' ? [`${memberPath(map, name)}.${field} = ${number}`] : [];
+    const written = fields[field as keyof typeof fields];
+    return written === undefined ? [] : [`${memberPath(map, name)}.${field} = ${written}`];
   });
 
 /** The stat map code wrote through to reach each owner a run wrote to: `owner.stats` for the home's Owner,
@@ -245,6 +245,7 @@ export async function runTestCode(
       const bound = outcome.bounds?.[field];
       return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
     }),
+    ...(outcome.hidden === undefined ? [] : [`Hidden: ${outcome.hidden}`]),
     ...(outcome.statWrites ?? []).flatMap((write) => statWriteLines('stats', write)),
     ...ownerLines.filter((row) => !row.pending).flatMap((row) => row.lines),
     // The path the code wrote, not the placeholder's bare name: that is what the author typed.

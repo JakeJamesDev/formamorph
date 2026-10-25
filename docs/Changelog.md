@@ -54,6 +54,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Scripts:**
     - **Scripts can now read the hour and minute of the story clock, with `clock.hour` and `clock.minute`.** `clock.previous` has both for the start of the turn. They match the clock in the panel. Hover cards and the Variable menu list them.
     - **Scripts can now read the player's action and the turn number, with `turn.action` and `turn.number`.** The number matches each memory's turn, and undo and re-roll rewind it. Between turns, the action is empty. Test Code reads a sample action.
+    - **Scripts can now hide or show a stat during play, with `hidden`.** The stat leaves or joins the panel with this turn's changes. Undo takes it back. Hover cards and the Variable menu list it.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.

@@ -155,6 +155,10 @@ describe('the described surface against the sandbox that provides it', () => {
 
   // A field listed as writable that the host never reads back is the editor promising a write that does nothing.
   it.each(SELF_WRITABLE_FIELDS)('reads a write to self.%s back out of the sandbox', async (field) => {
+    if (field === 'hidden') {
+      expect((await run('self.hidden = true;')).hidden).toBe(true);
+      return;
+    }
     const result = await run(`self.${field} = 7;`);
     expect(field === 'value' ? result.value : result.bounds?.[field as CodeBoundField]).toBe(7);
   });

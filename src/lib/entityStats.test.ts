@@ -93,13 +93,19 @@ describe('withOwnerCodeResults', () => {
     // The latest values took a regen tick after the run read its snapshot.
     const latest = withEntityRegen(values, entityStatOwners(values, [bram], { source: 'none' }, noTraits), 1);
     const run = values.bram.map((s) => (s.id === 'stock' ? { ...s, value: 9, max: 9, codeDelta: { max: 9 - s.max } } : { ...s, value: 70 }));
-    const out = withOwnerCodeResults(latest, { bram: { stats: run, moved: ['trust'], boundsChanged: ['stock'] } }, noTraits);
+    const out = withOwnerCodeResults(latest, { bram: { stats: run, moved: ['trust'], boundsChanged: ['stock'], hiddenChanged: [] } }, noTraits);
     expect(out.bram.map((s) => [s.value, s.max])).toEqual([[70, 100], [3, 9]]);
     expect(out.odette).toBe(latest.odette);
   });
 
+  it('lays a hidden flip alone onto the latest values', () => {
+    const run = values.bram.map((s) => (s.id === 'trust' ? { ...s, hidden: true } : s));
+    const out = withOwnerCodeResults(values, { bram: { stats: run, moved: [], boundsChanged: [], hiddenChanged: ['trust'] } }, noTraits);
+    expect(out.bram.map((s) => [s.id, s.hidden === true])).toEqual([['trust', true], ['stock', false]]);
+  });
+
   it('hands back the same map when no owner moved', () => {
-    expect(withOwnerCodeResults(values, { bram: { stats: values.bram, moved: [], boundsChanged: [] } }, noTraits)).toBe(values);
+    expect(withOwnerCodeResults(values, { bram: { stats: values.bram, moved: [], boundsChanged: [], hiddenChanged: [] } }, noTraits)).toBe(values);
     expect(withOwnerCodeResults(values, undefined, noTraits)).toBe(values);
   });
 });

@@ -5,7 +5,7 @@
  */
 
 /** The fields code may write on a stat. The executor's `SELF_WRITABLE_FIELDS` is the source; a test holds them equal. */
-export const SCANNED_STAT_FIELDS: readonly string[] = ['value', 'min', 'max', 'regen'];
+export const SCANNED_STAT_FIELDS: readonly string[] = ['value', 'min', 'max', 'regen', 'hidden'];
 
 /** The sandbox global a write or lookup starts at. Every root but `self` and `stats` reaches its stats through `.stats`. */
 export type ScannedRoot = 'self' | 'stats' | 'owner' | 'persona' | 'entities';

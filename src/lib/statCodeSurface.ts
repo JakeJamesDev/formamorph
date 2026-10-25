@@ -152,6 +152,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'max', detail: 'number', info: 'Upper bound that results are clamped to' },
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour, with traits applied' },
+  { name: 'hidden', detail: 'boolean', info: 'True when the stat is hidden from the player. The AI still reads it. Set it to hide or show the stat.' },
   { name: 'previous', detail: 'Stat', info: 'The whole stat at the start of this turn' },
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source' },
 ], SELF_WRITABLE_FIELDS, 'writable');
@@ -168,6 +169,7 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'max', detail: 'number', info: 'Upper bound at the start of this turn, with traits and code writes applied' },
   { name: 'value', detail: 'number', info: 'Value at the start of this turn' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, with traits applied' },
+  { name: 'hidden', detail: 'boolean', info: 'True when the stat is hidden from the player, at the start of this turn' },
 ]);
 
 /**
@@ -209,7 +211,7 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
 const OWNER_MAPS = ['traits', 'placeholders', 'stats'];
 
 /** The members of `persona`. The members are read-only; a trait switches through its own `enabled`, and a
- *  stats entry takes writes to its value, min, max and regen while its identity fields stay read-only. */
+ *  stats entry takes writes to its value, min, max, regen and hidden while its identity fields stay read-only. */
 export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the persona entity, or empty when the player plays no entity' },
   { name: 'name', detail: 'string', info: 'Code name of the persona, or empty when the player plays no entity' },
@@ -227,7 +229,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 ], OWNER_MAPS);
 
 /** The members of one entry in `entities`, and of `owner`. The members are read-only; a trait switches through
- *  its own `enabled`, and a stats entry takes writes to its value, min, max and regen while its identity fields
+ *  its own `enabled`, and a stats entry takes writes to its value, min, max, regen and hidden while its identity fields
  *  stay read-only. */
 export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the entity' },
@@ -242,7 +244,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'aliases', detail: 'array', info: 'Other names of the entity, its placeholders filled in' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
-  { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max and regen. Use entities.Mira.stats["Two Words"] for a name with a space.' },
+  { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max, regen and hidden. Use entities.Mira.stats["Two Words"] for a name with a space.' },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the entity to a location of the world when the turn ends, and stops it following the player. A name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes the entity follow the player when the turn ends, at the player’s location' },
   { name: 'unfollow', detail: '() => void', info: 'Stops the entity following the player when the turn ends, and leaves it at the player’s location. An entity that isn’t following stays where it is.' },

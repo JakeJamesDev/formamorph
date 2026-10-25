@@ -3474,7 +3474,7 @@ const GameViewer = ({
             entityStats: nextEntityStats,
           });
           const world = result.worldWrites;
-          if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
+          if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0 && result.hiddenChanged.length === 0) {
             const written = nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
             return { written, gateStats: result.gateStats, world };
           }

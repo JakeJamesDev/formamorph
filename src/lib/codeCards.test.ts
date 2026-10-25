@@ -59,13 +59,14 @@ describe('codeCard: globals and their members', () => {
   });
 });
 
-describe('codeCard: value, min, max and regen are writable on every route', () => {
+describe('codeCard: value, min, max, regen and hidden are writable on every route', () => {
   const routes = ['self', 'stats.Gold', 'stats["Max HP"]', 'owner.stats.Stock', 'entities.Mara.stats.Grit', 'persona.stats.Nerve'];
   it.each(routes)('%s', (route) => {
-    for (const field of ['value', 'min', 'max', 'regen']) {
+    for (const field of ['value', 'min', 'max', 'regen', 'hidden']) {
       expect(cardAt(`${route}.${field.slice(0, 1)}|${field.slice(1)} = 1;`, owned)?.access, `${route}.${field}`).toBe('writable');
     }
     expect(cardAt(`return ${route}.ena|bled;`, owned)?.access).toBe('readOnly');
+    expect(cardAt(`return ${route}.previous.hid|den;`, owned)?.access).toBe('readOnly');
   });
 });
 

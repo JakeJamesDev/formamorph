@@ -208,6 +208,7 @@ describe('the lists without a badge state the access as text', () => {
     const leaves = variableTreeLeaves(buildVariableTree(undefined, { kind: 'entity', entity: null }));
     const byInsert = new Map(leaves.map((leaf) => [leaf.insert, leaf.access]));
     expect(byInsert.get('self.value')).toBe('writable');
+    expect(byInsert.get('self.hidden')).toBe('writable');
     expect(byInsert.get('self.name')).toBe('readOnly');
     expect(byInsert.get('clock.day')).toBe('readOnly');
     expect(byInsert.get('placeholders["Name"].value')).toBe('afterRun');
