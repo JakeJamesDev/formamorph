@@ -57,6 +57,9 @@ Settled with the user on 2026-10-25 through a grill and an agent review of its f
 | Q38 | Book toggles share the Q11 map and rewind with undo |
 | Q39 | A library book the player added at world entry reads and takes writes like any book in play. Writes go to the Q11 map, never to the library record |
 | Q40 | Book `enabled` writes go both ways on any reachable book |
+| Q41 | `hour` and `minute` follow the shipped `clock.advance` rule: after an advance the whole clock still reads the run's start, and the advance lands at commit. Day, daypart, hour and minute derive from one rounded minute count, so 23:59.7 reads the next day at 00:00, on `clock` and `clock.previous` alike (ticket 03 ruling) |
+| Q42 | A user Tool or World Tool call the AI makes inside a turn reads that turn's action and number; Q35's empty action covers only calls made between turns. The Settings sample world stands in for an in-turn call: the sample action "Look around." at number 4, after its three sample turns. Test Code's At Game Start reads world-level openings only: the heaviest Opening Action, the first in authored order on a tie, weight-0 and blank rows never counting, and the default opening when openings are off or none qualify (ticket 01 ruling) |
+| Q43 | `descriptor` reads the band text as the run's live resolver gives it, agreeing with `description` and `placeholders.X.value` in the same run; a newly entered band's own pins land next turn, as for the prompt. `previous.descriptor` resolves with the turn-start pin record a re-roll's pre-turn state uses. Where no play resolver exists (Test Code, the Test Bench, user Tools), `descriptor` follows `description` as authored (ticket 04 ruling) |
 
 ## Surface
 
