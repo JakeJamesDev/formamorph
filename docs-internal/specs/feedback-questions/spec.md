@@ -40,7 +40,7 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 | Accept action / clear action | Accept Answer · Clear Answer |
 | Mark on the reply | Accepted |
 | Help window button | Ask the Community |
-| Replace-draft confirm | Replace your unsent draft? · Replace · Keep Draft |
+| Replace-draft confirm | Replace your unsent draft? · This deletes your unsent draft. · Replace · Keep Draft |
 | Edit warning, every target | Today's sentence: "Moving this to a X sets its status back to Open[, and deletes the version and platform…]. Its replies and votes stay." |
 | Edit warning, into a bug | Today's sentence, then: Only the reporter and staff can reply to a bug. |
 | Edit warning, out of an answered question | The first sentence adds "clears the accepted answer" (ticket 05). |
