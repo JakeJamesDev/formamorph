@@ -1,7 +1,7 @@
 # Placeholder Text Fields
 
 Status: done
-Status note: Closed 2026-10-25. Tickets 01–03 landed, last landing 700cfa286. Closed with gaps: ticket 04 (the AI Context lens resolves entity texts in global scope). Closed red: `scripts/testSelection.test.mjs` failed on a peer's untracked script, and `src/lib/testBench/pinConflictLoad.test.ts` failed under load but passes alone. Lint green.
+Status note: Closed 2026-10-25. Tickets 01–04 landed, last landing fefabc96e; ticket 04 closed the lens scope gap the review found. Closed red: `scripts/testSelection.test.mjs` failed on a peer's untracked script, and `src/lib/testBench/pinConflictLoad.test.ts` failed under load but passes alone. Lint green.
 Spec session: placeholder-text-fields — spec
 
 ## Problem Statement
@@ -30,8 +30,11 @@ Settled in the grill on 2026-10-25, then checked against the code by a review pa
 - **Q10 Test Bench owner (ticket 01).** Each leg is its own chip owner, filed under its departure location and named "<From> → <To> Travel Hint".
 - **Q11 Search (ticket 01).** Each unlinked leg is a search target under its departure location, labeled "Travel Hint to <To>". A linked pair is one target on the first leg, and a replace there writes both legs, as typing in the first box does. Search never unlinks a pair.
 - **Q12 Label search (ticket 03).** Each relationship label is a search target under the holding entity, labeled "Relationship to <Target>": "Relationship to Persona" for the You row, "Relationship to Unknown Entity" for a dangling target. A chip-bearing target name shows in the braces form.
-- **Q13 Label scope route (ticket 03).** Labels join the entity text resolver, which both chip scenes run on every entity before the relationship cast. The cast itself doesn't change. The Test Bench lens skips that resolver, so the AI Context instrument still reads entity texts in global scope (ticket 04).
+- **Q13 Label scope route (ticket 03).** Labels join the entity text resolver, which both chip scenes run on every entity before the relationship cast. The cast itself doesn't change. The Test Bench lens gets its own entity resolver (ticket 04, Q16–Q18).
 - **Q14 Placed ids (ticket 03).** The entity editor modal's placed-ids list includes relationship labels, as it does pronouns.
+- **Q16 Lens pins (ticket 04).** In the lens, an entity's text reads the lens PC's traits, then the entity's default traits bound to its copies, with the lens location and starting stat bands on top. This is the play layering, with the entity's defaults standing in for its trait state.
+- **Q17 Lens Character Name (ticket 04).** A Character Name chip in an entity's text shows that entity's name in the lens, as play does.
+- **Q18 Lens owned traits (ticket 04).** An entity's owned trait text keeps the self-pin rule in the lens: the trait's own pins sit over the entity's scope, never replaced by it.
 - **Q15 Focus handle (tickets 01, 03).** Ticket 01 owns the chip field focus handle. Ticket 03 builds against the same names and prepares after 01 lands.
 - **Q3 Canvas.** The editor map canvas shows a chip-bearing hint as values in braces (the `describePlaceholders` form). The AI Context instrument already shows resolved text and keeps doing so. The game map shows no hint labels.
 - **Q4 Code.** Play-time stat code reads pronouns resolved in the entity's scope, like descriptions and aliases. Editor runs have no rolls and read placeholder names, like entity names.
