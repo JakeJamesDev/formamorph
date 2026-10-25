@@ -19,6 +19,7 @@ On a question, the asker and staff see **Accept Answer** on each reply and **Cle
 - [ ] Accept and clear show for the asker and staff on questions only, and call the answer route.
 - [ ] Deleting or editing the accepted reply, and a type change, refetch the thread; the pin updates.
 - [ ] The staff status Select on a question offers Open and Closed, with Answered shown disabled.
+- [ ] The edit dialog's warning, moving out of a question with an accepted answer, adds "clears the accepted answer" to its first sentence.
 - [ ] `feedback_answer_set` joins the client's audit actions with a label and a style.
 - [ ] A dev route opens a thread with an accepted answer through ticket 04's stub.
 - [ ] Each guard is proven by removing it once and watching its test fail: accept on a bug, accept for a stranger.
