@@ -38,6 +38,14 @@ Settled in the grill on 2026-10-25.
 - **Q15 Owner order.** The owner level keeps today's order: the host's own first, then Global, then Persona, then each entity.
 - **Q16 Look.** Drill rows reuse DrillPicker's look: the name, then a chevron. Pages reuse the owner page's back-arrow header. This adds no new visual pattern.
 
+Settled for ticket 01 on 2026-10-25.
+
+- **Q17 One row on any page.** Q8 applies on every page, not only the root. A page with one leaf row shows as that row on its parent, with its full breadcrumb.
+- **Q18 One root category.** Q7 applies to the root too. A root with one category opens straight into it. The header names the category and shows no back arrow, since back would land on the same page.
+- **Q19 Back key.** Backspace in an empty search goes back one level. Escape still closes the popover.
+- **Q20 Page row name.** A page row's accessible name reads "Traits, 12 available, opens a page".
+- **Q21 Counts and cutoff.** The cutoff counts every leaf row, disabled ones included. A page with no leaf rows doesn't show. A page whose rows are all disabled still shows, with a count of 0 (Q14).
+
 ## User Stories
 
 1. As an author, I want the Requires picker to open on a short list of categories, so that I don't scroll through hundreds of targets.
