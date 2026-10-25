@@ -24,6 +24,6 @@ On a question, the asker and staff see **Accept Answer** on each reply and **Cle
 - [ ] A dev route opens a thread with an accepted answer through ticket 04's stub.
 - [ ] Each guard is proven by removing it once and watching its test fail: accept on a bug, accept for a stranger.
 - [ ] Frames: `.scratch/frames/accepted-answer-light.png` and `.scratch/frames/accepted-answer-dark.png`, the answered thread at desktop width; `.scratch/frames/accepted-answer-mobile.png` at mobile width.
-- [ ] The help doc's Feedback section describes accepted answers. The changelog fragment folds into ticket 04's entry.
+- [ ] The help doc's Feedback section describes accepted answers. No changelog fragment: the spec session folds this into ticket 04's entry at close.
 
 For you: whether the pinned copy and the mark read as one answer, not two.

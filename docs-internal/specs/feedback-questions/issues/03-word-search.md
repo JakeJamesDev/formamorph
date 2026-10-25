@@ -1,6 +1,7 @@
 # 03: Word Search
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 2916ccee6
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
