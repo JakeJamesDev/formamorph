@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { mediaParentSpec } from '@/lib/mediaParents';
 import { Label } from '@/components/ui/label';
 import { Hint, Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -33,9 +34,7 @@ export function GoToButton({ parent, placeholders, onGoTo }: {
 }) {
   return (
     <Button variant="ghost" size="sm" onClick={() => onGoTo(parent)}>
-      {parent.kind === 'world' ? 'Go to Overview'
-        : parent.kind === 'map' ? 'Go to Locations'
-        : <>Go to{' '}<PlaceholderText text={parent.name} placeholders={placeholders} /></>}
+      {mediaParentSpec(parent.kind).goToLabel ?? <>Go to{' '}<PlaceholderText text={parent.name} placeholders={placeholders} /></>}
     </Button>
   );
 }

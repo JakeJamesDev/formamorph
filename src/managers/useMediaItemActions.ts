@@ -1,18 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
-import { entityImages } from '@/lib/entityImages';
-import { locationImages } from '@/lib/locationImages';
-import { mapImages, withMapImages } from '@/lib/mapBackground';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
-import type { GalleryImage, MediaAsset } from '@/types';
-
-/** A field's new value: the replacing file, or null to clear it. */
-type Write = MediaAsset | null;
-
-/** A replaced gallery image keeps its place and its rule; a removed one leaves with its rule. */
-const writeGallery = (images: readonly GalleryImage[], at: number, next: Write): GalleryImage[] =>
-  images.flatMap((img, i) => (i !== at ? [img] : next ? [{ ...img, data: next.data }] : []));
+import { mediaParentSpec, writeMediaSlot, type MediaEditor, type MediaWrite } from '@/lib/mediaParents';
+import { withImageRule } from '@/lib/entityImages';
+import type { MediaAsset, TraitRequirementRow } from '@/types';
 
 /** "Remove Ambient Sound: Lamp Room", or "Replace Background Music" for world media. */
 export const mediaStepLabel = (verb: string, item: MediaItem): string =>
@@ -43,46 +35,32 @@ export function useMediaStep() {
 export function useMediaItemActions() {
   const { editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview } = useGameData();
 
-  const write = useCallback((item: MediaItem, next: Write) => {
-    const { parent, key } = item;
-    switch (parent.kind) {
-      case 'world':
-        if (key === 'thumbnail') updateWorldOverview({ thumbnail: next?.data ?? '' });
-        else if (key === 'bgm') updateWorldOverview({ bgm: next?.data ?? null });
-        return;
-      case 'map': {
-        const at = item.galleryIndex;
-        if (at !== undefined) {
-          updateWorldOverview({ mapBackground: withMapImages(worldOverview.mapBackground, writeGallery(mapImages(worldOverview), at, next)) });
-        }
-        return;
-      }
-      case 'entity': {
-        if (key === 'sound' || key === 'model') editEntity(parent.id, (e) => ({ ...e, [key]: next ?? undefined }));
-        const at = item.galleryIndex;
-        if (at !== undefined) editEntity(parent.id, (e) => ({ ...e, images: writeGallery(entityImages(e), at, next) }));
-        return;
-      }
-      case 'location': {
-        const location = locations.find((l) => l.id === parent.id);
-        if (!location) return;
-        const at = item.galleryIndex;
-        if (at !== undefined) updateLocation({ ...location, images: writeGallery(locationImages(location), at, next) });
-        else if (key === 'ambientSound') updateLocation({ ...location, ambientSound: next ?? undefined });
-        return;
-      }
-      case 'dictionary': {
-        const book = dictionaries.find((d) => d.id === parent.id);
-        if (book && key === 'thumbnail') updateDictionary({ ...book, thumbnail: next?.data ?? '' });
-      }
-    }
-  }, [editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview]);
+  const editor = useMemo<MediaEditor>(() => ({
+    overview: (patch) => updateWorldOverview(patch(worldOverview)),
+    entity: editEntity,
+    location: (id, edit) => {
+      const location = locations.find((l) => l.id === id);
+      if (location) updateLocation(edit(location));
+    },
+    dictionary: (id, edit) => {
+      const book = dictionaries.find((d) => d.id === id);
+      if (book) updateDictionary(edit(book));
+    },
+  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview]);
 
   const step = useMediaStep();
 
-  const replace = useCallback((item: MediaItem, media: MediaAsset) =>
-    step(mediaStepLabel(item.blank ? 'Add' : 'Replace', item), () => write(item, media)), [step, write]);
-  const remove = useCallback((item: MediaItem) =>
-    step(mediaStepLabel('Remove', item), () => write(item, null)), [step, write]);
-  return { replace, remove };
+  const run = useCallback((verb: string, item: MediaItem, next: MediaWrite) => {
+    const label = mediaParentSpec(item.parent.kind).stepLabel?.(item, worldOverview, next) ?? mediaStepLabel(verb, item);
+    return step(label, () => writeMediaSlot(editor, item, next));
+  }, [editor, step, worldOverview]);
+
+  const replace = useCallback((item: MediaItem, media: MediaAsset) => run(item.blank ? 'Add' : 'Replace', item, media), [run]);
+  const remove = useCallback((item: MediaItem) => run('Remove', item, null), [run]);
+  /** Sets a gallery image's Visibility rule rows, an ordinary edit with no step of its own. */
+  const setRules = useCallback((item: MediaItem, rows: TraitRequirementRow[]) => {
+    const at = item.galleryIndex;
+    if (at !== undefined) mediaParentSpec(item.parent.kind).gallery?.write(editor, item.parent, (images) => withImageRule(images, at, rows));
+  }, [editor]);
+  return { replace, remove, setRules };
 }

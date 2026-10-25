@@ -6,9 +6,9 @@ import type { Entity, GalleryImage, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
-import { rewriteMapImages } from './mapBackground';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
-import { countWorldImages } from './mediaIndex';
+import { worldImageItems } from './mediaIndex';
+import { writeMediaSlot, type MediaEditor } from './mediaParents';
 
 /** Encodes and measures image data-URLs. `encode` never throws; it returns the source on failure. */
 export interface ImageCodec {
@@ -97,49 +97,39 @@ export async function downscaleWorldImages(
   onProgress?: (done: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<World> {
-  const total = countWorldImages(world);
+  const items = worldImageItems(world);
+  const total = items.length;
   let done = 0;
   onProgress?.(0, total);
-  const opt = async (url: string | undefined | null, cap: ImageCap): Promise<string | undefined | null> => {
-    if (!url) return url;
+
+  // Each result is written back by its item's slot, through the parent table the editor writes with.
+  let out = world;
+  const editor = worldEditor(() => out, (next) => { out = next; });
+  for (const item of items) {
     if (signal?.aborted) throw new DOMException('Optimize canceled', 'AbortError');
-    const result = (await deps.shouldEncode(url, cap)) ? await deps.optimize(url, cap) : url;
+    const result = (await deps.shouldEncode(item.value, item.budget)) ? await deps.optimize(item.value, item.budget) : item.value;
+    if (result !== item.value) writeMediaSlot(editor, item, { data: result });
     onProgress?.(++done, total);
-    return result;
-  };
-
-  const thumbnail = await opt(world.worldOverview?.thumbnail, IMAGE_CAPS.thumbnail);
-  const entities: World['entities'] = [];
-  for (const e of world.entities ?? []) {
-    const images: GalleryImage[] = [];
-    for (const img of entityImages(e)) images.push({ ...img, data: (await opt(img.data, IMAGE_CAPS.entity)) ?? img.data });
-    entities.push({ ...e, images });
   }
-  const locations: World['locations'] = [];
-  for (const l of world.locations ?? []) {
-    const images: GalleryImage[] = [];
-    for (const img of locationImages(l)) images.push({ ...img, data: (await opt(img.data, IMAGE_CAPS.background)) ?? img.data });
-    locations.push({ ...l, images });
-  }
-
-  const dictionaries: World['dictionaries'] = [];
-  for (const d of world.dictionaries ?? []) {
-    dictionaries.push(d.thumbnail ? { ...d, thumbnail: (await opt(d.thumbnail, IMAGE_CAPS.thumbnail)) ?? d.thumbnail } : d);
-  }
-
-  const map = await rewriteMapImages(world.worldOverview, async (data) => (await opt(data, IMAGE_CAPS.map)) ?? data);
 
   return {
-    ...world,
-    worldOverview: {
-      ...world.worldOverview,
-      thumbnail: thumbnail ?? null,
-      ...map,
-    },
-    entities,
-    locations,
-    // A world saved without the field keeps it absent.
-    ...(world.dictionaries ? { dictionaries } : {}),
+    ...out,
+    worldOverview: { ...out.worldOverview, thumbnail: out.worldOverview?.thumbnail ?? null },
+    // Galleries come out in their stored shape, a legacy single image folded in.
+    entities: (out.entities ?? []).map((e) => ({ ...e, images: entityImages(e) })),
+    locations: (out.locations ?? []).map((l) => ({ ...l, images: locationImages(l) })),
+  };
+}
+
+/** The editor over a plain world: each write replaces the record it edits in the world `get` returns. */
+function worldEditor(get: () => World, set: (next: World) => void): MediaEditor {
+  const swap = <T extends { id: string }>(list: T[] | undefined, id: string, edit: (item: T) => T) =>
+    (list ?? []).map((item) => (item.id === id ? edit(item) : item));
+  return {
+    overview: (patch) => set({ ...get(), worldOverview: { ...get().worldOverview, ...patch(get().worldOverview) } }),
+    entity: (id, edit) => set({ ...get(), entities: swap(get().entities, id, edit) }),
+    location: (id, edit) => set({ ...get(), locations: swap(get().locations, id, edit) }),
+    dictionary: (id, edit) => set({ ...get(), dictionaries: swap(get().dictionaries, id, edit) }),
   };
 }
 

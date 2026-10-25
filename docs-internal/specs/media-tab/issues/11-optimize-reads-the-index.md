@@ -1,6 +1,6 @@
-# 11: One Media Parent Table
+# 12: One Media Parent Table
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -32,10 +32,18 @@ No docs or changelog change: nothing a player sees moves, except the map step la
 
 ## Acceptance criteria
 
-- [ ] One table holds each parent kind's read, write, cap, rule host and go-to target; the five sites above have no kind branch of their own
-- [ ] A map image edit records the same history label from the canvas and the Media tab
-- [ ] Existing Media tab, image panel, location and Map Background tests stay green
-- [ ] The shrink pass takes its image list and caps from the media index, not from per-field code
-- [ ] A world with every image kind optimizes to the same result as before (existing optimize tests stay green)
-- [ ] Rule rows, gallery order and linked images come through a run unchanged
-- [ ] A guard test fails when an image slot the index lists is skipped by the shrink pass
+- [x] One table holds each parent kind's read, write, cap, rule host and go-to target; the five sites above have no kind branch of their own (`src/lib/mediaParents.ts`; the panel keeps only its field-widget choice)
+- [x] A map image edit records the same history label from the canvas and the Media tab (`mediaParents.test.ts` label test; both sides call `mapGalleryStepLabel`)
+- [x] Existing Media tab, image panel, location and Map Background tests stay green (164 tests, 8 files)
+- [x] The shrink pass takes its image list and caps from the media index, not from per-field code (`worldImageItems`)
+- [x] A world with every image kind optimizes to the same result as before (existing optimize tests stay green)
+- [x] Rule rows, gallery order and linked images come through a run unchanged (guard test compares ids, rules and order)
+- [x] A guard test fails when an image slot the index lists is skipped by the shrink pass (proved by disabling the dictionary write)
+
+## Landed
+
+**Not verified**
+- The Media tab and canvas were not driven in a browser. Jsdom tests cover the panel, actions and Go to.
+
+**For you**
+- Add the first Map Background image from a blank Media tab card and read the step label. It now uses the canvas wording ("Set Map Background").

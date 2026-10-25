@@ -127,7 +127,8 @@ import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
 import type { Entity, Dictionary, World, FocusFieldHint } from '@/types';
-import { mediaHolds, type MediaParent, type MediaParentKind } from '@/lib/mediaIndex';
+import { mediaHolds, type MediaParent } from '@/lib/mediaIndex';
+import { mediaParentSpec } from '@/lib/mediaParents';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
@@ -142,11 +143,6 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
   const surface = `worldEditor.${tab}`;
   return isSurfaceTarget(surface, 'list-toolbar') ? { [TARGET_ATTRIBUTE]: routeText(surface, 'list-toolbar') } : undefined;
 }
-
-/** The tab that holds each kind of media parent other than the world. */
-const MEDIA_PARENT_TABS: Record<Exclude<MediaParentKind, 'world' | 'map'>, FindingSection> = {
-  entity: 'entities', location: 'locations', dictionary: 'dictionary',
-};
 
 const RAIL_STORAGE_KEY = 'formamorph.worldEditor.navRail';
 
@@ -1045,11 +1041,12 @@ const WorldEditorInner = ({
   });
   const selectMediaItem = useCallback((id: string | null) => select('media', id), [select]);
   const goToMediaParent = useCallback((parent: MediaParent) => {
-    if (parent.kind === 'world') setActiveTab('overview');
-    else if (parent.kind === 'map') {
+    const target = mediaParentSpec(parent.kind).goTo;
+    if (target.to === 'overview') setActiveTab('overview');
+    else if (target.to === 'canvas') {
       setActiveTab('locations');
       setLocationView('canvas');
-    } else navigateToBenchItem(MEDIA_PARENT_TABS[parent.kind], parent.id);
+    } else navigateToBenchItem(target.tab, parent.id);
   }, [navigateToBenchItem]);
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
