@@ -61,6 +61,23 @@ If it shows **Not shareable**, a line under it names what the file does not allo
 
 You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no VRM data.
 
+## How to Add Body Sliders in Blender
+<!-- keywords: shape keys, shapekeys, blend shapes, morph targets, custom avatar, slider not showing, key missing, body mesh, wings, horns, tail, transform during play, grow, ctrl+j, join mesh, weight paint, vertex group, ponytail, hair length key, vrm addon -->
+<!-- route: modelDetails -->
+
+Formamorph makes a body slider from each shape key on the mesh named `Body`. A world's stats can drive these sliders. It reads no other mesh for body sliders.
+
+1. Add the shape key to the `Body` mesh. For a new part, such as wings, horns or a tail, join it into `Body`: select the part, then `Body`, and press Ctrl+J.
+2. Give the new part's vertices a bone. In Edit Mode, select the part. In **Vertex Groups**, select a bone's group, such as the head for horns or the hips for a tail. Select **Assign**. Vertices with no bone don't move with the Avatar.
+3. Make the **Basis** with the part hidden, for example shrunk inside the body. Make the shape key with the part fully grown. At 0 the part is gone. At 1 it's fully out.
+4. Keep the object named exactly `Body`, at the top level of the model.
+5. Export the VRM with shape keys on. Don't apply modifiers that remove them.
+6. Import the file and open its details. Each key shows as a slider in **Initial Body Features**.
+
+To tie a slider to a stat, open the stat in the World Editor and pick the key in **Body Sliders**. See [World Editor Stats](World-Editor-Stats).
+
+> Hair meshes give one key only: `LENGTH`, for **Hair Length**. Stats can't drive a hair mesh's keys.
+
 ## How to Change Your Profile Image
 <!-- keywords: picture, photo, pfp, icon, account picture, upload, crop, display pic, user portrait, animated gif, account face, take off my pic, reposition, initial letter shown -->
 <!-- route: profile -->

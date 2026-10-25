@@ -137,7 +137,7 @@ In Simple mode the panel shows the basic fields with no tabs.
 | **Min** / **Max** | The range. The value always stays in it. A percentage stat locks these at 0 and 100, so you set only its **Base Value (%)**. |
 | **Base Value** | Where the stat starts, before traits change it. |
 | **Regen** | Added to the value as story time passes. Pick the span it counts per: **Minute**, **Hour**, **Day** or **Week**. Hour is the default. With **Measured Clock** off, each turn takes the player's **Time Per Turn**, one hour by default. A positive number heals over time, and a negative number drains. An inactive stat gets no Regen. |
-| **Body Sliders** | Binds the [Avatar's](Avatars#in-the-game) body sliders to this stat. The value, from Min to Max, sets each slider's position. Each slider belongs to one stat only. |
+| **Body Sliders** | Binds the [Avatar's](Avatars#in-the-game) body sliders to this stat. The value, from Min to Max, sets each slider's position. Each slider belongs to one stat only. To add sliders to a model, see [How to Add Body Sliders in Blender](Avatars#how-to-add-body-sliders-in-blender). |
 
 ### Availability
 
