@@ -237,6 +237,66 @@ describe('reopening', () => {
   });
 });
 
+describe('a fill over a draft', () => {
+  const FILL = { initialType: 'question', initialTitle: 'How do I change the theme?', initialBody: '' } as const;
+  const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
+  const bodyValue = () => (document.getElementById('feedbackBody') as HTMLTextAreaElement).value;
+  const confirm = () => screen.queryByRole('alertdialog', { name: 'Replace your unsent draft?' });
+  const activeTab = () => screen.getAllByRole('tab').find((tab) => tab.getAttribute('data-state') === 'active')?.textContent;
+  const writeDraft = () => {
+    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    fillDraft();
+    cleanup();
+  };
+
+  it('asks first, and Replace takes the fill in the draft’s place', async () => {
+    writeDraft();
+    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    expect(confirm()).toHaveAccessibleDescription('This deletes your unsent draft.');
+    expect(titleValue()).toBe('Save button does nothing');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    await waitFor(() => expect(confirm()).toBeNull());
+    expect(titleValue()).toBe('How do I change the theme?');
+    expect(bodyValue()).toBe('');
+    expect(activeTab()).toBe('Question');
+    expect(screen.queryByText(/Picked up where you left off/)).not.toBeInTheDocument();
+
+    // The fill is the draft now.
+    cleanup();
+    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    expect(titleValue()).toBe('How do I change the theme?');
+  });
+
+  it('opens on the draft and its branch, unchanged, with Keep Draft', async () => {
+    writeDraft();
+    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Draft' }));
+    await waitFor(() => expect(confirm()).toBeNull());
+    expect(titleValue()).toBe('Save button does nothing');
+    expect(bodyValue()).toBe('Pressing save just spins.');
+    expect(activeTab()).toBe('Bug');
+  });
+
+  it('does not ask when the draft already is the fill', () => {
+    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    cleanup();
+    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+
+    expect(confirm()).toBeNull();
+    expect(titleValue()).toBe('How do I change the theme?');
+  });
+
+  it('takes the fill at once over no draft', () => {
+    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+
+    expect(confirm()).toBeNull();
+    expect(titleValue()).toBe('How do I change the theme?');
+    expect(activeTab()).toBe('Question');
+  });
+});
+
 describe('the two branches', () => {
   /** Radix tab triggers activate on mousedown in jsdom, not click. */
   const pickTab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }));

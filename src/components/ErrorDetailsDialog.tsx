@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { bugReportFromError, openBugReport } from '@/lib/bugReportStore';
+import { bugReportFromError, openFeedback } from '@/lib/feedbackOpener';
 import { copyWithToast } from '@/lib/clipboard';
 import { useDevRoute } from '@/lib/devRouter';
 import {
@@ -33,7 +33,7 @@ export function ErrorDetailsHost() {
     const fill = bugReportFromError(entry);
     const handOff = () => {
       closeErrorDetails();
-      openBugReport(fill);
+      openFeedback('bug', fill);
     };
     // Bug reports are filed against an account. A canceled sign-in leaves this dialog open underneath.
     if (AuthService.token) handOff();
