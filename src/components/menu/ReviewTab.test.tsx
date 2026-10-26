@@ -392,6 +392,26 @@ describe('rejecting', () => {
   });
 });
 
+describe('the download', () => {
+  it('is offered on an update only when it holds new content', async () => {
+    stubQueue([item({ type: 'update', pendingUpdate: { fields: { name: { approved: 'Sedge Landing', pending: 'Sedge Harbor' } } } })]);
+
+    render(<ReviewTab active />);
+    const dialog = await openRow('Sedge Landing');
+
+    expect(within(dialog).queryByRole('button', { name: /Download/ })).toBeNull();
+  });
+
+  it('is offered on an update with new content', async () => {
+    stubQueue([item({ type: 'update', pendingUpdate: { fields: {}, content_changed: true } })]);
+
+    render(<ReviewTab active />);
+    const dialog = await openRow('Sedge Landing');
+
+    expect(within(dialog).getByRole('button', { name: /Download/ })).toBeTruthy();
+  });
+});
+
 describe('the staff ladder', () => {
   it('hides the decision on an admin’s listing from a mod', async () => {
     stubQueue([item({ author: { id: 'boss', username: 'root-admin', role: 'admin' } })]);

@@ -605,10 +605,10 @@ describe('review entries', () => {
 
     render(<AuditLogTab active onOpenListing={vi.fn()} />);
 
-    expect(await screen.findByText('Trust Removed')).toBeTruthy();
+    expect(await screen.findByText('Trust removed')).toBeTruthy();
     // An account id is not a listing id, so the entry offers nothing to open.
     expect(screen.queryByRole('button', { name: 'View' })).toBeNull();
-    expect(AUDIT_ACTION_OPTIONS.map((option) => option.label)).toEqual(expect.arrayContaining(['Trusted', 'Trust Removed']));
+    expect(AUDIT_ACTION_OPTIONS.map((option) => option.label)).toEqual(expect.arrayContaining(['Trusted', 'Trust removed']));
   });
 
   it('opens the listing a review entry names', async () => {
