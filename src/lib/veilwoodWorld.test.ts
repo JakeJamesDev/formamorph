@@ -12,7 +12,11 @@ import {
 } from './traitRuntime';
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
-import type { Entity, PersonaRef, World } from '@/types';
+import { DAYPARTS } from './gameClock';
+import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
+import { canvasRects } from './locationCanvas';
+import { isDescendantLocation } from './locationTree';
+import type { Daypart, Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
 const world: World = migrateWorld(JSON.parse(raw));
@@ -113,6 +117,126 @@ describe('Veil Sight', () => {
     // Iron Stomach raises Toxin's max to 125, so 90 is 72%: not yet poisoned enough.
     expect(owned(settled(inPlay(build('Iron Stomach'), { Toxin: 90 })))).not.toContain('Veil Sight');
     expect(owned(settled(inPlay(build('Iron Stomach'), { Toxin: 94 })))).toContain('Veil Sight');
+  });
+});
+
+describe('Night Hunt', () => {
+  const hunters = ['Shadow Raptor', 'Dread Crawler'].map((name) => world.entities.find((e) => e.name === name)!);
+  const huntsAt = (hunter: Entity, daypart: Daypart) => {
+    const trait = hunter.traits!.find((t) => t.name === 'Night Hunt')!;
+    return (settleDefaults({ ...gate, daypart }).active.owners[hunter.id] ?? []).includes(trait.id);
+  };
+  const isNightPart = (daypart: Daypart) => daypart === 'evening' || daypart === 'night';
+
+  it.each(hunters.flatMap((hunter) => DAYPARTS.map((daypart) => [hunter.name, daypart, hunter] as const)))(
+    'holds for the %s only in the evening and at night (%s)',
+    (_name, daypart, hunter) => {
+      expect(huntsAt(hunter, daypart)).toBe(isNightPart(daypart));
+    },
+  );
+
+  it('doubles the climb of Predator Attention after dusk, and lets it fall back at dawn', () => {
+    const attentionRegen = (state: TraitRuntimeState) => state.stats.find((s) => s.name === 'Predator Attention')?.regen;
+    const day = inPlay(settleDefaults(gate));
+    const night = settleTraits(day, { ...traitWorld, daypart: 'night' }).state;
+    const dawn = settleTraits(night, { ...traitWorld, daypart: 'dawn' }).state;
+    expect(attentionRegen(day)).toBe(2);
+    expect(attentionRegen(night)).toBe(4);
+    expect(attentionRegen(dawn)).toBe(2);
+  });
+});
+
+describe('the blazes chip', () => {
+  it('rolls one surveyor for both legs of the fig road, the cache, the blazes and their lore', () => {
+    const surveyor = world.placeholders!.find((p) => p.name === 'Lost Surveyor')!;
+    const aiTextOf = (list: { name: string; aiDescription?: string }[], name: string) => list.find((item) => item.name === name)!.aiDescription!;
+    const road = world.connections!.find((c) => (c.aToB?.hint ?? '').includes(surveyor.id))!;
+    const lore = world.dictionaries![0].entries.find((e) => e.name === 'The Eastern Edge')!;
+    const texts = [
+      road.aToB!.hint!, road.bToA!.hint!, aiTextOf(world.locations, "The Surveyor's Cache"), aiTextOf(world.entities, "The Surveyor's Blazes"), lore.value,
+    ];
+    // Each fresh roll draws the next value, so two separate rolls would name different surveyors.
+    let draws = 0;
+    const nextValue: PlaceholderPick = (values) => values[draws++ % values.length].text;
+    const rolls = primeRolls(world.placeholders!, texts, {}, nextValue);
+    const resolved = texts.map((text) => resolvePlaceholders(text, { placeholders: world.placeholders!, rolls }));
+    const rolledName = surveyor.values.map((value) => value.text).find((text) => resolved[0].includes(text))!;
+    expect(rolledName).toBeDefined();
+    for (const text of resolved) expect(text).toContain(rolledName);
+  });
+});
+
+describe('the Veilwood canvas', () => {
+  const rects = canvasRects(world.locations);
+  const centerOf = (id: string) => {
+    const rect = rects.get(id)!;
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  };
+  const veilbreakParent = world.locations.find((l) => l.name === 'The Veilbreak')!.parentId;
+
+  it('places every location by hand', () => {
+    expect(world.locations.filter((l) => !l.canvasPosition).map((l) => l.name)).toEqual([]);
+  });
+
+  it('keeps every node clear of every other node but the boxes that hold it', () => {
+    const nested = (one: string, other: string) => isDescendantLocation(world.locations, one, other) || isDescendantLocation(world.locations, other, one);
+    const overlaps: string[] = [];
+    for (const first of world.locations) {
+      for (const second of world.locations) {
+        if (first.id >= second.id || nested(first.id, second.id)) continue;
+        const [one, other] = [rects.get(first.id)!, rects.get(second.id)!];
+        const apart = one.x >= other.x + other.width || other.x >= one.x + one.width || one.y >= other.y + other.height || other.y >= one.y + one.height;
+        if (!apart) overlaps.push(`${first.name} / ${second.name}`);
+      }
+    }
+    expect(overlaps).toEqual([]);
+  });
+
+  // The eight-point compass word for the way from one node's center to another's, north up.
+  const POINTS = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
+  const compass = (fromId: string, toId: string) => {
+    const [from, to] = [centerOf(fromId), centerOf(toId)];
+    const degrees = (Math.atan2(from.y - to.y, to.x - from.x) * 180) / Math.PI;
+    return POINTS[(Math.round(degrees / 45) + 8) % 8];
+  };
+  const idOfPlace = (name: string) => world.locations.find((l) => l.name === name)!.id;
+
+  // [place, the way the text gives it, from where], taken from the locations' AI descriptions.
+  const LORE: [string, string, string][] = [
+    ['Gloomcap Thicket', 'northeast', 'The Drowned Hollow'],
+    ['Gloomcap Thicket', 'northwest', 'The Hollow Fig'],
+    ['The Gloam Cathedral', 'north', 'Gloomcap Thicket'],
+    ['The Predator Dens', 'east', 'The Gloam Cathedral'],
+    ['The Predator Dens', 'northeast', 'The Hollow Fig'],
+    ['The Drowned Hollow', 'west', 'The Hollow Fig'],
+    ['Blackwater Channels', 'southeast', 'The Drowned Hollow'],
+    ['Blackwater Channels', 'south', 'The Hollow Fig'],
+    ['Sunkwater', 'south', 'Blackwater Channels'],
+    ['The Eastern Edge', 'southeast', 'The Hollow Fig'],
+    ['The Eastern Edge', 'northeast', 'Sunkwater'],
+    ['The Veilbreak', 'east', 'The Hollow Fig'],
+    ['The Veilbreak', 'northeast', 'The Eastern Edge'],
+  ];
+
+  it.each(LORE)('puts %s %s of %s', (place, way, from) => {
+    expect(compass(idOfPlace(from), idOfPlace(place))).toBe(way);
+  });
+
+  it('points every Travel Hint that opens with a compass word the way the canvas runs', () => {
+    const wrong: string[] = [];
+    for (const connection of world.connections ?? []) {
+      for (const [from, to, hint] of [[connection.a, connection.b, connection.aToB?.hint], [connection.b, connection.a, connection.bToA?.hint]]) {
+        const way = /^(northeast|northwest|southeast|southwest|north|south|east|west)\b/.exec(hint ?? '')?.[1];
+        if (way && way !== compass(from!, to!)) wrong.push(`${hint} (canvas: ${compass(from!, to!)})`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it('puts the Veilbreak east of everything', () => {
+    const veilbreak = centerOf(idOfPlace('The Veilbreak'));
+    const others = world.locations.filter((l) => l.parentId === veilbreakParent && l.name !== 'The Veilbreak');
+    for (const other of others) expect(centerOf(other.id).x).toBeLessThan(veilbreak.x);
   });
 });
 

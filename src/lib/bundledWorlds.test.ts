@@ -4,6 +4,7 @@ import { runRules } from './testBench/rules';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 import { encodePlaceholderToken, PLACEHOLDER_TOKEN_SOURCE } from './placeholders';
+import { PRE_EXPANSION_SHA, worldAt } from '@/test/bundledRevisions';
 import type { Entity, GalleryImage, Script, Tool, Trait, TraitGroup, TraitRequirementRow, World } from '@/types';
 
 /** The shared suite over every bundled world, loaded the way the seeder loads it. */
@@ -26,7 +27,7 @@ const FEATURES: Record<string, Feature[]> = {
   'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips'],
   'valentines': ['scripts', 'relationships', 'newFieldChips'],
-  'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights'],
+  'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips'],
 };
 
 /** The expansion's assignment table: features a world ticket still has to deliver. */
@@ -37,7 +38,7 @@ const PLANNED: Record<string, Feature[]> = {
   'slime': ['visibilityRules'],
   'sugarscape': ['mapBackground', 'visibilityRules'],
   'valentines': ['visibilityRules'],
-  'veilwood': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
+  'veilwood': ['mapBackground', 'visibilityRules'],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */
@@ -174,7 +175,9 @@ describe('the bundled set', () => {
 });
 
 describe('the expansion feature detectors', () => {
-  const base = () => migrateWorld(JSON.parse(worlds.find(([id]) => id === 'veilwood')![1]) as Record<string, unknown>);
+  // The pre-expansion Veilwood shows none of the expansion features, and a past revision never gains one.
+  const before = worldAt(PRE_EXPANSION_SHA, 'veilwood');
+  const base = () => migrateWorld(structuredClone(before));
   const atNight: TraitRequirementRow[] = [{ all: [{ kind: 'time', dayparts: ['night', 'evening'] }] }];
   const script = (code: string): Script => ({ id: 'script', timing: 'after', code });
   const tool = (handler: Tool['handler']): Tool =>

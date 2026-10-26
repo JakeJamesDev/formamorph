@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { migrateWorld } from './version';
-import { canBePlayer, resolveOwners, type OwnerWorld } from './owners';
+import { resolveOwners, type OwnerWorld } from './owners';
 import { globalStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
 import { seedEntityStats } from './entityStats';
 import { seedNewGameStats } from './traitRuntime';
@@ -59,10 +59,10 @@ describe.each(OWNING)('the %s world', (id) => {
     expect(customPersona(world).traits?.length).toBeGreaterThan(0);
     const { owners } = resolveOwners(ownerWorld(world), { source: 'none' });
     const loose = looseStats(world);
-    /** The stats an owner's trait rows may name. A player owner's rows may also name a loose world stat. */
+    /** The stats an owner's trait rows may name: its own, then the loose world stats, played or not. Mirrors `globalRowTraits`. */
     const reachable = (entity: Entity | null | undefined): Stat[] => {
       if (!entity) return loose;
-      return [...resolvedEntityStats(statWorld(world), entity), ...(canBePlayer(entity) ? loose : [])];
+      return [...resolvedEntityStats(statWorld(world), entity), ...loose];
     };
     for (const owner of owners) {
       const ids = new Set(reachable(owner.entity).map((s) => s.id));

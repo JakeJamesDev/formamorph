@@ -7956,6 +7956,208 @@
     }
   },
   "veilwood": {
+    "Dread Crawler": {
+      "boundStats": {},
+      "boundTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: it is evening or night, and the Dread Crawler has left the Dens. It swims the channels and climbs the trunks across the whole wood, listening. Every sound the player makes carries farther in the night quiet.",
+            "id": "crawler_night_hunt",
+            "mode": "alwaysOn",
+            "name": "Night Hunt",
+            "order": 0,
+            "playerDescription": "After dusk the crawler leaves its den and hunts the whole wood.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "attention",
+                "type": "regen",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "carriedStats": {},
+      "carriedTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: it is evening or night, and the Dread Crawler has left the Dens. It swims the channels and climbs the trunks across the whole wood, listening. Every sound the player makes carries farther in the night quiet.",
+            "id": "crawler_night_hunt",
+            "mode": "alwaysOn",
+            "name": "Night Hunt",
+            "order": 0,
+            "playerDescription": "After dusk the crawler leaves its den and hunts the whole wood.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "attention",
+                "type": "regen",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "portableStats": {},
+      "portableTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: it is evening or night, and the Dread Crawler has left the Dens. It swims the channels and climbs the trunks across the whole wood, listening. Every sound the player makes carries farther in the night quiet.",
+            "id": "crawler_night_hunt",
+            "mode": "alwaysOn",
+            "name": "Night Hunt",
+            "order": 0,
+            "playerDescription": "After dusk the crawler leaves its den and hunts the whole wood.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "attention",
+                "type": "regen",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "Shadow Raptor": {
+      "boundStats": {},
+      "boundTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: it is evening or night, and the Shadow Raptor has left the Dens. It ranges the whole wood on the ground, fast and silent until it screams. Any open ground can hold it now.",
+            "id": "raptor_night_hunt",
+            "mode": "alwaysOn",
+            "name": "Night Hunt",
+            "order": 0,
+            "playerDescription": "After dusk the raptor leaves its den and hunts the whole wood.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "attention",
+                "type": "regen",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "carriedStats": {},
+      "carriedTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: it is evening or night, and the Shadow Raptor has left the Dens. It ranges the whole wood on the ground, fast and silent until it screams. Any open ground can hold it now.",
+            "id": "raptor_night_hunt",
+            "mode": "alwaysOn",
+            "name": "Night Hunt",
+            "order": 0,
+            "playerDescription": "After dusk the raptor leaves its den and hunts the whole wood.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "attention",
+                "type": "regen",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "portableStats": {},
+      "portableTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: it is evening or night, and the Shadow Raptor has left the Dens. It ranges the whole wood on the ground, fast and silent until it screams. Any open ground can hold it now.",
+            "id": "raptor_night_hunt",
+            "mode": "alwaysOn",
+            "name": "Night Hunt",
+            "order": 0,
+            "playerDescription": "After dusk the raptor leaves its den and hunts the whole wood.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "attention",
+                "type": "regen",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
     "The Wanderer": {
       "boundStats": {
         "stats": [
@@ -8393,7 +8595,7 @@
             ]
           },
           {
-            "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+            "aiDescription": "The wood turns the player in circles. Every path that tries to leave the wood, except east, bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
             "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
             "id": "veils_hold",
             "mode": "alwaysOn",
@@ -8870,7 +9072,7 @@
             ]
           },
           {
-            "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+            "aiDescription": "The wood turns the player in circles. Every path that tries to leave the wood, except east, bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
             "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
             "id": "veils_hold",
             "mode": "alwaysOn",
@@ -9347,7 +9549,7 @@
             ]
           },
           {
-            "aiDescription": "The wood turns the player in circles. Every path except east bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
+            "aiDescription": "The wood turns the player in circles. Every path that tries to leave the wood, except east, bends back toward the Drowned Hollow, and the player keeps finding their own tracks. East, the way the lantern moths drift at dusk, is the one direction that keeps going.",
             "groupId": "7d1c5e2a-3b84-4f6e-9a17-c2e85b40d913",
             "id": "veils_hold",
             "mode": "alwaysOn",
