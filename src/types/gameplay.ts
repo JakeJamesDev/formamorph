@@ -248,6 +248,8 @@ export interface GameState {
   entityStatChanges?: EntityStatChanges;
   /** Absent ⇒ none. */
   codePins?: CodePins;
+  /** Absent ⇒ none. */
+  loreToggles?: LoreToggles;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy
    *  saves stored a bare `string[]` of names; those are normalized to `{ name, revealed: true }` on load. */
   visibleEntities: SceneEntity[];
@@ -384,6 +386,18 @@ export type PersonaRef =
 /** Placeholder id → what stat code pinned it to: one text, or the list an Object pin holds. Masks the roll
  *  and every authored pin until code unpins it. */
 export type CodePins = Readonly<Record<string, string | readonly string[]>>;
+
+/** What scripts set on one dictionary entry in play. A field left out reads as the book's copy. */
+export interface LoreEntryToggle {
+  enabled?: boolean;
+  constant?: boolean;
+}
+
+/** Book id → what scripts set on that book and its entries, by entry id. The save's books stay as entered. */
+export type LoreToggles = Readonly<Record<string, {
+  enabled?: boolean;
+  entries?: Readonly<Record<string, LoreEntryToggle>>;
+}>>;
 
 /** Per-playthrough Wildcard rolls, frozen in the save. */
 export interface PlaceholderRolls {

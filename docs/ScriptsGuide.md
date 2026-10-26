@@ -365,7 +365,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
-| `dictionaries` | `id`, `name`, `entries`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
+| `dictionaries` | `id`, `name`, `entries`, `placeholders` | `dictionaries.<Dictionary>.entries.<Entry>.enabled` | `dictionaries.<Dictionary>.entries.<Entry>.enabled = true` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds one name to those objects. A script reads only the name its own timing adds:
@@ -884,9 +884,9 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 - The editor warns on a dictionary name it doesn't know, because a library dictionary can bring more.
 
 #### Entries
-<!-- keywords: dictionary entries, lorebook entry, entry text, trigger keywords, read an entry, entry value, keys -->
+<!-- keywords: dictionary entries, lorebook entry, entry text, trigger keywords, read an entry, entry value, keys, unlock lore, enable an entry, disable an entry, constant entry, always on lore -->
 
-`dictionaries.<Dictionary>.entries` holds the dictionary's entries by entry name. A name with a space needs brackets: `dictionaries.Lore.entries["Old King"]`. Each entry has four fields. All are read-only.
+`dictionaries.<Dictionary>.entries` holds the dictionary's entries by entry name, disabled ones included. A name with a space needs brackets: `dictionaries.Lore.entries["Old King"]`. Each entry has six fields. `enabled` and `constant` take writes; the others are read-only.
 
 | Field | What it is |
 | --- | --- |
@@ -894,15 +894,28 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 | `name` | The entry's name |
 | `keys` | The entry's Trigger Keywords, as a list |
 | `value` | The entry's Value, with each placeholder chip filled in |
+| `enabled` | True when the entry is on. Write `true` or `false` to switch it |
+| `constant` | True when the AI gets the entry on every turn, with no keyword match. Write `true` or `false` to change it |
 
 ```javascript
 // The lore entry names the king. Use it when the story is quiet.
 if (dictionaries.Lore.entries["Old King"].value.includes("exiled")) self.value += 1;
 ```
 
-- A disabled entry is not listed. A dictionary the player turned off lists none.
-- Of two entries with one name in a dictionary, the later one is the entry. An entry with no name has no key.
-- A name the dictionary has no entry for reads as a blank entry. Its `id`, `name` and `value` are `''` and `keys` is an empty list.
+```javascript
+// A world script: unlock the vault's lore once the player holds the key.
+if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabled = true;
+```
+
+- **A disabled entry is listed with `enabled: false`.** A dictionary the player turned off lists none.
+- **Of two entries with one name, an enabled one is the entry.** Among two enabled or two disabled entries, the later one is. A write through the name reaches that entry. An entry with no name has no key.
+- **A name the dictionary has no entry for reads as a blank entry.** Its `id`, `name` and `value` are `''`, `keys` is an empty list, and `enabled` and `constant` are false. A write through it is ignored and reported.
+- **A write applies after the run.** Writes apply in run order, so a later write wins. Later in the same run, the entry reads what you set, and its name stays on the entry it named at the start of the run.
+- **A Before the AI write shapes this turn.** The narration reads the entry this turn. An After the AI write shapes the next turn. A During AI Output write waits for the After the AI scripts' writes.
+- **It persists for the playthrough.** The save keeps it, and an undo or a re-roll takes it back with the turn. The dictionary itself never changes.
+- **Keywords find a newly enabled entry at once.** Meaning-based recall can miss it until the game has indexed it, which starts at once and does not hold up the turn.
+- **Writing anything but `true` or `false` fails the run.**
+- **A user Tool can't write it.** The write is ignored and reported, as every user Tool write is.
 ### Narration
 <!-- keywords: rewrite a sentence, sentence hook, during ai output, narration object, narration sentence, sent, buffered, full, index, filter narration, replace words in the story, narration is not defined, error underline on narration -->
 <!-- route: worldEditorStat.code -->

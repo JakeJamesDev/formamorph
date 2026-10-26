@@ -9,6 +9,10 @@ import {
 } from './statCodePaths';
 import { clockReading, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 import { SCRIPT_TIMING_LABEL } from './scripts';
+import { namedEntries, type LoreWrite } from './loreToggles';
+
+/** A lore write with the path code wrote it through. */
+export type PathedLoreWrite = LoreWrite & { path: string };
 
 // Stat code sees only the marshalled stat data below.
 
@@ -101,6 +105,11 @@ export interface StatCodeResult {
   entities?: EntityTraitWrites[];
   /** Entity names the code switched a trait through that no entity in play has; each switch was dropped. */
   unknownEntities?: string[];
+  /** The dictionary entry fields the code wrote, each entry's in assignment order, with the path code wrote through.
+   *  Absent when it wrote none. */
+  lore?: PathedLoreWrite[];
+  /** Entry fields the code wrote through a name no entry has, as code spelled them; each write was ignored. */
+  unknownLore?: string[];
   /** Read-only fields the code wrote, as code spelled them, such as `traits.Brave.mode`; each write was dropped. */
   readOnlyWrites?: string[];
   /** The sentence the code left, by return or by `narration.sentence`. Present on a During AI Output run that
@@ -322,10 +331,13 @@ export interface SandboxDictionaryEntry {
   name: string;
   keys: readonly string[];
   value: string;
+  /** As the lore overlay leaves it. */
+  enabled: boolean;
+  constant: boolean;
 }
 
 /** One entry of the sandbox's `dictionaries`: a book's code name, its owner node in the placeholder tree, and its
- *  enabled entries in authored order. */
+ *  entries in authored order, disabled ones included. */
 export interface SandboxDictionary {
   name: string;
   id?: string;
@@ -894,18 +906,19 @@ const isPlayed = (entity: SandboxEntity, persona: SandboxEntity): boolean =>
   entity === persona || (!!persona.id && entity.id === persona.id);
 
 /** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
- *  `fields`, built by `build(key, data, unknown) => [values, rows, hidden?]`, where `hidden` fields are left
- *  out of the entry's keys; an unknown name builds from `blank`.
+ *  `fields`, built by `build(key, data, unknown) => [values, rows, hidden?, setters?]`, where `hidden` fields are
+ *  left out of the entry's keys and a field in `setters` takes its write there; an unknown name builds from `blank`.
  *  `entry(key, data, unknown, tag)` builds one more, whose reader row carries `tag`. */
 const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build) => {
   const readers = [];
   const entry = (key, data, unknown, tag = null) => {
-    const [values, rows, hidden = []] = build(key, data, unknown);
+    const [values, rows, hidden = [], setters = {}] = build(key, data, unknown);
     const written = [];
     readers.push([key, unknown, rows, written, tag]);
     const out = {};
     for (const field of fields) {
-      define(out, field, { enumerable: !hidden.includes(field), get: () => values[field], set: () => (${ADD_ONCE})(written, field) });
+      const set = setters[field] || (() => (${ADD_ONCE})(written, field));
+      define(out, field, { enumerable: !hidden.includes(field), get: () => values[field], set });
     }
     return freeze(out);
   };
@@ -1011,27 +1024,40 @@ const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceho
 /** The fields on a dictionary entry. None takes a write. */
 const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'entries', 'placeholders'] as const;
 
-/** The fields on an entry of a book's `entries`. None takes a write. */
-const DICTIONARY_ENTRY_READ_ONLY_FIELDS = ['id', 'name', 'keys', 'value'] as const;
+/** The fields on an entry of a book's `entries`. Only `DICTIONARY_ENTRY_WRITABLE_FIELDS` take a write. */
+const DICTIONARY_ENTRY_KEYS = ['id', 'name', 'keys', 'value', 'enabled', 'constant'] as const;
 
-/** The `dictionaries` prelude, the later of two books or two entries sharing a name winning. A book's `entries` map
- *  comes from the host on its first read (Q48), and each `value` resolves on its own (Q54). A book's reader rows are
- *  its `entries` map's rows. */
+/** The entry fields a write sets, through the lore overlay. */
+export const DICTIONARY_ENTRY_WRITABLE_FIELDS = ['enabled', 'constant'] as const satisfies readonly (keyof SandboxDictionaryEntry)[];
+
+/** Each book under its code name, the later of two sharing one winning. */
+const namedBooks = (dictionaries: readonly SandboxDictionary[]) => new Map(dictionaries.map((book) => [book.name, book]));
+
+/** The `dictionaries` prelude, the later of two books sharing a name winning. A book's `entries` map comes from the
+ *  host on its first read (Q48), and each `value` resolves on its own (Q54). An entry's `enabled` and `constant`
+ *  take writes, which read back in the run; its reader rows are the `[field, value]` pairs assigned, in order. A
+ *  book's reader rows are its `entries` map's rows. */
 const dictionariesPrelude = (
   dictionaries: readonly SandboxDictionary[], { indexOf }: FlatPlaceholderMap, reads: HostReads, resolve?: (value: string) => string,
 ): string => {
-  const entriesOf = (book: SandboxDictionary) =>
-    [...new Map((book.entries ?? []).map(({ id, name, keys, value }) => [name, { id, keys, value: reads.text(value, resolve) }]))];
-  const spec = [...new Map(dictionaries.map((book) =>
-    [book.name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders), entries: reads.deferred(() => entriesOf(book)) }]))];
+  const entriesOf = (book: SandboxDictionary) => [...namedEntries(book.entries ?? [])]
+    .map(([name, { id, keys, value, enabled, constant }]) => [name, { id, keys, value: reads.text(value, resolve), enabled, constant }]);
+  const spec = [...namedBooks(dictionaries)].map(([name, book]) =>
+    [name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders), entries: reads.deferred(() => entriesOf(book)) }]);
   return readOnlyEntryMapPrelude(`dictionaries, ${DICTIONARY_WRITES}`, spec, [
     `const lazy = ${LAZY_TEXT};`,
-    `const blankEntry = { id: '', keys: [], value: -1 };`,
+    `const blankEntry = { id: '', keys: [], value: -1, enabled: false, constant: false };`,
     `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}, spec, { id: '', ph: -1, entries: -1 }, (key, data, unknown) => {`,
     `  let built = null;`,
-    `  const entries = () => built || (built = entryMap(${JSON.stringify(DICTIONARY_ENTRY_READ_ONLY_FIELDS)},`,
-    `    data.entries < 0 ? [] : ${HOST_READ}(data.entries), blankEntry, (name, entry, stray) =>`,
-    `    [lazy({ id: entry.id, name: stray ? '' : name, keys: freeze([...entry.keys]), value: entry.value }, ['value'], '', ${NO_NOTE}), () => []]));`,
+    `  const entries = () => built || (built = entryMap(${JSON.stringify(DICTIONARY_ENTRY_KEYS)},`,
+    `    data.entries < 0 ? [] : ${HOST_READ}(data.entries), blankEntry, (name, entry, stray) => {`,
+    `      const values = lazy({ id: entry.id, name: stray ? '' : name, keys: freeze([...entry.keys]), value: entry.value,`,
+    `        enabled: entry.enabled, constant: entry.constant }, ['value'], '', ${NO_NOTE});`,
+    `      const assigned = [];`,
+    `      const setters = {};`,
+    `      for (const field of ${JSON.stringify(DICTIONARY_ENTRY_WRITABLE_FIELDS)}) setters[field] = (next) => { values[field] = next; assigned.push([field, next]); };`,
+    `      return [values, () => assigned, [], setters];`,
+    `    }));`,
     `  const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) };`,
     `  define(values, 'entries', { get: () => entries()[0] });`,
     `  return [values, () => (built ? built[3]() : [])];`,
@@ -1059,13 +1085,38 @@ const entryWriteRows = (rows: unknown): EntryWriteRow[] =>
 /** The rows in a read-only entry map's dump. */
 const readEntryWriteRows = (dump: string): EntryWriteRow[] => entryWriteRows(JSON.parse(dump));
 
-/** The read-only fields the run wrote on `dictionaries` entries and their `entries`, as code spelled them. */
-const readDictionaryWrites = (dump: string): string[] =>
-  readEntryWriteRows(dump).flatMap(({ name, fields, mapRows }) => {
-    const book = memberPath('dictionaries', name);
-    return [...readOnlyPaths(book, fields),
-      ...entryWriteRows(mapRows).flatMap((row) => readOnlyPaths(memberPath(`${book}.entries`, row.name), row.fields))];
-  });
+/** What the run wrote through `dictionaries`: the entry fields it set, the ones through a name no entry has and
+ *  the read-only fields, as code spelled them; or why the run fails. */
+function readDictionaryWrites(
+  dump: string, dictionaries: readonly SandboxDictionary[],
+): { writes: PathedLoreWrite[]; unknown: string[]; readOnly: string[] } | { error: string } {
+  const books = namedBooks(dictionaries);
+  const writes: PathedLoreWrite[] = [];
+  const unknown: string[] = [];
+  const readOnly: string[] = [];
+  for (const { name, fields, mapRows } of readEntryWriteRows(dump)) {
+    const path = memberPath('dictionaries', name);
+    readOnly.push(...readOnlyPaths(path, fields));
+    const book = books.get(name);
+    const entries = namedEntries(book?.entries ?? []);
+    for (const row of entryWriteRows(mapRows)) {
+      const entryPath = memberPath(`${path}.entries`, row.name);
+      readOnly.push(...readOnlyPaths(entryPath, row.fields));
+      const entry = row.unknown ? undefined : entries.get(row.name);
+      for (const pair of Array.isArray(row.mapRows) ? row.mapRows : []) {
+        const [field, value] = Array.isArray(pair) ? pair : [];
+        if (!isLoreField(field)) continue;
+        if (typeof value !== 'boolean') return { error: `${entryPath}.${field} must be true or false` };
+        if (book?.id && entry) writes.push({ book: book.id, entry: entry.id, field, value, path: `${entryPath}.${field}` });
+        else if (!unknown.includes(`${entryPath}.${field}`)) unknown.push(`${entryPath}.${field}`);
+      }
+    }
+  }
+  return { writes, unknown, readOnly };
+}
+
+const isLoreField = (field: unknown): field is LoreWrite['field'] =>
+  (DICTIONARY_ENTRY_WRITABLE_FIELDS as readonly unknown[]).includes(field);
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 export const memberPath = (root: string, name: string) =>
@@ -1951,6 +2002,8 @@ export const executeStatCode = async (
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
       const entityWrites = readEntityWrites(entitiesDump, keyed, place);
       if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
+      const loreWrites = readDictionaryWrites(dictionariesDump, dictionaries);
+      if ('error' in loreWrites) return failure(loreWrites.error, 'bad-write');
       const unknownStatWrites = [...statWrites.unknown, ...ownerStatWrites.unknown, ...entityStatWrites.unknown];
       const disabledStatWrites = [...statWrites.disabled, ...ownerStatWrites.disabled, ...entityStatWrites.disabled];
       const readOnlyWrites = [
@@ -1961,7 +2014,7 @@ export const executeStatCode = async (
         ...placeholderWrites.readOnly,
         ...traitWrites.readOnly,
         ...entityWrites.readOnly,
-        ...readDictionaryWrites(dictionariesDump),
+        ...loreWrites.readOnly,
       ];
 
       const settled = (value: number | null): StatCodeResult => ({
@@ -1981,6 +2034,8 @@ export const executeStatCode = async (
         ...(traitWrites.acquired.length ? { acquiredWrites: traitWrites.acquired } : {}),
         ...(entityWrites.writes.length ? { entities: entityWrites.writes } : {}),
         ...(entityWrites.unknown.length ? { unknownEntities: entityWrites.unknown } : {}),
+        ...(loreWrites.writes.length ? { lore: loreWrites.writes } : {}),
+        ...(loreWrites.unknown.length ? { unknownLore: loreWrites.unknown } : {}),
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
         ...(sentence === undefined ? {} : { sentence }),
         ...(worldWrites.writes ? { worldWrites: worldWrites.writes } : {}),

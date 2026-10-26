@@ -1,6 +1,6 @@
 # 06: Lore Entry Toggles
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -17,18 +17,30 @@ Spec: Q11–Q13, Q16, Q23, Q26–Q28, stories 26–33, 39.
 
 ## Acceptance criteria
 
-- [ ] A Before the AI write switching a disabled entry on puts its value in this turn's narration request when its keyword matches
-- [ ] An After the AI write reaches the next turn's request and not this one's
-- [ ] A `constant = true` write injects the entry with no keyword match
-- [ ] Undo after the turn restores the entry's earlier state in the next request
-- [ ] A stats re-roll starts from the pre-turn lore state
-- [ ] `dictionaries.Lore.entries.Hidden.enabled` reads false for an authored-disabled entry; a book with an enabled and a disabled entry of one name resolves to the enabled one, and a write reaches it
-- [ ] An enabled entry gets an embedding job queued, and the turn does not wait for it
-- [ ] A user Tool lists disabled entries, and its writes list as dropped
-- [ ] Editor completions and hover cards list disabled entries
+- [x] A Before the AI write switching a disabled entry on puts its value in this turn's narration request when its keyword matches — `GameViewer.loreToggles.test.tsx` "puts an entry a Before the AI script switches on…"
+- [x] An After the AI write reaches the next turn's request and not this one's — same file, "keeps an After the AI write out…"
+- [x] A `constant = true` write injects the entry with no keyword match — same file, "injects an entry made constant…"
+- [x] Undo after the turn restores the entry's earlier state in the next request — same file, "restores the earlier lore state… after a rewind"; `GameplayContext.codePins.test.tsx` save/load round trip
+- [x] A stats re-roll starts from the pre-turn lore state — same file, "starts a stats re-roll from the pre-turn lore state" (mutation-checked)
+- [x] `dictionaries.Lore.entries.Hidden.enabled` reads false for an authored-disabled entry; a book with an enabled and a disabled entry of one name resolves to the enabled one, and a write reaches it — `statCodeTurn.dictionaryEntries.test.ts` (Q12, Q26, Q49 cases)
+- [x] An enabled entry gets an embedding job queued, and the turn does not wait for it — `GameViewer.loreToggles.test.tsx` two Q28 cases (the entry's batch never answers; an entry enabled mid-drain queues when the drain ends)
+- [x] A user Tool lists disabled entries, and its writes list as dropped — `toolRunner.test.ts` "lists a disabled entry as off… (Q27)"
+- [x] Editor completions and hover cards list disabled entries — `codeCards.worldItems.test.ts`, `statCodeVariableTree.test.ts`
 
 Remind the user in the landing: the overlay is an additive save-shape change.
 
 ## Blocked by
 
 - None (can start immediately)
+
+## Landed
+
+**Not verified**
+- None of the criteria. No live play in the browser; every check is a jsdom or node test.
+
+**For you**
+- Save shape: `GameState.loreToggles` (the overlay) and an optional `lore` list on the saved World Tool trigger-write row (Q50). Both are additive.
+- `dictionaries.X.entries` shipped in v3.4.0 without disabled entries. The changelog entry says scripts now see them; the Tools guide tells old `world.dictionary` scripts to filter on `enabled`.
+- The planner reads no lore (only the narration prompt fills the dictionary chip), so the spec's "the planner" reader needs no change.
+- For ticket 07: the Tool snapshot's built-in lookup (`world.dictionary`) reads the world's authored books, not the playthrough's, so a library book added at world entry never reaches it. Q39 makes that reachable.
+

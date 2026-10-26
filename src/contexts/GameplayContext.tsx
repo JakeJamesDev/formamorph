@@ -7,7 +7,7 @@ import { toastError } from '@/lib/linkToast';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
-import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
+import { loreEntries, NO_LORE_TOGGLES } from '../lib/loreToggles';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { turnActivity } from '../lib/turnActivity';
 import { setLiveReasoning } from '../lib/reasoningStreamStore';
@@ -43,6 +43,7 @@ import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
 import type {
   CharacterData,
   CodePins,
+  LoreToggles,
   Entity,
   EntityStatChanges,
   EntityStatValues,
@@ -169,6 +170,8 @@ function useProvideGameplay() {
   }, []);
   // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
+  // What scripts switched on dictionary entries. Snapshotted per turn, so undo and re-roll restore it.
+  const [loreToggles, setLoreToggles] = useState<LoreToggles>(NO_LORE_TOGGLES);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -242,7 +245,7 @@ function useProvideGameplay() {
   // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
   const [openingCue, setOpeningCue] = useState<string | null>(null);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
-  const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
+  const runtimeDictionary = useMemo(() => loreEntries(runtimeDictionaries, loreToggles), [runtimeDictionaries, loreToggles]);
   const libraryDictionaries = useMemo(() => libraryBooksInPlay(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
   const added = useMemo(() => addedCharacters(discoveredEntities), [discoveredEntities]);
   // Added characters' and library books' placeholders join the session's set, and their Wildcards are drawn.
@@ -339,6 +342,7 @@ function useProvideGameplay() {
       ...(metEntities.length ? { metEntities: [...metEntities] } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
+      ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
       visibleEntities,
       discoveredEntities,
       suppressedCharacterNames,
@@ -359,8 +363,8 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
-      gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, loreToggles, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+      currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
    *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
@@ -388,6 +392,7 @@ function useProvideGameplay() {
       setEntityFollowers(gameState.entityFollowers ?? []);
       setMetEntities(gameState.metEntities ?? []);
       setCodePins(gameState.codePins ?? EMPTY_PINS);
+      setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
@@ -874,6 +879,8 @@ function useProvideGameplay() {
     setMetEntities,
     codePins,
     setCodePins,
+    loreToggles,
+    setLoreToggles,
     runtimeDictionaries,
     setRuntimeDictionaries,
     libraryDictionaries,

@@ -5,6 +5,7 @@
 
 import type { SyntaxNode } from '@lezer/common';
 import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSurface';
+import { namedEntries } from '@/lib/loreToggles';
 import { canBePlayer } from '@/lib/owners';
 import type { DocTarget } from '@/lib/docs/docsLinks';
 import type {
@@ -457,8 +458,8 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
     }
     case 'dictionaryEntry': {
       const card = world('entry', keyPath(`${keyPath('dictionaries', name.dictionary)}.entries`, name.key), 'DictionaryEntry');
-      const id = options.placeholders?.dictionaries?.findLast((book) => book.name === name.dictionary)
-        ?.entries?.findLast((entry) => entry.name === name.key)?.id;
+      const entries = options.placeholders?.dictionaries?.findLast((book) => book.name === name.dictionary)?.entries;
+      const id = entries && namedEntries(entries).get(name.key)?.id;
       const record = options.lookup?.dictionary(name.dictionary);
       const entry = id === undefined ? undefined : record?.dictionary.entries.find((each) => each.id === id);
       return entry && record

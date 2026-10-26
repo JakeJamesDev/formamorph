@@ -73,6 +73,7 @@ const [entityOwns, dictionaryOwns] = phMap([
   { name: 'Dictionary', children: [{ name: 'Placeholder', value: 'a' }] },
 ]);
 // Each owner holds a stat named `Stat`, under its own id, so a write's target shows in the owner it landed on.
+const entry = { id: 'entry', name: 'Entry', keys: ['entry'], value: 'An entry.', enabled: true, constant: false };
 const ownStats = (id: string) => ({ stats: [stat({ id, name: 'Stat' })] });
 const world = {
   placeholders: phMap([{ name: 'Placeholder', value: 'a' }]),
@@ -81,7 +82,7 @@ const world = {
   persona: { id: 'hero', name: 'Hero', traits: [trait()], inScene: true, stats: ownStats('hero-stat') },
   // The code's own owner, holding the same stat names as the world.
   owner: { id: 'owner', name: 'Owner', traits: [trait()], stats: { stats } },
-  dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns }],
+  dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns, entries: [entry] }],
   places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
 };
 const run = (code: string) => executeStatCode(code, stats, stats[0], world);
@@ -99,13 +100,13 @@ const editorNames: AnalysisOptions = {
       ['of-entity', { kind: 'entity', id: 'entity', name: 'Entity' }],
       ['of-dictionary', { kind: 'dictionary', id: 'dictionary', name: 'Dictionary' }],
     ]),
-    dictionaries: [{ id: 'dictionary', name: 'Dictionary' }],
+    dictionaries: [{ id: 'dictionary', name: 'Dictionary', entries: [entry] }],
   },
 };
 const editorFindings = (code: string) => statCodeDiagnostics(code, editorNames).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */
@@ -117,7 +118,7 @@ const dropped = (result: StatCodeResult) => [
 /** Whether a run left anything for the turn to apply. */
 const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length
   || !!result.ownerStatWrites?.length || !!result.placeholders?.length
-  || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length) || !!result.worldWrites;
+  || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length) || !!result.worldWrites || !!result.lore?.length;
 
 /** Each object's members as the surface lists them. `console` has no list; the sandbox answers for it below. */
 const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {

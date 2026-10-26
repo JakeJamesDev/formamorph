@@ -105,3 +105,25 @@ describe('Code Pins in the gameplay snapshot', () => {
     expect(live().codePins).toEqual({ mood: 'Furious' });
   });
 });
+
+describe('the lore overlay in the gameplay snapshot (Q11)', () => {
+  const unsealed = { lore: { entries: { sealed: { enabled: true } } } };
+
+  it('writes it into the snapshot, leaves the key out when empty, and a load restores it', async () => {
+    const live = mount();
+    expect('loreToggles' in live().saveCurrentGameState()).toBe(false);
+    await act(async () => { live().setLoreToggles(unsealed); });
+    const saved = live().saveCurrentGameState();
+    expect(saved.loreToggles).toEqual(unsealed);
+    await act(async () => { live().setLoreToggles({}); });
+    await act(async () => { expect(live().loadGameState(saved, [])).toBe(true); });
+    expect(live().loreToggles).toEqual(unsealed);
+  });
+
+  it('loads a save without it with none, even over a live one', async () => {
+    const live = mount();
+    await act(async () => { live().setLoreToggles(unsealed); });
+    await act(async () => { expect(live().loadGameState(legacySnapshot(), [])).toBe(true); });
+    expect(live().loreToggles).toEqual({});
+  });
+});

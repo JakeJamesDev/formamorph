@@ -98,7 +98,7 @@ export interface CodePlaceholders {
   dictionaries?: readonly CodeDictionaryNames[];
 }
 
-/** A book's code name and its enabled entries under their code names. */
+/** A book's code name and every entry under its code name, disabled ones included. */
 export interface CodeDictionaryNames extends CodeOwnerName {
   entries?: readonly SandboxDictionaryEntry[];
 }

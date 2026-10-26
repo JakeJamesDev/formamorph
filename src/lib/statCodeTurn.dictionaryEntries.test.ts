@@ -7,7 +7,7 @@ import { runStatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { phValues } from '@/test/placeholderValues';
-import type { Dictionary, DictionaryEntry, Placeholder, PlayerStat } from '@/types';
+import type { Dictionary, DictionaryEntry, LoreToggles, Placeholder, PlayerStat } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
 import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
@@ -40,8 +40,11 @@ const nobody: StatCodeOwners = {
   },
 };
 
-const run = (code: string, dictionaries: readonly Dictionary[] = [lore, muted], placeholders: Placeholder[] = []) =>
+const run = (
+  code: string, dictionaries: readonly Dictionary[] = [lore, muted], placeholders: Placeholder[] = [], loreToggles?: LoreToggles,
+) =>
   runStatCodeTurn(statCodeTurnOf({
+    ...(loreToggles && { loreToggles }),
     stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
     enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: nobody,
     placeholders: {
@@ -67,16 +70,70 @@ describe('dictionaries entries', () => {
     expect(valueOf(out)).toBe(1);
   });
 
-  it('leaves a disabled entry and a muted book out, and a later entry wins a shared name', async () => {
+  it('lists a disabled entry as off, leaves a muted book out, and a later entry wins a shared name (Q12)', async () => {
     const out = await run('return [Object.keys(dictionaries.Lore.entries).join("|"), dictionaries.Lore.entries.River.value,'
-      + ' dictionaries.Muted.entries.Ghost.id, Object.keys(dictionaries.Muted.entries).length].join("/") === "Iron Crown|River/Later river.//0" ? 1 : 0;');
+      + ' dictionaries.Lore.entries.Sealed.enabled, dictionaries.Lore.entries.River.enabled, dictionaries.Lore.entries.River.constant,'
+      + ' dictionaries.Muted.entries.Ghost.id, Object.keys(dictionaries.Muted.entries).length].join("/")'
+      + ' === "Iron Crown|Sealed|River/Later river./false/true/false//0" ? 1 : 0;');
     expect(valueOf(out)).toBe(1);
   });
 
-  it('flattens to every enabled entry, a library book’s included', async () => {
+  it('flattens to every entry, a disabled one’s and a library book’s included', async () => {
     const out = await run('return Object.values(dictionaries).flatMap((d) => Object.values(d.entries)).map((e) => e.id).join("|")'
-      + ' === "crown|river-new|ebb" ? 1 : 0;');
+      + ' === "crown|sealed|river-new|ebb" ? 1 : 0;');
     expect(valueOf(out)).toBe(1);
+  });
+
+  it('gives a shared name to the enabled entry over a later disabled one, and a write through it reaches that entry (Q26)', async () => {
+    const book: Dictionary = { id: 'lore', name: 'Lore', entries: [
+      entry('heron-on', 'Heron', ['heron'], 'Shown.'), entry('heron-off', 'Heron', ['egret'], 'Hidden.', { enabled: false }),
+    ] };
+    const out = await run('dictionaries.Lore.entries.Heron.constant = true; return dictionaries.Lore.entries.Heron.value === "Shown." ? 1 : 0;', [book]);
+    expect(valueOf(out)).toBe(1);
+    expect(out.loreWrites).toEqual([{ book: 'lore', entry: 'heron-on', field: 'constant', value: true }]);
+  });
+
+  it('keeps a shared name on its run-start winner after a write switches that entry off (Q49)', async () => {
+    const book: Dictionary = { id: 'lore', name: 'Lore', entries: [
+      entry('heron-on', 'Heron', ['heron'], 'Shown.'), entry('heron-off', 'Heron', ['egret'], 'Hidden.', { enabled: false }),
+    ] };
+    const out = await run('dictionaries.Lore.entries.Heron.enabled = false; return dictionaries.Lore.entries.Heron.id === "heron-on" ? 1 : 0;', [book]);
+    expect(valueOf(out)).toBe(1);
+  });
+
+  it('lands `enabled` and `constant` writes, each entry’s in assignment order, and reads them back in the run (Q13, Q49)', async () => {
+    const out = await run('const e = dictionaries.Lore.entries.Sealed; e.enabled = true; e.constant = true;'
+      + ' dictionaries.Lore.entries["Iron Crown"].enabled = false; e.constant = false;'
+      + ' return e.enabled === true && e.constant === false ? 1 : 0;');
+    expect(valueOf(out)).toBe(1);
+    expect(out.loreWrites).toEqual([
+      { book: 'lore', entry: 'crown', field: 'enabled', value: false },
+      { book: 'lore', entry: 'sealed', field: 'enabled', value: true },
+      { book: 'lore', entry: 'sealed', field: 'constant', value: true },
+      { book: 'lore', entry: 'sealed', field: 'constant', value: false },
+    ]);
+  });
+
+  it('reads an entry as the lore overlay leaves it', async () => {
+    const out = await run('const e = dictionaries.Lore.entries.Sealed; return e.enabled && e.constant ? 1 : 0;', [lore, muted], [],
+      { lore: { entries: { sealed: { enabled: true, constant: true } } } });
+    expect(valueOf(out)).toBe(1);
+  });
+
+  it('fails the run on a write that is not a boolean, and every write with it', async () => {
+    const out = await run('dictionaries.Lore.entries.Sealed.constant = true; dictionaries.Lore.entries.Sealed.enabled = "yes"; return 1;');
+    expect(valueOf(out)).toBe(0);
+    expect(out.loreWrites).toBeUndefined();
+    expect(console.error).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('dictionaries.Lore.entries.Sealed.enabled must be true or false'));
+  });
+
+  it('drops and lists a write through a name no entry or book has', async () => {
+    const out = await run('dictionaries.Lore.entries.Nope.enabled = true; dictionaries.Atlas.entries.Map.constant = true; return 1;');
+    expect(valueOf(out)).toBe(1);
+    expect(out.loreWrites).toBeUndefined();
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(
+      'wrote dictionary entries the game does not have: dictionaries.Lore.entries.Nope.enabled, dictionaries.Atlas.entries.Map.constant',
+    ));
   });
 
   it('reads an unknown entry as a blank one', async () => {
@@ -93,7 +150,7 @@ describe('dictionaries entries', () => {
 
   it('reads real entries through a computed global name', async () => {
     const out = await run('const books = new Function("return dict" + "ionaries")();'
-      + ' return books.Lore.entries["Iron Crown"].value === "The old king’s crown." && Object.keys(books.Lore.entries).length === 2 ? 1 : 0;');
+      + ' return books.Lore.entries["Iron Crown"].value === "The old king’s crown." && Object.keys(books.Lore.entries).length === 3 ? 1 : 0;');
     expect(valueOf(out)).toBe(1);
   });
 
