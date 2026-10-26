@@ -10,7 +10,7 @@ export const DEV_FEEDBACK_FIXTURE = 'feedback';
 
 const STUBBED_KEYS = [
   'file', 'list', 'fetchThread', 'comment', 'editComment', 'removeComment', 'setVote', 'update',
-  'setStatus', 'setLocked', 'remove', 'fetchUnreadCount',
+  'setStatus', 'setLocked', 'setAnswer', 'remove', 'fetchUnreadCount',
 ] as const satisfies readonly (keyof typeof FeedbackService)[];
 type Stubbed = Pick<typeof FeedbackService, (typeof STUBBED_KEYS)[number]>;
 
@@ -54,16 +54,17 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
   const me = viewerId();
   const reply = (id: string, body: string, author: FeedbackComment['author'], hours: number): FeedbackComment =>
     ({ id, body, createdAt: hoursAgo(hours), editedAt: null, author });
+  const answer = reply('dev-reply-1', 'Settings → Endpoints takes the local server’s address. Select **Test** after you save it.', person('dev-staff', 'Formamorph Team', 'dev'), 5);
   return [
     {
       thread: devFeedbackFixtureThread({
         id: 'dev-question-answered', type: 'question', category: 'setup', status: 'answered', votes: 9, commentCount: 2,
         title: 'How do I point the game at a model running on my own PC?',
         body: 'I have a model loaded in a local server, but the game still uses the default endpoint.',
-        updatedAt: hoursAgo(3),
+        updatedAt: hoursAgo(3), acceptedAnswer: answer,
       }),
       comments: [
-        reply('dev-reply-1', 'Settings → Endpoints takes the local server’s address. Select **Test** after you save it.', person('dev-staff', 'Formamorph Team', 'dev'), 5),
+        answer,
         reply('dev-reply-2', 'That worked, thanks. I had the port wrong.', person('dev-other', 'Lantern Keeper'), 3),
       ],
     },
@@ -183,12 +184,22 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
       const detail = find(id);
       const edited = { ...detail.comments.find((comment) => comment.id === commentId)!, body, editedAt: new Date().toISOString() };
       detail.comments = detail.comments.map((comment) => (comment.id === commentId ? edited : comment));
+      if (detail.thread.acceptedAnswer?.id === commentId) detail.thread = { ...detail.thread, acceptedAnswer: edited };
       return edited;
     },
     async removeComment(id, commentId) {
       const detail = find(id);
       detail.comments = detail.comments.filter((comment) => comment.id !== commentId);
-      touch(detail, { commentCount: detail.comments.length });
+      // Deleting the accepted reply reopens the question.
+      const unpin = detail.thread.acceptedAnswer?.id === commentId ? { acceptedAnswer: null, status: 'open' as FeedbackStatus } : {};
+      touch(detail, { commentCount: detail.comments.length, ...unpin });
+    },
+    async setAnswer(id, commentId) {
+      const detail = find(id);
+      const picked = detail.comments.find((comment) => comment.id === commentId) ?? null;
+      // Open and answered swap with the pick; a closed question keeps its status.
+      const status = detail.thread.status === 'closed' ? 'closed' : picked ? 'answered' : 'open';
+      return touch(detail, { acceptedAnswer: picked, status });
     },
     async setVote(id, voted) {
       const detail = find(id);
@@ -198,7 +209,7 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
     async update(id, fields) {
       const detail = find(id);
       const moved = fields.type !== undefined && fields.type !== detail.thread.type;
-      return touch(detail, { ...fields, ...(moved ? { status: 'open' as FeedbackStatus, diagnostics: {} } : {}) });
+      return touch(detail, { ...fields, ...(moved ? { status: 'open' as FeedbackStatus, diagnostics: {}, acceptedAnswer: null } : {}) });
     },
     async setStatus(id, status) {
       const detail = find(id);

@@ -465,6 +465,12 @@ A bug report includes your app version and platform. Nothing about your worlds o
 
 Staff set each item's status. A bug is **Open**, **Need Info**, **Confirmed**, **Resolved** or **Won't Fix**. A suggestion is **Open**, **Considering**, **Planned**, **Declined** or **Done**. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.
 
+### Accepted Answers
+
+On your own question, select **Accept Answer** on the reply that solved it. Staff can do the same on any question. The question becomes **Answered**. The reply gets an **Accepted** mark. The reply also shows again under the question, so readers see it first.
+
+Select **Clear Answer** to undo the pick. The question goes back to **Open**. A closed question stays **Closed**. If the author edits the accepted reply, the text under the question changes too. If the reply is deleted, or staff change the question to a bug or a suggestion, the question goes back to **Open** with no answer.
+
 ## Related
 
 - [Linked Content](LinkedContent): required content, add-ons and updates for linked copies.

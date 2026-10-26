@@ -559,14 +559,16 @@ describe('a question thread', () => {
     expect(await screen.findByRole('button', { name: /Vote · 0/ })).toBeTruthy();
   });
 
-  it('offers staff Open and Closed, never Answered', async () => {
+  it('offers staff Open and Closed, with Answered shown disabled', async () => {
     // Answered comes only from accepting a reply; the server refuses it on the status route.
-    stubThread({ thread: question() });
+    stubThread({ thread: question({ status: 'answered' }) });
 
     render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
     await screen.findByText('How do I use a local model?');
 
-    expect(await statusOptions()).toEqual(['Open', 'Closed']);
+    expect(await statusOptions()).toEqual(['Open', 'Answered', 'Closed']);
+    const states = Object.fromEntries(screen.getAllByRole('option').map((o) => [o.textContent, o.getAttribute('aria-disabled') === 'true']));
+    expect(states).toEqual({ Open: false, Answered: true, Closed: false });
   });
 
   it('reads the lock from the reply when staff close it', async () => {
@@ -582,6 +584,173 @@ describe('a question thread', () => {
     fireEvent.click(option);
 
     expect(await screen.findByLabelText('Unlock thread')).toBeTruthy();
+  });
+});
+
+describe('an accepted answer', () => {
+  const helper = { id: 'a2', username: 'helper', role: null };
+  const fix = comment({ id: 'c1', body: 'Point it at port 1234.', author: helper });
+  const chatter = comment({ id: 'c2', body: 'Thanks, that worked.', author: { id: 'u1', username: 'finder', role: null } });
+  const question = (over: Partial<FeedbackThread> = {}) =>
+    report({ type: 'question', category: 'setup', title: 'How do I use a local model?', diagnostics: {}, ...over });
+  const answered = () => question({ status: 'answered', acceptedAnswer: fix });
+
+  it('pins a copy under the question and marks the reply in place', async () => {
+    signedInAs('passer-by');
+    stubThread({ thread: answered(), comments: [fix, chatter] });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+
+    const pin = await screen.findByTestId('accepted-answer');
+    expect(pin.textContent).toContain('Point it at port 1234.');
+    // Two renderings of the same words: the pin, and the reply that keeps its place.
+    expect(screen.getAllByText('Point it at port 1234.').length).toBe(2);
+    expect(screen.getAllByText('Accepted').length).toBe(1);
+    expect(screen.getByText('Thanks, that worked.')).toBeTruthy();
+  });
+
+  it('shows no pin on a question without one', async () => {
+    signedInAs('passer-by');
+    stubThread({ thread: question(), comments: [fix] });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Point it at port 1234.');
+
+    expect(screen.queryByTestId('accepted-answer')).toBeNull();
+    expect(screen.queryByText('Accepted')).toBeNull();
+  });
+
+  it('lets the asker accept a reply, and shows the thread the server sends back', async () => {
+    signedInAs('u1');
+    stubThread({ thread: question(), comments: [fix, chatter] });
+    const setAnswer = vi.spyOn(FeedbackService, 'setAnswer').mockResolvedValue(answered());
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Point it at port 1234.');
+    expect(screen.getAllByRole('button', { name: 'Accept Answer' }).length).toBe(2);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Accept Answer' })[0]);
+
+    await waitFor(() => expect(setAnswer).toHaveBeenCalledWith('b1', 'c1'));
+    expect(await screen.findByTestId('accepted-answer')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Clear Answer' })).toBeTruthy();
+  });
+
+  it('lets staff clear it, and drops the pin', async () => {
+    signedInAs('staff-1');
+    stubThread({ thread: answered(), comments: [fix, chatter] });
+    const setAnswer = vi.spyOn(FeedbackService, 'setAnswer').mockResolvedValue(question({ acceptedAnswer: null }));
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear Answer' }));
+
+    await waitFor(() => expect(setAnswer).toHaveBeenCalledWith('b1', null));
+    await waitFor(() => expect(screen.queryByTestId('accepted-answer')).toBeNull());
+    expect(screen.queryByText('Accepted')).toBeNull();
+  });
+
+  it('offers a stranger neither action', async () => {
+    signedInAs('passer-by');
+    stubThread({ thread: answered(), comments: [fix, chatter] });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByTestId('accepted-answer');
+
+    expect(screen.queryByRole('button', { name: 'Accept Answer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear Answer' })).toBeNull();
+  });
+
+  it('offers no accept on a bug, even to its reporter', async () => {
+    signedInAs('u1');
+    stubThread({ comments: [fix] });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Point it at port 1234.');
+
+    expect(screen.queryByRole('button', { name: 'Accept Answer' })).toBeNull();
+  });
+
+  it('offers no accept on a suggestion, even to its author', async () => {
+    signedInAs('u1');
+    stubThread({ thread: report({ type: 'suggestion', category: 'interface', diagnostics: {} }), comments: [fix] });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Point it at port 1234.');
+
+    expect(screen.queryByRole('button', { name: 'Accept Answer' })).toBeNull();
+  });
+
+  it('refetches when the accepted reply is deleted', async () => {
+    signedInAs('a2');
+    const fetchThread = vi.spyOn(FeedbackService, 'fetchThread')
+      .mockResolvedValueOnce({ thread: answered(), comments: [fix, chatter] })
+      .mockResolvedValue({ thread: question(), comments: [chatter] });
+    vi.spyOn(FeedbackService, 'removeComment').mockResolvedValue(undefined);
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByTestId('accepted-answer');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete comment' })[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+
+    await waitFor(() => expect(screen.queryByTestId('accepted-answer')).toBeNull());
+    expect(fetchThread).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the thread alone when another reply is deleted', async () => {
+    signedInAs('u1');
+    const fetchThread = stubThread({ thread: answered(), comments: [fix, chatter] });
+    vi.spyOn(FeedbackService, 'removeComment').mockResolvedValue(undefined);
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByTestId('accepted-answer');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+
+    await waitFor(() => expect(screen.queryByText('Thanks, that worked.')).toBeNull());
+    expect(fetchThread).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('accepted-answer')).toBeTruthy();
+  });
+
+  it('refetches when the accepted reply is edited, so the pin shows the new words', async () => {
+    signedInAs('a2');
+    const edited = { ...fix, body: 'Use port 4321.', editedAt: '2026-07-02T00:00:00.000Z' };
+    const fetchThread = vi.spyOn(FeedbackService, 'fetchThread')
+      .mockResolvedValueOnce({ thread: answered(), comments: [fix] })
+      .mockResolvedValue({ thread: question({ status: 'answered', acceptedAnswer: edited }), comments: [edited] });
+    vi.spyOn(FeedbackService, 'editComment').mockResolvedValue(edited);
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByTestId('accepted-answer');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit comment' }));
+    await waitFor(() => expect(screen.getByLabelText('Comment text')).toBeTruthy());
+    setField('Comment text', 'Use port 4321.');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.getByTestId('accepted-answer').textContent).toContain('Use port 4321.'));
+    expect(fetchThread).toHaveBeenCalledTimes(2);
+  });
+
+  it('refetches when staff move the question to another branch', async () => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'staff-1', username: 'root-admin', accountType: 'admin' });
+    const moved = report({ type: 'suggestion', category: 'gameplay', diagnostics: {}, acceptedAnswer: null });
+    const fetchThread = vi.spyOn(FeedbackService, 'fetchThread')
+      .mockResolvedValueOnce({ thread: answered(), comments: [fix] })
+      .mockResolvedValue({ thread: moved, comments: [fix] });
+    vi.spyOn(FeedbackService, 'update').mockResolvedValue({ ...moved, acceptedAnswer: answered().acceptedAnswer });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    await screen.findByTestId('accepted-answer');
+    fireEvent.click(screen.getByLabelText('Edit this report'));
+    fireEvent.keyDown(await screen.findByLabelText('Kind'), { key: 'Enter' });
+    const option = (await screen.findAllByRole('option')).find((item) => item.textContent === 'Suggestion') as HTMLElement;
+    fireEvent.pointerDown(option, { pointerType: 'mouse' });
+    fireEvent.pointerUp(option, { pointerType: 'mouse' });
+    fireEvent.click(option);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByTestId('accepted-answer')).toBeNull());
+    expect(fetchThread).toHaveBeenCalledTimes(2);
   });
 });
 

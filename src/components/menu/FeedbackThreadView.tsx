@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { ArrowLeft, ChevronUp, Lock, LockOpen, Pencil, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronUp, CircleCheck, Lock, LockOpen, Pencil, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,14 +14,14 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { FeedbackEditDialog } from "@/components/menu/FeedbackEditDialog";
 import { mayEditProse, mayRefile } from "@/lib/feedbackEditing";
-import { badgeRole } from "@/lib/roles";
+import { badgeRole, isStaff } from "@/lib/roles";
 import {
-  FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, SET_STATUS_OPTIONS, formatFeedbackDate,
+  FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, SET_STATUS_OPTIONS, STATUS_OPTIONS, formatFeedbackDate,
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
-import { isVotableBoard, type BugDiagnostics, type FeedbackDetail, type FeedbackStatus } from "@/types";
+import { isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 
 const COMMENT_MAX = 4000;
@@ -59,6 +59,20 @@ function Diagnostics({ diagnostics }: { diagnostics: BugDiagnostics }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/** Who wrote a reply and when. Shared by the thread's replies and the pinned accepted answer. */
+function ReplyByline({ comment }: { comment: FeedbackComment }) {
+  return (
+    <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
+      {/* Everyone signs with their own name and face; the badge says who they answer for. */}
+      <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} supporter={comment.author.supporter} size="xs" />
+      <UserName userId={comment.author.id} username={comment.author.username} role={comment.author.role} supporter={comment.author.supporter} />
+      {' · '}{formatFeedbackDate(comment.createdAt)}
+      {/* Said plainly, so the other reader can tell a reply changed after they read it. */}
+      {comment.editedAt && <span className="italic"> · edited</span>}
+    </p>
   );
 }
 
@@ -133,6 +147,8 @@ export function FeedbackThreadView({
         ? { ...prev, comments: prev.comments.map((c) => (c.id === updated.id ? updated : c)) }
         : prev));
       setEditingId(null);
+      // The pinned copy is a second rendering of this reply; only the server's thread holds the new text.
+      if (detail?.thread.acceptedAnswer?.id === updated.id) void load();
     } catch (error) {
       toastError(error, 'Failed to save the comment');
     } finally {
@@ -148,6 +164,8 @@ export function FeedbackThreadView({
         : prev));
       // The edit box would otherwise stay open over a comment that no longer exists.
       if (editingId === commentId) setEditingId(null);
+      // Deleting the accepted reply reopens the question, so the pin and the status come from the server.
+      if (detail?.thread.acceptedAnswer?.id === commentId) void load();
     } catch (error) {
       toastError(error, 'Failed to delete the comment');
     }
@@ -160,6 +178,16 @@ export function FeedbackThreadView({
       onChanged?.();
     } catch (error) {
       toastError(error, 'Failed to update the status');
+    }
+  };
+
+  const setAnswer = async (commentId: string | null) => {
+    try {
+      const updated = await FeedbackService.setAnswer(threadId, commentId);
+      setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
+      onChanged?.();
+    } catch (error) {
+      toastError(error, 'Failed to update the answer');
     }
   };
 
@@ -227,6 +255,9 @@ export function FeedbackThreadView({
   // Who may write: an admin anywhere, anyone on an open votable board, the reporter on their own bug. A lock
   // closes it to everyone but the admins. The server enforces the same rules — this only keeps a box off
   // screen that would be refused.
+  const accepted = thread.acceptedAnswer ?? null;
+  // The asker and staff choose the answer, on questions only. The server decides the same thing again.
+  const canAccept = thread.type === 'question' && (isAdmin || isStaff(viewer) || thread.reporter.id === myId);
   const canWrite = isAdmin || (!thread.locked && (votable || thread.reporter.id === myId));
 
   /** Why the reply box is absent, in the reader's terms. */
@@ -244,8 +275,16 @@ export function FeedbackThreadView({
             <Select value={thread.status} onValueChange={(value) => changeStatus(value as FeedbackStatus)}>
               <SelectTrigger className="w-40" aria-label="Status"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SET_STATUS_OPTIONS[thread.type].map((option) => (
-                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                {/* Every status reads, so the control is never blank; only the ones staff can set are live.
+                    A question is Answered by accepting a reply, not from here. */}
+                {STATUS_OPTIONS[thread.type].map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    disabled={!SET_STATUS_OPTIONS[thread.type].some((settable) => settable.value === option.value)}
+                  >
+                    {option.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -329,6 +368,16 @@ export function FeedbackThreadView({
         )}
 
         <Diagnostics diagnostics={thread.diagnostics} />
+
+        {accepted && (
+          <div className="space-y-1 rounded-md border border-success/40 bg-success/5 p-3 min-w-0" data-testid="accepted-answer">
+            <p className="flex items-center gap-1.5 text-meta font-medium text-success">
+              <CircleCheck className="h-3.5 w-3.5" /> Accepted Answer
+            </p>
+            <ReplyByline comment={accepted} />
+            <div className="text-label min-w-0"><MarkdownRenderer text={accepted.body} /></div>
+          </div>
+        )}
       </section>
 
       <div className="space-y-2 min-w-0">
@@ -341,6 +390,7 @@ export function FeedbackThreadView({
             const mine = comment.author.id === myId;
             const mayEdit = mine && (isAdmin || !thread.locked);
             const mayDelete = mayEdit || isAdmin;
+            const isAccepted = accepted?.id === comment.id;
 
             return (
               <div
@@ -352,14 +402,25 @@ export function FeedbackThreadView({
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
-                    {/* Everyone signs with their own name and face; the badge says who they answer for. */}
-                    <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} supporter={comment.author.supporter} size="xs" />
-                    <UserName userId={comment.author.id} username={comment.author.username} role={comment.author.role} supporter={comment.author.supporter} />
-                    {' · '}{formatFeedbackDate(comment.createdAt)}
-                    {/* Said plainly, so the other reader can tell a reply changed after they read it. */}
-                    {comment.editedAt && <span className="italic"> · edited</span>}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                    <ReplyByline comment={comment} />
+                    {isAccepted && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 text-meta font-semibold leading-5 text-success">
+                        <Check className="h-3 w-3" /> Accepted
+                      </span>
+                    )}
+                  </div>
+
+                  {canAccept && editingId !== comment.id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 shrink-0 px-2 text-meta"
+                      onClick={() => setAnswer(isAccepted ? null : comment.id)}
+                    >
+                      {isAccepted ? 'Clear Answer' : 'Accept Answer'}
+                    </Button>
+                  )}
 
                   {(mayEdit || mayDelete) && editingId !== comment.id && (
                     <div className="flex shrink-0 items-center">
@@ -471,6 +532,8 @@ export function FeedbackThreadView({
           // at once; the list behind it is told separately.
           setDetail((prev) => (prev ? { ...prev, thread: saved } : prev));
           onChanged?.();
+          // A type change clears the accepted answer on the server; the pin must follow.
+          if (saved.type !== thread.type) void load();
         }}
       />
 

@@ -277,7 +277,7 @@ describe('dev-router coverage guard', () => {
     // is an in-place MainMenu modal (no longer a top-level view).
     expect(DEV_MODALS).toEqual([
       'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt',
-      'customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash',
+      'customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash',
     ]);
   });
 

@@ -7,6 +7,9 @@ import { GenerateImageButton } from '@/components/GenerateImageButton';
 import { EventFormDialog } from '@/components/menu/EventFormDialog';
 import { FeedbackDialog } from '@/components/menu/FeedbackDialog';
 import { FeedbackEditDialog } from '@/components/menu/FeedbackEditDialog';
+import { FeedbackThreadView } from '@/components/menu/FeedbackThreadView';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { PodiumDialog } from '@/components/menu/PodiumDialog';
 import { SentMessagesDialog } from '@/components/menu/SentMessagesDialog';
 import { SuspendDialog } from '@/components/menu/SuspendDialog';
@@ -57,6 +60,19 @@ export default function DevPaneRoutes() {
       return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialType={type} initialTitle={title} initialBody={body} />;
     }
     case 'feedbackEdit': return <FeedbackEditDialog open onOpenChange={clearRouteOnClose} thread={devFeedbackThread()} mayEditProse mayRefile onSaved={ignore} />;
+    case 'feedbackThread': {
+      const staff = route.tab === 'staff';
+      return (
+        <Dialog open onOpenChange={clearRouteOnClose}>
+          <DialogContent surface="feedbackHub" aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
+            <DialogTitle className="sr-only">Feedback</DialogTitle>
+            <ScrollArea className="flex-1 min-h-0 min-w-0 px-1">
+              <FeedbackThreadView threadId="dev-question-answered" onBack={() => clearRouteOnClose(false)} isAdmin={staff} showTriage={staff} />
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      );
+    }
     case 'changelogEntry': return <ChangelogEntryDialog open onOpenChange={clearRouteOnClose} entry={devChangelogDraft()} onSubmit={ignore} />;
     case 'fontTune': return <FontTuneDialog font="system" open onOpenChange={clearRouteOnClose} />;
     case 'revealDemo': return <RevealAnimationDialog open onOpenChange={clearRouteOnClose} kind="narration" />;

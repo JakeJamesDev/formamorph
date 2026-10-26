@@ -163,7 +163,7 @@ export function FeedbackEditDialog({
             {draft.type !== thread.type && (
               <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-meta text-muted-foreground">
                 Moving this to a {FEEDBACK_TYPE_LABELS[draft.type as FeedbackType].one.toLowerCase()} sets its status
-                back to Open{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
+                back to Open{thread.acceptedAnswer ? ' and clears the accepted answer' : ''}{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
                 Its replies and votes stay.{draft.type === 'bug' && ' Only the reporter and staff can reply to a bug.'}
               </p>
             )}
