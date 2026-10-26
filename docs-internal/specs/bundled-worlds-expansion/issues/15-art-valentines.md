@@ -11,7 +11,7 @@ Spec: ../spec.md (Q6, Q10, Q11, Q12, Q13, Q16, Q17, Q18, Q19, Q21; Implementatio
 Every location and entity in **Valentines Survival** has art in one style, and the world shows Image Visibility rules.
 
 - Run the Art Harness (02) with this world's art-direction line from ticket 08, in a GPU window the user names. One landscape backdrop per location and one portrait per entity, for every item without art. Existing art stays (Q10).
-- Review the contact sheet, redo by name what misses its subject, and record each redo's seed.
+- Review the contact sheet, redo by name what misses its subject, and record each redo's seed. A portrait whose face sits far from the camera and reads garbled is redone with Face Fix, the harness's `--face-fix` option (Q28); check every face before you store.
 - **Visibility rules (Q18):** at least one location backdrop and one entity image that change with a stat, trait, persona or daypart. Make the variant through the harness with the state's tags added, then set complementary rules on slot 0 and slot 1 by script, since play shows the first visible image and an unruled slot 0 always wins. A location rule with no owner reads the played persona.
 - **Map Background:** none. This world is not a map world (Q12).
 - Refine `imageTags` where the stored art drifted from them, so the tags describe the art.
