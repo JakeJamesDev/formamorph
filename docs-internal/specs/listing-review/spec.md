@@ -83,7 +83,8 @@ The server will hold new listings and updates for review before players can see 
 - **Review tab.**
   - Reports and Review share one **Moderation** tab in the staff panel, split by a segmented control (the user's ruling for ticket 08). The tab count stays at 8 for admins and 5 for mods.
   - The panel's width cap rises from 900px to 1000px. The tab breakpoints and `admin-panel-widths.spec.ts` change to match.
-  - Review shows for anyone who passes `canModerate` on a server that supports review, with two views: **Queue** and **Auto-Approved**.
+  - Review shows for anyone who passes `canModerate` on a server that supports review. **Auto-Approved** is a third segment beside Reports and Review, with no count (the user's ruling for ticket 10).
+  - The admin-only Trusted toggle sits in the user row's caret menu and is hidden on staff rows. The Trusted pill shows on any row with `trustedAt`.
   - Each segment's label carries its own count: Reports (n) and Review (n). The Moderation tab label has no count, so it fits the 1000px strip in every font (ticket 08 measured a summed count overflowing in OpenDyslexic).
   - The Admin Panel button's badge in the main menu adds the waiting-review count to the open-report count.
   - Rejecting a resubmission leaves out the template's extension sentence when the answer says `quarantineExtended: true`.
