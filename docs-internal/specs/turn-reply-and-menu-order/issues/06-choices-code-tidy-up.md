@@ -1,6 +1,6 @@
 # 06: Choices Code Tidy-Up
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -24,14 +24,25 @@ Spec: close review Standards findings, 2026-10-26.
 
 ## Acceptance criteria
 
-- [ ] The stats re-roll and the choices rerun share one replay builder; the re-roll tests and the rerun tests pass unchanged
-- [ ] One choices-equality helper serves the executor and the turn runner, with its own test for same, reordered and edited lists
-- [ ] The end-of-run choices read and the rerun each return a named result shape; no `null`-versus-`undefined` meaning remains
-- [ ] The empty reply literal appears once
-- [ ] The scan predicate's name reads as a question at every call site
-- [ ] The prompt-answer widening cast is written once
-- [ ] Every test file the effort landed passes unchanged in what it asserts
+- [x] The stats re-roll and the choices rerun share one replay builder (`replayToAfter`, up to the On Call replay); the re-roll and rerun tests run in prepare's gates
+- [x] One choices-equality helper serves the executor and the turn runner, with its own test for same, reordered and edited lists (`sameChoices` in `scriptedChoices.test.ts`)
+- [x] The end-of-run choices read and the rerun each return a named result shape (`ChoicesAtEnd`, `ChoicesRerun`); no `null`-versus-`undefined` meaning remains
+- [x] The empty reply literal appears once (`EMPTY_REPLY`; test fixtures keep their own)
+- [x] The scan predicate's name reads as a question at every call site (`scriptsChangeChoices`)
+- [x] The prompt-answer widening cast is written once (`answerAs`)
+- [ ] Every test file the effort landed passes unchanged in what it asserts (see Not verified)
 
 ## Blocked by
 
 - None (can start immediately)
+
+## Landed
+
+**Not verified**
+
+- Every effort test file passes unchanged: prepare's gates run the affected tests once; I ran only typecheck and lint before it.
+- The After batch preparation (`prepareStatCode(..., 'after')`) stays in each caller: the re-roll lands it through `applyStatChanges`, the rerun runs it silent. The builder stops at the On Call replay.
+
+**For you**
+
+- Re-roll Stats and Re-generate Choices in a world with After the AI scripts that write `turn.choices`: both should behave as before.

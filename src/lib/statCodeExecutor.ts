@@ -3,6 +3,7 @@ import { clamp } from './utils';
 import { activeDescriptor } from './statContext';
 import { runInSandbox, type SandboxEngine, type SandboxHostFunction } from './scriptSandbox';
 import { isPromptCanceled, namesPlayer, scriptPrompts, type ScriptPromptHost, type ScriptPromptRequest } from './scriptPrompts';
+import { sameChoices } from './scriptedChoices';
 import { VALUE_JOIN } from './placeholders';
 import { hasEntityKey, statsByCodeName } from './statCodeNames';
 import {
@@ -1598,18 +1599,20 @@ const worldPrelude = (
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
-const NO_TURN: SandboxTurn = { action: '', number: 0, narration: '', choices: [] };
+/** A turn reply with nothing in it: the narration and choices of a turn not yet told. Spread it; never push to it. */
+export const EMPTY_REPLY: { narration: string; choices: string[] } = { narration: '', choices: [] };
+
+const NO_TURN: SandboxTurn = { action: '', number: 0, ...EMPTY_REPLY };
 
 /** The prelude's reader of `turn.choices` at run end: JSON with null for each item that isn't text, or null for no list. */
 const CHOICES_AT_END = '__formamorphChoicesAtEnd';
 
-const UNCHANGED = Symbol('unchanged');
+/** `turn.choices` at run end: the list the run read, or what the scripts left, which is any value until checked. */
+type ChoicesAtEnd = { changed: false } | { changed: true; end: unknown };
 
-/** `turn.choices` at run end from the reader's dump, or `UNCHANGED` when it holds the list the run read. */
-function choicesAtEnd(start: readonly string[], dump: string | null): unknown {
+function choicesAtEnd(start: readonly string[], dump: string | null): ChoicesAtEnd {
   const end: unknown = dump === null ? null : JSON.parse(dump);
-  const same = Array.isArray(end) && end.length === start.length && end.every((item, i) => item === start[i]);
-  return same ? UNCHANGED : end;
+  return Array.isArray(end) && sameChoices(end, start) ? { changed: false } : { changed: true, end };
 }
 
 /** Whether `list` is text items with no blank one (Q13). */
@@ -2026,11 +2029,10 @@ export const executeStatCode = async (
       const sentence = narration && (returnsSentence ? returned.text : assignedSentence.text);
       if ('error' in worldWrites) return failure(worldWrites.error, 'throw');
       const endChoices = choicesAtEnd(turn.choices, choicesDump.type === 'string' ? choicesDump.text : null);
-      const choicesChanged = endChoices !== UNCHANGED;
       let choices: string[] | undefined;
-      if (choicesChanged && choicesWritable) {
-        if (!isTextList(endChoices)) return failure('turn.choices must be a list of text with no blank item', 'bad-write');
-        choices = endChoices;
+      if (endChoices.changed && choicesWritable) {
+        if (!isTextList(endChoices.end)) return failure('turn.choices must be a list of text with no blank item', 'bad-write');
+        choices = endChoices.end;
       }
       if (currentStat && !returnsSentence && returned.type !== 'number' && returned.type !== 'undefined') {
         return nonNumberFailure('Code must return a number or nothing');
@@ -2078,7 +2080,7 @@ export const executeStatCode = async (
         ...traitWrites.readOnly,
         ...entityWrites.readOnly,
         ...loreWrites.readOnly,
-        ...(choicesChanged && !choicesWritable ? ['turn.choices'] : []),
+        ...(endChoices.changed && !choicesWritable ? ['turn.choices'] : []),
       ];
 
       const settled = (value: number | null): StatCodeResult => ({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
-import { scriptsChoices } from './scriptedChoices';
+import { sameChoices, scriptsChangeChoices } from './scriptedChoices';
 import type { ScriptTreeWorld } from './worldScripts';
 
 const stat = (id: string, scripts: Script[], extra: Partial<Stat> = {}): Stat =>
@@ -38,14 +38,14 @@ function worldWith(home: Home | null, code = WRITE): ScriptTreeWorld {
   };
 }
 
-describe('scriptsChoices', () => {
+describe('scriptsChangeChoices', () => {
   it.each<Home>(['world', 'global stat', 'entity stat', 'blueprint stat', 'stat link override', 'trait link override', 'global trait', 'entity trait', 'blueprint trait'])(
     'marks a world whose %s After the AI box writes turn.choices',
-    (home) => expect(scriptsChoices(worldWith(home))).toBe(true),
+    (home) => expect(scriptsChangeChoices(worldWith(home))).toBe(true),
   );
 
   it('leaves a world with no turn in any After the AI box unmarked', () => {
-    expect(scriptsChoices(worldWith(null))).toBe(false);
+    expect(scriptsChangeChoices(worldWith(null))).toBe(false);
   });
 
   it.each([
@@ -54,7 +54,7 @@ describe('scriptsChoices', () => {
     ['a read of turn.action alone', 'if (turn.action.includes("run")) stats.Health.value -= 1;'],
     ['a template slot', 'log(`${turn.number}`);'],
   ])('marks a box that names turn through %s', (_name, code) => {
-    expect(scriptsChoices(worldWith('global stat', code))).toBe(true);
+    expect(scriptsChangeChoices(worldWith('global stat', code))).toBe(true);
   });
 
   it.each([
@@ -64,11 +64,28 @@ describe('scriptsChoices', () => {
     ['a bracket key', 'entities["turn"].stats.Health.value = 1;'],
     ['a longer name', 'const turnCount = 1;'],
   ])('leaves a box that names turn only in %s unmarked', (_name, code) => {
-    expect(scriptsChoices(worldWith('global stat', code))).toBe(false);
+    expect(scriptsChangeChoices(worldWith('global stat', code))).toBe(false);
   });
 
   it('leaves a world whose turn write sits in a Before the AI box unmarked', () => {
     const world = worldWith(null);
-    expect(scriptsChoices({ ...world, scripts: [{ id: 'b', timing: 'before', code: WRITE }] })).toBe(false);
+    expect(scriptsChangeChoices({ ...world, scripts: [{ id: 'b', timing: 'before', code: WRITE }] })).toBe(false);
+  });
+});
+
+describe('sameChoices', () => {
+  it('holds for equal lists, including two empty ones', () => {
+    expect(sameChoices(['a', 'b'], ['a', 'b'])).toBe(true);
+    expect(sameChoices([], [])).toBe(true);
+  });
+
+  it('fails when the order differs', () => {
+    expect(sameChoices(['a', 'b'], ['b', 'a'])).toBe(false);
+  });
+
+  it('fails when an item is edited, added or dropped', () => {
+    expect(sameChoices(['a', 'b'], ['a', 'c'])).toBe(false);
+    expect(sameChoices(['a'], ['a', 'b'])).toBe(false);
+    expect(sameChoices(['a', 'b'], ['a'])).toBe(false);
   });
 });

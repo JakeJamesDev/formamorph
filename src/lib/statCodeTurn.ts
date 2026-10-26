@@ -26,6 +26,7 @@ import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { clamp } from './utils';
 import type { OwnerId, Scoped } from './scope';
 import { silentPrompts, type ScriptPromptHost } from './scriptPrompts';
+import { sameChoices } from './scriptedChoices';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
@@ -780,7 +781,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   // What the chained scripts left: the sentence, and the choices once a script changed them.
   // Scripts that restore the list between them leave no change.
   const read = state.turn?.choices ?? [];
-  const changedChoices = choices && (choices.length !== read.length || choices.some((choice, i) => choice !== read[i])) ? { choices } : {};
+  const changedChoices = choices && !sameChoices(choices, read) ? { choices } : {};
   const withChained = { ...(sentence === undefined ? {} : { sentence }), ...changedChoices };
   const settledMain = settleWrites(state.stats, switched.state.stats, mainWrites, active);
   const { stats, moved, boundsChanged, hiddenChanged } = settledMain;

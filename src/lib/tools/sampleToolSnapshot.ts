@@ -9,6 +9,7 @@ import { serializeTurnContent } from '@/lib/turnDigest';
 import { buildMemoryLedger, closedTurns, scriptMemories } from '@/lib/memoryView';
 import { NO_OPENING_PICKS, openingStateOf } from '@/lib/openingState';
 import { SAMPLE_ACTION } from '@/lib/scriptTestSamples';
+import { EMPTY_REPLY } from '@/lib/statCodeExecutor';
 import { buildToolSnapshot, type ToolScriptSource, type ToolSnapshot } from './toolSnapshot';
 
 /** The sample world's past turns: each one a digest, some with a diary entry. */
@@ -20,7 +21,7 @@ function sampleHistory(): ChatMessage[] {
   ];
   return turns.flatMap(({ summary, diaries }, i) => [
     { role: 'user', content: 'Look around.' },
-    { role: 'assistant', content: serializeTurnContent({ narration: '', choices: [], stat_changes: [], turnId: `sample-${i + 1}`, summary, diaries }) },
+    { role: 'assistant', content: serializeTurnContent({ ...EMPTY_REPLY, stat_changes: [], turnId: `sample-${i + 1}`, summary, diaries }) },
   ]);
 }
 
@@ -37,7 +38,7 @@ function sampleScriptSource(scene: ChipScene, history: ChatMessage[]): ToolScrip
       clock: { deltaHours: 0, elapsedHours: scene.time?.elapsed ?? 0 },
       memories: scriptMemories(ledger, history),
       // An in-turn Tool call: the sample turns closed, the next one in progress, its reply not yet in.
-      turn: { action: SAMPLE_ACTION, number: closedTurns(history) + 1, narration: '', choices: [] },
+      turn: { action: SAMPLE_ACTION, number: closedTurns(history) + 1, ...EMPTY_REPLY },
     },
     authored: null,
   };
