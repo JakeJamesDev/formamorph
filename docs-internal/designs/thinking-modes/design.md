@@ -116,6 +116,32 @@ Supersedes Slice 1's blanket suppression and Slice 2's two-kind control list.
 | **Engagement** | The tiered defaults carry positive levels, so `isReasoningEngaged` is true out of the box and the effort probe runs on connect. The probe/capability guard already sends the field only when the endpoint accepts it. |
 | **Backend budget reality (live docs)** | LM Studio: level only (`reasoning: off/low/medium/high/on`; compat `reasoning_effort`). Ollama: `think: bool or low/medium/high/max`. llama.cpp server: `--reasoning-budget` is launch-only; per request there is `reasoning_control` + `/v1/chat/completions/control` `reasoning_end` (not built). Desktop engine: exact cap, unchanged. |
 
+## Tool-offer spill and the stat-pass schema (2026-10-26 — SHIPPED)
+
+From Bundled Worlds Expansion ticket 05: with a judgment Tool offered, the cloud Gemma 4 build writes a native thought into the content under `reasoning_effort: "none"`. The server keeps special tokens (its tool parser needs them), so the reply reads `<|channel>thought … <channel|>` and then the answer. And the stat pass's strict `json_schema` let the model make no Tool call at all.
+
+| Decision | Outcome |
+|---|---|
+| **Where the thought goes** | `aiResponse.ts` treats `<|channel>thought … <channel|>` as one more reasoning block: stripped from the reply, hidden live from its first token, counted out of the Answer Cap, shown in the reasoning aside. The observation counts it as reasoning, which Gemma is. |
+| **A cut spill** | A round that offered Tools and was cut inside a thought in its content is dropped, and one round goes out without Tools. A cut native thought (its own field) still fails, since a retry would only cut again. |
+| **Stat pass with Tools** | The tool loop offers Tools without `response_format`, holds each such round whole, and keeps a reply only when it follows the schema (`followsResponseSchema`). Otherwise one more round sends the schema without Tools. A request with no Tools keeps the schema on its one round. |
+| **Not taken** | A `<|channel>thought\n<channel|>` prefill (Gemma-only, and `continue_final_message` is not portable). `chat_template_kwargs.enable_thinking: false`: 0 spills in 30 trials, the same as the plain Tool arm, so no evidence it does anything here. |
+
+**Probe** (`tool-spill-probe.cli.ts`, cloud `default`, replays of one captured Rampage run, interleaved arms, Tool `log_landmark` in the probe's own wording since the ticket's was lost):
+
+| Case | Arm | Runs | Spills | Spill reached the reply, HEAD | After the fix | Calls | Usable after |
+|---|---|---|---|---|---|---|---|
+| Choices, Spire Tower torn down | Tool offered | 25 | 3 | 3 | 0 | 21 | 24 (one batch ran before the retry: a clean failure) |
+| Choices, Spire Tower torn down | no Tool | 25 | 0 | 0 | 0 | 0 | 25 |
+| Narration, vague opening and Spire Tower | Tool offered | 35 | 0 | 0 | 0 | 0 | 35 |
+| Choices, plain roar | Tool offered | 25 | 0 | 0 | 0 | 0 | 25 |
+| Stat pass, Spire Tower, strict schema | Tool and schema in one body (HEAD) | 20 | 0 | — | — | 0 | 20 |
+| Stat pass, Spire Tower, strict schema | the loop's split (fix) | 20 | 0 | — | — | 20 | 20 |
+
+- Every spill hit the choices cap (256 tokens) inside the thought. HEAD answered that thought as the choices; the fix retried and got a valid list each time.
+- The cloud build spilled far less today than on ticket 05's batch (7 of 10 vague openings). The model drifts between batches, and the wording differs. The strip does not depend on the rate.
+- One smoke run spilled on a vague opening narration, the thought closed, and the story followed it: the shape the strip now removes.
+
 ## Open decisions
 
 - [x] **Force-suppress native reasoning in guided modes (Slice 1, shipped; SUPERSEDED 2026-09-15 — see "Reasoning on every surface").** Inline/Planning/Staged used to send `reasoning_effort:none` on every call. Now only Inline narration is suppressed.
