@@ -1,6 +1,6 @@
 # 07: Editor Check For Dropped Writes
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -15,11 +15,21 @@ Spec: Q21, Q25, Further Notes.
 
 ## Acceptance criteria
 
-- [ ] `turn.choices.push("x")` at Before the AI, During AI Output, At Game Start, When a Trait Switches and in a user Tool gets a read-only diagnostic; the same call at After the AI gets none
-- [ ] `clock.hour = 1`, `location.name = "x"` and `notes = "x"` get a read-only diagnostic at every timing; `location.move(location.name)` and `clock.advance(30)` get none
-- [ ] A write through an alias (`const t = turn; t.choices.push("x")`) is out of reach and gets no diagnostic, as the stat write check behaves
-- [ ] Reinstating the old check turns the new cases red
-- [ ] The Scripts guide names the three globals as read-only where it lists `turn`
+- [x] `turn.choices.push("x")` at Before the AI, During AI Output, At Game Start, When a Trait Switches and in a user Tool gets a read-only diagnostic; the same call at After the AI gets none. `statCodeAnalysis.readOnlyGlobals.test.ts` "a mutating call on turn.choices": all nine mutators per timing, user Tool and World Tool
+- [x] `clock.hour = 1`, `location.name = "x"` and `notes = "x"` get a read-only diagnostic at every timing; `location.move(location.name)` and `clock.advance(30)` get none. Same file, "a write to clock, location or notes", stat code included
+- [x] A write through an alias (`const t = turn; t.choices.push("x")`) is out of reach and gets no diagnostic, as the stat write check behaves. Alias cases in both describe blocks
+- [x] Reinstating the old check turns the new cases red. The new tests ran on the old check first: every case that expects a diagnostic went red
+- [x] The Scripts guide names the three globals as read-only where it lists `turn`. `docs/ScriptsGuide.md` `turn` paragraph, the spot the spec session named
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- Type `turn.choices.push("x")` in a Before the AI script and `notes = "x"` anywhere: each underlines as read-only. In the World Editor's Scripts tab.
 
 ## Blocked by
 

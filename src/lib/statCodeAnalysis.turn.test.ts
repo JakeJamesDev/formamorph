@@ -39,7 +39,8 @@ describe('a write into turn', () => {
     expect(messages('const turn = { action: "" }; turn.action = "x";', 'before')).toEqual([]);
   });
 
-  it('leaves a mutating call alone, which the run lists as dropped', () => {
-    expect(messages('turn.choices.push("Run.");', 'before')).toEqual([]);
+  it('lists a mutating call as read-only outside After the AI', () => {
+    expect(messages('turn.choices.push("Run.");', 'before')).toEqual(['turn.choices is read-only.']);
+    expect(messages('turn.choices.push("Run.");', 'after')).toEqual([]);
   });
 });
