@@ -8,7 +8,7 @@
 // control. Transcripts are written under blind labels for rubric scoring; key.json maps labels to arms.
 //
 // Usage: npx vite-node testing/baseline/harness/world-probe.cli.ts -- [--worlds all|drone,slime]
-//          [--arms worktree,ace2e0204] [--runs 5] [--endpoint URL] [--model default] [--out DIR] [--port N]
+//          [--arms worktree,2f45261a5] [--runs 5] [--endpoint URL] [--model default] [--out DIR] [--port N]
 //   An arm is `worktree` (the file on disk) or any git revision (`HEAD`, `HEAD~2`, a sha).
 //   FORMAMORPH_PROBE_TOKEN is sent as the bearer token when the endpoint needs one; it is never written out.
 import { execFileSync } from 'node:child_process';
@@ -17,12 +17,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type Page } from 'playwright';
 import { readTavernJson } from '@/lib/tavernCard';
+import { PRE_EXPANSION_SHA } from '@/test/bundledRevisions';
 import { enterWorld, startDevServer } from './appDriver.mjs';
 import { scoreTurn, summarizeArm, type ArmSummary, type DumpTurn, type TurnScore } from './world-probe-score';
 import { commonFlags, WORLD_SCRIPTS } from './world-probe-worlds';
 
-/** The last commit before any bundled-worlds-refresh ticket landed: the default "before" arm. */
-const PRE_REFRESH = 'ace2e0204';
+/** The default "before" arm. */
+const PRE_EXPANSION = PRE_EXPANSION_SHA.slice(0, 9);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const WORLDS_DIR = 'src/defaultworlds';
 const TURN_TIMEOUT_MS = 5 * 60_000;
@@ -46,7 +47,7 @@ const endpoint = option('--endpoint', 'https://api.lyonade.net/v1/chat/completio
 const model = option('--model', 'default');
 const runs = count('--runs', '5');
 const token = process.env.FORMAMORPH_PROBE_TOKEN ?? '';
-const arms = list('--arms', `worktree,${PRE_REFRESH}`);
+const arms = list('--arms', `worktree,${PRE_EXPANSION}`);
 const bundled = readdirSync(path.join(REPO_ROOT, WORLDS_DIR)).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -'.json'.length));
 const worldIds = list('--worlds', 'all').flatMap((id) => (id === 'all' ? bundled : [id]));
 /** 0 claims a free port. */

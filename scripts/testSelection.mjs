@@ -60,7 +60,7 @@ export const GRAPH_COVERED = {
   'scripts/fetchLlamaServer.test.mjs': 'reads its recorded asset list and its own temp folders',
   'scripts/moveReach.test.mjs':'reads its own temp folder and walks src/lib/uuid.ts, whose closure it never asserts',
   'testing/baseline/harness/planning-parser-probe.test.ts': 'reads files only under PARSER_PROBE=1',
-  'src/test/preRefreshWorlds.ts': 'reads the worlds from one fixed commit, which no change alters',
+  'src/test/bundledRevisions.ts': 'reads the worlds from fixed commits, which no change alters',
   'electron/modelDownload.cjs': 'reads only the paths its caller passes',
   'electron/modelMove.cjs': 'reads only the paths its caller passes',
   'electron/modelScan.cjs': 'reads only the paths its caller passes',

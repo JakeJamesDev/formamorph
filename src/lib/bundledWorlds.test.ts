@@ -1,18 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { migrateWorld } from './version';
 import { runRules } from './testBench/rules';
-import type { Entity, Script, Trait, TraitGroup, World } from '@/types';
+import { entityImages } from './entityImages';
+import { locationImages } from './locationImages';
+import { encodePlaceholderToken, PLACEHOLDER_TOKEN_SOURCE } from './placeholders';
+import type { Entity, GalleryImage, Script, Tool, Trait, TraitGroup, TraitRequirementRow, World } from '@/types';
 
 /** The shared suite over every bundled world, loaded the way the seeder loads it. */
 
 const raws = import.meta.glob<string>('@/defaultworlds/*.json', { query: '?raw', import: 'default', eager: true });
 const worlds = Object.entries(raws).map(([path, raw]) => [path.replace(/.*\/|\.json$/g, ''), raw] as const);
 
-/** What a world shows an author. Each world ticket adds its row (Q6). */
-type Feature = 'scripts' | 'traitGates' | 'traitModes' | 'minMaxPicks' | 'statToggles' | 'openingWeights' | 'blueprints';
+/** What a world shows an author. */
+type Feature =
+  | 'scripts' | 'traitGates' | 'traitModes' | 'minMaxPicks' | 'statToggles' | 'openingWeights' | 'blueprints'
+  | 'tools' | 'relationships' | 'timeGates' | 'scriptLore' | 'scriptExits' | 'visibilityRules' | 'mapBackground'
+  | 'newFieldChips';
 
+/** The features each world shows. A world ticket moves each feature it delivers here from PLANNED. */
 const FEATURES: Record<string, Feature[]> = {
-  'drone': ['scripts', 'traitGates', 'minMaxPicks'],
+  'drone': ['scripts', 'traitGates', 'minMaxPicks', 'tools'],
   'emberwatch': ['traitGates', 'blueprints'],
   'open-chat': [],
   'rampage': ['scripts', 'statToggles'],
@@ -20,6 +27,17 @@ const FEATURES: Record<string, Feature[]> = {
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights'],
   'valentines': ['scripts'],
   'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights'],
+};
+
+/** The expansion's assignment table: features a world ticket still has to deliver. */
+const PLANNED: Record<string, Feature[]> = {
+  'drone': ['visibilityRules', 'newFieldChips'],
+  'emberwatch': ['tools', 'relationships', 'scriptLore', 'mapBackground', 'visibilityRules', 'newFieldChips'],
+  'rampage': ['tools', 'scriptExits', 'mapBackground', 'visibilityRules', 'newFieldChips'],
+  'slime': ['tools', 'relationships', 'timeGates', 'scriptLore', 'visibilityRules', 'newFieldChips'],
+  'sugarscape': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
+  'valentines': ['relationships', 'visibilityRules', 'newFieldChips'],
+  'veilwood': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */
@@ -54,6 +72,30 @@ const openingWeightMaps = (world: World) => [
   ...(world.locations ?? []).map((l) => l.openingWeights),
 ];
 
+/** Every script's code, Tool script handlers included. */
+const scriptCode = (world: World): string[] => [
+  ...ownersOf(world).flatMap((o) => [...o.scripts, ...o.traits.flatMap((t) => t.scripts ?? [])]).map((s) => s.code),
+  ...(world.tools ?? []).flatMap((t) => (t.handler.kind === 'script' ? [t.handler.code] : [])),
+];
+
+const hasVisibilityRule = (images: GalleryImage[]) => images.some((image) => (image.requires ?? []).length > 0);
+
+/** Every Requirement Row: trait gates and image Visibility rules. */
+const requirementRows = (world: World): TraitRequirementRow[] => [
+  ...ownersOf(world).flatMap((o) => o.traits.flatMap((t) => t.requires ?? [])),
+  ...[
+    ...(world.locations ?? []).flatMap((l) => locationImages(l)),
+    ...(world.entities ?? []).flatMap((e) => entityImages(e)),
+    ...(world.worldOverview.mapBackground?.images ?? []),
+  ].flatMap((image) => image.requires ?? []),
+];
+
+// A rolled chip, not a Built-in.
+const PLACEHOLDER_TOKEN = new RegExp(PLACEHOLDER_TOKEN_SOURCE);
+
+// An entry's `enabled` assigned, not compared: `dictionaries.Lore.entries["Sealed Vault"].enabled = true`.
+const ENTRY_ENABLED_WRITE = /\.entries(?:\.[\w$]+|\[[^\]]+\])\.enabled\s*=(?!=)/;
+
 const DETECT: Record<Feature, (world: World) => boolean> = {
   scripts: (w) => ownersOf(w).some((o) => [...o.scripts, ...o.traits.flatMap((t) => t.scripts ?? [])].some((s) => s.code.trim())),
   traitGates: (w) => ownersOf(w).some((o) => o.traits.some((t) => (t.requires ?? []).length > 0)),
@@ -62,6 +104,17 @@ const DETECT: Record<Feature, (world: World) => boolean> = {
   statToggles: (w) => ownersOf(w).some((o) => o.traits.some((t) => (t.statToggles ?? []).length > 0)),
   openingWeights: (w) => openingWeightMaps(w).some((m) => Object.values(m ?? {}).some((weight) => weight !== 1)),
   blueprints: (w) => [...(w.traitGroups ?? []), ...(w.statGroups ?? [])].some((g) => g.system === 'blueprints'),
+  tools: (w) => (w.tools ?? []).some((t) => t.handler.kind === 'script' && t.handler.code.trim()),
+  relationships: (w) => (w.entities ?? []).some((e) => (e.relationships ?? []).length > 0),
+  timeGates: (w) => requirementRows(w).some((row) => row.all.some((c) => c.kind === 'time')),
+  scriptLore: (w) => scriptCode(w).some((code) => ENTRY_ENABLED_WRITE.test(code)),
+  scriptExits: (w) => scriptCode(w).some((code) => /\blocation\.exits\b/.test(code)),
+  visibilityRules: (w) => (w.locations ?? []).some((l) => hasVisibilityRule(locationImages(l))) && (w.entities ?? []).some((e) => hasVisibilityRule(entityImages(e))),
+  mapBackground: (w) => (w.worldOverview.mapBackground?.images ?? []).length > 0,
+  newFieldChips: (w) => [
+    ...(w.entities ?? []).flatMap((e) => [e.pronouns ?? '', ...(e.relationships ?? []).map((r) => r.label)]),
+    ...(w.connections ?? []).flatMap((c) => [c.aToB?.hint ?? '', c.bToA?.hint ?? '']),
+  ].some((text) => PLACEHOLDER_TOKEN.test(text)),
 };
 
 /** The file as JSON stores it: an absent key and an undefined one read the same. */
@@ -88,12 +141,82 @@ describe.each(worlds)('the %s world', (id, raw) => {
   it.each(FEATURES[id] ?? [])('shows %s', (feature) => {
     expect(DETECT[feature](world)).toBe(true);
   });
+
+  it.each(PLANNED[id] ?? [])('still plans %s', (feature) => {
+    expect(DETECT[feature](world), `the world shows ${feature}: move it from PLANNED into its FEATURES row`).toBe(false);
+  });
 });
 
-// Q6: once every world ticket has added its row, the set covers every feature.
-describe.runIf(worlds.every(([id]) => id in FEATURES))('the bundled set', () => {
-  it('shows every feature in at least one world', () => {
-    const shown = new Set(Object.values(FEATURES).flat());
-    expect(Object.keys(DETECT).filter((feature) => !shown.has(feature as Feature))).toEqual([]);
+describe('the bundled set', () => {
+  const missing = (rows: Record<string, Feature[]>[]) => {
+    const claimed = new Set(rows.flatMap((r) => Object.values(r).flat()));
+    return Object.keys(DETECT).filter((feature) => !claimed.has(feature as Feature));
+  };
+
+  it('shows or plans every feature', () => {
+    expect(missing([FEATURES, PLANNED])).toEqual([]);
+  });
+
+  // Strict once every world has its row and no planned feature is left.
+  it.runIf(worlds.every(([id]) => id in FEATURES) && Object.values(PLANNED).every((p) => p.length === 0))(
+    'shows every feature in at least one world', () => {
+      expect(missing([FEATURES])).toEqual([]);
+    },
+  );
+});
+
+describe('the expansion feature detectors', () => {
+  const base = () => migrateWorld(JSON.parse(worlds.find(([id]) => id === 'veilwood')![1]) as Record<string, unknown>);
+  const atNight: TraitRequirementRow[] = [{ all: [{ kind: 'time', dayparts: ['night', 'evening'] }] }];
+  const script = (code: string): Script => ({ id: 'script', timing: 'after', code });
+  const tool = (handler: Tool['handler']): Tool =>
+    ({ id: 'tool', name: 'mark', description: 'Marks it.', params: [], handler, emptyResult: '', offeredTo: ['narration'] });
+  const chip = encodePlaceholderToken({ id: 'placeholder', mode: 'world', placementId: 'placement' });
+
+  // Each edit adds the feature to a world that lacks it.
+  const EDITS: Record<string, [Feature, (w: World) => void]> = {
+    'a script Tool': ['tools', (w) => { w.tools = [tool({ kind: 'script', code: 'memory.add("Marked.");' })]; }],
+    'a relationship': ['relationships', (w) => { w.entities[0].relationships = [{ targetId: w.entities[1].id, label: 'rival' }]; }],
+    'a trait gated by time': ['timeGates', (w) => { w.traits = [{ ...ownersOf(w).flatMap((o) => o.traits)[0], requires: atNight }]; }],
+    'a backdrop shown by time': ['timeGates', (w) => { w.locations[0].images = [{ data: 'image', requires: atNight }]; }],
+    'a script that enables a lore entry': ['scriptLore', (w) => { w.scripts = [script('dictionaries.Lore.entries["Sealed Vault"].enabled = true;')]; }],
+    'a Tool that enables a lore entry': ['scriptLore', (w) => { w.tools = [tool({ kind: 'script', code: 'dictionaries.Lore.entries.Gate.enabled = true;' })]; }],
+    'a script that reads exits': ['scriptExits', (w) => { w.scripts = [script('const exit = location.exits[0];')]; }],
+    'a location rule and an entity rule': ['visibilityRules', (w) => {
+      w.locations[0].images = [{ data: 'image', requires: atNight }];
+      w.entities[0].images = [{ data: 'image' }, { data: 'image', requires: atNight }];
+    }],
+    'a map image': ['mapBackground', (w) => { w.worldOverview.mapBackground = { images: [{ data: 'image' }], frame: { x: 0, y: 0, width: 10, height: 10 }, opacity: 0.5 }; }],
+    'a chip in pronouns': ['newFieldChips', (w) => { w.entities[0].pronouns = chip; }],
+    'a chip in a travel hint': ['newFieldChips', (w) => { w.connections![0].aToB = { hint: `past ${chip}'s gate` }; }],
+    'a chip in a relationship label': ['newFieldChips', (w) => { w.entities[0].relationships = [{ targetId: w.entities[1].id, label: `${chip}'s rival` }]; }],
+  };
+
+  it.each(Object.entries(EDITS))('finds %s', (_name, [feature, edit]) => {
+    const world = base();
+    expect(DETECT[feature](world)).toBe(false);
+    edit(world);
+    expect(DETECT[feature](world)).toBe(true);
+  });
+
+  // Near misses: each edit is close to its feature but is not it.
+  const NEAR: Record<string, [Feature, (w: World) => void]> = {
+    'a template Tool': ['tools', (w) => { w.tools = [tool({ kind: 'template', body: 'Marked.' })]; }],
+    'a script Tool with no code': ['tools', (w) => { w.tools = [tool({ kind: 'script', code: '  ' })]; }],
+    'a backdrop shown by a stat': ['timeGates', (w) => {
+      w.locations[0].images = [{ data: 'image', requires: [{ all: [{ kind: 'stat', id: w.stats[0].id, operator: '>', value: 0, unit: 'raw' }] }] }];
+    }],
+    'a longer name after exits': ['scriptExits', (w) => { w.scripts = [script('const count = location.exitsSeen;')]; }],
+    'a map with no image': ['mapBackground', (w) => { w.worldOverview.mapBackground = { images: [], frame: { x: 0, y: 0, width: 10, height: 10 }, opacity: 0.5 }; }],
+    'a whole dictionary enabled': ['scriptLore', (w) => { w.scripts = [script('dictionaries.Lore.enabled = true;')]; }],
+    'an entry enabled compared': ['scriptLore', (w) => { w.scripts = [script('if (dictionaries.Lore.entries.Gate.enabled == true) stats.Fear.value += 1;')]; }],
+    'a location rule only': ['visibilityRules', (w) => { w.locations[0].images = [{ data: 'image', requires: atNight }]; }],
+    'a Built-in in pronouns': ['newFieldChips', (w) => { w.entities[0].pronouns = '{{user}}'; }],
+  };
+
+  it.each(Object.entries(NEAR))('ignores %s', (_name, [feature, edit]) => {
+    const world = base();
+    edit(world);
+    expect(DETECT[feature](world)).toBe(false);
   });
 });

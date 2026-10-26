@@ -8,7 +8,7 @@ import type { Stat } from '@/types';
 import { codeAt } from '@/test/scriptFixtures';
 import { migrateStatBoxes } from './scripts';
 import { DEFAULT_WORLDS } from './defaultWorlds';
-import { preRefreshWorld } from '@/test/preRefreshWorlds';
+import { PRE_REFRESH_SHA, worldAt } from '@/test/bundledRevisions';
 
 /** Every rewrite case, input to expected output. */
 const REWRITES: Array<[string, string, string]> = [
@@ -138,7 +138,7 @@ describe('migrateStatLookups', () => {
 // The shipped code these formulas check is the bundled worlds' pre-refresh revision.
 describe('migrateStatLookups on the pre-refresh bundled worlds', () => {
   type BundledWorld = { stats?: Stat[]; entities?: { name: string; stats?: Stat[] }[] };
-  const worlds: Record<string, BundledWorld> = Object.fromEntries(DEFAULT_WORLDS.map(({ id }) => [id, preRefreshWorld(id)]));
+  const worlds: Record<string, BundledWorld> = Object.fromEntries(DEFAULT_WORLDS.map(({ id }) => [id, worldAt(PRE_REFRESH_SHA, id)]));
   /** A world's stat lists by owner: the world's own, then each entity's, read as the load reads them. The old flat
    *  list is their union. */
   const ownersOf = (world: BundledWorld) => [
