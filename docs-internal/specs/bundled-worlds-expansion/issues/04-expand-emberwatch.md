@@ -27,6 +27,6 @@ Spec: ../spec.md (Q4, Q5, Q7, Q8, Q9, Q16, Q20; Size table; Feature assignment)
 - [ ] Per-world tests cover each new script's effect, each Tool handler's write, and each gate that must hold, and each is shown to bite by breaking the world file once.
 - [ ] The probe shows no structural regression and a rubric win or tie over the pre-expansion revision, with 5 or more runs per arm. Numbers go in this ticket's comments.
 - [ ] The art-direction line is in this ticket's comments and the spec's Comments.
-- [ ] Fingerprints are regenerated. The changelog fragment folds this world into the effort's entry.
+- [ ] Fingerprints are regenerated. No changelog fragment: ticket 01's entry covers every world (Q14).
 
 For you: read one transcript per opening and judge whether the new places feel like the same world.

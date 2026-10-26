@@ -24,6 +24,6 @@ Every location and entity in **City Rampage** has art in one style, and the worl
 - [ ] The contact sheet is at `.scratch/frames/rampage-sheet.png` with every image labeled by item and slot, and each redo's seed is in this ticket's comments.
 - [ ] The world file's size before and after is in this ticket's comments (Q13).
 - [ ] The Map Background shows behind the Locations canvas and the in-game Map at `.scratch/frames/rampage-map.png`, 1280 wide, light theme.
-- [ ] Fingerprints are regenerated. The changelog fragment folds this world's art into the effort's entry.
+- [ ] Fingerprints are regenerated. No changelog fragment: ticket 01's entry covers every world (Q14).
 
 For you: open the contact sheet and reject or redo by name. In play, reach the state that flips each Visibility rule and confirm the image changes.
