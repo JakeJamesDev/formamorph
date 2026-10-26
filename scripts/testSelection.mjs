@@ -76,6 +76,8 @@ export const GRAPH_COVERED = {
   'scripts/testSelection.mjs': 'runs git only in the helpers the gate scripts call',
   'vite.config.js': 'a change to it runs the full suite',
   'scripts/shipBundledWorlds.mjs': 'reads only the world file its caller names; a change to it runs the full suite',
+  'scripts/stripSeededWorlds.mjs': 'reads only the world file a seeder import names; a change to it runs the full suite',
+  'scripts/stripWorldImages.mjs': 'reads files only in its command-line run, which no test calls; a change to it runs the full suite',
   'src/lib/shippedWorld.ts': 'reads its own import graph and its cache in node_modules/.cache',
   'scripts/bundledRevisions.ts': 'reads src/defaultworlds and its git history, which change only with a world file; the world trigger runs its test',
 };
@@ -97,7 +99,7 @@ export const PATH_TRIGGERS = {
   'src/defaultworlds/rampage.json': ['src/lib/rampageWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/sugarscape.json': ['src/lib/sugarscapeWorld.test.ts'],
-  'src/defaultworlds/valentines.json': ['src/lib/valentinesWorld.test.ts'],
+  'src/defaultworlds/valentines.json': ['src/lib/valentinesWorld.test.ts', 'src/services/WorldStorageService.strippedSeed.test.ts'],
   'src/defaultworlds/veilwood.json': ['src/lib/veilwoodWorld.test.ts'],
   'src/lib/formaquestion/mascotAssets/*.webp': ['src/lib/formaquestion/mascotAssets.ts'],
   'testing/parity/turn-pipeline-parity.json': ['src/lib/turnPipeline/parityFixture.test.ts', 'src/lib/turnPipeline/parityTestInputs.ts'],

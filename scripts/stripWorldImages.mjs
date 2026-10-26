@@ -3,13 +3,14 @@
 // Defaults: src/defaultworlds → .scratch/worlds-stripped.
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const DEFAULT_IN = 'src/defaultworlds';
 const DEFAULT_OUT = '.scratch/worlds-stripped';
 const DATA_URI = /^data:([^;,]*)[;,]/;
 
 /** Replaces a `data:` URI with a marker; leaves every other value as it is. */
-function stripValue(value) {
+export function stripValue(value) {
   if (typeof value === 'string') {
     const match = DATA_URI.exec(value);
     if (!match) return value;
@@ -39,13 +40,15 @@ function jsonFiles(input) {
     .map((name) => path.join(input, name));
 }
 
-const { inputs, out } = parseArgs(process.argv.slice(2));
-mkdirSync(out, { recursive: true });
-for (const file of inputs.flatMap(jsonFiles)) {
-  const raw = readFileSync(file, 'utf8');
-  const stripped = JSON.stringify(stripValue(JSON.parse(raw)), null, 2) + '\n';
-  const target = path.join(out, path.basename(file));
-  writeFileSync(target, stripped);
-  const kb = (n) => `${Math.round(n / 1024)} KB`;
-  console.log(`${target}  ${kb(raw.length)} → ${kb(stripped.length)}`);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { inputs, out } = parseArgs(process.argv.slice(2));
+  mkdirSync(out, { recursive: true });
+  for (const file of inputs.flatMap(jsonFiles)) {
+    const raw = readFileSync(file, 'utf8');
+    const stripped = JSON.stringify(stripValue(JSON.parse(raw)), null, 2) + '\n';
+    const target = path.join(out, path.basename(file));
+    writeFileSync(target, stripped);
+    const kb = (n) => `${Math.round(n / 1024)} KB`;
+    console.log(`${target}  ${kb(raw.length)} → ${kb(stripped.length)}`);
+  }
 }
