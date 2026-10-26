@@ -65,6 +65,8 @@ Settled with the user on 2026-10-25 through a grill and an agent review of its f
 | Q46 | A World Tool's `hidden` write replays on a stats re-roll: the save's per-stat trigger-write row gains an optional `hidden` boolean. An additive save-shape change, refining Q4 (user, via ticket 05) |
 | Q47 | The save envelope's `openingCue` holds the cue of every Opening Action start, edited or not, and `""` for an Opening Narration start: a present field is authoritative, an absent one marks an older save. A full re-roll of page 1 is a new opening turn whose cue replaces the saved one. The field does not rewind with undo, like `persona` (ticket 02 ruling) |
 | Q48 | An exit's `hint` is the Connection leg's hint with placeholders filled in, `''` for an implicit or hintless exit. `exits` follows the router's order; `children` follows authored location order. A `parentId` naming no location reads `parent` as `''`. `parent`, `children` and `exits` are deferred per entry and built on first read (ticket 08 ruling) |
+| Q49 | A lore write reads back in the same run; name resolution keeps the run-start winner. A non-boolean write fails the run as a bad write; a write through a name no entry has drops and lists as unknown; every assignment is a write. The overlay is keyed by book id, with an optional book `enabled` and an `entries` map keyed by entry id holding optional `enabled` and `constant` (ticket 06 ruling) |
+| Q50 | A World Tool's lore writes replay on a stats re-roll through another optional field on the saved trigger-write row, as Q46 does for `hidden`. An additive save-shape change (user, via ticket 06) |
 
 ## Surface
 
