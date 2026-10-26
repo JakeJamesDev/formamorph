@@ -20,7 +20,7 @@ Every location and entity in **Reincarnated Drone** has art in one style, and th
 ## Acceptance criteria
 
 - [x] Every location and entity has at least one image, and the shared suite is green with `visibilityRules` claimed in this world's row. Node check: 28 of 28 items hold art, 30 images; `bundledWorlds.test.ts` green with the row moved.
-- [x] Per-world tests cover each Visibility rule at a value on both sides of its threshold or daypart, and are shown to bite. `droneWorld.test.ts` › "the drone's Visibility rules": Health 29/30, Charge 49/50; both fail with the world's thresholds moved by one.
+- [x] Per-world tests cover each Visibility rule at a value on both sides of its threshold or daypart, and are shown to bite. `droneWorld.test.ts` › "the drone's Visibility rules": Charge 99/100 for both; both fail with the world's thresholds moved to 99.
 - [x] The contact sheet is at `.scratch/frames/drone-sheet.png` with every image labeled by item and slot, and each redo's seed is in this ticket's comments. The drone's cells read `Designation#0` and `Designation#1`.
 - [x] The world file's size before and after is in this ticket's comments (Q13).
 - [x] Fingerprints are regenerated. No changelog fragment: ticket 01's entry covers every world (Q14). `npm run fingerprints`: 141 revisions, 71 fingerprints.
@@ -37,8 +37,8 @@ For you: open the contact sheet and reject or redo by name. In play, reach the s
 - Neither rule was flipped in a live game. The tests read the rules through `visibleImages` and `visibleLocationImages`, which the game's gallery and backdrop hooks call.
 - Open the contact sheet at `.scratch/bundled-worlds-expansion-10/frames/drone-sheet.png`. Reject or redo any image by name.
 - The drone has no cannon turret in either image. Four tag passes could not get both wheels and the turret. You picked pair E.
-- In play, drop the drone's Health below 30%. Its gallery gains the battle-damaged image.
-- In play, raise Charge to 50% or more and go to Mossback Hill. The backdrop gallery gains the blazing glyph stones.
+- In play, fill Charge to 100% (Overdrive ready). The drone's gallery gains the powered-up image.
+- With Charge at 100%, go to Mossback Hill. The backdrop gallery gains the awake Sentinel.
 - Existing art stays (Q10): Magiterra Nova's JPEG and Tiamat's WebP predate the art-direction line and look different from the new images.
 
 ## Comments
@@ -76,6 +76,21 @@ The drone's stored tags say `dome body, antenna` where its prompt said `tank tur
 
 **First-pass seeds** (kept): Ashfall Capital 182397900 · Undercity Vaults 43707073 · Hulkfall Camp 1194769337 · Blightcrown Peaks 415195203 · The Blight Line 1785571105 · Thornmere 1101030488 · Mossback Hill#0 738203606 · Mossback Hill#1 1419652244 · Archon Vael 396885992 · Ser Halden 274191652 · Mossback Sentinel 1125761283 · Lady Morrow 152380103 · Vault Warden 1002705267 · Glassback Burrower 1867966112 · Blight Drake 2067395019 · Blightspawn 1138650894 · Herald Skarn 1736539013 · Old Corwin 2097128882 · Sabi 370512877 · Tamsin 1559273303 · Squire Wren 219101372.
 
-**Visibility rules (Q18).** The drone's slot 1 shows while its own Health is below 30 percent. Mossback Hill's slot 1 has no owner, so it reads the played persona, and shows while Charge is at or above 50 percent. Slot 0 has no rule on both.
+**Visibility rules (Q18).** Both slot 1 images show while Overdrive is ready, Charge at 100 percent. The drone's rule reads its own Charge. Mossback Hill's rule has no owner, so it reads the played persona. Slot 0 has no rule on both.
 
-**File size (Q13).** `src/defaultworlds/drone.json`: 1,311,555 bytes (1.25 MB) before, 39,945,747 bytes (38.10 MB) after, all lossless WebP.
+**Follow-up after user review (2026-10-26).** The user rejected Blightcrown Peaks, Demon Frontier, and both Visibility images.
+
+- The drone's slot 1 reads as powered up, not damaged, so its rule moved from Health < 30% to Charge at 100%.
+- Mossback Hill's two images now show the Sentinel. Slot 0 is the dormant Sentinel crouched in the hillside. Slot 1 is the same subject awake, with its optic and the glyphs lit, made at slot 0's seed with the awake tags added, through a hand-written replay log. Its rule is Charge at 100%, so the Sentinel answers the drone's Overdrive (user's pick).
+- Two candidates per item; the user picked each.
+
+| Item | Stored seed | Extra negative |
+|---|---|---|
+| Blightcrown Peaks#0 | 1516780368 | `machine, vehicle, robot, creature, character, white background, simple background` |
+| Demon Frontier#0 | 1671083904 | `castle, building, fort, house, machine, vehicle, robot, creature, character, humans` |
+| Mossback Hill#0 | 1957288652 | `humans, girl, child, standing, walking, legs, full body, glowing eyes, glowing, light beams` |
+| Mossback Hill#1 | 1957288652, prompt plus `awakened, glowing blue optic, glowing glyphs on the stones, beams of light` | slot 0's, without the glow tags |
+
+Mossback Hill's Sentinel will not render half-buried: four candidates gave a standing, sitting or crouched machine, and the stored tags say crouching.
+
+**File size (Q13).** `src/defaultworlds/drone.json`: 1,311,555 bytes (1.25 MB) before, 39,945,747 bytes (38.10 MB) after, all lossless WebP. After the follow-up: 40,214,926 bytes (38.35 MB).
