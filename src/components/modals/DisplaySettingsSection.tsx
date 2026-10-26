@@ -5,6 +5,7 @@ import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { RevealAnimationDemoButton } from '@/components/RevealAnimationDemo';
 import { FontTuneButton } from '@/components/FontTuneDialog';
 import { Row, CheckRow, Section, SubGroup, RecommendedMark, OptionSwitcher } from '@/components/SettingsRows';
+import { Meta } from '@/components/ui/typography';
 import { SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -161,9 +162,9 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
               onValueChange={(v) => setBackgroundOverlay(v[0])}
               className="max-w-[220px]"
             />
-            <span className="text-meta text-muted-foreground tabular-nums w-9 shrink-0">
+            <Meta className="tabular-nums w-9 shrink-0">
               {Math.round(backgroundOverlay * 100)}%
-            </span>
+            </Meta>
           </div>
         </Row>
         </SubGroup>
@@ -253,7 +254,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
 
       {/* These rows sit with the rest of what the story looks like; the section keeps the word
           "Accessibility" so the term stays findable. */}
-      <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
+      <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app">
       <Row htmlFor="narrationFont" target={targetAttribute('settings.display', 'narration-font')} {...rowCopy('narrationFont')}>
         <div className="flex items-center gap-3">
           <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
@@ -282,9 +283,9 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
             onValueChange={(v) => setNarrationScale(v[0])}
             className="max-w-[220px]"
           />
-          <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
+          <Meta className="tabular-nums w-10 shrink-0">
             {Math.round(narrationScale * 100)}%
-          </span>
+          </Meta>
         </div>
       </Row>
       <Row {...rowCopy('lineSpacing')}>
@@ -297,9 +298,9 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
             onValueChange={(v) => setNarrationLineHeight(v[0])}
             className="max-w-[220px]"
           />
-          <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
+          <Meta className="tabular-nums w-10 shrink-0">
             {narrationLineHeight.toFixed(2)}
-          </span>
+          </Meta>
         </div>
       </Row>
       <CheckRow
@@ -339,7 +340,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
       {/* Both rows only decide whether a panel appears on screen — nothing about them changes what
           the AI produces, which is what keeps the Output tab honest. */}
       {advanced && (
-      <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
+      <Section title="Inspection" hint="Shows work that normally happens out of sight">
       <CheckRow
         htmlFor="showReasoning"
         checked={showReasoning}

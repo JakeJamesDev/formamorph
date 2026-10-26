@@ -63,7 +63,7 @@ describe('settings design reference', () => {
     const user = userEvent.setup();
     renderShowcase();
 
-    const modeSelect = screen.getByRole('combobox', { name: 'Settings mode' });
+    const modeSelect = screen.getByRole('combobox', { name: 'Settings Mode' });
     expect(modeSelect).toHaveTextContent('Advanced');
     await user.click(screen.getByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label }));
     await user.click(modeSelect);

@@ -242,7 +242,7 @@ The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud 
 | **Endpoint URL** | The address of your model server. The line under it shows the full URL that requests go to. **Trouble Connecting?** opens a checklist. |
 | **API Token** | The token for a hosted service. Leave it empty for a local server. |
 | **Model Name** | The model the endpoint uses, exactly as the server names it |
-| **Context Window (tokens)** | **Advanced.** How much the model keeps in context. **Detect** asks the server. |
+| **Context Window** | **Advanced.** How many tokens the model keeps in context. **Detect** asks the server. |
 | **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override Endpoint Limit** to set it; without it, there is **No Limit**. |
 | **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a checkbox. An unchecked row sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
 | **Extra Parameters** | **Advanced.** A JSON object added to every request to this endpoint: a vendor's reasoning switch, `top_a`, `chat_template_kwargs`, a routing block. A field the app sets for a request wins over the same field here, so these only add what the app leaves out. You can't set `model`, `messages`, `stream`, `tools`, `tool_choice`, `response_format`, `n` or `stop`. Text with an error shows why in red, and requests go out without these fields. The **Native Reasoning** row (Output) and each prompt's own setting control reasoning wherever the app sends a reasoning field. |
@@ -314,11 +314,11 @@ The **Image** section sets how each image is made.
 |---|---|
 | **Prompt Prefix** | Quality and style tags put before every image prompt |
 | **Negative Prompt** | Tags the image must not have |
-| **Portrait (W × H)**, **Landscape (W × H)** | **Advanced.** Image sizes. Portraits are for entities. Landscapes are for locations and thumbnails. |
+| **Portrait Size**, **Landscape Size** | **Advanced.** Image width and height. Portraits are for entities. Landscapes are for locations and thumbnails. |
 | **Steps / CFG** | Sampling steps and how closely the image follows the prompt |
 | **Sampler** | The sampling method |
 | **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On Automatic1111 / Forge it needs the **ADetailer** extension on your server. On InvokeAI it about doubles the time. |
-| **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. |
+| **Workflow** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph with one exported in API format. **How to Get This** shows how to export one. |
 | **File Name** | **Advanced**, ComfyUI only. Where each image is saved under ComfyUI's `output` folder: `{world}`, `{subject}` (an entity's or location's name, or `turn-12-scene`), `{turn}` and `{preset}`. The default is `formamorph/{world}/{subject}`. A `/` in the pattern makes a folder. A custom workflow uses it where its save node's prefix is `%prefix%`; without one, the row is grayed out. |
 | **Board** | **Advanced**, InvokeAI only. The InvokeAI board that gets the images |
 | **Qwen3 Encoder**, **Z-Image VAE**, **Anima VAE** | **Advanced**, InvokeAI only. Shows for a Z-Image or Anima model. Leave them empty to pick one automatically. |

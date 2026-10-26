@@ -100,7 +100,13 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
   stripLinksAndImages: {
     label: 'Strip Links And Images',
     description: 'Sends past narration to the AI without markdown links and images',
-    info: 'A link keeps its text and an image is removed. Covers the last story, memory summaries, diary entries and recall results. You still see them in the story, and your world’s own text is never changed. Turn off if your model should keep writing links it sees.',
+    info: `Keeps a link’s text and removes images before past narration goes to the AI.
+
+- Covers the last story, memory summaries, diary entries and recall results
+- You still see them in the story
+- Your world’s own text never changes
+
+Turn off if your model should keep writing links.`,
   },
 
   // ── Display · Accessibility ─────────────────────────────────────────────────
@@ -189,7 +195,12 @@ Useful for world authoring and debugging.`,
     label: 'Native Reasoning',
     description: 'Sets whether reasoning models think, and how hard',
     // The caveat that used to close all eight effort levels, said once for the whole control.
-    info: 'Some models think privately before they answer. Uncheck to stop that on every prompt. Each prompt keeps its own setting for when you check it again. The dropdown sets how much effort they spend, and **Model Default** sends no hint. Every prompt set to **Global** uses this strength. Models without native reasoning ignore it.',
+    info: `Some models think privately before they answer. Uncheck to stop that on every prompt. Each prompt keeps its own setting for when you check it again.
+
+- The dropdown sets how much effort they spend
+- **Model Default** sends no hint
+- Every prompt set to **Global** uses this strength
+- Models without native reasoning ignore it`,
   },
 
   // ── Output · Tools ──────────────────────────────────────────────────────────
@@ -214,7 +225,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   semanticMemory: {
     label: 'Semantic Memory',
     description: 'Keeps the memories most relevant to your action',
-    info: `When memories no longer all fit, keeps the ones most **relevant to your current action** instead of just dropping the oldest.
+    info: `When memories no longer all fit, keeps the ones most **relevant to your current action** instead of dropping the oldest.
 
 - Runs a small model **on your device**
 - One-time **~23 MB** download when you turn it on
@@ -222,7 +233,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   },
   memoryCap: {
     label: 'Memory Cap',
-    description: 'Caps how many memories the AI sees each turn',
+    description: 'Caps how many memories the AI receives each turn',
     info: `Only the most relevant memories stay, even when more would fit.
 
 - Smaller, sharper prompts on long stories
@@ -232,7 +243,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   sceneRecall: {
     label: 'Scene Recall',
     description: 'Recalls a full past scene when your action returns to it',
-    info: `Go back to someone you made a promise to, and the AI rereads the original scene word for word, marked as the past.
+    info: `Return to someone you made a promise to, and the AI rereads that scene word for word. The scene is marked as the past.
 
 - At most **two scenes** per turn
 - Never near-duplicates of each other or of recent turns
@@ -244,7 +255,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
     experimental: true,
     info: `Stamps each memory like *"Day 3, evening — two days ago"* and states the present moment in the recap.
 
-- Without it, the AI sees an undated list and guesses how long ago things were
+- Without it, the AI receives an undated list and guesses how long ago things were
 - Time of day stays coarse (*morning*, *evening*), never a clock reading
 - Uses the game clock shown in the **Log** panel`,
   },
@@ -269,7 +280,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   },
   semanticLore: {
     label: 'Semantic Lore',
-    description: 'Activates dictionary entries by meaning, not just keywords',
+    description: 'Activates dictionary entries by meaning as well as by keyword',
     info: `Write *"the ruined tower"* and an *Old Beacon* entry can activate with none of its keywords present.
 
 - Keyword activation is unchanged; this only **adds** entries
@@ -280,9 +291,9 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   describeNewCharacters: {
     label: 'Describe New Characters',
     description: 'Writes a description for each character the story invents',
-    info: `Adds a written description to each character the story invents, so you can open it like any authored character. Those characters already appear in the **Characters** panel on their own.
+    info: `Adds a written description to each character the story invents, so you can open it like any authored entity. They already appear in the **Entities** panel on their own.
 
-Runs one extra request the first time a new character is named. Remove any you don't want from the **Characters** panel during the game.`,
+Runs one extra request the first time a new character is named. Remove any you don't want from the **Entities** panel during the game.`,
   },
   characterDiaries: {
     label: 'Character Diaries',
@@ -294,7 +305,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   diaryRecall: {
     label: 'Diary Recall',
     description: 'Recalls older diary entries relevant to the moment',
-    info: `Characters recall the older entries most relevant to the moment, not only their newest ones. She remembers the last time you drew a blade.
+    info: `Characters recall the older entries most relevant to the moment, not only their newest ones. An old rival remembers the last time you drew a blade.
 
 - Same total entry count, so it costs **nothing extra**
 - Uses the **Semantic Memory** model`,
@@ -304,7 +315,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   continueTheStory: {
     label: 'Continue the Story',
     description: 'Adds a choice that nudges the story forward',
-    info: `Shows a **[Continue the Story]** button under the choices. Like any choice, it puts its text in the action box, and you send it. The story reads it as a nudge to keep going, not as something your character does.
+    info: `Shows a **[Continue the Story]** button under the choices. Like any choice, it puts its text in the action box, and you send it. The story reads it as a nudge to keep going, not as something your persona does.
 
 **Always** keeps the button even when the **Choices** request is off.`,
   },
@@ -313,8 +324,9 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   imageAttachments: {
     label: 'Image Attachments',
     description: 'Attach up to 4 images to an action or a help question',
-    info: `Adds an attach button to the action box and to the **Ask a Question** field in Formaquestion. On an action, the images go with your action text, on that turn only. Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
+    info: `Adds an attach button to the action box and to the **Ask a Question** field in Formaquestion. On an action, the images go with your action text, on that turn only.
 
+- Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
 - Your model must read images. A text-only model returns an error.
 - An image over 1568 px on its long side is shrunk to that size before it's sent.`,
   },
@@ -347,8 +359,8 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
     description: 'Names the model this endpoint should use',
   },
   contextWindow: {
-    label: 'Context Window (tokens)',
-    description: 'Sets how much the model keeps in context',
+    label: 'Context Window',
+    description: 'Sets how many tokens the model keeps in context',
   },
   maxOutputTokens: {
     label: 'Max Output Tokens',
@@ -364,7 +376,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
     description: 'Adds JSON fields to every request to this endpoint',
     info: `Write one JSON object, for example a vendor's reasoning switch, \`top_a\`, \`chat_template_kwargs\` or a routing block.
 
-A field the app sets for a request wins over the same field here. These fields only add what the app does not set.
+A field the request already carries wins over the same field here. These fields only add what the request doesn't set.
 
 You can't set \`model\`, \`messages\`, \`stream\`, \`tools\`, \`tool_choice\`, \`response_format\`, \`n\` or \`stop\`.
 
@@ -408,12 +420,12 @@ You can still generate a single scene yourself from the button above the story.`
     description: 'Lists tags the image should avoid',
   },
   portraitSize: {
-    label: 'Portrait (W × H)',
-    description: 'Sets the size of entity portraits',
+    label: 'Portrait Size',
+    description: 'Sets the width and height of entity portraits',
   },
   landscapeSize: {
-    label: 'Landscape (W × H)',
-    description: 'Sets the size of location images and thumbnails',
+    label: 'Landscape Size',
+    description: 'Sets the width and height of location images and thumbnails',
   },
   stepsCfg: {
     label: 'Steps / CFG',
@@ -439,11 +451,11 @@ You can still generate a single scene yourself from the button above the story.`
 
 \`{world}\` \`{subject}\` (an entity's or location's name, or \`turn-12-scene\`) \`{turn}\` \`{preset}\`
 
-A custom workflow takes it where its save node's prefix is \`%prefix%\`.`,
+A custom workflow uses it where its save node's prefix is \`%prefix%\`.`,
   },
   imageWorkflow: {
-    label: 'Workflow (API Format)',
-    description: 'Replaces the default ComfyUI graph',
+    label: 'Workflow',
+    description: 'Replaces the default ComfyUI graph with one exported in API format',
   },
   invokeBoard: {
     label: 'Board',
@@ -480,7 +492,7 @@ More context uses more **VRAM**. If a model doesn't fit, lower this first.`,
   localGpuLayers: {
     label: 'GPU Layers',
     description: 'Chooses how much of the model runs on the GPU',
-    info: `A model is a stack of layers. Each layer moved to the GPU runs faster, but takes VRAM.
+    info: `Each of the model's layers runs on the GPU or the CPU. A layer on the GPU runs faster, but takes VRAM.
 
 - **Auto** offloads as many layers as fit
 - **Max** offloads the whole model. Use it to split across GPUs. It can run out of VRAM
@@ -557,12 +569,12 @@ The model never sees part of a message.`,
   },
   localAutoLoad: {
     label: 'Auto-Load',
-    description: 'Loads a model without waiting to be asked',
+    description: 'Loads the first downloaded model when the engine is in use',
     info: 'Loads the first model in your download folder when the engine is in use. A finished download also loads itself.\n\nWithout it, nothing loads until you press the **Load** button, and no VRAM is spent until then.',
   },
   localTemperature: {
     label: 'Temperature',
-    description: 'Raises randomness; lower values stay focused',
+    description: 'Sets how randomly the model picks each word',
     info: `Scales how boldly the model picks each word. Low values take the safe pick. High values give rare words a chance.
 
 Around 0.7 fits most story models. Above 1.2 the text can lose coherence.`,
@@ -589,13 +601,13 @@ Around 0.7 fits most story models. Above 1.2 the text can lose coherence.`,
   localMinP: {
     label: 'Min-p',
     description: 'Drops tokens far below the top token’s probability',
-    info: `Sets the cutoff as a fraction of the best candidate's probability, so it adapts: strict when the model is confident, loose when it isn't.
+    info: `Sets the cutoff as a fraction of the best candidate's probability. The cutoff is strict when the model is confident and loose when it isn't.
 
 0 turns it off.`,
   },
   localRepetitionPenalty: {
     label: 'Repetition Penalty',
-    description: 'Penalizes repeated words; 1 turns it off',
+    description: 'Penalizes repeated words. 1 turns it off.',
     info: `The model pays a small cost to reuse words it already wrote, so it picks new phrasing.
 
 Small steps matter: 1.05 to 1.15 is typical. High values can break names and punctuation.`,
@@ -605,7 +617,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   verbatimTurns: {
     label: 'Verbatim Turns',
     description: 'Sets how many recent turns stay word-for-word',
-    info: 'Older turns than these are summarized instead of sent in full',
+    info: 'Turns older than these reach the AI as a summary',
   },
   customTemperature: {
     label: 'Custom Temperature',
@@ -623,7 +635,11 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   promptNativeReasoning: {
     label: 'Native Reasoning',
     description: 'Sets whether this prompt reasons, and how hard',
-    info: 'Uncheck and this prompt does no reasoning. The **Native Reasoning** row under Settings → Output turns reasoning off on every prompt, and **Global** uses its strength. **Model Default** sends no hint. Only applies to models with native reasoning.',
+    info: `Uncheck and this prompt does no reasoning. Only applies to models with native reasoning.
+
+- The **Native Reasoning** row under Settings → Output turns reasoning off on every prompt
+- **Global** uses that row's strength
+- **Model Default** sends no hint`,
   },
   promptEndpoint: {
     label: 'Endpoint',
@@ -649,7 +665,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
     label: 'Now Message',
     description: 'Closes the recap with where things stand now',
     sentWhen: 'Sent in the narration history at the end of the recap’s reply',
-    info: 'The recap is all past tense; without this stated present, the AI can restart a live scene as a fresh arrival. Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
+    info: 'The recap is all past tense. Without this stated present, the AI can treat an ongoing scene as if you had just arrived. Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
   },
   recallMessage: {
     label: 'Recall Message',
@@ -712,7 +728,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
   authoringTour: {
     label: 'Authoring Tour',
-    description: 'Walks you through building a new world, one field at a time',
+    description: 'Guides you through building a new world, one field at a time',
     info: "Opens the **World Editor** on a new world with an example for every step. Your other worlds don't change.",
   },
 } as const satisfies Record<string, SettingCopy>;
@@ -762,7 +778,7 @@ export const SETTINGS_CONFIRMS = {
   },
   resetAiEndpoint: {
     title: 'Reset AI Endpoint',
-    description: 'Are you sure you want to reset the endpoint URL, model name, API token, limits, and Extra Parameters to their default values?',
+    description: 'Reset the endpoint URL, model name, API token, limits, and Extra Parameters to their defaults?',
   },
   resetWorkflow: {
     title: 'Reset Workflow',

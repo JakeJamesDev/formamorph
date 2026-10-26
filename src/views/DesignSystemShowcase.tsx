@@ -213,7 +213,7 @@ function SettingsReference() {
           descriptions={SETTINGS_MODE_DESCRIPTIONS}
           hiddenNotice={hasHiddenValues ? SETTINGS_HIDDEN_NOTICE : undefined}
           size="sm"
-          aria-label="Settings mode"
+          aria-label="Settings Mode"
         />
       </div>
       <div className="grid gap-6 xl:grid-cols-2">

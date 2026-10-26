@@ -99,7 +99,7 @@ Two more checks:
 - **No definition cadence.** Never `A [noun with a packed clause] is [noun]`. Write the action, with you as the subject or no subject.
 - **Named controls are bold**, in their on-screen casing, with their element type on first mention when the label is a common word: `The **Chips** tab shows your template`. Bare bold after that. Never quotation marks, never code font. A slot that renders plain text, such as a row description, keeps quotation marks, because bold can't render there.
 
-Labels keep Title Case. The brief line stays within 12 words. A ⓘ popover may run longer and takes periods wherever it has two or more sentences. World text, narration, and readme prose keep their own voice; this test does not apply to them.
+Labels keep Title Case. The brief line stays within 12 words. A ⓘ popover may run longer and takes periods wherever it has two or more sentences. It opens with a lead line, then bullets or short paragraphs. No paragraph runs past three sentences. World text, narration, and readme prose keep their own voice; this test does not apply to them.
 
 ### The technical register
 
