@@ -84,6 +84,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's Downscale now turns every PNG, BMP and lossless WebP image into a much smaller lossy WebP.** It works at any size. The size budgets changed too: thumbnail 200 KB, entity 1280 px and 250 KB, background 900 KB, map 1.5 MB.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
+  - **Web, Android and desktop builds ship the bundled worlds downscaled, re-encoded from the lossless files in the repo.** Set `FORMAMORPH_LOSSLESS_WORLDS=1` to ship the lossless files instead. `npm run fingerprints` records both forms, so the publish check knows each one.
 - **⚙️ Backend**
   - **Llama Server Engine:**
     - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.

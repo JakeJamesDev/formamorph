@@ -1,13 +1,17 @@
-// Writes src/lib/bundledFingerprints.json: the fingerprint of every revision of every bundled world, and the
-// byte hash of every revision of both default Avatar files. Run with `npm run fingerprints`.
+// Writes src/lib/bundledFingerprints.json: the fingerprint of every revision of every bundled world, source
+// and shipped form, and the byte hash of every revision of both default Avatar files. Run with
+// `npm run fingerprints`.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sha256Hex, worldFingerprint } from '@/lib/bundledFingerprint';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
 import { worldPublishPayload } from '@/lib/publishPayload';
+import { shippedWorldText } from '@/lib/shippedWorld';
 
 const WORLDS_DIR = 'src/defaultworlds';
+/** The last commit before the ship-time Downscale. Builds up to it bundled the source files. */
+const SHIPPED_SINCE = 'cd6fe508c480fa5921f48dd65befc892ac73fb4b';
 const AVATAR_FILES = ['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm'];
 const OUT = 'src/lib/bundledFingerprints.json';
 
@@ -52,25 +56,29 @@ const onDisk = (filePath: string): Revision => ({
 });
 
 async function worldFingerprints(): Promise<string[]> {
-  const revisions = [
-    ...historyRevisions(['--no-renames', '--', WORLDS_DIR], (p) => p.endsWith('.json')),
-    ...readdirSync(WORLDS_DIR).filter((f) => f.endsWith('.json')).map((f) => onDisk(`${WORLDS_DIR}/${f}`)),
-  ];
+  const worldFile = (p: string) => p.endsWith('.json');
+  const working = readdirSync(WORLDS_DIR).filter(worldFile).map((f) => onDisk(`${WORLDS_DIR}/${f}`));
+  const revisions = [...historyRevisions(['--no-renames', '--', WORLDS_DIR], worldFile), ...working];
+  const shippable = [...historyRevisions(['--no-renames', `${SHIPPED_SINCE}..HEAD`, '--', WORLDS_DIR], worldFile), ...working];
   const fingerprints = new Set<string>();
   const mismatches: string[] = [];
-  for (const revision of revisions) {
-    const id = path.basename(revision.path, '.json');
+  const add = async (label: string, filePath: string, text: string) => {
+    const id = path.basename(filePath, '.json');
     const seed = DEFAULT_WORLDS.find((w) => w.id === id) ?? { id, defaultName: id };
-    const raw = JSON.parse(revision.read().toString('utf8')) as Record<string, unknown>;
+    const raw = JSON.parse(text) as Record<string, unknown>;
     const fingerprint = await worldFingerprint(raw);
     const published = await worldFingerprint(worldPublishPayload(seedWorldData(raw, seed)).contentData);
-    if (published !== fingerprint) mismatches.push(`${revision.label}: raw ${fingerprint}, published ${published}`);
+    if (published !== fingerprint) mismatches.push(`${label}: raw ${fingerprint}, published ${published}`);
     fingerprints.add(fingerprint);
+  };
+  for (const revision of revisions) await add(revision.label, revision.path, revision.read().toString('utf8'));
+  for (const revision of shippable) {
+    await add(`shipped ${revision.label}`, revision.path, await shippedWorldText(revision.read().toString('utf8')));
   }
   if (mismatches.length) {
     throw new Error(`Publishing changes the fingerprint of ${mismatches.length} revision(s):\n${mismatches.join('\n')}`);
   }
-  console.log(`${revisions.length} world revisions, ${fingerprints.size} fingerprints`);
+  console.log(`${revisions.length} world revisions, ${shippable.length} shipped forms, ${fingerprints.size} fingerprints`);
   return [...fingerprints].sort();
 }
 

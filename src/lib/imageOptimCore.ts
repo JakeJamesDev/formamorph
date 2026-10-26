@@ -108,6 +108,26 @@ export async function downscaleWorldImages(
   onProgress?: (done: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<World> {
+  const out = await reencodeWorldSlots(world, deps, onProgress, signal);
+  return {
+    ...out,
+    worldOverview: { ...out.worldOverview, thumbnail: out.worldOverview?.thumbnail ?? null },
+    // Galleries come out in their stored shape, a legacy single image folded in.
+    entities: (out.entities ?? []).map((e) => ({ ...e, images: entityImages(e) })),
+    locations: (out.locations ?? []).map((l) => ({ ...l, images: locationImages(l) })),
+  };
+}
+
+/**
+ * The walk under {@link downscaleWorldImages}: each slot the deps select, re-encoded and written back by its
+ * slot. A world with nothing to re-encode comes back as the same object; no gallery is reshaped.
+ */
+export async function reencodeWorldSlots(
+  world: World,
+  deps: DownscaleDeps,
+  onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<World> {
   const items = worldImageItems(world);
   const total = items.length;
   let done = 0;
@@ -122,14 +142,7 @@ export async function downscaleWorldImages(
     if (result !== item.value) writeMediaSlot(editor, item, { data: result });
     onProgress?.(++done, total);
   }
-
-  return {
-    ...out,
-    worldOverview: { ...out.worldOverview, thumbnail: out.worldOverview?.thumbnail ?? null },
-    // Galleries come out in their stored shape, a legacy single image folded in.
-    entities: (out.entities ?? []).map((e) => ({ ...e, images: entityImages(e) })),
-    locations: (out.locations ?? []).map((l) => ({ ...l, images: locationImages(l) })),
-  };
+  return out;
 }
 
 /** The editor over a plain world: each write replaces the record it edits in the world `get` returns. */
