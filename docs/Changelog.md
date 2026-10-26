@@ -62,6 +62,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Feedback Questions:**
     - **Feedback has a Questions tab, where you ask the community, reply and vote on questions you share.** It opens on everyone's unanswered questions, most voted first. **Ask a Question** opens the form. Staff can move a thread between bug, suggestion and question.
     - **While you type a question's title, the Feedback dialog lists Similar Questions.** Select one to read it, vote and reply in the dialog. **Back** returns to your draft.
+    - **The asker or staff can mark one reply as a question's answer, and the thread pins it under the question.** The reply keeps an **Accepted** mark in place. Clearing it reopens the question.
+    - **Each Formaquestion answer has an Ask the Community button, which opens a new question titled with what you asked.** If you have an unsent draft, the dialog asks before it replaces it.
   - **Listing Review:**
     - **Your listings show a Pending Review or Resubmitted badge while a mod reviews them.** After you publish, a message says when your listing went to review. The badges show on the card, the details window and your profile's creations.
     - **Mods review new listings in the Admin Panel's new Moderation tab, which holds Reports and Review.** Each queue shows its count. Open an item to see it, download it, and approve or reject it. A rejection opens the message to the author.
