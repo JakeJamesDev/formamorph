@@ -1,6 +1,7 @@
 # Spec: Feedback Questions (client)
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-26. Tickets 01–07 landed; last landing a30e022f5 (server: 33288f0, a4c5e42, f1df356). Review: spec text corrected. Gates green on 2026-10-26.
 Spec session: feedback-questions — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/feedback-questions/spec.md`. That spec holds the rulings (Q1–Q24) and the API contract. This spec follows them.
@@ -39,6 +40,7 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 | Duplicate list heading | Similar Questions |
 | Accept action / clear action | Accept Answer · Clear Answer |
 | Mark on the reply | Accepted |
+| Pinned copy heading | Accepted Answer |
 | Help window button | Ask the Community |
 | Replace-draft confirm | Replace your unsent draft? · This deletes your unsent draft. · Replace · Keep Draft |
 | Edit warning, every target | Today's sentence: "Moving this to a X sets its status back to Open[, and deletes the version and platform…]. Its replies and votes stay." |
@@ -99,9 +101,9 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 - **Duplicate check.** The new-question dialog calls the list with `type=question`, `scope=all`, no status filter, a short debounce, and a small limit, once the title has a few characters. The server's word search (Q19) ranks the results. Responses that resolve after unmount or after a newer keystroke are dropped. This runs only for questions.
   - Settled numbers: 3+ trimmed title characters, the existing search delay, limit 5, no sort sent. A row shows title, status badge and vote count. No results or a failed request hide the list.
 - **Thread pane in the dialog (Q20).** Selecting a duplicate result swaps the dialog's form for the existing thread view and its own **Back** button. The draft stays in place. The pane resets to the form on each open. Voting and replying work in the pane as they do in the hub. This works wherever the dialog opens, including the help window in a game or the editor, where no feedback hub exists.
-- **Feedback opener.** The bug-report store widens into a feedback opener whose state is `{ open, type, fill }`. Its two users today, the error-details host and the bug report host, move to it. The host passes the type to the dialog. The Formaquestion button calls it with type `question` and the exchange's question as the title: whitespace collapsed to single spaces, then cut to the title limit.
-- **Replace-draft confirm (Q21).** The dialog keeps one shared draft. When an opener call carries a fill and the draft has text, the dialog asks before replacing it. **Keep Draft** opens on the draft unchanged. An empty draft takes the fill at once. This applies to error reports too.
-- **Layering above the help window.** The help window lives in the shielded window layer, above dialogs. The layer drops below dialogs through Formaquestion's `covered` flag, as the Open Wiki confirm does today. Formaquestion subscribes to the feedback opener and adds its open state to `covered`. Focus returns through the existing layer-focus helper on close.
+- **Feedback opener.** The bug-report store widens into a feedback opener whose state is `{ open, type, fill, opener }`. `opener` is the element that opened the dialog, kept for focus return. Its two users today, the error-details host and the bug report host, move to it. The host passes the type to the dialog. The Formaquestion button calls it with type `question` and the exchange's question as the title: whitespace collapsed to single spaces, then cut to the title limit.
+- **Replace-draft confirm (Q21).** The dialog keeps one shared draft. When an opener call carries a fill and the draft has text, the dialog asks before replacing it. **Keep Draft** opens on the draft unchanged. An empty draft takes the fill at once, and a draft that already equals the fill skips the confirm. This applies to error reports too.
+- **Layering above the help window.** The help window lives in the shielded window layer, above dialogs. The layer drops below dialogs through Formaquestion's `covered` flag, as the Open Wiki confirm does today. Formaquestion subscribes to the feedback opener and adds its open state to `covered`, and covers while sign-in is open too, so the sign-in dialog draws above it. On close, the dialog returns focus to the stored `opener`.
 - **Sign-in and community gates.** The Feedback dialog has no sign-in gate of its own; its callers hide or gate the entry. The Ask the Community button follows Report Bug in Error Details: hidden when the community feature flag is off, and calling `requestSignIn` when signed out.
 - **Button placement.** Answers render in three places: the ask panel, the minimal chat, and the bubble chat. The button goes in each, in the answer's footer row, which today renders only when sources are listed, so the row renders whenever the button shows. It shows once an answer has finished: status done, stopped, no AI or failed. It hides while the answer is writing.
 - **Tabs.** The staff Feedback tab and My Feedback each add a Questions tab beside Bugs and Suggestions, with the same list component.
@@ -132,4 +134,4 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 ## Further Notes
 
 - Land after the server spec is deployed.
-- One 👤 changelog entry covers the Questions board, accepted answers and the help window button. Ticket 04 wrote it. Tickets 05 and 07 write no fragment, because prepare cannot edit an existing entry; the spec session folds them into 04's entry at close.
+- One 👤 changelog group, **Feedback Questions**, covers the effort: the board (04), Similar Questions (06), accepted answers (05) and the help window button (07). Tickets 05 and 07 wrote no fragment; the spec session added their entries at close.
