@@ -46,20 +46,12 @@ const IGNORED_RULES = new Set(['world-oversized-images']);
 
 // Why each open finding stays. A world ticket clears its content and image rows (Q14); a by-design row stays (Q15).
 const BY_DESIGN = 'the blank stage holds no entities by design';
-const SCRIPT_SWITCHED = 'off until its script switches it on';
 
 /** Findings still open, as `rule: items` with the reason each stays, by world. */
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
-  'emberwatch': {
-    "dictionary-disabled: The Founders' Pact": SCRIPT_SWITCHED,
-  },
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
   },
-  'slime': Object.fromEntries([
-    'Ashburn General Overrun', 'Ashburn High Shelter Overrun', 'Crescent Row Overrun', 'Harborfront Overrun',
-    "St. Anselm's Overrun", 'The Marquette District Overrun', 'Wanted Notice',
-  ].map((entry) => [`dictionary-disabled: ${entry}`, SCRIPT_SWITCHED])),
 };
 
 const ownersOf = (world: World): { traits: Trait[]; groups: TraitGroup[]; scripts: Script[] }[] => [
