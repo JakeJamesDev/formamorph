@@ -1,6 +1,7 @@
 # Downscale Presets
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-26. Tickets 01 to 02 done; last landing bad314892. Review: one help sentence corrected (b37b16c1f). Gates green on 2026-10-26.
 Spec session: downscale-presets — spec
 
 ## Problem Statement
