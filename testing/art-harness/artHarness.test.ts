@@ -7,7 +7,7 @@ import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import { firstMapFrame } from '@/lib/mapBackground';
 import {
-  ART_PRESET, SHEET, imageRequest, isStoredForm, planImages, sheetLayout, writeImage, type PlannedImage, type SheetCell,
+  ART_PRESET, SHEET, displayName, imageRequest, placeholderNames, isStoredForm, planImages, sheetLayout, writeImage, type PlannedImage, type SheetCell,
 } from './artHarness';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -68,6 +68,23 @@ describe('imageRequest', () => {
     });
     // A trailing comma on the line does not double up.
     expect(params.prompt).toBe(`${STYLE}, mill tags`);
+  });
+
+  it('appends a run\'s extra negative tags after the pinned negative', () => {
+    const { params } = imageRequest(world(), byName('Bram'), STYLE, 7, ' treads, legs, ');
+    expect(params.negativePrompt).toBe(`${ART_PRESET.imageNegativePrompt}, treads, legs`);
+    expect(params.prompt).toBe(`${STYLE}, bram tags`);
+  });
+});
+
+describe('displayName', () => {
+  const drone = JSON.parse(droneText) as World;
+
+  it('shows a name chip as its placeholder\'s name, and a plain name as is', () => {
+    const chipped = drone.entities!.find((e) => e.name.startsWith('{{ph:'))!;
+    const names = placeholderNames(drone);
+    expect(displayName(names, chipped.name)).toBe('Designation');
+    expect(displayName(names, 'Tamsin')).toBe('Tamsin');
   });
 });
 
@@ -137,7 +154,9 @@ describe('planImages', () => {
 describe('writeImage', () => {
   const drone = JSON.parse(droneText) as World;
   const pictured = drone.entities.find((e) => entityImages(e).length > 0)!;
-  const bare = drone.locations.find((l) => locationImages(l).length === 0)!;
+  // The Drone file with its first location's art removed, in the stored form, so a gallery is empty.
+  const bare = drone.locations[0];
+  const bareText = `${JSON.stringify({ ...drone, locations: drone.locations.map((l) => (l === bare ? { ...l, images: undefined } : l)) }, null, 2)}\n`;
   const NEW = 'data:image/webp;base64,TkVX';
 
   it('rewrites an unchanged image as the same bytes, so the format round-trips exactly', () => {
@@ -170,13 +189,14 @@ describe('writeImage', () => {
   });
 
   it('gives a location with no art its first image', () => {
-    const text = writeImage(droneText, { kind: 'location', id: bare.id, slot: 0, data: NEW });
+    expect(locationImages((JSON.parse(bareText) as World).locations[0])).toEqual([]);
+    const text = writeImage(bareText, { kind: 'location', id: bare.id, slot: 0, data: NEW });
     const after = (JSON.parse(text) as World).locations.find((l) => l.id === bare.id)!;
     expect(after.images).toEqual([{ data: NEW }]);
   });
 
   it('refuses a slot past the end of the gallery and an unknown id', () => {
-    expect(() => writeImage(droneText, { kind: 'location', id: bare.id, slot: 1, data: NEW })).toThrow(/slot 1/);
+    expect(() => writeImage(bareText, { kind: 'location', id: bare.id, slot: 1, data: NEW })).toThrow(/slot 1/);
     expect(() => writeImage(droneText, { kind: 'entity', id: 'nobody', slot: 0, data: NEW })).toThrow(/nobody/);
   });
 

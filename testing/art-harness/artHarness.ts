@@ -7,6 +7,8 @@ import type { ImageGenParams, ImageProviderId } from '@/lib/imageGen/types';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import { firstMapFrame, mapImages, withMapImages } from '@/lib/mapBackground';
+import { allPlaceholders } from '@/lib/placeholderHomes';
+import { decodePlaceholderToken, placeholderChipLine } from '@/lib/placeholders';
 
 /** The effort's art model at its Invoke defaults, every field pinned so no `VITE_DEFAULT_*` value leaks in. */
 export const ART_PRESET: ImageSettings = {
@@ -172,10 +174,15 @@ export function planImages(world: World, options: PlanOptions): Plan {
   return { images, skipped };
 }
 
+/** The pinned negative with a run's extra negative tags after it. */
+export const negativePrompt = (extra = '') =>
+  [ART_PRESET.imageNegativePrompt, extra.trim().replace(/^,+|,+$/g, '').trim()].filter(Boolean).join(', ');
+
 /** The provider call for one image: the art-direction line as the positive prefix, the subject's tags after it. */
-export function imageRequest(world: World, image: PlannedImage, style: string, seed: number):
+export function imageRequest(world: World, image: PlannedImage, style: string, seed: number, negative = ''):
 { provider: ImageProviderId; params: ImageGenParams } {
-  const { provider, params } = buildImageRequest({ ...ART_PRESET, imagePositivePrompt: style }, {
+  const preset = { ...ART_PRESET, imagePositivePrompt: style, imageNegativePrompt: negativePrompt(negative) };
+  const { provider, params } = buildImageRequest(preset, {
     prompt: image.subject,
     width: image.width,
     height: image.height,
@@ -233,6 +240,18 @@ export function writeImage(worldText: string, image: WrittenImage): string {
 
 /** The label a sheet cell and a redo ref share. */
 export const imageLabel = (name: string, slot: number) => `${name}#${slot}`;
+
+/** Each placeholder's name by id, for {@link displayName}. */
+export const placeholderNames = (world: World): ReadonlyMap<string, string> =>
+  new Map(allPlaceholders(world).map((ph) => [ph.id, ph.name]));
+
+/** An item's name as the reviewer reads it: each chip shows its own label, else its placeholder's name. */
+export function displayName(names: ReadonlyMap<string, string>, name: string): string {
+  return placeholderChipLine(name, (token) => {
+    const decoded = decodePlaceholderToken(token);
+    return decoded?.label || (decoded && names.get(decoded.id)) || token;
+  });
+}
 
 export interface SheetInput {
   label: string;
