@@ -9,7 +9,7 @@ Opus at medium: book reach and book writes on top of ticket 06's overlay, with o
 
 ## What to build
 
-Scripts reach books by who turned them off (Q33). That is derived with no new data: a book the save has off while the world, or the player's library add, has it on is player-off and stays absent; a book the world ships off is listed with `enabled: false` (Q36). Book `enabled` takes writes in both directions on any reachable book (Q37, Q40). Book toggles live in ticket 06's overlay and rewind with undo (Q38). A library book the player added reads and takes writes like any book in play, and the library record is never written (Q39). User Tools stay read-only. The Scripts guide covers book reach and writes.
+Scripts reach books by who turned them off (Q33). That is derived with no new data: a book the save has off while the world, or the player's library add, has it on is player-off and stays absent; a book the world ships off is listed with `enabled: false` (Q36). Book `enabled` takes writes in both directions on any reachable book (Q37, Q40). Book toggles live in ticket 06's overlay and rewind with undo (Q38). A library book the player added reads and takes writes like any book in play, and the library record is never written (Q39). User Tools stay read-only. The Scripts guide covers book reach and writes. From ticket 06's landing: the Tool snapshot's built-in lookup reads the world's authored books, not the playthrough's, so a library book added at world entry never reaches it; this ticket points it at the playthrough's books through the overlay, so Q39 holds there too.
 
 Spec: Q33, Q36–Q40, stories 34–38.
 
@@ -20,6 +20,7 @@ Spec: Q33, Q36–Q40, stories 34–38.
 - [ ] A book the player turned off at world entry is absent from `dictionaries`
 - [ ] A library book the player added takes an entry write, and the library record is unchanged afterward
 - [ ] Undo after the turn restores the book's earlier state
+- [ ] The Tool snapshot's built-in lookup finds an entry of a library book the player added, and skips a book a script switched off
 
 ## Blocked by
 
