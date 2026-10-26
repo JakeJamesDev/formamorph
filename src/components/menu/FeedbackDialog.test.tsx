@@ -128,7 +128,7 @@ describe('filing a report', () => {
   it('writes the description in the markdown editor', () => {
     render(<FeedbackDialog open onOpenChange={() => {}} />);
 
-    expect(fieldProps.last).toMatchObject({ markdown: true, ariaLabel: 'What happened' });
+    expect(fieldProps.last).toMatchObject({ markdown: true, ariaLabel: 'What Happened' });
   });
 });
 
@@ -241,7 +241,7 @@ describe('a fill over a draft', () => {
   const FILL = { initialType: 'question', initialTitle: 'How do I change the theme?', initialBody: '' } as const;
   const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
   const bodyValue = () => (document.getElementById('feedbackBody') as HTMLTextAreaElement).value;
-  const confirm = () => screen.queryByRole('alertdialog', { name: 'Replace your unsent draft?' });
+  const confirm = () => screen.queryByRole('alertdialog', { name: 'Replace Unsent Draft?' });
   const activeTab = () => screen.getAllByRole('tab').find((tab) => tab.getAttribute('data-state') === 'active')?.textContent;
   const writeDraft = () => {
     render(<FeedbackDialog open onOpenChange={() => {}} />);
@@ -372,7 +372,7 @@ describe('a question', () => {
     render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
 
     expect(screen.getByRole('button', { name: 'Post Question' })).toBeTruthy();
-    expect(screen.getByLabelText('What you tried')).toBeTruthy();
+    expect(screen.getByLabelText('What You Tried')).toBeTruthy();
     expect(screen.queryByText('Sent with your report')).toBeNull();
   });
 });

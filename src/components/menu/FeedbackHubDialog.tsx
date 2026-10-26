@@ -2,7 +2,7 @@ import { MessageSquarePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MyFeedbackSection } from "@/components/menu/MyFeedbackSection";
-import { type MyFeedbackTabKey } from "@/components/menu/myFeedbackTabs";
+import { type FeedbackTab as MyFeedbackTabKey } from "@/components/menu/feedbackTabs";
 
 interface FeedbackHubDialogProps {
   open: boolean;

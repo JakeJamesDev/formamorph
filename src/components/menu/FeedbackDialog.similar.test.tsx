@@ -47,7 +47,7 @@ const fill = (el: HTMLElement, value: string) => {
 };
 
 const setTitle = (value: string) => fill(document.getElementById('feedbackTitle')!, value);
-const setBody = (value: string) => fill(screen.getByLabelText('What you tried'), value);
+const setBody = (value: string) => fill(screen.getByLabelText('What You Tried'), value);
 
 const pause = () => act(() => new Promise((resolve) => setTimeout(resolve, FEEDBACK_SEARCH_DELAY_MS + 100)));
 
@@ -157,7 +157,7 @@ describe('similar questions while asking', () => {
     fireEvent.click(screen.getByRole('button', { name: /Back/ }));
 
     expect((document.getElementById('feedbackTitle') as HTMLInputElement).value).toBe('stat location');
-    expect((screen.getByLabelText('What you tried') as HTMLTextAreaElement).value).toBe('Tried a script.');
+    expect((screen.getByLabelText('What You Tried') as HTMLTextAreaElement).value).toBe('Tried a script.');
     expect(screen.getByRole('button', { name: 'Post Question' })).toBeTruthy();
   });
 });

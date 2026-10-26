@@ -31,9 +31,9 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 | Filtered-empty line | No questions match this filter. |
 | Scope labels | Mine · Everyone’s |
 | Search label | Search Questions |
-| Dialog description | Everyone can read, answer and vote on questions, so check the list below for yours first. Replies land under Questions in your profile. |
+| Dialog description | Everyone can read, answer and vote on questions. Similar questions show as you type a title. You can follow replies under Questions in your profile. |
 | Title placeholder | What you want to know, in a line |
-| Body label / placeholder | What you tried · Where you got stuck, and what you tried already |
+| Body label / placeholder | What You Tried · Where you got stuck, and what you tried already |
 | Submit / sent | Post Question · Question posted — you can follow it under Questions in your profile |
 | Empty: mine / all / search | You haven’t asked anything yet. · Nothing has been asked yet. · No questions match this search. |
 | File button | Ask a Question |
@@ -42,7 +42,7 @@ Settled by a copy sweep (Q18). Strings follow the shape and voice of the existin
 | Mark on the reply | Accepted |
 | Pinned copy heading | Accepted Answer |
 | Help window button | Ask the Community |
-| Replace-draft confirm | Replace your unsent draft? · This deletes your unsent draft. · Replace · Keep Draft |
+| Replace-draft confirm | Replace Unsent Draft? · This deletes your unsent draft. · Replace · Keep Draft |
 | Edit warning, every target | Today's sentence: "Moving this to a X sets its status back to Open[, and deletes the version and platform…]. Its replies and votes stay." |
 | Edit warning, into a bug | Today's sentence, then: Only the reporter and staff can reply to a bug. |
 | Edit warning, out of an answered question | The first sentence adds "clears the accepted answer" (ticket 05). |

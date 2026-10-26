@@ -23,6 +23,7 @@ import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
 import { isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { useMountedRef } from "@/lib/useMountedRef";
 
 const COMMENT_MAX = 4000;
 
@@ -102,17 +103,22 @@ export function FeedbackThreadView({
   const myId = String(AuthService.getCurrentUser()?.id ?? '');
   const viewer = AuthService.getCurrentUser();
 
+  const mounted = useMountedRef();
+
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      setDetail(await FeedbackService.fetchThread(threadId));
+      const loaded = await FeedbackService.fetchThread(threadId);
+      if (!mounted.current) return;
+      setDetail(loaded);
       // Reading clears this thread's share of the badge, so the count outside has to be re-read.
       onChanged?.();
     } catch (error) {
+      if (!mounted.current) return;
       toastError(error, 'Failed to load this');
       setDetail(null);
     } finally {
-      setIsLoading(false);
+      if (mounted.current) setIsLoading(false);
     }
     // `onChanged` is the caller's refresh; depending on it would reload the thread on every parent render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,13 +132,15 @@ export function FeedbackThreadView({
     setIsSending(true);
     try {
       const comment = await FeedbackService.comment(threadId, reply.trim());
+      if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, comments: [...prev.comments, comment] } : prev));
       setReply('');
       onChanged?.();
     } catch (error) {
+      if (!mounted.current) return;
       toastError(error, 'Failed to post the comment');
     } finally {
-      setIsSending(false);
+      if (mounted.current) setIsSending(false);
     }
   };
 
@@ -143,6 +151,7 @@ export function FeedbackThreadView({
     setIsSavingEdit(true);
     try {
       const updated = await FeedbackService.editComment(threadId, editingId, next);
+      if (!mounted.current) return;
       setDetail((prev) => (prev
         ? { ...prev, comments: prev.comments.map((c) => (c.id === updated.id ? updated : c)) }
         : prev));
@@ -150,15 +159,17 @@ export function FeedbackThreadView({
       // The pinned copy is a second rendering of this reply; only the server's thread holds the new text.
       if (detail?.thread.acceptedAnswer?.id === updated.id) void load();
     } catch (error) {
+      if (!mounted.current) return;
       toastError(error, 'Failed to save the comment');
     } finally {
-      setIsSavingEdit(false);
+      if (mounted.current) setIsSavingEdit(false);
     }
   };
 
   const removeCommentById = async (commentId: string) => {
     try {
       await FeedbackService.removeComment(threadId, commentId);
+      if (!mounted.current) return;
       setDetail((prev) => (prev
         ? { ...prev, comments: prev.comments.filter((c) => c.id !== commentId) }
         : prev));
@@ -167,37 +178,40 @@ export function FeedbackThreadView({
       // Deleting the accepted reply reopens the question, so the pin and the status come from the server.
       if (detail?.thread.acceptedAnswer?.id === commentId) void load();
     } catch (error) {
-      toastError(error, 'Failed to delete the comment');
+      if (mounted.current) toastError(error, 'Failed to delete the comment');
     }
   };
 
   const changeStatus = async (status: FeedbackStatus) => {
     try {
       const updated = await FeedbackService.setStatus(threadId, status);
+      if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      toastError(error, 'Failed to update the status');
+      if (mounted.current) toastError(error, 'Failed to update the status');
     }
   };
 
   const setAnswer = async (commentId: string | null) => {
     try {
       const updated = await FeedbackService.setAnswer(threadId, commentId);
+      if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      toastError(error, 'Failed to update the answer');
+      if (mounted.current) toastError(error, 'Failed to update the answer');
     }
   };
 
   const toggleLock = async (locked: boolean) => {
     try {
       const updated = await FeedbackService.setLocked(threadId, locked);
+      if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      toastError(error, 'Failed to lock the thread');
+      if (mounted.current) toastError(error, 'Failed to lock the thread');
     }
   };
 
@@ -207,12 +221,14 @@ export function FeedbackThreadView({
     setIsVoting(true);
     try {
       const updated = await FeedbackService.setVote(threadId, !detail.thread.voted);
+      if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
+      if (!mounted.current) return;
       toastError(error, 'Failed to record your vote');
     } finally {
-      setIsVoting(false);
+      if (mounted.current) setIsVoting(false);
     }
   };
 
@@ -223,7 +239,7 @@ export function FeedbackThreadView({
       onChanged?.();
       onDeleted?.();
     } catch (error) {
-      toastError(error, 'Failed to delete this');
+      if (mounted.current) toastError(error, 'Failed to delete this');
     }
   };
 

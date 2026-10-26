@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MyFeedbackTab } from "@/components/menu/MyFeedbackTab";
-import { type MyFeedbackTabKey } from "@/components/menu/myFeedbackTabs";
+import { FEEDBACK_TABS, FEEDBACK_TAB_TYPES, type FeedbackTab as MyFeedbackTabKey } from "@/components/menu/feedbackTabs";
+import { FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 
 interface MyFeedbackSectionProps {
   /** Whether the tab is visible; the list below only fetches while it is. */
@@ -26,22 +27,16 @@ export function MyFeedbackSection({ active, initialTab = 'bugs', requestKey, onC
     <div className="min-w-0">
       <Tabs surfaceTabs="feedbackHub" value={tab} onValueChange={(value) => setTab(value as MyFeedbackTabKey)} className="w-full min-w-0">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="bugs">Bugs</TabsTrigger>
-          <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
-          <TabsTrigger value="questions">Questions</TabsTrigger>
+          {FEEDBACK_TABS.map((key) => (
+            <TabsTrigger key={key} value={key}>{FEEDBACK_TYPE_LABELS[FEEDBACK_TAB_TYPES[key]].many}</TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="bugs" forceMount className="min-w-0 data-[state=inactive]:hidden">
-          <MyFeedbackTab active={active && tab === 'bugs'} type="bug" onChanged={onChanged} />
-        </TabsContent>
-
-        <TabsContent value="suggestions" forceMount className="min-w-0 data-[state=inactive]:hidden">
-          <MyFeedbackTab active={active && tab === 'suggestions'} type="suggestion" onChanged={onChanged} />
-        </TabsContent>
-
-        <TabsContent value="questions" forceMount className="min-w-0 data-[state=inactive]:hidden">
-          <MyFeedbackTab active={active && tab === 'questions'} type="question" onChanged={onChanged} />
-        </TabsContent>
+        {FEEDBACK_TABS.map((key) => (
+          <TabsContent key={key} value={key} forceMount className="min-w-0 data-[state=inactive]:hidden">
+            <MyFeedbackTab active={active && tab === key} type={FEEDBACK_TAB_TYPES[key]} onChanged={onChanged} />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

@@ -42,7 +42,7 @@ const COPY: Record<FeedbackType, {
   bug: {
     description: 'Filed against your account, so we can ask follow-up questions. You’ll find replies under Bugs in your profile.',
     titlePlaceholder: 'What went wrong, in a line',
-    bodyLabel: 'What happened',
+    bodyLabel: 'What Happened',
     bodyPlaceholder: 'What you did, what you expected, what happened instead',
     submit: 'Send Report',
     sent: 'Report filed — you can follow it under Bugs in your profile',
@@ -50,15 +50,15 @@ const COPY: Record<FeedbackType, {
   suggestion: {
     description: 'Everyone can read and vote on suggestions, so it’s worth checking whether yours is already there. Replies land under Suggestions in your profile.',
     titlePlaceholder: 'What you’d like, in a line',
-    bodyLabel: 'What you have in mind',
+    bodyLabel: 'What You Have in Mind',
     bodyPlaceholder: 'What it would do, and what it would let you do that you can’t today',
     submit: 'Send Suggestion',
     sent: 'Suggestion filed — you can follow it under Suggestions in your profile',
   },
   question: {
-    description: 'Everyone can read, answer and vote on questions, so check the list below for yours first. Replies land under Questions in your profile.',
+    description: 'Everyone can read, answer and vote on questions. Similar questions show as you type a title. You can follow replies under Questions in your profile.',
     titlePlaceholder: 'What you want to know, in a line',
-    bodyLabel: 'What you tried',
+    bodyLabel: 'What You Tried',
     bodyPlaceholder: 'Where you got stuck, and what you tried already',
     submit: 'Post Question',
     sent: 'Question posted — you can follow it under Questions in your profile',
@@ -344,7 +344,7 @@ export function FeedbackDialog({
             }}
           >
             <AlertDialogHeader>
-              <AlertDialogTitle>Replace your unsent draft?</AlertDialogTitle>
+              <AlertDialogTitle>Replace Unsent Draft?</AlertDialogTitle>
               <AlertDialogDescription>This deletes your unsent draft.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
