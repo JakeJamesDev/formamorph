@@ -1102,6 +1102,8 @@ An After the AI script can change the choices the player sees. Edit `turn.choice
 - **An empty list is allowed.** The turn then shows no choices, and the player types an action.
 - **It's read-only at other timings.** Before the AI, At Game Start, During AI Output, When a Trait Switches, Tools and runs between turns read the list. A change there is ignored and reported. With the player's choices off, a change is ignored too.
 - **A stats re-roll starts again.** It runs the scripts on the AI's own choices. Edits never stack. The save keeps both lists.
+- **Re-generate Choices runs the scripts again.** They read the new list and the AI's stat changes for the turn. Only their choice edits apply. The new list shows once they finish.
+- **A `player` call shows nothing on that run.** `tell` and `toast` show nothing, `confirm` answers `false`, `ask` answers `null` (`[]` with `multiple`), and `input` answers `""`. The script runs on.
 
 ```js
 // Once the bridge is down, no choice crosses it.

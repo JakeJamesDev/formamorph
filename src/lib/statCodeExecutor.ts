@@ -1778,7 +1778,7 @@ const PLAYER_PRELUDE = [
   `      if (!list.length) throw new TypeError('player.ask needs at least one option');`,
   `      const multiple = !!(settings && settings.multiple);`,
   `      const picked = call({ kind: 'ask', question: text('ask', 'a question', question), options: list.map((o) => o.label), multiple });`,
-  `      return multiple ? picked.map((at) => list[at].value) : list[picked].value;`,
+  `      return multiple ? picked.map((at) => list[at].value) : picked === null ? null : list[picked].value;`,
   `    },`,
   `    input: (question, placeholder) => call({`,
   `      kind: 'input', question: text('input', 'a question', question),`,

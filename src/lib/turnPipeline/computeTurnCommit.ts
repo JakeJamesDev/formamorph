@@ -7,7 +7,7 @@ import { materializeDiscoveredEntity } from '@/lib/runtimeCharacters';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { randomUUID } from '@/lib/uuid';
 import type { parseStatUpdates } from '@/lib/statChanges';
-import { readStatResponse, statResponseChanges, type StatResponse } from '@/lib/statRequest';
+import { readStatResponse, savedStatAsks, statResponseChanges, type StatResponse } from '@/lib/statRequest';
 import {
   applyAtOnce, applyEntityCodeWrites, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf, peelIntents,
   type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PeelOff, type PlayerMove,
@@ -134,6 +134,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     ? readStatResponse(statOutcome.raw, statOutcome.request.statRequest) : null;
   const statChanges = statResponse ? statResponseChanges(statResponse)
     : Object.entries(stats?.values ?? {}).map(([name, delta]) => ({ [name]: delta }));
+  const statAsks = statResponse ? savedStatAsks(statResponse) : undefined;
   const statMaxChanges = stats?.maxes ?? {};
 
   // The measured duration when the clock pass ran. An unreadable, out-of-range or absent reply resolves to the
@@ -182,6 +183,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     narration,
     choices,
     stat_changes: statChanges,
+    ...(statAsks ? { statAsks } : {}),
     turnId: material.turnId,
     entities: context.participants,
     ...(context.locationId !== undefined ? { locationId: context.locationId } : {}),
