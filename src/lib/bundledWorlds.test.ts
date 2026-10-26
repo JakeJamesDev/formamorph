@@ -20,7 +20,7 @@ type Feature =
 /** The features each world shows. A world ticket moves each feature it delivers here from PLANNED. */
 const FEATURES: Record<string, Feature[]> = {
   'drone': ['scripts', 'traitGates', 'minMaxPicks', 'tools', 'newFieldChips', 'visibilityRules'],
-  'emberwatch': ['traitGates', 'blueprints'],
+  'emberwatch': ['traitGates', 'blueprints', 'relationships', 'scriptLore', 'newFieldChips'],
   'open-chat': [],
   'rampage': ['scripts', 'statToggles', 'scriptExits', 'newFieldChips'],
   'slime': ['scripts', 'traitModes'],
@@ -32,7 +32,7 @@ const FEATURES: Record<string, Feature[]> = {
 /** The expansion's assignment table: features a world ticket still has to deliver. */
 const PLANNED: Record<string, Feature[]> = {
   'drone': [],
-  'emberwatch': ['tools', 'relationships', 'scriptLore', 'mapBackground', 'visibilityRules', 'newFieldChips'],
+  'emberwatch': ['mapBackground', 'visibilityRules'],
   'rampage': ['mapBackground', 'visibilityRules'],
   'slime': ['tools', 'relationships', 'timeGates', 'scriptLore', 'visibilityRules', 'newFieldChips'],
   'sugarscape': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
@@ -45,9 +45,13 @@ const IGNORED_RULES = new Set(['world-oversized-images']);
 
 // Why each open finding stays. A world ticket clears its content and image rows (Q14); a by-design row stays (Q15).
 const BY_DESIGN = 'the blank stage holds no entities by design';
+const SCRIPT_SWITCHED = 'off until its script switches it on';
 
 /** Findings still open, as `rule: items` with the reason each stays, by world. */
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
+  'emberwatch': {
+    "dictionary-disabled: The Founders' Pact": SCRIPT_SWITCHED,
+  },
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
   },
