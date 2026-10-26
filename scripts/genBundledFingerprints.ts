@@ -1,65 +1,20 @@
 // Writes src/lib/bundledFingerprints.json: the fingerprint of every revision of every bundled world, source
-// and shipped form, and the byte hash of every revision of both default Avatar files. Run with
-// `npm run fingerprints`.
-import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+// and shipped form, and the byte hash of every revision of both default Avatar files. A world carries a
+// shipped form as it stood at SHIPPED_SINCE, at every later commit that touched it, and in the working tree.
+// Run with `npm run fingerprints`.
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sha256Hex, worldFingerprint } from '@/lib/bundledFingerprint';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
 import { worldPublishPayload } from '@/lib/publishPayload';
 import { shippedWorldText } from '@/lib/shippedWorld';
+import { git, historyRevisions, onDisk, worldRevisions } from './bundledRevisions';
 
-const WORLDS_DIR = 'src/defaultworlds';
-/** The last commit before the ship-time Downscale. Builds up to it bundled the source files. */
-const SHIPPED_SINCE = 'cd6fe508c480fa5921f48dd65befc892ac73fb4b';
 const AVATAR_FILES = ['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm'];
 const OUT = 'src/lib/bundledFingerprints.json';
 
-/** One file revision: where it came from, and a reader for its bytes. */
-interface Revision {
-  label: string;
-  path: string;
-  read: () => Buffer;
-}
-
-// core.quotePath=false keeps non-ASCII paths unquoted, so the path filters see the real name.
-const git = (args: string[]): Buffer =>
-  execFileSync('git', ['-c', 'core.quotePath=false', ...args], { maxBuffer: 1 << 30 });
-const readBlob = (blob: string) => () => git(['cat-file', 'blob', blob]);
-
-/**
- * Every blob that `git log` shows for the given paths, deduplicated. A deletion shows the zero blob, and
- * the walk skips it. `-m` adds blobs that only a merge produced.
- */
-function historyRevisions(logArgs: string[], keep: (filePath: string) => boolean): Revision[] {
-  const byBlob = new Map<string, Revision>();
-  let commit = '';
-  for (const line of git(['log', '-m', '--raw', '--no-abbrev', '--format=%H', ...logArgs]).toString('utf8').split('\n')) {
-    if (/^[0-9a-f]{40}$/.test(line)) {
-      commit = line;
-      continue;
-    }
-    const match = /^:\d+ \d+ [0-9a-f]+ ([0-9a-f]+) \w+\t(?:[^\t]*\t)?(.+)$/.exec(line);
-    if (!match) continue;
-    const [, blob, filePath] = match;
-    if (/^0+$/.test(blob) || !keep(filePath) || byBlob.has(blob)) continue;
-    byBlob.set(blob, { label: `${commit.slice(0, 8)}:${filePath}`, path: filePath, read: readBlob(blob) });
-  }
-  return [...byBlob.values()];
-}
-
-/** The working-tree copy, so an uncommitted edit is listed too. */
-const onDisk = (filePath: string): Revision => ({
-  label: `working tree:${filePath}`,
-  path: filePath,
-  read: () => readFileSync(filePath),
-});
-
 async function worldFingerprints(): Promise<string[]> {
-  const worldFile = (p: string) => p.endsWith('.json');
-  const working = readdirSync(WORLDS_DIR).filter(worldFile).map((f) => onDisk(`${WORLDS_DIR}/${f}`));
-  const revisions = [...historyRevisions(['--no-renames', '--', WORLDS_DIR], worldFile), ...working];
-  const shippable = [...historyRevisions(['--no-renames', `${SHIPPED_SINCE}..HEAD`, '--', WORLDS_DIR], worldFile), ...working];
+  const { revisions, shippable } = worldRevisions();
   const fingerprints = new Set<string>();
   const mismatches: string[] = [];
   const add = async (label: string, filePath: string, text: string) => {

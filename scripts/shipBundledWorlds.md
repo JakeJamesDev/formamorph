@@ -24,7 +24,7 @@ The encode runs in Node, through the app's own libwebp (`wasm-webp`) and a fixed
 
 ## Fingerprints
 
-`npm run fingerprints` records each world's shipped form next to its source form, so the publish check knows both. The shipped form starts at the commit that added this step. A test fails when the list misses a shipped fingerprint: run `npm run fingerprints` after any world edit.
+`npm run fingerprints` records each world's shipped form next to its source form, so the publish check knows both. A world carries a shipped form as it stood at `cd6fe508c` (the last commit before this step), at every later commit that changed it, and in the working tree. A test fails when the list misses a shipped fingerprint: run `npm run fingerprints` after any world edit.
 
 ## Cache
 
