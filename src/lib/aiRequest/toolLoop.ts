@@ -2,10 +2,11 @@ import type { AssistantToolCallMessage, RequestMessage, Tool, ToolCallPart, Wire
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
-import { answerStart } from '@/lib/aiResponse';
+import { answerStart, stripReasoning } from '@/lib/aiResponse';
 import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
 import { trimToLastSentence } from '@/lib/outputLength';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
+import { followsResponseSchema } from './responseSchema';
 import {
   ABORTED_FINISH_REASON, cutThoughtFailure, LENGTH_FINISH_REASON, streamAiRequest,
   type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamResult, type AiStreamSpec, type AiToolCall,
@@ -21,6 +22,11 @@ import {
  * model's own reasoning under the field the server named) plus one `tool` result per call. A limit, a
  * malformed call or an unknown Tool sends one more round without Tools, so the model finishes in prose;
  * that round streams live. Tool rounds are silent requests: they are captured only when asked.
+ *
+ * A strict response schema forbids a call, so a request that carries one offers its Tools without it and holds
+ * each such round whole. A reply from that round that breaks the schema is dropped, and one more round sends
+ * the schema without Tools. A round that offered Tools and was cut inside a thought written into its content is
+ * dropped the same way, since the offer is what drew that thought.
  *
  * Every round runs under the spec's Answer Cap, counted on that round's answer text alone. A round with a
  * cut thought throws, so its reasoning reaches no later round and the request fails like any other.
@@ -158,8 +164,9 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
   const callLimit = options.callLimit ?? DEFAULT_TOOL_CALL_LIMIT;
   const roundCap = options.roundCap ?? DEFAULT_TOOL_ROUND_CAP;
   const messages: WireMessage[] = [...spec.body.messages];
-  // The body without Tools, for the finish-in-prose round.
+  // The body without Tools, for the finish-in-prose round, and the body that offers them, without a schema.
   const { tools: _tools, tool_choice: _choice, ...plainBody } = spec.body;
+  const { response_format: schemaFormat, ...offeringBody } = spec.body;
   const callsMade = new Map<string, number>();
   const reasoningByRound: string[] = [];
   let reasoningField: AiReasoningField | null = null;
@@ -208,7 +215,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
 
   for (let index = 1; ; index++) {
     const offering = offerTools && index < roundCap;
-    const body: AiRequestBody<WireMessage> = offering ? { ...spec.body, messages: [...messages] } : { ...plainBody, messages: [...messages] };
+    const body: AiRequestBody<WireMessage> = offering ? { ...offeringBody, messages: [...messages] } : { ...plainBody, messages: [...messages] };
     const roundSpec: AiStreamSpec = { ...spec, body };
     // Whitespace-only deltas of a Tools-offered round, until its first visible character.
     const held: AiStreamEvent[] = [];
@@ -222,7 +229,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
         yield { type: 'roundStarted' };
       }
       if (event.type === 'delta') {
-        if (!live && !event.content.trim()) { held.push(event); continue; }
+        if (!live && (schemaFormat || !event.content.trim())) { held.push(event); continue; }
         live = true;
         yield* held.splice(0);
         yield event;
@@ -243,7 +250,21 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
       yield { type: 'done', result: finalResult(result, live ? result.content : '', ABORTED_FINISH_REASON) };
       return;
     }
-    if (isCutThought(result)) throw cutThoughtFailure(roundSpec);
+    // Offered Tools can draw a thought into the content where none was asked for; one cut there is retried without them.
+    const spilled = offering && isCutThought(result) && answerStart(result.content) === null;
+    if (isCutThought(result) && !spilled) throw cutThoughtFailure(roundSpec);
+    if (spilled || (offering && schemaFormat && result.toolCalls.length === 0
+      && !followsResponseSchema(stripReasoning(result.content), schemaFormat.json_schema.schema))) {
+      if (options.captureRounds) {
+        yield {
+          type: 'toolRound',
+          round: { index, messages: body.messages, content: result.content, reasoning: result.reasoningText, finishReason: result.finishReason, calls: [] },
+        };
+      }
+      reasoningByRound.push(result.reasoningText);
+      offerTools = false;
+      continue;
+    }
     if (!offering || result.toolCalls.length === 0) {
       for (const event of held) yield event;
       yield { type: 'done', result: finalResult(result, result.content, result.finishReason) };

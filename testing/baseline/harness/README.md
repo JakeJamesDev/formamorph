@@ -126,6 +126,28 @@ A refreshed world passes when all three hold in **one batch**:
 
 Post the arms, run counts, summary table and rubric result in the ticket.
 
+## Tool spill probe
+
+Replays captured Rampage requests through the app's own tool loop, with a judgment Tool (`log_landmark`)
+offered or withheld. It counts native-reasoning spills, Tool calls and usable replies per arm.
+
+```bash
+npx vite-node testing/baseline/harness/world-probe.cli.ts -- --worlds rampage --arms worktree,HEAD --runs 1 --out .scratch/capture
+npx vite-node testing/baseline/harness/tool-spill-probe.cli.ts -- --capture .scratch/capture/rampage.json --runs 10
+```
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--capture` | A world-probe `rampage.json`. Its first run's turns 1 and 2 supply the requests. | required |
+| `--cases` | `vague`, `opening`, `tower` (narration), `roar`, `tower-choices` (choices), `tower-stat` (stat pass). | `vague,roar,tower-stat` |
+| `--arms` | `none`, `tool`, `kwargs` (adds `chat_template_kwargs.enable_thinking: false`), `joint` (Tool and schema in one plain request). | `none,tool` |
+| `--tool-file` | A JSON file whose `description` replaces the Tool's. | the probe's wording |
+| `--runs` / `--endpoint` / `--model` / `--out` | As in the world probe. | 5, the cloud default |
+
+- 🧠 A **spill** is a `<|channel>thought` block or a known reasoning opener in any round's raw reply. A **leak**
+  is one left in the final reply after the app strips reasoning.
+- Arms alternate run by run, so each batch carries its own control.
+
 ## Notes
 
 - **Nondeterministic** by design — the script is fixed, the model output isn't. That's fine; runs are comparable.
