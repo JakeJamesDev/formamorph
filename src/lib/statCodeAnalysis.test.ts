@@ -221,7 +221,7 @@ describe('statCodeCompletions', () => {
   it('offers the stat fields after a dot', () => {
     const offered = labels('const me = stats[self.name];\nreturn me.|');
     expect(offered).toEqual([
-      'id', 'name', 'type', 'description', 'enabled', 'min', 'max', 'value', 'regen', 'hidden', 'previous', 'delta',
+      'id', 'name', 'type', 'description', 'enabled', 'min', 'max', 'value', 'regen', 'hidden', 'descriptor', 'previous', 'delta',
     ]);
   });
 
@@ -254,7 +254,7 @@ describe('statCodeCompletions', () => {
 
   it('offers the whole stat’s fields after previous, and none of its own turn-relative ones', () => {
     for (const doc of ['return self.previous.|', 'return stats[0].previous.|']) {
-      expect(labels(doc), doc).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'hidden']);
+      expect(labels(doc), doc).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'hidden', 'descriptor']);
     }
   });
 

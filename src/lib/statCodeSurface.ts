@@ -165,6 +165,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour, with traits applied' },
   { name: 'hidden', detail: 'boolean', info: 'True when the stat is hidden from the player. The AI still reads it. Set it to hide or show the stat.' },
+  { name: 'descriptor', detail: 'string', info: 'Text of the band the value falls in, with chips filled in, as the AI reads it. It’s empty when no band applies.' },
   { name: 'previous', detail: 'Stat', info: 'The whole stat at the start of this turn' },
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source' },
 ], SELF_WRITABLE_FIELDS, 'writable');
@@ -182,6 +183,7 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'value', detail: 'number', info: 'Value at the start of this turn' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, with traits applied' },
   { name: 'hidden', detail: 'boolean', info: 'True when the stat is hidden from the player, at the start of this turn' },
+  { name: 'descriptor', detail: 'string', info: 'Text of the band the value fell in at the start of this turn' },
 ]);
 
 /**
