@@ -128,24 +128,33 @@ Post the arms, run counts, summary table and rubric result in the ticket.
 
 ## Tool spill probe
 
-Replays captured Rampage requests through the app's own tool loop, with a judgment Tool (`log_landmark`)
+Replays captured requests of one bundled world through the app's own tool loop, with the world's judgment Tool
 offered or withheld. It counts native-reasoning spills, Tool calls and usable replies per arm.
 
 ```bash
-npx vite-node testing/baseline/harness/world-probe.cli.ts -- --worlds rampage --arms worktree,HEAD --runs 1 --out .scratch/capture
+npx vite-node testing/baseline/harness/world-probe.cli.ts -- --worlds rampage,emberwatch --arms worktree,HEAD --runs 1 --out .scratch/capture
 npx vite-node testing/baseline/harness/tool-spill-probe.cli.ts -- --capture .scratch/capture/rampage.json --runs 10
+npx vite-node testing/baseline/harness/tool-spill-probe.cli.ts -- --world emberwatch --capture .scratch/capture/emberwatch.json --runs 10
 ```
+
+| World | Tool | Trigger |
+|---|---|---|
+| `rampage` | `log_landmark` | Spire Tower torn down (`tower`) |
+| `emberwatch` | `offer_prayer` | a prayer at the chapel's brazier (`prayer`) |
 
 | Flag | Meaning | Default |
 |---|---|---|
-| `--capture` | A world-probe `rampage.json`. Its first run's turns 1 and 2 supply the requests. | required |
-| `--cases` | `vague`, `opening`, `tower` (narration), `roar`, `tower-choices` (choices), `tower-stat` (stat pass). | `vague,roar,tower-stat` |
+| `--capture` | A world-probe `<world>.json`. Its first run's turns 1 and 2 supply the requests. | required |
+| `--world` | The world whose Tool is offered, read from `src/defaultworlds/<world>.json`. | `rampage` |
+| `--cases` | `vague`, `opening`, `<trigger>` (narration), `roar`, `<trigger>-choices` (choices), `vague-stat`, `opening-stat`, `<trigger>-stat` (stat pass). `opening-stat` is turn 1's stat request as captured. | Rampage `vague-stat,tower-stat`; Emberwatch `vague-stat,prayer-stat` |
 | `--arms` | `none`, `tool`, `kwargs` (adds `chat_template_kwargs.enable_thinking: false`), `joint` (Tool and schema in one plain request). | `none,tool` |
-| `--tool-file` | A JSON file whose `description` replaces the Tool's. | the probe's wording |
+| `--tool-file` | A JSON file whose `description` replaces the Tool's. | the world's wording |
 | `--runs` / `--endpoint` / `--model` / `--out` | As in the world probe. | 5, the cloud default |
 
 - 🧠 A **spill** is a `<|channel>thought` block or a known reasoning opener in any round's raw reply. A **leak**
   is one left in the final reply after the app strips reasoning.
+- ✅ **Accepted** counts calls whose arguments the app's World Tool turn accepts, so the handler would run. A
+  rejected call gets the app's own error back and writes nothing.
 - Arms alternate run by run, so each batch carries its own control.
 
 ## Notes

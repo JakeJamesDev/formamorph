@@ -15,6 +15,10 @@ import { bundledWorldHarness, valueOf, withValues, type StatValues } from '@/tes
 import type { CodePins } from '@/types';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
+import { readWorldTools } from './tools/worldTools';
+import { openWorldToolTurn } from './tools/worldToolTurn';
+import { onCallRunner } from './tools/onCallRunner';
+import type { SandboxMemory } from './statCodeExecutor';
 import type { GateInput, GateStatSet } from './traitGates';
 
 const {
@@ -203,6 +207,87 @@ describe('the Pursuit script', () => {
 
   it('keeps the AI from moving Pursuit, so the map alone paces it', () => {
     expect(world.stats.find((s) => s.name === 'Pursuit')).toMatchObject({ noIncrease: true, noDecrease: true, hidden: true });
+  });
+});
+
+describe('the log_landmark World Tool', () => {
+  const { tools, dropped } = readWorldTools(world.tools);
+  const logLandmark = tools.find((tool) => tool.name === 'log_landmark')!;
+  const topStories = placeholderNamed('Top Stories');
+  const failIfFallback = () => { throw new Error('log_landmark is a World Tool.'); };
+
+  /** A pinned Custom memory from an earlier turn. */
+  const pinnedMemory = (text: string): SandboxMemory => ({
+    id: text, turn: 1, timestamp: 1, day: 1, daypart: 'morning', text, custom: true, kept: false, inContext: true, pinned: true, forgotten: false,
+  });
+
+  /** One On Call run of log_landmark at `at`, over the pins and memories earlier calls and turns left. */
+  async function log(landmark: string, { at = 'Downtown Core', codePins = {} as CodePins, memories = [] as SandboxMemory[], destruction = 20 } = {}) {
+    let landed: StatCodeTurnResult | undefined;
+    const runner = onCallRunner(() => {
+      const base = playTurn({ at, codePins, global: { Destruction: destruction } });
+      return { turn: { ...base, state: { ...base.state, memories } }, land: (result) => { landed = result; } };
+    });
+    const execute = openWorldToolTurn(tools, runner).executor(failIfFallback);
+    const reply = await execute(logLandmark, JSON.stringify({ landmark }), new AbortController().signal);
+    const stories = landed?.pinWrites[topStories.id];
+    return {
+      reply: reply.text,
+      destruction: landed && valueOf(landed.stats, 'Destruction'),
+      pins: landed?.worldWrites?.pins ?? [],
+      stories,
+      // The Tool only pins Top Stories, never unpins it.
+      codePins: stories == null ? codePins : { ...codePins, [topStories.id]: stories },
+    };
+  }
+
+  it('loads as an On Call Tool offered to the stat pass, its landmarks all places on the map', () => {
+    expect(dropped).toEqual([]);
+    expect(logLandmark.handler).toMatchObject({ kind: 'script', timing: 'call' });
+    expect(logLandmark.offeredTo).toEqual(['statUpdates']);
+    const landmarks = logLandmark.params[0].options;
+    expect(landmarks.length).toBeGreaterThan(0);
+    for (const landmark of landmarks) expect(locationNamed(landmark)).toBeDefined();
+  });
+
+  it('pins the loss where the creature stood, adds 5 Destruction and leads the news with it', async () => {
+    const { pins, destruction, stories, reply } = await log('Spire Tower');
+    expect(pins).toEqual(['The creature destroyed Spire Tower in Downtown Core.']);
+    expect(destruction).toBe(25);
+    // The authored stories are not falls, so the first fall stands alone.
+    expect(stories).toEqual(['the fall of Spire Tower']);
+    expect(reply).toContain('Destruction is now 25');
+  });
+
+  it('logs a landmark once in a turn, by the news pin that lands at once', async () => {
+    const first = await log('Harborgate Bridge');
+    const second = await log('Harborgate Bridge', { codePins: first.codePins, destruction: first.destruction });
+    expect(second.pins).toEqual([]);
+    expect(second.destruction).toBe(25);
+    expect(second.reply).toContain('already logged');
+  });
+
+  it('logs a landmark once across turns, by its pinned memory', async () => {
+    // The memory the first call pinned, as the Memory panel holds it on a later turn.
+    const first = await log('Bayline Refinery', { at: 'Industrial Yards' });
+    const again = await log('Bayline Refinery', { at: 'Industrial Yards', memories: first.pins.map(pinnedMemory) });
+    expect(again.pins).toEqual([]);
+    expect(again.destruction).toBe(20);
+  });
+
+  it('keeps the three latest falls in the news, newest first', async () => {
+    let codePins: CodePins = {};
+    for (const landmark of ['Ferry Terminal', 'Spire Tower', 'Metro Underground', 'Neonspire Stadium']) {
+      ({ codePins } = await log(landmark, { codePins }));
+    }
+    expect(codePins[topStories.id]).toEqual(['the fall of Neonspire Stadium', 'the fall of Metro Underground', 'the fall of Spire Tower']);
+  });
+
+  it("puts the news in Channel 8's description", () => {
+    const chopper = world.entities.find((entity) => entity.name === 'Channel 8 News Chopper')!;
+    const pins = pinsInForce({ [topStories.id]: ['the fall of Spire Tower'] });
+    const text = resolvePlaceholders(chopper.aiDescription!, { placeholders: world.placeholders!, rolls: {}, pins });
+    expect(text).toContain('the fall of Spire Tower');
   });
 });
 

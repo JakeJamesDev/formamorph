@@ -21,9 +21,9 @@ type Feature =
 /** The features each world shows. A world ticket moves each feature it delivers here from PLANNED. */
 const FEATURES: Record<string, Feature[]> = {
   'drone': ['scripts', 'traitGates', 'minMaxPicks', 'tools', 'newFieldChips', 'visibilityRules'],
-  'emberwatch': ['traitGates', 'blueprints', 'relationships', 'scriptLore', 'newFieldChips', 'mapBackground', 'visibilityRules'],
+  'emberwatch': ['traitGates', 'blueprints', 'tools', 'relationships', 'scriptLore', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'open-chat': [],
-  'rampage': ['scripts', 'minMaxPicks', 'statToggles', 'scriptExits', 'newFieldChips', 'mapBackground', 'visibilityRules'],
+  'rampage': ['scripts', 'minMaxPicks', 'statToggles', 'tools', 'scriptExits', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips', 'visibilityRules'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips'],
   'valentines': ['scripts', 'relationships', 'newFieldChips'],
