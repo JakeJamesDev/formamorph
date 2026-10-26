@@ -1,6 +1,7 @@
 # Spec: Turn Reply And Menu Order
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-26. Tickets 01–05 done, last landing 124bd18f4. Review: spec text corrected. Gates green on 2026-10-26.
 Spec session: turn-reply-and-menu-order — spec
 
 ## Problem Statement
@@ -26,7 +27,7 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 | Q7 | After the AI scripts can change `turn.choices`. When a world can, the game holds the choices off screen until the After the AI scripts finish; otherwise it shows them as it does today |
 | Q8 | Whether a world can change choices comes from a static scan of every After the AI box the turn runs: global, entity and Blueprint stat code, trait scripts and world scripts. It reads the text as the stat write scan does |
 | Q9 | `turn.choices` is a mutable array: assignment, `push`, `splice` and element edits all count |
-| Q10 | **Re-Roll Choices** draws new choices from the AI, then reruns the After the AI scripts with only their choice writes landing. Every other write they make drops |
+| Q10 | **Re-generate Choices** draws new choices from the AI, then reruns the After the AI scripts with only their choice writes landing. Every other write they make drops |
 | Q11 | With the player's choices off, a `turn.choices` write drops and lists as dropped, and `turn.choices` reads `[]` |
 | Q12 | A choices write is the array's state at run end differing from its state at run start. The Q8 scan treats any After the AI script that names `turn` as a possible writer, so an alias (`const t = turn`, `const { choices } = turn`) still holds the display. A script that only reads `turn.action` holds it too; that cost is accepted |
 | Q13 | A non-string or blank item at run end fails the run as a bad write. Nothing lands |
@@ -35,7 +36,7 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 | Q16 | Between turns (a player toggle, a Tool call between turns), `turn.narration` and `turn.choices` read the last finished turn's page and choices, as `turn.number` does. A choices write there drops |
 | Q17 | In Test Code and the Test Bench, After the AI reads a short sample page and three sample choices |
 | Q18 | A stats re-roll starts the choice writes again from the AI's own choices for that turn, never from an earlier script edit |
-| Q19 | The **Re-Roll Choices** rerun replays the turn as the stats re-roll does: the pre-turn state with the turn's asks laid over it, so scripts read the same `previous` and `delta` the original run did |
+| Q19 | The **Re-generate Choices** rerun replays the turn as the stats re-roll does: the pre-turn state with the turn's asks laid over it, so scripts read the same `previous` and `delta` the original run did |
 | Q20 | On that rerun the `player` calls are silent: `tell` and `toast` show nothing, `confirm` answers false, `ask` answers nothing picked (`[]` with `multiple`), and `input` answers empty. The script runs on |
 | Q21 | `turn` stays read-only at every timing and in every Tool. `turn.choices` alone takes a write, at After the AI only. A write there is not a read-only write in the editor's checks |
 | Q22 | A run between turns while a turn is in progress (a player toggle, a user Tool call, an On Call World Tool during the narration request) reads `turn.narration` as `""` and `turn.choices` as `[]`, as it reads `turn.action` empty at the turn in progress. Once that turn's commit lands, they read this turn's |
@@ -45,7 +46,7 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 | Q26 | The turn record's AI-choices field is present only when a script changed the shown list; absent means the shown list is the AI's own. A re-roll that ends with no script edit removes it, and a stats re-roll starts from it when present |
 | Q27 | A When a Trait Switches run that the After the AI batch fires reads the choices the batch left; its own choices write drops (Q21) |
 | Q28 | The turn record saves the turn's resolved asks (owner, stat, value, max) as an additive field, written at the commit and on a stats re-roll, so the Q19 replay reads them. A turn without the field rebuilds global value asks from `stat_changes`. Settled with the user: the record held only global value asks |
-| Q29 | On the Re-Roll Choices rerun a single `ask` answers `null`. In a scripting world the streamed AI list is held until the rerun lands, then the scripted list shows once. A failing script fails alone (Q13); a stopped request, an empty reply or a rerun that cannot start puts the turn's own lists back. Writes the mode drops by design are not listed as dropped |
+| Q29 | On the Re-generate Choices rerun a single `ask` answers `null`. In a scripting world the streamed AI list is held until the rerun lands, then the scripted list shows once. A failing script fails alone (Q13); a stopped request, an empty reply or a rerun that cannot start puts the turn's own lists back. Writes the mode drops by design are not listed as dropped |
 | Q30 | In a marked world, a Stop or failure after the narration lands shows the AI's own list, since no scripted list appeared. The mark holds only with the player's choices on. The scan reads the authored world's After the AI boxes: world scripts, global, entity and Blueprint stats and traits, and the links that override their scripts; runtime characters copy Blueprints. A local name `turn` marks the world, the cost Q12 accepts |
 
 ## Surface
@@ -75,7 +76,7 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 16. As a player, I want choices never to change after they appear, so that I don't click an option that moves.
 17. As a player, I want choices to show as soon as possible in worlds that don't script them, so that scripts I can't see never slow me down.
 18. As a player, I want my choices-off setting to win, so that no world shows choices I turned off.
-19. As a player, I want **Re-Roll Choices** to keep the world's choice rules, so that a re-roll never brings back an option a script removed.
+19. As a player, I want **Re-generate Choices** to keep the world's choice rules, so that a re-roll never brings back an option a script removed.
 20. As a player, I want a stats re-roll never to stack choice edits, so that re-rolling twice shows what one run would.
 21. As an author, I want between-turn runs to read the last page and choices, so that a toggle script has the latest context.
 22. As an author, I want Test Code to give a sample page and choices, so that I can test choice scripts in the editor.
@@ -83,12 +84,12 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 
 ## Implementation Decisions
 
-- **Menu order.** The tree builder sorts the top level groups-first then fields-then-verbs, after the one-child-to-leaf step, since **Discover** is a one-call group until that step. The in-group `verbsLast` pass stays as it is (Q1). The timing groups move to just after the box's own groups. One builder serves Scripts and user Tools (`CodeArea` applies `readOnlyTree` for a Tool), so both menus change. The top-level pins in the variable tree tests and the Tool script menu tests change, and so does the pin that puts **Narration** last.
+- **Menu order.** The tree builder sorts the top level groups-first then fields-then-verbs, after the one-child-to-leaf step, since **Discover** is a one-call group until that step. The in-group `verbsLast` pass stays as it is (Q1). The timing groups move to just after the box's own groups. One builder serves Scripts and user Tools (`CodeArea` applies `readOnlyTree` for a Tool), so both menus change. The top-level pins in the variable tree tests change, and so does the pin that puts **Narration** last; the Tool script menu test's pin held as it was.
 - **Turn reads.** The Sandbox Snapshot's turn input gains the page and the choices. The commit's narration is already the rewritten text: the narration request answers with the rewrite's final, so the turn pipeline hands that and the choices answer to the After the AI runs with no new plumbing. Between-turn runs read the last finished turn's values from the stored turn, which holds the rewritten page. Before the AI, At Game Start and During AI Output read empty.
-- **Choices write.** `turn` is a read-only global today: read-only on the surface, in the executor's read-only globals list, and field-locked at marshaling. The surface gives `turn.choices` write access at After the AI only, the way the timing globals are added per timing, and the analysis stops flagging that one write there (Q21). The executor marshals `turn.choices` as an unlocked plain array at After the AI and reads it back at run end. A difference from the start reading is the write. Each After the AI script reads the array the earlier ones left. A non-string or blank item fails the run as a bad write. At other timings, between turns, in user Tools and with choices off, the write drops and lists as dropped.
+- **Choices write.** `turn` is a read-only global today: read-only on the surface, in the executor's read-only globals list, and field-locked at marshaling. The surface gives `turn.choices` write access at After the AI only, the way the timing globals are added per timing, and the analysis stops flagging that one write there (Q21). The executor marshals `turn.choices` as an unfrozen array at every timing (Q25) and reads it back at run end. A difference from the start reading is the write. The After the AI scripts run one after another, not together, so each reads the array the earlier ones left; two scripts that each ask the player now ask in turn. A non-string or blank item fails the run as a bad write. At other timings, between turns, in user Tools and with choices off, the write drops and lists as dropped.
 - **Display hold.** The choices landing already holds streamed choices until the narration lands and releases them in one place. A world the Q8 scan marks keeps that hold through the After the AI batch, so the commit's own choices set and the input unlock wait with it, and the scripted list shows once. Other worlds release as today: the choices stream row by row once the narration lands, and the input unlocks with them.
-- **AI choices kept.** The turn record keeps the AI's own choices beside the shown list, so a stats re-roll (Q18) and **Re-Roll Choices** (Q10) start from them. The shown list stays where the turn's choices are stored today. This is an additive save-shape change: the turn record rides in the save's message history. A stats re-roll shows its scripted list and patches the turn, as the choices re-roll patches the choices today.
-- **Re-Roll Choices.** In a world that can change choices, a choices re-roll builds the replay state the stats re-roll builds (the pre-turn state, the before box, the turn's asks) and runs the After the AI batch in a choices-only mode beside the triggers-only mode: choice writes land, every other write drops, and the `player` calls answer silently (Q19, Q20). The silent answers are a new prompt host mode: the listener-less store cancels an ask and fails the script, which is not what Q20 wants. In other worlds it stays a plain choices request.
+- **AI choices kept.** The turn record keeps the AI's own choices beside the shown list, so a stats re-roll (Q18) and **Re-generate Choices** (Q10) start from them. The shown list stays where the turn's choices are stored today. The fields are `aiChoices` (Q26) and `statAsks`, the resolved asks by owner and stat (Q28), both additive: the turn record rides in the save's message history. A stats re-roll shows its scripted list and patches the turn, as the choices re-roll patches the choices today.
+- **Re-generate Choices.** In a world that can change choices, a choices re-roll builds the replay state the stats re-roll builds (the pre-turn state, the before box, the turn's asks) and runs the After the AI batch in the `choicesOnly` mode beside the triggers-only mode: choice writes land, every other write drops, and the `player` calls answer through the `silentPrompts` host (Q19, Q20). The listener-less store cancels an ask and fails the script, which is not what Q20 wants. The scan that marks a scripting world is `scriptsChoices`. In other worlds it stays a plain choices request.
 - **Editor surface.** The surface description gains both names with type, access and help line. The access line on `turn.choices` names the timing, since it is the one member whose access varies. Cards, completions, the Variable menu and the Scripts guide follow from it.
 
 ## Testing Decisions
@@ -100,7 +101,7 @@ A good test drives a public seam with real inputs and asserts what an author or 
 - **The analysis**: a `turn.choices` write at After the AI gets no diagnostic; the same write at Before the AI and a `turn.action` write at After the AI list as read-only writes. Prior art: the surface access tests.
 - **The write scan**: a box that names `turn` by any path marks the world; one that names no `turn` does not; the scan sees every After the AI box kind of Q8. Prior art: the stat write scan tests.
 - **The Sandbox Snapshot builder**: the page and choices per timing, between turns and in the editor samples. Prior art: the snapshot tests ticket 01 of Script Surface Gaps added.
-- **The turn commit and the game view's choices landing**: the hold in a scripting world and none elsewhere; the shown list after After the AI; **Re-Roll Choices** keeping a script's removal and reading the turn's `delta` as the original run did (Q19); a stats re-roll starting from the AI's choices; the AI's choices kept in the save. Prior art: the game view's turn and re-roll tests.
+- **The turn commit and the game view's choices landing**: the hold in a scripting world and none elsewhere; the shown list after After the AI; **Re-generate Choices** keeping a script's removal and reading the turn's `delta` as the original run did (Q19); a stats re-roll starting from the AI's choices; the AI's choices kept in the save. Prior art: the game view's turn and re-roll tests.
 
 ## Out of Scope
 
@@ -111,6 +112,6 @@ A good test drives a public seam with real inputs and asserts what an author or 
 
 ## Further Notes
 
-- The changelog gets one entry for the two reads and the choices write, and one for the menu order.
+- The changelog carries one entry for the menu order and three under **Scripts**: the reads and the write as one, the hold, and the **Re-generate Choices** rerun. The last two are capabilities of their own, so they stay separate.
 - The help vectors rebuild before release, since the Scripts guide changes.
 - Follow-up (Q25): the editor check flags no write to `clock`, `location` or `notes`, and no mutating call on `turn.choices` outside After the AI. Run time lists them as dropped.
