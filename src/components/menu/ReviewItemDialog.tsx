@@ -125,9 +125,12 @@ export function ReviewItemDialog({
                 )}
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button variant="outline" onClick={onDownload} className="gap-1.5">
-                  <Download className="h-4 w-4" /> Download
-                </Button>
+                {/* An update with no new content has nothing to download. */}
+                {(item.type !== 'update' || item.pendingUpdate?.content_changed) && (
+                  <Button variant="outline" onClick={onDownload} className="gap-1.5">
+                    <Download className="h-4 w-4" /> Download
+                  </Button>
+                )}
                 {onOpenListing && (
                   <Button variant="outline" onClick={onOpenListing} className="gap-1.5">
                     <ExternalLink className="h-4 w-4" /> Open Listing

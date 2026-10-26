@@ -42,7 +42,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   update_rejected: 'Update rejected',
   listing_auto_approved: 'Auto-approved',
   author_trusted: 'Trusted',
-  author_untrusted: 'Trust Removed',
+  author_untrusted: 'Trust removed',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
