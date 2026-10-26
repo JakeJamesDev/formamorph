@@ -8,7 +8,7 @@ import { openingStateOf } from './openingState';
 import { runStatCodeTurn } from './statCodeTurn';
 import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
 import { checkScripts } from './testBench/scriptCheck';
-import { SAMPLE_ACTION, sampleTurn } from './scriptTestSamples';
+import { SAMPLE_ACTION, SAMPLE_CHOICES, SAMPLE_PAGE, sampleTurn } from './scriptTestSamples';
 import { DEFAULT_OPENING, heaviestWorldOpening } from './openings';
 import { runToolScript } from './tools/toolScript';
 import { sampleToolSnapshot } from './tools/sampleToolSnapshot';
@@ -22,7 +22,7 @@ import type { RuleWorld } from './testBench/rules';
 
 const counter: Stat = { id: 'c', name: 'Count', type: 'number', description: '', min: -1, max: 999999, value: -1, regen: 0, descriptors: [] };
 const READ = 'stats.Count.value = turn.number * 1000 + turn.action.length;';
-const LIVE = { action: '[OOC: brief] I wait.', number: 3 };
+const LIVE = { action: '[OOC: brief] I wait.', number: 3, narration: 'Rain taps the glass.', choices: ['Open the door.', 'Sit down.'] };
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -116,9 +116,11 @@ describe('the opening an editor run reads', () => {
 
   it('gives At Game Start the opening at turn 1, a narration one empty, and every other timing the sample at turn 2', () => {
     const world = overview({ openings: [action('a', ' Dock. ')] });
-    expect(sampleTurn(world, 'start')).toEqual({ action: 'Dock.', number: 1 });
-    expect(sampleTurn(overview({ openings: [action('n', 'Page.', 'narration')] }), 'start')).toEqual({ action: '', number: 1 });
-    for (const timing of ['before', 'after', 'output', 'switch'] as const) expect(sampleTurn(world, timing)).toEqual({ action: SAMPLE_ACTION, number: 2 });
+    const empty = { narration: '', choices: [] };
+    expect(sampleTurn(world, 'start')).toEqual({ action: 'Dock.', number: 1, ...empty });
+    expect(sampleTurn(overview({ openings: [action('n', 'Page.', 'narration')] }), 'start')).toEqual({ action: '', number: 1, ...empty });
+    for (const timing of ['before', 'output', 'switch'] as const) expect(sampleTurn(world, timing)).toEqual({ action: SAMPLE_ACTION, number: 2, ...empty });
+    expect(sampleTurn(world, 'after')).toEqual({ action: SAMPLE_ACTION, number: 2, narration: SAMPLE_PAGE, choices: SAMPLE_CHOICES });
   });
 });
 
@@ -140,6 +142,74 @@ describe('turn in Test Code and the Test Bench', () => {
 
   it('reads the same sample on the Test Bench', async () => {
     const rule = { ...world, locations: [], scripts: [{ id: 'b', timing: 'before' as const, code: 'if (turn.number !== 2 || turn.action !== "Look around.") throw new Error("off");' }] };
+    expect(await checkScripts(rule as unknown as RuleWorld)).toEqual([]);
+  });
+});
+
+/** `turn.narration` and `turn.choices`: filled at After the AI and between turns, empty before the reply. */
+describe('turn.narration and turn.choices', () => {
+  const REPLY = 'return JSON.stringify([turn.narration, turn.choices]);';
+  const replyAt = async (timing: 'start' | 'before' | 'output' | 'after' | 'switch') =>
+    (await snapshotOf(stateWith(LIVE)).run({ home: { kind: 'tool' }, timing, code: REPLY, args: {} })).reply;
+
+  it('reads the state’s page and choices at After the AI and in a switch run', async () => {
+    const filled = JSON.stringify([LIVE.narration, LIVE.choices]);
+    expect(await replyAt('after')).toBe(filled);
+    expect(await replyAt('switch')).toBe(filled);
+  });
+
+  it('reads both empty at At Game Start, Before the AI and During AI Output on the same state', async () => {
+    for (const timing of ['start', 'before', 'output'] as const) expect(await replyAt(timing)).toBe(JSON.stringify(['', []]));
+  });
+
+  it('reads both empty when the state holds no turn', async () => {
+    const result = await snapshotOf(stateWith()).run({ home: { kind: 'tool' }, timing: 'after', code: REPLY, args: {} });
+    expect(result.reply).toBe(JSON.stringify(['', []]));
+  });
+
+  it('lists a write to either as read-only and lands nothing', async () => {
+    const code = [
+      'turn.narration = "x"; turn.choices = ["y"];',
+      'try { turn.choices[0] = "z"; } catch {}',
+      'try { turn.choices.push("w"); } catch {}',
+      'return JSON.stringify([turn.narration, turn.choices]);',
+    ].join('\n');
+    const result = await snapshotOf(stateWith(LIVE)).run({ home: { kind: 'tool' }, timing: 'after', code, args: {} });
+    expect(result.reply).toBe(JSON.stringify([LIVE.narration, LIVE.choices]));
+    expect(result.readOnlyWrites).toEqual(expect.arrayContaining(['turn.narration', 'turn.choices']));
+  });
+
+  it('reads both in a user Tool, and lists a write as dropped', async () => {
+    const snapshot = buildToolSnapshot(sampleChipScene(), [], null, { state: stateWith(LIVE), authored: null });
+    expect(await runToolScript('return [turn.narration, turn.choices];', {}, snapshot)).toEqual({ text: JSON.stringify([LIVE.narration, LIVE.choices]) });
+    expect(await runToolScript('turn.choices = []; return turn.choices.length;', {}, snapshot)).toEqual({ text: '2', dropped: ['turn.choices'] });
+  });
+
+  it('reads both empty in the Settings sample world, an in-turn call', async () => {
+    expect(await runToolScript('return [turn.narration, turn.choices];', {}, sampleToolSnapshot())).toEqual({ text: JSON.stringify(['', []]) });
+  });
+
+  it('reads the sample page and three choices in Test Code at After the AI, and empty elsewhere', async () => {
+    const world: StatCodeWorld = { stats: [counter], statGroups: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [] };
+    const code = 'stats.Count.value = turn.narration.length * 10 + turn.choices.length;';
+    expect((await runTestCode(code, 'after', { kind: 'world' }, world)).writes).toEqual([`stats.Count.value = ${SAMPLE_PAGE.length * 10 + 3}`]);
+    for (const timing of ['start', 'before', 'output', 'switch'] as const) {
+      expect((await runTestCode(code, timing, { kind: 'world' }, world)).writes).toEqual(['stats.Count.value = 0']);
+    }
+  });
+
+  it('reads the same sample on the Test Bench', async () => {
+    const expected = JSON.stringify([SAMPLE_PAGE, SAMPLE_CHOICES]);
+    const check = (timing: 'before' | 'after', want: string) =>
+      `if (JSON.stringify([turn.narration, turn.choices]) !== ${JSON.stringify(want)}) throw new Error("off");`;
+    const rule = {
+      stats: [counter], statGroups: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [],
+      worldOverview: overview({}), locations: [],
+      scripts: [
+        { id: 'a', timing: 'after' as const, code: check('after', expected) },
+        { id: 'b', timing: 'before' as const, code: check('before', JSON.stringify(['', []])) },
+      ],
+    };
     expect(await checkScripts(rule as unknown as RuleWorld)).toEqual([]);
   });
 });

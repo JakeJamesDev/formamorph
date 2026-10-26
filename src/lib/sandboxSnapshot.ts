@@ -7,7 +7,7 @@ import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import {
   executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
   type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
-  type SwitchedTrait, type TraitWrite,
+  type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { navigableDestinationEntries } from './locationContext';
@@ -322,6 +322,11 @@ function switchedTraitEntry(board: Board, { event, world }: { event: TraitSwitch
 
 const statOf = (home: UnitHome): Stat | null => ('stat' in home ? home.stat : null);
 
+/** The page and choices read empty at a timing before the turn's reply is done (Q5). A read-only run is a user
+ *  Tool's, which reads the state's turn as it stands. */
+const turnRead = (turn: SandboxTurn, { timing, readOnly }: ScriptRunUnit): SandboxTurn =>
+  (!readOnly && (timing === 'start' || timing === 'before' || timing === 'output') ? { ...turn, narration: '', choices: [] } : turn);
+
 const optionsOfSnapshot = new WeakMap<SandboxSnapshot, (unit: ScriptRunUnit) => StatCodeRunOptions>();
 
 /** The snapshot of `state`, which every Script of the turn or check runs through. */
@@ -341,7 +346,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       : unit.switched === 'sample' ? sampleSwitchedTrait(read.traits, firstTraitId(), selfTrait && { entry: selfTrait, owner: owner?.name ?? '' })
         : switchedTraitEntry(read, unit.switched);
     return {
-      clock: state.clock, ...(read.stats.readings ? { readings: read.stats.readings } : {}), ...(state.turn && { turn: state.turn }),
+      clock: state.clock, ...(read.stats.readings ? { readings: read.stats.readings } : {}), ...(state.turn && { turn: turnRead(state.turn, unit) }),
       enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
       ...(owner && { owner }), dictionaries: read.dictionaries, ...(read.resolveEntryValue && { resolveEntryValue: read.resolveEntryValue }),
