@@ -580,6 +580,32 @@ describe('review entries', () => {
     expect(describeAuditEntry(reviewed('listing_auto_approved'))).toBe('root-admin published the world “Sedge Landing” without review');
   });
 
+  it('says what each trust change did to the account', () => {
+    const trust = (action: AuditEntry['action']) => entry({
+      action,
+      targetUser: { id: 'u1', username: 'wren_hallow' },
+      target: { kind: 'account', name: 'wren_hallow', id: 'u1' },
+    });
+
+    expect(describeAuditEntry(trust('author_trusted'))).toBe('root-admin trusted wren_hallow');
+    expect(describeAuditEntry(trust('author_untrusted'))).toBe('root-admin removed trust from wren_hallow');
+  });
+
+  it('labels the trust actions in the entry and offers both in the filter', async () => {
+    stubLog([entry({
+      action: 'author_untrusted',
+      targetUser: { id: 'u1', username: 'wren_hallow' },
+      target: { kind: 'account', name: 'wren_hallow', id: 'u1' },
+    })]);
+
+    render(<AuditLogTab active onOpenListing={vi.fn()} />);
+
+    expect(await screen.findByText('Trust Removed')).toBeTruthy();
+    // An account id is not a listing id, so the entry offers nothing to open.
+    expect(screen.queryByRole('button', { name: 'View' })).toBeNull();
+    expect(AUDIT_ACTION_OPTIONS.map((option) => option.label)).toEqual(expect.arrayContaining(['Trusted', 'Trust Removed']));
+  });
+
   it('opens the listing a review entry names', async () => {
     const onOpenListing = vi.fn();
     stubLog([reviewed('listing_rejected', 'w42')]);

@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportsTab } from "@/components/menu/ReportsTab";
 import { ReviewTab } from "@/components/menu/ReviewTab";
+import { AutoApprovedTab } from "@/components/menu/AutoApprovedTab";
 import { countLabel, type ModerationTab as ModerationSubTab } from "@/components/menu/moderationTabs";
+
+const SEGMENT = "min-w-0 whitespace-normal px-2 text-center leading-tight";
 
 interface ModerationTabProps {
   /** Whether the tab is visible; the queues below only fetch while it is. */
@@ -37,9 +40,11 @@ export function ModerationTab({
   return (
     <div className="py-4 min-w-0">
       <Tabs value={tab} onValueChange={(value) => setTab(value as ModerationSubTab)} className="w-full min-w-0">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="reports">{countLabel('Reports', openReports)}</TabsTrigger>
-          <TabsTrigger value="review">{countLabel('Review', waitingReviews)}</TabsTrigger>
+        {/* Three cells on a phone: a label wraps (Auto-Approved at its hyphen) instead of spilling over its neighbor. */}
+        <TabsList className="grid h-auto w-full grid-cols-3">
+          <TabsTrigger value="reports" className={SEGMENT}>{countLabel('Reports', openReports)}</TabsTrigger>
+          <TabsTrigger value="review" className={SEGMENT}>{countLabel('Review', waitingReviews)}</TabsTrigger>
+          <TabsTrigger value="auto" className={SEGMENT}>Auto-Approved</TabsTrigger>
         </TabsList>
 
         <TabsContent value="reports" className="min-w-0">
@@ -53,6 +58,10 @@ export function ModerationTab({
             onChanged={onReviewChanged}
             initialItemId={initialReviewItemId}
           />
+        </TabsContent>
+
+        <TabsContent value="auto" className="min-w-0">
+          <AutoApprovedTab active={active && tab === 'auto'} onOpenListing={onOpenListing} />
         </TabsContent>
       </Tabs>
     </div>

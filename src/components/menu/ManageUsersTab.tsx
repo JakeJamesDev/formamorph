@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, RotateCcw } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, RotateCcw, ShieldCheck } from "lucide-react";
 import { SearchField } from "@/components/ui/search-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +21,8 @@ import AuthService from "@/services/AuthService";
 import { responseError } from "@/services/responseError";
 import MessageService from "@/services/MessageService";
 import UserService from "@/services/UserService";
+import ReviewService from "@/services/ReviewService";
+import { useListingReviewMeta } from "@/lib/useListingReviewMeta";
 import { useUserProfile } from "@/contexts/userProfileStore";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { AdminUser, LinkedAccount, SentMessage } from "@/types";
@@ -135,6 +137,28 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
 
   const userIdOf = (user: WorldRecord) => String(user._id || user.id);
   const usernameOf = (user: WorldRecord) => String(user.username || 'user');
+
+  // Trust is an administrator's, and means nothing on a server without listing review.
+  const review = useListingReviewMeta(active && viewerIsAdmin);
+  const isTrusted = (user: WorldRecord) => typeof user.trustedAt === 'string' && user.trustedAt !== '';
+  // Staff skip review without a grant, so a toggle on them would visibly do nothing.
+  const mayTrust = (user: WorldRecord) => viewerIsAdmin && review.supported && !isStaff(user);
+
+  /** Grant or revoke one account's trust; the row follows the server's answer. */
+  const changeTrust = async (user: WorldRecord, trusted: boolean) => {
+    try {
+      const answer = await ReviewService.setTrusted(userIdOf(user), trusted);
+      if (!mountedRef.current) return;
+      setUsers((prev) => prev.map((row) =>
+        userIdOf(row) === userIdOf(user) ? { ...row, trustedAt: answer.trustedAt } : row
+      ));
+      toast.success(answer.trustedAt
+        ? `${usernameOf(user)} is a trusted author`
+        : `${usernameOf(user)} is no longer trusted`);
+    } catch (error) {
+      if (mountedRef.current) toastError(error, trusted ? 'Failed to trust this account' : 'Failed to remove trust');
+    }
+  };
 
   const toggleSelected = (user: WorldRecord) => {
     const userId = userIdOf(user);
@@ -591,6 +615,11 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               >
                                 {user.username}
                               </button>
+                              {viewerIsAdmin && isTrusted(user) && (
+                                <span className="inline-flex rounded-full bg-info/10 px-2 text-meta font-semibold leading-5 text-info">
+                                  Trusted
+                                </span>
+                              )}
                               {/* The server sends the address to administrators only. */}
                               {viewerIsAdmin && (
                                 <div className="max-w-[14rem] truncate select-all text-helper text-muted-foreground">
@@ -704,6 +733,21 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                                       <History className="mr-2 h-3.5 w-3.5" /> History ({Number(user.messageCount) || 0})
                                     </Button>
                                   </PopoverClose>
+
+                                  {mayTrust(user) && (
+                                    <PopoverClose asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="w-full justify-start"
+                                        aria-label={`${isTrusted(user) ? 'Remove trust from' : 'Trust'} ${usernameOf(user)}`}
+                                        onClick={() => void changeTrust(user, !isTrusted(user))}
+                                      >
+                                        <ShieldCheck className="mr-2 h-3.5 w-3.5" />
+                                        {isTrusted(user) ? 'Remove Trust' : 'Trust Author'}
+                                      </Button>
+                                    </PopoverClose>
+                                  )}
 
                                   {/* Only when there is one, and only on somebody this viewer may act on:
                                       an inert row would read as a missing permission. */}

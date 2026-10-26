@@ -41,6 +41,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   update_approved: 'Update approved',
   update_rejected: 'Update rejected',
   listing_auto_approved: 'Auto-approved',
+  author_trusted: 'Trusted',
+  author_untrusted: 'Trust Removed',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -88,6 +90,8 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   update_rejected: 'bg-warning/10 text-warning',
   // Nobody decided it: the author's standing skipped review.
   listing_auto_approved: 'bg-muted text-muted-foreground',
+  author_trusted: 'bg-info/10 text-info',
+  author_untrusted: 'bg-muted text-muted-foreground',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -289,6 +293,10 @@ export function auditPredicate(entry: AuditEntry): string {
     // The actor is the author, whose standing skipped review.
     case 'listing_auto_approved':
       return `published ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} without review`;
+    case 'author_trusted':
+      return `trusted ${target || 'an account'}`;
+    case 'author_untrusted':
+      return `removed trust from ${target || 'an account'}`;
     // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
     default: {
       const unhandled: never = entry.action;

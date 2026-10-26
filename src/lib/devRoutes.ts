@@ -224,10 +224,12 @@ export const DEV_MODAL_TABS = {
   adminPanelPolicies: ['uploadGate', 'tagNotice', 'privacyPolicy'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
   adminPanelFeedback: ['bugs', 'suggestions', 'questions'],
-  // Admin Panel → Moderation uses it too: the report queue and the review queue. `fixture=review` serves a
-  // canned review queue (`devReviewStub.ts`), and `pick=<item id>` opens one item's dialog
-  // (`#dev?modal=adminPanel&tab=moderation&subtab=review&fixture=review&pick=dev-review-new`).
-  adminPanelModeration: ['reports', 'review'],
+  // Admin Panel → Moderation uses it too: the report queue, the review queue and the auto-approvals.
+  // `fixture=review` serves a canned review queue and auto-approval list (`devReviewStub.ts`), and
+  // `pick=<item id>` opens one item's dialog
+  // (`#dev?modal=adminPanel&tab=moderation&subtab=review&fixture=review&pick=dev-review-new`;
+  // `subtab=auto` lands on the auto-approvals).
+  adminPanelModeration: ['reports', 'review', 'auto'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
   // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).

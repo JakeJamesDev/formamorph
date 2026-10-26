@@ -11,7 +11,18 @@ vi.mock('@/services/AuthService', () => ({
   default: { API_URL: 'https://server.test/api', token: 'staff-token' },
 }));
 
-/** The one box this tab has, by its accessible name. */
+// Whether the server has listing review; its switch follows it.
+const reviewMeta = vi.hoisted(() => ({ supported: false, enabled: false }));
+const recorded = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/useListingReviewMeta', () => ({
+  useListingReviewMeta: () => reviewMeta,
+  setListingReviewEnabled: recorded,
+}));
+
+/** The listing review box, by its accessible name. */
+const listingReview = () => screen.getByRole('checkbox', { name: 'Listing Review' });
+
+/** The box for the likes setting, by its accessible name. */
 const anonymousLikes = () => screen.getByRole('checkbox', { name: 'Anonymous Likes' });
 
 /** A settings response, which carries the stored value under `data`. */
@@ -28,6 +39,8 @@ const never = () => new Promise<Response>(() => {});
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  reviewMeta.supported = false;
+  recorded.mockClear();
   resetCatalogStale();
   toastErrorMock.mockClear();
   fetchMock = vi.fn();
@@ -128,6 +141,71 @@ describe('writing the setting', () => {
     fireEvent.click(anonymousLikes());
 
     await waitFor(() => expect(anonymousLikes().hasAttribute('disabled')).toBe(true));
+  });
+});
+
+describe('the Listing Review switch', () => {
+  /** Answers each settings read by key, so row order does not matter. */
+  const answerByKey = (values: Record<string, boolean>, writes: Response[] = []) =>
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return writes.shift() as Response;
+      const key = url.split('/').pop() as string;
+      return settingBody(values[key]);
+    });
+
+  it('is absent against a server without listing review, which would refuse the key', () => {
+    answerByKey({ anonymous_likes: true });
+
+    render(<ServerSettingsTab active />);
+
+    expect(screen.queryByText('Listing Review')).toBeNull();
+    expect(fetchMock.mock.calls.map(([url]) => url)).not.toContain('https://server.test/api/settings/listing_review');
+  });
+
+  it('reads the stored value from the listing_review key', async () => {
+    reviewMeta.supported = true;
+    answerByKey({ anonymous_likes: false, listing_review: true });
+
+    render(<ServerSettingsTab active />);
+
+    await waitFor(() => expect(listingReview().getAttribute('data-state')).toBe('checked'));
+  });
+
+  it('writes listing_review and follows the value the server stored', async () => {
+    reviewMeta.supported = true;
+    answerByKey({ anonymous_likes: false, listing_review: false }, [settingBody(true)]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(listingReview().hasAttribute('disabled')).toBe(false));
+
+    fireEvent.click(listingReview());
+
+    await waitFor(() => expect(listingReview().getAttribute('data-state')).toBe('checked'));
+    const write = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT') as [string, RequestInit];
+    expect(write[0]).toBe('https://server.test/api/settings/listing_review');
+    expect(write[1].body).toBe(JSON.stringify({ value: true }));
+  });
+
+  it('tells the rest of the app the stored value, not the pressed one', async () => {
+    reviewMeta.supported = true;
+    // The server answers off to a press that asked for on.
+    answerByKey({ anonymous_likes: false, listing_review: false }, [settingBody(false)]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(listingReview().hasAttribute('disabled')).toBe(false));
+    fireEvent.click(listingReview());
+
+    await waitFor(() => expect(recorded).toHaveBeenCalledWith(false));
+  });
+
+  it('says in its brief line that pending items stay in the queue when it is off', async () => {
+    reviewMeta.supported = true;
+    answerByKey({ anonymous_likes: false, listing_review: false });
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(listingReview()).toBeTruthy());
+
+    expect(screen.getByText(/Pending items stay in the queue when it’s off/)).toBeTruthy();
   });
 });
 

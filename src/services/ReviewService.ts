@@ -43,6 +43,29 @@ export interface ReviewRejection {
   quarantineExtended?: boolean;
 }
 
+/** One auto-approval, from the audit snapshot taken at upload. The listing may be renamed or gone since. */
+export interface AutoApproval {
+  id: number;
+  targetId: string | null;
+  targetKind: string | null;
+  targetName: string | null;
+  actor: { id: string | null; username: string | null; role: string | null };
+  createdAt: string;
+}
+
+/** A page of auto-approvals, with the count before paging. */
+export interface AutoApprovalPage {
+  entries: AutoApproval[];
+  total: number;
+}
+
+/** What a trust write answers with. `trustedAt` is null once trust is gone. */
+export interface TrustAnswer {
+  id: string;
+  username: string;
+  trustedAt: string | null;
+}
+
 /** Thrown on a `409`: the item is no longer waiting, or its approval must wait. Carries the server's text. */
 export class ReviewConflictError extends Error {}
 
@@ -133,6 +156,31 @@ class ReviewService {
     const body = (await response.json().catch(() => ({}))) as { data?: ReviewRejection };
 
     return body.data ?? { id, author: null };
+  }
+
+  /** Recent auto-approvals, newest first (staff only). */
+  async fetchAutoApproved({ page = 1, limit = 20, signal }: {
+    page?: number;
+    limit?: number;
+    signal?: AbortSignal;
+  } = {}): Promise<AutoApprovalPage> {
+    const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+    const response = await fetch(`${this.apiUrl}/reviews/auto?${query}`, { headers: authHeaders(), signal });
+    const body = await unwrap<{ entries?: AutoApproval[]; total?: number }>(response, 'Failed to load the auto-approvals');
+
+    return { entries: body.entries ?? [], total: body.total ?? 0 };
+  }
+
+  /** Grant or revoke an author's trust (admin only). Answers with what the server stored. */
+  async setTrusted(userId: string, trusted: boolean): Promise<TrustAnswer> {
+    const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/trust`, {
+      method: trusted ? 'PUT' : 'DELETE',
+      headers: authHeaders(),
+    });
+    const body = await unwrap<{ user?: TrustAnswer }>(response, trusted ? 'Failed to trust this account' : 'Failed to remove trust');
+    if (!body.user) throw new Error('The server sent no answer');
+
+    return body.user;
   }
 
   private async throwUnlessOk(response: Response, fallback: string): Promise<void> {

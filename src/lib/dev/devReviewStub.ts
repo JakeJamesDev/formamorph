@@ -1,11 +1,11 @@
 /** DEV only: serves `ReviewService` from an in-memory queue while the dev route has `fixture=review`. */
 import { getDevRoute } from '@/lib/devRouter';
-import ReviewService, { ReviewConflictError, type ReviewQueueItem } from '@/services/ReviewService';
+import ReviewService, { ReviewConflictError, type AutoApproval, type ReviewQueueItem } from '@/services/ReviewService';
 
 export const DEV_REVIEW_FIXTURE = 'review';
 
 const STUBBED_KEYS = [
-  'fetchMeta', 'fetchQueue', 'fetchCount', 'fetchContent', 'approve', 'reject',
+  'fetchMeta', 'fetchQueue', 'fetchCount', 'fetchContent', 'approve', 'reject', 'fetchAutoApproved', 'setTrusted',
 ] as const satisfies readonly (keyof typeof ReviewService)[];
 type Stubbed = Pick<typeof ReviewService, (typeof STUBBED_KEYS)[number]>;
 
@@ -39,6 +39,21 @@ export function devReviewFixtures(): ReviewQueueItem[] {
   ];
 }
 
+/** Recent auto-approvals, newest first: a trusted author's upload and a staff upload. */
+export function devAutoApprovals(): AutoApproval[] {
+  const entry = (id: number, name: string, kind: string, username: string, role: string | null, hours: number): AutoApproval => ({
+    id, targetId: `dev-auto-${id}`, targetKind: kind, targetName: name,
+    actor: { id: `dev-actor-${id}`, username, role }, createdAt: hoursAgo(hours),
+  });
+
+  return [
+    entry(4, 'Tidewrack Almanac', 'dictionary', 'Heron Cole', null, 2),
+    entry(3, 'Staff Sandbox', 'world', 'Formamorph Team', 'admin', 9),
+    entry(2, 'The Lamplighter', 'entity', 'Lantern Keeper', null, 30),
+    entry(1, 'Marsh Primer', 'world', 'Reed Walker', 'mod', 75),
+  ];
+}
+
 /** The stub's methods over one queue. */
 export function devReviewMethods(queue: ReviewQueueItem[]): Stubbed {
   const take = (id: string): ReviewQueueItem => {
@@ -51,6 +66,8 @@ export function devReviewMethods(queue: ReviewQueueItem[]): Stubbed {
     async fetchMeta() { return { enabled: true }; },
     async fetchQueue() { return [...queue]; },
     async fetchCount() { return queue.length; },
+    async fetchAutoApproved() { const entries = devAutoApprovals(); return { entries, total: entries.length }; },
+    async setTrusted(id, trusted) { return { id, username: id, trustedAt: trusted ? hoursAgo(0) : null }; },
     async fetchContent(id) { return { worldOverview: { name: queue.find((item) => item.id === id)?.name } }; },
     async approve(id) { take(id); },
     async reject(id, days) {
