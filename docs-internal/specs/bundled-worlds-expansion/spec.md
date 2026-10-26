@@ -1,0 +1,190 @@
+# Bundled Worlds Expansion
+
+Status: ready-for-agent
+Spec session: bundled-worlds-expansion — spec
+
+## Problem Statement
+
+The bundled worlds are the first thing a new player explores and the first example a new author opens. After the Bundled Worlds Refresh (closed 2026-10-17) each world is in the current shape, probed, and shows its assigned features. Each world is still small: 4 to 7 locations and 6 to 10 entities. A player runs out of places and people in a few sessions.
+
+The worlds also have almost no art. Most have one location image or none, and Emberwatch has none at all. Features that need art, such as Image Visibility rules and the Map Background, have no bundled example. Features that landed after the refresh, such as World Tools on the cloud model, Relationship labels, Time of Day gates, script control of lore and exits, and placeholder chips in Pronouns, Travel Hints and Relationship labels, have at most one example.
+
+## Solution
+
+Expand seven bundled worlds: Drone, Emberwatch, City Rampage, Slime Outbreak, Sugarscape Survival, Valentines Survival, and Veilwood. Open Chat stays a blank stage (Q1).
+
+- Each world grows to about double its locations and entities (Q5). The size table below sets the number per world.
+- Existing content may be rewritten where it improves the world (Q4). Each world keeps its title, hook, and core cast (Q20).
+- The post-refresh features join the coverage goal (Q7, Q8). The assignment table places each in the worlds whose premise fits.
+- Every location and entity in the seven worlds gets art, generated through the app's own image path on the user's local InvokeAI, in GPU windows the user names (Q2, Q10, Q11). Each world has one art-direction line, so its images read as one style (Q16).
+- The art tickets show Image Visibility rules in every world and a Map Background where the premise has a map (Q6, Q12, Q18).
+- Each world proves on the cloud model that it plays at least as well as the current version (Q9).
+
+## Rulings
+
+- **Q1** Seven worlds. Open Chat stays blank, per the refresh's ticket 05 ruling.
+- **Q2** New locations and entities get app-generated art inside the effort, not `imageTags` only and not a later effort.
+- **Q3** One content ticket and one art ticket per world. The art ticket is blocked by its world's content ticket.
+- **Q4** Add and may rewrite. A ticket may rework existing text, side cast, stats and scripts where it improves the world.
+- **Q5** About double. Roughly 10 to 14 locations and 14 to 18 entities per world. The size table sets the exact target per world.
+- **Q6** The art tickets showcase Image Visibility rules and the Map Background. World Avatars and ambient sound are out.
+- **Q7** The coverage goal adds World Tools on the cloud model, Relationship labels, Time of Day gates, and script control of lore and exits.
+- **Q8** New placeholder chips go in Pronouns, Travel Hints and Relationship labels wherever a rolled name fits. No chip is added only for coverage.
+- **Q9** The pass bar is the refresh's: no structural regression, a rubric win or tie against the current revision, 5 or more runs per arm on the cloud endpoint, arms interleaved in one batch.
+- **Q10** The art ticket covers every location and entity in the world, old and new. Existing art stays.
+- **Q11** Art comes from the app's InvokeAI provider on the user's local install, in an agreed GPU window. No cloud image provider.
+- **Q12** A Map Background only where the premise has a natural map. The assignment table names the worlds.
+- **Q13** No per-world file-size cap. Each art ticket reports the world's size before and after.
+- **Q14** One Major changelog entry. Ticket 01 adds it as a fragment, since content tickets land in no fixed order; later tickets, art included, fold their worlds into it.
+- **Q15** One shared ticket first extends the bundled-world coverage test with the new features and a row per world. World tickets fill their rows.
+- **Q16** One art-direction line per world, written by the content ticket and used on every generation in the art ticket.
+- **Q17** One backdrop per location and one portrait per entity. A second image only where a Visibility rule shows it.
+- **Q18** Visibility floor per world: at least one location backdrop that changes and one entity image that changes.
+- **Q19** Art review through a contact sheet per world in a gitignored directory, every image labeled. The user rejects or redoes by name.
+- **Q20** The premise holds: title, hook and the named core cast stay.
+- **Q21** The art model for all seven worlds is Illustrious Nova Kemono XL 8.0 (SDXL), proven through the provider on 2026-10-26. Its Invoke defaults are euler_a, 35 steps, cfg 4, fp16 VAE.
+
+### Size table (Q5)
+
+| World | Locations today → target | Entities today → target |
+|---|---|---|
+| Drone | 4 → 10 | 6 → 14 |
+| Emberwatch | 7 → 14 | 9 → 18 |
+| Rampage | 6 → 12 | 9 → 16 |
+| Slime | 7 → 12 | 8 → 16 |
+| Sugarscape | 5 → 11 | 9 → 16 |
+| Valentines | 7 → 12 | 7 → 15 |
+| Veilwood | 7 → 13 | 10 → 18 |
+
+The target is a floor. A ticket may add more where the premise supports it. Every new location joins the graph through `parentId` or a Connection with Travel Hints both ways. Every new entity lists its `locations`, and sets `knownIn` when the AI should know of it elsewhere.
+
+### Feature assignment (Q6, Q7, Q8, Q12, Q18)
+
+Every world: a Visibility rule on one location backdrop and one entity image (Q18), and at least one chip in a Pronouns, Travel Hint or Relationship label field (Q8).
+
+| Feature | Worlds | Shape of the example |
+|---|---|---|
+| World Tools on the cloud model | Rampage, Emberwatch, Slime (Drone keeps `lock_target`) | A script Tool with a live write: Rampage logs a destroyed landmark and pins a memory; Emberwatch's chapel Tool writes Faith and adds a memory; Slime marks a block as overrun and enables its lore entry. |
+| Relationship labels | Emberwatch, Valentines, Slime | Cast ties the AI reads on the persona block, with a chip where the label carries a rolled name. |
+| Time of Day gates | Veilwood, Sugarscape, Slime | A trait or Visibility rule that turns on at night or evening: Veilwood's hunters, Sugarscape's Daylight Seam, Slime's Night Pharmacy. |
+| Script control of lore and exits | Slime (lore), Emberwatch (lore), Rampage (exits) | A script enables a dictionary entry as a stat crosses a threshold, or reads `location.exits` to pace a pursuit. |
+| Map Background | Emberwatch, Veilwood, Rampage, Sugarscape | One generated map image behind the Locations canvas, cropped and faded in the editor. Drone, Slime and Valentines skip it. |
+
+### Art direction (Q16)
+
+Each content ticket writes its world's art-direction line into this spec's Comments and into the ticket. The line names medium, palette, and mood in booru-style terms, and never names a subject. The art ticket uses it on every image of that world.
+
+## User Stories
+
+1. As a new player, I want more places in each bundled world, so that I keep finding somewhere new over several sessions.
+2. As a new player, I want more people and creatures in each world, so that each place has someone or something in it.
+3. As a new player, I want every location and entity to have art, so that the world looks finished when I open it.
+4. As a new player, I want a world's images to share one look, so that the world reads as one place.
+5. As a new player, I want a backdrop or portrait to change when the story changes, so that the picture follows the stat, trait or time of day.
+6. As a new player, I want the in-game Map to show a drawn map where the world has one, so that I can place myself in it.
+7. As a new player on the default cloud model, I want the expanded worlds tuned for that model, so that they play well where most players play.
+8. As a new player, I want the narration to stay on the world's premise and voice, so that the expansion does not blur what the world is.
+9. As a returning player, I want my save of the current world to load against the expanded world and play a turn, so that the expansion does not strand my run.
+10. As a returning player, I want my deleted bundled worlds to stay deleted, so that the expansion does not restore what I removed.
+11. As a returning player, I want the core cast I know to still be there, so that the world I liked is the world I return to.
+12. As a Rampage player, I want the AI to log a landmark I destroy through a Tool, so that the city remembers what I did.
+13. As an Emberwatch player, I want prayer at the chapel to move Faith through a Tool, so that the chapel does something.
+14. As a Slime player, I want an overrun block to change the lore the narrator reads, so that the outbreak is visible in the telling.
+15. As an Emberwatch, Valentines or Slime player, I want the cast's ties to each other named, so that the narrator keeps who is whose rival or mentor straight.
+16. As a Veilwood, Sugarscape or Slime player, I want night to change what is possible, so that time of day matters.
+17. As a Rampage player, I want the pursuit to read the exits of where I am, so that the chase follows the map.
+18. As a player of any of the seven worlds, I want a rolled name in a pronoun, travel hint or relationship label, so that a replay varies in new places.
+19. As a new author, I want each bundled world to show the post-refresh features, so that I have a working example of each.
+20. As a new author, I want a bundled example of an Image Visibility rule on a location and on an entity, so that I can copy the pattern.
+21. As a new author, I want a bundled example of a Map Background, so that I see how the frame and fade are set.
+22. As a new author, I want a bundled example of a World Tool with a live write in more than one world, so that I see the shape in several premises.
+23. As a new author, I want each world's readme to name the features it shows, so that I know where to look.
+24. As a new author, I want every new script written as a worked example, so that I can read it step by step.
+25. As a new author, I want `imageTags` on every location and entity to match the art, so that I can regenerate in the same style.
+26. As the user reviewing a content ticket, I want an image-stripped diff of the world, so that I can read the change without base64 noise.
+27. As the user reviewing a content ticket, I want probe numbers against the current world, so that I judge the change by evidence.
+28. As the user reviewing an art ticket, I want a contact sheet with every image labeled, so that I can reject or redo by name.
+29. As the user reviewing an art ticket, I want the world's size before and after, so that I see what the art costs the bundle.
+30. As the user, I want art generation to run only in a GPU window I name, so that the machine stays mine the rest of the time.
+31. As a ticket agent, I want the feature coverage checked in a test with a row per world, so that a world cannot land without its assigned features.
+32. As a ticket agent, I want the shared suite to read each world at the pre-expansion revision for the old-save check, so that the fixture is never a stored copy.
+33. As a ticket agent, I want the world probe to take the pre-expansion revision as its default before arm, so that every content ticket is judged the same way.
+34. As a ticket agent, I want the art-direction line in the spec, so that the art ticket does not invent a style.
+35. As a maintainer, I want fingerprints regenerated with each world, so that the seeder and the publish check know every revision.
+36. As a maintainer, I want one changelog entry for the whole effort, so that the release notes stay short.
+37. As a maintainer, I want every image stored as WebP through the app's own encoder, so that the Test Bench image rules stay green.
+
+## Implementation Decisions
+
+- **Ticket order.** Ticket 01 is the shared test ticket (Q15) and ticket 02 is the Art Harness; both can start at once. Content tickets 03 to 09, one per world, run in parallel: they edit different world files, and a fingerprint-file conflict is resolved by regenerating it. Art tickets 10 to 16, one per world, are each blocked by the harness, their content ticket, and the art ticket before them, so they run one at a time, because each holds the GPU.
+- **Art Harness (ticket 02).** One command generates a world's items through the app's InvokeAI provider with the art-direction prefix, encodes WebP through the app's encoder in Chromium, writes each image into the world by item id, and builds the contact sheet. It never starts a run without a user-named GPU window.
+- **Pre-expansion revision.** Ticket 01 records the last main commit before it lands as the pre-expansion revision. The shared suite's old-save fixture list gains it, next to the pre-refresh revision it already reads. The world probe's default before arm becomes it.
+- **Edits by script.** World files are edited by parsing, changing, and re-serializing. Ids and existing images are preserved. Every reference is validated before saving: connections, `parentId`, entity `locations` and `knownIn`, owners, placeholder tokens, trait groups, gates, Visibility rule targets, Tool names, relationship targets, script stat names. The `bundled-worlds` project skill holds the procedure and the strip tool.
+- **Graph growth.** New locations nest under an existing region with `parentId` or join through a Connection. Each Connection carries Travel Hints both ways. A location set to use connections for its Nearby list says so. Every new entity lists at least one location, and a persona's new start points are deliberate.
+- **Content rewrite (Q4, Q20).** A ticket may rewrite prompts, lore, side cast, stats and scripts. Title, hook, and the core cast named in the current world stay. Lore grows with the map: each new district or region gets at least one dictionary entry.
+- **Scripts and Tools as worked examples.** Every new script, Tool handler included, follows the house style: full variable names, sections in the order you would explain them, a comment per section that says what it does and why. A Tool's live write uses the Tool script calls that exist today (stat writes, `memory.add`, `memory.pin`, `discover`, `location.move`, `clock.advance`, `diary`) and dictionary `enabled` writes. No new runtime call is added for a world.
+- **Tools on the cloud model.** A world Tool is authored so the world still plays without it, per ADR-0013. The probe runs with Tools offered, on the cloud endpoint with its tool parser.
+- **Relationship labels.** At most one label per target, in author order. A chip in a label resolves with the owning entity's placeholders.
+- **Time of Day.** A daypart condition lives in a trait's requirement row or an image's Visibility rule. It takes no owner and no negation, so an "at night" rule lists the night dayparts.
+- **Chips in new fields (Q8).** A Pronouns, Travel Hint or Relationship label chip is added only where a rolled value reads naturally. Linked hints share one roll both ways.
+- **Readme split.** `introReadme` keeps trait guidance. `readme` keeps play first, then "How this world is built", which names the new features the world shows.
+- **Art direction (Q16).** The content ticket writes the line. The art ticket applies it on every generation as the positive prompt prefix for the session, read from and restored to the user's active image preset afterwards, so `imageTags` stay the subject's own tags.
+- **Generation path (Q2, Q11).** Art goes through the app's InvokeAI provider, from the editor's Generate control or from a harness that calls the same provider module with the same preset and prompt composition. Both are the app's path. Every art ticket uses the Q21 model, Illustrious Nova Kemono XL 8.0, with its Invoke defaults as the preset's starting point. InvokeAI runs headless, with the Invoke GUI closed, in the window the user names.
+- **Image kinds (Q17).** One landscape backdrop per location, one portrait per entity, at one size per kind across the world. A Visibility variant repeats the subject's tags with the state change added. Slot 0 is the primary image and always shows outside play.
+- **Visibility rules (Q18).** Each world has at least one location backdrop and one entity image with a rule. A rule reads a stat, trait, group, persona or daypart. A location rule with no owner reads the played persona. The Test Bench rules for missing targets, all-hideable entities and zero-span percent rules stay enforced.
+- **Map Background (Q12).** The four map worlds store one generated map image under the world overview's Map Background, with its frame in canvas units and an opacity. The art ticket sets the frame in the editor so the drawn map lines up with the Locations canvas. A second map image with a Visibility rule is allowed where the premise asks, and never required.
+- **Encoding.** Every stored image is WebP through the app's own encoder. Existing art stays as it is. The oversized-images rule stays ignored (Q13); every other Test Bench image rule is enforced.
+- **imageTags.** The content ticket writes `imageTags` for every new location and entity, as booru-style tags consistent with the world. The art ticket may refine tags and writes them back, so the stored tags describe the stored art.
+- **Review artifacts.** A content ticket links the stripped diff and puts probe numbers in its comments. An art ticket writes one contact sheet per world under the worktree's frames directory, labeled by item name and slot, and reports the world file's size before and after.
+- **Changelog (Q14).** Ticket 01 adds one Major entry as a fragment, with a lead that states the outcome for the player. Later tickets fold their world into that entry through the changelog fragment flow.
+- **Fingerprints.** Each content and art ticket regenerates the bundled fingerprints and commits them with the world.
+- **No shape change.** The expansion changes world content only. It adds no field to the world or save export shape.
+- **No migration change.** Each world file stays in the shape `migrateWorld` writes. The current-shape check holds.
+
+## Testing Decisions
+
+- A good test loads a bundled world the way the seeder loads it and checks behavior a player or author sees. It never asserts on authored prose or on an image's pixels.
+- **One seam: the shared bundled-world suite.** Ticket 01 extends it:
+  - The feature union gains `tools`, `relationships`, `timeGates`, `scriptLore` (a script that writes a dictionary entry's `enabled`), `scriptExits` (a script that reads `location.exits`), `visibilityRules` (a location image rule and an entity image rule), `mapBackground`, and `newFieldChips` (a placeholder token in a Pronouns, Travel Hint or Relationship label field). Each gets a detector.
+  - The assignment table is stored as planned rows. A world ticket moves each feature it delivers into its row. The set check for the new features turns on once no planned feature is left unclaimed, so the suite is green before the first world ticket and strict after the last.
+  - Test Bench rows stay empty for the seven worlds. Open Chat's row is unchanged.
+  - The current-shape check holds for every file.
+  - The old-save check reads each world at the pre-refresh and the pre-expansion revisions and plays one turn against the new world. Drift is accepted. No stored copies.
+  - Each new check is shown to fail once with a world that lacks the feature or a broken reference.
+- **Per-world tests** only for behavior that must hold: a Tool handler's write, a script's effect on its stat or lore entry, a gate, a Visibility rule at a stat value or daypart. Each is shown to bite by breaking the world file once.
+- **Probe evidence (Q9)** goes in each content ticket's comments: arms, run counts, structural metrics, and the rubric result, in the refresh's format.
+- **Art tickets add no test seam.** The Test Bench image rules run through the shared suite. The contact sheet is the human check.
+- Prior art: the shared bundled-world suite, the Veilwood and Emberwatch world tests, the bundled fingerprint test, the refresh tickets' probe tables.
+
+## Out of Scope
+
+- Open Chat.
+- World Avatars and ambient sound (Q6). Background music.
+- Cloud image providers and any art path outside the app's InvokeAI provider (Q11).
+- Galleries of several images per item beyond Visibility variants (Q17).
+- New bundled worlds, or cutting a world.
+- Changes to the world or save export shape, or to load-time migrations.
+- New Tool script calls or runtime features for a world's sake.
+- Local-model probes, unless a ticket shows the cloud results cannot decide.
+
+## Further Notes
+
+- Inventory on 2026-10-26 (image-stripped): Drone 4 locations and 6 entities, Emberwatch 7 and 9, Rampage 6 and 9, Slime 7 and 8, Sugarscape 5 and 9, Valentines 7 and 7, Veilwood 7 and 10. Location art: 0 to 3 per world. Entity art: 0 to 7 per world. Emberwatch has no image and no script. Only Drone has a Tool.
+- The narration prompt carries the current location, its sub-locations and reachable neighbors, and the entities in those tiers plus known ones. Lore injects only matched entries. So total world size does not grow the prompt; it grows authoring and review time.
+- The eight world files total about 12.5 MB today and ship in the app bundle and the APK. With about 30 images per world, the set will grow several times over. Q13 accepts that; each art ticket reports the number.
+- The app's generate control makes one image per run and has no bulk mode. A harness over the same provider module is the expected route for an art ticket's volume.
+- There is no world-level style field. The art-direction line lives in this spec and the ticket, and is applied through the session's positive prompt prefix.
+- Grill rulings Q1 to Q20 were settled on 2026-10-26 in the spec session.
+
+## Comments
+
+**Generation check (2026-10-26, spec session).** InvokeAI 7.0.0-alpha.3 on port 9090, driven through the app's own provider module from Node (`npx vite-node` over a throwaway script that calls `buildImageRequest` and `generateImage`; the `@/` alias resolves). This is the harness route the art tickets use.
+
+| Model | Result | Time |
+|---|---|---|
+| SDXL Animagine | On-prompt 1216×832 scenery | 25.7 s |
+| Z-Image Turbo | On-prompt 1216×832 scenery, at SDXL-style steps and cfg, so slow | 95.0 s |
+| Illustrious Nova Anime XL | Solid black | 25.5 s |
+| Illustrious Nova Kemono XL 8.0 (Q21) | On-prompt 1216×832 night keep | 27.8 s |
+
+The black image is the fp16 VAE overflow the provider already knows: it sends the `fp32` decode flag only when the model's InvokeAI defaults set `vae_precision: fp32`, and this model's defaults leave it null. The first art ticket's model pick must render through the provider as is, or the user sets that model's `vae_precision` default to fp32 in Invoke's model manager first. Z-Image needs its own steps and guidance in the preset. The Invoke GUI was running during the check with no queue hang.
