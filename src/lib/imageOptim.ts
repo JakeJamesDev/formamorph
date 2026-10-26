@@ -20,8 +20,8 @@ const workerCodec: core.ImageCodec = {
   measure: (url) => measureInWorker(url),
 };
 
-// Rough display-only factors. Downscale's lossy WebP at quality 0.82 measured ~0.08 of a lossless source
-// and near half of a lossy one (2026-10-26, four generated images); Optimize's lossless keeps most of it.
+// Rough display-only factors. Downscale's lossy WebP at quality 0.82 lands near a tenth of a lossless
+// source and near half of a lossy one; Optimize's lossless keeps most of it.
 const DOWNSCALE_LOSSLESS_FACTOR = 0.1;
 const DOWNSCALE_LOSSY_FACTOR = 0.5;
 const OPTIMIZE_FACTOR = 0.85;

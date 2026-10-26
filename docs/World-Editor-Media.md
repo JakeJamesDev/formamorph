@@ -113,12 +113,12 @@ The **World › Map Background** cards hold the picture behind the [Locations ca
 - 🎚️ Each image can carry a Visibility rule. In play, the Map shows the first visible image, and no image when none is visible. A condition with no owner reads the persona.
 - 📐 Every image fits inside one shared frame at its own shape, so a swap lines up with your locations.
 - ➕ With no image, **No Images** shows a blank card. An upload there covers your locations.
-- 📦 The size limits are in [Image Sizes](#image-sizes).
+- 📦 The size budget is in [Image Sizes](#image-sizes).
 
 ## Image Sizes
-<!-- keywords: image budget, size limit, long edge, recommended size, thumbnail budget, entity budget, background budget, map budget, over budget -->
+<!-- keywords: image budget, size budget, long edge, thumbnail budget, entity budget, background budget, map budget, over budget -->
 
-Each image slot has a recommended size. An image over the file size shows **Over Budget**. **Downscale** shrinks an image over either number, and every PNG, BMP or lossless WebP.
+Each image slot has a size budget: a long edge and a file size. An image over the file size shows **Over Budget**. **Downscale** shrinks an image over either number, and every PNG, BMP or lossless WebP.
 
 | Slot | Long edge | File size |
 |---|---|---|
