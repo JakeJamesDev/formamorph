@@ -2910,7 +2910,7 @@ describe('trait gate rules', () => {
 
     describe('every image hideable', () => {
       const rule = 'entity-images-all-hideable';
-      const message = '“Ash” can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its opposite';
+      const message = '“Ash” can end up with no image — every image has a Visibility rule, and the rules cover neither a Condition and its opposite nor every pick of a required one-pick group';
 
       it('fires when every image carries a rule', () => {
         const found = only(pictured([image([hasTamed]), image([atLeast('rage', 80)])]), rule);
@@ -2988,6 +2988,64 @@ describe('trait gate rules', () => {
       it('fires when the pair names a target that is gone, since neither image can show', () => {
         const gone: TraitRequirement = { kind: 'trait', id: 'gone', name: 'Vowed' };
         expect(ids(only(pictured([image([gone]), image([{ ...gone, not: true }])]), rule))).toEqual([['ash']]);
+      });
+
+      describe('required one-pick groups', () => {
+        const one = { minPicks: 1, maxPicks: 1 };
+        const kind = (id: string, groupId: string) => trait({ id, name: id, groupId });
+        const has = (id: string): Extract<TraitRequirement, { kind: 'trait' }> => ({ kind: 'trait', id, name: id });
+        const typeTraits = ['reptile', 'insect', 'giant'].map((id) => kind(id, 'type'));
+        const lookTraits = ['masc', 'fem'].map((id) => kind(id, 'look'));
+        const typed = (images: GalleryImage[], type: Partial<TraitGroup> = one, look: Partial<TraitGroup> = one) => crowd([owner(images, {
+          traits: [...typeTraits, ...lookTraits],
+          traitGroups: [{ id: 'type', name: 'Type', parentId: null, ...type }, { id: 'look', name: 'Look', parentId: null, ...look }],
+        })]);
+        const perType = [image([has('reptile')]), image([has('insect')]), image([has('giant')])];
+        const product = [image([has('reptile')]), image([has('insect')]), image([has('giant'), has('masc')]), image([has('giant'), has('fem')])];
+
+        it('stays silent when the images name every pick of one group', () => {
+          expect(only(typed(perType), rule)).toEqual([]);
+        });
+
+        it('stays silent when rows combine two groups and cover every pair', () => {
+          expect(only(typed(product), rule)).toEqual([]);
+          // One image may name two picks in two rows.
+          expect(only(typed([image([has('reptile')], [has('insect')]), image([has('giant')])]), rule)).toEqual([]);
+        });
+
+        it('reads a global group the entity does not own', () => {
+          const w = gates([...typeTraits, tamed], {
+            stats: [rage], traitGroups: [{ id: 'type', name: 'Type', parentId: null, ...one }], entities: [resident, owner(perType)],
+          });
+          expect(only(w, rule)).toEqual([]);
+        });
+
+        it('fires when a pick or a pair has no image', () => {
+          expect(ids(only(typed(perType.slice(0, 2)), rule))).toEqual([['ash']]);
+          expect(ids(only(typed(product.slice(0, 3)), rule))).toEqual([['ash']]);
+        });
+
+        it.each([
+          ['optional', { minPicks: 0 }],
+          ['with no minimum', { minPicks: undefined }],
+          ['multi-pick', { maxPicks: 2 }],
+          ['without a maximum', { maxPicks: undefined }],
+        ])('fires when the group is %s', (_, over) => {
+          expect(ids(only(typed(perType, { ...one, ...over }), rule))).toEqual([['ash']]);
+          expect(ids(only(typed(product, one, { ...one, ...over }), rule))).toEqual([['ash']]);
+        });
+
+        it('fires when a Condition is a Not, names another owner, or is not a pick', () => {
+          const swap = (req: TraitRequirement) => typed([...perType.slice(0, 2), image([req])]);
+          expect(ids(only(swap({ ...has('giant'), not: true }), rule))).toEqual([['ash']]);
+          expect(ids(only(swap({ ...has('giant'), owner: { kind: 'you' as const } }), rule))).toEqual([['ash']]);
+          expect(ids(only(swap({ kind: 'group', id: 'type', name: 'Type' }), rule))).toEqual([['ash']]);
+        });
+
+        it('ignores a row with another Condition, which only adds showings', () => {
+          expect(only(typed([...perType, image([hasTamed])]), rule)).toEqual([]);
+          expect(only(typed([...perType.slice(0, 2), image([has('giant'), hasTamed])]), rule)).toHaveLength(1);
+        });
       });
 
       it('judges each entity apart', () => {
