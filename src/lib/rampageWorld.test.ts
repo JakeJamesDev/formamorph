@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/rampage.json?raw';
-import { settleDefaults, type SettleResult } from './traitGates';
+import { groupPickStates, settleDefaults, underfills, type SettleResult } from './traitGates';
 import { seedNewGameStats } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import { activeDescriptor } from './statContext';
@@ -247,5 +247,25 @@ describe('the Visibility rules', () => {
     const slots = (alert: number) => visibleImages(aegis, globalAt('Alert Level', alert)).map((image) => image.slot);
     expect(slots(74)).toEqual([0]);
     expect(slots(75)).toEqual([1]);
+  });
+
+  it.each([
+    ['Reptile', 'Masculine', 0], ['Insect', 'Masculine', 1], ['Arachnid', 'Feminine', 2],
+    ['Giant', 'Masculine', 3], ['Giant', 'Feminine', 4],
+  ])('shows The Creature as the %s it was built as (%s)', (type, presentation, slot) => {
+    const state = build(type, presentation);
+    expect(visibleImages(creature, { ...gate, active: state.active }).map((image) => image.slot)).toEqual([slot]);
+  });
+});
+
+describe('The Creature\'s pick groups', () => {
+  const groupNamed = (name: string) => creature.traitGroups!.find((group) => group.name === name)!;
+
+  it.each([['Type', 'Reptile'], ['Presentation', 'Masculine']])('requires one %s pick', (name, defaultPick) => {
+    const state = settleDefaults(gate);
+    const picks = groupPickStates({ ...gate, active: state.active }).owners[creature.id]!.get(groupNamed(name).id)!;
+    expect(picks).toMatchObject({ count: 1, short: false });
+    // The default pick cannot be switched off, so no build reaches play with the group empty.
+    expect(underfills({ ...gate, active: state.active }, creature.id, idOf(defaultPick))).toBe(true);
   });
 });
