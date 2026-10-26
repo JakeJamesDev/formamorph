@@ -107,6 +107,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **World Tools:**
+    - **A world Tool on the narration or choices prompt no longer puts the model's planning into the story or choices.** Gemma models sometimes write a thought block first when a Tool is offered. It now shows as reasoning, and a thought that runs out of room retries without Tools.
+    - **A world Tool offered to the stat pass now gets called.** The stat reply's strict format blocked every call. The Tool round now runs first, and the reply still follows the format.
   - **Scripts:**
     - **The code editor's Variable menu lists groups first, then fields, then verbs.** Timing groups such as Narration and Player now sit right after This Stat or This Trait.
   - **Turning off Flash Attention in the Local Model panel now turns it off when the model loads.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
@@ -123,6 +126,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Test Bench's AI Context tab now reads each entity's text with that entity's own traits and placeholders.** Descriptions, pronouns and relationship labels show what play shows, and Character Name shows the entity's name. A location's pins still win, as in play.
   - **Settings copy reads one way on every tab, and four labels drop their asides.** Context Window, Portrait Size, Landscape Size and Workflow now name the field, and the unit or format moves into the line beside it. Section hints and notes follow the same shape as row descriptions.
 - **🛠️ Developer tooling**
+  - **`tool-spill-probe.cli.ts` replays captured world requests with a Tool offered or withheld.** It counts reasoning spills, Tool calls and usable replies per arm. On the cloud model, stat-pass calls went from 0 of 20 to 20 of 20.
   - **`npm test` passes on a busy machine and lists slow tests with how much load slowed each.** Timeouts now catch only hangs. Delay checks run on a fake clock, and speed checks compare sizes instead of timing a budget. A file that only timed out reruns alone once.
 
 ---
