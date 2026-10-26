@@ -144,6 +144,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
   adminPanelEvents: { parent: 'adminPanel.events' },
   adminPanelPolicies: { parent: 'adminPanel.policies' },
   adminPanelFeedback: { parent: 'adminPanel.feedback' },
+  adminPanelModeration: { parent: 'adminPanel.moderation' },
 
   formaquestion: { parent: 'formaquestion' },
   formaquestionSettings: { parent: 'formaquestionSettings' },

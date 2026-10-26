@@ -115,10 +115,13 @@ import { UserName } from "@/components/UserName";
 import { badgeKind, UNREAD_MARK_STYLES } from "@/lib/unreadSeverity";
 import UserService from "@/services/UserService";
 import ReportService from "@/services/ReportService";
+import ReviewService from "@/services/ReviewService";
+import { useListingReviewMeta } from "@/lib/useListingReviewMeta";
 import { type MyFeedbackTabKey } from "@/components/menu/myFeedbackTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
+import { type ModerationTab as ModerationSubTab } from "@/components/menu/moderationTabs";
 import MessageService from "@/services/MessageService";
 import { useActiveEvents } from "@/lib/useActiveEvents";
 import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
@@ -704,6 +707,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Targets with an open report on them, for the badge on the Admin Panel button. Staff only, and zero
   // against a server without the feature — the button simply wears no badge there.
   const [openReports, setOpenReports] = useState(0);
+  const [waitingReviews, setWaitingReviews] = useState(0);
+  const listingReview = useListingReviewMeta(COMMUNITY_ENABLED && isAuthenticated && isStaff(currentUser));
+  // Open reports plus waiting reviews: the work the Admin Panel button badges.
+  const staffWork = openReports + waitingReviews;
   // Bumped after a resolution, so the badge follows the queue rather than the session.
   const [reportCountNonce, setReportCountNonce] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -1602,6 +1609,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { current = false; };
   }, [isAuthenticated, currentUser, reportCountNonce]);
 
+  // The review queue is the same kind of shared work, so it joins the same badge.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !isAuthenticated || !isStaff(currentUser) || !listingReview.supported) {
+      setWaitingReviews(0);
+      return;
+    }
+
+    let current = true;
+
+    void ReviewService.fetchCount().then((count) => { if (current) setWaitingReviews(count); });
+
+    return () => { current = false; };
+  }, [isAuthenticated, currentUser, reportCountNonce, listingReview.supported]);
+
   // The feedback half of the badge. Separate from messages because reading a thread changes it, so it is
   // re-read on demand rather than only when auth changes.
   useEffect(() => {
@@ -1763,12 +1784,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           onClick={() => setShowAdminPanel(true)}
         >
           <Shield className="mr-2 h-4 w-4" /> Admin Panel
-          {/* Reports are the one thing in this panel that waits on somebody. The count rides the button
-              rather than the profile circle: that badge is what is waiting for *you*, and a report queue
-              is waiting for whichever of the team gets to it. */}
-          {openReports > 0 && (
+          {/* Reports and the review queue are the things in this panel that wait on somebody. The count
+              rides the button rather than the profile circle: that badge is what is waiting for *you*, and
+              these queues wait for whichever of the team gets to them. */}
+          {staffWork > 0 && (
             <span className="ml-2 rounded-full bg-destructive px-1.5 text-meta font-semibold text-destructive-foreground">
-              {openReports > 9 ? '9+' : openReports}
+              {staffWork > 9 ? '9+' : staffWork}
             </span>
           )}
         </GradientButton>
@@ -3008,12 +3029,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialTab={devRoute?.modal === 'adminPanel' ? (devRoute.tab as AdminPanelTab | undefined) : undefined}
         initialPoliciesTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as PoliciesSubTab | undefined) : undefined}
         initialFeedbackTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as FeedbackSubTab | undefined) : undefined}
+        initialModerationTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as ModerationSubTab | undefined) : undefined}
+        initialReviewItemId={devRoute?.modal === 'adminPanel' ? devRoute.pick : undefined}
         onOpenListing={(listingId) => {
           // The panel stays open behind the browser: judging a listing is a step inside working the
           // queue, not a departure from it.
           handleOpenListing({ id: listingId, kind: 'world' });
         }}
-        onReportsChanged={() => setReportCountNonce((n) => n + 1)}
+        onQueuesChanged={() => setReportCountNonce((n) => n + 1)}
       />
     </div>
   );

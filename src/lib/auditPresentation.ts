@@ -36,6 +36,11 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   account_deletion_canceled: 'Deletion canceled',
   account_deleted: 'Account deleted',
   signals_viewed: 'Linked accounts viewed',
+  listing_approved: 'Approved',
+  listing_rejected: 'Rejected',
+  update_approved: 'Update approved',
+  update_rejected: 'Update rejected',
+  listing_auto_approved: 'Auto-approved',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -77,6 +82,12 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   account_deleted: 'bg-destructive/10 text-destructive',
   // Nothing was done to anybody — somebody looked. Tinted as the neutral entry it is.
   signals_viewed: 'bg-muted text-muted-foreground',
+  listing_approved: 'bg-success/10 text-success',
+  listing_rejected: 'bg-warning/10 text-warning',
+  update_approved: 'bg-success/10 text-success',
+  update_rejected: 'bg-warning/10 text-warning',
+  // Nobody decided it: the author's standing skipped review.
+  listing_auto_approved: 'bg-muted text-muted-foreground',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -267,6 +278,17 @@ export function auditPredicate(entry: AuditEntry): string {
         ? `viewed the accounts linked to ${target}`
         : 'viewed the accounts linked to their own account';
     }
+    case 'listing_approved':
+      return `approved ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''}`;
+    case 'listing_rejected':
+      return `rejected ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''}`;
+    case 'update_approved':
+      return `approved an update to ${name ? `“${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''}`;
+    case 'update_rejected':
+      return `rejected an update to ${name ? `“${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''}`;
+    // The actor is the author, whose standing skipped review.
+    case 'listing_auto_approved':
+      return `published ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} without review`;
     // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
     default: {
       const unhandled: never = entry.action;
@@ -286,6 +308,19 @@ export function describeAuditEntry(entry: AuditEntry): string {
   const actor = auditActorName(entry);
 
   return actor ? `${actor} ${auditPredicate(entry)}` : auditPredicate(entry);
+}
+
+/** The audit actions whose `target.id` is a listing id. */
+const LISTING_LINKED_ACTIONS: ReadonlySet<AuditAction> = new Set([
+  'listing_approved', 'listing_rejected', 'update_approved', 'update_rejected', 'listing_auto_approved',
+]);
+
+/** The listing an entry opens, or null when it names none. */
+export function auditListingId(entry: AuditEntry): string | null {
+  if (!LISTING_LINKED_ACTIONS.has(entry.action)) return null;
+
+  const id = entry.target?.id;
+  return typeof id === 'string' && id ? id : null;
 }
 
 // An entry timestamp is a server timestamp like any other — see `lib/serverDate`.

@@ -564,3 +564,41 @@ describe('the rendered line', () => {
     expect(line.textContent).toBe('The quarantine ran out on the world “Sedge Landing” by trouble, and it was deleted');
   });
 });
+
+describe('review entries', () => {
+  const reviewed = (action: AuditEntry['action'], id: string | null = 'w1') => entry({
+    action,
+    targetUser: { id: 'u1', username: 'wren_hallow' },
+    target: { kind: 'world', name: 'Sedge Landing', id },
+  });
+
+  it('says what each review decision did', () => {
+    expect(describeAuditEntry(reviewed('listing_approved'))).toBe('root-admin approved the world “Sedge Landing” by wren_hallow');
+    expect(describeAuditEntry(reviewed('listing_rejected'))).toBe('root-admin rejected the world “Sedge Landing” by wren_hallow');
+    expect(describeAuditEntry(reviewed('update_approved'))).toBe('root-admin approved an update to “Sedge Landing” by wren_hallow');
+    expect(describeAuditEntry(reviewed('update_rejected'))).toBe('root-admin rejected an update to “Sedge Landing” by wren_hallow');
+    expect(describeAuditEntry(reviewed('listing_auto_approved'))).toBe('root-admin published the world “Sedge Landing” without review');
+  });
+
+  it('opens the listing a review entry names', async () => {
+    const onOpenListing = vi.fn();
+    stubLog([reviewed('listing_rejected', 'w42')]);
+
+    render(<AuditLogTab active onOpenListing={onOpenListing} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'View' }));
+
+    expect(onOpenListing).toHaveBeenCalledWith('w42');
+  });
+
+  it('offers nothing to open on an entry without a listing id', async () => {
+    stubLog([
+      reviewed('listing_approved', null),
+      entry({ action: 'listing_quarantined', target: { kind: 'world', name: 'Elsewhere', id: 'w9' } }),
+    ]);
+
+    render(<AuditLogTab active onOpenListing={vi.fn()} />);
+    await screen.findByText(/approved/);
+
+    expect(screen.queryByRole('button', { name: 'View' })).toBeNull();
+  });
+});

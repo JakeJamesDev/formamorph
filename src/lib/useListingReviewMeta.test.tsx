@@ -28,6 +28,18 @@ describe('detecting listing review', () => {
     expect(result.current).toEqual({ supported: false, enabled: false });
   });
 
+  it('asks nothing until the caller wants an answer', async () => {
+    const hook = await freshHook();
+    mocks.fetchMeta.mockResolvedValue({ enabled: true });
+
+    const { result, rerender } = renderHook(({ ask }) => hook(ask), { initialProps: { ask: false } });
+    expect(mocks.fetchMeta).not.toHaveBeenCalled();
+
+    rerender({ ask: true });
+
+    await waitFor(() => expect(result.current).toEqual({ supported: true, enabled: true }));
+  });
+
   it('reports a server with review on', async () => {
     const hook = await freshHook();
     mocks.fetchMeta.mockResolvedValue({ enabled: true });

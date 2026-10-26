@@ -1,7 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import {
-  MODERATION_LABELS, awaitsReview, changedFields, fieldLabel, moderationStatus, publishedMessage,
+  MODERATION_LABELS, awaitsReview, changedFields, fieldLabel, moderationStatus, publishedMessage, waitedFor,
 } from './listingModeration';
+
+describe('how long an item waited', () => {
+  const now = new Date('2026-10-25T12:00:00.000Z');
+  const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+
+  it('reads in the largest whole unit', () => {
+    expect(waitedFor(ago(10 * 60_000), now)).toBe('under an hour');
+    expect(waitedFor(ago(3_600_000), now)).toBe('1 hour');
+    expect(waitedFor(ago(23 * 3_600_000), now)).toBe('23 hours');
+    expect(waitedFor(ago(24 * 3_600_000), now)).toBe('1 day');
+    expect(waitedFor(ago(75 * 3_600_000), now)).toBe('3 days');
+  });
+
+  it('says so when the time does not parse', () => {
+    expect(waitedFor('not a date', now)).toBe('unknown');
+  });
+});
 
 const QUARANTINE = { quarantined_at: '2026-10-01T00:00:00.000Z', quarantine_expires_at: '2026-10-08T00:00:00.000Z' };
 

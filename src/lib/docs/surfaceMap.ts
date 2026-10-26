@@ -34,7 +34,8 @@ function excludeAll(ids: readonly SurfaceId[], reason: SurfaceExclusionReason) {
 export const SURFACE_EXCLUSIONS: Partial<Record<SurfaceId, SurfaceExclusionReason>> = {
   ...excludeAll(['adminPanel', 'likers'], 'staff'),
   ...excludeAll(
-    [...tabsOf('adminPanel'), ...tabsOf('adminPanelEvents'), ...tabsOf('adminPanelPolicies'), ...tabsOf('adminPanelFeedback')],
+    [...tabsOf('adminPanel'), ...tabsOf('adminPanelEvents'), ...tabsOf('adminPanelPolicies'), ...tabsOf('adminPanelFeedback'),
+      ...tabsOf('adminPanelModeration')],
     'staff',
   ),
   ...excludeAll(['designSystem', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('worldEditorHistory')], 'dev'),

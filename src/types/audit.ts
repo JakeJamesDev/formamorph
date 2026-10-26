@@ -33,6 +33,11 @@ export const AUDIT_ACTIONS = [
   'account_deletion_canceled',
   'account_deleted',
   'signals_viewed',
+  'listing_approved',
+  'listing_rejected',
+  'update_approved',
+  'update_rejected',
+  'listing_auto_approved',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -58,7 +63,7 @@ export interface AuditEntry {
   targetUser: { id: string | null; username: string | null } | null;
   /** What it was done to: a kind (`world`, `entity`, `dictionary`, `comment`, `account`, `bug`,
    *  `suggestion`) and its name. */
-  target: { kind: string | null; name: string | null } | null;
+  target: { kind: string | null; name: string | null; id?: string | null } | null;
   /** Enough of what was removed to know what it was; never the whole of it. */
   snippet: string | null;
   createdAt: string;
