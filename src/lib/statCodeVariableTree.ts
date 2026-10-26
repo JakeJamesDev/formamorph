@@ -433,6 +433,7 @@ export function buildVariableTree(
   const top: VariableNode[] = [
     ...selfGroup,
     ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: ownerInfo(self), children: ownerChildren(owner) }] : []),
+    ...timingGroups(timing),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
     nameList('Traits', traitList, 'No traits in this world', globalInfo('traits')),
     nameList('Entities', entityRows, 'No entities in this world', globalInfo('entities')),
@@ -446,9 +447,14 @@ export function buildVariableTree(
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
     { kind: 'group', label: 'Memories', info: globalInfo('memories'), children: memoryFields() },
     { kind: 'field', label: 'notes', detail: 'string', info: globalInfo('notes') ?? '', access: 'readOnly', insert: 'notes' },
-    ...timingGroups(timing),
   ];
-  return top.map(verbsLast).map(leafForOneChild);
+  return groupsFieldsVerbs(top.map(verbsLast).map(leafForOneChild));
+}
+
+/** The top level with groups first, then fields, then verbs, each set keeping its order. */
+function groupsFieldsVerbs(nodes: readonly VariableNode[]): VariableNode[] {
+  const rank = (node: VariableNode): number => (node.kind !== 'field' ? 0 : isVerbLeaf(node) ? 2 : 1);
+  return [0, 1, 2].flatMap((at) => nodes.filter((node) => rank(node) === at));
 }
 
 /** Whether a leaf is a verb: its insert ends in a call, or its detail is a function type. */

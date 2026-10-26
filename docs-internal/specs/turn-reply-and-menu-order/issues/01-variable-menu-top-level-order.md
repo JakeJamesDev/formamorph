@@ -1,6 +1,6 @@
 # 01: Variable Menu Top-Level Order
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,12 +15,22 @@ Spec: Q1, Q2, stories 1–3.
 
 ## Acceptance criteria
 
-- [ ] A stat box with no timing global lists, in order: **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries**, **Clock**, **Turn**, **Locations**, **Location**, **Memories**, `notes`, `discover`
-- [ ] A During AI Output stat box lists **Narration** right after **This Stat**; an After the AI box with an owner lists **Player** right after **Owner**; a When a Trait Switches trait box lists **Player** then **Switched Trait** right after **This Trait**
-- [ ] A world script box (no `self`) puts the timing groups first; a user Tool box keeps `notes` after every group and lists no verb
-- [ ] Inside a group nothing moves: a stat's fields keep their surface order with `previous` and `delta` in place, and a location's `present` and `exits` keep theirs
-- [ ] Reinstating the fixed top-level list turns the order tests red
-- [ ] The Variable menu reference page and the Scripts guide show the new top-level order where they list it; the changelog fragment names the menu change
+- [x] A stat box with no timing global lists, in order: **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries**, **Clock**, **Turn**, **Locations**, **Location**, **Memories**, `notes`, `discover` (test "lists the sandbox’s globals in the order an author meets them")
+- [x] A During AI Output stat box lists **Narration** right after **This Stat**; an After the AI box with an owner lists **Player** right after **Owner**; a When a Trait Switches trait box lists **Player** then **Switched Trait** right after **This Trait** (tests "puts the timing groups right after…" and "lists Narration in During AI Output only…")
+- [x] A world script box (no `self`) puts the timing groups first; a user Tool box keeps `notes` after every group and lists no verb (the same timing test; `toolScriptMenu.test.ts` passes unchanged)
+- [x] Inside a group nothing moves: a stat's fields keep their surface order with `previous` and `delta` in place, and a location's `present` and `exits` keep theirs (the existing in-group tests pass unchanged)
+- [x] Reinstating the fixed top-level list turns the order tests red (mutated the sort to a no-op: two order tests failed; restored and grepped)
+- [x] The Variable menu reference page and the Scripts guide show the new top-level order where they list it; the changelog fragment names the menu change (the reference page renders the live tree, so it needed no edit; `ScriptsGuide.md` lines 61 and 246 updated)
+
+## Landed
+
+**Not verified**
+
+- The menu was not checked in a browser. Tests read the built tree and the arrow-key walk in `CodeArea.test.tsx`.
+
+**For you**
+
+- Open a stat's **Variable** menu: groups, then `notes`, then `discover`. Check a During AI Output box for **Narration** right after **This Stat**.
 
 ## Blocked by
 

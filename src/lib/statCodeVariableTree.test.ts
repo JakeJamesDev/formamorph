@@ -113,7 +113,19 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Turn', 'Locations', 'Location', 'discover', 'Memories', 'notes']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
+  });
+
+  it('keeps the in-group order of a stat’s fields', () => {
+    expect(levelAt(tree, 'Stats', 'Health')).toEqual(expect.arrayContaining(['previous', 'delta']));
+  });
+
+  it('puts the timing groups right after This Stat or This Trait and Owner', () => {
+    const all = { narration: true, player: true, trait: true };
+    const owned = { kind: 'entity', entity: miraNames() } as const;
+    expect(buildVariableTree(editorNames(), owned, 'stat', all).map(labelOf).slice(0, 5)).toEqual(['This Stat', 'Owner', 'Narration', 'Player', 'Switched Trait']);
+    expect(buildVariableTree(editorNames(), null, 'trait', all).map(labelOf).slice(0, 4)).toEqual(['This Trait', 'Narration', 'Player', 'Switched Trait']);
+    expect(buildVariableTree(editorNames(), null, 'empty', { narration: false, player: true, trait: false }).map(labelOf).slice(0, 2)).toEqual(['Player', 'Stats']);
   });
 
   it('inserts discover directly, with no group around the one call', () => {
@@ -624,9 +636,9 @@ describe('the names a script’s timing adds', () => {
   };
 
   it('lists Narration in During AI Output only, Player in every other timing, and Switched Trait on a switch only', () => {
-    expect(treeAt('output').built.map(labelOf).slice(-1)).toEqual(['Narration']);
-    expect(treeAt('before').built.map(labelOf).slice(-1)).toEqual(['Player']);
-    expect(treeAt('switch').built.map(labelOf).slice(-2)).toEqual(['Player', 'Switched Trait']);
+    expect(treeAt('output').built.map(labelOf).slice(1, 2)).toEqual(['Narration']);
+    expect(treeAt('before').built.map(labelOf).slice(1, 2)).toEqual(['Player']);
+    expect(treeAt('switch').built.map(labelOf).slice(1, 3)).toEqual(['Player', 'Switched Trait']);
     for (const timing of ['before', 'after', 'output', 'start'] as const) {
       expect(treeAt(timing).built.map(labelOf)).not.toContain('Switched Trait');
     }
