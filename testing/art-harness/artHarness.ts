@@ -178,10 +178,11 @@ export function planImages(world: World, options: PlanOptions): Plan {
 export const negativePrompt = (extra = '') =>
   [ART_PRESET.imageNegativePrompt, extra.trim().replace(/^,+|,+$/g, '').trim()].filter(Boolean).join(', ');
 
-/** The provider call for one image: the art-direction line as the positive prefix, the subject's tags after it. */
-export function imageRequest(world: World, image: PlannedImage, style: string, seed: number, negative = ''):
+/** The provider call for one image: the art-direction line as the positive prefix, the subject's tags after it.
+ *  `faceFix` turns on the provider's Face Fix pass for the run. */
+export function imageRequest(world: World, image: PlannedImage, style: string, seed: number, negative = '', faceFix = false):
 { provider: ImageProviderId; params: ImageGenParams } {
-  const preset = { ...ART_PRESET, imagePositivePrompt: style, imageNegativePrompt: negativePrompt(negative) };
+  const preset = { ...ART_PRESET, imagePositivePrompt: style, imageNegativePrompt: negativePrompt(negative), imageAdetailer: faceFix };
   const { provider, params } = buildImageRequest(preset, {
     prompt: image.subject,
     width: image.width,
@@ -191,6 +192,9 @@ export function imageRequest(world: World, image: PlannedImage, style: string, s
   });
   return { provider, params };
 }
+
+/** A logged request with the Face Fix pass on, its seed and prompt unchanged. */
+export const withFaceFix = <T extends { params: ImageGenParams }>(job: T): T => ({ ...job, params: { ...job.params, adetailer: true } });
 
 /** Put `data` in `images` at `slot`: a replace keeps the slot's Visibility rule, `slot === length` appends. */
 function placeInGallery(images: GalleryImage[], slot: number, data: string, where: string): GalleryImage[] {

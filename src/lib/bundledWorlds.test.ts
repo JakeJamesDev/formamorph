@@ -21,7 +21,7 @@ type Feature =
 /** The features each world shows. A world ticket moves each feature it delivers here from PLANNED. */
 const FEATURES: Record<string, Feature[]> = {
   'drone': ['scripts', 'traitGates', 'minMaxPicks', 'tools', 'newFieldChips', 'visibilityRules'],
-  'emberwatch': ['traitGates', 'blueprints', 'relationships', 'scriptLore', 'newFieldChips'],
+  'emberwatch': ['traitGates', 'blueprints', 'relationships', 'scriptLore', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'open-chat': [],
   'rampage': ['scripts', 'minMaxPicks', 'statToggles', 'scriptExits', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips'],
@@ -33,7 +33,7 @@ const FEATURES: Record<string, Feature[]> = {
 /** The expansion's assignment table: features a world ticket still has to deliver. */
 const PLANNED: Record<string, Feature[]> = {
   'drone': [],
-  'emberwatch': ['mapBackground', 'visibilityRules'],
+  'emberwatch': [],
   'rampage': [],
   'slime': ['visibilityRules'],
   'sugarscape': ['mapBackground', 'visibilityRules'],

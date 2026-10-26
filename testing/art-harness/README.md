@@ -14,7 +14,7 @@ Generation holds the GPU, and the GPU is shared with the machine's owner.
 
 1. Picks the images: by default, slot 0 for every location and entity that has no image.
 2. Builds each request the way the editor does: the art-direction line first, then the item's `imageTags`.
-3. Generates through the app's InvokeAI provider with the Illustrious Nova Kemono XL 8.0 preset (euler_a, 35 steps, cfg 4, face pass off).
+3. Generates through the app's InvokeAI provider with the Illustrious Nova Kemono XL 8.0 preset (euler_a, 35 steps, cfg 4, Face Fix off unless `--face-fix`).
 4. Encodes each image to lossless WebP with the app's encoder, in Chromium on a dev build.
 5. Writes each image into the world file by item id as it lands. Every other byte stays the same.
 6. Draws a contact sheet of every image the world now holds at `.scratch/frames/<world>-sheet.png`, each labeled `Name#slot`.
@@ -41,6 +41,7 @@ npx vite-node testing/art-harness/art-harness.cli.ts -- --world emberwatch --sty
 | `--redo "Name,Name#1,map"` | Make these slots again with new seeds. An id works in place of a name. Slot 0 of an empty gallery is filled. |
 | `--variant "Name=extra tags"` | Add a new slot: the item's tags plus the extra tags. Repeat the flag for more. Set its Visibility rule in the editor. |
 | `--negative "<tags>"` | Add these tags after the pinned negative prompt for every image in the run. The run log keeps them for `--replay`. |
+| `--face-fix` | Turn on the provider's Face Fix pass for every image in the run. With `--replay`, it adds the pass and keeps each seed and prompt. The run log keeps it. |
 | `--map "<map tags>"` | The map's tags. Makes the first map image when the world has none. A map redo or variant needs it too. |
 | `--replay <run log>` | Make a log's images again at their stored seeds and prompts, into the same slots. |
 | `--sheet` | Draw the contact sheet only. Makes nothing and needs no GPU. |
