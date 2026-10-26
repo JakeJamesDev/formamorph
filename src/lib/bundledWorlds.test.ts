@@ -23,7 +23,7 @@ const FEATURES: Record<string, Feature[]> = {
   'drone': ['scripts', 'traitGates', 'minMaxPicks', 'tools', 'newFieldChips', 'visibilityRules'],
   'emberwatch': ['traitGates', 'blueprints', 'relationships', 'scriptLore', 'newFieldChips'],
   'open-chat': [],
-  'rampage': ['scripts', 'statToggles', 'scriptExits', 'newFieldChips', 'mapBackground', 'visibilityRules'],
+  'rampage': ['scripts', 'minMaxPicks', 'statToggles', 'scriptExits', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips'],
   'valentines': ['scripts', 'relationships', 'newFieldChips'],
