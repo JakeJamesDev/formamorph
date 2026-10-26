@@ -8,6 +8,7 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
+import { scriptsChoices } from "@/lib/scriptedChoices";
 import { landsOnPage, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from "@/lib/surface/useSurfaceOpenRequest";
 import { stepTab, targetRoute, type SurfaceSteps } from "@/lib/surface/surfaceRoute";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
@@ -475,6 +476,8 @@ const GameViewer = ({
     placeholders: worldPlaceholders,
     placeholderOwners,
     worldScripts,
+    stats: worldStats,
+    traitGroups: worldTraitGroups,
     worldTools,
     worldOverview,
     worldId,
@@ -759,6 +762,12 @@ const GameViewer = ({
     presentEntitiesUnder,
   } = useResolvedWorld();
   usePersonaNotice();
+  // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
+  // The entities are every one whose scripts run: the played one and the picked library ones included.
+  const worldScriptsChoices = useMemo(() => scriptsChoices({
+    scripts: worldScripts, stats: worldStats, statGroups: authoredStatGroups, traits: authoredTraits, traitGroups: worldTraitGroups,
+    entities: [...codeEntities.world, ...codeEntities.library], placeholders: worldPlaceholders,
+  }), [worldScripts, worldStats, authoredStatGroups, authoredTraits, worldTraitGroups, codeEntities, worldPlaceholders]);
   // The session's rolls for the init effect's pins, and its Placeholder Set with the library's lists.
   const {
     rolls: sessionRolls, placeholders, setPersona: setSessionPersona, setLibraryAdditions: setSessionLibraryAdditions,
@@ -2499,7 +2508,9 @@ const GameViewer = ({
     // abortGeneration already kept the narration.
     if (signal.aborted) return;
 
-    setChoices(commit.turn.choices);
+    const holdForScripts = choicesScriptedRef.current;
+    const turnSeq = turnSeqRef.current;
+    if (!holdForScripts) setChoices(commit.turn.choices);
     // The After the AI batch and later runs of the turn read the finished page and its choices.
     if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(commit.turn) };
 
@@ -2539,11 +2550,18 @@ const GameViewer = ({
 
     // The output and After the AI code writes beat the passes too, so the stored turn waits for them.
     const final = withCodeWrites(commit, mergeWorldWrites(outputWorld, run?.world), turn.context);
-    // The After the AI scripts' choices replace the AI's once the batch lands, and the turn keeps both (Q7, Q18).
-    const scriptedChoices = run?.choices;
-    if (scriptedChoices) {
-      setChoices([...scriptedChoices]);
-      if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, choices: scriptedChoices };
+    // The scripts' list replaces the AI's once the batch lands, and the turn keeps both (Q7, Q18). A Stop during
+    // a held batch keeps the AI's own list (Q30).
+    const scriptedChoices = holdForScripts && signal.aborted ? undefined : run?.choices;
+    if (scriptedChoices && turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, choices: scriptedChoices };
+    if (turnSeqRef.current === turnSeq) {
+      // Held choices show once, with the input box unlocking behind them.
+      if (holdForScripts) {
+        choicesHeldRef.current = false;
+        heldChoicesRef.current = null;
+        setChoices([...(scriptedChoices ?? commit.turn.choices)]);
+        if (!signal.aborted) setChoicesReady(true);
+      } else if (scriptedChoices) setChoices([...scriptedChoices]);
     }
     const storedTurn: AITurnResult = { ...final.turn, ...choicesPatch(final.turn.choices, scriptedChoices) };
     if (commit.suggestedLocation && !final.suggestedLocation) setSuggestedLocation(null);
@@ -2710,6 +2728,7 @@ const GameViewer = ({
     landingRef.current = null;
     choicesHeldRef.current = true;
     heldChoicesRef.current = null;
+    choicesScriptedRef.current = worldScriptsChoices && planHasPass(plan, "choices");
     setNarrationSettled(false);
 
     // What the turn's own derivations carry between passes. The pipeline's material holds everything the
@@ -3243,9 +3262,10 @@ const GameViewer = ({
         signal,
         advance,
         // Choices are the interactive part: unblock the input the moment they show rather than when the rest
-        // of their batch settles. They show once the turn end lands, so Continue joins after them.
+        // of their batch settles. They show once the turn end lands, so Continue joins after them. Held
+        // choices unblock it at the commit instead.
         onPassSettled: (id, outcome) => {
-          if (id !== "choices" || !outcome.ok || signal.aborted) return;
+          if (id !== "choices" || !outcome.ok || signal.aborted || choicesScriptedRef.current) return;
           void landNarration(plan.writtenNarration !== null).then(() => { if (!signal.aborted) setChoicesReady(true); });
         },
       });
@@ -3924,10 +3944,12 @@ const GameViewer = ({
   };
 
   // The turn end plays in order: the narration's last word fades in, its action row opens, then the choices
-  // stream. A turn holds its choices from its start until `landNarration` resolves.
+  // stream. A turn holds its choices from its start until `landNarration` resolves, or, in a world whose After
+  // the AI scripts can change them, until that batch lands.
   const turnSeqRef = useRef(0);
   const landingRef = useRef<{ turn: number; landed: Promise<void> } | null>(null);
   const choicesHeldRef = useRef(false);
+  const choicesScriptedRef = useRef(false);
   const heldChoicesRef = useRef<string[] | null>(null);
 
   const releaseChoices = () => {
@@ -3946,7 +3968,7 @@ const GameViewer = ({
       if (turnSeqRef.current !== turn) return;
       setNarrationSettled(true);
       return new Promise<void>((resolve) => setTimeout(() => {
-        if (turnSeqRef.current === turn) releaseChoices();
+        if (turnSeqRef.current === turn && !choicesScriptedRef.current) releaseChoices();
         resolve();
       }, TURN_CHROME_ENTER_MS));
     });
