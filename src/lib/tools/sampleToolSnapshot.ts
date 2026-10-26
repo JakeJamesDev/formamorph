@@ -36,8 +36,8 @@ function sampleScriptSource(scene: ChipScene, history: ChatMessage[]): ToolScrip
       ownerTraits: { ...opening.ownerTraits, inSceneIds: scene.inSceneIds },
       clock: { deltaHours: 0, elapsedHours: scene.time?.elapsed ?? 0 },
       memories: scriptMemories(ledger, history),
-      // An in-turn Tool call: the sample turns closed, the next one in progress.
-      turn: { action: SAMPLE_ACTION, number: closedTurns(history) + 1 },
+      // An in-turn Tool call: the sample turns closed, the next one in progress, its reply not yet in.
+      turn: { action: SAMPLE_ACTION, number: closedTurns(history) + 1, narration: '', choices: [] },
     },
     authored: null,
   };

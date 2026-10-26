@@ -327,6 +327,14 @@ const withLatestTurnPatched = (history: readonly ChatMessage[], patch: Partial<A
   return updated;
 };
 
+/** The page and choices `turn` reads from a stored turn. */
+const turnReply = (stored: AITurnResult | null): Pick<SandboxTurn, "narration" | "choices"> => ({
+  narration: stored?.narration ?? "", choices: stored?.choices ?? [],
+});
+
+/** `turn` as a run reads it now: no choices while the player has them off (Q24). */
+const underChoicesSetting = (turn: SandboxTurn, choicesOn: boolean): SandboxTurn => (choicesOn ? turn : { ...turn, choices: [] });
+
 /** Page one as stored. */
 const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
   const pageOne = history.find((m) => m.role === "assistant");
@@ -1719,7 +1727,7 @@ const GameViewer = ({
       };
       toPreTurn();
       // The replayed turn is still the latest in history, so its number is the closed count.
-      turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current) };
+      turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), narration: "", choices: [] };
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
@@ -1733,6 +1741,8 @@ const GameViewer = ({
         preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
         page === 1 && newPlaythroughRef.current,
       );
+      // Past the before box, the replay reads the re-rolled turn's own page and choices, as the live turn does past its reply.
+      if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev) };
       // The box has written by the time the request can be stopped, so every exit that abandons the
       // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
       let committed = false;
@@ -2222,8 +2232,25 @@ const GameViewer = ({
   // What a user Tool's script reads (Q24): the turn's start as code has left it, as an On Call World Tool reads it.
   // Set beside `prepareTurnStartCode`, once per render.
   const toolScriptSourceRef = useRef<((base: TurnCodeState | null) => ToolScriptSource) | null>(null);
-  /** The `turn` a run between turns reads: no action, and the last finished turn. */
-  const betweenTurnsRead = useCallback((): SandboxTurn => ({ action: "", number: closedTurns(fullMessageHistoryRef.current) }), []);
+  // The turn in progress as `turn` reads it; between turns, null and the last closed turn reads instead.
+  const turnReadRef = useRef<SandboxTurn | null>(null);
+  const choicesEnabledRef = useRef(choicesEnabled);
+  choicesEnabledRef.current = choicesEnabled;
+  /** The `turn` a run between turns reads: no action, and the last finished turn. While a turn runs, its page
+   *  and choices read empty until its reply lands (Q22). */
+  const betweenTurnsRead = useCallback((): SandboxTurn => {
+    const history = fullMessageHistoryRef.current;
+    const running = turnReadRef.current;
+    const reply = running
+      ? { narration: running.narration, choices: running.choices }
+      : turnReply(parseTurnContent(history.findLast((message) => message.role === "assistant")?.content ?? ""));
+    return underChoicesSetting({ action: "", number: closedTurns(history), ...reply }, choicesEnabledRef.current);
+  }, []);
+  /** The turn in progress as a run reads it, else the between-turns read. */
+  const currentTurnRead = useCallback(
+    (): SandboxTurn => (turnReadRef.current ? underChoicesSetting(turnReadRef.current, choicesEnabledRef.current) : betweenTurnsRead()),
+    [betweenTurnsRead],
+  );
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(() => {
     const source = toolScriptSourceRef.current?.(null);
@@ -2454,6 +2481,8 @@ const GameViewer = ({
     if (signal.aborted) return;
 
     setChoices(commit.turn.choices);
+    // The After the AI batch and later runs of the turn read the finished page and its choices.
+    if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(commit.turn) };
 
     // Seed the story's opening hour. Only ever written on the opening turn; null reads downstream as the
     // shipped DEFAULT_START_HOUR, so an unreadable answer plays exactly as before this pass existed.
@@ -2747,7 +2776,7 @@ const GameViewer = ({
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
       turnMemoriesRef.current = scriptMemoriesRef.current;
-      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1 };
+      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1, narration: "", choices: [] };
       if (isOpeningTurn) setOpeningTurnAction(turnReadRef.current.action);
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
@@ -3356,8 +3385,6 @@ const GameViewer = ({
   scriptMemoriesRef.current = scriptMemoryList;
   // The list every run of a turn reads, taken once as the turn starts (Q40). Null between turns, where the live list stands.
   const turnMemoriesRef = useRef<SandboxMemory[] | null>(null);
-  // The turn in progress as `turn` reads it; between turns, null and the last closed turn reads instead.
-  const turnReadRef = useRef<SandboxTurn | null>(null);
   // The story hours a running turn's clock advances reached, which its later runs read (Q45). Null when the
   // turn has not advanced the clock, and between turns.
   const turnClockRef = useRef<number | null>(null);
@@ -3466,7 +3493,7 @@ const GameViewer = ({
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
           notes: liveScene().notes,
-          turn: turnReadRef.current ?? betweenTurnsRead(),
+          turn: currentTurnRead(),
           loreToggles: baseLore,
         };
         const turn: StatCodeTurn = {
@@ -3628,7 +3655,7 @@ const GameViewer = ({
       if (!prepared) return;
       try {
         // No action caused a player's switch, so it reads none, even while a turn runs.
-        const read = { action: "", number: turnReadRef.current?.number ?? betweenTurnsRead().number };
+        const read = { ...currentTurnRead(), action: "" };
         const played = { ...prepared.turn, state: { ...prepared.turn.state, turn: read } };
         const turn = fromWorld === world ? played : { ...played, switchedFrom: fromWorld };
         const result = await runSwitchScripts(turn, events);

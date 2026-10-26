@@ -281,10 +281,11 @@ describe('entities, the persona and dictionaries', () => {
     expect(inserts(tree, 'Clock', 'previous', 'daypart')).toBe('clock.previous.daypart');
   });
 
-  it('opens turn to its action and number, each read-only', () => {
-    expect(levelAt(tree, 'Turn')).toEqual(['action', 'number']);
+  it('opens turn to its action, number, page and choices, each read-only', () => {
+    expect(levelAt(tree, 'Turn')).toEqual(['action', 'number', 'narration', 'choices']);
     expect(inserts(tree, 'Turn', 'number')).toBe('turn.number');
-    expect(childrenOf(pick(tree, 'Turn')).map((node) => node.kind === 'field' && node.access)).toEqual(['readOnly', 'readOnly']);
+    expect(inserts(tree, 'Turn', 'choices')).toBe('turn.choices');
+    expect(childrenOf(pick(tree, 'Turn')).map((node) => node.kind === 'field' && node.access)).toEqual(['readOnly', 'readOnly', 'readOnly', 'readOnly']);
   });
 });
 

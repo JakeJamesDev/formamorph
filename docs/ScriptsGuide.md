@@ -355,7 +355,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
-| `turn` | `action`, `number` | `turn.number` | Read-only |
+| `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | Read-only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
@@ -1066,20 +1066,25 @@ if (traits.Resting.enabled) clock.advance(8 * 60);
 ```
 
 ### Turn
-<!-- keywords: player action, what the player typed, player input, turn count, turn counter, every fifth turn, ooc, what did the player say -->
+<!-- keywords: player action, what the player typed, player input, turn count, turn counter, every fifth turn, ooc, what did the player say, what the ai wrote, read the narration, read the reply, read the choices, what choices the player has -->
 
-`turn` holds what the player did and which turn it is. Its fields are read-only: a write to one is ignored and reported.
+`turn` holds what the player did, which turn it is, and what the AI wrote back. Its fields are read-only: a write to one is ignored and reported.
 
 | Field | What it is |
 | --- | --- |
 | `turn.action` | The player's action this turn, without spaces at the ends. OOC square brackets stay in. Images are never in it. |
 | `turn.number` | The turn number, on the same scale as `memories[].turn`. The opening turn is `1`. |
+| `turn.narration` | The page the player sees this turn, with the During AI Output rewrites applied. |
+| `turn.choices` | The choices the player sees this turn, in order, as a list of strings. |
 
+- **The page and choices wait for the reply.** Before the AI, At Game Start and During AI Output read `turn.narration` as `""` and `turn.choices` as `[]`. After the AI reads them filled. To work on each sentence as it streams, use `narration` (see [Narration](#narration)).
+- **Choices off reads no choices.** When the player turns choices off, `turn.choices` is `[]`.
+- **Between turns, it reads the last page.** A switch the player makes or a Tool call reads the page and choices of the last turn that ended. While a turn runs, they read empty until its reply lands.
 - **The opening turn reads the opening.** `turn.action` is the opening text the AI gets: the player's edit, else the drawn opening. An Opening Narration reads `""`.
 - **Undo and re-roll rewind it.** A re-rolled turn reads the same action and number it read the first time.
 - **A switch the player makes reads an empty action.** Between turns, it reads the number of the last turn that ended; during a turn, that turn's number. Before the opening turn, `turn.number` is `0`.
 - **A switch inside a turn reads that turn.** A trait a script or a gate switches reads the same `turn` as the scripts around it.
-- **Test Code reads a sample.** Test Code and the Test Bench read `"Look around."` at turn `2`. An At Game Start script reads the world's heaviest Opening Action at turn `1`.
+- **Test Code reads a sample.** Test Code and the Test Bench read `"Look around."` at turn `2`. An At Game Start script reads the world's heaviest Opening Action at turn `1`. An After the AI script reads a short sample page and three sample choices.
 
 ```js
 // Every fifth turn the market restocks, unless the player only gave an OOC direction.

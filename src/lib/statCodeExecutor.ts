@@ -320,10 +320,13 @@ export interface SandboxStats {
   enabled?: Readonly<Record<string, boolean>>;
 }
 
-/** What `turn` reads: the player's action and the turn number on the `memories[].turn` scale. */
+/** What `turn` reads: the player's action, the turn number on the `memories[].turn` scale, and the finished
+ *  page and choices, empty until the turn's reply lands. */
 export interface SandboxTurn {
   action: string;
   number: number;
+  narration: string;
+  choices: readonly string[];
 }
 
 /** One entry of a book's `entries`, by its code name. */
@@ -1589,7 +1592,7 @@ const worldPrelude = (
 
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
-const NO_TURN: SandboxTurn = { action: '', number: 0 };
+const NO_TURN: SandboxTurn = { action: '', number: 0, narration: '', choices: [] };
 
 /** Who an unknown entry's diary can name: every entity but the persona, by id, else by name, then the discovered. */
 const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity, discovered: readonly SandboxPlace[]): SandboxPlace[] => [
@@ -1885,7 +1888,9 @@ export const executeStatCode = async (
       `  Object.defineProperty(clock, 'advance', { value: advance, enumerable: true });`,
       `  return Object.freeze(clock);`,
       `})(${LOCK_FIELDS}, ${ADVANCE_CLOCK});`,
-      `const turn = Object.freeze((${LOCK_FIELDS})(${JSON.stringify({ action: turn.action, number: turn.number })}, ['action', 'number'], 'turn.', ${LOOSE_NOTE}));`,
+      `const turn = Object.freeze((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.choices), entry))(`,
+      `  ${JSON.stringify({ action: turn.action, number: turn.number, narration: turn.narration, choices: turn.choices })}),`,
+      `  ['action', 'number', 'narration', 'choices'], 'turn.', ${LOOSE_NOTE}));`,
       ...(narration ? [
         // `sent` and `buffered` freeze, so code can neither swap nor grow them.
         `const narration = Object.seal((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.sent), Object.freeze(entry.buffered), entry))(`,
