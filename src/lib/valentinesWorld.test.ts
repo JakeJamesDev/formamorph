@@ -6,10 +6,17 @@ import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/valentines.json?raw';
 import { runStatCodeTurn } from './statCodeTurn';
 import type { SettleResult } from './traitGates';
-import type { PlayerStat } from '@/types';
+import type { Entity, PlayerStat } from '@/types';
 import { bundledWorldHarness, withValues, type StatValues } from '@/test/bundledWorldHarness';
+import { canvasRects, GROUP_HEADER, type CanvasRect } from './locationCanvas';
+import { effectiveDestinations, reachableFromStarts } from './locationGraph';
+import { relationshipCast, relationshipLines } from './entityRelationships';
+import { resolveEntityText } from './placeholders';
+import { resolveEntityTexts } from './resolveWorldNames';
 
-const { build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
+const { world, persona: student, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
+const place = (name: string) => world.locations.find((l) => l.name === name)!;
+const entity = (name: string) => world.entities.find((e) => e.name === name)!;
 
 /** The student's stats after its build's stat changes, with each named stat set to a raw value. */
 const studentStats = (state: SettleResult, values: StatValues) => withValues(personaStats(state), values);
@@ -69,5 +76,95 @@ describe('All-Out Sprint', () => {
     const regenOf = (state: SettleResult) => statOf(studentStats(state, {}), 'Stamina').regen;
     expect(regenOf(build('Star Athlete', 'Running Shoes'))).toBeGreaterThan(0);
     expect(regenOf(build('Star Athlete', 'Running Shoes', 'All-Out Sprint'))).toBeLessThan(0);
+  });
+});
+
+describe('the Ashburn High map', () => {
+  const connections = world.connections ?? [];
+
+  it('reaches every place from the classroom', () => {
+    const reached = reachableFromStarts(world.locations, connections);
+    expect(world.locations.filter((l) => !reached.has(l.id)).map((l) => l.name)).toEqual([]);
+  });
+
+  it('leads from the Bus Loop to the Front Gate along the fence, with a hint each way', () => {
+    const toGate = effectiveDestinations(place('Bus Loop').id, world.locations, connections).get(place('Front Gate').id);
+    const back = effectiveDestinations(place('Front Gate').id, world.locations, connections).get(place('Bus Loop').id);
+    expect(toGate?.via === 'connection' && toGate.leg.hint).toMatch(/fence/);
+    expect(back?.via === 'connection' && back.leg.hint).toMatch(/fence/);
+  });
+});
+
+describe('the Ashburn High canvas', () => {
+  const rects = canvasRects(world.locations);
+  const box = (name: string): CanvasRect => rects.get(place(name).id)!;
+  const centerX = (name: string) => box(name).x + box(name).width / 2;
+  const centerY = (name: string) => box(name).y + box(name).height / 2;
+
+  it('places every location by hand', () => {
+    expect(world.locations.filter((l) => !l.canvasPosition).map((l) => l.name)).toEqual([]);
+  });
+
+  it('keeps every node clear of every other node but the boxes that hold it', () => {
+    const holds = (outer: string, inner: string): boolean => {
+      const parent = world.locations.find((l) => l.id === inner)?.parentId;
+      return !!parent && (parent === outer || holds(outer, parent));
+    };
+    const overlaps: string[] = [];
+    for (const first of world.locations) {
+      for (const second of world.locations) {
+        if (first.id >= second.id || holds(first.id, second.id) || holds(second.id, first.id)) continue;
+        const [one, other] = [rects.get(first.id)!, rects.get(second.id)!];
+        const apart = one.x >= other.x + other.width || other.x >= one.x + one.width || one.y >= other.y + other.height || other.y >= one.y + one.height;
+        if (!apart) overlaps.push(`${first.name} / ${second.name}`);
+      }
+    }
+    expect(overlaps).toEqual([]);
+  });
+
+  it('runs the hallway west to east: the art wing, the classroom, then the library', () => {
+    expect(centerX('Art Wing')).toBeLessThan(centerX('Classroom 2-B'));
+    expect(centerX('Classroom 2-B')).toBeLessThan(centerX('Library'));
+    expect(centerY('Rooftop')).toBeLessThan(centerY('Classroom 2-B'));
+  });
+
+  it('puts the courtyard and gate south of the main building, the gym east, and the bus loop west', () => {
+    const building = box('Second-Floor Hallway');
+    expect(box('Courtyard').y).toBeGreaterThanOrEqual(box('Cafeteria').y + box('Cafeteria').height);
+    expect(centerY('Front Gate')).toBeGreaterThan(centerY('Courtyard'));
+    expect(box('Gymnasium').x).toBeGreaterThanOrEqual(building.x + building.width);
+    expect(box('Bus Loop').x + box('Bus Loop').width).toBeLessThanOrEqual(building.x);
+    expect(centerX('Bus Loop')).toBeLessThan(centerX('Cafeteria'));
+    // The gym's one child sizes its box, so the north end is the top of the frame, under its title.
+    expect(box('Locker Rooms').y).toBe(box('Gymnasium').y + GROUP_HEADER);
+  });
+});
+
+describe('Relationship labels', () => {
+  const hana = entity('Hana Sakuragi');
+  const swarm = entity('The Swarm');
+  const vicePresident = hana.placeholders!.find((p) => p.name === 'Vice President')!;
+  const placeholders = [...world.placeholders!, ...world.entities.flatMap((e) => e.placeholders ?? [])];
+
+  it.each(vicePresident.values.map((v) => v.text))('names %s in Hana\'s label to the swarm and in her description alike', (name) => {
+    const rolls = { world: { [vicePresident.id]: name } };
+    const [resolved, resolvedSwarm] = resolveEntityTexts([hana, swarm], (owner, text) => resolveEntityText(owner, text, { placeholders, rolls }));
+    const [line, ...rest] = relationshipLines([resolved, resolvedSwarm], [hana.id])[hana.id] ?? [];
+    expect(rest).toEqual([]);
+    expect(line).toMatch(/^The Swarm is Hana Sakuragi's /);
+    expect(line).toContain(name);
+    expect(resolved.aiDescription).toContain(name);
+  });
+
+  it.each<[string, Entity]>([
+    ['the Custom Persona', student],
+    ['a library persona', { id: 'library-persona', name: 'Akira' }],
+  ])('prints the ties that end on you with %s', (_, persona) => {
+    // Only these two end on you: each one makes its owner known in every scene.
+    const cast = relationshipCast(world.entities, persona);
+    const lines = relationshipLines(cast, [], persona.id)[persona.id] ?? [];
+    const owners = cast.filter((owner) => owner.id !== persona.id && lines.some((line) => line.startsWith(`${persona.name} is ${owner.name}'s `)));
+    const friend = world.entities.find((e) => e.aliases?.includes('best friend'))!;
+    expect(owners.map((owner) => owner.id).sort()).toEqual([friend.id, entity('Mr. Kuroda').id].sort());
   });
 });
