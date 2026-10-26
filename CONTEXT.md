@@ -220,7 +220,11 @@ _Avoid_: baseline (the dirty check's term), initial state
 
 **Report**:
 A signed-in user's one-shot ticket flagging a Report Target to staff — a category plus optional details. Never public, never a conversation; it ends in exactly one Outcome.
-_Avoid_: flag, feedback (that's bug/suggestion)
+_Avoid_: flag, feedback (that's bug/suggestion/question)
+
+**Votable board**:
+The feedback types anyone signed in may reply to and vote on: suggestions and questions. A bug is not one: only its reporter and staff reply, and it takes no votes.
+_Avoid_: public board (every feedback thread is readable), board post
 
 **Report Target**:
 The thing a Report points at — a listing (any kind), a comment, or a user profile — captured by snapshot at report time so the ticket outlives the content's deletion.

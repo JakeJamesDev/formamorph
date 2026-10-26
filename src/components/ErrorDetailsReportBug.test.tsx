@@ -80,7 +80,7 @@ describe('Report Bug in Error Details', () => {
     saveFeedbackDraft({ type: 'suggestion', title: 'Old idea', category: 'gameplay', body: 'Half written' });
     await openDetails();
     fireEvent.click(screen.getByRole('button', { name: 'Report Bug' }));
-    await screen.findByRole('alertdialog', { name: 'Replace your unsent draft?' });
+    await screen.findByRole('alertdialog', { name: 'Replace Unsent Draft?' });
     expect(titleValue()).toBe('Old idea');
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
     await screen.findByRole('dialog', { name: 'Send Feedback' });

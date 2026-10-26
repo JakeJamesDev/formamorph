@@ -117,7 +117,7 @@ import UserService from "@/services/UserService";
 import ReportService from "@/services/ReportService";
 import ReviewService from "@/services/ReviewService";
 import { useListingReviewMeta } from "@/lib/useListingReviewMeta";
-import { type MyFeedbackTabKey } from "@/components/menu/myFeedbackTabs";
+import { type FeedbackTab as MyFeedbackTabKey } from "@/components/menu/feedbackTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";

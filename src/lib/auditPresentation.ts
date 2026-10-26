@@ -220,11 +220,13 @@ export function auditPredicate(entry: AuditEntry): string {
       return target
         ? `edited the ${noun ?? 'thread'}${name ? ` “${name}”` : ''} by ${target}`
         : `edited a ${noun ?? 'thread'}${name ? ` “${name}”` : ''}`;
-    // Only recorded when somebody other than the asker set or cleared it, so there is always a `by`.
-    case 'feedback_answer_set':
+    // A null snippet is a clear; no target means the asker's account is gone.
+    case 'feedback_answer_set': {
+      const verb = entry.snippet === null ? 'cleared' : 'set';
       return target
-        ? `set the answer on the ${noun ?? 'question'}${name ? ` “${name}”` : ''} by ${target}`
-        : `set the answer on a ${noun ?? 'question'}${name ? ` “${name}”` : ''}`;
+        ? `${verb} the answer on the ${noun ?? 'question'}${name ? ` “${name}”` : ''} by ${target}`
+        : `${verb} the answer on a ${noun ?? 'question'}${name ? ` “${name}”` : ''}`;
+    }
     case 'event_created':
       return `scheduled the event${name ? ` “${name}”` : ''}`;
     case 'event_edited':
