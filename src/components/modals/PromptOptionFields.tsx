@@ -1,4 +1,5 @@
 import { HintInfo } from '@/components/SettingsRows';
+import { Hint } from '@/components/ui/typography';
 import { SETTINGS_COPY, REASONING_NOTES } from '@/components/modals/settingsCopy';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
@@ -23,7 +24,7 @@ export function MaxOutputControl({ custom, value, shipped, disabled, onCustomCha
       <div className="flex items-center gap-2">
         <Checkbox id="promptMaxOutput" checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
         <label htmlFor="promptMaxOutput" className="text-label">{SETTINGS_COPY.promptMaxOutput.label}</label>
-        <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.promptMaxOutput.description}</span>
+        <Hint as="span" className="hidden sm:inline">{SETTINGS_COPY.promptMaxOutput.description}</Hint>
       </div>
       {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
       <div className="flex items-center gap-3 pl-2.5">
@@ -69,7 +70,7 @@ export function PromptReasoningField({ setting, onChange, options, budget, room,
             <label htmlFor={id} className="text-label">{lead.label}</label>
             {lead.info && <HintInfo>{lead.info}</HintInfo>}
           </div>
-          <span className="text-helper text-muted-foreground">{lead.description}</span>
+          <Hint as="span">{lead.description}</Hint>
         </>
       )}
       <ReasoningSwitch
@@ -82,15 +83,15 @@ export function PromptReasoningField({ setting, onChange, options, budget, room,
         strength={level ? levelStrength : budgetStrength}
         room={room ? roomReadout(room) : undefined}
       />
-      {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
-      {globalOff && <p className="text-helper text-muted-foreground">{REASONING_NOTES.globalOff}</p>}
+      {lockedOn && <Hint>{REASONING_NOTES.always}</Hint>}
+      {globalOff && <Hint>{REASONING_NOTES.globalOff}</Hint>}
       {level && budget && (
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="text-label">{SETTINGS_COPY.reasoningBudget.label}</span>
             <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
           </div>
-          <span className="text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
+          <Hint as="span">{SETTINGS_COPY.reasoningBudget.description}</Hint>
           {/* Same switch as above: the row only carries the slider, flush with every other track. */}
           <div className="flex items-center gap-3 pl-2.5">
             <Slider

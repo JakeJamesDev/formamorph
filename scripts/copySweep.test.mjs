@@ -53,6 +53,15 @@ describe('kinds', () => {
     expect(rules('popover', 'The app sets the cutoff.')).toEqual(['app-subject']);
   });
 
+  it('flags a popover paragraph that runs past three sentences as a block, and a hint of that length as too long', () => {
+    const block = "Keeps a link's text and removes images. Covers the last story and memory summaries. You still see them in the story. Turn off if your model should keep writing links.";
+    expect(rules('popover', block)).toEqual(['popover-block']);
+    expect(rules('line', block)).toContain('many-sentences');
+    expect(rules('line', block)).not.toContain('popover-block');
+    // Three sentences is the lead line's ceiling; the rest goes into bullets, which the extractor reads one by one.
+    expect(rules('popover', "Keeps a link's text and removes images. Covers the last story. You still see them in the story.")).toEqual([]);
+  });
+
   it('reads an abbreviation as part of its sentence', () => {
     expect(rules('line', 'e.g. Eye Color')).toEqual([]);
   });

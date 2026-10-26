@@ -77,7 +77,7 @@ describe('settings copy', () => {
     expect(SETTINGS_NOTES.imageGenerationOff).toContain(`“${SETTINGS_COPY.enableImageGeneration.label}”`);
   });
 
-  it('names the Workflow (API Format) control in bold where a note sends the reader to it', () => {
+  it('names the Workflow control in bold where a note sends the reader to it', () => {
     const bold = `**${SETTINGS_COPY.imageWorkflow.label}**`;
     expect(SETTINGS_NOTES.imageModelFromWorkflow).toContain(bold);
     expect(SETTINGS_NOTES.imageModelFromWorkflow).toContain('**Advanced**');
@@ -150,6 +150,20 @@ describe('settings copy', () => {
     // R6's shape applied to option copy — the marker on the item says it, and says it before you select.
     const bad = helps.filter(([, help]) => /recommended/i.test(help));
     expect(bad.map(([k]) => k)).toEqual([]);
+  });
+
+  it('breaks every ⓘ body into paragraphs of at most three sentences', () => {
+    // One paragraph that runs on reads as a wall. The shape is a lead line, then bullets or short paragraphs;
+    // the sweep script's `popover-block` rule says the same, and this pins it for the table.
+    const bodies: [string, string][] = [
+      ...entries.flatMap(([k, c]) => (c.info ? [[k, c.info] as [string, string]] : [])),
+      ...options.flatMap(([k, o]) => (o.detail ? [[k, o.detail] as [string, string]] : [])),
+    ];
+    const bad = bodies.flatMap(([k, body]) => body.split(/\n\s*\n|\n(?=\s*- )/).flatMap((para) => {
+      const n = para.trim().split(/(?<=[.!?])\s+/).filter(Boolean).length;
+      return n > 3 ? [`${k}: ${n} sentences in one paragraph`] : [];
+    }));
+    expect(bad).toEqual([]);
   });
 
   it('keeps every option detail beyond a restatement of its help', () => {

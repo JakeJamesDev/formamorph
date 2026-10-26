@@ -3,6 +3,7 @@ import type { ThinkingMode } from '@/contexts/SettingsContext';
 import { TURN_TIME_UNITS, joinTurnHours, splitTurnHours, type TurnTimeUnit } from '@/lib/gameClock';
 import { CONTINUE_CHOICE_MODES, type ContinueChoiceMode } from '@/contexts/settingsDefaults';
 import { Row, CheckRow, Section, SubGroup, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
+import { Hint, Meta } from '@/components/ui/typography';
 import { SETTINGS_COPY, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, TOOLS_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import { reasoningLevelOptions, reasoningOffRefused, toolsSupported, type ReasoningSetting } from '@/lib/reasoningEffort';
@@ -75,7 +76,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
 
   return (
     <div className="grid gap-6 py-4">
-      <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
+      <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration">
       {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
           shows a prompt's editor tab only while it's enabled here. */}
       <Row target={targetAttribute('settings.output', 'choices')} {...rowCopy('systemPrompts')}>
@@ -153,7 +154,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
         <SubGroup>
         <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
           <div className="pt-2">
-            <p className="text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
+            <Hint>{REASONING_NOTES.never}</Hint>
             {capabilityRecheck}
           </div>
         </Row>
@@ -176,9 +177,9 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
                 onChange: (level: ReasoningSetting['level']) => setNativeReasoning({ ...nativeReasoning, level }),
               }}
             />
-            <p className="mt-2 text-helper text-muted-foreground">
+            <Hint className="mt-2">
               {activeReasoningAlwaysOn ? REASONING_NOTES.always : REASONING_EFFORT_HELP[reasoningEffort]}
-            </p>
+            </Hint>
             {capabilityRecheck}
           </div>
         </Row>
@@ -189,7 +190,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       {/* Reads the active endpoint's record, like the Native Reasoning row; the wire gate checks each
           prompt's own target. */}
       {advanced && (
-      <Section title="Tools" hint="What the AI can look up while it works.">
+      <Section title="Tools" hint="What the AI can look up while it works">
       {activeToolsSupported ? (
         <CheckRow
           htmlFor="toolsEnabled"
@@ -201,7 +202,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       ) : (
         <Row muted label={SETTINGS_COPY.tools.label} experimental={SETTINGS_COPY.tools.experimental}>
           <div className="pt-2">
-            <p className="text-helper text-muted-foreground">{TOOLS_NOTES.unsupported}</p>
+            <Hint>{TOOLS_NOTES.unsupported}</Hint>
             {capabilityRecheck}
           </div>
         </Row>
@@ -210,7 +211,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       )}
 
       {advanced && (<>
-      <Section title="Memory" hint="What the AI carries forward from earlier turns.">
+      <Section title="Memory" hint="What the AI carries forward from earlier turns">
       <CheckRow
         htmlFor="memoryDigests"
         checked={memoryDigests}
@@ -261,11 +262,11 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
               className="h-2 flex-1"
               value={embedProgress && embedProgress.total > 0 ? (embedProgress.loaded / embedProgress.total) * 100 : 0}
             />
-            <span className="text-meta text-muted-foreground whitespace-nowrap">
+            <Meta className="whitespace-nowrap">
               {embedProgress && embedProgress.total > 0
                 ? `${Math.round(embedProgress.loaded / 1048576)} / ${Math.round(embedProgress.total / 1048576)} MB`
                 : 'Preparing…'}
-            </span>
+            </Meta>
           </div>
         </Row>
       )}
@@ -281,7 +282,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
 
       {/* The story's clock. It runs without memories too (the Log, stat regeneration), so only Time in
           Memory is gated on Memory Summaries. */}
-      <Section title="Time" hint="How long each turn takes, and when things happened.">
+      <Section title="Time" hint="How long each turn takes, and when things happened">
       {memoryDigests && (
       <CheckRow
         htmlFor="timeContext"
@@ -301,7 +302,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
 
       {/* Semantic Lore acts on the dictionary, not on memories — it sat under Memory only because it
           shares Semantic Memory's on-device model, whose download progress stays up there. */}
-      <Section title="Lore" hint="How dictionary entries reach the AI.">
+      <Section title="Lore" hint="How dictionary entries reach the AI">
       <CheckRow
         htmlFor="semanticLore"
         checked={semanticLore}

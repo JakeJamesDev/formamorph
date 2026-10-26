@@ -35,7 +35,7 @@ const openSettingsOnTab = (initialTab: SettingsTabId) => render(
 );
 
 const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent);
-const modeSelect = () => screen.getByRole('combobox', { name: 'Settings mode' });
+const modeSelect = () => screen.getByRole('combobox', { name: 'Settings Mode' });
 const pickMode = async (name: 'Simple' | 'Advanced') => {
   await userEvent.click(modeSelect());
   await userEvent.click(screen.getByRole('option', { name: new RegExp(name) }));
@@ -162,7 +162,7 @@ describe('settings mode', () => {
     const user = userEvent.setup();
     const { unmount } = openSettings('simple');
     await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
-    expect(screen.queryByText('Context Window (tokens)')).toBeNull();
+    expect(screen.queryByText('Context Window')).toBeNull();
     expect(screen.queryByText('Max Output Tokens')).toBeNull();
     // Connecting a model is everyday work, so the fields that do it stay.
     expect(screen.getByText('Endpoint URL')).toBeTruthy();
@@ -172,7 +172,7 @@ describe('settings mode', () => {
 
     openSettings('advanced');
     await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
-    expect(screen.getByText('Context Window (tokens)')).toBeTruthy();
+    expect(screen.getByText('Context Window')).toBeTruthy();
     expect(screen.getByText('Max Output Tokens')).toBeTruthy();
   });
 
@@ -194,8 +194,8 @@ describe('settings mode', () => {
     const { unmount } = openSettings('simple');
     await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     await user.click(screen.getByRole('tab', { name: 'Image' }));
-    expect(screen.queryByText('Portrait (W × H)')).toBeNull();
-    expect(screen.queryByText('Landscape (W × H)')).toBeNull();
+    expect(screen.queryByText('Portrait Size')).toBeNull();
+    expect(screen.queryByText('Landscape Size')).toBeNull();
     // Everyday image tweaking stays.
     expect(screen.getByText('Prompt Prefix')).toBeTruthy();
     expect(screen.getByText('Steps / CFG')).toBeTruthy();
@@ -204,8 +204,8 @@ describe('settings mode', () => {
     openSettings('advanced');
     await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     await user.click(screen.getByRole('tab', { name: 'Image' }));
-    expect(screen.getByText('Portrait (W × H)')).toBeTruthy();
-    expect(screen.getByText('Landscape (W × H)')).toBeTruthy();
+    expect(screen.getByText('Portrait Size')).toBeTruthy();
+    expect(screen.getByText('Landscape Size')).toBeTruthy();
   });
 
   it('switches modes through the mode select', async () => {

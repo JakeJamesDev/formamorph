@@ -65,7 +65,8 @@ function extractSource(file, source) {
   const attr = new RegExp(`\\b(${[...LABEL_KEYS, ...HINT_KEYS, ...POPOVER_KEYS].join('|')})\\s*[=:]\\s*(?:\\{\\s*)?(["'\`])([\\s\\S]*?)\\2`, 'g');
   for (const m of source.matchAll(attr)) {
     const kind = LABEL_KEYS.includes(m[1]) ? 'label' : POPOVER_KEYS.includes(m[1]) ? 'popover' : 'line';
-    for (const para of m[3].split(/\n\s*\n/)) if (para.trim()) out.push(item(file, lineOf(source, m.index), kind, para));
+    // Paragraphs and list items are each one piece of copy; a bullet list is not one long sentence.
+    for (const para of m[3].split(/\n\s*\n|\n(?=\s*- )/)) if (para.trim()) out.push(item(file, lineOf(source, m.index), kind, para.replace(/^\s*- /, '')));
   }
   const tag = new RegExp(`<(${[...LABEL_TAGS, ...HINT_TAGS].join('|')})(?:\\s[^>]*)?>([^<{]+)<`, 'g');
   for (const m of source.matchAll(tag)) {
@@ -144,6 +145,9 @@ function periodShape(text) {
 }
 
 /** Every rule: which kind it reads (see `reads`), how it matches, and the one-line reason the report prints. */
+/** Sentences in one piece of copy. A boundary is terminal punctuation followed by a space. */
+const sentenceCount = (t) => t.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+
 export const RULES = [
   { name: 'label-case', kind: 'label', why: 'Control labels take AP title case.', test: titleCaseProblem },
   // A unit in parentheses, (%) or (ms), is part of the name, not an aside.
@@ -166,12 +170,18 @@ export const RULES = [
   { name: 'figurative', kind: 'hint', why: 'Common words, no figurative language: name the operation the image stands for.', re: /\b(fires?|fired|firing|drives?|driven|mutes?|muted|live|lives|rides?|points? [^.]{0,20}\bat\b|stands? in|in play|out of the way|for free|in reach|on the fly|under the hood|kicks? in|lights? up|wakes? up|goes? into)\b/i },
   { name: 'passive', kind: 'hint', why: 'Active voice.', re: /\b(is|are|was|were|be|been|being) \w+(ed|en) by\b/i },
   { name: 'long-sentence', kind: 'hint', why: 'One topic per sentence, about 20 words.', test: (t) => {
+    // Sentence boundaries are shared with `sentenceCount` below.
     const long = t.split(/(?<=[.!?])\s+/).filter((s) => s.split(/\s+/).length > 22);
     return long.length ? `${long[0].split(/\s+/).length} words` : null;
   } },
-  { name: 'many-sentences', kind: 'hint', why: 'A hint is one or two sentences; more belongs behind a HintInfo.', test: (t) => {
-    const n = t.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+  { name: 'many-sentences', kind: 'line', why: 'A hint is one or two sentences; more belongs behind a HintInfo.', test: (t) => {
+    const n = sentenceCount(t);
     return n > 3 ? `${n} sentences` : null;
+  } },
+  // One paragraph that runs on reads as a wall. The body's shape is a lead line, then bullets or short paragraphs.
+  { name: 'popover-block', kind: 'popover', why: 'A ⓘ body opens with a lead line, then bullets or short paragraphs; no paragraph runs past three sentences.', test: (t) => {
+    const n = sentenceCount(t);
+    return n > 3 ? `${n} sentences in one paragraph` : null;
   } },
   { name: 'term-character', kind: 'any', why: 'The word is entity. "Character" is only the AI pipeline\'s people-in-the-story machinery.', re: /\bcharacters?\b(?! card| pass| diary)/i },
   { name: 'term-phone', kind: 'any', why: 'The small-screen concept is mobile.', re: /\bphones?\b/i },
