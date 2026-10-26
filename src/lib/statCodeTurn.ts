@@ -2,7 +2,7 @@ import type {
   CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, LoreToggles, OwnedTraitStates,
   Placeholder, PlayerStat, Script, Trait,
 } from '@/types';
-import { withLoreWrites, type LoreWrite } from './loreToggles';
+import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
@@ -689,7 +689,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
       placeholders: result.placeholders ?? [],
       ...(result.traits || result.entities ? { traits: { world: result.traits ?? [], entities: result.entities ?? [] } } : {}),
       ...(result.worldWrites ? { world: result.worldWrites } : {}),
-      ...(result.lore ? { lore: result.lore.map(({ book, entry, field, value }) => ({ book, entry, field, value })) } : {}),
+      ...(result.lore ? { lore: result.lore.map(bareLoreWrite) } : {}),
     };
     warnDroppedWrites(whoRan(unit), result);
   };

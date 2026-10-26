@@ -11,7 +11,7 @@ import type { CodeDictionaryNames, CodeOwnerName } from './statCodeAnalysis';
 import { statCodeName } from './statCodeNames';
 
 /** A book a run or the editor reads: a dictionary, or its name alone where its entries are not given. */
-export type DictionarySource = CodeOwnerName & Partial<Pick<Dictionary, 'entries'>>;
+export type DictionarySource = CodeOwnerName & Partial<Pick<Dictionary, 'entries' | 'enabled'>>;
 
 /** What the pins in force depend on, besides the authored world. */
 export interface PinState {
@@ -88,7 +88,7 @@ export function withLibraryPlaceholders(set: StatCodePlaceholderSet, entities: r
     owners: new Map([
       ...set.owners ?? [], ...added.flatMap((p) => { const ref = ownerOf.get(p.id); return ref ? [[p.id, ref] as const] : []; }),
     ]),
-    dictionaries: [...set.dictionaries ?? [], ...books.map(({ id, name, entries }) => ({ id, name, entries }))],
+    dictionaries: [...set.dictionaries ?? [], ...books.map(({ id, name, enabled, entries }) => ({ id, name, enabled, entries }))],
   };
 }
 
@@ -96,8 +96,8 @@ export function withLibraryPlaceholders(set: StatCodePlaceholderSet, entities: r
  *  as code reads them. */
 export const codeDictionaries = (
   dictionaries: readonly DictionarySource[] | undefined, list: readonly Placeholder[],
-): CodeDictionaryNames[] => (dictionaries ?? []).map(({ id, name, entries = [] }) => ({
-  id, name: statCodeName(name, list),
+): CodeDictionaryNames[] => (dictionaries ?? []).map(({ id, name, enabled, entries = [] }) => ({
+  id, name: statCodeName(name, list), enabled: enabled !== false,
   entries: entries.map((entry) => ({
     id: entry.id, name: statCodeName(entry.name, list), keys: entry.key, value: entry.value,
     enabled: entry.enabled !== false, constant: entry.constant === true,

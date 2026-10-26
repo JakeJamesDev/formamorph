@@ -18,7 +18,7 @@ import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { GameplayProvider } from '@/contexts/GameplayContext';
 import GameViewer from '@/views/GameViewer';
 import type { PersonaPick } from '@/lib/persona';
-import type { Entity, PlayerStat, World } from '@/types';
+import type { Dictionary, Entity, PlayerStat, World } from '@/types';
 
 /** A one-location world, for tests that play a turn. `entities` and `stats` fill what the test reads. */
 export function harborWorld({ stats = [], entities = [] }: { stats?: PlayerStat[]; entities?: Entity[] } = {}): World {
@@ -59,7 +59,7 @@ function ViewGate({ gate, children }: { gate: { hide: () => void }; children: Re
  */
 export function renderGameViewer(
   world: World,
-  { onExitToMenu = () => {}, registry = null, children, inGameplay, initialSaveId, initialTraits, initialPersona, initialOwnedTraits }: {
+  { onExitToMenu = () => {}, registry = null, children, inGameplay, initialSaveId, initialTraits, initialPersona, initialOwnedTraits, initialDictionaries }: {
     onExitToMenu?: () => void;
     /** A save record's id to enter on, as the main menu's Load does. */
     initialSaveId?: string;
@@ -69,6 +69,8 @@ export function renderGameViewer(
     initialPersona?: PersonaPick;
     /** Each entity's owned trait picks at setup, by entity id. */
     initialOwnedTraits?: Record<string, string[]>;
+    /** The books the player left on at setup, as Enter World's selection hands them over. */
+    initialDictionaries?: Dictionary[];
     registry?: SurfaceReporter | null;
     children?: ReactNode;
     /** Rendered beside the game view, inside its Gameplay provider, so a probe can read play state. It stays
@@ -95,7 +97,7 @@ export function renderGameViewer(
                           <SurfaceLayer id="gameViewer">
                             <GameplayProvider>
                               <ViewGate gate={gate}>
-                                <GameViewer initialCharacterData={null} onExitToMenu={onExitToMenu} initialSaveId={initialSaveId} initialTraits={initialTraits} initialPersona={initialPersona} initialOwnedTraits={initialOwnedTraits} />
+                                <GameViewer initialCharacterData={null} onExitToMenu={onExitToMenu} initialSaveId={initialSaveId} initialTraits={initialTraits} initialPersona={initialPersona} initialOwnedTraits={initialOwnedTraits} initialDictionaries={initialDictionaries} />
                               </ViewGate>
                               {inGameplay}
                             </GameplayProvider>

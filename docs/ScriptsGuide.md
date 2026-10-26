@@ -365,7 +365,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
-| `dictionaries` | `id`, `name`, `entries`, `placeholders` | `dictionaries.<Dictionary>.entries.<Entry>.enabled` | `dictionaries.<Dictionary>.entries.<Entry>.enabled = true` |
+| `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds one name to those objects. A script reads only the name its own timing adds:
@@ -862,7 +862,7 @@ if (entities.Albus.stats.Trust.value >= 50) entities.Albus.follow();
 **Test Code** lists every authored entity, with no trait chosen and each stat at its starting value. A switch or a stat write it makes is reported and never applied.
 
 ### Dictionaries
-<!-- keywords: book variables, disabled book, lore owned values -->
+<!-- keywords: book variables, disabled book, lore owned values, unlock a book, switch a book on, switch a book off, hidden book -->
 
 `dictionaries` holds every dictionary in the game by its code name. Each entry has:
 
@@ -870,6 +870,7 @@ if (entities.Albus.stats.Trust.value >= 50) entities.Albus.follow();
 | --- | --- |
 | `id` | Unique identifier. Read-only |
 | `name` | The dictionary's code name. Read-only |
+| `enabled` | True when the dictionary is on, so the AI can get its entries. Write `true` or `false` to switch it |
 | `entries` | The dictionary's entries by name. See [Entries](#entries) |
 | `placeholders` | The placeholders the dictionary owns. See [Owned Placeholders](#owned-placeholders) |
 
@@ -878,8 +879,17 @@ if (entities.Albus.stats.Trust.value >= 50) entities.Albus.follow();
 dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 ```
 
-- The list holds the world's dictionaries that the player left on at **Enter World**, then the library dictionaries the player picked there. Of two that share a code name, the later one is the entry.
-- A dictionary the player turned off reads as an unknown dictionary.
+```javascript
+// A world script: open the second chapter's lore once the gate falls.
+if (stats.Gate.value === 0) dictionaries["Chapter Two"].enabled = true;
+```
+
+- The list holds the world's dictionaries that the player left on at **Enter World** and the ones you ship off, then the library dictionaries the player picked there. Of two that share a code name, the later one is the entry.
+- **A dictionary you ship off is listed with `enabled: false`.** Clear the dictionary's **Enabled** checkbox (Advanced mode) to keep its entries from the AI. A script can switch it on later in the story.
+- **A dictionary the player turned off at Enter World reads as an unknown dictionary.** A write to it is ignored and reported.
+- **A write applies as an entry write does.** It applies after the run, and later in the same run the dictionary reads what you set. An undo or a re-roll clears it with the turn. A Before the AI write changes this turn's narration.
+- **A library dictionary the player picked takes writes like any other.** The player's library copy never changes.
+- **Test Code reads each dictionary's own Enabled setting,** because it has no Enter World.
 - A name no dictionary in the game has reads as a blank entry. Its `name` and `id` are `''`, and every placeholder under it reads as blank. A pin through it is ignored.
 - The editor warns on a dictionary name it doesn't know, because a library dictionary can bring more.
 

@@ -21,7 +21,7 @@ import {
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, DICTIONARY_WRITABLE_FIELD, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -100,6 +100,8 @@ export interface CodePlaceholders {
 
 /** A book's code name and every entry under its code name, disabled ones included. */
 export interface CodeDictionaryNames extends CodeOwnerName {
+  /** As the lore overlay leaves it; absent, on. */
+  enabled?: boolean;
   entries?: readonly SandboxDictionaryEntry[];
 }
 
@@ -864,14 +866,14 @@ function checkOwnedEntryWrite(
   return rest.length === 0 && node?.placeholder ? fix : null;
 }
 
-/** What is wrong with a write into `dictionaries`: to an entry, or to one of its members. */
+/** What is wrong with a write into `dictionaries`: to an entry, or to one of its members other than `enabled`. */
 function checkDictionaryWrite(target: SyntaxNode, code: string): CodeDiagnostic | null {
   const readOnly = (from: number, to: number): CodeDiagnostic =>
     ({ from, to, severity: 'error', message: `${code.slice(target.from, target.to)} is read-only.` });
   const entry = entryRef(target, code, 'dictionaries');
   if (entry) return readOnly(entry.from, entry.to);
   const own = target.firstChild && entryRef(target.firstChild, code, 'dictionaries') ? memberKey(target, code) : null;
-  return own ? readOnly(own.from, own.to) : null;
+  return own && own.name !== DICTIONARY_WRITABLE_FIELD ? readOnly(own.from, own.to) : null;
 }
 
 /**

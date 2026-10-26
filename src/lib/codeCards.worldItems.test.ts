@@ -290,7 +290,7 @@ describe('entity, dictionary and persona cards', () => {
     expect(labels('return dictionaries.Fauna.entries.|', worldBox)).toEqual(['Heron', 'Eel', 'Bittern']);
     expect(labels('return dictionaries.Fauna.entries["|', worldBox)).toEqual(expect.arrayContaining(['Heron', 'Eel', 'Marsh Hen']));
     expect(labels('return dictionaries.Fauna.entries.Heron.|', worldBox)).toEqual(['id', 'name', 'keys', 'value', 'enabled', 'constant']);
-    expect(labels('return dictionaries.Fauna.|', worldBox)).toEqual(['id', 'name', 'entries', 'placeholders']);
+    expect(labels('return dictionaries.Fauna.|', worldBox)).toEqual(['id', 'name', 'enabled', 'entries', 'placeholders']);
   });
 
   it('lists who the player can play on `persona`, and how code reaches the Custom Persona', () => {
