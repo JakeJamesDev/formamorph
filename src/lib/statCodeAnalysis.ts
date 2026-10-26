@@ -559,15 +559,15 @@ function retiredRead(name: SyntaxNode, code: string, surface: CodeSurface): { fr
   return Object.hasOwn(members, member) ? { from: read.from, to: read.to, newForm: members[member] } : null;
 }
 
-/** The member expression an assignment, `++` or `--` writes to, or null when it writes something else. */
-function writeTarget(node: SyntaxNode, code: string): SyntaxNode | null {
+/** The `kind` node an assignment, `++` or `--` writes to: a member expression, or a bare name such as `notes`. */
+function writeTarget(node: SyntaxNode, code: string, kind: 'MemberExpression' | 'VariableName' = 'MemberExpression'): SyntaxNode | null {
   if (node.name === 'AssignmentExpression') {
-    return node.firstChild?.name === 'MemberExpression' ? node.firstChild : null;
+    return node.firstChild?.name === kind ? node.firstChild : null;
   }
   if (node.name !== 'PostfixExpression' && node.name !== 'UnaryExpression') return null;
   const op = node.getChild('ArithOp');
   if (!op || !['++', '--'].includes(code.slice(op.from, op.to))) return null;
-  return node.getChild('MemberExpression');
+  return node.getChild(kind);
 }
 
 /** The writable fields as code spells them off `path`: `self.value, self.min, …`. */
@@ -638,7 +638,7 @@ function isPlaceholderWriteCall(node: SyntaxNode, code: string, inScope: (root: 
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
 function entryRef(
-  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries' | 'turn',
+  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries' | ReadOnlyGlobal,
 ): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
@@ -937,15 +937,40 @@ function checkOwnerWrite(target: SyntaxNode, code: string, assignment: boolean):
   return checkTraitWrite(target, code, assignment, ownerTraitRef);
 }
 
-/** What is wrong with a write into `turn`: to a field, or into one, the surface lists as read-only (Q21). */
-function checkTurnWrite(target: SyntaxNode, code: string, surface: CodeSurface): CodeDiagnostic | null {
-  let member: SyntaxNode | null = target;
-  while (member?.firstChild?.name === 'MemberExpression') member = member.firstChild;
-  const own = member && entryRef(member, code, 'turn');
+/** The globals whose writes run time drops, unless the surface lists a member as writable (Q21, Q25). */
+const READ_ONLY_GLOBALS = ['turn', 'clock', 'location', 'notes'] as const;
+type ReadOnlyGlobal = typeof READ_ONLY_GLOBALS[number];
+
+/** The array methods that change their array in place. */
+const MUTATING_METHODS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
+
+/** The read-only error on the member of `root` that `member` names, unless the surface lists it as writable. */
+function readOnlyMember(member: SyntaxNode, code: string, surface: CodeSurface, root: ReadOnlyGlobal): CodeDiagnostic | null {
+  const own = entryRef(member, code, root);
   if (!own) return null;
-  const access = surface.members.get('turn')?.find((entry) => entry.name === own.name)?.access;
-  return access === 'writable' ? null : { from: own.from, to: own.to, severity: 'error', message: `turn.${own.name} is read-only.` };
+  const access = surface.members.get(root)?.find((entry) => entry.name === own.name)?.access;
+  return access === 'writable' ? null : { from: own.from, to: own.to, severity: 'error', message: `${root}.${own.name} is read-only.` };
 }
+
+/** What is wrong with a write into a read-only global: to a member, or into one, the surface lists as read-only.
+ *  An unknown clock field is `checkClockField`'s to name when `clockChecked`. */
+function checkReadOnlyGlobalWrite(
+  target: SyntaxNode, code: string, surface: CodeSurface, root: ReadOnlyGlobal, clockChecked: boolean,
+): CodeDiagnostic | null {
+  let member: SyntaxNode = target;
+  while (member.firstChild?.name === 'MemberExpression') member = member.firstChild;
+  if (root === 'clock' && clockChecked && checkClockField(member, code)) return null;
+  return readOnlyMember(member, code, surface, root);
+}
+
+/** What is wrong with a mutating call such as `turn.choices.push(x)` on a `turn` member the surface lists as read-only. */
+function checkTurnMutatingCall(call: SyntaxNode, code: string, surface: CodeSurface): CodeDiagnostic | null {
+  const callee = call.firstChild;
+  const method = callee?.name === 'MemberExpression' ? callee.getChild('PropertyName') : null;
+  const member = method && MUTATING_METHODS.has(code.slice(method.from, method.to)) ? callee?.firstChild : null;
+  return member?.name === 'MemberExpression' ? readOnlyMember(member, code, surface, 'turn') : null;
+}
+
 
 /** What is wrong with a write into `entities`: to the map, to an entry or one of its members, or into an
  *  entry's traits as `traits`. */
@@ -1270,7 +1295,9 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const clockInScope = rules.stats && !declared.has('clock');
   const selfInScope = rules.self && !declared.has('self');
   const switchedTraitInScope = surfaceHasGlobal(surface, 'trait') && !declared.has('trait');
-  const turnInScope = surfaceHasGlobal(surface, 'turn') && !declared.has('turn');
+  const readOnlyInScope = new Set(READ_ONLY_GLOBALS.filter((name) => surfaceHasGlobal(surface, name) && !declared.has(name)));
+  /** The read-only global a name is, when the code has not shadowed it. */
+  const readOnlyGlobal = (name: string | null) => READ_ONLY_GLOBALS.find((global) => global === name && readOnlyInScope.has(global));
   /** Whether an operand is a whole stat entry: `self`, or one key of `stats` or of an owner's `stats`. */
   const isStatEntry = (operand: SyntaxNode) => {
     if (operand.name === 'VariableName') return selfInScope && code.slice(operand.from, operand.to) === 'self';
@@ -1342,10 +1369,9 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         const entityProblem = checkEntityWrite(target, code, cursor.type.name === 'AssignmentExpression');
         if (entityProblem) diagnostics.push(entityProblem);
       }
-      if (turnInScope && memberRoot(target, code) === 'turn') {
-        const turnProblem = checkTurnWrite(target, code, surface);
-        if (turnProblem) diagnostics.push(turnProblem);
-      }
+      const readOnlyRoot = readOnlyGlobal(memberRoot(target, code));
+      const readOnlyProblem = readOnlyRoot && checkReadOnlyGlobalWrite(target, code, surface, readOnlyRoot, clockInScope);
+      if (readOnlyProblem) diagnostics.push(readOnlyProblem);
       if (dictionariesInScope && memberRoot(target, code) === 'dictionaries') {
         sawPlaceholderWrite = true;
         const dictionaryProblem = checkDictionaryWrite(target, code);
@@ -1355,6 +1381,12 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         ? checkOwnedEntryWrite(target, code, options, rules) : null;
       if (ownedProblem) diagnostics.push(ownedProblem);
     }
+    const written = writeTarget(cursor.node, code, 'VariableName');
+    if (written && readOnlyGlobal(code.slice(written.from, written.to)) && !overlapsAny(written.from, written.to, ranges)) {
+      diagnostics.push({ from: written.from, to: written.to, severity: 'error', message: `${code.slice(written.from, written.to)} is read-only.` });
+    }
+    const mutation = cursor.type.name === 'CallExpression' && readOnlyInScope.has('turn') ? checkTurnMutatingCall(cursor.node, code, surface) : null;
+    if (mutation && !overlapsAny(mutation.from, mutation.to, ranges)) diagnostics.push(mutation);
     if (cursor.type.name === 'CallExpression' && isPlaceholderWriteCall(cursor.node, code, chainRootInScope)) {
       sawPlaceholderWrite = true;
     }

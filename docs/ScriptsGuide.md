@@ -1068,7 +1068,7 @@ if (traits.Resting.enabled) clock.advance(8 * 60);
 ### Turn
 <!-- keywords: player action, what the player typed, player input, turn count, turn counter, every fifth turn, ooc, what did the player say, what the ai wrote, read the narration, read the reply, read the choices, what choices the player has -->
 
-`turn` holds what the player did, which turn it is, and what the AI wrote back. Its fields are read-only, except `turn.choices` in an After the AI script (see [Change the choices](#change-the-choices)). A write to a read-only field is ignored and reported.
+`turn` holds what the player did, which turn it is, and what the AI wrote back. Its fields are read-only, except `turn.choices` in an After the AI script (see [Change the choices](#change-the-choices)). A write to a read-only field is ignored and reported. `clock`, `location` and `notes` are read-only too, and the editor underlines a write to them.
 
 | Field | What it is |
 | --- | --- |
