@@ -1,6 +1,7 @@
 # Spec: Listing review (client)
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-26. Tickets 01–10 done, last landing f63b3e283; ticket 11 (deploy and switch-on) stays with the user. Review: spec text corrected; two small gaps fixed (formamorph 2d44108c0, FormamorphServer 7884f50). Gates green on 2026-10-26.
 Spec session: listing-review — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/listing-review/spec.md`. That spec holds the rulings (Q1–Q28), the moderation states and the API contract. This spec follows them.
@@ -137,4 +138,4 @@ The server will hold new listings and updates for review before players can see 
 ## Further Notes
 
 - Ship this client before the operator turns the server's `listing_review` setting on. The setting defaults to off.
-- Changelog: one entry for players and authors, and one in the staff bucket for the Review tab.
+- Changelog: one **Listing Review** group under 👤 User-facing, with one entry per client ticket. The changelog has no staff bucket, so the mod and admin entries sit in the same group.
