@@ -722,6 +722,14 @@ const CommunityCreationsBrowser = ({
     setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? { ...prev, likes } : prev));
   };
 
+  const handlePendingUpdateChange = (world: WorldRecord, pending: boolean) => {
+    const worldId = String(world._id || world.id);
+    const patch = (w: WorldRecord) => ({ ...w, has_pending_update: pending, ...(pending ? {} : { pending_update: null }) });
+
+    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? patch(w) : w)));
+    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? patch(prev) : prev));
+  };
+
   const handleRelease = async (world: WorldRecord) => {
     const worldId = String(world._id || world.id);
     const noun = KIND_LABELS[kindOf(world)].one;
@@ -1357,6 +1365,7 @@ const CommunityCreationsBrowser = ({
         serverTakesLikes={anonymousLikes}
         onAnonymousLikes={setAnonymousLikes}
         onLikesChanged={handleLikesChanged}
+        onPendingUpdateChange={handlePendingUpdateChange}
         openLikersOnMount={openLikersOnMount}
         contests={contests}
         capabilities={capabilities}

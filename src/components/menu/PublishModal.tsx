@@ -245,9 +245,10 @@ export function PublishModal({
         await new Promise<void>((resolve) => { entrySettledRef.current = resolve; });
       }
       const draft = changelogDraftRef.current;
+      let entryHeld = false;
       if (targetId && draft) {
         try {
-          await WorldStorageService.createChangelogEntry(targetId, draft);
+          entryHeld = (await WorldStorageService.createChangelogEntry(targetId, draft)).pending === true;
         } catch (error) {
           toastError(error, {
             headline: `${KIND_LABELS[kind].one} updated, but the changelog entry did not save. Add it from the listing's Changelog.`,
@@ -259,7 +260,7 @@ export function PublishModal({
       // No refetch: the modal closes here and reloads its listings on the next open, so re-reading them
       // only to discard them is a round-trip the user waits on.
       onOpenChange(false);
-      toast.success(publishedMessage(kind, Boolean(targetId), created));
+      toast.success(publishedMessage(kind, Boolean(targetId), created, entryHeld));
     } catch (error) {
       // The gate can be raised, or an acceptance reset, after this modal read its policy state. The
       // server is the authority, so its refusal reopens the popup rather than showing a dead error.

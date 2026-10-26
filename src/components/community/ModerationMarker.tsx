@@ -2,7 +2,7 @@ import { Clock, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorldRecord } from "@/components/WorldDetails";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
-import { MODERATION_LABELS, PENDING_REVIEW_HINT, moderationStatus } from "@/lib/listingModeration";
+import { MODERATION_LABELS, PENDING_REVIEW_HINT, UPDATE_PENDING_HINT, moderationStatus } from "@/lib/listingModeration";
 
 interface ModerationMarkerProps {
   listing: WorldRecord;
@@ -12,20 +12,21 @@ interface ModerationMarkerProps {
 }
 
 /**
- * The box that says a listing is not live: waiting for review, resubmitted, or quarantined.
+ * The box that says a listing is not live, or not as its author left it: waiting for review, with an
+ * update waiting, resubmitted, or quarantined.
  *
  * Only the author and the staff receive these listings, so the deadline is stated plainly.
  */
 export function ModerationMarker({ listing, showStaffQuarantine = true, className }: ModerationMarkerProps) {
   const status = moderationStatus(listing);
 
-  if (status === 'pending') {
+  if (status === 'pending' || status === 'updatePending') {
     return (
       <div className={cn("rounded-md border border-border bg-muted/50 px-2 py-1 text-meta", className)}>
         <p className="flex items-center gap-1 font-medium">
-          <Clock className="h-3 w-3 shrink-0" aria-hidden /> {MODERATION_LABELS.pending}
+          <Clock className="h-3 w-3 shrink-0" aria-hidden /> {MODERATION_LABELS[status]}
         </p>
-        <p className="text-muted-foreground">{PENDING_REVIEW_HINT}</p>
+        <p className="text-muted-foreground">{status === 'pending' ? PENDING_REVIEW_HINT : UPDATE_PENDING_HINT}</p>
       </div>
     );
   }

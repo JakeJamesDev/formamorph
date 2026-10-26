@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'react-toastify';
 import { PublishModal } from './PublishModal';
 import WorldStorageService from '@/services/WorldStorageService';
 import PolicyService from '@/services/PolicyService';
@@ -136,6 +137,31 @@ describe('what happens to the entry', () => {
 
     await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalled());
     expect(WorldStorageService.createChangelogEntry).not.toHaveBeenCalled();
+  });
+
+  it('says the entry went to review with the update when the server holds it', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue({ _id: 'w1', moderation_state: 'approved', has_pending_update: true });
+    vi.mocked(WorldStorageService.createChangelogEntry).mockResolvedValue({ ...entryRow(), pending: true });
+    view();
+    const user = await chooseUpdate();
+
+    await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
+    await user.type(screen.getByLabelText('Title'), 'Update 1');
+    await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+    await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('World sent for review with its changelog entry'));
+  });
+
+  it('keeps the plain review message when the update waits without an entry', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue({ _id: 'w1', moderation_state: 'approved', has_pending_update: true });
+    view();
+    const user = await chooseUpdate();
+
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('World sent for review'));
   });
 
   it('holds the draft until the update is really up, then attaches it', async () => {

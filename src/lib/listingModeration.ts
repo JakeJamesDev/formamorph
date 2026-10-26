@@ -14,11 +14,25 @@ export interface PendingFieldChange {
   pending: unknown;
 }
 
+/** A changelog entry as a held write carries it. */
+export interface HeldChangelogEntry {
+  id: string;
+  title: string;
+  body: string;
+  date: string;
+}
+
+/** One held changelog write, in the order the author made it. */
+export type PendingChangelogOp =
+  | ({ op: 'create' | 'edit' } & HeldChangelogEntry)
+  | { op: 'delete'; id: string };
+
 /** The waiting edit to an approved listing, as the server sends it to the author and the staff. */
 export interface PendingUpdate {
   fields?: Record<string, PendingFieldChange>;
-  changelog?: unknown[];
+  changelog?: PendingChangelogOp[];
   content_changed?: boolean;
+  /** Where the held thumbnail is served, present only when the update changes it. */
   thumbnail_url?: string;
 }
 
@@ -60,10 +74,13 @@ export const MODERATION_LABELS: Record<ModerationStatus, string> = {
 /** The line under the Pending Review badge. */
 export const PENDING_REVIEW_HINT = 'Players can see it after a mod approves it';
 
+/** The line under the Update Pending badge. */
+export const UPDATE_PENDING_HINT = 'Players see the live version until a mod approves the update';
+
 /** Display order for the fields an update can change. Fields the server adds later sort after these. */
 const FIELD_ORDER = [
-  'name', 'description', 'tags', 'thumbnail', 'content', 'visibility', 'spoiler', 'dependencies',
-  'compatibility', 'model_license', 'models',
+  'name', 'description', 'tags', 'thumbnail', 'content', 'visibility', 'spoiler', 'required_dependencies',
+  'compatible_worlds', 'model_license', 'models',
 ] as const;
 
 /** The label for each known field. An unknown field shows its server name. */
@@ -75,8 +92,8 @@ export const FIELD_LABELS: Record<string, string> = {
   content: 'Content',
   visibility: 'Visibility',
   spoiler: 'Spoiler',
-  dependencies: 'Dependencies',
-  compatibility: 'Compatibility',
+  required_dependencies: 'Required Dependencies',
+  compatible_worlds: 'Compatible Worlds',
   model_license: 'Model License',
   models: 'Models',
 };
@@ -84,13 +101,14 @@ export const FIELD_LABELS: Record<string, string> = {
 /**
  * The fields a pending update changes, in display order, empty when there is no update.
  *
- * Content has no before-and-after values in `fields`, so its flag adds it.
+ * Content and the thumbnail have no before-and-after values in `fields`, so their flags add them.
  */
 export function changedFields(update: PendingUpdate | null | undefined): string[] {
   if (!update) return [];
 
   const names = new Set(Object.keys(update.fields ?? {}));
   if (update.content_changed) names.add('content');
+  if (update.thumbnail_url) names.add('thumbnail');
 
   const rank = (name: string) => {
     const at = (FIELD_ORDER as readonly string[]).indexOf(name);
@@ -130,10 +148,73 @@ export function waitedFor(queuedAt: string, now: Date = new Date()): string {
   return days === 1 ? '1 day' : `${days} days`;
 }
 
-/** The toast after a publish (`updated` false) or an update, read from the listing the server answered with. */
-export function publishedMessage(kind: CatalogKind, updated: boolean, result: ModeratedListing | null | undefined): string {
+/**
+ * The toast after a publish (`updated` false) or an update, read from the listing the server answered with.
+ * `entryHeld` says the changelog entry posted after the update joined it.
+ */
+export function publishedMessage(
+  kind: CatalogKind, updated: boolean, result: ModeratedListing | null | undefined, entryHeld = false,
+): string {
   const noun = KIND_LABELS[kind].one;
+  if (entryHeld) return `${noun} sent for review with its changelog entry`;
   if (result && awaitsReview(result)) return `${noun} sent for review`;
 
   return `${noun} ${updated ? 'updated' : 'published'} successfully!`;
+}
+
+
+/**
+ * The entries an update adds, as they stand after its later ops: an edit rewrites a held create and a
+ * delete drops it. Edits and deletes of approved entries show only in the compare view.
+ */
+export function heldChangelogEntries(update: PendingUpdate | null | undefined): HeldChangelogEntry[] {
+  const held = new Map<string, HeldChangelogEntry>();
+  for (const op of update?.changelog ?? []) {
+    if (op.op === 'delete') held.delete(op.id);
+    else if (op.op === 'create' || held.has(op.id)) held.set(op.id, { id: op.id, title: op.title, body: op.body, date: op.date });
+  }
+
+  return [...held.values()];
+}
+
+/** How many entries the changelog holds once the update applies: the live ones, plus held creates, minus held deletes. */
+export function changelogCountAfter(liveIds: readonly string[], update: PendingUpdate | null | undefined): number {
+  const ids = new Set(liveIds);
+  for (const op of update?.changelog ?? []) {
+    if (op.op === 'create') ids.add(op.id);
+    else if (op.op === 'delete') ids.delete(op.id);
+  }
+
+  return ids.size;
+}
+
+/** The update after a held create the server answered with only the entry. */
+export function withHeldCreate(update: PendingUpdate | null | undefined, entry: HeldChangelogEntry): PendingUpdate {
+  return {
+    fields: {},
+    content_changed: false,
+    ...update,
+    changelog: [...(update?.changelog ?? []), { op: 'create', ...entry }],
+  };
+}
+
+/** The toast when an edit or delete of a live changelog entry joined the pending update. */
+export const HELD_CHANGE_TOAST = 'Your change shows after a mod approves the update';
+
+/** The toast when an update's approval must wait for its contest's results. */
+export const JUDGING_APPROVAL_TOAST = "This update waits for the contest results. Approve it after they're announced.";
+
+/**
+ * The message the composer opens with after a mod rejects an update.
+ *
+ * @param target - What was rejected
+ */
+export function rejectedUpdateTemplate(target: { kind: CatalogKind; name: string }): { subject: string; body: string } {
+  const noun = KIND_LABELS[target.kind].one.toLowerCase();
+
+  return {
+    subject: `Your update to the ${noun} "${target.name}" was not approved`,
+    body: `Your update to **"${target.name}"** was not approved, so players still see the live version.`
+      + ' You can send a new update at any time.\n\n**What needs to change:** ',
+  };
 }

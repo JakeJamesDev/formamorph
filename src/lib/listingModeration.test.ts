@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  MODERATION_LABELS, awaitsReview, changedFields, fieldLabel, moderationStatus, publishedMessage, waitedFor,
+  MODERATION_LABELS, awaitsReview, changedFields, fieldLabel, heldChangelogEntries, moderationStatus,
+  changelogCountAfter, publishedMessage, rejectedUpdateTemplate, waitedFor, withHeldCreate,
 } from './listingModeration';
 
 describe('how long an item waited', () => {
@@ -94,13 +95,76 @@ describe('the changed fields of an update', () => {
       .toEqual(['description']);
   });
 
+  it('adds the thumbnail when the update holds one, and reads the side edits by their server names', () => {
+    expect(changedFields({
+      fields: {
+        compatible_worlds: { approved: [], pending: ['w2'] },
+        required_dependencies: { approved: ['d1'], pending: [] },
+        spoiler: { approved: false, pending: true },
+        visibility: { approved: 'public', pending: 'unlisted' },
+      },
+      thumbnail_url: '/api/reviews/w1/thumbnail',
+    })).toEqual(['thumbnail', 'visibility', 'spoiler', 'required_dependencies', 'compatible_worlds']);
+    expect(fieldLabel('required_dependencies')).toBe('Required Dependencies');
+    expect(fieldLabel('compatible_worlds')).toBe('Compatible Worlds');
+  });
+
   it('sorts fields it does not know after the known ones', () => {
     expect(changedFields({ fields: { zeta: { approved: 1, pending: 2 }, alpha: { approved: 1, pending: 2 }, name: { approved: 'a', pending: 'b' } } }))
       .toEqual(['name', 'alpha', 'zeta']);
   });
 });
 
+describe('the held changelog entries', () => {
+  const create = (id: string, title: string) => ({ op: 'create' as const, id, title, body: 'b', date: '2026-10-20' });
+
+  it('lists held creates as their later edits leave them, without the deleted ones', () => {
+    expect(heldChangelogEntries({
+      changelog: [
+        create('n1', 'First'),
+        create('n2', 'Second'),
+        { op: 'edit', id: 'n1', title: 'First, retitled', body: 'b2', date: '2026-10-21' },
+        { op: 'delete', id: 'n2' },
+        // An edit of a live entry is not a new entry.
+        { op: 'edit', id: 'live-1', title: 'Live', body: 'b', date: '2026-09-01' },
+      ],
+    })).toEqual([{ id: 'n1', title: 'First, retitled', body: 'b2', date: '2026-10-21' }]);
+  });
+
+  it('is empty without an update', () => {
+    expect(heldChangelogEntries(null)).toEqual([]);
+  });
+
+  it('counts the changelog as the update leaves it: held creates in, held deletes out', () => {
+    expect(changelogCountAfter(['a', 'b'], {
+      changelog: [create('n1', 'New'), { op: 'delete', id: 'a' }, { op: 'edit', id: 'b', title: 'B', body: '', date: '2026-10-20' }],
+    })).toBe(2);
+    expect(changelogCountAfter(['a'], null)).toBe(1);
+  });
+
+  it('appends a held create to the update, or starts one', () => {
+    const entry = { id: 'n1', title: 'First', body: 'b', date: '2026-10-20' };
+    expect(withHeldCreate(null, entry)).toEqual({ fields: {}, content_changed: false, changelog: [{ op: 'create', ...entry }] });
+    expect(withHeldCreate({ fields: { name: { approved: 'a', pending: 'b' } }, changelog: [create('n0', 'Zero')] }, entry).changelog)
+      .toEqual([create('n0', 'Zero'), { op: 'create', ...entry }]);
+  });
+});
+
+describe('the rejected-update template', () => {
+  it('names the listing and says players keep the live version', () => {
+    const { subject, body } = rejectedUpdateTemplate({ kind: 'dictionary', name: 'Marsh Words' });
+    expect(subject).toBe('Your update to the dictionary "Marsh Words" was not approved');
+    expect(body).toBe('Your update to **"Marsh Words"** was not approved, so players still see the live version.'
+      + ' You can send a new update at any time.\n\n**What needs to change:** ');
+  });
+});
+
 describe('the publish message', () => {
+  it('says the changelog entry went with the update when the server held it', () => {
+    expect(publishedMessage('world', true, { moderation_state: 'approved', has_pending_update: true }, true))
+      .toBe('World sent for review with its changelog entry');
+  });
+
   it('says sent for review for a new listing that waits', () => {
     expect(publishedMessage('world', false, { moderation_state: 'pending' })).toBe('World sent for review');
   });

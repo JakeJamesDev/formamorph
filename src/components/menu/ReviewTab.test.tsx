@@ -141,6 +141,63 @@ describe('the item dialog', () => {
     expect(within(dialog).getByText('marsh')).toBeTruthy();
   });
 
+  it('shows an update as its changed fields, both thumbnails and its changelog operations', async () => {
+    // jsdom has no object URLs; the browser's contract is a string the image can load.
+    URL.createObjectURL = vi.fn(() => 'blob:pending-thumb');
+    URL.revokeObjectURL = vi.fn();
+    const thumb = vi.spyOn(ReviewService, 'fetchPendingThumbnail').mockResolvedValue(new Blob(['png']));
+    vi.mocked(WorldStorageService.readListingDetails).mockImplementation(async (id) => (id === 'w1'
+      ? {
+        status: 'ok',
+        details: {
+          anonymousLikes: false, thumbnailFile: 'live.png',
+          changelog: [{ id: 'e1', world_id: 'w1', title: 'Ferry Fixes', body: '', entry_date: '2026-09-01', created_at: '', updated_at: '' }],
+        },
+      }
+      : id === 'dep-1' ? { status: 'ok', details: { changelog: null, anonymousLikes: false, name: 'Marsh Words' } }
+        : id === 'dep-hidden' ? { status: 'gone', hidden: true } : { status: 'gone' }));
+    stubQueue([item({
+      type: 'update',
+      pendingUpdate: {
+        fields: {
+          visibility: { approved: 'public', pending: 'unlisted' },
+          spoiler: { approved: false, pending: true },
+          required_dependencies: { approved: [], pending: ['dep-1', 'dep-gone', 'dep-hidden'] },
+        },
+        changelog: [
+          { op: 'create', id: 'n1', title: 'The Drowned Bell', body: 'A bell tower.', date: '2026-10-20' },
+          { op: 'delete', id: 'e1' },
+        ],
+        content_changed: true,
+        thumbnail_url: '/api/reviews/w1/thumbnail',
+      },
+    })]);
+
+    render(<ReviewTab active />);
+    const dialog = await openRow('Sedge Landing');
+
+    const table = await within(dialog).findByRole('table', { name: 'Changed Fields' });
+    const row = (label: string) => within(table).getByRole('rowheader', { name: label }).closest('tr') as HTMLElement;
+    expect(within(row('Visibility')).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['Public', 'Unlisted']);
+    expect(within(row('Spoiler')).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['No', 'Yes']);
+    expect(await within(row('Required Dependencies')).findByText('Marsh Words')).toBeTruthy();
+    expect(await within(row('Required Dependencies')).findByText('Removed listing')).toBeTruthy();
+    // A listing that exists but the reader may not see is not called removed.
+    expect(await within(row('Required Dependencies')).findByText('Hidden listing')).toBeTruthy();
+    expect(within(row('Content')).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['Current file', 'New file']);
+
+    expect((within(row('Thumbnail')).getByRole('img', { name: 'Live thumbnail' }) as HTMLImageElement).src).toMatch(/\/thumbnails\/live\.png$/);
+    const pending = await within(row('Thumbnail')).findByRole('img', { name: 'Pending thumbnail' });
+    expect(pending.getAttribute('src')).toBe('blob:pending-thumb');
+    expect(thumb).toHaveBeenCalledWith('/api/reviews/w1/thumbnail', expect.any(AbortSignal));
+
+    const ops = within(within(dialog).getByRole('list', { name: 'Changelog Changes' })).getAllByRole('listitem');
+    expect(ops.map((op) => op.textContent)).toEqual([
+      expect.stringMatching(/^AddThe Drowned Bell.*A bell tower\./),
+      'DeleteFerry Fixes',
+    ]);
+  });
+
   it('downloads the waiting content', async () => {
     stubQueue([item()]);
     vi.spyOn(ReviewService, 'fetchContent').mockResolvedValue({ worldOverview: { name: 'Sedge Landing' } });
@@ -186,18 +243,36 @@ describe('approving', () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps an update that must wait for contest results, with the server’s words', async () => {
-    stubQueue([item({ type: 'update' })]);
-    vi.spyOn(ReviewService, 'approve').mockRejectedValue(new ReviewConflictError('Approval waits for the contest results'));
+  it('keeps an update whose contest is being judged, and says the approval waits for results', async () => {
+    stubQueue([item({ type: 'update', pendingUpdate: { fields: {}, content_changed: true } })]);
+    vi.spyOn(ReviewService, 'approve').mockRejectedValue(
+      new ReviewConflictError('Spooky Season is being judged, so its entries cannot be changed', 'CONTEST_LOCKED'),
+    );
     const onChanged = vi.fn();
 
     render(<ReviewTab active onChanged={onChanged} />);
     const dialog = await openRow('Sedge Landing');
     fireEvent.click(within(dialog).getByRole('button', { name: /Approve/ }));
 
-    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('Approval waits for the contest results'));
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith(
+      "This update waits for the contest results. Approve it after they're announced.",
+    ));
     expect(screen.getByRole('button', { name: /Sedge Landing/, hidden: true })).toBeTruthy();
     expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('drops an update another mod or the author already settled', async () => {
+    stubQueue([item({ type: 'update', pendingUpdate: { fields: {}, content_changed: true } })]);
+    vi.spyOn(ReviewService, 'approve').mockRejectedValue(new ReviewConflictError('This is no longer waiting for review'));
+    const onChanged = vi.fn();
+
+    render(<ReviewTab active onChanged={onChanged} />);
+    const dialog = await openRow('Sedge Landing');
+    fireEvent.click(within(dialog).getByRole('button', { name: /Approve/ }));
+
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('Another mod already handled this item'));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Sedge Landing/, hidden: true })).toBeNull());
+    expect(onChanged).toHaveBeenCalled();
   });
 
   it('keeps the row when the approval fails for another reason', async () => {
@@ -265,6 +340,27 @@ describe('rejecting', () => {
     const composer = await screen.findByTestId('composer');
     expect(reject).toHaveBeenCalledWith('w1', undefined);
     expect(composer.textContent).not.toMatch(/another week/);
+  });
+
+  it('confirms an update, then opens the composer on the rejected-update template', async () => {
+    stubQueue([item({ type: 'update', pendingUpdate: { fields: { name: { approved: 'Sedge Landing', pending: 'Sedge Harbor' } } } })]);
+    const reject = vi.spyOn(ReviewService, 'reject').mockResolvedValue({ id: 'w1', author: { id: 'a1', username: 'wren_hallow' } });
+
+    render(<ReviewTab active />);
+    const dialog = await openRow('Sedge Landing');
+    fireEvent.click(within(dialog).getByRole('button', { name: /Reject/ }));
+
+    const confirm = await screen.findByRole('alertdialog');
+    expect(reject).not.toHaveBeenCalled();
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Reject' }));
+
+    const composer = await screen.findByTestId('composer');
+    expect(reject).toHaveBeenCalledWith('w1', undefined);
+    expect(composer.dataset.to).toBe('wren_hallow');
+    expect(composer.dataset.subject).toBe('Your update to the world "Sedge Landing" was not approved');
+    expect(composer.textContent).toMatch(/players still see the live version/);
+    expect(composer.textContent).not.toMatch(/deleted on/i);
+    expect(toast.success).toHaveBeenCalledWith('Update rejected');
   });
 
   it('sends nothing when the quarantine dialog is canceled', async () => {

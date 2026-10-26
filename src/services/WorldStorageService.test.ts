@@ -856,10 +856,16 @@ describe('the listing changelog', () => {
     expect(await WorldStorageService.fetchListingDetails('w1')).toBeNull();
   });
 
-  it.each([403, 404])('reads a %i as a listing this reader may not see', async (status) => {
-    vi.mocked(fetch).mockResolvedValue(res({ error: 'World not found' }, false, status));
+  it('reads a 404 as a listing this reader may not see', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'World not found' }, false, 404));
 
     expect(await WorldStorageService.readListingDetails('w1')).toEqual({ status: 'gone' });
+  });
+
+  it('reads a 403 as gone too, and says the listing is there but hidden', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Not visible' }, false, 403));
+
+    expect(await WorldStorageService.readListingDetails('w1')).toEqual({ status: 'gone', hidden: true });
   });
 
   it.each([429, 500])('reads a %i as no answer, not as gone', async (status) => {

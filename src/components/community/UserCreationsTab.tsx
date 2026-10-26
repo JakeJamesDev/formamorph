@@ -19,6 +19,7 @@ import { parseServerDate } from "@/lib/serverDate";
 /** The review states the row marks, and the tone of each. A resubmitted listing shows this, not Hidden. */
 const REVIEW_TONES: Partial<Record<ModerationStatus, string>> = {
   pending: "text-foreground",
+  updatePending: "text-foreground",
   resubmitted: "text-warning",
 };
 

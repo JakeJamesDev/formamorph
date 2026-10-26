@@ -290,6 +290,14 @@ describe('a listing in review', () => {
     expect(await screen.findByText('Pending Review')).toBeTruthy();
   });
 
+  it('is marked update pending while its update waits', async () => {
+    listing([creation({ moderation: 'updatePending' })]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+
+    expect(await screen.findByText('Update Pending')).toBeTruthy();
+  });
+
   it('is marked resubmitted, not hidden, once its author fixed it', async () => {
     listing([creation({ quarantined: true, moderation: 'resubmitted' })]);
 
