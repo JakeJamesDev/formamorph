@@ -94,6 +94,12 @@ The server will hold new listings and updates for review before players can see 
   - **Resubmission:** a confirmation → the reject route → the same composer and template.
   - **Update:** a confirmation → the reject route → the composer opens with a new template for a rejected update.
   - If the mod closes the composer, no message goes out.
+- **Ticket 09 rulings.**
+  - The client field keys use the server's names: `required_dependencies` and `compatible_worlds`. `thumbnail` comes from `thumbnail_url` and `content` from `content_changed`.
+  - Dependency and compatibility ids show as listing names, with "Removed listing" on a `404` and Added or Removed tags.
+  - One `PendingUpdateTable` serves the author's Compare and the mod's item dialog.
+  - A held changelog create shows in the success toast and with a Pending tag in the author's Changelog panel.
+  - A `409` with `CONTEST_LOCKED` keeps the row and shows the judging toast. Any other `409` drops the row.
 - **Approval refused during judging.** A `409` during judging shows a toast that the approval waits for contest results.
 - **Admin controls.**
   - The Users tab gets a **Trusted** toggle and a marker, both for admins only.
