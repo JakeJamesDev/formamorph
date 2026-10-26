@@ -12,7 +12,7 @@ Every location and entity in **Valentines Survival** has art in one style, and t
 
 - Run the Art Harness (02) with this world's art-direction line from ticket 08, in a GPU window the user names. One landscape backdrop per location and one portrait per entity, for every item without art. Existing art stays (Q10).
 - Review the contact sheet, redo by name what misses its subject, and record each redo's seed.
-- **Visibility rules (Q18):** at least one location backdrop and one entity image that change with a stat, trait, persona or daypart. Make the variant through the harness with the state's tags added, then set the rule by script. A location rule with no owner reads the played persona.
+- **Visibility rules (Q18):** at least one location backdrop and one entity image that change with a stat, trait, persona or daypart. Make the variant through the harness with the state's tags added, then set complementary rules on slot 0 and slot 1 by script, since play shows the first visible image and an unruled slot 0 always wins. A location rule with no owner reads the played persona.
 - **Map Background:** none. This world is not a map world (Q12).
 - Refine `imageTags` where the stored art drifted from them, so the tags describe the art.
 - The Test Bench image rules hold: WebP, labeled, every rule target present, no all-hideable entity, no zero-span percent rule.
