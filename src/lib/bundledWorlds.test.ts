@@ -25,7 +25,7 @@ const FEATURES: Record<string, Feature[]> = {
   'rampage': ['scripts', 'statToggles', 'scriptExits', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips'],
-  'valentines': ['scripts'],
+  'valentines': ['scripts', 'relationships', 'newFieldChips'],
   'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights'],
 };
 
@@ -36,7 +36,7 @@ const PLANNED: Record<string, Feature[]> = {
   'rampage': [],
   'slime': ['visibilityRules'],
   'sugarscape': ['mapBackground', 'visibilityRules'],
-  'valentines': ['relationships', 'visibilityRules', 'newFieldChips'],
+  'valentines': ['visibilityRules'],
   'veilwood': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
 };
 
