@@ -6,7 +6,9 @@ import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/drone.json?raw';
 import { gateOf, gateStates, settleDefaults, underfills, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
-import type { PlayerStat } from '@/types';
+import type { PlayerStat, World } from '@/types';
+import { entityIdsAt } from './entityPresence';
+import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { bundledWorldHarness } from '@/test/bundledWorldHarness';
 import { readWorldTools } from './tools/worldTools';
 import { openWorldToolTurn } from './tools/worldToolTurn';
@@ -150,5 +152,45 @@ describe('the lock_target World Tool', () => {
   it('moves the lock to the later target, because Stack Calls is off', async () => {
     const { triggers } = await lockOn('Rustjaw', 'Tiamat');
     expect(await filtered('Rustjaw ducks as Tiamat roars.', triggers)).toBe('Rustjaw ducks as **⌖ Tiamat** roars.');
+  });
+
+  it('marks a pack target in the singular and the plural', async () => {
+    const drakes = await lockOn('Blight Drakes');
+    expect(await filtered('A blight drake dives, and both drakes shriek.', drakes.triggers))
+      .toBe('A **⌖ blight drake** dives, and both **⌖ drakes** shriek.');
+    const burrower = await lockOn('Glassback Burrower');
+    expect(await filtered('Two burrowers burst from the sand.', burrower.triggers)).toBe('Two **⌖ burrowers** burst from the sand.');
+    const foxes = await lockOn('the marsh foxes');
+    expect(await filtered('One fox bolts.', foxes.triggers)).toBe('One **⌖ fox** bolts.');
+  });
+});
+
+describe('the drone map', () => {
+  const world = JSON.parse(raw) as World;
+  const locationNamed = (name: string) => world.locations.find((location) => location.name === name)!;
+  const castAt = (name: string) =>
+    entityIdsAt(locationNamed(name).id, world.entities).map((id) => world.entities.find((entity) => entity.id === id)!.name);
+
+  it.each([
+    ['Ashfall Capital', 'Archon Vael'],
+    ['Scavenger Wastes', 'Rustjaw'],
+    ['Demon Frontier', 'Ser Halden'],
+  ])('puts the %s opening character, %s, at that start', (start, character) => {
+    expect(castAt(start)).toContain(character);
+  });
+
+  it('rolls one frontier pass for both directions of the route and the fort', () => {
+    const pass = world.placeholders!.find((placeholder) => placeholder.name === 'Frontier Pass')!;
+    const route = world.connections!.find((connection) => (connection.aToB?.hint ?? '').includes(pass.id))!;
+    const fort = locationNamed('Fort Graywatch');
+    const texts = [route.aToB!.hint!, route.bToA!.hint!, fort.aiDescription!];
+    // Each fresh roll draws the next value, so two separate rolls would read differently.
+    let draws = 0;
+    const nextValue: PlaceholderPick = (values) => values[draws++ % values.length].text;
+    const rolls = primeRolls(world.placeholders!, texts, {}, nextValue);
+    const resolved = texts.map((text) => resolvePlaceholders(text, { placeholders: world.placeholders!, rolls }));
+    const rolledName = pass.values.map((value) => value.text).find((name) => resolved[0].includes(name))!;
+    expect(rolledName).toBeDefined();
+    for (const text of resolved) expect(text).toContain(rolledName);
   });
 });
