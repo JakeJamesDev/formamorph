@@ -232,7 +232,7 @@ A script reads `args` and the same globals a world script reads. Each entry has 
 | `locations` | Every location by name, with `present` | [Location](ScriptsGuide#location) |
 | `location` | The entry of the current location | [Location](ScriptsGuide#location) |
 | `memories` | The Memory panel's rows, oldest first | [Memory](ScriptsGuide#memory) |
-| `dictionaries` | Every dictionary, with `entries`. A disabled entry is listed with `enabled: false` | [Dictionaries](ScriptsGuide#dictionaries) |
+| `dictionaries` | Every dictionary, with `entries`. Disabled entries read `enabled: false` | [Dictionaries](ScriptsGuide#dictionaries) |
 | `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](ScriptsGuide#stats), [Traits](ScriptsGuide#traits), [Placeholders](ScriptsGuide#placeholders), [Persona](ScriptsGuide#persona) |
 | `clock` | The story clock. It reads the opening outside a game | [The Story Clock](ScriptsGuide#the-story-clock) |
 | `turn` | The player's action and the turn number. A call the AI makes in a turn reads that turn | [Turn](ScriptsGuide#turn) |

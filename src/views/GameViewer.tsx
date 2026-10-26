@@ -19,7 +19,7 @@ import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
 import {
-  overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, withPinWrites, type SandboxState, type ScriptTrigger,
+  changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, withPinWrites, type SandboxState, type ScriptTrigger,
   type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
 import { landSwitchRun } from "@/lib/switchRunLanding";
@@ -148,6 +148,7 @@ import {
   sceneTagsPass,
   summaryPass,
   scriptActionFor,
+  OPENING_STAND_IN,
 } from "../lib/turnPipeline/turnPasses";
 import {
   createBackgroundPassQueue, digestTarget,
@@ -719,8 +720,8 @@ const GameViewer = ({
     setPendingAttachments,
     scriptTells,
     setScriptTells,
-    openingCue: openingTurnAction,
-    setOpeningCue: setOpeningTurnAction,
+    openingAction: openingTurnAction,
+    setOpeningAction: setOpeningTurnAction,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -1511,7 +1512,7 @@ const GameViewer = ({
   });
   /** The `turn.action` a re-rolled turn reads: history's "START GAME" proxy stands for the opening cue. */
   const rerolledAction = (action: string): string => {
-    if (action !== "START GAME") return action.trim();
+    if (action !== OPENING_STAND_IN) return action.trim();
     if (openingTurnAction !== null) return openingTurnAction;
     return openingSessionRef.current.drawn?.opening.kind === "narration" ? "" : resolveDrawn(openingCue()).trim();
   };
@@ -1597,7 +1598,7 @@ const GameViewer = ({
       };
       setIsGameStarted(false);
       if (redraw.opening.kind === "narration") {
-        pendingTurnRef.current = { action: "START GAME", writtenNarration: redrawText };
+        pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
         return;
       }
@@ -1605,7 +1606,7 @@ const GameViewer = ({
       // the ref. A save from before the proxy kept the real text in history, and its first redraw keeps it.
       const sameRow = priorOpening?.opening === redraw.opening;
       setPlayerInput(
-        priorOpening === null && action !== "START GAME" ? action : (sameRow && openingActionRef.current) || redrawText,
+        priorOpening === null && action !== OPENING_STAND_IN ? action : (sameRow && openingActionRef.current) || redrawText,
       );
       return;
     }
@@ -2221,15 +2222,15 @@ const GameViewer = ({
   // What a user Tool's script reads (Q24): the turn's start as code has left it, as an On Call World Tool reads it.
   // Set beside `prepareTurnStartCode`, once per render.
   const toolScriptSourceRef = useRef<((base: TurnCodeState | null) => ToolScriptSource) | null>(null);
+  /** The `turn` a run between turns reads: no action, and the last finished turn. */
+  const betweenTurnsRead = useCallback((): SandboxTurn => ({ action: "", number: closedTurns(fullMessageHistoryRef.current) }), []);
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(() => {
     const source = toolScriptSourceRef.current?.(null);
     // A call outside the turn's requests reads between turns, even while a turn runs.
-    const between = source?.state
-      ? { ...source, state: { ...source.state, turn: { action: "", number: closedTurns(fullMessageHistoryRef.current) } } }
-      : source;
+    const between = source?.state ? { ...source, state: { ...source.state, turn: betweenTurnsRead() } } : source;
     return buildToolSnapshot(liveScene(), withLoreToggles(playthroughDictionaries, loreToggles), toolMemorySource(), between);
-  }, [liveScene, playthroughDictionaries, loreToggles, toolMemorySource]);
+  }, [liveScene, playthroughDictionaries, loreToggles, toolMemorySource, betweenTurnsRead]);
   // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
   useHelpWorldSource(toolWorld, getWorldData);
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
@@ -3465,7 +3466,7 @@ const GameViewer = ({
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
           notes: liveScene().notes,
-          turn: turnReadRef.current ?? { action: "", number: closedTurns(fullMessageHistoryRef.current) },
+          turn: turnReadRef.current ?? betweenTurnsRead(),
           loreToggles: baseLore,
         };
         const turn: StatCodeTurn = {
@@ -3511,7 +3512,7 @@ const GameViewer = ({
             entityStats: nextEntityStats,
           });
           const world = result.worldWrites;
-          if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0 && result.hiddenChanged.length === 0) {
+          if (!result.traits && !changedAnyStat(result)) {
             const written = nextPins === basePins && nextLore === baseLore && nextEntityStats === entityPrevious ? null : stateAfterRun();
             return { written, gateStats: result.gateStats, world };
           }
@@ -3627,7 +3628,7 @@ const GameViewer = ({
       if (!prepared) return;
       try {
         // No action caused a player's switch, so it reads none, even while a turn runs.
-        const read = { action: "", number: turnReadRef.current?.number ?? closedTurns(fullMessageHistoryRef.current) };
+        const read = { action: "", number: turnReadRef.current?.number ?? betweenTurnsRead().number };
         const played = { ...prepared.turn, state: { ...prepared.turn.state, turn: read } };
         const turn = fromWorld === world ? played : { ...played, switchedFrom: fromWorld };
         const result = await runSwitchScripts(turn, events);
@@ -4925,7 +4926,7 @@ const GameViewer = ({
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });
       if (drawn.opening.kind === "narration") {
-        pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };
+        pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: openingText };
         setPendingTurnNonce((n) => n + 1);
       } else {
         setPlayerInput(openingText);

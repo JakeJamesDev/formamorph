@@ -894,7 +894,7 @@ if (stats.Gate.value === 0) dictionaries["Chapter Two"].enabled = true;
 ```
 
 - The list holds the world's dictionaries that the player left on at **Enter World** and the ones you ship off, then the library dictionaries the player picked there. Of two that share a code name, the later one is the entry.
-- **A dictionary you ship off is listed with `enabled: false`.** Clear the dictionary's **Enabled** checkbox (Advanced mode) to keep its entries from the AI. A script can switch it on later in the story.
+- **A dictionary you ship off reads `enabled: false`.** Clear the dictionary's **Enabled** checkbox (Advanced mode) to keep its entries from the AI. A script can switch it on later in the story.
 - **A dictionary the player turned off at Enter World reads as an unknown dictionary.** A write to it is ignored and reported.
 - **A write applies as an entry write does.** It applies after the run, and later in the same run the dictionary reads what you set. An undo or a re-roll clears it with the turn. A Before the AI write changes this turn's narration.
 - **A library dictionary the player picked takes writes like any other.** The player's library copy never changes.
@@ -926,7 +926,7 @@ if (dictionaries.Lore.entries["Old King"].value.includes("exiled")) self.value +
 if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabled = true;
 ```
 
-- **A disabled entry is listed with `enabled: false`.** A dictionary the player turned off lists none.
+- **A disabled entry reads `enabled: false`.** A dictionary the player turned off lists none.
 - **Of two entries with one name, an enabled one is the entry.** Among two enabled or two disabled entries, the later one is. A write through the name reaches that entry. An entry with no name has no key.
 - **A name the dictionary has no entry for reads as a blank entry.** Its `id`, `name` and `value` are `''`, `keys` is an empty list, and `enabled` and `constant` are false. A write through it is ignored and reported.
 - **A write applies after the run.** Writes apply in run order, so a later write wins. Later in the same run, the entry reads what you set, and its name stays on the entry it named at the start of the run.

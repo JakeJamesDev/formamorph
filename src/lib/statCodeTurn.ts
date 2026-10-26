@@ -541,8 +541,15 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
   };
 }
 
+/** The stat ids a run changed: its value, its code delta, or its `hidden`. */
+export type ChangedStats = Pick<StatCodeTurnResult, 'moved' | 'boundsChanged' | 'hiddenChanged'>;
+
+/** Whether a run changed any stat. */
+export const changedAnyStat = ({ moved, boundsChanged, hiddenChanged }: ChangedStats): boolean =>
+  moved.length > 0 || boundsChanged.length > 0 || hiddenChanged.length > 0;
+
 /** The ids of the stats in `now` whose value, code delta or `hidden` differs from `start`, matched by id. */
-function changedStats(start: readonly PlayerStat[], now: readonly PlayerStat[]): Pick<StatCodeTurnResult, 'moved' | 'boundsChanged' | 'hiddenChanged'> {
+function changedStats(start: readonly PlayerStat[], now: readonly PlayerStat[]): ChangedStats {
   const was = new Map(start.map((stat) => [stat.id, stat]));
   const moved: string[] = [];
   const boundsChanged: string[] = [];
@@ -750,13 +757,14 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const result = settleWrites(
       owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, ownerWrites.get(owner.id) ?? new Map(), inForce,
     );
-    const settled = result.moved.length || result.boundsChanged.length || result.hiddenChanged.length ? result : { ...result, stats: owner.stats };
+    const settled = changedAnyStat(result) ? result : { ...result, stats: owner.stats };
     return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
   const withSentence = sentence === undefined ? {} : { sentence };
-  const { stats, moved, boundsChanged, hiddenChanged } = settleWrites(state.stats, switched.state.stats, mainWrites, active);
-  if (!traitResult && moved.length === 0 && boundsChanged.length === 0 && hiddenChanged.length === 0) {
+  const settledMain = settleWrites(state.stats, switched.state.stats, mainWrites, active);
+  const { stats, moved, boundsChanged, hiddenChanged } = settledMain;
+  if (!traitResult && !changedAnyStat(settledMain)) {
     return { stats: state.stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...withOwners, ...withSentence, ...withWorld };
   }
   return {
@@ -786,7 +794,7 @@ function settleWrites(
   current: readonly PlayerStat[],
   writes: ReadonlyMap<string, SettledWrite>,
   active: readonly Trait[],
-): Pick<StatCodeTurnResult, 'moved' | 'boundsChanged' | 'hiddenChanged'> & { stats: PlayerStat[] } {
+): ChangedStats & { stats: PlayerStat[] } {
   const moved: string[] = [];
   const boundsChanged: string[] = [];
   const hiddenChanged: string[] = [];
