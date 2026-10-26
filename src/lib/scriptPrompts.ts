@@ -116,7 +116,7 @@ export function createScriptPromptStore(mintId: () => string = randomUUID): Scri
     prompt(request) {
       type Answer = ScriptPromptAnswer<typeof request.kind>;
       if (!listeners.size) {
-        if (isNotice(request)) return Promise.resolve(undefined as Answer);
+        if (isNotice(request)) return Promise.resolve(answerAs<typeof request.kind>(undefined));
         return Promise.reject(new PromptCanceled());
       }
       const id = mintId();
@@ -138,6 +138,10 @@ export function createScriptPromptStore(mintId: () => string = randomUUID): Scri
   };
 }
 
+/** A host answers the request union; the generic `prompt` signature wants the answer of the one kind asked. */
+const answerAs = <K extends ScriptPromptKind>(answer: ScriptPromptAnswer | undefined): ScriptPromptAnswer<K> =>
+  answer as ScriptPromptAnswer<K>;
+
 /** Close every open prompt of `store`: each script fails as canceled (Q15). */
 export const cancelOpenPrompts = (store: ScriptPromptStore): void =>
   store.pending().forEach(({ id }) => store.cancel(id));
@@ -157,7 +161,7 @@ export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandler
       if (!isNotice(asked)) return asks.prompt(request);
       if (asked.kind === 'tell') handlers.onTell(asked.text);
       else handlers.onToast(asked.text);
-      return Promise.resolve(undefined as ScriptPromptAnswer<typeof request.kind>);
+      return Promise.resolve(answerAs<typeof request.kind>(undefined));
     },
   };
 }
@@ -169,7 +173,7 @@ export const silentPrompts: ScriptPromptHost = {
     const answer: ScriptPromptAnswer = asked.kind === 'confirm' ? false
       : asked.kind === 'ask' ? (asked.multiple ? [] : null)
         : asked.kind === 'input' ? '' : undefined;
-    return Promise.resolve(answer as ScriptPromptAnswer<typeof request.kind>);
+    return Promise.resolve(answerAs<typeof request.kind>(answer));
   },
 };
 

@@ -8,14 +8,14 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
-import { scriptsChoices } from "@/lib/scriptedChoices";
+import { scriptsChangeChoices } from "@/lib/scriptedChoices";
 import { landsOnPage, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from "@/lib/surface/useSurfaceOpenRequest";
 import { stepTab, targetRoute, type SurfaceSteps } from "@/lib/surface/surfaceRoute";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { type SandboxMemory, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
+import { EMPTY_REPLY, type SandboxMemory, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
@@ -343,6 +343,9 @@ const aiChoicesOf = (stored: AITurnResult): string[] => stored.aiChoices ?? stor
  *  when a script changed it. */
 const choicesPatch = (aiChoices: readonly string[], scripted: readonly string[] | undefined): Pick<AITurnResult, "choices" | "aiChoices"> =>
   (scripted ? { choices: [...scripted], aiChoices: [...aiChoices] } : { choices: [...aiChoices], aiChoices: undefined });
+
+/** What a Re-generate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
+type ChoicesRerun = { ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
 
 /** Page one as stored. */
 const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
@@ -766,7 +769,7 @@ const GameViewer = ({
   usePersonaNotice();
   // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
   // The entities are every one whose scripts run: the played one and the picked library ones included.
-  const worldScriptsChoices = useMemo(() => scriptsChoices({
+  const worldScriptsChangeChoices = useMemo(() => scriptsChangeChoices({
     scripts: worldScripts, stats: worldStats, statGroups: authoredStatGroups, traits: authoredTraits, traitGroups: worldTraitGroups,
     entities: [...codeEntities.world, ...codeEntities.library], placeholders: worldPlaceholders,
   }), [worldScripts, worldStats, authoredStatGroups, authoredTraits, worldTraitGroups, codeEntities, worldPlaceholders]);
@@ -1683,51 +1686,90 @@ const GameViewer = ({
   };
 
   /**
-   * The After the AI batch rerun over a new draw, on the turn's replay state (Q19): the pre-turn state, the before
-   * box, the turn's On Call writes and its saved asks, built as the stats re-roll builds them with nothing landing.
-   * Answers the scripts' choices, undefined when none changed them, null when the rerun cannot start.
+   * A turn replayed up to its After the AI batch, for the stats re-roll and the choices rerun: the start scripts on
+   * a fresh game's first page, the before box, then the turn's On Call writes. `land` writes each run to the game.
+   * `quiet` answers every `player` call silent (Q20) and lands nothing. The batch then reads the turn's own page
+   * and `afterChoices`. `onWrote` hears what the runs have left after each stage, so a caller can undo it when
+   * `signal` stops the replay (null then).
    */
-  const rerunChoiceScripts = async (
-    prev: AITurnResult, action: string, drawn: readonly string[], page: number,
-  ): Promise<readonly string[] | undefined | null> => {
-    const preTurnState = regenerateState(gameStates, initialStateRef.current, page);
-    if (!preTurnState?.globalStats) return null;
-    const preTurn = liveSnapshotOf(preTurnState);
-    const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
-    /** A prepared run with every `player` call silent (Q20); null when it failed. */
-    const ran = async (prepared: PreparedStatCode, mode: Partial<StatCodeTurn>) => {
+  const replayToAfter = async (
+    landing: "land" | "quiet",
+    { prev, action, page, preTurn, turnHours, afterChoices, signal, onWrote }: {
+      prev: AITurnResult; action: string; page: number; preTurn: LiveSnapshot; turnHours: number;
+      afterChoices: readonly string[]; signal?: AbortSignal; onWrote?: (written: TurnCodeState | null) => void;
+    },
+  ): Promise<{ written: TurnCodeState | null; base: TurnCodeState; afterTriggers: ReturnType<typeof replayedToolEffects>["afterTriggers"] } | null> => {
+    /** What a prepared run leaves with nothing landed and every `player` call silent; null when it changed nothing or failed. */
+    const quietly = async (prepared: PreparedStatCode | null, mode: Partial<StatCodeTurn> = {}) => {
+      if (!prepared) return null;
       try {
-        return await runStatCodeTurn({ ...prepared.turn, prompts: silentPrompts, ...mode });
+        return prepared.writtenBy(await runStatCodeTurn({ ...prepared.turn, prompts: silentPrompts, ...mode }));
       } catch (error) {
         console.error("Error processing stat code:", error);
         return null;
       }
     };
-    /** What a prepared run leaves, with nothing landed; null when it changed nothing or failed. */
-    const quietly = async (prepared: PreparedStatCode | null, mode: Partial<StatCodeTurn> = {}) => {
-      const result = prepared && await ran(prepared, mode);
-      return prepared && result ? prepared.writtenBy(result) : null;
-    };
-    turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), narration: "", choices: [] };
-    const startClock = { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar };
-    const startStats = preTurn.globalStats ?? [];
-    const started = page === 1 && newPlaythroughRef.current
-      ? await quietly(prepareStatCode(startStats, startStats, [], startClock, preTurn, 'start')) : null;
-    const boxStats = started?.globalStats ?? startStats;
-    let base = await quietly(prepareStatCode(boxStats, boxStats, [], startClock, started ?? preTurn, 'before')) ?? started ?? preTurn;
-    const { onCallWrites } = replayedToolEffects(worldTools, prev.toolCalls ?? []);
-    if (onCallWrites.length) base = await quietly(prepareTurnStartCode(base), { replayed: onCallWrites, triggersOnly: true }) ?? base;
-    // Past the before box, the batch reads the turn's own page and the new draw.
-    turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev), choices: [...drawn] };
+    turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), ...EMPTY_REPLY };
+    const clock = { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar };
+    const stats = preTurn.globalStats ?? [];
+    const opening = page === 1 && newPlaythroughRef.current;
+    let written: TurnCodeState | null;
+    if (landing === "land") {
+      ({ written } = await runBeforeAI(stats, clock, preTurn, opening));
+    } else {
+      const started = opening ? await quietly(prepareStatCode(stats, stats, [], clock, preTurn, "start")) : null;
+      const boxStats = started?.globalStats ?? stats;
+      written = await quietly(prepareStatCode(boxStats, boxStats, [], clock, started ?? preTurn, "before")) ?? started;
+    }
+    onWrote?.(written);
+    // Past the before box, the batch reads the turn's own page and the choices it is given.
+    if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev), choices: [...afterChoices] };
+    if (signal?.aborted) return null;
+    const { onCallWrites, afterTriggers } = replayedToolEffects(worldTools, prev.toolCalls ?? []);
+    if (onCallWrites.length) {
+      const replay = { replayed: onCallWrites, triggersOnly: true };
+      const onCalled = prepareTurnStartCode(written ?? preTurn);
+      if (landing === "land") {
+        if (onCalled) written = onCalled.finish(await runStatCodeTurn({ ...onCalled.turn, ...replay })).written ?? written;
+      } else {
+        written = await quietly(onCalled, replay) ?? written;
+      }
+      onWrote?.(written);
+    }
+    if (signal?.aborted) return null;
+    return { written, base: written ?? preTurn, afterTriggers };
+  };
+
+  /**
+   * The After the AI batch rerun over a new draw, on the turn's replay state (Q19): the pre-turn state, the before
+   * box, the turn's On Call writes and its saved asks, replayed with nothing landing. Answers `ran: false` when
+   * the rerun cannot start, else whether the scripts changed the choices.
+   */
+  const rerunChoiceScripts = async (
+    prev: AITurnResult, action: string, drawn: readonly string[], page: number,
+  ): Promise<ChoicesRerun> => {
+    const preTurnState = regenerateState(gameStates, initialStateRef.current, page);
+    if (!preTurnState?.globalStats) return { ran: false };
+    const preTurn = liveSnapshotOf(preTurnState);
+    const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
+    const replay = await replayToAfter("quiet", { prev, action, page, preTurn, turnHours, afterChoices: drawn });
+    if (!replay) return { ran: false };
+    const { base } = replay;
     const baseStats = base.globalStats ?? [];
     const response = replayedStatResponse(prev, resolveStatNames(baseStats, resolvePH));
     const { applied, asks, entityTurn } = askedOver(response, baseStats, base.entityStats ?? {}, base.ownedTraits ?? {});
     const prepared = prepareStatCode(
-      baseStats, applied.stats, asks, { deltaHours: turnHours, elapsedHours: gameTime, calendar }, base, 'after',
+      baseStats, applied.stats, asks, { deltaHours: turnHours, elapsedHours: gameTime, calendar }, base, "after",
       { entityTurn, thresholdStats: baseStats },
     );
-    const result = prepared && await ran(prepared, { choicesOnly: true });
-    return result ? result.choices : null;
+    if (!prepared) return { ran: false };
+    try {
+      const result = await runStatCodeTurn({ ...prepared.turn, prompts: silentPrompts, choicesOnly: true });
+      return result.choices ? { ran: true, changed: true, choices: result.choices } : { ran: true, changed: false };
+    } catch (error) {
+      console.error("Error processing stat code:", error);
+      return { ran: false };
+    }
   };
 
   // Re-roll only the choices for the latest turn, keeping its narration and stats. A world whose scripts change
@@ -1736,7 +1778,7 @@ const GameViewer = ({
     const target = partialRegenTarget();
     if (!target || !choicesEnabled) return;
     const { prev, action } = target;
-    const scripted = worldScriptsChoices && choicesEnabledRef.current;
+    const scripted = worldScriptsChangeChoices && choicesEnabledRef.current;
     const page = currentPage;
     // The new list streams in from empty; replacing the old one row by row would show it at once.
     setChoices([]);
@@ -1761,10 +1803,10 @@ const GameViewer = ({
         );
         if (signal.aborted || !response) return;
         const drawn = parseChoices(response);
-        const rerun = scripted ? await rerunChoiceScripts(prev, action, drawn, page) : undefined;
-        if (signal.aborted || rerun === null) return;
+        const rerun: ChoicesRerun = scripted ? await rerunChoiceScripts(prev, action, drawn, page) : { ran: true, changed: false };
+        if (signal.aborted || !rerun.ran) return;
         // The new draw is the AI's own list now.
-        shown = choicesPatch(drawn, rerun);
+        shown = choicesPatch(drawn, rerun.changed ? rerun.choices : undefined);
       } finally {
         if (scripted) {
           choicesHeldRef.current = false;
@@ -1812,8 +1854,6 @@ const GameViewer = ({
         setOwnedTraits(preTurn.ownedTraits ?? {});
       };
       toPreTurn();
-      // The replayed turn is still the latest in history, so its number is the closed count.
-      turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), narration: "", choices: [] };
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
@@ -1821,28 +1861,20 @@ const GameViewer = ({
       const tellTurn = latestTurnId(fullMessageHistoryRef.current);
       const priorTells = turnTells(scriptTells, tellTurn);
       if (tellTurn) setScriptTells((now) => withoutTimings(now, tellTurn, REROLLED_TIMINGS));
-      // Page one of a fresh game restores the pre-start state, so the start scripts run again first.
-      // A stat re-roll keeps the turn's location, clock and cast, so the replay's world writes drop.
-      let { written } = await runBeforeAI(
-        preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
-        page === 1 && newPlaythroughRef.current,
-      );
-      // Past the before box, the replay reads the turn's own page and the AI's own choices (Q18).
-      if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev), choices: aiChoicesOf(prev) };
       // The box has written by the time the request can be stopped, so every exit that abandons the
       // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
+      let boxed = false;
       let committed = false;
       try {
-        if (signal.aborted) return;
-        // The turn's Tool effects replay (Q39): its On Call writes land as saved, with no script run (Q41), and
-        // its After calls fire again with the batch.
-        const { onCallWrites, afterTriggers } = replayedToolEffects(worldTools, prev.toolCalls ?? []);
-        const onCalled = onCallWrites.length ? prepareTurnStartCode(written ?? preTurn) : null;
-        if (onCalled) {
-          written = onCalled.finish(await runStatCodeTurn({ ...onCalled.turn, replayed: onCallWrites, triggersOnly: true })).written ?? written;
-        }
-        if (signal.aborted) return;
-        const base = written ?? preTurn;
+        // Page one of a fresh game restores the pre-start state, so the start scripts run again first.
+        // A stat re-roll keeps the turn's location, clock and cast, so the replay's world writes drop.
+        // The replay reads the turn's own page and the AI's own choices (Q18), and replays the turn's Tool
+        // effects (Q39): its On Call writes land as saved, with no script run (Q41), its After calls fire again.
+        const replay = await replayToAfter("land", {
+          prev, action, page, preTurn, turnHours, afterChoices: aiChoicesOf(prev), signal, onWrote: (w) => { boxed = !!w; },
+        });
+        if (!replay) return;
+        const { written, base, afterTriggers } = replay;
         const snapshot = statRequestFor(enabledStats(
           written ? resolveStatNames(written.globalStats ?? [], resolvePH) : globalStatsRef.current,
           statEnabledRef.current,
@@ -1874,7 +1906,7 @@ const GameViewer = ({
         await settleTurn(run?.gateStats ?? null);
         armTurnSnapshot();
       } finally {
-        if (!committed && written) {
+        if (!committed && boxed) {
           beforeBoxDeltasRef.current = {};
           setGlobalStats(preTurn.globalStats ?? []);
           toPreTurn();
@@ -2792,7 +2824,7 @@ const GameViewer = ({
     landingRef.current = null;
     choicesHeldRef.current = true;
     heldChoicesRef.current = null;
-    choicesScriptedRef.current = worldScriptsChoices && planHasPass(plan, "choices");
+    choicesScriptedRef.current = worldScriptsChangeChoices && planHasPass(plan, "choices");
     setNarrationSettled(false);
 
     // What the turn's own derivations carry between passes. The pipeline's material holds everything the
@@ -2885,7 +2917,7 @@ const GameViewer = ({
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
       turnMemoriesRef.current = scriptMemoriesRef.current;
-      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1, narration: "", choices: [] };
+      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1, ...EMPTY_REPLY };
       if (isOpeningTurn) setOpeningTurnAction(turnReadRef.current.action);
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
@@ -3797,7 +3829,7 @@ const GameViewer = ({
 
   // A stat response laid over a turn's stats and its entities' stats, with the asks the After batch reads, by owner.
   const askedOver = useCallback(
-    (response: StatResponse, baseStats: PlayerStat[], entityBase: EntityStatValues, owned: Parameters<typeof entityInForceUnder>[0]) => {
+    (response: StatResponse, baseStats: PlayerStat[], entityBase: EntityStatValues, owned: OwnedTraitStates) => {
       const live = new Set(enabledStats(rawGlobalStatsRef.current, statEnabledRef.current).map((s) => s.id));
       const applied = applyStatResponse(baseStats, response, live, null);
       const entityApplied = applyEntityStatResponse(entityBase, response, entityInForceUnder(owned));

@@ -5,7 +5,7 @@
  */
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import {
-  executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
+  EMPTY_REPLY, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
   type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
@@ -327,7 +327,7 @@ const statOf = (home: UnitHome): Stat | null => ('stat' in home ? home.stat : nu
 /** The page and choices read empty at a timing before the turn's reply is done (Q5); later, the choices are the ones
  *  the batch's earlier scripts left. A read-only run is a user Tool's, which reads the state's turn as it stands. */
 const turnRead = (turn: SandboxTurn, { timing, readOnly, choices }: ScriptRunUnit): SandboxTurn => {
-  if (!readOnly && (timing === 'start' || timing === 'before' || timing === 'output')) return { ...turn, narration: '', choices: [] };
+  if (!readOnly && (timing === 'start' || timing === 'before' || timing === 'output')) return { ...turn, ...EMPTY_REPLY };
   return choices && !turn.choicesOff ? { ...turn, choices } : turn;
 };
 
