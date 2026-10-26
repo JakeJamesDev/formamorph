@@ -7,11 +7,22 @@ import raw from '@/defaultworlds/slime.json?raw';
 import { resolveOwners } from './owners';
 import { settleDefaults, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
-import { resolvePlaceholders } from './placeholders';
+import { resolveEntityText, resolvePlaceholders } from './placeholders';
 import { openingPool } from './openings';
 import { bundledWorldHarness, withValues } from '@/test/bundledWorldHarness';
+import { readWorldTools } from './tools/worldTools';
+import { openWorldToolTurn } from './tools/worldToolTurn';
+import { onCallRunner } from './tools/onCallRunner';
+import { withLoreWrites } from './loreToggles';
+import { openingFold } from './openingState';
+import { resolveEntityTexts } from './resolveWorldNames';
+import { relationshipLines } from './entityRelationships';
+import { DAYPARTS } from './gameClock';
+import { canvasRects } from './locationCanvas';
+import type { StatCodeTurn, StatCodeTurnResult } from './statCodeTurn';
+import type { Daypart, LoreToggles } from '@/types';
 
-const { world, persona: resident, gate, ownerWorld, none: NONE, traitNamed, activeNames, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
+const { world, persona: resident, gate, ownerWorld, none: NONE, traitNamed, activeNames, build, personaStats, turn, personaStatsOut, activeIds } = bundledWorldHarness(raw);
 const allPlaceholders = [...world.placeholders!, ...world.entities.flatMap((e) => e.placeholders ?? []), ...world.dictionaries!.flatMap((d) => d.placeholders ?? [])];
 
 interface Turn {
@@ -135,5 +146,145 @@ describe('openings on Slime Outbreak', () => {
     });
     expect(pool.length).toBeGreaterThan(1);
     expect(pool.every((e) => e.ownerId === null)).toBe(true);
+  });
+});
+
+const bulletin = world.dictionaries!.find((d) => d.name === 'The Ashburn Bulletin')!;
+const reports = world.dictionaries!.find((d) => d.name === 'Block Reports')!;
+const loreSource = { placeholders: world.placeholders ?? [], dictionaries: world.dictionaries!, rolls: { world: {} } };
+/** `codeTurn` with the world's books in reach, as scripts switched their entries so far. */
+const withLore = (codeTurn: StatCodeTurn, loreToggles: LoreToggles): StatCodeTurn =>
+  ({ ...codeTurn, state: { ...codeTurn.state, placeholders: loreSource, loreToggles } });
+
+describe('the mark_overrun World Tool', () => {
+  const { tools, dropped } = readWorldTools((JSON.parse(raw) as { tools?: unknown }).tools);
+  const markOverrun = tools.find((tool) => tool.name === 'mark_overrun')!;
+  const blocks = markOverrun.params[0].options;
+  const failIfFallback = () => { throw new Error('mark_overrun is a World Tool.'); };
+
+  /** One On Call run of mark_overrun for `block`, over the lore as earlier calls left it. */
+  async function mark(block: string, loreToggles: LoreToggles = {}) {
+    let landed: StatCodeTurnResult | undefined;
+    const runner = onCallRunner(() => ({
+      turn: withLore(turn(DEFAULT, { stats: personaStats(DEFAULT) }), loreToggles),
+      land: (result) => { landed = result; },
+    }));
+    const execute = openWorldToolTurn(tools, runner).executor(failIfFallback);
+    const reply = await execute(markOverrun, JSON.stringify({ block }), new AbortController().signal);
+    return { reply: reply.text, writes: landed?.loreWrites ?? [], memories: landed?.worldWrites?.memory ?? [], toggles: withLoreWrites(loreToggles, landed?.loreWrites) };
+  }
+
+  it('loads as an On Call Tool offered to narration, with a report for every block it offers', () => {
+    expect(dropped).toEqual([]);
+    expect(markOverrun.handler).toMatchObject({ kind: 'script', timing: 'call' });
+    expect(markOverrun.offeredTo).toEqual(['narration']);
+    expect(blocks.map((block) => reports.entries.find((e) => e.name === `${block} Overrun`)?.enabled)).toEqual(blocks.map(() => false));
+  });
+
+  it.each(blocks)('switches on the report for %s and logs one memory', async (block) => {
+    const report = reports.entries.find((e) => e.name === `${block} Overrun`)!;
+    const { reply, writes, memories } = await mark(block);
+    expect(writes).toEqual([{ book: reports.id, entry: report.id, field: 'enabled', value: true }]);
+    expect(memories).toHaveLength(1);
+    expect(memories[0]).toContain(block);
+    expect(reply).toContain('marked overrun');
+  });
+
+  it('leaves an overrun block as it is on a second call, and says so', async () => {
+    const first = await mark('Harborfront');
+    const second = await mark('Harborfront', first.toggles);
+    expect(second.writes).toEqual([]);
+    expect(second.memories).toEqual([]);
+    expect(second.reply).toContain('already overrun');
+  });
+
+  it('marks a second block after the first has fallen', async () => {
+    const first = await mark('Crescent Row');
+    const second = await mark("St. Anselm's", first.toggles);
+    expect(second.writes).toEqual([{ book: reports.id, entry: reports.entries.find((e) => e.name === "St. Anselm's Overrun")!.id, field: 'enabled', value: true }]);
+  });
+});
+
+describe('the Wanted Notice script', () => {
+  const notice = bulletin.entries.find((e) => e.name === 'Wanted Notice')!;
+  const ON: LoreToggles = withLoreWrites({}, [{ book: bulletin.id, entry: notice.id, field: 'enabled', value: true }]);
+
+  /** The lore writes of one After the AI turn that ends at `suspicion`, on the world's stats as a new game opens on the build. */
+  async function noticeWrites(state: SettleResult, suspicion: number, loreToggles: LoreToggles = {}) {
+    const opened = openingFold(world, { traits: [], owned: { [resident.id]: activeIds(state) } }).state;
+    const globals = withValues(opened.stats, { Suspicion: suspicion });
+    const out = await runStatCodeTurn({ ...withLore(turn(state, { stats: personaStats(state), globals }), loreToggles), worldScripts: world.scripts });
+    return out.loreWrites ?? [];
+  }
+  const switchTo = (value: boolean) => [{ book: bulletin.id, entry: notice.id, field: 'enabled', value }];
+
+  it('starts off, and comes in on every turn once on', () => {
+    expect(notice.enabled).toBe(false);
+    expect(notice.constant).toBe(true);
+  });
+
+  it('switches the notice on at 75% Suspicion, and not below', async () => {
+    expect(await noticeWrites(DEFAULT, 75)).toEqual(switchTo(true));
+    expect(await noticeWrites(DEFAULT, 74)).toEqual([]);
+  });
+
+  it('reads Suspicion as a share of the max the Long Coat & Gloves raise', async () => {
+    // The coat takes Suspicion's max to 125, so 93 is 74.4%.
+    const coat = build('Long Coat & Gloves');
+    expect(await noticeWrites(coat, 93)).toEqual([]);
+    expect(await noticeWrites(coat, 94)).toEqual(switchTo(true));
+  });
+
+  it('switches it off again below 75%, and writes nothing while it holds', async () => {
+    expect(await noticeWrites(DEFAULT, 80, ON)).toEqual([]);
+    expect(await noticeWrites(DEFAULT, 50, ON)).toEqual(switchTo(false));
+  });
+});
+
+describe("Hollis Pratt's night hours", () => {
+  const hollis = world.entities.find((e) => e.name === 'Hollis Pratt')!;
+  const counterOpen = hollis.traits!.find((t) => t.name === 'Counter Open')!;
+  const openAt = (daypart: Daypart) => (settleDefaults({ ...gate, daypart }).active.owners[hollis.id] ?? []).includes(counterOpen.id);
+
+  it.each(DAYPARTS)('opens the counter only in the evening and at night (%s)', (daypart) => {
+    expect(openAt(daypart)).toBe(daypart === 'evening' || daypart === 'night');
+  });
+});
+
+describe('the Ashburn canvas', () => {
+  it('places every location by hand', () => {
+    expect(world.locations.filter((l) => !l.canvasPosition).map((l) => l.name)).toEqual([]);
+  });
+
+  it('keeps every node clear of every other node but the boxes that hold it', () => {
+    const rects = canvasRects(world.locations);
+    const holds = (outer: string, inner: string): boolean => {
+      const parent = world.locations.find((l) => l.id === inner)?.parentId;
+      return !!parent && (parent === outer || holds(outer, parent));
+    };
+    const overlaps: string[] = [];
+    for (const first of world.locations) {
+      for (const second of world.locations) {
+        if (first.id >= second.id || holds(first.id, second.id) || holds(second.id, first.id)) continue;
+        const [one, other] = [rects.get(first.id)!, rects.get(second.id)!];
+        const apart = one.x >= other.x + other.width || other.x >= one.x + one.width || one.y >= other.y + other.height || other.y >= one.y + one.height;
+        if (!apart) overlaps.push(`${first.name} / ${second.name}`);
+      }
+    }
+    expect(overlaps).toEqual([]);
+  });
+});
+
+describe("Sergeant Okonjo's missing partner", () => {
+  const okonjo = world.entities.find((e) => e.name === 'Sergeant Abena Okonjo')!;
+  const partner = okonjo.placeholders!.find((p) => p.name === 'Missing Partner')!;
+  const watch = world.entities.find((e) => e.name === 'Quarantine Watch')!;
+
+  it.each(partner.values.map((v) => v.text))('names %s in her Relationship label and her description alike', (name) => {
+    const rolls = { world: { [partner.id]: name } };
+    const [resolved, resolvedWatch] = resolveEntityTexts([okonjo, watch], (owner, text) => resolveEntityText(owner, text, { placeholders: allPlaceholders, rolls }));
+    expect(relationshipLines([resolved, resolvedWatch], [okonjo.id])[okonjo.id])
+      .toEqual([`Quarantine Watch is Sergeant Abena Okonjo's unit, one short since ${name} went down the storm drains`]);
+    expect(resolved.aiDescription).toContain(name);
   });
 });

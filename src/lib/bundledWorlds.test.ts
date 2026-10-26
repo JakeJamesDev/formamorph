@@ -23,7 +23,7 @@ const FEATURES: Record<string, Feature[]> = {
   'emberwatch': ['traitGates', 'blueprints', 'relationships', 'scriptLore', 'newFieldChips'],
   'open-chat': [],
   'rampage': ['scripts', 'statToggles', 'scriptExits', 'newFieldChips'],
-  'slime': ['scripts', 'traitModes'],
+  'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights'],
   'valentines': ['scripts'],
   'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights'],
@@ -34,7 +34,7 @@ const PLANNED: Record<string, Feature[]> = {
   'drone': [],
   'emberwatch': ['mapBackground', 'visibilityRules'],
   'rampage': ['mapBackground', 'visibilityRules'],
-  'slime': ['tools', 'relationships', 'timeGates', 'scriptLore', 'visibilityRules', 'newFieldChips'],
+  'slime': ['visibilityRules'],
   'sugarscape': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
   'valentines': ['relationships', 'visibilityRules', 'newFieldChips'],
   'veilwood': ['timeGates', 'mapBackground', 'visibilityRules', 'newFieldChips'],
@@ -55,6 +55,10 @@ const OPEN_FINDINGS: Record<string, Record<string, string>> = {
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
   },
+  'slime': Object.fromEntries([
+    'Ashburn General Overrun', 'Ashburn High Shelter Overrun', 'Crescent Row Overrun', 'Harborfront Overrun',
+    "St. Anselm's Overrun", 'The Marquette District Overrun', 'Wanted Notice',
+  ].map((entry) => [`dictionary-disabled: ${entry}`, SCRIPT_SWITCHED])),
 };
 
 const ownersOf = (world: World): { traits: Trait[]; groups: TraitGroup[]; scripts: Script[] }[] => [
