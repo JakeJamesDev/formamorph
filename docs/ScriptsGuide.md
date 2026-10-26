@@ -58,7 +58,7 @@ When you pick another entity, the stat and trait inputs that list its names clea
 <!-- keywords: reference an entity's trait, trait of an entity, find a name, pick a name, insert a path, menu, variable button, drill down, dictionary placeholder, persona trait, stat value, don't type names, copy the right spelling -->
 <!-- route: worldEditorStat.code -->
 
-Select the **Variable** button in the toolbar of a code box on a stat's **Scripts** tab. The menu opens on **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries** and **Clock**. In the box of an entity's stat or a Blueprint stat, an **Owner** group follows **This Stat**. **Stats** always lists the global stats. Each group opens level by level: a list of your world's own names, then a name's fields, and for an entity, its **Traits** and **Placeholders**. Select a field to insert its whole path at the caret. To reach `entities.Mira.traits.Wounded.enabled`, open **Entities**, **Mira**, **Traits**, **Wounded**, and then select **enabled**. The path runs as inserted, with no name to type.
+Select the **Variable** button in the toolbar of a code box on a stat's **Scripts** tab. The menu opens on **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries**, **Clock**, **Turn**, **Locations**, **Location** and **Memories**, then fields such as `notes`, then verbs such as `discover`. In the box of an entity's stat or a Blueprint stat, an **Owner** group follows **This Stat**. **Stats** always lists the global stats. Each group opens level by level: a list of your world's own names, then a name's fields, and for an entity, its **Traits** and **Placeholders**. Select a field to insert its whole path at the caret. To reach `entities.Mira.traits.Wounded.enabled`, open **Entities**, **Mira**, **Traits**, **Wounded**, and then select **enabled**. The path runs as inserted, with no name to type.
 
 ## How to Limit the AI's Change to a Stat
 <!-- keywords: clamp, cap, max, restrict, prevent, too fast, delta, script, throttle, big swings, jumps too much, slow down gains, never go up, dampen, narrator overreacts, at most per turn -->
@@ -243,7 +243,7 @@ A turn runs scripts at five points:
 | **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts | In the opening prompt | `player` |
 | **When a Trait Switches** | Each time a trait turns on or off in play | At once | `player` and `trait` |
 
-A timing adds names to the ones every script reads. The editor's **Variable** menu lists the names a timing adds in a group at the end: **Narration**, **Player**, and **Switched Trait**. In a trait's script, **This Trait** replaces **This Stat**, and a world script has neither.
+A timing adds names to the ones every script reads. The editor's **Variable** menu lists the names a timing adds in a group near the top, right after **This Stat** (or **This Trait**) and **Owner**: **Narration**, **Player**, and **Switched Trait**. In a trait's script, **This Trait** replaces **This Stat**, and a world script has neither.
 
 | Step | What happens |
 | --- | --- |

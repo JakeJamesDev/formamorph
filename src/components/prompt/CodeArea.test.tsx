@@ -716,7 +716,7 @@ describe('CodeArea', () => {
       await user.keyboard('{ArrowDown}');
       expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
       await user.keyboard('{ArrowUp}{ArrowUp}');
-      expect(screen.getByRole('button', { name: 'notes' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'discover' })).toHaveFocus();
       await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
       // A name level opens on its search box, its first row active.
       expect(level('Stats')).toBeInTheDocument();

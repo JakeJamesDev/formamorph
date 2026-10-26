@@ -91,6 +91,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Scripts:**
+    - **The code editor's Variable menu lists groups first, then fields, then verbs.** Timing groups such as Narration and Player now sit right after This Stat or This Trait.
   - **Turning off Flash Attention in the Local Model panel now turns it off when the model loads.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
   - **The bundled model's out-of-VRAM error names your Context Size and Parallel Requests settings.** It said "sequences" before and gave no next step. Now it tells you which setting to lower.
   - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.
