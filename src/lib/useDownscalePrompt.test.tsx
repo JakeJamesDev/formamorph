@@ -165,6 +165,15 @@ describe('useDownscalePrompt — the Optimize offer counts only what converts', 
     expect(screen.getByText(/Optimize converts them to lossless WebP/)).toBeInTheDocument();
   });
 
+  it('words a world prompt for one listed image in the singular', async () => {
+    render(<Host />);
+    act(() => { void api.promptWorld(worldWith('data:image/png;base64,big')); });
+
+    await screen.findByText('Optimize');
+    expect(screen.getByText(/Downscale also shrinks it to fit/)).toBeInTheDocument();
+    expect(screen.queryByText(/shrinks them/)).toBeNull();
+  });
+
   it('reports the images an accepted run kept, so the standing offer reads as a fact', async () => {
     // The grow-guard's own answer: the encoder hands the original back rather than a larger WebP.
     vi.mocked(encodeInWorker).mockImplementation((url: string) => Promise.resolve(url));
@@ -279,7 +288,7 @@ describe('useDownscalePrompt — lossless images are Downscale targets at any si
     act(() => { run = api.promptWorld(worldWith(LOSSLESS_WEBP)); });
 
     expect(await screen.findByText(/1 lossless image Downscale would shrink \(50 KB total\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Downscale shrinks them \(~5 KB\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Downscale shrinks it \(~5 KB\)/)).toBeInTheDocument();
     // Optimize would keep an image that is already WebP, so it is not offered.
     expect(screen.queryByText('Optimize')).toBeNull();
     fireEvent.click(screen.getByText('Downscale'));

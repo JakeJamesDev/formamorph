@@ -214,7 +214,7 @@ export function useDownscalePrompt() {
         title: 'Optimize world images?',
         description:
           `This world has ${describeScan(s)} (${formatBytes(s.totalBytes)} total). ` +
-          optimizeTail(s, true),
+          optimizeTail(s, s.n > 1),
         cancelLabel: 'Keep as-is',
       }));
       if (mode === 'off') return null;
@@ -262,7 +262,7 @@ export function useDownscalePrompt() {
     title: 'Optimize imported images?',
     description:
       `This import has ${describeScan(s)} (${formatBytes(s.totalBytes)} total). ` +
-      optimizeTail(s, true),
+      optimizeTail(s, s.n > 1),
     cancelLabel: 'Keep as-is',
   });
 

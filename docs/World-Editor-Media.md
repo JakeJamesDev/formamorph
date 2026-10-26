@@ -60,7 +60,7 @@ Only files that exist show. An empty slot makes no card.
 <!-- keywords: optimize images, shrink images, downscale, over budget, thumbnail budget, spinner, undo optimize -->
 <!-- route: worldEditor.media#list-toolbar -->
 
-**Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location images and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
+**Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location images and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. **Downscale** turns every PNG, BMP and lossless WebP into a smaller lossy WebP, at any size. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
 
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
@@ -113,7 +113,19 @@ The **World › Map Background** cards hold the picture behind the [Locations ca
 - 🎚️ Each image can carry a Visibility rule. In play, the Map shows the first visible image, and no image when none is visible. A condition with no owner reads the persona.
 - 📐 Every image fits inside one shared frame at its own shape, so a swap lines up with your locations.
 - ➕ With no image, **No Images** shows a blank card. An upload there covers your locations.
-- 📦 The budget is 2560 px on the long edge and 1.5 MB.
+- 📦 The size limits are in [Image Sizes](#image-sizes).
+
+## Image Sizes
+<!-- keywords: image budget, size limit, long edge, recommended size, thumbnail budget, entity budget, background budget, map budget, over budget -->
+
+Each image slot has a recommended size. An image over either number shows **Over Budget**.
+
+| Slot | Long edge | File size |
+|---|---|---|
+| Thumbnail | 1024 px | 200 KB |
+| Entity | 1280 px | 250 KB |
+| Background | 1920 px | 900 KB |
+| Map | 2560 px | 1.5 MB |
 
 ## Sizes
 <!-- keywords: how size is measured, mb, kb, publish size match, total -->

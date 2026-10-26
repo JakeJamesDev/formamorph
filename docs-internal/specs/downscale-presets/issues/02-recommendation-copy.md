@@ -1,6 +1,6 @@
 # 02: Recommendation Copy
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -17,7 +17,16 @@ After this lands, an author can read each slot's recommendation as two numbers b
 
 ## Acceptance criteria
 
-- [ ] The image panel shows both numbers for each of the four slots, read from the slot table, with a frame per slot at 1280 wide in both themes: `.scratch/frames/budget-line-<slot>-<theme>.png`.
-- [ ] The help page's table lists the four slots with the values the slot table holds, and no other section states a budget number.
-- [ ] A world prompt for one listed image reads in the singular, shown in the prompt hook suite.
-- [ ] The copy sweep finds nothing on the changed lines.
+- [x] The image panel shows both numbers for each of the four slots, read from the slot table, with a frame per slot at 1280 wide in both themes: `.scratch/downscale-presets-02/frames/budget-line-<slot>-<theme>.png`. Eight frames; viewport emulated at 1280 wide, the pane's screenshot is 800 px wide. Slots: thumbnail, entity, background (a location), map.
+- [x] The help page's table lists the four slots with the values the slot table holds, and no other section states a budget number. Grep of the page for KB, MB and px shows only the table.
+- [x] A world prompt for one listed image reads in the singular, shown in the prompt hook suite. Test: "words a world prompt for one listed image in the singular".
+- [x] The copy sweep finds nothing on the changed lines. `npm run copy:sweep` notices sit on keyword comments and older text.
+
+## Landed
+
+**Not verified:** nothing left unticked.
+
+**For you:**
+- The panel line formats the byte number in decimal units (`formatBytes`), so it reads "about 250 KB", while the size before it uses binary units (79 KB). Look at the framed image line in the image panel.
+- The help page's new **Image Sizes** section sits between **Map Background** and **Sizes** in World-Editor-Media.md.
+- The world and import prompts now use the singular for one listed image; before, they said "them".
