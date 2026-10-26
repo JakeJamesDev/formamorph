@@ -21,7 +21,8 @@ Authors see **Update Pending** on a live listing with a waiting update, can comp
 - [ ] The publish modal shows a changelog entry posted after an update as pending.
 - [ ] The item dialog shows changed fields live versus pending, both thumbnails, and the changelog operations.
 - [ ] Rejecting an update asks first, then opens the composer with a new rejected-update template.
-- [ ] A judging `409` shows a toast that the approval waits for contest results.
+- [ ] A judging `409` (code `CONTEST_LOCKED`) shows a toast that the approval waits for contest results.
+- [ ] The field table also covers `visibility`, `spoiler`, `required_dependencies` and `compatible_worlds`, and the changelog list renders `create`, `edit` and `delete` ops (rulings T32–T35).
 - [ ] If the field table needs a new visual pattern, the user approved it before landing.
 - [ ] The Pending Update section has a `devRoutes` entry.
 - [ ] Frames: `.scratch/frames/pending-update-compare-{light,dark}.png` and `.scratch/frames/review-update-item-{light,dark}.png` at desktop width.
