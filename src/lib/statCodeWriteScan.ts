@@ -81,6 +81,12 @@ export function scanStatWrites(code: string): ScannedWrite[] {
   return writes;
 }
 
+// `turn` as a name of its own: no member access, no bracket key, no longer identifier.
+const NAMES_TURN = /(?<![\w$.'"\x60])turn(?![\w$'"\x60])/;
+
+/** Whether `code` names `turn` outside comments and strings, by any path: a read, an alias or a destructure (Q12). */
+export const namesTurn = (code: string): boolean => NAMES_TURN.test(blankCommentsAndStrings(code));
+
 /** One literal stat lookup: its route and the stat's code name. One through `entities` names the entity. */
 export interface ScannedLookup {
   root: Exclude<ScannedRoot, 'self'>;

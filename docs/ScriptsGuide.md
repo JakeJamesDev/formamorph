@@ -1096,6 +1096,7 @@ if (turn.number % 5 === 0 && !turn.action.startsWith('[')) stats.Stock.value = s
 
 An After the AI script can change the choices the player sees. Edit `turn.choices` as you edit any list: assign a new or filtered list, or use `push`, `splice` or an index.
 
+- **The choices wait for the scripts.** In a world with an After the AI script that uses `turn`, the choices show when the After the AI scripts finish. The input box unlocks with them. In other worlds, the choices show as soon as the narration settles.
 - **Scripts edit one list in turn.** Each After the AI script reads the list as the scripts before it left it. The player sees the list the last script leaves.
 - **A bad item fails the run.** Every item must be text that isn't blank. Otherwise the script fails and none of its writes land. The list stays as the scripts before it left it.
 - **An empty list is allowed.** The turn then shows no choices, and the player types an action.
