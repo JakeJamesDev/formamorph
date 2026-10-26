@@ -1,4 +1,4 @@
-import type { PlayerStat } from '@/types';
+import type { AITurnResult, PlayerStat, TurnStatAsk } from '@/types';
 import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
 import { statChipPartValues } from './chipValues/chipValues';
@@ -313,6 +313,22 @@ export function applyStatResponse(
     }),
     diagnostics,
   };
+}
+
+/** The asks a turn record saves (Q28), by owner and stat id; undefined with none. */
+export const savedStatAsks = (response: StatResponse): TurnStatAsk[] | undefined =>
+  (response.updates.length ? response.updates.map(({ ownerId, id, value, max }) => ({ ownerId, id, value, max })) : undefined);
+
+/** A stored turn's asks as a response to replay. A turn with no saved asks rebuilds its global value asks
+ *  from `stat_changes`, matched by name against `stats` as the player reads them. */
+export function replayedStatResponse(turn: Pick<AITurnResult, 'statAsks' | 'stat_changes'>, stats: readonly PlayerStat[]): StatResponse {
+  const updates: ResolvedStatUpdate[] = turn.statAsks
+    ? turn.statAsks.map((ask) => ({ ...ask, name: stats.find((stat) => stat.id === ask.id)?.name ?? ask.id }))
+    : turn.stat_changes.flatMap((change) => Object.entries(change).flatMap(([name, value]) => {
+      const stat = stats.find((candidate) => candidate.name.toLowerCase() === name);
+      return stat ? [{ ownerId: null, id: stat.id, name: stat.name, value, max: 0 }] : [];
+    }));
+  return { requestId: '', updates, diagnostics: [] };
 }
 
 /** The history's change map: the global stats alone, by name; request identities stay transient. */

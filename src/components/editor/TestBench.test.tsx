@@ -383,14 +383,14 @@ describe('TestBench script check', () => {
     await user.type(screen.getByRole('textbox', { name: 'Your name?' }), 'Ada{Enter}');
     await expect(name).resolves.toBe('Ada');
 
-    let road!: Promise<number | number[]>;
+    let road!: Promise<number | number[] | null>;
     act(() => { road = prompts.host.prompt({ kind: 'ask', question: 'Which road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false }); });
     await user.click(screen.getByRole('combobox', { name: 'Which road?' }));
     await user.click(await screen.findByRole('option', { name: 'B' }));
     await user.click(screen.getByRole('button', { name: 'OK' }));
     await expect(road).resolves.toBe(1);
 
-    let packed!: Promise<number | number[]>;
+    let packed!: Promise<number | number[] | null>;
     act(() => { packed = prompts.host.prompt({ kind: 'ask', question: 'Pack what?', options: ['Rope', 'Lamp'], multiple: true }); });
     await user.click(screen.getByRole('button', { name: 'Rope' }));
     await user.click(screen.getByRole('button', { name: 'Lamp' }));

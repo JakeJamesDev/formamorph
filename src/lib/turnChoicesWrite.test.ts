@@ -5,7 +5,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { snapshotOf, type UnitHome } from './sandboxSnapshot';
 import { openingStateOf } from './openingState';
-import { runStatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import type { ScriptPromptHost, ScriptPromptRequest } from './scriptPrompts';
 import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
 import { SAMPLE_CHOICES } from './scriptTestSamples';
 import { runToolScript } from './tools/toolScript';
@@ -112,10 +113,10 @@ describe('the After the AI batch’s choices', () => {
     ...counter, baseMin: -1, baseMax: 999999, baseRegen: 0, aiMaxDelta: 0, ...over, value: over.value ?? -1,
   });
   const after = (id: string, code: string): Script => ({ id, timing: 'after', code });
-  const batch = (worldScripts: Script[], traits: Trait[] = []) => runStatCodeTurn(statCodeTurnOf({
+  const batch = (worldScripts: Script[], traits: Trait[] = [], mode: Partial<StatCodeTurn> = {}) => runStatCodeTurn(statCodeTurnOf({
     stats: [stat({})], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, turn: LIVE, worldScripts,
     ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [], library: [], world: { traits, groups: [] } },
-    statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...mode,
   }));
 
   it('hands each script the list the scripts before it left', async () => {
@@ -147,6 +148,48 @@ describe('the After the AI batch’s choices', () => {
     const out = await batch([after('a', 'turn.choices = ["Only."]; traits.Brave.enabled = true;')], [brave]);
     expect(out.choices).toEqual(['Only.']);
     expect(out.stats.find((s) => s.id === 'c')?.value).toBe(11);
+  });
+
+  describe('in the choices-only mode', () => {
+    const brave: Trait = { id: 'brave', name: 'Brave', statChanges: [], playerToggle: true };
+    const choicesOnly = { choicesOnly: true };
+
+    it('lands the choices write and drops a stat write, a trait switch, a discover and a memory', async () => {
+      const out = await batch([
+        after('a', 'stats.Count.value = 7; traits.Brave.enabled = true; discover("Stranger"); memories.add("Seen.");'),
+        after('b', 'turn.choices.splice(0, 1);'),
+      ], [brave], choicesOnly);
+      expect(out.choices).toEqual(['Sit down.']);
+      expect(out.stats.find((s) => s.id === 'c')?.value).toBe(-1);
+      expect(out.moved).toEqual([]);
+      expect(out.traits).toBeUndefined();
+      expect(out.worldWrites).toBeUndefined();
+      expect(out.pinWrites).toEqual({});
+    });
+
+    it('answers every player call at once and shows nothing, and the script runs on', async () => {
+      const asked: ScriptPromptRequest[] = [];
+      const prompts: ScriptPromptHost = {
+        prompt: (request) => { asked.push(request); return new Promise(() => {}); },
+      };
+      const out = await batch([after('a', [
+        'player.tell("Told."); player.toast("Toasted.");',
+        'const one = player.ask("Which?", ["x", "y"]); const many = player.ask("Many?", ["x"], { multiple: true });',
+        'turn.choices = [String(player.confirm("Go?")), String(one), JSON.stringify(many), "[" + player.input("Name?") + "]"];',
+      ].join('\n'))], [], { ...choicesOnly, prompts });
+      expect(out.choices).toEqual(['false', 'null', '[]', '[]']);
+      expect(asked).toEqual([]);
+    });
+
+    it('runs no World Tool call, saved or armed', async () => {
+      const out = await batch([], [], {
+        ...choicesOnly,
+        triggers: [{ name: 'Bell', code: 'stats.Count.value = 3;', args: {} }],
+        replayed: [{ name: 'Bell', writes: { stats: [{ owner: null, writes: [{ id: 'c', value: 4 }] }] } }],
+      });
+      expect(out.stats.find((s) => s.id === 'c')?.value).toBe(-1);
+      expect(out.reply).toBeUndefined();
+    });
   });
 });
 

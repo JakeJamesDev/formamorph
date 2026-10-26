@@ -25,7 +25,7 @@ import { filledScriptsAt, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from '.
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { clamp } from './utils';
 import type { OwnerId, Scoped } from './scope';
-import type { ScriptPromptHost } from './scriptPrompts';
+import { silentPrompts, type ScriptPromptHost } from './scriptPrompts';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
@@ -149,6 +149,9 @@ export interface StatCodeTurn {
   triggers?: readonly ScriptTrigger[];
   /** Runs `triggers` and `replayed` alone, as an On Call Tool does. */
   triggersOnly?: boolean;
+  /** Runs the scripts alone, as Re-generate Choices does: `choices` is the one thing the result carries, and every
+   *  `player` call answers through {@link silentPrompts} (Q10, Q20). */
+  choicesOnly?: boolean;
   /** Saved World Tool writes laid on ahead of `triggers`, in this order, with no script run (Q41). */
   replayed?: readonly ReplayedTrigger[];
 }
@@ -661,8 +664,9 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const toolUnit = (name: string, code: string, rest: Pick<ScriptUnit, 'args' | 'writes'>): { unit: ScriptUnit; run: OwnerRun } => ({
     unit: { home: { kind: 'tool' }, stat: null, script: { id: `tool:${name}`, name, timing, code }, ...rest }, run: globalRun,
   });
-  const triggers = (turn.triggers ?? []).map(({ name, code, args }) => toolUnit(name, code, { args }));
-  const replayed = (turn.replayed ?? []).map(({ name, writes }) => toolUnit(name, '', { writes: scriptWritesOf(writes) }));
+  // A choices-only run runs no World Tool: its choice writes drop (Q21), and nothing else it writes lands.
+  const triggers = (turn.choicesOnly ? [] : turn.triggers ?? []).map(({ name, code, args }) => toolUnit(name, code, { args }));
+  const replayed = (turn.choicesOnly ? [] : turn.replayed ?? []).map(({ name, writes }) => toolUnit(name, '', { writes: scriptWritesOf(writes) }));
   const gateStatsAt = (mainStats: PlayerStat[], ownerStats: EntityStatValues): GateStats => {
     return withStateGateStats(state, gateStatsOf({ ...before, stats: mainStats, entityStats: ownerStats }, world));
   };
@@ -683,12 +687,13 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   // The choices an After the AI script left, which the next one reads (Q14). Unset until a script changes them.
   let choices: readonly string[] | undefined;
   let reply: TriggerReply | undefined;
+  const prompts = turn.choicesOnly ? silentPrompts : turn.prompts;
   const runUnit = async ({ unit, run }: (typeof ordered)[number]) => {
     // A replayed unit holds its saved writes already and runs no script.
     if (unit.writes) return;
     const { stat, script, args } = unit;
     const result = await snapshot.run({
-      home: unit.home, timing, code: script.code, ...switchInput, ...(args && { args }), ...(turn.prompts && { prompts: turn.prompts }),
+      home: unit.home, timing, code: script.code, ...switchInput, ...(args && { args }), ...(prompts && { prompts }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(choices && { choices }),
     });
@@ -701,6 +706,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     if (first) reply = { text: result.reply ?? null };
     if (result.sentence !== undefined) sentence = result.sentence;
     if (result.choices) choices = result.choices;
+    if (turn.choicesOnly) return;
     unit.writes = {
       stats: targetWrites(stat, result, run.owner.id),
       placeholders: result.placeholders ?? [],

@@ -1,6 +1,6 @@
 # 05: Re-Roll Choices Rerun
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03 — Choices Write And Landing
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,15 +15,27 @@ Spec: Q10, Q19, Q20, story 19.
 
 ## Acceptance criteria
 
-- [ ] In a scripting world, a choices re-roll shows the new AI list with the script's removal applied, and the turn record holds the AI list and the shown list
-- [ ] On the rerun a stat write, a trait write and a `discover` call land nothing; the stats, traits and cast stand as before the re-roll
-- [ ] On the rerun a `confirm` answers false and a `tell` shows nothing; the script's choice write after the call lands
-- [ ] A script that gates a choice on `self.delta` reads the turn's delta on the rerun, as the original run did
-- [ ] A stopped re-roll puts the turn's choices back as they were
-- [ ] In a world with no `turn` in its After the AI boxes, the re-roll sends the plain request and runs no script
-- [ ] Reinstating the cancel-on-ask host for the rerun turns the silent-call test red
-- [ ] The Scripts guide's re-roll note covers choices; the changelog fragment folds it into the choices entry
+- [x] In a scripting world, a choices re-roll shows the new AI list with the script's removal applied, and the turn record holds the AI list and the shown list: `GameViewer.choicesWrite.test.tsx` "shows the new draw once…" (the draw never renders before the rerun lands; dropping the hold turns it red)
+- [x] On the rerun a stat write, a trait write and a `discover` call land nothing; the stats, traits and cast stand as before the re-roll: view test "lands no stat write, trait switch or discover from the rerun"; `turnChoicesWrite.test.ts` "lands the choices write and drops…"
+- [x] On the rerun a `confirm` answers false and a `tell` shows nothing; the script's choice write after the call lands: view test "answers a confirm with false and shows no tell…"; executor test "answers every player call at once…" (`ask` `null`, `[]` with `multiple`, `input` `""`)
+- [x] A script that gates a choice on `self.delta` reads the turn's delta on the rerun, as the original run did: view test "reads the turn's delta on the rerun…", and "reads it from the stored changes…" for a turn saved without `statAsks` (Q28)
+- [x] A stopped re-roll puts the turn's choices back as they were: view test "puts the turn's lists back when stopped"
+- [x] In a world with no `turn` in its After the AI boxes, the re-roll sends the plain request and runs no script: view test "sends the plain request and runs no script" (`runStatCodeTurn` spy)
+- [x] Reinstating the cancel-on-ask host for the rerun turns the silent-call test red: mutated the choices-only host to `createScriptPromptStore()`; the view's silent-call test and the executor's went red; restored
+- [ ] The Scripts guide's re-roll note covers choices; the changelog fragment folds it into the choices entry: guide section "Change the choices" covers it; the fold is not done (see Not verified)
 
 ## Blocked by
 
 - 03 — Choices Write And Landing
+
+## Landed
+
+**Not verified**
+
+- The changelog fold into the choices entry. A ticket fragment always lands as its own entry, so the rerun is its own line under **Scripts**. The spec session can merge it on the main checkout.
+- Untested paths in the rerun: a replayed turn with On Call writes, a rerun that cannot start (no pre-turn state), and the two error catches. They mirror the stats re-roll.
+
+**For you**
+
+- ⚠️ Save shape: each stored turn gains `statAsks` (additive), the stat tracker's asks by owner and stat (Q28). A turn saved before it replays `stat_changes`.
+- In a world whose After the AI scripts name `turn`, **Re-generate Choices** now shows nothing until the scripts finish, then the scripted list. Try it on the cloud model and judge the wait.

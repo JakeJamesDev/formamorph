@@ -23,12 +23,13 @@ export type ScriptNotice = Extract<ScriptPromptRequest, { kind: 'tell' | 'toast'
 export const isNotice = (request: ScriptPromptRequest): request is ScriptNotice =>
   request.kind === 'tell' || request.kind === 'toast';
 
-/** What each kind's answer holds: `ask` answers with option indexes, one or a list with `multiple`. */
+/** What each kind's answer holds: `ask` answers with option indexes, one or a list with `multiple`, and a
+ *  single `ask` with nothing picked answers `null`. */
 export interface ScriptPromptAnswers {
   tell: undefined;
   toast: undefined;
   confirm: boolean;
-  ask: number | number[];
+  ask: number | number[] | null;
   input: string;
 }
 
@@ -160,6 +161,17 @@ export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandler
     },
   };
 }
+
+/** A host that shows nothing and answers at once, as a player who picks nothing would (Q20). */
+export const silentPrompts: ScriptPromptHost = {
+  prompt(request) {
+    const asked: ScriptPromptRequest = request;
+    const answer: ScriptPromptAnswer = asked.kind === 'confirm' ? false
+      : asked.kind === 'ask' ? (asked.multiple ? [] : null)
+        : asked.kind === 'input' ? '' : undefined;
+    return Promise.resolve(answer as ScriptPromptAnswer<typeof request.kind>);
+  },
+};
 
 /** `host` with every ask, confirm and input stamped with `asker`; a tell or toast passes unchanged. */
 export function askedBy(host: ScriptPromptHost, asker: string): ScriptPromptHost {

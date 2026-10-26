@@ -52,7 +52,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { cancelOpenPrompts, noticeHost, scriptPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
+import { cancelOpenPrompts, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { useScriptPromptListener } from "@/lib/useScriptPromptListener";
@@ -204,7 +204,7 @@ import { parseSlashCommand } from "../lib/slashCommands";
 import { appliedStatDeltas, applyRegen, sumDeltas } from "../lib/statChanges";
 import type { OwnerId } from "../lib/scope";
 
-import { applyStatResponse, createStatRequest, keyedScene, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
+import { applyStatResponse, createStatRequest, keyedScene, readStatResponse, replayedStatResponse, savedStatAsks, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveDictionaryEntryNames, resolveEntityTexts, resolveStatGroupTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { loreEntries, withLoreToggles, withLoreWrites } from "../lib/loreToggles";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
@@ -383,6 +383,8 @@ interface PreparedStatCode {
     /** The choices an After the AI batch's scripts left; absent when none changed them. */
     choices?: readonly string[];
   };
+  /** What the run left, with nothing landed: `finish`'s `written`. */
+  writtenBy: (result: StatCodeTurnResult) => TurnCodeState | null;
 }
 
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
@@ -1680,37 +1682,99 @@ const GameViewer = ({
     }
   };
 
-  // Re-roll only the choices for the latest turn, keeping its narration and stats.
+  /**
+   * The After the AI batch rerun over a new draw, on the turn's replay state (Q19): the pre-turn state, the before
+   * box, the turn's On Call writes and its saved asks, built as the stats re-roll builds them with nothing landing.
+   * Answers the scripts' choices, undefined when none changed them, null when the rerun cannot start.
+   */
+  const rerunChoiceScripts = async (
+    prev: AITurnResult, action: string, drawn: readonly string[], page: number,
+  ): Promise<readonly string[] | undefined | null> => {
+    const preTurnState = regenerateState(gameStates, initialStateRef.current, page);
+    if (!preTurnState?.globalStats) return null;
+    const preTurn = liveSnapshotOf(preTurnState);
+    const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
+    /** A prepared run with every `player` call silent (Q20); null when it failed. */
+    const ran = async (prepared: PreparedStatCode, mode: Partial<StatCodeTurn>) => {
+      try {
+        return await runStatCodeTurn({ ...prepared.turn, prompts: silentPrompts, ...mode });
+      } catch (error) {
+        console.error("Error processing stat code:", error);
+        return null;
+      }
+    };
+    /** What a prepared run leaves, with nothing landed; null when it changed nothing or failed. */
+    const quietly = async (prepared: PreparedStatCode | null, mode: Partial<StatCodeTurn> = {}) => {
+      const result = prepared && await ran(prepared, mode);
+      return prepared && result ? prepared.writtenBy(result) : null;
+    };
+    turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), narration: "", choices: [] };
+    const startClock = { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar };
+    const startStats = preTurn.globalStats ?? [];
+    const started = page === 1 && newPlaythroughRef.current
+      ? await quietly(prepareStatCode(startStats, startStats, [], startClock, preTurn, 'start')) : null;
+    const boxStats = started?.globalStats ?? startStats;
+    let base = await quietly(prepareStatCode(boxStats, boxStats, [], startClock, started ?? preTurn, 'before')) ?? started ?? preTurn;
+    const { onCallWrites } = replayedToolEffects(worldTools, prev.toolCalls ?? []);
+    if (onCallWrites.length) base = await quietly(prepareTurnStartCode(base), { replayed: onCallWrites, triggersOnly: true }) ?? base;
+    // Past the before box, the batch reads the turn's own page and the new draw.
+    turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev), choices: [...drawn] };
+    const baseStats = base.globalStats ?? [];
+    const response = replayedStatResponse(prev, resolveStatNames(baseStats, resolvePH));
+    const { applied, asks, entityTurn } = askedOver(response, baseStats, base.entityStats ?? {}, base.ownedTraits ?? {});
+    const prepared = prepareStatCode(
+      baseStats, applied.stats, asks, { deltaHours: turnHours, elapsedHours: gameTime, calendar }, base, 'after',
+      { entityTurn, thresholdStats: baseStats },
+    );
+    const result = prepared && await ran(prepared, { choicesOnly: true });
+    return result ? result.choices : null;
+  };
+
+  // Re-roll only the choices for the latest turn, keeping its narration and stats. A world whose scripts change
+  // choices reruns them over the new draw, which stays off screen until the rerun lands (Q10, Q29).
   const handleRegenerateChoices = () => {
     const target = partialRegenTarget();
     if (!target || !choicesEnabled) return;
     const { prev, action } = target;
+    const scripted = worldScriptsChoices && choicesEnabledRef.current;
+    const page = currentPage;
     // The new list streams in from empty; replacing the old one row by row would show it at once.
     setChoices([]);
+    if (scripted) {
+      choicesHeldRef.current = true;
+      heldChoicesRef.current = null;
+    }
     void runPartialRegen(async (signal) => {
       const presentNames = new Set([
         ...(prev.entities ?? []),
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
-      let response = "";
+      let shown: Pick<AITurnResult, "choices" | "aiChoices"> | null = null;
       try {
-        response = await requestChoices(
+        const response = await requestChoices(
           contextValues(),
           sceneEntityOverride(currentLocation, sceneEntities),
           action,
           prev.narration ?? "",
           signal,
         );
+        if (signal.aborted || !response) return;
+        const drawn = parseChoices(response);
+        const rerun = scripted ? await rerunChoiceScripts(prev, action, drawn, page) : undefined;
+        if (signal.aborted || rerun === null) return;
+        // The new draw is the AI's own list now.
+        shown = choicesPatch(drawn, rerun);
       } finally {
+        if (scripted) {
+          choicesHeldRef.current = false;
+          heldChoicesRef.current = null;
+        }
         // A stopped or failed re-roll puts the turn's own choices back.
-        if (signal.aborted || !response) setChoices(prev.choices ?? []);
+        setChoices(shown ? shown.choices : prev.choices ?? []);
       }
-      if (signal.aborted) return;
-      const choices = parseChoices(response);
-      setChoices(choices);
-      // The new draw is the AI's own list now.
-      patchLatestTurn({ choices, aiChoices: undefined });
+      if (!shown) return;
+      patchLatestTurn(shown);
       armTurnSnapshot();
     });
   };
@@ -1797,7 +1861,7 @@ const GameViewer = ({
           calendar,
         }, base, base.globalStats, afterTriggers);
         applyRegenTick(turnHours, base.globalStats);
-        patchLatestTurn({ stat_changes: statChanges });
+        patchLatestTurn({ stat_changes: statChanges, statAsks: savedStatAsks(parsed) });
         committed = true;
         // Code writes land after the sandbox settles; the settle and the snapshot wait for them.
         const run = await statCode;
@@ -3553,27 +3617,15 @@ const GameViewer = ({
           worldScripts,
           ...(triggers?.length ? { triggers } : {}),
         };
-        /** Lays the run's result onto live state and hands back what it left. */
-        const finish = (result: StatCodeTurnResult) => {
-          if (timing === 'switch') return landSwitch(result);
+        /** What the run left, in the shapes state holds, with nothing landed; null when it changed nothing. */
+        const writtenBy = (result: StatCodeTurnResult): TurnCodeState | null => {
           const nextPins = withPinWrites(basePins, result.pinWrites);
           const nextLore = withLoreWrites(baseLore, result.loreWrites);
-          setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
-          // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
           const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
-          setEntityStats((prev) => withOwnerCodeResults(prev, result.owners, ownersInForce));
           const nextEntityStats = withOwnerCodeResults(entityBase, result.owners, ownersInForce);
-          setCodePins((prev) => withPinWrites(prev, result.pinWrites));
-          if (result.traits) {
-            setGlobalTraits(result.traits.acquired);
-            setDisabledTraitIds(result.traits.disabledTraitIds);
-            setAppliedTraitValues(result.traits.appliedValues);
-            setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
-            setOwnedTraits(result.traits.ownedTraits);
-            for (const line of result.traits.log) addLogEntry(line);
-          }
-          /** What this run left, in the shapes state holds. */
-          const stateAfterRun = (): TurnCodeState => ({
+          if (!result.traits && !changedAnyStat(result)
+            && nextPins === basePins && nextLore === baseLore && nextEntityStats === entityPrevious) return null;
+          return {
             globalStats: overlayStatCodeResult(afterAsks, result, inForce),
             codePins: nextPins,
             loreToggles: nextLore,
@@ -3583,11 +3635,27 @@ const GameViewer = ({
             cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
             ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
             entityStats: nextEntityStats,
-          });
+          };
+        };
+        /** Lays the run's result onto live state and hands back what it left. */
+        const finish = (result: StatCodeTurnResult) => {
+          if (timing === 'switch') return landSwitch(result);
+          setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
+          // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
+          const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
+          setEntityStats((prev) => withOwnerCodeResults(prev, result.owners, ownersInForce));
+          setCodePins((prev) => withPinWrites(prev, result.pinWrites));
+          if (result.traits) {
+            setGlobalTraits(result.traits.acquired);
+            setDisabledTraitIds(result.traits.disabledTraitIds);
+            setAppliedTraitValues(result.traits.appliedValues);
+            setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
+            setOwnedTraits(result.traits.ownedTraits);
+            for (const line of result.traits.log) addLogEntry(line);
+          }
           const { worldWrites: world, choices } = result;
           if (!result.traits && !changedAnyStat(result)) {
-            const written = nextPins === basePins && nextLore === baseLore && nextEntityStats === entityPrevious ? null : stateAfterRun();
-            return { written, gateStats: result.gateStats, world, choices };
+            return { written: writtenBy(result), gateStats: result.gateStats, world, choices };
           }
           // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
           const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -3600,7 +3668,7 @@ const GameViewer = ({
           // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
           // The start scripts, the before box and the output scripts can move one stat, so their shares add.
           if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
-          return { written: stateAfterRun(), gateStats: result.gateStats, world, choices };
+          return { written: writtenBy(result), gateStats: result.gateStats, world, choices };
         };
         /** A switch run's landing: only what the run changed lands on the state play reached meanwhile. */
         const landSwitch = (result: StatCodeTurnResult) => {
@@ -3628,7 +3696,7 @@ const GameViewer = ({
           addStatDeltas(null, appliedStatDeltas(resolveStatNames(latest.stats, resolvePH), resolveStatNames(landed.stats, resolvePH)));
           return { written: null, gateStats: result.gateStats, world: result.worldWrites };
         };
-        return { turn, finish };
+        return { turn, finish, writtenBy };
       } catch (error) {
         console.error("Error processing stat code:", error);
         return null;
@@ -3727,6 +3795,22 @@ const GameViewer = ({
     return { written: before?.written ?? started, world: mergeWorldWrites(start?.world, before?.world) };
   };
 
+  // A stat response laid over a turn's stats and its entities' stats, with the asks the After batch reads, by owner.
+  const askedOver = useCallback(
+    (response: StatResponse, baseStats: PlayerStat[], entityBase: EntityStatValues, owned: Parameters<typeof entityInForceUnder>[0]) => {
+      const live = new Set(enabledStats(rawGlobalStatsRef.current, statEnabledRef.current).map((s) => s.id));
+      const applied = applyStatResponse(baseStats, response, live, null);
+      const entityApplied = applyEntityStatResponse(entityBase, response, entityInForceUnder(owned));
+      const asksOf = (ownerId: OwnerId) => response.updates.filter((update) => update.ownerId === ownerId);
+      const entityTurn = {
+        values: entityApplied.values,
+        asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
+      };
+      return { applied, entityApplied, asks: asksOf(null), entityTurn };
+    },
+    [entityInForceUnder],
+  );
+
   // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(
     // `base` is the pre-turn snapshot a stat re-generation starts from (defaults to the live state), so
@@ -3741,11 +3825,9 @@ const GameViewer = ({
       triggers: readonly ScriptTrigger[] = [],
     ) => {
       const baseStats = base?.globalStats ?? rawGlobalStatsRef.current;
-      const live = new Set(enabledStats(rawGlobalStatsRef.current, statEnabledRef.current).map((s) => s.id));
-      const applied = applyStatResponse(baseStats, response, live, null);
-      const directApplied = applied.stats;
       const entityBase = base ? base.entityStats ?? {} : entityStatsRef.current;
-      const entityApplied = applyEntityStatResponse(entityBase, response, entityInForceUnder(base ? base.ownedTraits ?? {} : ownedTraits));
+      const { applied, entityApplied, asks, entityTurn } = askedOver(response, baseStats, entityBase, base ? base.ownedTraits ?? {} : ownedTraits);
+      const directApplied = applied.stats;
       const diagnostics = [...applied.diagnostics, ...entityApplied.diagnostics];
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
         request.statRequestId === response.requestId ? { ...request, statDiagnostics: diagnostics } : request,
@@ -3768,17 +3850,9 @@ const GameViewer = ({
       showStatDeltas(null, actualChanges);
 
       setGlobalStats(directApplied);
-      const asksOf = (ownerId: OwnerId) => response.updates.filter((update) => update.ownerId === ownerId);
-      return runStatCode(baseStats, directApplied, asksOf(null), clock, base ?? undefined, 'after', {
-        entityTurn: {
-          values: entityApplied.values,
-          asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
-        },
-        thresholdStats,
-        triggers,
-      });
+      return runStatCode(baseStats, directApplied, asks, clock, base ?? undefined, 'after', { entityTurn, thresholdStats, triggers });
     },
-    [runStatCode, setGlobalStats, setEntityStats, showStatDeltas, resolvePH, entityInForceUnder, ownedTraits],
+    [runStatCode, setGlobalStats, setEntityStats, showStatDeltas, resolvePH, askedOver, ownedTraits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
