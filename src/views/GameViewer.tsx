@@ -3399,18 +3399,10 @@ const GameViewer = ({
         // for the run; names do not — code reaches a stat by its code name, which the turn derives from the
         // authored name, so a chip in a name reads the same in every playthrough.
         const regenStats = tick ? [...tick.stats] : afterAsks;
-        const stats = resolveStatText(refreshSavedStats(regenStats, authoredStats), resolvePH);
         // Every entity in the playthrough runs beside the player, over the same tick, each over its own asks.
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
         const entityBase = entityTurn?.values ?? entityPrevious;
         const world = traitWorld ?? gatedWorld();
-        const ownerRows = entityCodeTurns(
-          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined, world), readsTurnStart(timing) ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
-          (ownerId, ticked) => resolveStatText(
-            refreshSavedStats(ticked, statEntities.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
-          ),
-          { previous: entityPrevious, asks: entityTurn?.asks },
-        );
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const live = liveCodeStateRef.current;
         const held = preTurn ? savedTraits(preTurn, traits)
@@ -3421,6 +3413,27 @@ const GameViewer = ({
         const inForce = preTurn ? inForceOn(held, entityBase) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const baseLore = preTurn ? preTurn.loreToggles ?? {} : live.loreToggles;
+        // The run's stat text resolves under the pins its `placeholders` read, so the two agree.
+        const runPins = preTurn ? pinsFor(basePins).world : live.pins;
+        const resolveRun = (text: string) => resolveFor(runPins, text);
+        const stats = resolveStatText(refreshSavedStats(regenStats, authoredStats), resolveRun);
+        // `previous` reads its bands under the pins the turn started with: its own stats' bands, traits and code pins.
+        const startPins = pinsFor(basePins, {
+          traits: [...held.acquired], disabledTraitIds: [...held.disabledTraitIds], ownedTraits: held.ownedTraits, stats: before,
+        }).world;
+        const resolveStart = (text: string) => resolveFor(startPins, text);
+        const ownerRows = entityCodeTurns(
+          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined, world), readsTurnStart(timing) ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
+          (ownerId, ticked) => resolveStatText(
+            refreshSavedStats(ticked, statEntities.find((e) => e.id === ownerId)?.stats ?? []), resolveRun,
+          ),
+          // An owner with no turn-start stats reads its base as `previous`, as entityCodeTurns does.
+          {
+            previous: Object.fromEntries(Object.entries({ ...entityBase, ...entityPrevious })
+              .map(([ownerId, ownerStats]) => [ownerId, resolveStatText(ownerStats, resolveStart)])),
+            asks: entityTurn?.asks,
+          },
+        );
         // The starvation penalty the regen tick lands beside this run, so the run's stat snapshot holds it.
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
@@ -3437,7 +3450,7 @@ const GameViewer = ({
           },
           placeholders: {
             ...statCodePlaceholders,
-            pins: preTurn ? pinsFor(basePins).world : live.pins,
+            pins: runPins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
             // A During AI Output run reads the pins its earlier sentences left.
@@ -3459,7 +3472,7 @@ const GameViewer = ({
           state,
           timing,
           prompts: playPrompts(timing),
-          previous: before, asks, regenApplied, ownerTurns,
+          previous: resolveStatText(before, resolveStart), asks, regenApplied, ownerTurns,
           ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
@@ -3547,7 +3560,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation, discoveredEntities,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation, discoveredEntities,
       entityPositions, entityFollowers, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
   );
 

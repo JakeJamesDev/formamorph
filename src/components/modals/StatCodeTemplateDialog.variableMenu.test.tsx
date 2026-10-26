@@ -106,6 +106,9 @@ describe('the Code Templates editor’s Variable menu', () => {
     await user.keyboard(';');
     await pick(user, 'Clock', 'day');
     expect(code(field)).toBe('self.value;clock.day');
+    await user.keyboard(';');
+    await pick(user, 'This Stat', 'descriptor');
+    expect(code(field)).toBe('self.value;clock.day;self.descriptor');
   });
 
   it('keeps the menu’s keyboard, Back row and tooltips', async () => {

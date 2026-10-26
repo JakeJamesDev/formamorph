@@ -1,5 +1,6 @@
 import type { CodeBounds, Stat } from '@/types';
 import { clamp } from './utils';
+import { activeDescriptor } from './statContext';
 import { runInSandbox, type SandboxEngine, type SandboxHostFunction } from './scriptSandbox';
 import { isPromptCanceled, namesPlayer, scriptPrompts, type ScriptPromptHost, type ScriptPromptRequest } from './scriptPrompts';
 import { VALUE_JOIN } from './placeholders';
@@ -366,6 +367,8 @@ export interface StatSnapshot {
   value: number;
   regen: number;
   hidden: boolean;
+  /** The active band's text, chips as the caller resolved them; empty when no band applies. */
+  descriptor: string;
 }
 
 /** The numbers a stat carries, and the fields of every `delta` source. */
@@ -401,6 +404,7 @@ const marshalSnapshot = (stat: Stat): StatSnapshot => ({
   value: stat.value || 0,
   regen: stat.regen || 0,
   hidden: stat.hidden === true,
+  descriptor: activeDescriptor(stat, stat.value || 0)?.description ?? '',
 });
 
 /** `value` clamped to the range an authored `stat` holds after a run's own bound writes, the min floored at

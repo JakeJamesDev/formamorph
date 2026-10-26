@@ -351,8 +351,8 @@ A script can use only these objects. A word in angle brackets stands for a name 
 
 | Object | Members | Read | Write |
 | --- | --- | --- | --- |
-| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `previous`, `delta` | `self.value` | `self.value = <n>` |
-| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
+| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
+| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number` | `turn.number` | Read-only |
@@ -482,12 +482,21 @@ Each stat in the `stats` map, `self` included, exposes the following properties.
 | `enabled` | False while a trait's stat toggle switches the stat off. Read-only |
 | `regen` | Regen per story hour, with traits applied |
 | `hidden` | True when the stat is hidden from the player. The AI still reads it. See [Hiding and Showing a Stat](#hiding-and-showing-a-stat) |
-| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`, `hidden`. Read-only |
+| `descriptor` | Text of the band the value falls in, with chips filled in, as the AI reads it. Empty when no band applies. Read-only |
+| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`. Read-only |
 | `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
 
 A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is ignored and reported. A live stat wins a code name over a switched-off one. Between stats in the same state, the later one wins.
 
-> ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
+> ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and its list of bands are **not** available from inside a script. `descriptor` gives the one band in force.
+
+How `descriptor` reads:
+
+- 📏 It uses the same thresholds the AI's stat context uses, raw or percent.
+- ⏱️ It reads the band at the start of the run. A write to `self.value` doesn't change it until the next run.
+- 👁️ It reads the band whatever the player's display settings, and on a stat a trait switched off.
+- ↩️ `previous.descriptor` reads the band at the start of the turn, with the placeholder pins in force then. So `self.previous.descriptor !== self.descriptor` is true on a turn whose change crossed a band.
+- 🧪 In Test Code and the Test Bench, chips read as you wrote them.
 
 ### Writing to `self`
 <!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify own stat, underlined write, scale with level up, this keyword -->
@@ -559,7 +568,7 @@ Every stat entry on every route takes writes to the same five fields as `self`: 
 | Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` lands on that owner's own copy of Mana. A write through `stats` lands on the global stat |
 | Unknown or switched-off stats | A write to a name the target doesn't have, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
 | An entity not in the game | A write through `entities.<Entity>.stats` to an entity that isn't in the game is ignored and reported |
-| Fields that stay read-only | `id`, `name`, `type`, `description`, `previous` and `delta` never take a write, on any route |
+| Fields that stay read-only | `id`, `name`, `type`, `description`, `descriptor`, `previous` and `delta` never take a write, on any route |
 | A whole entry | `stats.Health = 5` is ignored. Write `stats.Health.value = 5` |
 
 A stat that a hub moved shows the change on its bar, as any code change does. The turn log gets no new line. A failed or stopped turn rolls the write back with the rest of the turn.

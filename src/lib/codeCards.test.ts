@@ -30,6 +30,8 @@ describe('codeCard: globals and their members', () => {
     ['return self.na|me;', '(property) Stat.name: string [readOnly]'],
     ['return self.prev|ious.value;', '(property) Stat.previous: Stat [readOnly]'],
     ['return self.previous.re|gen;', '(property) Stat.previous.regen: number [readOnly]'],
+    ['return self.descr|iptor;', '(property) Stat.descriptor: string [readOnly]'],
+    ['return stats.Health.previous.descr|iptor;', '(property) Stat.previous.descriptor: string [readOnly]'],
     ['return self.delta.a|i.value;', '(property) Stat.delta.ai: { value, min, max, regen } [readOnly]'],
     ['return self.delta.ai.va|lue;', '(property) Stat.delta.ai.value: number [readOnly]'],
     ['return dictionaries.Lore.na|me;', '(property) Dictionary.name: string [readOnly]'],
