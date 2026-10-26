@@ -118,7 +118,7 @@ The **World › Map Background** cards hold the picture behind the [Locations ca
 ## Image Sizes
 <!-- keywords: image budget, size limit, long edge, recommended size, thumbnail budget, entity budget, background budget, map budget, over budget -->
 
-Each image slot has a recommended size. An image over either number shows **Over Budget**.
+Each image slot has a recommended size. An image over the file size shows **Over Budget**. **Downscale** shrinks an image over either number, and every PNG, BMP or lossless WebP.
 
 | Slot | Long edge | File size |
 |---|---|---|
