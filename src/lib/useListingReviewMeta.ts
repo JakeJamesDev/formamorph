@@ -36,14 +36,19 @@ function loadMeta(): Promise<ListingReviewMeta> {
   return inFlight;
 }
 
-/** Whether this server has listing review, and whether it is on. All false until the answer arrives. */
-export function useListingReviewMeta(): ListingReviewMeta {
+/**
+ * Whether this server has listing review, and whether it is on. All false until the answer arrives.
+ *
+ * @param ask - False asks nothing, so a surface only staff use costs a player no request
+ */
+export function useListingReviewMeta(ask = true): ListingReviewMeta {
   const [meta, setMeta] = useState<ListingReviewMeta>(() => cached ?? UNKNOWN);
   const mounted = useMountedRef();
 
   useEffect(() => {
+    if (!ask) return;
     void loadMeta().then((next) => { if (mounted.current) setMeta(next); });
-  }, [mounted]);
+  }, [ask, mounted]);
 
   return meta;
 }

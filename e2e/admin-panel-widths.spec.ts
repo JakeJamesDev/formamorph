@@ -17,14 +17,41 @@ function staffSeed(accountType: 'admin' | 'moderator') {
 }
 
 /**
- * Every panel in the dialog fetches on open. Answered empty so a width run needs no server, except the
- * open-report count: at ten or more the Reports tab reads "Reports (9+)", which is the widest label the
- * strip ever draws. Measuring the strip without it would measure the easy case.
+ * Every panel in the dialog fetches on open. Answered empty so a width run needs no server. The counts
+ * are high anyway: they belong on the Moderation tab's segments, and a count that leaked onto the strip
+ * would widen its widest label.
  */
 async function stubStaffApi(page: import('@playwright/test').Page) {
   // The catch-all goes first: Playwright tries the most recently added route first.
   await page.route(/\/api\//, (route) => route.fulfill({ json: { data: [], count: 0, total: 0 } }));
   await page.route(/\/reports\/open-count/, (route) => route.fulfill({ json: { open: 12 } }));
+  await page.route(/\/reviews\/meta/, (route) => route.fulfill({ json: { data: { enabled: true } } }));
+  await page.route(/\/reviews\/count/, (route) => route.fulfill({ json: { data: { count: 12 } } }));
+}
+
+/** Every selectable app font, applied the way the app applies one: the font stack and its x-height. */
+async function eachFont(page: import('@playwright/test').Page, check: (font: string) => Promise<void>) {
+  const fonts = await page.evaluate(async () => {
+    const path = '/src/contexts/settingsDefaults.ts';
+    const settings = await import(/* @vite-ignore */ path);
+    return (settings.FONT_LIST as { value: string; stack: string }[]).map((font) => ({
+      value: font.value,
+      family: `${font.stack}, ${settings.SYSTEM_FONT_STACK as string}`,
+      adjust: String(settings.fontSizeAdjust(font.value)),
+    }));
+  });
+
+  await check('system');
+  for (const font of fonts) {
+    await page.evaluate(async ({ family, adjust }) => {
+      const root = document.documentElement;
+      root.style.setProperty('--app-font', family);
+      root.style.setProperty('font-size-adjust', adjust);
+      await document.fonts.load(`500 14px ${family}`, 'Moderation Broadcasts');
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }, font);
+    await check(font.value);
+  }
 }
 
 /**
@@ -59,39 +86,41 @@ async function chooser(page: import('@playwright/test').Page) {
   };
 }
 
-const ADMIN_TABS = ['Users', 'Broadcasts', 'Policies', 'Server', 'Events', 'Feedback', 'Reports (9+)', 'Log'];
-const MODERATOR_TABS = ['Users', 'Events', 'Feedback', 'Reports (9+)', 'Log'];
+const ADMIN_TABS = ['Users', 'Broadcasts', 'Policies', 'Server', 'Events', 'Feedback', 'Moderation', 'Log'];
+const MODERATOR_TABS = ['Users', 'Events', 'Feedback', 'Moderation', 'Log'];
+
+/** Each strip label inside its own trigger. */
+async function expectLabelsFit(page: import('@playwright/test').Page, names: string[], context: string) {
+  for (const name of names) {
+    const fit = await labelFit(page, name);
+    expect(fit.labelLeft, `${name} ${context}`).toBeGreaterThanOrEqual(fit.triggerLeft - 1);
+    expect(fit.labelRight, `${name} ${context}`).toBeLessThanOrEqual(fit.triggerRight + 1);
+  }
+}
 
 /**
- * The widest label the strip ever draws is "Reports (9+)", 98px in the widest selectable font. Eight
- * equal cells hold that only once the dialog reaches its 900px cap; five hold it from `sm`. So the two
- * roles cannot share one switch width.
+ * The widest label the strip ever draws is "Moderation", 96px in OpenDyslexic. Eight equal cells hold it
+ * once the dialog reaches its 1000px cap; five hold it from `md`. So the two roles cannot share one
+ * switch width.
  *
  * | viewport | strip | 8 cells | 5 cells |
  * | -------- | ----- | ------- | ------- |
- * | 640      | 590   | 73      | 118     |
  * | 768      | 718   | 89      | 143     |
- * | 900+     | 850   | 105     | 170     |
+ * | 1000+    | 950   | 118     | 190     |
  *
- * 899 and 900 are the corners of the administrator's switch; 639 and 640 are the moderator's.
+ * 999 and 1000 are the corners of the administrator's switch; 767 and 768 are the moderator's.
  */
-for (const width of [375, 639, 640, 768, 899, 900, 1280]) {
+for (const width of [375, 767, 768, 999, 1000, 1280]) {
   test(`an administrator gets one usable section control at ${width}px`, async ({ page }) => {
     await openPanel(page, 'admin', width);
 
     const shown = await chooser(page);
 
     // Clipping first, so a wrong breakpoint fails on the symptom rather than on the number.
-    if (shown.strip) {
-      for (const name of ADMIN_TABS) {
-        const fit = await labelFit(page, name);
-        expect(fit.labelLeft, `${name} at ${width}px`).toBeGreaterThanOrEqual(fit.triggerLeft - 1);
-        expect(fit.labelRight, `${name} at ${width}px`).toBeLessThanOrEqual(fit.triggerRight + 1);
-      }
-    }
+    if (shown.strip) await expectLabelsFit(page, ADMIN_TABS, `at ${width}px`);
 
-    expect(shown.strip).toBe(width >= 900);
-    expect(shown.select).toBe(width < 900);
+    expect(shown.strip).toBe(width >= 1000);
+    expect(shown.select).toBe(width < 1000);
 
     const scroll = await page.evaluate(() => ({
       content: document.documentElement.scrollWidth,
@@ -106,21 +135,30 @@ for (const width of [375, 639, 640, 768, 899, 900, 1280]) {
     const shown = await chooser(page);
 
     if (shown.strip) {
-      for (const name of MODERATOR_TABS) {
-        const fit = await labelFit(page, name);
-        expect(fit.labelLeft, `${name} at ${width}px`).toBeGreaterThanOrEqual(fit.triggerLeft - 1);
-        expect(fit.labelRight, `${name} at ${width}px`).toBeLessThanOrEqual(fit.triggerRight + 1);
-      }
+      await expectLabelsFit(page, MODERATOR_TABS, `at ${width}px`);
       // A moderator's strip carries no administrator tab.
       for (const name of ['Broadcasts', 'Policies', 'Server']) {
         await expect(page.getByRole('tab', { name, exact: true })).toHaveCount(0);
       }
     }
 
-    expect(shown.strip).toBe(width >= 640);
-    expect(shown.select).toBe(width < 640);
+    expect(shown.strip).toBe(width >= 768);
+    expect(shown.select).toBe(width < 768);
   });
 }
+
+/** At each role's narrowest strip, every label fits in every font a player can pick. */
+test('an administrator’s labels fit in every font at 1000px', async ({ page }) => {
+  await openPanel(page, 'admin', 1000);
+
+  await eachFont(page, (font) => expectLabelsFit(page, ADMIN_TABS, `in ${font} at 1000px`));
+});
+
+test('a moderator’s labels fit in every font at 768px', async ({ page }) => {
+  await openPanel(page, 'moderator', 768);
+
+  await eachFont(page, (font) => expectLabelsFit(page, MODERATOR_TABS, `in ${font} at 768px`));
+});
 
 /** The select changes the panel, so a narrow viewport is not a read-only view of the tabs. */
 test('the select changes the panel at 375px', async ({ page }) => {

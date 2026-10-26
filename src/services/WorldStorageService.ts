@@ -76,6 +76,11 @@ export interface ListingDetails {
   requiredDependencies?: string[];
   /** The worlds a component is offered for today, with the world author's answer to each. */
   compatibleWorlds?: WorldAssociation[];
+  description?: string;
+  tags?: string[];
+  /** The file under `/thumbnails/`, absent for a listing with no art. */
+  thumbnailFile?: string;
+  updatedAt?: string;
 }
 
 /** One listing read: its details, word that this reader may not see it, or no answer at all. */
@@ -976,6 +981,10 @@ class WorldStorageService {
             (row: { id?: string } | string) => (typeof row === 'string' ? row : String(row?.id ?? '')),
           ).filter(Boolean),
           compatibleWorlds: body.data?.compatibleWorlds ?? [],
+          description: typeof body.data?.description === 'string' ? body.data.description : undefined,
+          tags: Array.isArray(body.data?.tags) ? body.data.tags.filter((tag: unknown) => typeof tag === 'string') : undefined,
+          thumbnailFile: typeof body.data?.thumbnail_file === 'string' && body.data.thumbnail_file ? body.data.thumbnail_file : undefined,
+          updatedAt: typeof body.data?.updated_at === 'string' ? body.data.updated_at : undefined,
         },
       };
     } catch (error) {

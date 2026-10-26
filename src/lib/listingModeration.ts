@@ -1,5 +1,9 @@
 import { KIND_LABELS, type CatalogKind } from '@/lib/catalogKinds';
 import { isQuarantined } from '@/lib/quarantine';
+import { parseServerDate } from '@/lib/serverDate';
+
+/** Why a queue item waits: a new listing, an update to a live one, or a rejected listing sent back. */
+export type ReviewItemType = 'new' | 'update' | 'resubmitted';
 
 /** Where a listing stands in review, as its author and the staff read it. */
 export type ModerationStatus = 'live' | 'pending' | 'updatePending' | 'rejected' | 'resubmitted';
@@ -104,6 +108,27 @@ export const awaitsReview = (listing: ModeratedListing): boolean => {
   const status = moderationStatus(listing);
   return status === 'pending' || status === 'resubmitted' || status === 'updatePending';
 };
+
+/** How a queue row names why the item waits. */
+export const REVIEW_TYPE_LABELS: Record<ReviewItemType, string> = {
+  new: 'New',
+  update: 'Update',
+  resubmitted: 'Resubmitted',
+};
+
+/** How long an item has waited, in the largest whole unit: "under an hour", "5 hours", "3 days". */
+export function waitedFor(queuedAt: string, now: Date = new Date()): string {
+  const since = parseServerDate(queuedAt);
+  if (!since) return 'unknown';
+
+  const hours = Math.floor((now.getTime() - since.getTime()) / 3_600_000);
+  if (hours < 1) return 'under an hour';
+  if (hours < 24) return hours === 1 ? '1 hour' : `${hours} hours`;
+
+  const days = Math.floor(hours / 24);
+
+  return days === 1 ? '1 day' : `${days} days`;
+}
 
 /** The toast after a publish (`updated` false) or an update, read from the listing the server answered with. */
 export function publishedMessage(kind: CatalogKind, updated: boolean, result: ModeratedListing | null | undefined): string {

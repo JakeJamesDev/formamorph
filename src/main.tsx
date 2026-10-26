@@ -8,11 +8,13 @@ import './lib/buildInfo'
 import { trackDevicePixelRatio } from './lib/devicePixelGrid'
 import { installGlobalErrorHandlers } from './lib/globalErrorHandlers'
 import { installDevFeedbackStub } from './lib/dev/devFeedbackStub'
+import { installDevReviewStub } from './lib/dev/devReviewStub'
 
 trackDevicePixelRatio()
 installGlobalErrorHandlers()
 // Static, so the stub is in place before the first list fetches.
 if (import.meta.env.DEV) installDevFeedbackStub()
+if (import.meta.env.DEV) installDevReviewStub()
 if (import.meta.env.DEV && import.meta.env.VITE_FM_HOLD_UPDATES) void import('./lib/dev/heldUpdatesBanner')
 
 createRoot(document.getElementById('root')!).render(

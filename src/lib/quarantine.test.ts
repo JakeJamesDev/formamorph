@@ -100,6 +100,13 @@ describe('what the notice says', () => {
     expect(quarantineTemplate(target).body).toMatch(/another week/i);
   });
 
+  it('promises no more time once the extension is used', () => {
+    const body = quarantineTemplate({ ...target, extended: true }).body;
+
+    expect(body).not.toMatch(/another week/i);
+    expect(body).toMatch(/fix it\. It will be deleted on/);
+  });
+
   it('leaves the reasons for the admin to write', () => {
     // Only they know what needs fixing; a prefilled reason would be a guess in the author's inbox.
     expect(quarantineTemplate(target).body.trimEnd()).toMatch(/\*\*What needs to change:\*\*$/);

@@ -29,6 +29,7 @@ import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
 import { POLICIES_TABS } from '@/components/menu/policiesTabs';
 import { FEEDBACK_TABS } from '@/components/menu/feedbackTabs';
+import { MODERATION_TABS } from '@/components/menu/moderationTabs';
 import { MY_FEEDBACK_TABS } from '@/components/menu/myFeedbackTabs';
 import { EVENT_ACK_PHASES } from '@/components/events/eventAckPhases';
 import { SCRIPT_PROMPT_SAMPLE_KEYS } from './devScriptPromptSamples';
@@ -250,6 +251,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the Feedback sub-tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.adminPanelFeedback]).toEqual([...FEEDBACK_TABS]);
+  });
+
+  it('ledger lists exactly the Moderation sub-tabs the surface renders', () => {
+    expect([...DEV_MODAL_TABS.adminPanelModeration]).toEqual([...MODERATION_TABS]);
   });
 
   it('ledger lists exactly the Feedback dialog tabs the surface renders', () => {

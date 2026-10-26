@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toastError } from "@/lib/linkToast";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,7 +8,7 @@ import { RoleBadge } from "@/components/RoleBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ANY_ACTION, AUDIT_ACTION_LABELS, AUDIT_ACTION_OPTIONS, AUDIT_ACTION_STYLES,
-  actionFilterValue, auditActorName, auditPredicate, formatAuditDate,
+  actionFilterValue, auditActorName, auditListingId, auditPredicate, formatAuditDate,
 } from "@/lib/auditPresentation";
 import AuditService from "@/services/AuditService";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,8 @@ const PAGE_SIZE = 20;
 interface AuditLogTabProps {
   /** Whether the tab is visible; the log only loads while it is. */
   active: boolean;
+  /** Opens the listing an entry links to. Absent leaves the entries unlinked. */
+  onOpenListing?: (listingId: string) => void;
 }
 
 /**
@@ -27,7 +29,7 @@ interface AuditLogTabProps {
  * Read-only: entries are written by the server from inside the actions they record, and there is nothing
  * here to edit or clear one — a record somebody can rewrite is not a record.
  */
-export function AuditLogTab({ active }: AuditLogTabProps) {
+export function AuditLogTab({ active, onOpenListing }: AuditLogTabProps) {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -148,7 +150,19 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
                   </span>
                 </div>
 
-                <p className="text-meta text-muted-foreground">{formatAuditDate(entry.createdAt)}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-meta text-muted-foreground">{formatAuditDate(entry.createdAt)}</p>
+                  {onOpenListing && auditListingId(entry) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1.5 px-2"
+                      onClick={() => onOpenListing(auditListingId(entry)!)}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" /> View
+                    </Button>
+                  )}
+                </div>
 
                 {/* What was removed, as far as it was kept. Quoted so it reads as somebody's words rather
                     than as the log's own. */}

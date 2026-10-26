@@ -59,6 +59,8 @@ export interface QuarantineTarget {
   name: string;
   /** The deletion date as the author will read it. */
   deadline: string | null;
+  /** Whether the author already used the one-time extension, so updating buys no more time. */
+  extended?: boolean;
 }
 
 /**
@@ -104,10 +106,11 @@ export function quarantineTargetFor(
 export function quarantineTemplate(target: QuarantineTarget): { subject: string; body: string } {
   const noun = KIND_LABELS[target.kind].one.toLowerCase();
   const when = target.deadline ? ` It will be deleted on **${target.deadline}** unless it is fixed before then.` : '';
+  const more = target.extended ? '' : ' Updating it buys you another week.';
 
   return {
     subject: `Your ${noun} "${target.name}" needs changes`,
-    body: `Your ${noun} **"${target.name}"** has been hidden from Community Creations while you fix it.${when} `
-      + `Updating it buys you another week.\n\n**What needs to change:** `,
+    body: `Your ${noun} **"${target.name}"** has been hidden from Community Creations while you fix it.${when}`
+      + `${more}\n\n**What needs to change:** `,
   };
 }

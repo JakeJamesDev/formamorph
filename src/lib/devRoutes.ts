@@ -148,12 +148,12 @@ export const DEV_MODAL_TABS = {
   // `fixture=feedback` to serve a canned board (`devFeedbackStub.ts`); the admin feedback route takes it too.
   feedbackHub: ['bugs', 'suggestions', 'questions'],
   // The admin tools: accounts, broadcasts, the publish policies, the events calendar, the feedback
-  // queues, the report queue, and the log. `tab=events` serves a canned calendar (`devEventSample.ts`),
+  // queues, the moderation queues, and the log. `tab=events` serves a canned calendar (`devEventSample.ts`),
   // so the tab's three groups are reachable without a live server; which of its two role views appears
-  // follows the session. `tab=reports` needs a live server with the feature — it opens empty otherwise.
+  // follows the session. `tab=moderation` needs a live server for reports — it opens empty otherwise.
   // `tab=serverSettings` is the Server tab: one box per server setting, read from the live server, so
   // against a server without the settings routes each row reports that it went unanswered.
-  adminPanel: ['users', 'broadcasts', 'policies', 'serverSettings', 'events', 'feedback', 'reports', 'log'],
+  adminPanel: ['users', 'broadcasts', 'policies', 'serverSettings', 'events', 'feedback', 'moderation', 'log'],
   // Admin Panel → Events uses the `subtab=…` slot for which of its two role views to render over the
   // canned calendar, so the moderator's read-only half is reachable without a second account.
   adminPanelEvents: ['admin', 'staff'],
@@ -224,6 +224,10 @@ export const DEV_MODAL_TABS = {
   adminPanelPolicies: ['uploadGate', 'tagNotice', 'privacyPolicy'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
   adminPanelFeedback: ['bugs', 'suggestions', 'questions'],
+  // Admin Panel → Moderation uses it too: the report queue and the review queue. `fixture=review` serves a
+  // canned review queue (`devReviewStub.ts`), and `pick=<item id>` opens one item's dialog
+  // (`#dev?modal=adminPanel&tab=moderation&subtab=review&fixture=review&pick=dev-review-new`).
+  adminPanelModeration: ['reports', 'review'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
   // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).
