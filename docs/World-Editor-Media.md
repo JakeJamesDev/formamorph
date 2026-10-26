@@ -113,7 +113,7 @@ The **World › Map Background** cards hold the picture behind the [Locations ca
 - 🎚️ Each image can carry a Visibility rule. In play, the Map shows the first visible image, and no image when none is visible. A condition with no owner reads the persona.
 - 📐 Every image fits inside one shared frame at its own shape, so a swap lines up with your locations.
 - ➕ With no image, **No Images** shows a blank card. An upload there covers your locations.
-- 📦 The budget is 2560 px on the long edge and 2.5 MB.
+- 📦 The budget is 2560 px on the long edge and 1.5 MB.
 
 ## Sizes
 <!-- keywords: how size is measured, mb, kb, publish size match, total -->

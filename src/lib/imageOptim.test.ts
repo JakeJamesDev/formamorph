@@ -9,6 +9,7 @@ import {
   applyImageOptimize,
   IMAGE_CAPS,
   type DownscaleDeps,
+  type ImageCap,
 } from './imageOptim';
 import type { Entity, TraitRequirementRow, World } from '@/types';
 import { applyEntityImagesOptimize, type ImageCodec } from './imageOptimCore';
@@ -219,20 +220,29 @@ describe('downscaleWorldImages', () => {
 });
 
 describe('estimateEncodedBytes', () => {
+  const source = (bytes: number, w: number, h: number, cap: ImageCap, lossless = false) => ({ bytes, w, h, cap, lossless });
+
   it('reencode (lossless) keeps most of the source and ignores the cap', () => {
-    expect(estimateEncodedBytes(1_000_000, 800, 600, 'reencode', IMAGE_CAPS.thumbnail)).toBe(850_000);
+    expect(estimateEncodedBytes(source(1_000_000, 800, 600, IMAGE_CAPS.thumbnail), 'reencode')).toBe(850_000);
   });
   it('downscale is smaller than reencode when dimensions exceed the cap', () => {
-    const bytes = 1_000_000;
-    const re = estimateEncodedBytes(bytes, 4000, 3000, 'reencode', IMAGE_CAPS.thumbnail);
-    const down = estimateEncodedBytes(bytes, 4000, 3000, 'downscale', IMAGE_CAPS.thumbnail);
-    expect(down).toBeLessThan(re);
+    const big = source(1_000_000, 4000, 3000, IMAGE_CAPS.thumbnail);
+    expect(estimateEncodedBytes(big, 'downscale')).toBeLessThan(estimateEncodedBytes(big, 'reencode'));
   });
   it('within the cap, downscale (lossy) is smaller than reencode (lossless)', () => {
-    const bytes = 300_000;
-    const cap = IMAGE_CAPS.background;
-    expect(estimateEncodedBytes(bytes, 100, 100, 'downscale', cap))
-      .toBeLessThan(estimateEncodedBytes(bytes, 100, 100, 'reencode', cap));
+    const small = source(300_000, 100, 100, IMAGE_CAPS.background);
+    expect(estimateEncodedBytes(small, 'downscale')).toBeLessThan(estimateEncodedBytes(small, 'reencode'));
+  });
+  it('downscale predicts about a tenth of a lossless source and half of a lossy one, within the cap', () => {
+    expect(estimateEncodedBytes(source(1_000_000, 1216, 832, IMAGE_CAPS.background, true), 'downscale')).toBe(100_000);
+    expect(estimateEncodedBytes(source(1_000_000, 1216, 832, IMAGE_CAPS.background), 'downscale')).toBe(500_000);
+  });
+  it('scales the per-format factor by the cap fit’s area', () => {
+    // 2560×1440 fits the background cap at 1920×1080: 0.5625 of the area.
+    expect(estimateEncodedBytes(source(1_000_000, 2560, 1440, IMAGE_CAPS.background, true), 'downscale')).toBe(56_250);
+  });
+  it('leaves the Optimize estimate on one factor, lossless source or not', () => {
+    expect(estimateEncodedBytes(source(1_000_000, 800, 600, IMAGE_CAPS.thumbnail, true), 'reencode')).toBe(850_000);
   });
 });
 
@@ -256,7 +266,8 @@ describe('applyWorldOptimize / applyImageOptimize (mode gating)', () => {
 /** The one-entity pass the downscale prompt, the character import and the backup restore all run. */
 describe('applyEntityImagesOptimize', () => {
   const big = 'data:image/png;base64,BIG';
-  const small = 'data:image/png;base64,small';
+  // A JPEG, so being within budget is what keeps it: a PNG is a Downscale target at any size.
+  const small = 'data:image/jpeg;base64,small';
   const codec: ImageCodec = {
     encode: async (url) => `data:image/webp;base64,ENC(${url.length})`,
     measure: async (url) => (url === big ? { w: 4000, h: 4000, bytes: 9_000_000 } : { w: 10, h: 10, bytes: 10 }),

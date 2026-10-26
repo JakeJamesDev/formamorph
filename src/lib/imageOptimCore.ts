@@ -3,7 +3,7 @@
  * of its own; `imageOptim` binds them to the encode worker for the main thread.
  */
 import type { Entity, GalleryImage, World } from '@/types';
-import { dataUrlRealMime, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
+import { dataUrlRealMime, isConvertibleImage, isLosslessImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
@@ -25,16 +25,18 @@ export interface ScannedImage {
   h: number;
   bytes: number;
   mime: string;
-  /** Exceeds either budget — what Downscale acts on. */
+  /** Exceeds either budget. */
   oversized: boolean;
+  /** A still PNG, BMP or lossless WebP, which a lossy WebP shrinks at any size. */
+  lossless: boolean;
   /** A lossless WebP would shrink it (and re-encoding is safe) — what Optimize acts on. */
   convertible: boolean;
 }
 
 /**
  * The one place the scan rule lives: measure `url` and describe it when the popup has something to offer —
- * over either budget (a 4000px photo, a small-dim multi-MB animated GIF), or a format a lossless WebP
- * shrinks at any size. Null when neither applies or it can't be read. Every scan/check goes through
+ * over either budget (a 4000px photo, a small-dim multi-MB animated GIF), stored lossless, or a format a
+ * lossless WebP shrinks at any size. Null when none applies or it can't be read. Every scan/check goes through
  * this, so the rule can't drift between call sites.
  */
 export async function scanItem(codec: ImageCodec, url: string, cap: ImageCap, path: string): Promise<ScannedImage | null> {
@@ -46,7 +48,10 @@ export async function scanItem(codec: ImageCodec, url: string, cap: ImageCap, pa
   try {
     const { w, h, bytes } = await codec.measure(url);
     const oversized = Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes;
-    if (oversized || convertible) return { path, cap, w, h, bytes, mime: dataUrlRealMime(url), oversized, convertible };
+    const lossless = isLosslessImage(url);
+    if (oversized || lossless || convertible) {
+      return { path, cap, w, h, bytes, mime: dataUrlRealMime(url), oversized, lossless, convertible };
+    }
   } catch {
     /* unreadable → treat as within budget */
   }
@@ -60,10 +65,16 @@ export interface DownscaleDeps {
   shouldEncode: (url: string, cap: ImageCap) => Promise<boolean>;
 }
 
-/** Downscale cares about large files: only images over their budget are touched. */
+/** What Downscale acts on: an image over its budget, or one stored lossless at any size. */
+export const isDownscaleTarget = (item: ScannedImage): boolean => item.oversized || item.lossless;
+
+/** Downscale's deps: every Downscale target comes out as lossy WebP within its cap. */
 export const downscaleDeps = (codec: ImageCodec): DownscaleDeps => ({
   optimize: (url, cap) => codec.encode(url, cap.maxDim),
-  shouldEncode: async (url, cap) => (await scanItem(codec, url, cap, ''))?.oversized ?? false,
+  shouldEncode: async (url, cap) => {
+    const item = await scanItem(codec, url, cap, '');
+    return item ? isDownscaleTarget(item) : false;
+  },
 });
 
 /** Deps for the "Optimize" (WebP, keep resolution) world pass: every losslessly convertible image at any

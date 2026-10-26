@@ -24,6 +24,7 @@ import {
   describeKeptImages,
   estimateEncodedBytes,
   formatBytes,
+  isDownscaleTarget,
   worldImagesByPath,
   scanImages,
   scanWorldImages,
@@ -34,11 +35,14 @@ import {
 
 /** Aggregate size facts about a set of scanned images, shared by every optimize prompt's wording. */
 interface OptimizeStats {
-  /** How many images the scan surfaced — over budget or losslessly convertible. */
+  /** How many images the scan surfaced — over budget, lossless, or losslessly convertible. */
   n: number;
   totalBytes: number;
-  /** How many are over budget — all Downscale acts on, so the button and its sentence exist only for them. */
   overCount: number;
+  /** Lossless images within budget — the other half of what Downscale acts on. */
+  losslessCount: number;
+  /** Over budget or lossless: all Downscale acts on, so its button and sentence exist only for them. */
+  downCount: number;
   /** False when no image would come back smaller — a JPEG's lossless WebP grows and an already-WebP one
    *  re-encodes to itself, so the encoder keeps both and Optimize would be an offer that does nothing. */
   canOptimize: boolean;
@@ -59,17 +63,13 @@ const optimizeStats = (items: ScannedImage[]): OptimizeStats => ({
   n: items.length,
   totalBytes: items.reduce((s, i) => s + i.bytes, 0),
   overCount: items.filter((i) => i.oversized).length,
+  losslessCount: items.filter((i) => i.lossless && !i.oversized).length,
+  downCount: items.filter(isDownscaleTarget).length,
   canOptimize: items.some((i) => i.convertible),
   optCount: items.filter((i) => i.convertible).length,
   // An image a mode leaves exactly as it is counts at the bytes it already has.
-  optTotal: items.reduce(
-    (s, i) => s + (i.convertible ? estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap) : i.bytes),
-    0,
-  ),
-  downTotal: items.reduce(
-    (s, i) => s + (i.oversized ? estimateEncodedBytes(i.bytes, i.w, i.h, 'downscale', i.cap) : i.bytes),
-    0,
-  ),
+  optTotal: items.reduce((s, i) => s + (i.convertible ? estimateEncodedBytes(i, 'reencode') : i.bytes), 0),
+  downTotal: items.reduce((s, i) => s + (isDownscaleTarget(i) ? estimateEncodedBytes(i, 'downscale') : i.bytes), 0),
 });
 
 /**
@@ -81,14 +81,16 @@ const optimizeTail = (s: OptimizeStats, many: boolean): string => {
   // Named as a count whenever it isn't all of them: a photo's lossless WebP is bigger, so the encoder keeps
   // it — and an offer that says "converts them" describes a run that cannot happen.
   const subject = s.optCount < s.n ? `${s.optCount} of ${them}` : them;
-  // Downscale is the size tool: its sentence, like its button, exists only when something is over budget,
-  // and names its own count whenever the set holds within-budget images it would leave alone.
-  const downSubject = s.overCount < s.n ? `the ${s.overCount} larger than recommended` : `${them}${many ? '' : ' to fit'}`;
+  // Downscale's sentence, like its button, exists only when the set holds a Downscale target, and names its
+  // own count whenever the set holds images it would leave alone.
+  const downSubject = s.losslessCount > 0
+    ? (s.downCount < s.n ? `${s.downCount} of ${them}` : them)
+    : s.overCount < s.n ? `the ${s.overCount} larger than recommended` : `${them}${many ? '' : ' to fit'}`;
   return (
     (s.canOptimize
       ? `Optimize converts ${subject} to lossless WebP${many ? '' : ' at the same resolution'} (~${formatBytes(s.optTotal)}, no quality loss). `
       : '') +
-    (s.overCount > 0
+    (s.downCount > 0
       ? `Downscale ${s.canOptimize ? 'also shrinks' : 'shrinks'} ${downSubject} (~${formatBytes(s.downTotal)}). `
       : '') +
     'Animated GIFs keep their animation.'
@@ -97,10 +99,16 @@ const optimizeTail = (s: OptimizeStats, many: boolean): string => {
 
 /** The scanned set as one noun phrase — how many images, and why they're listed. */
 const describeScan = (s: OptimizeStats): string => {
-  const images = `${s.n} image${s.n > 1 ? 's' : ''}`;
+  const plural = s.n > 1 ? 's' : '';
+  const images = `${s.n} image${plural}`;
   if (s.overCount === s.n) return `${images} larger than recommended`;
-  if (s.overCount === 0) return `${images} lossless WebP would shrink`;
-  return `${images} worth optimizing — ${s.overCount} larger than recommended`;
+  if (s.losslessCount === s.n) return `${s.n} lossless image${plural} Downscale would shrink`;
+  if (s.downCount === 0) return `${images} lossless WebP would shrink`;
+  const reasons = [
+    ...(s.overCount > 0 ? [`${s.overCount} larger than recommended`] : []),
+    ...(s.losslessCount > 0 ? [`${s.losslessCount} lossless`] : []),
+  ];
+  return `${images} worth optimizing — ${reasons.join(', ')}`;
 };
 
 /**
@@ -132,9 +140,9 @@ interface PendingPrompt {
 /**
  * Consent gate for image optimization. Render `dialog` once in the host, then `await promptImage(...)` on upload or
  * `await promptWorld(...)` after a world lands. The popup offers up to two options — Optimize (lossless WebP, any
- * convertible image regardless of size) and Downscale (shrink what's over budget) — plus Cancel. Nothing is
- * re-encoded without the user choosing; inputs that are within budget and already efficiently encoded resolve
- * immediately with no popup.
+ * convertible image regardless of size) and Downscale (lossy WebP for what's over budget or lossless) — plus
+ * Cancel. Nothing is re-encoded without the user choosing; inputs that are within budget and already efficiently
+ * encoded resolve immediately with no popup.
  */
 export function useDownscalePrompt() {
   const [pending, setPending] = useState<PendingPrompt | null>(null);
@@ -159,9 +167,9 @@ export function useDownscalePrompt() {
           description,
           actions: [
             ...(stats.canOptimize ? [{ label: 'Optimize', run: () => finish('optimize') }] : []),
-            // Downscale only exists when something is over budget — on a set of within-budget convertibles
-            // it would re-encode nothing, and a button that does nothing is a broken promise.
-            ...(stats.overCount > 0 ? [{ label: 'Downscale', run: () => finish('downscale') }] : []),
+            // Downscale only exists for a set with a Downscale target — on within-budget GIFs alone it would
+            // re-encode nothing, and a button that does nothing is a broken promise.
+            ...(stats.downCount > 0 ? [{ label: 'Downscale', run: () => finish('downscale') }] : []),
           ],
           cancel: () => finish('off'),
           cancelLabel,

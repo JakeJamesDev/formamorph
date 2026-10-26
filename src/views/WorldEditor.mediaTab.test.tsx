@@ -122,7 +122,7 @@ describe('Media tab panels', () => {
 
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:0');
     expect(within(panel()!).getByRole('heading')).toHaveTextContent('Odd Wick');
-    expect(panel()!.querySelector('[data-media-framed]')).toHaveTextContent(`Image 1·${size('Odd Wick', 'Image 1')}· Budget ${formatMediaBytes(600_000)}`);
+    expect(panel()!.querySelector('[data-media-framed]')).toHaveTextContent(`Image 1·${size('Odd Wick', 'Image 1')}· Budget ${formatMediaBytes(250_000)}`);
   });
 
   it("titles an entity's sound with the entity, plays it, and downloads it under the entity and slot", async () => {
