@@ -15,6 +15,8 @@ Every location and entity in **Valentines Survival** has art in one style, and t
 - **Visibility rules (Q18):** at least one location backdrop and one entity image that change with a stat, trait, persona or daypart. Make the variant through the harness with the state's tags added, then set complementary rules on slot 0 and slot 1 by script, since play shows the first visible image and an unruled slot 0 always wins. A location rule with no owner reads the played persona.
 - **Map Background:** none. This world is not a map world (Q12).
 - Refine `imageTags` where the stored art drifted from them, so the tags describe the art.
+- **Hana Sakuragi's stored portrait shows a boy with short hair**, against her text and tags (ticket 08 finding). Existing art stays under Q10 only when it matches the entity; replace this one through the harness with the world's art-direction line and record the old image's replacement in the comments.
+
 - The Test Bench image rules hold: WebP, labeled, every rule target present, no all-hideable entity, no zero-span percent rule.
 
 ## Acceptance criteria
