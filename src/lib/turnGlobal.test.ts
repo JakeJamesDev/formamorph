@@ -167,15 +167,17 @@ describe('turn.narration and turn.choices', () => {
     expect(result.reply).toBe(JSON.stringify(['', []]));
   });
 
-  it('lists a write to either as read-only and lands nothing', async () => {
+  it('lists a write to either as read-only and lands nothing, where choices take no write', async () => {
     const code = [
       'turn.narration = "x"; turn.choices = ["y"];',
-      'try { turn.choices[0] = "z"; } catch {}',
-      'try { turn.choices.push("w"); } catch {}',
+      'turn.choices[0] = "z";',
+      'turn.choices.push("w");',
       'return JSON.stringify([turn.narration, turn.choices]);',
     ].join('\n');
     const result = await snapshotOf(stateWith(LIVE)).run({ home: { kind: 'tool' }, timing: 'after', code, args: {} });
-    expect(result.reply).toBe(JSON.stringify([LIVE.narration, LIVE.choices]));
+    // The page keeps its text; the choices read the run's own edit, which lands nothing (Q25).
+    expect(result.reply).toBe(JSON.stringify([LIVE.narration, ['z', 'w']]));
+    expect(result.choices).toBeUndefined();
     expect(result.readOnlyWrites).toEqual(expect.arrayContaining(['turn.narration', 'turn.choices']));
   });
 

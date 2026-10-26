@@ -59,6 +59,13 @@ describe('the World Tool script surface', () => {
     expect(messages('location.move(args.place); clock.advance(5); discover("Tor"); memories.add("x"); memories.pin("y"); entities.Tor.diary("z");')).toEqual([]);
   });
 
+  it('lists a turn.choices write as read-only at every timing, an After the AI Tool included', () => {
+    for (const timing of ['call', 'output', 'after'] as const) {
+      expect(messages('turn.choices = []; return 1;', timing), timing).toEqual(['turn.choices is read-only.']);
+      expect(worldToolSurface(params, timing).members.get('turn')?.find((entry) => entry.name === 'choices')?.access, timing).toBe('readOnly');
+    }
+  });
+
   it('gives a During AI Output Tool narration and no player, and the other timings the reverse', () => {
     const names = (timing: 'call' | 'output' | 'after') => worldToolSurface(params, timing).globals.map((entry) => entry.name);
     expect(names('output')).toContain('narration');

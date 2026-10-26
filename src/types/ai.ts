@@ -166,7 +166,11 @@ export type CatalogToolOverrides = Record<string, CatalogToolOverride>;
  */
 export interface AITurnResult {
   narration: string;
+  /** The choices the player sees: the AI's, with the After the AI scripts' edits applied. */
   choices: string[];
+  /** The AI's own choices, when an After the AI script changed the list `choices` holds. Absent, `choices` is the
+   *  AI's list. A stats re-roll starts the scripts' edits from it (Q18). */
+  aiChoices?: string[];
   stat_changes: Array<Record<string, number>>;
   /** Stable per-turn id (`randomUUID()`); powers the digest async-apply guard. */
   turnId?: string;

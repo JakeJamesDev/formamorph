@@ -3,15 +3,15 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Placeholder, Stat } from '@/types';
+import type { Placeholder, ScriptTiming, Stat } from '@/types';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { phMap } from '@/test/sandboxPlaceholders';
 import { phValues } from '@/test/placeholderValues';
-import { statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
-import { executeStatCode, type StatCodeResult } from './statCodeExecutor';
+import { codeDiagnostics, statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
+import { executeStatCode, type StatCodeResult, type StatCodeRunOptions } from './statCodeExecutor';
 import {
   CLOCK_MEMBERS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
-  TRAIT_ENTRY_FIELDS,
+  STAT_CODE_SURFACE, TRAIT_ENTRY_FIELDS, scriptSurface,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
 
@@ -85,7 +85,11 @@ const world = {
   dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns, entries: [entry] }],
   places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
 };
-const run = (code: string) => executeStatCode(code, stats, stats[0], world);
+const run = (code: string, options: StatCodeRunOptions = {}) => executeStatCode(code, stats, stats[0], { ...world, ...options });
+
+/** The objects whose write a box takes at After the AI only, where the guide's form runs and is checked. */
+const AFTER_THE_AI_WRITES = new Set(['turn']);
+const writeOptions = (object: string): StatCodeRunOptions => (AFTER_THE_AI_WRITES.has(object) ? { choicesWritable: true } : {});
 
 /** The same names as the editor knows them. The entity can be played, so `persona.traits` reaches its set. */
 const ownedPlaceholder = (id: string): Placeholder => ({ id, name: 'Placeholder', values: phValues(['a']) });
@@ -103,10 +107,12 @@ const editorNames: AnalysisOptions = {
     dictionaries: [{ id: 'dictionary', name: 'Dictionary', entries: [entry] }],
   },
 };
-const editorFindings = (code: string) => statCodeDiagnostics(code, editorNames).map((finding) => finding.message);
+const editorFindings = (code: string, timing?: ScriptTiming) => (timing
+  ? codeDiagnostics(code, { ...editorNames, surface: scriptSurface(STAT_CODE_SURFACE, timing) })
+  : statCodeDiagnostics(code, editorNames)).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore', 'choices']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */
@@ -118,7 +124,8 @@ const dropped = (result: StatCodeResult) => [
 /** Whether a run left anything for the turn to apply. */
 const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length
   || !!result.ownerStatWrites?.length || !!result.placeholders?.length
-  || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length) || !!result.worldWrites || !!result.lore?.length;
+  || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length) || !!result.worldWrites || !!result.lore?.length
+  || !!result.choices;
 
 /** Each object's members as the surface lists them. `console` has no list; the sandbox answers for it below. */
 const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
@@ -170,7 +177,7 @@ describe('the Scripts Guide’s Quick Reference', () => {
 
   it.each(rows.filter((row) => row.write !== 'Read-only'))('writes $object through a form that lands', async ({ object, write }) => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const result = await run(`${runnable(write)};`);
+    const result = await run(`${runnable(write)};`, writeOptions(object));
     expect(result.error).toBeNull();
     expect(dropped(result)).toEqual([]);
     expect(object === 'console' ? log.mock.calls.length > 0 : landed(result)).toBe(true);
@@ -180,8 +187,8 @@ describe('the Scripts Guide’s Quick Reference', () => {
     expect(editorFindings(`return ${runnable(read)} ? 1 : 0;`)).toEqual([]);
   });
 
-  it.each(rows.filter((row) => row.write !== 'Read-only').map((row) => row.write))('writes %s in a form the editor raises nothing on', (write) => {
-    expect(editorFindings(`${runnable(write)};\nreturn 1;`)).toEqual([]);
+  it.each(rows.filter((row) => row.write !== 'Read-only'))('writes $write in a form the editor raises nothing on', ({ object, write }) => {
+    expect(editorFindings(`${runnable(write)};\nreturn 1;`, AFTER_THE_AI_WRITES.has(object) ? 'after' : undefined)).toEqual([]);
   });
 
   it('lists a write route to each owner of a stat', () => {

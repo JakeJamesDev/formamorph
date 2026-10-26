@@ -77,6 +77,8 @@ export interface ScriptRunUnit {
   prompts?: ScriptPromptHost;
   /** A user Tool's run: the surface without writes. */
   readOnly?: boolean;
+  /** The `turn.choices` the earlier scripts of the batch left, which this run reads in place of the state's (Q14). */
+  choices?: readonly string[];
 }
 
 /** Each scope's stat turn inputs: the global run's and each Owner's, by id. The caller leaves them empty at a
@@ -322,10 +324,16 @@ function switchedTraitEntry(board: Board, { event, world }: { event: TraitSwitch
 
 const statOf = (home: UnitHome): Stat | null => ('stat' in home ? home.stat : null);
 
-/** The page and choices read empty at a timing before the turn's reply is done (Q5). A read-only run is a user
- *  Tool's, which reads the state's turn as it stands. */
-const turnRead = (turn: SandboxTurn, { timing, readOnly }: ScriptRunUnit): SandboxTurn =>
-  (!readOnly && (timing === 'start' || timing === 'before' || timing === 'output') ? { ...turn, narration: '', choices: [] } : turn);
+/** The page and choices read empty at a timing before the turn's reply is done (Q5); later, the choices are the ones
+ *  the batch's earlier scripts left. A read-only run is a user Tool's, which reads the state's turn as it stands. */
+const turnRead = (turn: SandboxTurn, { timing, readOnly, choices }: ScriptRunUnit): SandboxTurn => {
+  if (!readOnly && (timing === 'start' || timing === 'before' || timing === 'output')) return { ...turn, narration: '', choices: [] };
+  return choices && !turn.choicesOff ? { ...turn, choices } : turn;
+};
+
+/** Only an After the AI script writes `turn.choices`, and only while the player has choices on (Q11, Q21). */
+const takesChoicesWrite = ({ home, timing, readOnly }: ScriptRunUnit, turn: SandboxTurn | undefined): boolean =>
+  timing === 'after' && home.kind !== 'tool' && !readOnly && !turn?.choicesOff;
 
 const optionsOfSnapshot = new WeakMap<SandboxSnapshot, (unit: ScriptRunUnit) => StatCodeRunOptions>();
 
@@ -347,6 +355,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
         : switchedTraitEntry(read, unit.switched);
     return {
       clock: state.clock, ...(read.stats.readings ? { readings: read.stats.readings } : {}), ...(state.turn && { turn: turnRead(state.turn, unit) }),
+      ...(takesChoicesWrite(unit, state.turn) && { choicesWritable: true }),
       enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
       ...(owner && { owner }), dictionaries: read.dictionaries, ...(read.resolveEntryValue && { resolveEntryValue: read.resolveEntryValue }),

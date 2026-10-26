@@ -254,6 +254,7 @@ export async function runTestCode(
     ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap((row) =>
       (row.traits ?? []).map((entry) => switchLine(`${traitWritesPath(row)}.`, entry))),
     ...(outcome.lore ?? []).map(({ path, value }) => `${path} = ${value}`),
+    ...(outcome.choices ? [`turn.choices = ${JSON.stringify(outcome.choices)}`] : []),
     ...worldWriteLines(outcome.worldWrites, locations, entityNames),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;

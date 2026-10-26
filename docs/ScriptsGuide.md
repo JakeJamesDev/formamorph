@@ -355,7 +355,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
-| `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | Read-only |
+| `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
@@ -1068,7 +1068,7 @@ if (traits.Resting.enabled) clock.advance(8 * 60);
 ### Turn
 <!-- keywords: player action, what the player typed, player input, turn count, turn counter, every fifth turn, ooc, what did the player say, what the ai wrote, read the narration, read the reply, read the choices, what choices the player has -->
 
-`turn` holds what the player did, which turn it is, and what the AI wrote back. Its fields are read-only: a write to one is ignored and reported.
+`turn` holds what the player did, which turn it is, and what the AI wrote back. Its fields are read-only, except `turn.choices` in an After the AI script (see [Change the choices](#change-the-choices)). A write to a read-only field is ignored and reported.
 
 | Field | What it is |
 | --- | --- |
@@ -1089,6 +1089,22 @@ if (traits.Resting.enabled) clock.advance(8 * 60);
 ```js
 // Every fifth turn the market restocks, unless the player only gave an OOC direction.
 if (turn.number % 5 === 0 && !turn.action.startsWith('[')) stats.Stock.value = stats.Stock.max;
+```
+
+#### Change the choices
+<!-- keywords: change the choices, remove a choice, add a choice, hide an option, reorder choices, edit choices, clear the choices, filter choices -->
+
+An After the AI script can change the choices the player sees. Edit `turn.choices` as you edit any list: assign a new or filtered list, or use `push`, `splice` or an index.
+
+- **Scripts edit one list in turn.** Each After the AI script reads the list as the scripts before it left it. The player sees the list the last script leaves.
+- **A bad item fails the run.** Every item must be text that isn't blank. Otherwise the script fails and none of its writes land. The list stays as the scripts before it left it.
+- **An empty list is allowed.** The turn then shows no choices, and the player types an action.
+- **It's read-only at other timings.** Before the AI, At Game Start, During AI Output, When a Trait Switches, Tools and runs between turns read the list. A change there is ignored and reported. With the player's choices off, a change is ignored too.
+- **A stats re-roll starts again.** It runs the scripts on the AI's own choices. Edits never stack. The save keeps both lists.
+
+```js
+// Once the bridge is down, no choice crosses it.
+if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/bridge/i.test(choice));
 ```
 
 ### Location

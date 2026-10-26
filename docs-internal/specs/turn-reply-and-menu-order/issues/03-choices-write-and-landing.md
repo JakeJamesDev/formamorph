@@ -1,6 +1,6 @@
 # 03: Choices Write And Landing
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02 — Turn Page And Choices Reads
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,19 +15,31 @@ Spec: Q7 (the shown list), Q9, Q11–Q15, Q18, Q21, stories 9–15, 18, 20.
 
 ## Acceptance criteria
 
-- [ ] After the AI scripts that assign, `push`, `splice`, edit an element, and `filter` then assign each land their list as the turn's shown choices
-- [ ] Two After the AI scripts in run order: the second reads the first's edit, and the shown list holds both edits
-- [ ] A run that leaves a non-string or blank item fails as a bad write; the turn shows the list as the earlier scripts left it
-- [ ] A script that assigns `[]` shows no choices, and the input box accepts an action
-- [ ] The same write at Before the AI, During AI Output, At Game Start, When a Trait Switches, in a user Tool and in a World Tool lists as dropped and lands nothing; with the player's choices off it lists as dropped at After the AI too
-- [ ] The analysis gives no diagnostic to `turn.choices = [...]` at After the AI, and lists the same write at Before the AI and `turn.action = ""` at After the AI as read-only writes
-- [ ] The stored turn holds the shown list where choices live today and the AI's own list in the new field; a save round-trip keeps both
-- [ ] A stats re-roll twice in a row shows the list one run gives, from the AI's choices, and the turn record holds it
-- [ ] Reinstating the field lock on `choices` turns the write tests red
-- [ ] Hover cards and the Variable menu show `turn.choices` writable at After the AI and read-only elsewhere; the Scripts guide covers the write; the changelog fragment folds it into the reads entry
+- [x] After the AI scripts that assign, `push`, `splice`, edit an element, and `filter` then assign each land their list as the turn's shown choices: `turnChoicesWrite.test.ts` "lands %s" (alias too); shown list in `GameViewer.choicesWrite.test.tsx` "show the scripted list"
+- [x] Two After the AI scripts in run order: the second reads the first's edit, and the shown list holds both edits: "hands each script the list…" and the view's "hold the edits of two scripts in run order"
+- [x] A run that leaves a non-string or blank item fails as a bad write; the turn shows the list as the earlier scripts left it: "fails as a bad write on %s" (number, blank, hole, text, no list) and the view's bad-write test
+- [x] A script that assigns `[]` shows no choices, and the input box accepts an action: view test "show none after a script clears them" sends a second turn
+- [x] The same write at Before the AI, During AI Output, At Game Start, When a Trait Switches, in a user Tool and in a World Tool lists as dropped and lands nothing; with the player's choices off it lists as dropped at After the AI too: `turnChoicesWrite.test.ts` "a turn.choices write where it drops"; view test for choices off
+- [x] The analysis gives no diagnostic to `turn.choices = [...]` at After the AI, and lists the same write at Before the AI and `turn.action = ""` at After the AI as read-only writes: `statCodeAnalysis.turn.test.ts`; World Tools read-only at every timing in `worldToolSurface.test.ts`
+- [x] The stored turn holds the shown list where choices live today and the AI's own list in the new field; a save round-trip keeps both: view tests "show the scripted list…" and "keeps the shown list and the AI's own through a save and a load" (history wiped between)
+- [x] A stats re-roll twice in a row shows the list one run gives, from the AI's choices, and the turn record holds it: view test "start a stats re-roll's choice writes from the AI's list, twice in a row"
+- [x] Reinstating the field lock on `choices` turns the write tests red: mutated the prelude back to a frozen locked field, 23 of 27 write tests went red; restored
+- [ ] Hover cards and the Variable menu show `turn.choices` writable at After the AI and read-only elsewhere; the Scripts guide covers the write; the changelog fragment folds it into the reads entry: cards and menu in `codeCards.turn.test.ts` and `statCodeVariableTree.test.ts`; guide section "Change the choices". The changelog fold is not done (see Not verified)
 
 ⚠️ Save shape: the turn record gains an additive field for the AI's own choices. Say so in the landing.
 
 ## Blocked by
 
 - 02 — Turn Page And Choices Reads
+
+## Landed
+
+**Not verified**
+
+- The changelog fold into the reads entry. A ticket fragment always lands as its own entry, so the write is its own entry under **Scripts**. The spec session can merge the two lines on the main checkout.
+
+**For you**
+
+- ⚠️ Save shape: each stored turn gains `aiChoices` (additive), present only when an After the AI script changed the shown list.
+- After the AI scripts now run one after another, not together (Q14). Two scripts that each ask the player now ask in turn.
+- In a world with an After the AI choices script, the AI's list shows first and the scripted list replaces it when the batch lands. Ticket 04 holds the display.

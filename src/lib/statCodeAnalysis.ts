@@ -638,7 +638,7 @@ function isPlaceholderWriteCall(node: SyntaxNode, code: string, inScope: (root: 
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
 function entryRef(
-  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries',
+  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries' | 'turn',
 ): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
@@ -935,6 +935,16 @@ function checkOwnerWrite(target: SyntaxNode, code: string, assignment: boolean):
   const own = entryRef(target, code, 'owner');
   if (own) return { from: own.from, to: own.to, severity: 'error', message: `owner.${own.name} is read-only.` };
   return checkTraitWrite(target, code, assignment, ownerTraitRef);
+}
+
+/** What is wrong with a write into `turn`: to a field, or into one, the surface lists as read-only (Q21). */
+function checkTurnWrite(target: SyntaxNode, code: string, surface: CodeSurface): CodeDiagnostic | null {
+  let member: SyntaxNode | null = target;
+  while (member?.firstChild?.name === 'MemberExpression') member = member.firstChild;
+  const own = member && entryRef(member, code, 'turn');
+  if (!own) return null;
+  const access = surface.members.get('turn')?.find((entry) => entry.name === own.name)?.access;
+  return access === 'writable' ? null : { from: own.from, to: own.to, severity: 'error', message: `turn.${own.name} is read-only.` };
 }
 
 /** What is wrong with a write into `entities`: to the map, to an entry or one of its members, or into an
@@ -1260,6 +1270,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const clockInScope = rules.stats && !declared.has('clock');
   const selfInScope = rules.self && !declared.has('self');
   const switchedTraitInScope = surfaceHasGlobal(surface, 'trait') && !declared.has('trait');
+  const turnInScope = surfaceHasGlobal(surface, 'turn') && !declared.has('turn');
   /** Whether an operand is a whole stat entry: `self`, or one key of `stats` or of an owner's `stats`. */
   const isStatEntry = (operand: SyntaxNode) => {
     if (operand.name === 'VariableName') return selfInScope && code.slice(operand.from, operand.to) === 'self';
@@ -1330,6 +1341,10 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         sawTraitWrite = true;
         const entityProblem = checkEntityWrite(target, code, cursor.type.name === 'AssignmentExpression');
         if (entityProblem) diagnostics.push(entityProblem);
+      }
+      if (turnInScope && memberRoot(target, code) === 'turn') {
+        const turnProblem = checkTurnWrite(target, code, surface);
+        if (turnProblem) diagnostics.push(turnProblem);
       }
       if (dictionariesInScope && memberRoot(target, code) === 'dictionaries') {
         sawPlaceholderWrite = true;

@@ -113,6 +113,8 @@ export interface StatCodeResult {
   unknownLore?: string[];
   /** Read-only fields the code wrote, as code spelled them, such as `traits.Brave.mode`; each write was dropped. */
   readOnlyWrites?: string[];
+  /** The `turn.choices` the run left, when it takes the write and the list differs from the one it read (Q12). */
+  choices?: string[];
   /** The sentence the code left, by return or by `narration.sentence`. Present on a During AI Output run that
    *  succeeded, the sentence as it came when the code did not touch it. */
   sentence?: string;
@@ -327,6 +329,8 @@ export interface SandboxTurn {
   number: number;
   narration: string;
   choices: readonly string[];
+  /** The player has choices off: `choices` reads empty and takes no write (Q11). */
+  choicesOff?: boolean;
 }
 
 /** One entry of a book's `entries`, by its code name. */
@@ -1391,6 +1395,8 @@ export interface StatCodeRunOptions {
   readings?: Readonly<Record<string, StatTurnInputs>>;
   /** Absent, `turn` reads an empty action at turn 0. */
   turn?: SandboxTurn;
+  /** `turn.choices` takes the write: an After the AI script's, with choices on (Q21). A change elsewhere is dropped. */
+  choicesWritable?: boolean;
   /** The live stat-enabled map. A stat set false here reads `enabled: false`. */
   enabled?: Readonly<Record<string, boolean>>;
   /** The map's top-level keys, in authored order. Absent, the map is empty. */
@@ -1594,6 +1600,22 @@ const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
 const NO_TURN: SandboxTurn = { action: '', number: 0, narration: '', choices: [] };
 
+/** The prelude's reader of `turn.choices` at run end: JSON with null for each item that isn't text, or null for no list. */
+const CHOICES_AT_END = '__formamorphChoicesAtEnd';
+
+const UNCHANGED = Symbol('unchanged');
+
+/** `turn.choices` at run end from the reader's dump, or `UNCHANGED` when it holds the list the run read. */
+function choicesAtEnd(start: readonly string[], dump: string | null): unknown {
+  const end: unknown = dump === null ? null : JSON.parse(dump);
+  const same = Array.isArray(end) && end.length === start.length && end.every((item, i) => item === start[i]);
+  return same ? UNCHANGED : end;
+}
+
+/** Whether `list` is text items with no blank one (Q13). */
+const isTextList = (list: unknown): list is string[] =>
+  Array.isArray(list) && list.every((item) => typeof item === 'string' && item.trim() !== '');
+
 /** Who an unknown entry's diary can name: every entity but the persona, by id, else by name, then the discovered. */
 const diaryCast = (entities: readonly SandboxEntity[], persona: SandboxEntity, discovered: readonly SandboxPlace[]): SandboxPlace[] => [
   ...entities
@@ -1786,9 +1808,9 @@ export const executeStatCode = async (
    *  write is ignored. */
   currentStat: Stat | null,
   {
-    clock, readings, turn = NO_TURN, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], resolveEntryValue,
-    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args, openCast = false,
-    memories = [], notes = '', readOnly = false,
+    clock, readings, turn = NO_TURN, choicesWritable = false, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
+    dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
+    openCast = false, memories = [], notes = '', readOnly = false,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1888,9 +1910,17 @@ export const executeStatCode = async (
       `  Object.defineProperty(clock, 'advance', { value: advance, enumerable: true });`,
       `  return Object.freeze(clock);`,
       `})(${LOCK_FIELDS}, ${ADVANCE_CLOCK});`,
-      `const turn = Object.freeze((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.choices), entry))(`,
-      `  ${JSON.stringify({ action: turn.action, number: turn.number, narration: turn.narration, choices: turn.choices })}),`,
-      `  ['action', 'number', 'narration', 'choices'], 'turn.', ${LOOSE_NOTE}));`,
+      // `choices` is a plain array at every timing: the run end reads it back, and a change is the write (Q12).
+      `const turn = ((entry, choices) => Object.freeze(Object.defineProperty(entry, 'choices', {`,
+      `  enumerable: true, get: () => choices, set: (next) => { choices = next; },`,
+      `})))((${LOCK_FIELDS})(${JSON.stringify({ action: turn.action, number: turn.number, narration: turn.narration })}, ['action', 'number', 'narration'], 'turn.', ${LOOSE_NOTE}),`,
+      `  ${JSON.stringify(turn.choices)});`,
+      `const ${CHOICES_AT_END} = ((isArray, stringify) => (list) => {`,
+      `  if (!isArray(list)) return null;`,
+      `  const out = [];`,
+      `  for (let i = 0; i < list.length; i += 1) out[i] = typeof list[i] === 'string' ? list[i] : null;`,
+      `  return stringify(out);`,
+      `})(Array.isArray, JSON.stringify);`,
       ...(narration ? [
         // `sent` and `buffered` freeze, so code can neither swap nor grow them.
         `const narration = Object.seal((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.sent), Object.freeze(entry.buffered), entry))(`,
@@ -1917,7 +1947,8 @@ export const executeStatCode = async (
       readOnly ? readOnlyCode(code, !!args) : code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,
-      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES}), ${selfRead('hidden')}];`,
+      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES}), ${selfRead('hidden')},`,
+      `  ${CHOICES_AT_END}(turn.choices)];`,
     ].join('\n');
 
     return await runInSandbox(program, ({ vm, result, consoleOutput, timedOut }): StatCodeResult => {
@@ -1983,6 +2014,7 @@ export const executeStatCode = async (
       const assignedSentence = readSlot(11 + CODE_BOUND_FIELDS.length);
       const worldWrites = readWorldWrites(readDump(12 + CODE_BOUND_FIELDS.length));
       const selfHidden = readSlot(13 + CODE_BOUND_FIELDS.length);
+      const choicesDump = readSlot(14 + CODE_BOUND_FIELDS.length);
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
@@ -1993,6 +2025,13 @@ export const executeStatCode = async (
       if (narration && assignedSentence.type !== 'string') return failure('narration.sentence must be a string', 'bad-write');
       const sentence = narration && (returnsSentence ? returned.text : assignedSentence.text);
       if ('error' in worldWrites) return failure(worldWrites.error, 'throw');
+      const endChoices = choicesAtEnd(turn.choices, choicesDump.type === 'string' ? choicesDump.text : null);
+      const choicesChanged = endChoices !== UNCHANGED;
+      let choices: string[] | undefined;
+      if (choicesChanged && choicesWritable) {
+        if (!isTextList(endChoices)) return failure('turn.choices must be a list of text with no blank item', 'bad-write');
+        choices = endChoices;
+      }
       if (currentStat && !returnsSentence && returned.type !== 'number' && returned.type !== 'undefined') {
         return nonNumberFailure('Code must return a number or nothing');
       }
@@ -2039,6 +2078,7 @@ export const executeStatCode = async (
         ...traitWrites.readOnly,
         ...entityWrites.readOnly,
         ...loreWrites.readOnly,
+        ...(choicesChanged && !choicesWritable ? ['turn.choices'] : []),
       ];
 
       const settled = (value: number | null): StatCodeResult => ({
@@ -2061,6 +2101,7 @@ export const executeStatCode = async (
         ...(loreWrites.writes.length ? { lore: loreWrites.writes } : {}),
         ...(loreWrites.unknown.length ? { unknownLore: loreWrites.unknown } : {}),
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
+        ...(choices ? { choices } : {}),
         ...(sentence === undefined ? {} : { sentence }),
         ...(worldWrites.writes ? { worldWrites: worldWrites.writes } : {}),
         ...(worldWrites.maybeDiary ? { maybeDiary: worldWrites.maybeDiary } : {}),
