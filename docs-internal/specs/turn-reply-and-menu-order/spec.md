@@ -48,6 +48,7 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 | Q28 | The turn record saves the turn's resolved asks (owner, stat, value, max) as an additive field, written at the commit and on a stats re-roll, so the Q19 replay reads them. A turn without the field rebuilds global value asks from `stat_changes`. Settled with the user: the record held only global value asks |
 | Q29 | On the Re-generate Choices rerun a single `ask` answers `null`. In a scripting world the streamed AI list is held until the rerun lands, then the scripted list shows once. A failing script fails alone (Q13); a stopped request, an empty reply or a rerun that cannot start puts the turn's own lists back. Writes the mode drops by design are not listed as dropped |
 | Q30 | In a marked world, a Stop or failure after the narration lands shows the AI's own list, since no scripted list appeared. The mark holds only with the player's choices on. The scan reads the authored world's After the AI boxes: world scripts, global, entity and Blueprint stats and traits, and the links that override their scripts; runtime characters copy Blueprints. A local name `turn` marks the world, the cost Q12 accepts |
+| Q31 | Test Code lists a `turn.choices` write as a write line, as it lists every other write (close review, 2026-10-26) |
 
 ## Surface
 
@@ -114,4 +115,4 @@ A good test drives a public seam with real inputs and asserts what an author or 
 
 - The changelog carries one entry for the menu order and three under **Scripts**: the reads and the write as one, the hold, and the **Re-generate Choices** rerun. The last two are capabilities of their own, so they stay separate.
 - The help vectors rebuild before release, since the Scripts guide changes.
-- Follow-up (Q25): the editor check flags no write to `clock`, `location` or `notes`, and no mutating call on `turn.choices` outside After the AI. Run time lists them as dropped.
+- Follow-ups after the close, 2026-10-26: ticket 06 folds the close review's six Standards findings; ticket 07 gives the editor check the mutating calls on `turn.choices` and the `clock`, `location` and `notes` writes (Q25). Both opened after `Status: done`.
