@@ -13,6 +13,9 @@ import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeho
 import { ownerPins } from './ownedTraitsInPlay';
 import { bundledWorldHarness, valueOf, withValues, type StatValues } from '@/test/bundledWorldHarness';
 import type { CodePins } from '@/types';
+import { visibleImages, visibleLocationImages } from './imageVisibility';
+import { scoped } from './scope';
+import type { GateInput, GateStatSet } from './traitGates';
 
 const {
   world, persona: creature, gate, ownerWorld, none, idOf, activeIds, activeTraits, build, personaStats, turn: harnessTurn, personaStatsOut,
@@ -217,5 +220,32 @@ describe('the Subway Line chip', () => {
     const rolledLine = line.values.map((value) => value.text).find((name) => resolved[0].includes(name))!;
     expect(rolledLine).toBeDefined();
     for (const text of resolved) expect(text).toContain(rolledLine);
+  });
+});
+
+describe('the Visibility rules', () => {
+  const statNamed = (name: string) => world.stats.find((stat) => stat.name === name)!;
+  // Play's gate input with one global stat at the given value.
+  const globalAt = (name: string, value: number): GateInput => {
+    const stat = statNamed(name);
+    return {
+      ...gate,
+      active: settleDefaults(gate).active,
+      stats: scoped<GateStatSet>({ [stat.id]: { name, value, min: stat.min ?? 0, max: stat.max ?? 100 } }),
+    };
+  };
+
+  it('swaps Downtown Core to its ruined skyline once Destruction reaches 40', () => {
+    const slots = (destruction: number) =>
+      visibleLocationImages(locationNamed('Downtown Core'), globalAt('Destruction', destruction)).map((image) => image.slot);
+    expect(slots(39)).toEqual([0]);
+    expect(slots(40)).toEqual([1]);
+  });
+
+  it('swaps Aegis-One from its hangar to the streets once Alert Level reaches 75', () => {
+    const aegis = world.entities.find((entity) => entity.name === 'Aegis-One')!;
+    const slots = (alert: number) => visibleImages(aegis, globalAt('Alert Level', alert)).map((image) => image.slot);
+    expect(slots(74)).toEqual([0]);
+    expect(slots(75)).toEqual([1]);
   });
 });
