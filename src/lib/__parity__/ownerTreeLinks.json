@@ -6945,6 +6945,161 @@
           }
         ]
       }
+    },
+    "The Daylight Seam": {
+      "boundStats": {},
+      "boundTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: the sun is up, and the seam is full of plain daylight from home. Stepping through it from the Stalefront ends the ordeal: narrate the crossing as a triumphant finale that ends on the player's first bite of real, savory food. From the Leftover Wastes side, the seam leads back to the Stalefront.",
+            "id": "open_to_daylight",
+            "mode": "alwaysOn",
+            "name": "Open to Daylight",
+            "order": 0,
+            "playerDescription": "The sun is up. The seam is full of daylight, and stepping through it takes you home.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "dawn",
+                      "morning",
+                      "midday",
+                      "afternoon"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "ACTIVE: the sun is down, and the seam holds no daylight. It is a dark, cold crack in the crust. Stepping through it from the Stalefront leads only to the Leftover Wastes behind the crust, never home, and from the Wastes side it leads back to the Stalefront. It fills with daylight again at dawn.",
+            "id": "dark_seam",
+            "mode": "alwaysOn",
+            "name": "Dark Seam",
+            "order": 1,
+            "playerDescription": "The sun is down. The seam is a dark crack, and through it lie only the Leftover Wastes.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          }
+        ]
+      },
+      "carriedStats": {},
+      "carriedTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: the sun is up, and the seam is full of plain daylight from home. Stepping through it from the Stalefront ends the ordeal: narrate the crossing as a triumphant finale that ends on the player's first bite of real, savory food. From the Leftover Wastes side, the seam leads back to the Stalefront.",
+            "id": "open_to_daylight",
+            "mode": "alwaysOn",
+            "name": "Open to Daylight",
+            "order": 0,
+            "playerDescription": "The sun is up. The seam is full of daylight, and stepping through it takes you home.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "dawn",
+                      "morning",
+                      "midday",
+                      "afternoon"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "ACTIVE: the sun is down, and the seam holds no daylight. It is a dark, cold crack in the crust. Stepping through it from the Stalefront leads only to the Leftover Wastes behind the crust, never home, and from the Wastes side it leads back to the Stalefront. It fills with daylight again at dawn.",
+            "id": "dark_seam",
+            "mode": "alwaysOn",
+            "name": "Dark Seam",
+            "order": 1,
+            "playerDescription": "The sun is down. The seam is a dark crack, and through it lie only the Leftover Wastes.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          }
+        ]
+      },
+      "portableStats": {},
+      "portableTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: the sun is up, and the seam is full of plain daylight from home. Stepping through it from the Stalefront ends the ordeal: narrate the crossing as a triumphant finale that ends on the player's first bite of real, savory food. From the Leftover Wastes side, the seam leads back to the Stalefront.",
+            "id": "open_to_daylight",
+            "mode": "alwaysOn",
+            "name": "Open to Daylight",
+            "order": 0,
+            "playerDescription": "The sun is up. The seam is full of daylight, and stepping through it takes you home.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "dawn",
+                      "morning",
+                      "midday",
+                      "afternoon"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "ACTIVE: the sun is down, and the seam holds no daylight. It is a dark, cold crack in the crust. Stepping through it from the Stalefront leads only to the Leftover Wastes behind the crust, never home, and from the Wastes side it leads back to the Stalefront. It fills with daylight again at dawn.",
+            "id": "dark_seam",
+            "mode": "alwaysOn",
+            "name": "Dark Seam",
+            "order": 1,
+            "playerDescription": "The sun is down. The seam is a dark crack, and through it lie only the Leftover Wastes.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "evening",
+                      "night"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          }
+        ]
+      }
     }
   },
   "valentines": {
