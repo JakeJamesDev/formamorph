@@ -91,7 +91,7 @@ export const PATH_TRIGGERS = {
   'src/defaultworlds/*.json': ['src/services/WorldStorageService.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts', 'src/lib/seedRule.bundled.test.ts', 'src/lib/shippedWorld.test.ts', 'scripts/shipBundledWorlds.test.ts'],
   'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
   'src/defaultworlds/drone.json': ['src/lib/droneWorld.test.ts', 'testing/art-harness/artHarness.test.ts'],
-  'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
+  'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/lib/emberwatchWorld.scripts.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/slime.json': ['src/lib/slimeWorld.test.ts'],
   'src/defaultworlds/rampage.json': ['src/lib/rampageWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],

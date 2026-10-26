@@ -65,8 +65,8 @@ describe('the Emberwatch default world', () => {
     expect(world.worldOverview.tags).toContain('example');
   });
 
-  it('runs clean on the Test Bench', () => {
-    expect(runRules(world).map((f) => `${f.ruleId}: ${f.message}`)).toEqual([]);
+  it("raises only the Founders' Pact finding on the Test Bench, an entry its script switches on", () => {
+    expect(runRules(world).map((f) => `${f.ruleId}: ${f.message}`)).toEqual(["dictionary-disabled: “The Founders' Pact” is disabled and can’t fire"]);
   });
 
   it('carries every copy its owners need, so the reconcile has nothing to add or take', () => {
@@ -120,9 +120,28 @@ describe('the Emberwatch default world', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
     for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Link overrides', 'Blueprint pins', 'Blueprint chips',
-      'Custom Persona', 'Persona-only', 'Same-owner gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults', 'Lorebook', 'Self openings']) {
+      'Custom Persona', 'Persona-only', 'Same-owner gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults', 'Lorebook', 'Self openings',
+      'Script control of lore', 'Relationship labels', 'Rolled label', 'Known In', 'Random presence']) {
       expect(readme, label).toContain(`**${label}`);
     }
+  });
+});
+
+describe('the Emberwatch map', () => {
+  const at = (name: string) => world.locations.find((l) => l.name === name)!.canvasPosition!;
+
+  it('places every location on the canvas', () => {
+    expect(world.locations.filter((l) => !l.canvasPosition).map((l) => l.name)).toEqual([]);
+  });
+
+  it('runs north from the river to the barrow, with the road far to the west', () => {
+    const southToNorth = ['Riverside Market', 'Ashford Square', 'Emberwatch Keep', 'The Boundary Wall', 'The Barrow Beyond the Wall'];
+    const ys = southToNorth.map((name) => at(name).y);
+    expect(ys).toEqual([...ys].sort((a, b) => b - a));
+    expect(at('The Cinder and Crown').x).toBeLessThan(at('Ashford Square').x);
+    expect(at('Chapel of the Ember').x).toBeGreaterThan(at('Ashford Square').x);
+    expect(at('The Old Watchtower').x).toBeLessThan(at('Emberwatch Keep').x);
+    expect(at('The Frontier Road').x).toBeLessThan(at('The Old Watchtower').x);
   });
 });
 
