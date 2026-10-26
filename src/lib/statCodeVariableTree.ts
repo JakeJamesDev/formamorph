@@ -301,14 +301,20 @@ export interface TimingGlobals {
   narration: boolean;
   player: boolean;
   trait: boolean;
+  /** `turn`'s members with the access the timing gives them. Absent, every one is read-only. */
+  turn?: readonly SurfaceEntry[];
 }
 
 /** The timing globals of a surface, read off the one list the editor and the menu share. */
-export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => ({
-  narration: surfaceHasGlobal(surface, 'narration'),
-  player: surfaceHasGlobal(surface, 'player'),
-  trait: surfaceHasGlobal(surface, 'trait'),
-});
+export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => {
+  const turn = surface.members.get('turn');
+  return {
+    narration: surfaceHasGlobal(surface, 'narration'),
+    player: surfaceHasGlobal(surface, 'player'),
+    trait: surfaceHasGlobal(surface, 'trait'),
+    ...(turn && { turn }),
+  };
+};
 
 /** A call on `player` inserts complete, with the caret between the quotes of its question. */
 function playerFields(): VariableNode[] {
@@ -441,7 +447,7 @@ export function buildVariableTree(
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
-    { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), TURN_MEMBERS) },
+    { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },

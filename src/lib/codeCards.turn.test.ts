@@ -5,7 +5,7 @@ import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { scriptSurface, TURN_MEMBERS, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
 import { statCodeOwners } from './statCodeTargets';
 
-/** `turn` and its fields have cards, each read-only. */
+/** `turn` and its fields have cards, each read-only but `choices` at After the AI. */
 
 const world: CodeCardWorld = {
   traits: [], traitGroups: [], entities: [], stats: [], statGroups: [], placeholders: [], locations: [], worldScripts: [], worldTools: [],
@@ -39,7 +39,15 @@ describe('the turn cards', () => {
     ]);
   });
 
-  it('carries the read-only access on the global’s card and each field’s', () => {
-    for (const doc of ['tu|rn;', 'turn.ac|tion;', 'turn.nu|mber;', 'turn.na|rration;', 'turn.ch|oices;']) expect(cardAt(doc)?.access).toBe('readOnly');
+  it('carries the read-only access on the global’s card and each field’s but choices at After the AI', () => {
+    for (const doc of ['tu|rn;', 'turn.ac|tion;', 'turn.nu|mber;', 'turn.na|rration;']) expect(cardAt(doc)?.access).toBe('readOnly');
+    expect(cardAt('turn.ch|oices;')?.access).toBe('writable');
+  });
+
+  it('shows turn.choices read-only at every other timing', () => {
+    for (const timing of ['start', 'before', 'output', 'switch'] as const) {
+      const at: SurfaceAnalysisOptions = { surface: scriptSurface(WORLD_SCRIPT_SURFACE, timing), lookup };
+      expect(codeCard('turn.choices;', 8, at)?.access, timing).toBe('readOnly');
+    }
   });
 });

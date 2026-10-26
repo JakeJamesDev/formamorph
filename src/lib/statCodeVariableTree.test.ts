@@ -287,6 +287,19 @@ describe('entities, the persona and dictionaries', () => {
     expect(inserts(tree, 'Turn', 'choices')).toBe('turn.choices');
     expect(childrenOf(pick(tree, 'Turn')).map((node) => node.kind === 'field' && node.access)).toEqual(['readOnly', 'readOnly', 'readOnly', 'readOnly']);
   });
+
+  it('shows turn.choices writable in an After the AI box and read-only in every other', () => {
+    const accessAt = (timing: ScriptTiming) => childrenOf(pick(
+      buildVariableTree(undefined, null, 'empty', timingGlobalsOf(scriptSurface(STAT_CODE_SURFACE, timing))), 'Turn',
+    )).map((node) => node.kind === 'field' && node.access);
+    expect(accessAt('after')).toEqual(['readOnly', 'readOnly', 'readOnly', 'writable']);
+    for (const timing of ['start', 'before', 'output', 'switch'] as const) expect(accessAt(timing), timing).toEqual(['readOnly', 'readOnly', 'readOnly', 'readOnly']);
+  });
+
+  it('keeps turn.choices read-only in a user Tool’s menu at any timing', () => {
+    const toolTree = readOnlyTree(buildVariableTree(undefined, null, 'empty', timingGlobalsOf(scriptSurface(STAT_CODE_SURFACE, 'after'))));
+    expect(childrenOf(pick(toolTree, 'Turn')).map((node) => node.kind === 'field' && node.access)).toEqual(['readOnly', 'readOnly', 'readOnly', 'readOnly']);
+  });
 });
 
 /** Mira holding two stats, as the stat box hands her to the editor. */

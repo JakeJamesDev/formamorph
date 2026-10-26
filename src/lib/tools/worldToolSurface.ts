@@ -7,7 +7,7 @@ import type { ToolParam, ToolScriptTiming } from '@/types';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { WORLD_TOOL_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import { memberStep } from '@/lib/statCodePaths';
-import { scriptSurface, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
+import { scriptSurface, TURN_MEMBERS, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
 import type { VariableNode } from '@/lib/statCodeVariableTree';
 import { SCRIPT_TIMING_OF_TOOL } from './worldTools';
 import { namedParams } from './toolDraft';
@@ -28,7 +28,8 @@ export function worldToolSurface(params: readonly ToolParam[], timing: ToolScrip
       { name: 'args', detail: shapeOf(argEntries.map((entry) => entry.name)), info: ARGS_INFO, access: 'readOnly' },
       ...surface.globals,
     ],
-    members: new Map([...surface.members, ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),
+    // A Tool's `turn.choices` write drops at every timing (Q21).
+    members: new Map([...surface.members, ['turn', TURN_MEMBERS], ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),
     missingReturn: timing === 'call' ? 'This script never returns, so the Tool sends its empty result.' : null,
     guide: WORLD_TOOL_GUIDE_LINKS,
   };

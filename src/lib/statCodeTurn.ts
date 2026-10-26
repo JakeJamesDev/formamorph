@@ -217,6 +217,8 @@ export interface StatCodeTurnResult {
   gateStats: GateStats;
   /** The sentence an `output` run left: as it came when no script changed it. Absent on any other run. */
   sentence?: string;
+  /** The `turn.choices` an `after` run's scripts left, in run order. Absent when none changed it. */
+  choices?: readonly string[];
   /** The run's location, clock and discovery writes, merged in run order. Absent when no script wrote one. */
   worldWrites?: WorldWrites;
   /** Every entry field the run's scripts wrote, in run order, so the later write wins. Absent when none wrote one. */
@@ -454,8 +456,10 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const result = await runScripts(turn);
   if (turn.timing === 'output') return result;
   const switched = await withSwitchRuns(turn, result);
-  const { reply, triggerWrites } = result;
-  return reply ? { ...switched, reply, ...(triggerWrites ? { triggerWrites } : {}) } : switched;
+  const { reply, triggerWrites, choices } = result;
+  return {
+    ...switched, ...(choices ? { choices } : {}), ...(reply ? { reply, ...(triggerWrites ? { triggerWrites } : {}) } : {}),
+  };
 }
 
 /** `result` with the switch runs fired by the switches it made over `turn`, as one result over `turn`. */
@@ -537,6 +541,8 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
       ownerTraits,
       placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
       ...(result.loreWrites ? { loreToggles: withLoreWrites(state.loreToggles ?? {}, result.loreWrites) } : {}),
+      // The switch runs read the choices the batch left.
+      ...(result.choices && state.turn ? { turn: { ...state.turn, choices: result.choices } } : {}),
     },
   };
 }
@@ -674,6 +680,8 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   ];
   // The sentence a During AI Output run hands from one script to the next.
   let sentence = timing === 'output' ? turn.narration?.sentence : undefined;
+  // The choices an After the AI script left, which the next one reads (Q14). Unset until a script changes them.
+  let choices: readonly string[] | undefined;
   let reply: TriggerReply | undefined;
   const runUnit = async ({ unit, run }: (typeof ordered)[number]) => {
     // A replayed unit holds its saved writes already and runs no script.
@@ -682,6 +690,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const result = await snapshot.run({
       home: unit.home, timing, code: script.code, ...switchInput, ...(args && { args }), ...(turn.prompts && { prompts: turn.prompts }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
+      ...(choices && { choices }),
     });
     const first = args && unit === triggers[0]?.unit;
     if (result.error) {
@@ -691,6 +700,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     }
     if (first) reply = { text: result.reply ?? null };
     if (result.sentence !== undefined) sentence = result.sentence;
+    if (result.choices) choices = result.choices;
     unit.writes = {
       stats: targetWrites(stat, result, run.owner.id),
       placeholders: result.placeholders ?? [],
@@ -700,8 +710,8 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     };
     warnDroppedWrites(whoRan(unit), result);
   };
-  // A sentence chains through its scripts, so they run one after the other; every other timing runs them together.
-  if (timing === 'output') for (const entry of ordered) await runUnit(entry);
+  // The sentence and the choices chain, so those timings run their scripts in turn; the rest run together.
+  if (timing === 'output' || timing === 'after') for (const entry of ordered) await runUnit(entry);
   else await Promise.all(ordered.map(runUnit));
   const inOrder = ordered.map(({ unit }) => unit);
   const pinWrites = pinWritesInRunOrder(inOrder.map(({ writes }) => writes?.placeholders ?? []));
@@ -761,14 +771,18 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
-  const withSentence = sentence === undefined ? {} : { sentence };
+  // What the chained scripts left: the sentence, and the choices once a script changed them.
+  // Scripts that restore the list between them leave no change.
+  const read = state.turn?.choices ?? [];
+  const changedChoices = choices && (choices.length !== read.length || choices.some((choice, i) => choice !== read[i])) ? { choices } : {};
+  const withChained = { ...(sentence === undefined ? {} : { sentence }), ...changedChoices };
   const settledMain = settleWrites(state.stats, switched.state.stats, mainWrites, active);
   const { stats, moved, boundsChanged, hiddenChanged } = settledMain;
   if (!traitResult && !changedAnyStat(settledMain)) {
-    return { stats: state.stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...withOwners, ...withSentence, ...withWorld };
+    return { stats: state.stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...withOwners, ...withChained, ...withWorld };
   }
   return {
-    stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners, ...withSentence,
+    stats, moved, boundsChanged, hiddenChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners, ...withChained,
     ...withWorld,
   };
 }

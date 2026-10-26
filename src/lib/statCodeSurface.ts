@@ -44,8 +44,11 @@ export const TURN_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'action', detail: 'string', info: 'The player’s action this turn, OOC brackets included. On the opening turn, it’s the opening the AI gets. It’s empty on an Opening Narration and between turns.' },
   { name: 'number', detail: 'number', info: 'Turn number on the scale of memories[].turn: 1 on the opening turn, 0 before it. Between turns, the last turn that ended.' },
   { name: 'narration', detail: 'string', info: 'The page the player sees this turn, with During AI Output rewrites applied. It’s empty until After the AI. Between turns, the last turn’s page.' },
-  { name: 'choices', detail: 'string[]', info: 'The choices the player sees this turn, in order. It’s empty until After the AI, and when choices are off. Between turns, the last turn’s choices.' },
+  { name: 'choices', detail: 'string[]', info: 'The choices the player sees this turn, in order. It’s empty until After the AI, and when choices are off. An After the AI script can edit the list. Between turns, the last turn’s choices.' },
 ]);
+
+/** `turn`'s members in an After the AI script, where `choices` takes a write (Q21). */
+export const AFTER_TURN_MEMBERS: readonly SurfaceEntry[] = withAccess(TURN_MEMBERS, ['choices'], 'writable');
 
 /** The members of one entry in `locations`. None takes a write. */
 export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -465,13 +468,13 @@ const timingObject = (timing: ScriptTiming) => (timing === 'output'
   : { global: PLAYER_GLOBAL, members: PLAYER_CALL_ENTRIES });
 
 /** A script box's surface: its home's, with the names its timing adds. `narration` is During AI Output's, and
- *  `player` is every other timing's. `trait` is When a Trait Switches's. */
+ *  `player` is every other timing's. `trait` is When a Trait Switches's. After the AI's `turn.choices` takes a write. */
 export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface => {
   const { global, members } = timingObject(timing);
   return {
     ...surface,
     globals: [...surface.globals, global, ...(timing === 'switch' ? [SWITCHED_TRAIT_GLOBAL] : [])],
-    members: new Map([...surface.members, [global.name, members]]),
+    members: new Map([...surface.members, [global.name, members], ...(timing === 'after' ? [['turn', AFTER_TURN_MEMBERS] as const] : [])]),
   };
 };
 

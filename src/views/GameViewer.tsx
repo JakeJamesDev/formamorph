@@ -333,7 +333,15 @@ const turnReply = (stored: AITurnResult | null): Pick<SandboxTurn, "narration" |
 });
 
 /** `turn` as a run reads it now: no choices while the player has them off (Q24). */
-const underChoicesSetting = (turn: SandboxTurn, choicesOn: boolean): SandboxTurn => (choicesOn ? turn : { ...turn, choices: [] });
+const underChoicesSetting = (turn: SandboxTurn, choicesOn: boolean): SandboxTurn => (choicesOn ? turn : { ...turn, choices: [], choicesOff: true });
+
+/** The turn's choices as the AI gave them, before any script edit (Q18). */
+const aiChoicesOf = (stored: AITurnResult): string[] => stored.aiChoices ?? stored.choices ?? [];
+
+/** The patch that stores the choices an After the AI batch left: the shown list, with the AI's kept beside it
+ *  when a script changed it. */
+const choicesPatch = (aiChoices: readonly string[], scripted: readonly string[] | undefined): Pick<AITurnResult, "choices" | "aiChoices"> =>
+  (scripted ? { choices: [...scripted], aiChoices: [...aiChoices] } : { choices: [...aiChoices], aiChoices: undefined });
 
 /** Page one as stored. */
 const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
@@ -369,7 +377,11 @@ interface HistoryTurnView {
 /** A stat-code run set up but not yet executed: its turn, and the step that lays the result onto live state. */
 interface PreparedStatCode {
   turn: StatCodeTurn;
-  finish: (result: StatCodeTurnResult) => { written: TurnCodeState | null; gateStats: GateStats; world?: WorldWrites };
+  finish: (result: StatCodeTurnResult) => {
+    written: TurnCodeState | null; gateStats: GateStats; world?: WorldWrites;
+    /** The choices an After the AI batch's scripts left; absent when none changed them. */
+    choices?: readonly string[];
+  };
 }
 
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
@@ -1688,7 +1700,8 @@ const GameViewer = ({
       if (signal.aborted) return;
       const choices = parseChoices(response);
       setChoices(choices);
-      patchLatestTurn({ choices });
+      // The new draw is the AI's own list now.
+      patchLatestTurn({ choices, aiChoices: undefined });
       armTurnSnapshot();
     });
   };
@@ -1741,8 +1754,8 @@ const GameViewer = ({
         preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
         page === 1 && newPlaythroughRef.current,
       );
-      // Past the before box, the replay reads the re-rolled turn's own page and choices, as the live turn does past its reply.
-      if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev) };
+      // Past the before box, the replay reads the turn's own page and the AI's own choices (Q18).
+      if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, ...turnReply(prev), choices: aiChoicesOf(prev) };
       // The box has written by the time the request can be stopped, so every exit that abandons the
       // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
       let committed = false;
@@ -1779,6 +1792,12 @@ const GameViewer = ({
         committed = true;
         // Code writes land after the sandbox settles; the settle and the snapshot wait for them.
         const run = await statCode;
+        // The replay's scripted choices, else the AI's own, replace a scripted list (Q18). With choices off, no script wrote.
+        if (choicesEnabledRef.current && (run?.choices || prev.aiChoices)) {
+          const patch = choicesPatch(aiChoicesOf(prev), run?.choices);
+          setChoices(patch.choices);
+          patchLatestTurn(patch);
+        }
         await settleTurn(run?.gateStats ?? null);
         armTurnSnapshot();
       } finally {
@@ -2520,6 +2539,13 @@ const GameViewer = ({
 
     // The output and After the AI code writes beat the passes too, so the stored turn waits for them.
     const final = withCodeWrites(commit, mergeWorldWrites(outputWorld, run?.world), turn.context);
+    // The After the AI scripts' choices replace the AI's once the batch lands, and the turn keeps both (Q7, Q18).
+    const scriptedChoices = run?.choices;
+    if (scriptedChoices) {
+      setChoices([...scriptedChoices]);
+      if (turnReadRef.current) turnReadRef.current = { ...turnReadRef.current, choices: scriptedChoices };
+    }
+    const storedTurn: AITurnResult = { ...final.turn, ...choicesPatch(final.turn.choices, scriptedChoices) };
     if (commit.suggestedLocation && !final.suggestedLocation) setSuggestedLocation(null);
     // Regen already ticked at the commit's hours: a longer code duration ticks the extra, a shorter one moves the clock alone.
     const extraHours = final.turnHours - commit.turnHours;
@@ -2558,7 +2584,7 @@ const GameViewer = ({
       ) {
         updatedHistory[updatedHistory.length - 1] = {
           role: "assistant",
-          content: JSON.stringify(final.turn),
+          content: JSON.stringify(storedTurn),
         };
       }
       return updatedHistory;
@@ -3538,10 +3564,10 @@ const GameViewer = ({
             ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
             entityStats: nextEntityStats,
           });
-          const world = result.worldWrites;
+          const { worldWrites: world, choices } = result;
           if (!result.traits && !changedAnyStat(result)) {
             const written = nextPins === basePins && nextLore === baseLore && nextEntityStats === entityPrevious ? null : stateAfterRun();
-            return { written, gateStats: result.gateStats, world };
+            return { written, gateStats: result.gateStats, world, choices };
           }
           // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
           const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -3554,7 +3580,7 @@ const GameViewer = ({
           // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
           // The start scripts, the before box and the output scripts can move one stat, so their shares add.
           if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
-          return { written: stateAfterRun(), gateStats: result.gateStats, world };
+          return { written: stateAfterRun(), gateStats: result.gateStats, world, choices };
         };
         /** A switch run's landing: only what the run changed lands on the state play reached meanwhile. */
         const landSwitch = (result: StatCodeTurnResult) => {
