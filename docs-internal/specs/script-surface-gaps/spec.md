@@ -1,6 +1,7 @@
 # Spec: Script Surface Gaps
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-25. Tickets 01–08 done; the last landing is 6d34008b1. Review: spec text corrected (the export-shape line, the places input, the lore readers, the Surface table's rulings, Q4 and Q18 marked refined). Gates green on 2026-10-25.
 Spec session: script-surface-gaps — spec
 
 ## Problem Statement
@@ -20,7 +21,7 @@ Settled with the user on 2026-10-25 through a grill and an agent review of its f
 | Q1 | One effort covers all seven fields, one ticket per field where the work splits |
 | Q2 | A new `turn` global holds `turn.action` and `turn.number` |
 | Q3 | `clock` and `clock.previous` gain `hour` and `minute`. Both derive from one rounded minute, so `minute` never reads 60 and `day` agrees with the shown clock. The hour range is the calendar's hours per day. The opening turn reads the default start hour until the opening-time pass answers |
-| Q4 | `stat.hidden` is writable. The write persists per playthrough and rewinds with undo. The saved stat record already carries `hidden`, and load keeps it as saved, so the save gains no field for it |
+| Q4 | `stat.hidden` is writable. The write persists per playthrough and rewinds with undo. The saved stat record already carries `hidden`, and load keeps it as saved, so the save gains no field for it. Refined by Q46 |
 | Q5 | `turn.action` holds the player's text as sent, trimmed, with OOC square brackets kept. Images are never in it |
 | Q6 | On the opening turn and At Game Start, `turn.action` reads the cue the narrator gets: the player's edited cue, else the drawn opening. The "START GAME" stand-in stays inside the prompts |
 | Q7 | In a When a Trait Switches run between turns, `turn.action` reads empty and `turn.number` reads the last finished turn. No flag marks the case |
@@ -34,7 +35,7 @@ Settled with the user on 2026-10-25 through a grill and an agent review of its f
 | Q15 | Location entries and `location` gain `parent` (a code name, empty at the top level) and `children` (code names) |
 | Q16 | `hidden` and lore writes land as a stat field write does: after the run, in call order across one Timing's scripts. A Before the AI write shapes this turn's prompts; an After the AI write shapes the next turn's |
 | Q17 | *Superseded by Q23* |
-| Q18 | In Test Code and the Test Bench, `turn` reads a fixed sample action at number 2. At Game Start reads the world's heaviest Opening Action at number 1, else the default opening; a world with only narration openings reads empty (Q22). The Settings sample world for user Tools reads the same sample action, numbered from its sample memories |
+| Q18 | In Test Code and the Test Bench, `turn` reads a fixed sample action at number 2. At Game Start reads the world's heaviest Opening Action at number 1, else the default opening; a world with only narration openings reads empty (Q22). The Settings sample world for user Tools reads the same sample action, numbered from its sample memories; Q42 fixes it at number 4 |
 | Q19 | *Superseded by Q33* |
 | Q20 | A stat a script unhides appears in the panel with no built-in notice. An author who wants one calls `player.tell` |
 | Q21 | The save keeps the opening cue the player sent in a new field, so `turn.action` on page 1 reads the same after a re-roll or a reload. History keeps the stand-in |
@@ -75,18 +76,18 @@ Every entry is read-only unless its row says it takes a write.
 
 | Path | Type | Access | Reads |
 |---|---|---|---|
-| `turn.action` | string | read | Q5, Q6, Q7, Q22, Q24, Q35 |
-| `turn.number` | number | read | Q8, Q25, Q35 |
-| `clock.hour`, `clock.previous.hour` | number | read | Q3 |
-| `clock.minute`, `clock.previous.minute` | number | read | Q3 |
-| `<stat>.descriptor`, `<stat>.previous.descriptor` | string | read | Q9, Q31, Q32 |
-| `<stat>.hidden` | boolean | write | Q4, Q10, Q16, Q20, Q23, Q34 |
-| `dictionaries.X.enabled` | boolean | write | Q33, Q36, Q37, Q38, Q40 |
-| `dictionaries.X.entries.Y.enabled` | boolean | write | Q11, Q12, Q13, Q26 |
-| `dictionaries.X.entries.Y.constant` | boolean | write | Q13, Q28 |
-| `locations.X.parent`, `location.parent` | string | read | Q15 |
-| `locations.X.children`, `location.children` | string[] | read | Q15 |
-| `locations.X.exits`, `location.exits` | `{ name, hint }[]` | read | Q29, Q30 |
+| `turn.action` | string | read | Q5, Q6, Q7, Q22, Q24, Q35, Q42, Q44, Q47 |
+| `turn.number` | number | read | Q8, Q25, Q35, Q42 |
+| `clock.hour`, `clock.previous.hour` | number | read | Q3, Q41 |
+| `clock.minute`, `clock.previous.minute` | number | read | Q3, Q41 |
+| `<stat>.descriptor`, `<stat>.previous.descriptor` | string | read | Q9, Q31, Q32, Q43 |
+| `<stat>.hidden` | boolean | write | Q4, Q10, Q16, Q20, Q23, Q34, Q45, Q46 |
+| `dictionaries.X.enabled` | boolean | write | Q33, Q36, Q37, Q38, Q40, Q50, Q51 |
+| `dictionaries.X.entries.Y.enabled` | boolean | write | Q11, Q12, Q13, Q26, Q49, Q50 |
+| `dictionaries.X.entries.Y.constant` | boolean | write | Q13, Q28, Q49, Q50 |
+| `locations.X.parent`, `location.parent` | string | read | Q15, Q48 |
+| `locations.X.children`, `location.children` | string[] | read | Q15, Q48 |
+| `locations.X.exits`, `location.exits` | `{ name, hint }[]` | read | Q29, Q30, Q48 |
 
 ## User Stories
 
@@ -143,20 +144,20 @@ Every entry is read-only unless its row says it takes a write.
 
 ## Implementation Decisions
 
-- **Sandbox Snapshot.** The snapshot builds `turn`, the clock's hour and minute, each stat's descriptor, the location tree and exits, and the lore listing once per turn or check, as it builds every other read. Its state input gains the turn's action and number, the places' parent ids and destination entries, and the lore overlay.
+- **Sandbox Snapshot.** The snapshot builds `turn`, the clock's hour and minute, each stat's descriptor, the location tree and exits, and the lore listing once per turn or check, as it builds every other read. Its state input gains the turn's action and number, the places' parent ids and the world's Connections, and the lore overlay.
 - **Turn inputs.** The turn pipeline hands the snapshot the action and number on every path: the live turn, At Game Start, the stats re-roll, the full re-roll, switch runs in and between turns, and World Tool calls. The number is the finished turns plus one while a turn is in progress, and the finished turns otherwise.
 - **Opening cue.** The save envelope gains the opening cue the player sent. The page-1 re-roll and a reload read it. History keeps the stand-in, so later turns' requests stay byte-equal.
 - **Clock.** One resolver returns day, hour and minute from one rounded minute. The sandbox clock object reads it, as the panel's stamp does.
 - **Descriptor.** The sandbox reads the band picker the AI's stat context reads, with chips resolved by the same resolver the prompt uses. The previous stat's band is resolved with the turn-start pins.
 - **`hidden` write.** The executor's writable stat fields gain `hidden`. It lands with the other stat field writes and reaches the stat records that already carry it. The delta chips for a stat unhidden this turn read this turn's change.
-- **Lore overlay.** The game state gains a map of lore toggles keyed by book id and entry id, with book-level entries for book `enabled`. Every reader of in-play lore reads the books through the overlay: the narration prompt, the planner, the Tool snapshot, the semantic dictionary, the scripts' map, the stats re-roll's pre-turn reset, and the Before the AI undo. A Before the AI write reaches this turn's prompts through the code view, as stat writes do.
+- **Lore overlay.** The game state gains a map of lore toggles keyed by book id and entry id, with book-level entries for book `enabled`. Every reader of in-play lore reads the books through the overlay: the narration prompt, the Tool snapshot, the semantic dictionary, the scripts' map, the stats re-roll's pre-turn reset, and the Before the AI undo. A Before the AI write reaches this turn's prompts through the code view, as stat writes do.
 - **Book reach.** A book is absent from the scripts' map when the save has it off and its source has it on. A book its source ships off is listed with `enabled: false`.
 - **Entry listing.** The scripts' entry map, editor completions, editor checks and hover cards all list disabled entries, and they change together. Name resolution prefers an enabled entry, then the later one.
 - **Vectors.** A write that enables an entry or clears `constant` queues the entry for embedding. The turn does not wait.
-- **Locations.** The places input carries each location's parent id and its destination entries from the router's list. `parent`, `children` and `exits` are code names, so no entry holds another and no cycle forms. They build lazily, after Script Surface Q53.
+- **Locations.** The places input carries each location's parent id and the world's Connections; the snapshot builds exits from the router's destination list on first read. `parent`, `children` and `exits` are code names, so no entry holds another and no cycle forms. They build lazily, after Script Surface Q53.
 - **Naming.** The executor's existing internal per-stat turn readings take a new name, so `turn` means one thing. `turn` joins the globals a read-only user Tool run exposes.
 - **Editor surface.** The surface description gains every new name with its type, access and help line. Completions, hover cards, the Variable menu and the access lock follow from it.
-- **Export shape.** Two additive save-shape changes: the lore overlay on the game state and the opening cue on the envelope. No world-shape change.
+- **Export shape.** Four additive save-shape changes: the lore overlay on the game state, the opening cue on the envelope, and optional `hidden` and `lore` fields on the saved trigger-write row (Q46, Q50). No world-shape change.
 
 ## Testing Decisions
 
