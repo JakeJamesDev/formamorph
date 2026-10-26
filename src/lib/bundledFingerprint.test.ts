@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { sha256Hex, worldFingerprint } from './bundledFingerprint';
 import vector from './__fixtures__/bundled-fingerprint-vector.json';
 import list from './bundledFingerprints.json';
+import { shippedWorldText } from './shippedWorld';
 
 describe('worldFingerprint', () => {
   // The server repo carries a copy of this vector, so both implementations are pinned to one answer.
@@ -42,6 +43,14 @@ describe('bundled fingerprint list', () => {
     async (file) => {
       const world: unknown = JSON.parse(readFileSync(`src/defaultworlds/${file}`, 'utf8'));
       expect(worlds.has(await worldFingerprint(world))).toBe(true);
+    },
+  );
+
+  it.each(readdirSync('src/defaultworlds').filter((file) => file.endsWith('.json')))(
+    'holds the shipped fingerprint of %s',
+    async (file) => {
+      const shipped: unknown = JSON.parse(await shippedWorldText(readFileSync(`src/defaultworlds/${file}`, 'utf8')));
+      expect(worlds.has(await worldFingerprint(shipped))).toBe(true);
     },
   );
 

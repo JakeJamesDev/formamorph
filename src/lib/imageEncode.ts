@@ -7,7 +7,8 @@
  */
 import { bytesToDataUrl, dataUrlBytes, dataUrlMime, dataUrlToBuffer, fitWithin } from './imageBytes';
 
-const QUALITY = 0.82;
+/** The lossy encode quality Downscale uses, 0 to 1. */
+export const QUALITY = 0.82;
 
 // Lazy WASM lossless/animated-WebP encoder — only fetched when actually encoding. Kept dynamic (not a static
 // import) so this module stays evaluable in non-browser contexts (vitest) that can't load the CJS glue, and so
