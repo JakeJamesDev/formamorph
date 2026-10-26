@@ -10,6 +10,7 @@ const bigBook = (count: number): SandboxDictionary => ({
   name: 'Lore', id: 'lore',
   entries: Array.from({ length: count }, (_, at) => ({
     id: `entry-${at}-0000-0000-0000-000000000000`, name: `Entry ${at}`, keys: [`key ${at}`, `alias ${at}`], value: 'x'.repeat(1024),
+    enabled: true, constant: false,
   })),
 });
 

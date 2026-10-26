@@ -352,6 +352,21 @@ describe('runToolCall: Script', () => {
     });
   });
 
+  it('lists a disabled entry as off, and drops and lists a write to it (Q27)', async () => {
+    const world = sedge();
+    world.dictionaries = (world.dictionaries ?? []).map((book) => ({
+      ...book, entries: book.entries.map((e) => (e.id === 'dict-tollow' ? { ...e, enabled: false } : e)),
+    }));
+    const code = `
+      const book = Object.values(dictionaries)[0];
+      const knot = Object.values(book.entries).find((e) => e.id === 'dict-tollow');
+      knot.enabled = true;
+      return [Object.values(book.entries).map((e) => e.id + ':' + e.enabled).join('|'), knot.enabled];`;
+    const result = await runToolCall(script(code, []), '{}', snapshot(world));
+    expect(JSON.parse(result.text)).toEqual(['dict-gloamwater:true|dict-tollow:false', false]);
+    expect(result.warnings).toEqual([expect.stringMatching(/^Read-only fields\. Writes ignored: dictionaries\.\w+\.entries\["tollow-knot"\]\.enabled\.$/)]);
+  });
+
   it('drops every write, reads the snapshot value back, and lists what it dropped', async () => {
     const code = `
       entities.Bram.summary = 'Changed';

@@ -253,6 +253,7 @@ export async function runTestCode(
     ...(outcome.traits ?? []).map((entry) => switchLine('', entry)),
     ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap((row) =>
       (row.traits ?? []).map((entry) => switchLine(`${traitWritesPath(row)}.`, entry))),
+    ...(outcome.lore ?? []).map(({ path, value }) => `${path} = ${value}`),
     ...worldWriteLines(outcome.worldWrites, locations, entityNames),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
@@ -264,6 +265,7 @@ export async function runTestCode(
     ...droppedLine('Unknown trait names.', outcome.unknownTraits?.filter(keep.trait(null))),
     ...droppedLine('acquired is read-only.', outcome.acquiredWrites),
     ...droppedLine('Unknown entity names.', outcome.unknownEntities?.filter(keep.entity)),
+    ...droppedLine('Unknown dictionary entries.', outcome.unknownLore),
     ...readOnlyWritesLines(outcome.readOnlyWrites),
     ...(outcome.maybeDiary ?? []).map((name) => `Diary target “${name}” may be discovered in play.`),
     ...(outcome.entities ?? []).flatMap((row) => {

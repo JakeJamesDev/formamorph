@@ -1,7 +1,8 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, OwnedTraitStates, Placeholder,
-  PlayerStat, Script, Trait,
+  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, LoreToggles, OwnedTraitStates,
+  Placeholder, PlayerStat, Script, Trait,
 } from '@/types';
+import { withLoreWrites, type LoreWrite } from './loreToggles';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
@@ -86,6 +87,8 @@ export interface SandboxState {
   notes?: string;
   /** What `turn` reads. Absent, an empty action at turn 0. */
   turn?: SandboxTurn;
+  /** What scripts switched on the books' entries in play. Absent ⇒ none. */
+  loreToggles?: LoreToggles;
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */
@@ -163,6 +166,8 @@ export interface SavedScriptWrites {
   stats?: { owner: OwnerId; writes: TargetWrite[] }[];
   placeholders?: PlaceholderWrite[];
   traits?: StatTraitWrites;
+  /** Absent ⇒ none (Q50). */
+  lore?: LoreWrite[];
 }
 
 /** A World Tool call replayed from its saved writes: the Tool's name, for the switch log, and the writes. */
@@ -214,6 +219,8 @@ export interface StatCodeTurnResult {
   sentence?: string;
   /** The run's location, clock and discovery writes, merged in run order. Absent when no script wrote one. */
   worldWrites?: WorldWrites;
+  /** Every entry field the run's scripts wrote, in run order, so the later write wins. Absent when none wrote one. */
+  loreWrites?: LoreWrite[];
   /** Present on a run with triggers. */
   reply?: TriggerReply;
   /** What the run's first trigger wrote, when it ran clean. */
@@ -284,6 +291,7 @@ const RESULT_WARNINGS = {
   unknownStatWrites: 'wrote stats that do not exist',
   disabledStatWrites: 'wrote switched-off stats',
   unknownEntities: 'switched traits of entities not in the game',
+  unknownLore: 'wrote dictionary entries the game does not have',
 } as const satisfies Partial<Record<keyof StatCodeResult, string>>;
 
 /** Each entity row field that lists dropped writes, and how the warning describes it for `whose` traits. */
@@ -341,6 +349,7 @@ interface ScriptWrites {
   placeholders: readonly PlaceholderWrite[];
   traits?: StatTraitWrites;
   world?: WorldWrites;
+  lore?: readonly LoreWrite[];
 }
 
 /** One stat's fields a box wrote. */
@@ -368,17 +377,18 @@ function targetWrites(stat: PlayerStat | null, result: StatCodeResult, ownerId: 
 }
 
 /** `writes` as a save keeps them; empty fields are left out. */
-function savedWrites({ stats, placeholders, traits }: ScriptWrites): SavedScriptWrites {
+function savedWrites({ stats, placeholders, traits, lore }: ScriptWrites): SavedScriptWrites {
   return {
     ...(stats.size ? { stats: [...stats].map(([owner, writes]) => ({ owner, writes: [...writes] })) } : {}),
     ...(placeholders.length ? { placeholders: [...placeholders] } : {}),
     ...(traits ? { traits } : {}),
+    ...(lore?.length ? { lore: [...lore] } : {}),
   };
 }
 
 /** Saved writes as a run lays them on. */
-const scriptWritesOf = ({ stats = [], placeholders = [], traits }: SavedScriptWrites): ScriptWrites => ({
-  stats: new Map(stats.map(({ owner, writes }) => [owner, writes])), placeholders, ...(traits ? { traits } : {}),
+const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore }: SavedScriptWrites): ScriptWrites => ({
+  stats: new Map(stats.map(({ owner, writes }) => [owner, writes])), placeholders, ...(traits ? { traits } : {}), ...(lore ? { lore } : {}),
 });
 
 /** Each target scope's writes, each target stat's merged field by field in run order, the later script
@@ -526,6 +536,7 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
       }),
       ownerTraits,
       placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
+      ...(result.loreWrites ? { loreToggles: withLoreWrites(state.loreToggles ?? {}, result.loreWrites) } : {}),
     },
   };
 }
@@ -553,6 +564,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   if (!finalStep) throw new Error('A chained result needs a step');
   const pinWrites: PinWrites = Object.assign({}, ...steps.map((step) => step.pinWrites));
   const worldWrites = mergedWorldWrites(steps.map((step) => step.worldWrites));
+  const loreWrites = steps.flatMap((step) => step.loreWrites ?? []);
   const last = steps.findLast((step) => step.traits)?.traits;
   const logs = steps.map((step) => step.traits?.log ?? []);
   const traits: StatCodeTraitResult | undefined = last && {
@@ -567,6 +579,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   return {
     stats: now.state.stats, ...changedStats(start.state.stats, now.state.stats), pinWrites, gateStats: finalStep.gateStats,
     ...(traits ? { traits } : {}), ...(owners ? { owners } : {}), ...(worldWrites ? { worldWrites } : {}),
+    ...(loreWrites.length ? { loreWrites } : {}),
   };
 }
 
@@ -676,6 +689,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
       placeholders: result.placeholders ?? [],
       ...(result.traits || result.entities ? { traits: { world: result.traits ?? [], entities: result.entities ?? [] } } : {}),
       ...(result.worldWrites ? { world: result.worldWrites } : {}),
+      ...(result.lore ? { lore: result.lore.map(({ book, entry, field, value }) => ({ book, entry, field, value })) } : {}),
     };
     warnDroppedWrites(whoRan(unit), result);
   };
@@ -685,9 +699,10 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const inOrder = ordered.map(({ unit }) => unit);
   const pinWrites = pinWritesInRunOrder(inOrder.map(({ writes }) => writes?.placeholders ?? []));
   const worldWrites = mergedWorldWrites(inOrder.map(({ writes }) => writes?.world));
+  const loreWrites = inOrder.flatMap(({ writes }) => writes?.lore ?? []);
   const firstWrites = triggers[0]?.unit.writes;
   const withWorld = {
-    ...(worldWrites ? { worldWrites } : {}), ...(reply ? { reply } : {}),
+    ...(worldWrites ? { worldWrites } : {}), ...(loreWrites.length ? { loreWrites } : {}), ...(reply ? { reply } : {}),
     ...(firstWrites ? { triggerWrites: savedWrites(firstWrites) } : {}),
   };
 

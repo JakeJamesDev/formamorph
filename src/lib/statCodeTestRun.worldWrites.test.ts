@@ -51,6 +51,15 @@ describe('runTestCode world writes', () => {
     expect(report.writes).toEqual(['memories.add: Tor lied.', 'memories.pin: The bridge is out.', 'diary: Tor: I lied.']);
   });
 
+  it('lists each lore write as code spelled it, and an unknown entry as dropped', async () => {
+    const report = await run('dictionaries.Lore.entries["Old Gate"].enabled = true; dictionaries.Lore.entries.Nope.constant = true;', {
+      ...world, dictionaries: [{ id: 'lore', name: 'Lore', entries: [{ id: 'g', name: 'Old Gate', key: ['gate'], value: 'Shut.', enabled: false }] }],
+    });
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual(['dictionaries.Lore.entries["Old Gate"].enabled = true']);
+    expect(report.dropped).toEqual(['Unknown dictionary entries. Writes ignored: dictionaries.Lore.entries.Nope.constant.']);
+  });
+
   it('lists each entity write as one line', async () => {
     const report = await run('entities.Tor.move("loc-gate"); entities["Old Mira"].follow(); entities.Tor.unfollow();', {
       ...world, entities: [{ id: 'e-tor', name: 'Tor' }, { id: 'e-mira', name: 'Old Mira' }],

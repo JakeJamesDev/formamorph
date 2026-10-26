@@ -257,9 +257,9 @@ describe('entities, the persona and dictionaries', () => {
     expect(inserts(tree, 'Dictionaries', 'Lore', 'Placeholders', 'Era', 'value')).toBe('dictionaries.Lore.placeholders.Era.value');
   });
 
-  it('lists a dictionary’s enabled entries under it, each with its four fields', () => {
-    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries')).toEqual(['Iron Crown']);
-    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown')).toEqual(['id', 'name', 'keys', 'value']);
+  it('lists a dictionary’s entries under it, a disabled one too, each with its six fields', () => {
+    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries')).toEqual(['Iron Crown', 'Sealed']);
+    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown')).toEqual(['id', 'name', 'keys', 'value', 'enabled', 'constant']);
     expect(inserts(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown', 'keys')).toBe('dictionaries.Lore.entries["Iron Crown"].keys');
   });
 

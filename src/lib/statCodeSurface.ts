@@ -9,7 +9,7 @@
  */
 
 import {
-  DELTA_SOURCES, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD, type DeltaSource,
+  DELTA_SOURCES, DICTIONARY_ENTRY_WRITABLE_FIELDS, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD, type DeltaSource,
 } from '@/lib/statCodeExecutor';
 import { nearestName, readOnlyEntries, surfaceKnownNames, withAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { STAT_CODE_GUIDE_LINKS } from '@/lib/codeGuideLinks';
@@ -169,7 +169,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source' },
 ], SELF_WRITABLE_FIELDS, 'writable');
 
-export { PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD } from '@/lib/statCodeExecutor';
+export { DICTIONARY_ENTRY_WRITABLE_FIELDS, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD } from '@/lib/statCodeExecutor';
 
 /** The fields on a stat's `previous`: the whole stat as it stood at the start of this turn. Read-only. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -263,19 +263,21 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'diary', detail: '(line) => void', info: 'Adds a line to the entity’s diary for this turn, after the AI’s entry. An entity the game doesn’t have stops the script with an error.' },
 ], OWNER_MAPS);
 
-/** The members of one entry in a dictionary's `entries`. None takes a write. */
-export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+/** The members of one entry in a dictionary's `entries`. Only `enabled` and `constant` take a write. */
+export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the entry' },
   { name: 'name', detail: 'string', info: 'Code name of the entry' },
   { name: 'keys', detail: 'string[]', info: 'Trigger Keywords of the entry, where a match in a message activates it' },
   { name: 'value', detail: 'string', info: 'Value of the entry: the text the AI gets when the entry activates' },
-]);
+  { name: 'enabled', detail: 'boolean', info: 'True when the entry is on and can reach the AI' },
+  { name: 'constant', detail: 'boolean', info: 'True when the AI gets the entry on every turn, with no keyword match' },
+], DICTIONARY_ENTRY_WRITABLE_FIELDS, 'writable');
 
 /** The members of one entry in `dictionaries`. None takes a write. */
 export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the dictionary' },
   { name: 'name', detail: 'string', info: 'Code name of the dictionary' },
-  { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, name, keys and value. A disabled entry isn’t listed. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
+  { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, name, keys, value, enabled and constant. Disabled entries are listed too. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The dictionary’s own placeholders by name. Use dictionaries.Lore.placeholders["Two Words"] for a name with a space.' },
 ], [...OWNER_MAPS, 'entries']);
 

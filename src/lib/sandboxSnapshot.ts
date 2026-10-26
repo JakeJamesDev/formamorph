@@ -18,6 +18,7 @@ import {
 import { codeEntities, sandboxTraits, worldTraitPlaces, type CodeEntities, type CodeEntity } from './statCodeTraits';
 import { sampleNarration, sampleSwitchedTrait } from './scriptTestSamples';
 import { randomUUID } from './uuid';
+import { withLoreToggles } from './loreToggles';
 import { gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
@@ -280,7 +281,9 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
     stats: scopeStats(globalStats, globalEnabled, readings?.global),
     traits, inPlay, placeholderDefs, ownerStats,
     placeholders: sandbox?.top ?? [],
-    dictionaries: sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners),
+    dictionaries: sandboxDictionaries(
+      codeDictionaries(placeholderSet?.dictionaries && withLoreToggles(placeholderSet.dictionaries, state.loreToggles), placeholderDefs), sandbox?.owners,
+    ),
     ...(state.resolveText ? { resolveEntryValue: (value: string) => resolve(value, null) } : {}),
     ...(state.places ? { places: codePlaces(state.places, placeholderDefs, resolve) } : {}),
   };

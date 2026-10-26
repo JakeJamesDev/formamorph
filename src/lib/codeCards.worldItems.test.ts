@@ -56,6 +56,7 @@ const fauna: Dictionary = {
     { id: 'e1', name: 'Heron', key: ['heron'], value: 'A grey bird.' }, { id: 'e2', name: 'Eel', key: ['eel'], value: 'A slick fish.' },
     { id: 'e3', name: 'Marsh Hen', key: ['hen', 'rail'], value: 'A shy bird.' },
     { id: 'e4', name: 'Bittern', key: ['bittern'], value: 'Off.', enabled: false },
+    { id: 'e5', name: 'Heron', key: ['egret'], value: 'Off.', enabled: false },
   ],
 };
 
@@ -259,7 +260,7 @@ describe('entity, dictionary and persona cards', () => {
   it('shows a dictionary’s description, its placeholders and its entry count', () => {
     const card = cardAt('return dictionaries.Fa|una.name;', worldBox);
     expect(card?.description).toBe('Animals of the marsh.');
-    expect(rowsOf(card)).toEqual({ Placeholders: 'Beast', Entries: '4' });
+    expect(rowsOf(card)).toEqual({ Placeholders: 'Beast', Entries: '5' });
     expect(card?.item).toEqual({ kind: 'dictionary', dictionaryId: 'fauna' });
   });
 
@@ -272,19 +273,23 @@ describe('entity, dictionary and persona cards', () => {
     }
   });
 
-  it('shows an entry’s keywords through brackets, and gives an unknown or switched-off entry no card', () => {
+  it('shows an entry’s keywords through brackets, a disabled entry’s too, and gives an unknown entry no card', () => {
     const card = cardAt('return dictionaries.Fauna.entries["Marsh| Hen"].value;', worldBox);
     expect(card?.signature).toEqual({ kind: 'entry', path: 'dictionaries.Fauna.entries["Marsh Hen"]', type: 'DictionaryEntry' });
     expect(rowsOf(card)).toEqual({ 'Trigger Keywords': 'hen, rail' });
     expect(card?.item).toEqual({ kind: 'dictionary', dictionaryId: 'fauna' });
-    expect(cardAt('return dictionaries.Fauna.entries.Bit|tern.value;', worldBox)).toBeNull();
+    expect(rowsOf(cardAt('return dictionaries.Fauna.entries.Bit|tern.value;', worldBox))).toEqual({ 'Trigger Keywords': 'bittern' });
     expect(cardAt('return dictionaries.Fauna.entries.No|pe.value;', worldBox)).toBeNull();
   });
 
+  it('cards the enabled entry of a shared name over a later disabled one (Q26)', () => {
+    expect(rowsOf(cardAt('return dictionaries.Fauna.entries.He|ron.value;', worldBox))).toEqual({ 'Trigger Keywords': 'heron' });
+  });
+
   it('completes a dictionary’s entry names and an entry’s fields', () => {
-    expect(labels('return dictionaries.Fauna.entries.|', worldBox)).toEqual(['Heron', 'Eel']);
+    expect(labels('return dictionaries.Fauna.entries.|', worldBox)).toEqual(['Heron', 'Eel', 'Bittern']);
     expect(labels('return dictionaries.Fauna.entries["|', worldBox)).toEqual(expect.arrayContaining(['Heron', 'Eel', 'Marsh Hen']));
-    expect(labels('return dictionaries.Fauna.entries.Heron.|', worldBox)).toEqual(['id', 'name', 'keys', 'value']);
+    expect(labels('return dictionaries.Fauna.entries.Heron.|', worldBox)).toEqual(['id', 'name', 'keys', 'value', 'enabled', 'constant']);
     expect(labels('return dictionaries.Fauna.|', worldBox)).toEqual(['id', 'name', 'entries', 'placeholders']);
   });
 

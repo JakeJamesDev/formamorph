@@ -2,7 +2,7 @@
 // Live state keys trait stat records by `recordKey`; a save splits them into a global part and an owners part.
 
 import type {
-  CascadeOffTraitIds, CodePins, EntityStatValues, GameState, OwnedTraitStates, PlayerStat, SavedAppliedValues, Trait,
+  CascadeOffTraitIds, CodePins, EntityStatValues, GameState, LoreToggles, OwnedTraitStates, PlayerStat, SavedAppliedValues, Trait,
 } from '@/types';
 import { recordKey, splitRecordKey } from './ownedTraitState';
 import { compactCascadeOff, type AppliedTraitValues } from './traitRuntime';
@@ -17,6 +17,7 @@ export interface LiveSnapshot {
   ownedTraits?: OwnedTraitStates;
   entityStats?: EntityStatValues;
   codePins?: CodePins;
+  loreToggles?: LoreToggles;
 }
 
 const hasKeys = (map: object | undefined): boolean => !!map && Object.keys(map).length > 0;
@@ -68,6 +69,7 @@ export const liveSnapshotOf = (state: GameState): LiveSnapshot => ({
   ownedTraits: state.ownedTraits,
   entityStats: state.entityStats,
   codePins: state.codePins,
+  loreToggles: state.loreToggles,
 });
 
 /** A snapshot as a save held it before global scope had its own fields. */
