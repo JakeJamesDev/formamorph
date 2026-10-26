@@ -1,6 +1,6 @@
 # 19: Fix Drone Visibility Rules
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: low
@@ -16,8 +16,14 @@ In play the backdrop and the Map show the first visible image, so Drone's two Vi
 
 ## Acceptance criteria
 
-- [ ] Both Drone pairs have complementary rules, and the stripped diff shows only the two rules and the fingerprints.
-- [ ] A test reads Mossback Hill's visible backdrop and the drone's visible gallery at Charge 99 percent and at 100 percent and sees the swap, and fails with either rule removed.
-- [ ] The shared suite is green, the Test Bench accepts both pairs, and no probe is needed since no AI text changed.
+- [x] Both Drone pairs have complementary rules, and the stripped diff shows only the two rules and the fingerprints. Diff is the two `requires` blocks plus a comma on each `data` line; `bundledFingerprints.json` is unchanged because the fingerprint hashes only strings of 40+ characters.
+- [x] A test reads Mossback Hill's visible backdrop and the drone's visible gallery at Charge 99 percent and at 100 percent and sees the swap, and fails with either rule removed. `droneWorld.test.ts` › the drone's Visibility rules; each test failed with its slot 0 rule deleted.
+- [x] The shared suite is green, the Test Bench accepts both pairs, and no probe is needed since no AI text changed. `bundledWorlds.test.ts` drone cases pass; prepare runs the full suite.
 
-For you: in play, raise Charge to 100 percent on Mossback Hill and watch the backdrop change.
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- In play, raise Charge to 100 percent on Mossback Hill and watch the backdrop change.

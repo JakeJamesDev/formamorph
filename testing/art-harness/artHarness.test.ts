@@ -169,7 +169,9 @@ describe('writeImage', () => {
     const after = writeImage(droneText, { kind: 'entity', id: pictured.id, slot: 0, data: NEW }).split('\n');
     expect(after).toHaveLength(before.length);
     const changed = after.flatMap((line, i) => (line === before[i] ? [] : [[before[i], line]]));
-    expect(changed).toEqual([[`${' '.repeat(10)}"data": "${entityImages(pictured)[0].data}"`, `${' '.repeat(10)}"data": "${NEW}"`]]);
+    // A slot with a rule after its data keeps the trailing comma.
+    const ending = before.find((line) => line.includes(entityImages(pictured)[0].data))!.endsWith(',') ? ',' : '';
+    expect(changed).toEqual([[`${' '.repeat(10)}"data": "${entityImages(pictured)[0].data}"${ending}`, `${' '.repeat(10)}"data": "${NEW}"${ending}`]]);
   });
 
   it('tells a file in the stored form from one a write would reformat', () => {
