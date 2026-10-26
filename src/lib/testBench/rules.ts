@@ -3491,31 +3491,77 @@ const dictionaryKeywordSubstring: Rule = {
   },
 };
 
+/** One write of an entry's `enabled` in code. A null name is computed, so it may be any book or entry. */
+interface EntryEnabledWrite {
+  book: string | null;
+  entry: string | null;
+}
+
+// A `.name` or a plain string key; any other bracket is a computed name.
+const LITERAL_KEY = /^\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*(?:"([^"\\\n]*)"|'([^'\\\n]*)'|`([^`\\$]*)`)\s*\])/;
+const ANY_KEY = /^\s*(?:\.\s*[A-Za-z_$][\w$]*|\[[^\]]*\])/;
+const ENABLED_ASSIGN = /^\s*\.\s*enabled\s*=(?!=)/;
+const BOOK_BEFORE = /\bdictionaries\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*(?:"([^"\\\n]*)"|'([^'\\\n]*)')\s*\])\s*$/;
+
+/** The key a member access starts with, null when computed. */
+const keyAt = (code: string): { name: string | null; length: number } | undefined => {
+  const literal = LITERAL_KEY.exec(code);
+  if (literal) return { name: literal.slice(1).find((group) => group !== undefined) ?? '', length: literal[0].length };
+  const computed = ANY_KEY.exec(code);
+  return computed ? { name: null, length: computed[0].length } : undefined;
+};
+
+/** Every `….entries[…].enabled = …` in the code. A book reached any way but `dictionaries.Name` is unknown. */
+const entryEnabledWrites = (code: string): EntryEnabledWrite[] => [...code.matchAll(/\.\s*entries\b/g)].flatMap((match) => {
+  const after = match.index + match[0].length;
+  const key = keyAt(code.slice(after));
+  if (!key || !ENABLED_ASSIGN.test(code.slice(after + key.length))) return [];
+  const book = BOOK_BEFORE.exec(code.slice(0, match.index));
+  return [{ book: book ? book.slice(1).find((group) => group !== undefined) ?? '' : null, entry: key.name }];
+});
+
+/** Every filled script's code and every Tool script handler's code. */
+const allScriptCode = (world: RuleWorld): string[] => [
+  ...ruleScripts(world).map(({ listed }) => listed.box.code),
+  ...(world.tools ?? []).flatMap((tool) => (tool.handler.kind === 'script' ? [tool.handler.code] : [])),
+];
+
 /** Deliberately not in the matching subset: the tracer already grays a muted book and its entries with the
- *  reason on the row, and the rule would say it a second time in the same place. */
+ *  reason on the row, and the rule would say it a second time in the same place. A disabled entry that any
+ *  script may switch on is authored that way, so it is left alone. */
 const dictionaryDisabled: Rule = {
   id: 'dictionary-disabled',
   severity: 'info',
   section: 'dictionary',
   advanced: true,
   summary: (count) => `${count} dictionary books or entries are disabled`,
-  check: (world) => (world.dictionaries ?? []).flatMap((bookRecord) => {
-    if (bookRecord.enabled === false) {
-      const item = namedItem(bookRecord.id, bookRecord.name, world);
-      // The book is the broader diagnosis, so its entries' own toggles aren't repeated under it.
-      return [finding(
-        dictionaryDisabled,
-        `The book ${quote(item.name)} is disabled — none of its entries can fire`,
-        [item],
-      )];
-    }
-    return (bookRecord.entries ?? [])
-      .filter((entry) => entry.enabled === false)
-      .map((entry) => {
-        const item = entryItem(entry, world);
-        return finding(dictionaryDisabled, `${quote(item.name)} is disabled and can’t fire`, [item]);
-      });
-  }),
+  check: (world) => {
+    const writes = allScriptCode(world).flatMap(entryEnabledWrites);
+    const placeholders = allPlaceholders(world);
+    return (world.dictionaries ?? []).flatMap((bookRecord) => {
+      if (bookRecord.enabled === false) {
+        const item = namedItem(bookRecord.id, bookRecord.name, world);
+        // The book is the broader diagnosis, so its entries' own toggles aren't repeated under it.
+        return [finding(
+          dictionaryDisabled,
+          `The book ${quote(item.name)} is disabled — none of its entries can fire`,
+          [item],
+        )];
+      }
+      const bookName = statCodeName(bookRecord.name, placeholders);
+      const bookWrites = writes.filter((write) => write.book === null || write.book === bookName);
+      return (bookRecord.entries ?? [])
+        .filter((entry) => entry.enabled === false)
+        .filter((entry) => {
+          const entryName = statCodeName(entry.name, placeholders);
+          return !bookWrites.some((write) => write.entry === null || write.entry === entryName);
+        })
+        .map((entry) => {
+          const item = entryItem(entry, world);
+          return finding(dictionaryDisabled, `${quote(item.name)} is disabled and no script switches it on — it can’t fire`, [item]);
+        });
+    });
+  },
 };
 
 // ── The world itself ──────────────────────────────────────────────────────────────────────────────────────
