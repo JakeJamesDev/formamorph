@@ -13,7 +13,7 @@
       "action",
       "destruction"
     ],
-    "readme": "## City Rampage\n\nYou are the biggest thing Neonspire has ever seen. Level it.\n\n🎯 **Goal:** raise **Destruction** to 100. The city falls, and you win.\n\n**Playing**\n- **Destruction** climbs with every building, bridge and war machine you wreck. It never goes down.\n- **Rampage** is your fury. It builds as you fight and cools when you hold back. High fury hits harder and draws heavier fire.\n- **Stamina** pays for attacks, sprints and climbs. Pause between assaults to get it back.\n- **Health** takes the military's hits and mends slowly.\n- The military answers what you wreck and how angry you get. Each tier sends bigger machines, and it never stands down.\n- The military's pursuit tightens while you hold one place and loosens when you move on. A place with many roads in fills with units fast. A dead end fills slowly.\n- **Berserk State** switches on and off at any time. While it's on, a **Berserk** bar shows and climbs each turn. Rampage climbs on its own and Health drops, more with every turn. Switch it off to recover.\n\n## How this world is built\n\nOpen this world in the World Editor with Advanced mode on.\n\n- **Scripts.** **Alert Level** is a hidden world stat with an After the AI script. It reads Destruction and the creature's Rampage and never goes down, so the AI never guesses how hard the military pushes.\n- **Scripts that read the map.** **Pursuit** is a hidden world stat with a Before the AI script. It reads `location.exits`, the roads out of the creature's place. Holding a place tightens the pursuit by a step for each road in, and a move halves it. The script pins **Pursuit Roads** to the travel hints of those roads and **Last Sighting** to the place, and the system prompt reads both.\n- **Stat toggles.** **Berserk State** is a trait the player can toggle in play. It switches on the creature's **Berserk** stat, which starts switched off. The stat's After the AI script runs only while it is on, and the trait's When a Trait Switches script clears it at the start of each frenzy.\n- **Custom Persona.** The creature carries the Custom Persona mark, so its stats and traits are yours under None and under a library persona.\n- **Rolled placeholders.** **Origin**, **Military Codename**, **Secret Weakness** and **Subway Line** each roll once per playthrough. **Subway Line** sits in both Travel Hints of the tunnels between Old Town and the Metro Underground, so the two legs name the same line.\n- **Map.** Thirteen places: districts under Neonspire, landmarks under their district, and Connections with a Travel Hint each way. **Known In** lets the AI know of General Vasquez and Channel 8 from every district.\n- **Lorebook.** **The Neonspire Dossier** dictionary holds the escalation tiers, the defenders, the evacuation and one entry for each new place.",
+    "readme": "## City Rampage\n\nYou are the biggest thing Neonspire has ever seen. Level it.\n\n🎯 **Goal:** raise **Destruction** to 100. The city falls, and you win.\n\n**Playing**\n- **Destruction** climbs with every building, bridge and war machine you wreck. It never goes down.\n- **Rampage** is your fury. It builds as you fight and cools when you hold back. High fury hits harder and draws heavier fire.\n- **Stamina** pays for attacks, sprints and climbs. Pause between assaults to get it back.\n- **Health** takes the military's hits and mends slowly.\n- The military answers what you wreck and how angry you get. Each tier sends bigger machines, and it never stands down.\n- The military's pursuit tightens while you hold one place and loosens when you move on. A place with many roads in fills with units fast. A dead end fills slowly.\n- **Berserk State** switches on and off at any time. While it's on, a **Berserk** bar shows and climbs each turn. Rampage climbs on its own and Health drops, more with every turn. Switch it off to recover.\n\n## How this world is built\n\nOpen this world in the World Editor with Advanced mode on.\n\n- **Scripts.** **Alert Level** is a hidden world stat with an After the AI script. It reads Destruction and the creature's Rampage and never goes down, so the AI never guesses how hard the military pushes.\n- **Scripts that read the map.** **Pursuit** is a hidden world stat with a Before the AI script. It reads `location.exits`, the roads out of the creature's place. Holding a place tightens the pursuit by a step for each road in, and a move halves it. The script pins **Pursuit Roads** to the travel hints of those roads and **Last Sighting** to the place, and the system prompt reads both.\n- **Stat toggles.** **Berserk State** is a trait the player can toggle in play. It switches on the creature's **Berserk** stat, which starts switched off. The stat's After the AI script runs only while it is on, and the trait's When a Trait Switches script clears it at the start of each frenzy.\n- **Custom Persona.** The creature carries the Custom Persona mark, so its stats and traits are yours under None and under a library persona.\n- **Rolled placeholders.** **Origin**, **Military Codename**, **Secret Weakness** and **Subway Line** each roll once per playthrough. **Subway Line** sits in both Travel Hints of the tunnels between Old Town and the Metro Underground, so the two legs name the same line.\n- **World Tool.** **log_landmark** is an On Call Tool on the stat pass. When the narration brings down a named landmark, the AI calls it. Its script pins a memory, adds 5 Destruction once per landmark, and puts the fall at the top of **Top Stories**, an Object placeholder that Channel 8's description reads. The world still plays with Tools off.\n- **Map.** Thirteen places: districts under Neonspire, landmarks under their district, and Connections with a Travel Hint each way. **Known In** lets the AI know of General Vasquez and Channel 8 from every district.\n- **Lorebook.** **The Neonspire Dossier** dictionary holds the escalation tiers, the defenders, the evacuation and one entry for each new place.",
     "introReadme": "🦖 **Something colossal is wading out of the bay, and it's you.**\n\nNeonspire's sirens are already howling. Decide what the military is up against:\n\n- **Type** (pick one): a **Reptile** stomps and bites, an **Insect** slashes and climbs, an **Arachnid** scuttles on eight legs and spits venom, and a **Giant** has hands to grab, lift and throw.\n- **Presentation** (pick one): how the news and the military describe you.\n- **Mutations** (any number): each one trades something for something. **Armored Hide** and **Unrelenting** shift Health against Stamina. **Short Fuse** starts your fury high. **Breath Weapon** and **Wings** open new attacks at a cost.\n- **Berserk State** stays off at the start. You can switch it on whenever you want to let the fury run.\n\nEach playthrough also rolls where you came from, your military codename and one secret weakness.",
     "openings": [
       {
@@ -1224,7 +1224,7 @@
       ],
       "type": "Neutral",
       "playerDescription": "A news helicopter that follows you everywhere at a not-quite-safe distance, narrating your rampage live to the whole city.",
-      "aiDescription": "The Channel 8 news chopper: a civilian helicopter that shadows the creature at a not-quite-safe distance while its reporter narrates the rampage live to the whole city. The military orders it out of the airspace; it stays. It reacts loudly to the creature's most dramatic moments.",
+      "aiDescription": "The Channel 8 news chopper: a civilian helicopter that shadows the creature at a not-quite-safe distance while its reporter narrates the rampage live to the whole city. The military orders it out of the airspace; it stays. It reacts loudly to the creature's most dramatic moments. Its reporter leads every broadcast with the top stories: {{ph:c20225e7-8aa3-4e25-9268-586edb158450:world:5742b48c-4e42-4f2b-aa70-923251376074}}.",
       "aiSummary": "Channel 8 news chopper: fearless civilian shadow giving the rampage live commentary.",
       "imageTags": "news helicopter, camera operator, city skyline, spotlight",
       "images": [
@@ -1836,6 +1836,53 @@
           "id": "877cff00-dbda-4b71-9424-11d2189a4e4e",
           "text": "from every side"
         }
+      ]
+    },
+    {
+      "id": "c20225e7-8aa3-4e25-9268-586edb158450",
+      "name": "Top Stories",
+      "values": [
+        {
+          "id": "535cf5e2-c17c-4406-80cc-b62fb99baa72",
+          "text": "the evacuation of the harbor"
+        },
+        {
+          "id": "5d4e91b9-06f6-47e5-bffb-969f4cec9193",
+          "text": "the military's vow to stop the creature"
+        }
+      ],
+      "roll": false
+    }
+  ],
+  "tools": [
+    {
+      "id": "295f5ec4-b2f5-4c73-a785-977791785953",
+      "name": "log_landmark",
+      "description": "Purpose: Log a landmark the creature destroyed this turn, so the city keeps the loss and Destruction counts it.\nUse when: The narration shows the creature bring down one of the listed landmarks. Call it once for each landmark that fell, before you give the stat changes.\nInput: landmark — the landmark that fell.\nOutput: A short confirmation with the new Destruction. Then give the stat changes.",
+      "params": [
+        {
+          "name": "landmark",
+          "type": "enum",
+          "description": "The landmark that fell",
+          "required": true,
+          "options": [
+            "Ferry Terminal",
+            "Spire Tower",
+            "Metro Underground",
+            "Harborgate Bridge",
+            "Neonspire Stadium",
+            "Bayline Refinery"
+          ]
+        }
+      ],
+      "handler": {
+        "kind": "script",
+        "timing": "call",
+        "code": "// Log Landmark: the AI calls log_landmark when the narration shows the creature bring down a named landmark.\n// The call pins the loss as a memory, adds a landmark bonus to Destruction, and puts the loss at the top of\n// Channel 8's stories. The stat pass still scores the smash itself. The bonus here is on top of it.\nconst landmarkBonus = 5;\n\n// 1. Read the landmark. args.landmark is one of the landmarks this Tool lists.\nconst landmarkName = String(args.landmark);\n\n// 2. Log each landmark once. The pinned memories hold the landmarks of earlier turns. A memory pinned this\n//    turn lands only when the turn ends, so a second call this turn can't see it there. A placeholder pin\n//    lands at once, so Top Stories holds this turn's falls, and the check reads both.\nconst memoryPrefix = \"The creature destroyed \" + landmarkName + \" in \";\nconst storyLine = \"the fall of \" + landmarkName;\nconst topStories = placeholders[\"Top Stories\"];\nconst loggedBefore = memories.some((memory) => memory.custom && memory.text.startsWith(memoryPrefix));\nconst loggedThisTurn = topStories.value.includes(storyLine);\nif (loggedBefore || loggedThisTurn) {\n  return landmarkName + \" is already logged. Nothing changed. Give the stat changes.\";\n}\n\n// 3. Pin the loss as a memory, so every later request carries it. It names where the creature stood,\n//    so the ruin stays on the map.\nmemories.pin(memoryPrefix + location.name + \".\");\n\n// 4. Add the landmark bonus. Destruction only climbs, and it stops at its max.\nconst destruction = stats.Destruction;\ndestruction.value = Math.min(destruction.value + landmarkBonus, destruction.max);\n\n// 5. Put the loss at the top of Channel 8's stories. The news keeps the three latest falls, newest first.\n//    Before the first fall, Top Stories holds the authored stories, which are not falls, so keep only falls.\nconst earlierFalls = topStories.value.filter((story) => story.startsWith(\"the fall of \"));\ntopStories.pin([storyLine, ...earlierFalls].slice(0, 3));\n\n// 6. Answer with the new total, so the stat changes and the damage agree.\nreturn \"Logged \" + landmarkName + \". Destruction is now \" + destruction.value + \". Give the stat changes.\";\n"
+      },
+      "emptyResult": "",
+      "offeredTo": [
+        "statUpdates"
       ]
     }
   ]
