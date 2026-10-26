@@ -41,7 +41,7 @@ export const CLOCK_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
 
 /** The members of `turn`: the player's action and the turn number. Read-only. */
 export const TURN_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
-  { name: 'action', detail: 'string', info: 'The player’s action this turn, OOC brackets included. On the opening turn, the opening the AI gets. Empty on an Opening Narration and between turns.' },
+  { name: 'action', detail: 'string', info: 'The player’s action this turn, OOC brackets included. On the opening turn, it’s the opening the AI gets. It’s empty on an Opening Narration and between turns.' },
   { name: 'number', detail: 'number', info: 'Turn number on the scale of memories[].turn: 1 on the opening turn, 0 before it. Between turns, the last turn that ended.' },
 ]);
 
@@ -115,7 +115,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat. Use owner.stats["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The global stats by name, in every stat’s code. An entity’s own are on owner.stats. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock', access: 'readOnly' },
-  { name: 'turn', detail: shapeOf(TURN_MEMBERS), info: 'The player’s action and the turn number. Test Code and the Test Bench read a sample action at turn 2. At Game Start reads the opening at turn 1.', access: 'readOnly' },
+  { name: 'turn', detail: shapeOf(TURN_MEMBERS), info: 'The player’s action and the turn number. Test Code and the Test Bench read a sample action at turn 2. An At Game Start script reads the opening at turn 1.', access: 'readOnly' },
   { name: 'locations', detail: 'object', info: 'Every location in the world by name, with the entities at each. Use locations["Two Words"] for a name with a space.' },
   { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at, with the fields of a locations entry. Call location.move to move it.', access: 'readOnly' },
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn, described by the AI unless you pass a description. A name an entity already has does nothing.' },
@@ -280,7 +280,7 @@ export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the dictionary' },
   { name: 'name', detail: 'string', info: 'Code name of the dictionary' },
   { name: 'enabled', detail: 'boolean', info: 'True when the dictionary is on, so the AI can get its entries. A dictionary the player turned off reads as an unknown one.' },
-  { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, name, keys, value, enabled and constant. Disabled entries are listed too. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
+  { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, name, keys, value, enabled and constant. It lists disabled entries too. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The dictionary’s own placeholders by name. Use dictionaries.Lore.placeholders["Two Words"] for a name with a space.' },
 ], [DICTIONARY_WRITABLE_FIELD], 'writable', [...OWNER_MAPS, 'entries']);
 

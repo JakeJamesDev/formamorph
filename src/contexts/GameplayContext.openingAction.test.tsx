@@ -47,30 +47,30 @@ const mount = () => {
 describe('opening cue across a save/load round trip', () => {
   it.each([['an Opening Action', 'I walk the pier.'], ['an Opening Narration', '']])('keeps the cue of %s', async (_, cue) => {
     const live = mount();
-    await act(async () => { live().setOpeningCue(cue); });
+    await act(async () => { live().setOpeningAction(cue); });
     await act(async () => { await live().saveGame('slot', 'World', 'w1', `cue-${cue.length}`); });
-    expect((await getSaveRecord(`cue-${cue.length}`) as SaveRecord).openingCue).toBe(cue);
+    expect((await getSaveRecord(`cue-${cue.length}`) as SaveRecord).openingAction).toBe(cue);
 
-    await act(async () => { live().setOpeningCue('Stale.'); });
+    await act(async () => { live().setOpeningAction('Stale.'); });
     await act(async () => { await live().loadGame(`cue-${cue.length}`, []); });
-    expect(live().openingCue).toBe(cue);
+    expect(live().openingAction).toBe(cue);
   });
 
   it('writes no field before the opening turn, and loads that save with none', async () => {
     const live = mount();
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'cue-absent'); });
-    expect('openingCue' in (await getSaveRecord('cue-absent') as SaveRecord)).toBe(false);
+    expect('openingAction' in (await getSaveRecord('cue-absent') as SaveRecord)).toBe(false);
 
-    await act(async () => { live().setOpeningCue('Stale.'); });
+    await act(async () => { live().setOpeningAction('Stale.'); });
     await act(async () => { await live().loadGame('cue-absent', []); });
-    expect(live().openingCue).toBeNull();
+    expect(live().openingAction).toBeNull();
   });
 
   it('starts a legacy nested save with none, too', async () => {
     const live = mount();
     await putSaveRecord({ id: 'cue-legacy', name: 'old' } as unknown as SaveRecord);
-    await act(async () => { live().setOpeningCue('Stale.'); });
+    await act(async () => { live().setOpeningAction('Stale.'); });
     await act(async () => { expect(await live().loadGame('cue-legacy', [])).toBe(true); });
-    expect(live().openingCue).toBeNull();
+    expect(live().openingAction).toBeNull();
   });
 });

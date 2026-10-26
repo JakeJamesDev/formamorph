@@ -363,9 +363,9 @@ export interface SaveObject {
   /** What scripts told the player with `player.tell`, by turn id, in call order, each with its script's
    *  timing. Never sent in a request. Absent ⇒ none. */
   scriptTells?: Record<string, { text: string; timing: ScriptTiming }[]>;
-  /** The opening turn's `turn.action`: the cue the player sent, or empty for an Opening Narration. History
-   *  holds the "START GAME" stand-in instead. Absent ⇒ a page-one re-roll reads the drawn opening. */
-  openingCue?: string;
+  /** The opening turn's `turn.action`: the Opening Action the player sent, or empty for an Opening Narration.
+   *  History holds the "START GAME" stand-in instead. Absent ⇒ a page-one re-roll reads the drawn opening. */
+  openingAction?: string;
   /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */

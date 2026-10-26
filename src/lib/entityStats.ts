@@ -10,7 +10,7 @@ import { seedNewGameStats } from './traitRuntime';
 import { regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
 import { statPlacementOf } from './statContext';
 import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
-import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
+import { changedAnyStat, overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
 
@@ -163,7 +163,7 @@ export function withOwnerCodeResults(
   values: EntityStatValues, results: Readonly<Record<string, OwnerCodeResult>> | undefined, inForce: OwnerStatTraits,
 ): EntityStatValues {
   const moved = Object.entries(results ?? {})
-    .filter(([id, r]) => values[id] && (r.moved.length || r.boundsChanged.length || r.hiddenChanged.length || r.inForce));
+    .filter(([id, r]) => values[id] && (changedAnyStat(r) || r.inForce));
   if (!moved.length) return values;
   return {
     ...values,

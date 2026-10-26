@@ -111,14 +111,14 @@ describe('the save keeps the opening cue', () => {
   it('writes the cue an Opening Action start sent, edited or not', async () => {
     await enter(actionWorld());
     await send(OPENING);
-    expect((await saved('edited')).openingCue).toBe(TRIMMED);
+    expect((await saved('edited')).openingAction).toBe(TRIMMED);
   });
 
   it('writes the drawn cue on an untouched Opening Action start', async () => {
     await enter(actionWorld());
     await waitFor(() => expect(box()).toHaveValue(OPENING_SCENE_CUE));
     await send();
-    expect((await saved('untouched')).openingCue).toBe(OPENING_SCENE_CUE.trim());
+    expect((await saved('untouched')).openingAction).toBe(OPENING_SCENE_CUE.trim());
   });
 
   it('writes an empty cue on an Opening Narration start, and a reload reads it empty', async () => {
@@ -126,7 +126,7 @@ describe('the save keeps the opening cue', () => {
     await enter(world);
     await waitFor(() => expect(closedTurns(history)).toBe(1));
     await turnDone();
-    expect((await saved('narration')).openingCue).toBe('');
+    expect((await saved('narration')).openingAction).toBe('');
 
     await reload('narration', world);
     await rerollStats();
@@ -153,7 +153,7 @@ describe('a page-one re-roll reads the saved cue', () => {
     await waitFor(() => expect(closedTurns(history)).toBe(0));
     await send(WADE);
     expect(read).toBe(1000 + WADE.length);
-    expect((await saved('full')).openingCue).toBe(WADE);
+    expect((await saved('full')).openingAction).toBe(WADE);
 
     await reload('full', world);
     await rerollStats();
@@ -164,7 +164,7 @@ describe('a page-one re-roll reads the saved cue', () => {
     const world = actionWorld();
     await enter(world);
     await send(OPENING);
-    const { openingCue: _dropped, ...older } = await saved('older');
+    const { openingAction: _dropped, ...older } = await saved('older');
     await putSaveRecord(older as SaveRecord);
     await reload('older', world);
     await rerollStats();

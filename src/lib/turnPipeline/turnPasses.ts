@@ -123,16 +123,19 @@ const labeledRequest = (
 
 const isOpening = (input: TurnPlanInput): boolean => !input.isGameStarted;
 
+/** The opening turn's action as history and every prompt but the narration's hold it. */
+export const OPENING_STAND_IN = 'START GAME';
+
 /** The action every consumer but the narration sees: the opening turn's cue is a narrator directive that
  *  derails the other prompts, so they get the terse proxy instead. */
 export const effectiveActionFor = (input: TurnPlanInput): string =>
-  isOpening(input) ? 'START GAME' : input.action;
+  isOpening(input) ? OPENING_STAND_IN : input.action;
 
 /** What a script's `turn.action` reads: the action the narration gets, trimmed. A written page one reads empty. */
 export const scriptActionFor = (input: TurnPlanInput): string => {
   if (!isOpening(input)) return input.action.trim();
   if (input.writtenNarration?.trim()) return '';
-  return (input.action === 'START GAME' ? input.prompts.openingCue : input.action).trim();
+  return (input.action === OPENING_STAND_IN ? input.prompts.openingCue : input.action).trim();
 };
 
 /**
@@ -436,7 +439,7 @@ export const narrationPass: TurnPassRecord<string> = {
     // The opening turn sends the player's (editable) cue verbatim; the legacy "START GAME" sentinel maps
     // to the cue this world opens on. Later turns send the bare action, matching the stored history shape.
     const actionText = isOpening(input)
-      ? material.action === 'START GAME'
+      ? material.action === OPENING_STAND_IN
         ? input.prompts.openingCue
         : material.action
       : material.action;
