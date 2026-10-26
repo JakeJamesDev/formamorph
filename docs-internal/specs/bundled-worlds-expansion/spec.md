@@ -43,6 +43,9 @@ Expand seven bundled worlds: Drone, Emberwatch, City Rampage, Slime Outbreak, Su
 - **Q19** Art review through a contact sheet per world in a gitignored directory, every image labeled. The user rejects or redoes by name.
 - **Q20** The premise holds: title, hook and the named core cast stay.
 - **Q21** The art model for all seven worlds is Illustrious Nova Kemono XL 8.0 (SDXL), proven through the provider on 2026-10-26. Its Invoke defaults are euler_a, 35 steps, cfg 4, fp16 VAE.
+- **Q22** The stored world files hold lossless WebP at full size. Every build that exists today, web, Android and desktop, ships the bundled worlds re-encoded with the editor's Downscale. A future Steam build ships the lossless files, since download size matters much less there. (user, on ticket 02's question)
+- **Q23** The ship-time re-encode is ticket 17 in this spec. Art tickets store lossless and do not wait on it.
+- **Q24** The editor's Downscale presets, the quality and long-edge values it recommends to authors, get a re-examination as their own effort, outside this spec.
 
 ### Size table (Q5)
 
@@ -133,7 +136,9 @@ Each content ticket writes its world's art-direction line into this spec's Comme
 - **Image kinds (Q17).** One landscape backdrop per location, one portrait per entity, at one size per kind across the world. A Visibility variant repeats the subject's tags with the state change added. Slot 0 is the primary image and always shows outside play.
 - **Visibility rules (Q18).** Each world has at least one location backdrop and one entity image with a rule. A rule reads a stat, trait, group, persona or daypart. A location rule with no owner reads the played persona. The Test Bench rules for missing targets, all-hideable entities and zero-span percent rules stay enforced.
 - **Map Background (Q12).** The four map worlds store one generated map image under the world overview's Map Background, with its frame in canvas units and an opacity. The art ticket sets the frame in the editor so the drawn map lines up with the Locations canvas. A second map image with a Visibility rule is allowed where the premise asks, and never required.
-- **Encoding.** Every stored image is WebP through the app's own encoder. Existing art stays as it is. The oversized-images rule stays ignored (Q13); every other Test Bench image rule is enforced.
+- **Encoding (Q22).** Every stored image is lossless WebP at full size through the app's own encoder, the same path as the `image-not-webp` fix. The harness never downscales. Existing art stays as it is. The oversized-images rule stays ignored (Q13); every other Test Bench image rule is enforced.
+- **Ship-time re-encode (Q22, Q23, ticket 17).** A build step re-encodes the bundled worlds with the editor's Downscale for the web, Android and desktop builds, from the lossless source files. The bundled fingerprints know both forms, so the seeder and the publish check recognize a shipped world and a stored one. The shared suite and the world probe read the source files. The step is skipped for a Steam build when one exists.
+- **Harness details (ticket 02 ruling).** The harness pins every preset field itself and never reads the user's settings or env. The negative prompt is the app's default. Face-detail is off. A dry run is the default and `--live` generates. Redo takes names with new seeds; replay reruns a log at its stored seeds. After a write it runs the Test Bench image rules in Node and prints the findings. Its live acceptance run writes a scratch copy of Emberwatch with a provisional art-direction line and changes nothing under the bundled world files.
 - **imageTags.** The content ticket writes `imageTags` for every new location and entity, as booru-style tags consistent with the world. The art ticket may refine tags and writes them back, so the stored tags describe the stored art.
 - **Review artifacts.** A content ticket links the stripped diff and puts probe numbers in its comments. An art ticket writes one contact sheet per world under the worktree's frames directory, labeled by item name and slot, and reports the world file's size before and after.
 - **Changelog (Q14).** Ticket 01 adds one Major entry as a fragment, with a lead that states the outcome for the player. No other ticket writes a fragment.
@@ -162,6 +167,8 @@ Each content ticket writes its world's art-direction line into this spec's Comme
 - Open Chat.
 - World Avatars and ambient sound (Q6). Background music.
 - Cloud image providers and any art path outside the app's InvokeAI provider (Q11).
+- Re-examining the editor's Downscale presets (Q24): its own effort.
+- A Steam build and its lossless shipping path (Q22): no Steam build exists yet.
 - Galleries of several images per item beyond Visibility variants (Q17).
 - New bundled worlds, or cutting a world.
 - Changes to the world or save export shape, or to load-time migrations.
