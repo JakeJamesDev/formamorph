@@ -59,7 +59,7 @@ import {
 } from '@/lib/owners';
 import { partOf, scopedEntries, scopeKey, type OwnerId } from '@/lib/scope';
 import {
-  NO_ACTIVE, activeOf, alwaysOnOverMax, gateTrees, gateTreeOf, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
+  NO_ACTIVE, activeOf, alwaysOnOverMax, gateTrees, gateTreeOf, complementary, deadRows, gateOf, gateStates, globalItems, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
   unstableCycles, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
@@ -2618,13 +2618,16 @@ interface ZeroSpanImageCondition {
 
 interface ImageRuleReport {
   missing: DeadImageCondition[];
-  /** Entities whose every image carries a rule, with no two images covering complementary Conditions. */
+  /** Entities whose every image carries a rule, with no complementary pair and no full set of required picks. */
   hideable: Entity[];
   zeroSpans: ZeroSpanImageCondition[];
 }
 
 /** The image-rule findings, once per world object. A ruled image reads as a stand-in trait on its entity's owner,
  *  so a Condition resolves as it does in a trait gate. */
+/** The most pick combinations the all-hideable check walks before it gives up and reports. */
+const MAX_PICK_COMBINATIONS = 4096;
+
 const imageReportsByWorld = new WeakMap<RuleWorld, ImageRuleReport>();
 const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   let report = imageReportsByWorld.get(world);
@@ -2645,6 +2648,34 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   const owners = [...input.owners.map((o) => swapped.get(o.id) ?? o), ...[...swapped.values()].filter((o) => !input.owners.some((x) => x.id === o.id))];
   const states = gateStates({ ...input, owners, stats });
   const readFrom = (entity: Entity, req: StatRequirement): OwnerId[] => statReadOwners(world, stats, entity.id, req);
+  const globals = globalItems(input).traits;
+  /** Whether every way to fill the required groups the rows name leaves a row holding. A row counts when each
+   *  Condition is a plain same-owner trait placed directly in a group with a minimum and maximum of one. */
+  const picksCovered = (ownerId: string, images: readonly GalleryImage[]): boolean => {
+    const own = owners.find((o) => o.id === ownerId);
+    const picks = new Map<string, string[]>();
+    const rows: string[][] = [];
+    for (const row of images.flatMap((img) => img.requires ?? [])) {
+      const found = row.all.map((req) => {
+        if (req.kind !== 'trait' || req.not || req.owner) return null;
+        // Same Owner reads the entity's own trait, else a global one (Q10).
+        const tree = own?.traits.some((t) => t.id === req.id) ? own : globals.has(req.id) ? gateTreeOf(input, null) : undefined;
+        const groupId = tree?.traits.find((t) => t.id === req.id)?.groupId;
+        const group = tree?.groups.find((g) => g.id === groupId);
+        return tree && group?.minPicks === 1 && group.maxPicks === 1 ? { tree, group, id: req.id } : null;
+      });
+      // Any other row only adds showings, so the cover must come without it.
+      if (found.some((f) => !f)) continue;
+      for (const f of found) picks.set(`${scopeKey(f!.tree.id)} ${f!.group.id}`, f!.tree.traits.filter((t) => t.groupId === f!.group.id).map((t) => t.id));
+      rows.push(found.map((f) => f!.id));
+    }
+    const groups = [...picks.values()];
+    if (!rows.length || groups.reduce((n, g) => n * g.length, 1) > MAX_PICK_COMBINATIONS) return false;
+    const holds = (chosen: string[], rest: string[][]): boolean => (rest.length === 0
+      ? rows.some((ids) => ids.every((id) => chosen.includes(id)))
+      : rest[0].every((pick) => holds([...chosen, pick], rest.slice(1))));
+    return holds([], groups);
+  };
 
   const missing: DeadImageCondition[] = [];
   const hideable: Entity[] = [];
@@ -2675,7 +2706,7 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
       const req = img.requires?.length === 1 && img.requires[0].all.length === 1 ? img.requires[0].all[0] : null;
       return req && !stateOf(i)?.rows[0]?.conditions[0]?.unresolved ? [req] : [];
     });
-    const covered = single.some((a, i) => single.some((b, j) => j > i && complementary(a, b)));
+    const covered = single.some((a, i) => single.some((b, j) => j > i && complementary(a, b))) || picksCovered(entity.id, images);
     if (!covered) hideable.push(entity);
   }
   report = { missing, hideable, zeroSpans };
@@ -2708,7 +2739,7 @@ const entityImagesAllHideable: Rule = {
     const item = asItem(entity, world);
     return finding(
       entityImagesAllHideable,
-      `${quote(item.name)} can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its opposite`,
+      `${quote(item.name)} can end up with no image — every image has a Visibility rule, and the rules cover neither a Condition and its opposite nor every pick of a required one-pick group`,
       [item],
     );
   }),

@@ -535,7 +535,7 @@ It shows a warning when:
 - A global trait requires an entity's trait, group or stat from the same owner. Only entities have the target, so the row never holds. Pick **Persona** or the entity.
 - A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
 - A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
-- Every image of an entity has a Visibility rule, and no two images have opposite conditions. The entity can end up with no image.
+- Every image of an entity has a Visibility rule, and the rules don't cover every case. The entity can end up with no image. Two images with opposite conditions cover every case. So do images that name every pick of required groups, where each group has a minimum and a maximum of one pick.
 - A trait has **Starts** set to **On**, but no starting choice meets its requirements, so it starts unselected. Two defaults that exclude each other count: the later one starts unselected.
 - An owner needs a copy of a blueprint and has none. The warning names the owner and the trait or chip that needs it.
 - A copy removed the value that a pin names. The pin pins nothing.
