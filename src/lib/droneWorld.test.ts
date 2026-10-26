@@ -178,16 +178,16 @@ describe('the drone\'s Visibility rules', () => {
     stats: scoped<GateStatSet>({}, { [drone.id]: { charge: { name: 'Charge', value: charge, min: 0, max: 100 } } }),
   });
 
-  it('shows the powered-up drone only while Overdrive is ready', () => {
+  it('swaps the drone to its powered-up image once Overdrive is ready', () => {
     const slots = (charge: number) => visibleImages(drone, chargeAt(charge)).map((image) => image.slot);
-    expect(slots(100)).toEqual([0, 1]);
     expect(slots(99)).toEqual([0]);
+    expect(slots(100)).toEqual([1]);
   });
 
-  it('shows the Sentinel awake on Mossback Hill only while the played persona\'s Overdrive is ready', () => {
+  it('swaps Mossback Hill to the awake Sentinel once the played persona\'s Overdrive is ready', () => {
     const slots = (charge: number) => visibleLocationImages(hill, chargeAt(charge)).map((image) => image.slot);
-    expect(slots(100)).toEqual([0, 1]);
     expect(slots(99)).toEqual([0]);
+    expect(slots(100)).toEqual([1]);
   });
 });
 
