@@ -13,7 +13,7 @@ An After the AI script cannot read the page the AI just wrote. The `narration` o
 
 ## Rulings
 
-Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code review of the spec the same day. It follows the Script Surface Gaps effort, which added `turn`.
+Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code review of the spec the same day; Q22–Q24 on ticket 02's intent questions, 2026-10-26. It follows the Script Surface Gaps effort, which added `turn`.
 
 | # | Ruling |
 |---|---|
@@ -38,13 +38,16 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 | Q19 | The **Re-Roll Choices** rerun replays the turn as the stats re-roll does: the pre-turn state with the turn's asks laid over it, so scripts read the same `previous` and `delta` the original run did |
 | Q20 | On that rerun the `player` calls are silent: `tell` and `toast` show nothing, `confirm` answers false, `ask` answers nothing picked (`[]` with `multiple`), and `input` answers empty. The script runs on |
 | Q21 | `turn` stays read-only at every timing and in every Tool. `turn.choices` alone takes a write, at After the AI only. A write there is not a read-only write in the editor's checks |
+| Q22 | A run between turns while a turn is in progress (a player toggle, a user Tool call, an On Call World Tool during the narration request) reads `turn.narration` as `""` and `turn.choices` as `[]`, as it reads `turn.action` empty at the turn in progress. Once that turn's commit lands, they read this turn's |
+| Q23 | The "[Continue the Story]" pseudo-choice never appears in `turn.choices` |
+| Q24 | The choices-off mask (Q11) is the live setting at every read, between turns included: a stored turn's choices read `[]` once the player turns choices off. `turn.narration` is the stored narration text as is |
 
 ## Surface
 
 | Path | Type | Access | Rulings |
 |---|---|---|---|
-| `turn.narration` | string | read | Q3, Q4, Q5, Q16, Q17 |
-| `turn.choices` | string[] | write at After the AI | Q6, Q7, Q9–Q21 |
+| `turn.narration` | string | read | Q3, Q4, Q5, Q16, Q17, Q22, Q24 |
+| `turn.choices` | string[] | write at After the AI | Q6, Q7, Q9–Q24 |
 
 ## User Stories
 
