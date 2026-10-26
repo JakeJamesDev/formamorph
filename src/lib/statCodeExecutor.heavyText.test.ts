@@ -97,7 +97,7 @@ describe('heavy text in the sandbox', () => {
         ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits'],
         ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'move'],
         ['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
-        ['id', 'name', 'entries', 'placeholders'],
+        ['id', 'name', 'enabled', 'entries', 'placeholders'],
         ['Tides', 'The Wreck'],
         ['id', 'name', 'keys', 'value', 'enabled', 'constant'],
         JSON.stringify({ ...memory('m2', TEXT.second) }),

@@ -367,6 +367,13 @@ describe('runToolCall: Script', () => {
     expect(result.warnings).toEqual([expect.stringMatching(/^Read-only fields\. Writes ignored: dictionaries\.\w+\.entries\["tollow-knot"\]\.enabled\.$/)]);
   });
 
+  it('drops and lists a write to a dictionary’s enabled', async () => {
+    const code = 'const book = Object.values(dictionaries)[0]; book.enabled = false; return book.enabled;';
+    const result = await runToolCall(script(code, []), '{}', s);
+    expect(JSON.parse(result.text)).toBe(true);
+    expect(result.warnings).toEqual([expect.stringMatching(/^Read-only fields\. Writes ignored: dictionaries\.\w+\.enabled\.$/)]);
+  });
+
   it('drops every write, reads the snapshot value back, and lists what it dropped', async () => {
     const code = `
       entities.Bram.summary = 'Changed';

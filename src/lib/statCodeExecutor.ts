@@ -341,6 +341,8 @@ export interface SandboxDictionaryEntry {
 export interface SandboxDictionary {
   name: string;
   id?: string;
+  /** As the lore overlay leaves it; absent, on. */
+  enabled?: boolean;
   /** Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
   entries?: readonly SandboxDictionaryEntry[];
@@ -1021,8 +1023,11 @@ const entitiesPrelude = (
 const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceholderNode | undefined): number =>
   (node ? indexOf.get(node) ?? -1 : -1);
 
-/** The fields on a dictionary entry. None takes a write. */
-const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'entries', 'placeholders'] as const;
+/** The fields on a dictionary entry. Only `DICTIONARY_WRITABLE_FIELD` takes a write. */
+const DICTIONARY_KEYS = ['id', 'name', 'enabled', 'entries', 'placeholders'] as const;
+
+/** The book field a write sets, through the lore overlay. */
+export const DICTIONARY_WRITABLE_FIELD = 'enabled' satisfies keyof SandboxDictionary;
 
 /** The fields on an entry of a book's `entries`. Only `DICTIONARY_ENTRY_WRITABLE_FIELDS` take a write. */
 const DICTIONARY_ENTRY_KEYS = ['id', 'name', 'keys', 'value', 'enabled', 'constant'] as const;
@@ -1034,20 +1039,20 @@ export const DICTIONARY_ENTRY_WRITABLE_FIELDS = ['enabled', 'constant'] as const
 const namedBooks = (dictionaries: readonly SandboxDictionary[]) => new Map(dictionaries.map((book) => [book.name, book]));
 
 /** The `dictionaries` prelude, the later of two books sharing a name winning. A book's `entries` map comes from the
- *  host on its first read (Q48), and each `value` resolves on its own (Q54). An entry's `enabled` and `constant`
- *  take writes, which read back in the run; its reader rows are the `[field, value]` pairs assigned, in order. A
- *  book's reader rows are its `entries` map's rows. */
+ *  host on its first read (Q48), and each `value` resolves on its own (Q54). A book's `enabled` and an entry's
+ *  `enabled` and `constant` take writes, which read back in the run; an entry's reader rows are the `[field, value]`
+ *  pairs assigned, in order. A book's reader rows are `[entriesRows, assignedPairs]`, or none when both are empty. */
 const dictionariesPrelude = (
   dictionaries: readonly SandboxDictionary[], { indexOf }: FlatPlaceholderMap, reads: HostReads, resolve?: (value: string) => string,
 ): string => {
   const entriesOf = (book: SandboxDictionary) => [...namedEntries(book.entries ?? [])]
     .map(([name, { id, keys, value, enabled, constant }]) => [name, { id, keys, value: reads.text(value, resolve), enabled, constant }]);
   const spec = [...namedBooks(dictionaries)].map(([name, book]) =>
-    [name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders), entries: reads.deferred(() => entriesOf(book)) }]);
+    [name, { id: book.id ?? '', on: book.enabled !== false, ph: ownerIndex(indexOf, book.placeholders), entries: reads.deferred(() => entriesOf(book)) }]);
   return readOnlyEntryMapPrelude(`dictionaries, ${DICTIONARY_WRITES}`, spec, [
     `const lazy = ${LAZY_TEXT};`,
     `const blankEntry = { id: '', keys: [], value: -1, enabled: false, constant: false };`,
-    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}, spec, { id: '', ph: -1, entries: -1 }, (key, data, unknown) => {`,
+    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_KEYS)}, spec, { id: '', on: false, ph: -1, entries: -1 }, (key, data, unknown) => {`,
     `  let built = null;`,
     `  const entries = () => built || (built = entryMap(${JSON.stringify(DICTIONARY_ENTRY_KEYS)},`,
     `    data.entries < 0 ? [] : ${HOST_READ}(data.entries), blankEntry, (name, entry, stray) => {`,
@@ -1058,9 +1063,12 @@ const dictionariesPrelude = (
     `      for (const field of ${JSON.stringify(DICTIONARY_ENTRY_WRITABLE_FIELDS)}) setters[field] = (next) => { values[field] = next; assigned.push([field, next]); };`,
     `      return [values, () => assigned, [], setters];`,
     `    }));`,
-    `  const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) };`,
+    `  const values = { id: data.id, name: unknown ? '' : key, enabled: data.on, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) };`,
     `  define(values, 'entries', { get: () => entries()[0] });`,
-    `  return [values, () => (built ? built[3]() : [])];`,
+    `  const assigned = [];`,
+    `  const setters = { ${DICTIONARY_WRITABLE_FIELD}: (next) => { values.${DICTIONARY_WRITABLE_FIELD} = next; assigned.push(next); } };`,
+    `  const rows = () => { const entryRows = built ? built[3]() : []; return entryRows.length || assigned.length ? [entryRows, assigned] : []; };`,
+    `  return [values, rows, [], setters];`,
     `});`,
     `return [dictionaries, readWrites];`,
   ]);
@@ -1094,12 +1102,19 @@ function readDictionaryWrites(
   const writes: PathedLoreWrite[] = [];
   const unknown: string[] = [];
   const readOnly: string[] = [];
-  for (const { name, fields, mapRows } of readEntryWriteRows(dump)) {
+  for (const { name, unknown: stray, fields, mapRows } of readEntryWriteRows(dump)) {
     const path = memberPath('dictionaries', name);
     readOnly.push(...readOnlyPaths(path, fields));
-    const book = books.get(name);
+    const book = stray ? undefined : books.get(name);
+    const [entryRows, assigned] = Array.isArray(mapRows) ? mapRows : [];
+    const bookPath = `${path}.${DICTIONARY_WRITABLE_FIELD}`;
+    for (const value of Array.isArray(assigned) ? assigned : []) {
+      if (typeof value !== 'boolean') return { error: `${bookPath} must be true or false` };
+      if (book?.id) writes.push({ book: book.id, field: DICTIONARY_WRITABLE_FIELD, value, path: bookPath });
+      else if (!unknown.includes(bookPath)) unknown.push(bookPath);
+    }
     const entries = namedEntries(book?.entries ?? []);
-    for (const row of entryWriteRows(mapRows)) {
+    for (const row of entryWriteRows(entryRows)) {
       const entryPath = memberPath(`${path}.entries`, row.name);
       readOnly.push(...readOnlyPaths(entryPath, row.fields));
       const entry = row.unknown ? undefined : entries.get(row.name);

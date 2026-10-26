@@ -147,10 +147,15 @@ export function switchedTraitOf({ traitId, ownerId }: TraitSwitchEvent, world: T
   return tree?.find((trait) => trait.id === traitId);
 }
 
-/** `set` listing only the authored books in play; a book turned off reads as an unknown dictionary. */
+/** `set` listing the authored books in play, on, and the ones the world ships off, off; a book the player turned
+ *  off reads as an unknown dictionary (Q33). */
 const withBooksInPlay = (set: StatCodePlaceholderSet): StatCodePlaceholderSet => {
   const { inPlayDictionaryIds: inPlay } = set;
-  return inPlay ? { ...set, dictionaries: set.dictionaries?.filter((book) => inPlay.has(book.id)) } : set;
+  return inPlay ? {
+    ...set,
+    dictionaries: set.dictionaries?.flatMap((book) => (inPlay.has(book.id) ? [{ ...book, enabled: true }]
+      : book.enabled === false ? [book] : [])),
+  } : set;
 };
 
 const AS_AUTHORED: ResolveText = (text) => text;

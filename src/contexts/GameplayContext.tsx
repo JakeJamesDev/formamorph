@@ -7,7 +7,7 @@ import { toastError } from '@/lib/linkToast';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
-import { loreEntries, NO_LORE_TOGGLES } from '../lib/loreToggles';
+import { loreEntries, NO_LORE_TOGGLES, playthroughBooks } from '../lib/loreToggles';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { turnActivity } from '../lib/turnActivity';
 import { setLiveReasoning } from '../lib/reasoningStreamStore';
@@ -245,7 +245,9 @@ function useProvideGameplay() {
   // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
   const [openingCue, setOpeningCue] = useState<string | null>(null);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
-  const runtimeDictionary = useMemo(() => loreEntries(runtimeDictionaries, loreToggles), [runtimeDictionaries, loreToggles]);
+  // The books in play: the save's, plus the world's shipped-off books a script may switch on.
+  const playthroughDictionaries = useMemo(() => playthroughBooks(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
+  const runtimeDictionary = useMemo(() => loreEntries(playthroughDictionaries, loreToggles), [playthroughDictionaries, loreToggles]);
   const libraryDictionaries = useMemo(() => libraryBooksInPlay(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
   const added = useMemo(() => addedCharacters(discoveredEntities), [discoveredEntities]);
   // Added characters' and library books' placeholders join the session's set, and their Wildcards are drawn.
@@ -884,6 +886,7 @@ function useProvideGameplay() {
     runtimeDictionaries,
     setRuntimeDictionaries,
     libraryDictionaries,
+    playthroughDictionaries,
     placeholderRolls,
     setPlaceholderRolls,
     sceneImages,

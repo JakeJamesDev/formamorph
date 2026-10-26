@@ -57,6 +57,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can now hide or show a stat during play, with `hidden`.** The stat leaves or joins the panel with this turn's changes. Undo takes it back. Hover cards and the Variable menu list it.
     - **Scripts can now read a location's parent, children and exits, with `location.parent`, `.children` and `.exits`.** Each exit has the place's name and travel hint, from the same list the AI picks a move from. Hover cards and the Variable menu list them.
     - **Scripts can now switch dictionary entries on or off during play, with `enabled` and `constant`.** A Before the AI write reaches this turn's narration, and undo takes it back. `entries` now lists disabled entries with `enabled: false`, so a script that walks every entry sees them.
+    - **Scripts can now switch a whole dictionary on or off during play, with `enabled`.** A dictionary you ship off is listed as off, so a script can switch it on later. Undo clears a switch. Picked library dictionaries work too.
   - **Feedback Questions:**
     - **Feedback has a Questions tab, where you ask the community, reply and vote on questions you share.** It opens on everyone's unanswered questions, most voted first. **Ask a Question** opens the form. Staff can move a thread between bug, suggestion and question.
     - **While you type a question's title, the Feedback dialog lists Similar Questions.** Select one to read it, vote and reply in the dialog. **Back** returns to your draft.

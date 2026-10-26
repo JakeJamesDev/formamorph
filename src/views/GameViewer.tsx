@@ -694,6 +694,7 @@ const GameViewer = ({
     setRuntimeDictionaries,
     runtimeDictionaries,
     libraryDictionaries,
+    playthroughDictionaries,
     memoryPins,
     setMemoryPins,
     setEntityVisualPreference,
@@ -2108,8 +2109,8 @@ const GameViewer = ({
   // The lore a running turn's prompts read under its code's lore writes; the live entries when they changed none.
   const turnLore = useCallback((over: TurnCodeState | null, view: SceneWrites | null): DictionaryEntry[] => {
     if (!over?.loreToggles || over.loreToggles === liveCodeStateRef.current.loreToggles) return dictionary;
-    return resolveDictionaryEntryNames(loreEntries(runtimeDictionaries, over.loreToggles), view?.resolve ?? resolvePH);
-  }, [dictionary, runtimeDictionaries, resolvePH]);
+    return resolveDictionaryEntryNames(loreEntries(playthroughDictionaries, over.loreToggles), view?.resolve ?? resolvePH);
+  }, [dictionary, playthroughDictionaries, resolvePH]);
 
   // The README is authored text shown to the player, so its chips resolve like any other.
   const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
@@ -2227,8 +2228,8 @@ const GameViewer = ({
     const between = source?.state
       ? { ...source, state: { ...source.state, turn: { action: "", number: closedTurns(fullMessageHistoryRef.current) } } }
       : source;
-    return buildToolSnapshot(liveScene(), withLoreToggles(dictionaries, loreToggles), toolMemorySource(), between);
-  }, [liveScene, dictionaries, loreToggles, toolMemorySource]);
+    return buildToolSnapshot(liveScene(), withLoreToggles(playthroughDictionaries, loreToggles), toolMemorySource(), between);
+  }, [liveScene, playthroughDictionaries, loreToggles, toolMemorySource]);
   // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
   useHelpWorldSource(toolWorld, getWorldData);
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
@@ -3003,7 +3004,7 @@ const GameViewer = ({
         snapshotToolExecutor(() => {
           const base = onCallStateRef.current ?? turnBeforeBoxRef.current;
           return buildToolSnapshot(
-            liveScene(turnLocation, sceneBox()), withLoreToggles(dictionaries, base?.loreToggles ?? liveCodeStateRef.current.loreToggles),
+            liveScene(turnLocation, sceneBox()), withLoreToggles(playthroughDictionaries, base?.loreToggles ?? liveCodeStateRef.current.loreToggles),
             toolMemorySource(), toolScriptSourceRef.current?.(base),
           );
         }),

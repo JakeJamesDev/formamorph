@@ -9,7 +9,7 @@
  */
 
 import {
-  DELTA_SOURCES, DICTIONARY_ENTRY_WRITABLE_FIELDS, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD, type DeltaSource,
+  DELTA_SOURCES, DICTIONARY_ENTRY_WRITABLE_FIELDS, DICTIONARY_WRITABLE_FIELD, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD, type DeltaSource,
 } from '@/lib/statCodeExecutor';
 import { nearestName, readOnlyEntries, surfaceKnownNames, withAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { STAT_CODE_GUIDE_LINKS } from '@/lib/codeGuideLinks';
@@ -169,7 +169,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source' },
 ], SELF_WRITABLE_FIELDS, 'writable');
 
-export { DICTIONARY_ENTRY_WRITABLE_FIELDS, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD } from '@/lib/statCodeExecutor';
+export { DICTIONARY_ENTRY_WRITABLE_FIELDS, DICTIONARY_WRITABLE_FIELD, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD } from '@/lib/statCodeExecutor';
 
 /** The fields on a stat's `previous`: the whole stat as it stood at the start of this turn. Read-only. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -273,13 +273,14 @@ export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'constant', detail: 'boolean', info: 'True when the AI gets the entry on every turn, with no keyword match' },
 ], DICTIONARY_ENTRY_WRITABLE_FIELDS, 'writable');
 
-/** The members of one entry in `dictionaries`. None takes a write. */
-export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+/** The members of one entry in `dictionaries`. Only `enabled` takes a write. */
+export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the dictionary' },
   { name: 'name', detail: 'string', info: 'Code name of the dictionary' },
+  { name: 'enabled', detail: 'boolean', info: 'True when the dictionary is on, so the AI can get its entries. A dictionary the player turned off reads as an unknown one.' },
   { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, name, keys, value, enabled and constant. Disabled entries are listed too. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The dictionary’s own placeholders by name. Use dictionaries.Lore.placeholders["Two Words"] for a name with a space.' },
-], [...OWNER_MAPS, 'entries']);
+], [DICTIONARY_WRITABLE_FIELD], 'writable', [...OWNER_MAPS, 'entries']);
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the
  *  handful that stat code actually reaches for rather than everything a JS engine defines. */

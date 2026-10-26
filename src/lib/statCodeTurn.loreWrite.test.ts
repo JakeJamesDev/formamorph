@@ -69,4 +69,12 @@ describe('runStatCodeTurn lore writes (Q13, Q16, Q23, Q50)', () => {
     const replay = await run([], { replayed: [{ name: 'Unseal', writes: JSON.parse(JSON.stringify(out.triggerWrites)) }], triggersOnly: true });
     expect(replay.loreWrites).toEqual([SEALED_WRITE(true)]);
   });
+
+  it('saves a World Tool’s book write with no entry, and a replay of it lands again (Q51)', async () => {
+    const out = await run([], { triggers: [{ name: 'Close', code: 'dictionaries.Lore.enabled = false;', args: {} }], triggersOnly: true });
+    expect(out.triggerWrites).toEqual({ lore: [{ book: 'lore', field: 'enabled', value: false }] });
+    if (!out.triggerWrites) throw new Error('the trigger wrote');
+    const replay = await run([], { replayed: [{ name: 'Close', writes: JSON.parse(JSON.stringify(out.triggerWrites)) }], triggersOnly: true });
+    expect(withLoreWrites({}, replay.loreWrites)).toEqual({ lore: { enabled: false } });
+  });
 });
