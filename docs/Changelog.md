@@ -124,6 +124,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The request status strip floats over the bottom of the narration, so the Pager and the action box stay still.** It works the same in Pages and Chat. A fade keeps the label readable over the text.
   - **One drag of a World Editor slider or color picker now undoes in one step.** A drag that started while another field had focus used to split into many undo steps.
   - **The Test Bench's AI Context tab now reads each entity's text with that entity's own traits and placeholders.** Descriptions, pronouns and relationship labels show what play shows, and Character Name shows the entity's name. A location's pins still win, as in play.
+  - **The Test Bench now accepts an entity whose images cover every pick of a required group.** A group with a minimum and maximum of one always has one pick, so one image always shows. Rows that pair picks of two such groups count too.
   - **Settings copy reads one way on every tab, and four labels drop their asides.** Context Window, Portrait Size, Landscape Size and Workflow now name the field, and the unit or format moves into the line beside it. Section hints and notes follow the same shape as row descriptions.
 - **🛠️ Developer tooling**
   - **`tool-spill-probe.cli.ts` replays captured world requests with a Tool offered or withheld.** It counts reasoning spills, Tool calls and usable replies per arm. On the cloud model, stat-pass calls went from 0 of 20 to 20 of 20.
