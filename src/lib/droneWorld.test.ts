@@ -12,6 +12,9 @@ import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeho
 import { bundledWorldHarness } from '@/test/bundledWorldHarness';
 import { readWorldTools } from './tools/worldTools';
 import { openWorldToolTurn } from './tools/worldToolTurn';
+import { visibleImages, visibleLocationImages } from './imageVisibility';
+import { scoped } from './scope';
+import type { GateInput, GateStatSet } from './traitGates';
 
 const { persona: drone, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 
@@ -162,6 +165,34 @@ describe('the lock_target World Tool', () => {
     expect(await filtered('Two burrowers burst from the sand.', burrower.triggers)).toBe('Two **⌖ burrowers** burst from the sand.');
     const foxes = await lockOn('the marsh foxes');
     expect(await filtered('One fox bolts.', foxes.triggers)).toBe('One **⌖ fox** bolts.');
+  });
+});
+
+describe('the drone\'s Visibility rules', () => {
+  const world = JSON.parse(raw) as World;
+  const hill = world.locations.find((location) => location.name === 'Mossback Hill')!;
+  // The drone's own stats, as play reads them, at the given percent of each stat's span.
+  const statsAt = (values: { health: number; charge: number }): GateInput => ({
+    ...gate,
+    active: settleDefaults(gate).active,
+    stats: scoped<GateStatSet>({}, {
+      [drone.id]: {
+        health: { name: 'Health', value: values.health, min: 0, max: 100 },
+        charge: { name: 'Charge', value: values.charge, min: 0, max: 100 },
+      },
+    }),
+  });
+
+  it('shows the battle-damaged drone only while its Health is below 30 percent', () => {
+    const slots = (health: number) => visibleImages(drone, statsAt({ health, charge: 0 })).map((image) => image.slot);
+    expect(slots(29)).toEqual([0, 1]);
+    expect(slots(30)).toEqual([0]);
+  });
+
+  it('shows the blazing glyphs on Mossback Hill only while the played persona\'s Charge is at least 50 percent', () => {
+    const slots = (charge: number) => visibleLocationImages(hill, statsAt({ health: 100, charge })).map((image) => image.slot);
+    expect(slots(50)).toEqual([0, 1]);
+    expect(slots(49)).toEqual([0]);
   });
 });
 

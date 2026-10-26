@@ -40,6 +40,7 @@ npx vite-node testing/art-harness/art-harness.cli.ts -- --world emberwatch --sty
 | `--missing` | Slot 0 for every item with no image. The default unless `--redo` or `--variant` is given. |
 | `--redo "Name,Name#1,map"` | Make these slots again with new seeds. An id works in place of a name. Slot 0 of an empty gallery is filled. |
 | `--variant "Name=extra tags"` | Add a new slot: the item's tags plus the extra tags. Repeat the flag for more. Set its Visibility rule in the editor. |
+| `--negative "<tags>"` | Add these tags after the pinned negative prompt for every image in the run. The run log keeps them for `--replay`. |
 | `--map "<map tags>"` | The map's tags. Makes the first map image when the world has none. A map redo or variant needs it too. |
 | `--replay <run log>` | Make a log's images again at their stored seeds and prompts, into the same slots. |
 | `--sheet` | Draw the contact sheet only. Makes nothing and needs no GPU. |
