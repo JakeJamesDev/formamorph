@@ -95,3 +95,51 @@ describe('working the queue', () => {
     expect((failure as Error).message).toBe('Staff cannot moderate this account');
   });
 });
+
+describe('reading the auto-approvals', () => {
+  it('asks the auto route with the page and limit, and returns the server’s entries and total', async () => {
+    const entry = {
+      id: 7, targetId: 'w1', targetKind: 'world', targetName: 'Sedge Landing',
+      actor: { id: 'u1', username: 'wren_hallow', role: null }, createdAt: '2026-10-25T12:00:00.000Z',
+    };
+    const fetchSpy = answer(200, { success: true, total: 41, entries: [entry] });
+
+    const page = await ReviewService.fetchAutoApproved({ page: 2, limit: 20 });
+
+    expect(String(fetchSpy.mock.calls[0][0])).toMatch(/\/reviews\/auto\?page=2&limit=20$/);
+    expect(page).toEqual({ entries: [entry], total: 41 });
+  });
+
+  it('throws the server’s words on a refusal', async () => {
+    answer(403, { success: false, error: 'Staff only' });
+
+    await expect(ReviewService.fetchAutoApproved()).rejects.toThrow('Staff only');
+  });
+});
+
+describe('changing trust', () => {
+  it('grants with a PUT on the account’s trust route and returns what the server stored', async () => {
+    const fetchSpy = answer(200, { success: true, user: { id: 'u1', username: 'wren_hallow', trustedAt: '2026-10-25T12:00:00.000Z' } });
+
+    const stored = await ReviewService.setTrusted('u1', true);
+
+    expect(String(fetchSpy.mock.calls[0][0])).toMatch(/\/users\/u1\/trust$/);
+    expect(fetchSpy.mock.calls[0][1]?.method).toBe('PUT');
+    expect(stored.trustedAt).toBe('2026-10-25T12:00:00.000Z');
+  });
+
+  it('revokes with a DELETE', async () => {
+    const fetchSpy = answer(200, { success: true, user: { id: 'u1', username: 'wren_hallow', trustedAt: null } });
+
+    const stored = await ReviewService.setTrusted('u1', false);
+
+    expect(fetchSpy.mock.calls[0][1]?.method).toBe('DELETE');
+    expect(stored.trustedAt).toBeNull();
+  });
+
+  it('throws the server’s words when an admin-only route refuses', async () => {
+    answer(403, { success: false, error: 'Admins only' });
+
+    await expect(ReviewService.setTrusted('u1', true)).rejects.toThrow('Admins only');
+  });
+});

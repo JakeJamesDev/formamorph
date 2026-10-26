@@ -4,8 +4,11 @@ import { authHeaders, unwrap } from './authRequest';
 /** Whether this server accepts a like from a reader with no account. */
 export const ANONYMOUS_LIKES = 'anonymous_likes';
 
+/** Whether new listings and updates wait for a mod. Only a server with listing review knows the key. */
+export const LISTING_REVIEW = 'listing_review';
+
 /** The settings this client reads and writes. The server declares more and refuses any other key. */
-export type ServerSettingKey = typeof ANONYMOUS_LIKES;
+export type ServerSettingKey = typeof ANONYMOUS_LIKES | typeof LISTING_REVIEW;
 
 /**
  * The settings staff change without a deploy.

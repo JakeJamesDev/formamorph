@@ -4,6 +4,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ManageUsersTab } from './ManageUsersTab';
 import MessageService from '@/services/MessageService';
 import UserService from '@/services/UserService';
+import ReviewService from '@/services/ReviewService';
+import { toast } from 'react-toastify';
 import type { LinkedAccount, SentMessage } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -32,6 +34,10 @@ const viewer = vi.hoisted(() => ({
 vi.mock('@/services/AuthService', () => ({
   default: { token: 'test-token', getCurrentUser: () => viewer.current },
 }));
+
+// Whether the server has listing review; the trust controls follow it.
+const reviewMeta = vi.hoisted(() => ({ supported: false, enabled: false }));
+vi.mock('@/lib/useListingReviewMeta', () => ({ useListingReviewMeta: () => reviewMeta }));
 
 vi.mock('@/services/WorldStorageService', () => ({
   default: { API_URL: 'https://example.test/api' },
@@ -103,6 +109,7 @@ const lastQuery = () => new URLSearchParams(userQueries[userQueries.length - 1].
 
 beforeEach(() => {
   viewer.current = { id: 'a1', username: 'root-admin', accountType: 'admin' };
+  reviewMeta.supported = false;
   dialogProps.history = null;
   dialogProps.composer = null;
   userQueries = [];
@@ -468,6 +475,109 @@ describe('the message split button', () => {
     fireEvent.click(screen.getByRole('button', { name: 'More message options for alice' }));
 
     expect(await screen.findByRole('button', { name: 'History (0)' })).toBeTruthy();
+  });
+});
+
+describe('trusting an author', () => {
+  const trustedAt = '2026-10-20T12:00:00.000Z';
+
+  /** Opens the caret menu on a row. */
+  const openMenu = async (name: string) => {
+    await screen.findByText(name);
+    fireEvent.click(screen.getByRole('button', { name: `More message options for ${name}` }));
+  };
+
+  beforeEach(() => { reviewMeta.supported = true; });
+
+  it('offers the toggle to an administrator on an ordinary account', async () => {
+    stubFetch([userRow({ username: 'alice', accountType: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+
+    expect(await screen.findByRole('button', { name: 'Trust alice' })).toBeTruthy();
+  });
+
+  it('never shows a moderator the toggle or the marker', async () => {
+    viewer.current = { id: 'm1', username: 'a-mod', accountType: 'mod' };
+    stubFetch([userRow({ username: 'alice', trustedAt })]);
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+    await screen.findByRole('button', { name: /^History/ });
+
+    expect(screen.queryByRole('button', { name: /[Tt]rust/ })).toBeNull();
+    expect(screen.queryByText('Trusted')).toBeNull();
+  });
+
+  it('hides the toggle against a server without listing review', async () => {
+    reviewMeta.supported = false;
+    stubFetch([userRow({ username: 'alice' })]);
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+    await screen.findByRole('button', { name: /^History/ });
+
+    expect(screen.queryByRole('button', { name: /[Tt]rust/ })).toBeNull();
+  });
+
+  it('marks a trusted account and offers to remove the trust', async () => {
+    stubFetch([userRow({ username: 'alice', trustedAt })]);
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+
+    expect(screen.getByText('Trusted')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Remove trust from alice' })).toBeTruthy();
+  });
+
+  it('leaves no toggle on staff, who skip review anyway, but still marks a trusted one', async () => {
+    stubFetch([userRow({ username: 'carol', accountType: 'mod', trustedAt })]);
+
+    render(<ManageUsersTab active />);
+    await openMenu('carol');
+    await screen.findByRole('button', { name: /^History/ });
+
+    expect(screen.queryByRole('button', { name: /[Tt]rust (alice|carol)|Remove trust/ })).toBeNull();
+    expect(screen.getByText('Trusted')).toBeTruthy();
+  });
+
+  it('grants through the trust route and shows the marker the server’s answer implies', async () => {
+    stubFetch([userRow({ username: 'alice' })]);
+    const setTrusted = vi.spyOn(ReviewService, 'setTrusted')
+      .mockResolvedValue({ id: 'u1', username: 'alice', trustedAt });
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+    fireEvent.click(await screen.findByRole('button', { name: 'Trust alice' }));
+
+    expect(await screen.findByText('Trusted')).toBeTruthy();
+    expect(setTrusted).toHaveBeenCalledWith('u1', true);
+  });
+
+  it('revokes through the trust route and drops the marker', async () => {
+    stubFetch([userRow({ username: 'alice', trustedAt })]);
+    const setTrusted = vi.spyOn(ReviewService, 'setTrusted')
+      .mockResolvedValue({ id: 'u1', username: 'alice', trustedAt: null });
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove trust from alice' }));
+
+    await waitFor(() => expect(screen.queryByText('Trusted')).toBeNull());
+    expect(setTrusted).toHaveBeenCalledWith('u1', false);
+  });
+
+  it('leaves the row as it was and says why when the server refuses', async () => {
+    stubFetch([userRow({ username: 'alice' })]);
+    vi.spyOn(ReviewService, 'setTrusted').mockRejectedValue(new Error('Admins only'));
+
+    render(<ManageUsersTab active />);
+    await openMenu('alice');
+    fireEvent.click(await screen.findByRole('button', { name: 'Trust alice' }));
+
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled());
+    expect(screen.queryByText('Trusted')).toBeNull();
   });
 });
 

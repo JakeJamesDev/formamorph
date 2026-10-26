@@ -23,6 +23,7 @@ vi.mock('./PoliciesTab', () => ({ PoliciesTab: () => <div data-testid="policies"
 vi.mock('./AuditLogTab', () => ({ AuditLogTab: () => <div data-testid="log" /> }));
 vi.mock('./ReportsTab', () => ({ ReportsTab: () => <div data-testid="reports" /> }));
 vi.mock('./ReviewTab', () => ({ ReviewTab: () => <div data-testid="review" /> }));
+vi.mock('./AutoApprovedTab', () => ({ AutoApprovedTab: () => <div data-testid="auto-approved" /> }));
 vi.mock('./EventsTab', () => ({ EventsTab: () => <div data-testid="events" /> }));
 vi.mock('./ServerSettingsTab', () => ({ ServerSettingsTab: () => <div data-testid="server-settings" /> }));
 vi.mock('./FeedbackQueueTab', () => ({
@@ -245,6 +246,34 @@ describe('the Moderation tab', () => {
     expect(ReviewService.fetchCount).not.toHaveBeenCalled();
   });
 
+  it('adds Auto-Approved as a third segment with no count', async () => {
+    reviewMeta.supported = true;
+    vi.mocked(ReviewService.fetchCount).mockResolvedValue(3);
+
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="moderation" />);
+
+    // The Feedback panel stays mounted with its own strip, so find the strip by its first segment.
+    const strip = screen.getByRole('tab', { name: /^Reports/ }).closest('[role="tablist"]') as HTMLElement;
+    const segments = within(strip).getAllByRole('tab').map((t) => t.textContent);
+    expect(segments).toEqual(['Reports', 'Review', 'Auto-Approved']);
+    expect(await screen.findByRole('tab', { name: 'Review (3)' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Auto-Approved' })).toBeTruthy();
+  });
+
+  it('opens the auto-approvals when the caller names them', () => {
+    reviewMeta.supported = true;
+
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="moderation" initialModerationTab="auto" />);
+
+    expect(screen.getByTestId('auto-approved')).toBeTruthy();
+  });
+
+  it('has no Auto-Approved segment against a server without review', () => {
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="moderation" />);
+
+    expect(screen.queryByRole('tab', { name: 'Auto-Approved' })).toBeNull();
+  });
+
   it('shows for a moderator too', async () => {
     const AuthService = (await import('@/services/AuthService')).default;
     vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
@@ -254,5 +283,6 @@ describe('the Moderation tab', () => {
 
     expect(screen.getByRole('tab', { name: /^Moderation/ })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /^Review/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Auto-Approved' })).toBeTruthy();
   });
 });

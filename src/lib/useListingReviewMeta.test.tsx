@@ -1,4 +1,4 @@
-import { renderHook, waitFor, cleanup } from '@testing-library/react';
+import { renderHook, waitFor, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 
 // Mocked at the module path: each case reloads the hook for a fresh cache, which imports a fresh service.
@@ -111,5 +111,50 @@ describe('detecting listing review', () => {
     await waitFor(() => expect(a.result.current.supported).toBe(true));
     await waitFor(() => expect(b.result.current.supported).toBe(true));
     expect(mocks.fetchMeta).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('recording a written setting', () => {
+  /** The hook and the setter from one fresh module, so they share a cache. */
+  const freshModule = async () => {
+    vi.resetModules();
+    return import('./useListingReviewMeta');
+  };
+
+  it('moves every mounted surface to the value an admin wrote', async () => {
+    const { useListingReviewMeta, setListingReviewEnabled } = await freshModule();
+    mocks.fetchMeta.mockResolvedValue({ enabled: true });
+
+    const { result } = renderHook(() => useListingReviewMeta());
+    await waitFor(() => expect(result.current).toEqual({ supported: true, enabled: true }));
+
+    act(() => setListingReviewEnabled(false));
+
+    expect(result.current).toEqual({ supported: true, enabled: false });
+  });
+
+  it('is what a surface mounting later reads, with no second request', async () => {
+    const { useListingReviewMeta, setListingReviewEnabled } = await freshModule();
+
+    setListingReviewEnabled(false);
+    const { result } = renderHook(() => useListingReviewMeta());
+
+    await waitFor(() => expect(result.current).toEqual({ supported: true, enabled: false }));
+    expect(mocks.fetchMeta).not.toHaveBeenCalled();
+  });
+
+  it('stops telling a surface once it unmounts', async () => {
+    const { useListingReviewMeta, setListingReviewEnabled } = await freshModule();
+    mocks.fetchMeta.mockResolvedValue({ enabled: true });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { result, unmount } = renderHook(() => useListingReviewMeta());
+    await waitFor(() => expect(result.current.supported).toBe(true));
+    unmount();
+
+    act(() => setListingReviewEnabled(false));
+
+    expect(errors).not.toHaveBeenCalled();
+    expect(result.current.enabled).toBe(true);
   });
 });

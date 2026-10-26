@@ -160,6 +160,39 @@ test('a moderator’s labels fit in every font at 768px', async ({ page }) => {
   await eachFont(page, (font) => expectLabelsFit(page, MODERATOR_TABS, `in ${font} at 768px`));
 });
 
+/**
+ * Every label of the Moderation tab's own strip inside its trigger. The strip holds three equal cells
+ * ("Reports (9+)", "Review (9+)", "Auto-Approved") and fills the panel, so the narrowest panel is the test.
+ */
+async function expectModerationSegmentsFit(page: import('@playwright/test').Page, context: string) {
+  const strip = page.getByRole('tab', { name: 'Auto-Approved', exact: true }).locator('xpath=ancestor::*[@role="tablist"]');
+  await expect(strip.getByRole('tab')).toHaveCount(3);
+
+  const fits = await strip.evaluate((list) => [...list.querySelectorAll('[role="tab"]')].map((element) => {
+    const trigger = element.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const label = range.getBoundingClientRect();
+    return { name: element.textContent, triggerLeft: trigger.left, triggerRight: trigger.right, labelLeft: label.left, labelRight: label.right };
+  }));
+
+  for (const fit of fits) {
+    expect(fit.labelLeft, `${fit.name} ${context}`).toBeGreaterThanOrEqual(fit.triggerLeft - 1);
+    expect(fit.labelRight, `${fit.name} ${context}`).toBeLessThanOrEqual(fit.triggerRight + 1);
+  }
+}
+
+/** The widest labelled segments at each role's narrowest panel: the dialog on a 375px phone, and the 1000px cap. */
+for (const [accountType, width] of [['admin', 375], ['admin', 1000], ['moderator', 768]] as const) {
+  test(`a${accountType === 'admin' ? 'n administrator' : ' moderator'}’s three Moderation segments fit in every font at ${width}px`, async ({ page }) => {
+    await openPanel(page, accountType, width);
+    await gotoDev(page, 'mainMenu', { modal: 'adminPanel', tab: 'moderation' });
+    await expect(page.getByRole('tab', { name: 'Auto-Approved', exact: true })).toBeVisible();
+
+    await eachFont(page, (font) => expectModerationSegmentsFit(page, `in ${font} at ${width}px`));
+  });
+}
+
 /** The select changes the panel, so a narrow viewport is not a read-only view of the tabs. */
 test('the select changes the panel at 375px', async ({ page }) => {
   await openPanel(page, 'admin', 375);

@@ -38,6 +38,8 @@ export const AUDIT_ACTIONS = [
   'update_approved',
   'update_rejected',
   'listing_auto_approved',
+  'author_trusted',
+  'author_untrusted',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

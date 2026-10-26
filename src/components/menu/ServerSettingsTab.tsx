@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { markCatalogStale } from "@/lib/catalogStale";
-import ServerSettingsService, { ANONYMOUS_LIKES, type ServerSettingKey } from "@/services/ServerSettingsService";
+import { setListingReviewEnabled, useListingReviewMeta } from "@/lib/useListingReviewMeta";
+import ServerSettingsService, { ANONYMOUS_LIKES, LISTING_REVIEW, type ServerSettingKey } from "@/services/ServerSettingsService";
 
 /** One on/off setting with a control here. A second setting is another entry, not another component. */
 interface ServerSetting {
@@ -17,6 +18,10 @@ interface ServerSetting {
   hint: string;
   /** The facts the brief line leaves out, behind the row's information control. */
   info: string;
+  /** Hides the row against a server without listing review, which refuses the key. */
+  needsReview?: boolean;
+  /** Called with the value the server stored, for surfaces that cache it. */
+  onStored?: (value: boolean) => void;
 }
 
 /**
@@ -31,6 +36,14 @@ const SETTINGS: readonly ServerSetting[] = [
     label: 'Anonymous Likes',
     hint: 'Takes a like from anyone, signed in or not',
     info: 'Likes already given stay counted. Anyone can still take their own like back.',
+  },
+  {
+    key: LISTING_REVIEW,
+    label: 'Listing Review',
+    hint: 'Holds new listings and updates for a mod to approve. Pending items stay in the queue when it’s off.',
+    info: 'Staff and trusted authors skip review either way. Turning it off approves nothing already waiting.',
+    needsReview: true,
+    onStored: setListingReviewEnabled,
   },
 ];
 
@@ -65,6 +78,7 @@ function SettingRow({ setting, active }: { setting: ServerSetting; active: boole
       .then((stored) => {
         if (!mounted.current) return;
         setValue(stored);
+        setting.onStored?.(stored);
         // The catalog response carries this setting, so every cached copy is now out of date.
         markCatalogStale();
       })
@@ -104,10 +118,12 @@ function SettingRow({ setting, active }: { setting: ServerSetting; active: boole
 
 /** Admin Panel, Server tab. What the server does, changed without a deploy and applied at once. */
 export function ServerSettingsTab({ active }: { active: boolean }) {
+  const review = useListingReviewMeta(active);
+
   return (
     <div className="py-4 min-w-0">
       <Section title="Server Settings" hint="Applies to everyone at once, with no deploy and no confirmation">
-        {SETTINGS.map((setting) => (
+        {SETTINGS.filter((setting) => !setting.needsReview || review.supported).map((setting) => (
           <SettingRow key={setting.key} setting={setting} active={active} />
         ))}
       </Section>

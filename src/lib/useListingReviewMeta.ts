@@ -18,6 +18,16 @@ let cached: ListingReviewMeta | null = null;
 /** The ask in flight, so surfaces that mount together share one request. */
 let inFlight: Promise<ListingReviewMeta> | null = null;
 
+/** Hooks to tell when {@link setListingReviewEnabled} changes the answer. */
+const listeners = new Set<(meta: ListingReviewMeta) => void>();
+
+/** Records the setting an admin just wrote, so every surface reads it without a reload. */
+export function setListingReviewEnabled(enabled: boolean): void {
+  const next: ListingReviewMeta = { supported: true, enabled };
+  cached = next;
+  listeners.forEach((listener) => listener(next));
+}
+
 const toMeta = (meta: ReviewMeta | null): ListingReviewMeta =>
   meta ? { supported: true, enabled: meta.enabled } : UNKNOWN;
 
@@ -48,6 +58,8 @@ export function useListingReviewMeta(ask = true): ListingReviewMeta {
   useEffect(() => {
     if (!ask) return;
     void loadMeta().then((next) => { if (mounted.current) setMeta(next); });
+    listeners.add(setMeta);
+    return () => { listeners.delete(setMeta); };
   }, [ask, mounted]);
 
   return meta;
