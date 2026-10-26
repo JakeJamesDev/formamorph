@@ -19,6 +19,9 @@ import { resolveEntityTexts } from './resolveWorldNames';
 import { relationshipLines } from './entityRelationships';
 import { DAYPARTS } from './gameClock';
 import { canvasRects } from './locationCanvas';
+import { visibleImages, visibleLocationImages } from './imageVisibility';
+import { scoped } from './scope';
+import type { GateInput, GateStatSet } from './traitGates';
 import type { StatCodeTurn, StatCodeTurnResult } from './statCodeTurn';
 import type { Daypart, LoreToggles } from '@/types';
 
@@ -286,5 +289,27 @@ describe("Sergeant Okonjo's missing partner", () => {
     expect(relationshipLines([resolved, resolvedWatch], [okonjo.id])[okonjo.id])
       .toEqual([`Quarantine Watch is Sergeant Abena Okonjo's unit, one short since ${name} went down the storm drains`]);
     expect(resolved.aiDescription).toContain(name);
+  });
+});
+
+describe('the Visibility rules', () => {
+  // The Resident's Assimilation, as play reads it.
+  const assimilationAt = (value: number): GateInput => ({
+    ...gate,
+    active: DEFAULT.active,
+    stats: scoped<GateStatSet>({}, { [resident.id]: { assimilation: { name: 'Assimilation', value, min: 0, max: 100 } } }),
+  });
+  const pharmacy = world.locations.find((l) => l.name === 'The Night Pharmacy')!;
+
+  it('swaps the Resident to translucent skin once Assimilation reaches 40', () => {
+    const slots = (value: number) => visibleImages(resident, assimilationAt(value)).map((image) => image.slot);
+    expect(slots(39)).toEqual([0]);
+    expect(slots(40)).toEqual([1]);
+  });
+
+  it.each(DAYPARTS)('shows the Night Pharmacy open only in the evening and at night (%s)', (daypart) => {
+    const atDaypart = { ...gate, daypart };
+    const slots = visibleLocationImages(pharmacy, { ...atDaypart, active: settleDefaults(atDaypart).active }).map((image) => image.slot);
+    expect(slots).toEqual(daypart === 'evening' || daypart === 'night' ? [0] : [1]);
   });
 });
