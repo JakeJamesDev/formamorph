@@ -4637,6 +4637,89 @@
     }
   },
   "slime": {
+    "Hollis Pratt": {
+      "boundStats": {},
+      "boundTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: night hours. Hollis has the Night Pharmacy counter open and rations the iodine, antihistamines and electrolyte salts to whoever answers her questions honestly.",
+            "id": "counter_open",
+            "mode": "alwaysOn",
+            "name": "Counter Open",
+            "order": 0,
+            "playerDescription": "Night hours. Hollis is at the counter, and the remedies are on offer.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "night",
+                      "evening"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          }
+        ]
+      },
+      "carriedStats": {},
+      "carriedTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: night hours. Hollis has the Night Pharmacy counter open and rations the iodine, antihistamines and electrolyte salts to whoever answers her questions honestly.",
+            "id": "counter_open",
+            "mode": "alwaysOn",
+            "name": "Counter Open",
+            "order": 0,
+            "playerDescription": "Night hours. Hollis is at the counter, and the remedies are on offer.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "night",
+                      "evening"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          }
+        ]
+      },
+      "portableStats": {},
+      "portableTraits": {
+        "traits": [
+          {
+            "aiDescription": "ACTIVE: night hours. Hollis has the Night Pharmacy counter open and rations the iodine, antihistamines and electrolyte salts to whoever answers her questions honestly.",
+            "id": "counter_open",
+            "mode": "alwaysOn",
+            "name": "Counter Open",
+            "order": 0,
+            "playerDescription": "Night hours. Hollis is at the counter, and the remedies are on offer.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "dayparts": [
+                      "night",
+                      "evening"
+                    ],
+                    "kind": "time"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          }
+        ]
+      }
+    },
     "The Resident": {
       "boundStats": {
         "stats": [

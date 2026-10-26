@@ -82,9 +82,20 @@ const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Av
  *  screen's `window.__baseline`. Throws with what is on screen when the game never mounts. */
 export async function enterWorld(page, worldPath, label) {
   await page.locator('input[type="file"]').first().setInputFiles(worldPath);
-  // Worlds with embedded images pop an "Optimize imported images?" dialog before the world card renders.
-  await page.getByRole("button", { name: "Keep as-is" }).click({ timeout: 5000 }).catch(() => {});
-  await page.getByRole("button", { name: /Enter World/i }).click();
+  // Two modals can stand between the import and the world card, in either order: "Optimize imported images?"
+  // for a world with embedded images, and a live server event's poster, which arrives once its fetch lands.
+  const enter = page.getByRole("button", { name: /Enter World/i });
+  for (let waited = 0; !(await enter.count()); waited += 500) {
+    if (waited >= 60000) throw new Error(`${label}: Enter World never appeared after the import`);
+    for (const name of ["Keep as-is", "Got It"]) {
+      const btn = page.getByRole("button", { name, exact: true });
+      if (await btn.count()) await btn.first().click().catch(() => {});
+    }
+    await page.waitForTimeout(500);
+  }
+  // The poster can still land between the last check and the click.
+  await page.getByRole("button", { name: "Got It", exact: true }).click({ timeout: 1000 }).catch(() => {});
+  await enter.first().click();
   for (let i = 0; i < 24; i++) {
     if (await page.evaluate(() => Boolean(window.__baseline))) return;
     // A world's Introduction opens over the enter dialog and hides its buttons until it closes.
