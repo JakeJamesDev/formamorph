@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ChatMessage } from '@/types';
-import { narrationOf, storyText, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from './aiResponse';
+import { answerStart, narrationOf, storyText, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from './aiResponse';
 
 describe('narrationOf', () => {
   it('returns narration from strict JSON', () => {
@@ -89,6 +89,36 @@ describe('stripReasoningLive', () => {
 
   it('leaves plain streaming text untouched', () => {
     expect(stripReasoningLive('You walk down the')).toBe('You walk down the');
+  });
+
+  it("hides Gemma's thought channel while it streams, from its first token", () => {
+    expect(stripReasoningLive('<|channel>')).toBe('');
+    expect(stripReasoningLive('<|channel>thought\nThe user wants')).toBe('');
+    expect(stripReasoningLive('<|channel>thought\nPlan.<channel|>You stand')).toBe('You stand');
+  });
+});
+
+// Gemma 4 on a server that keeps special tokens, captured from the cloud endpoint with a Tool offered.
+const CHANNEL_SPILL = '<|channel>thought\nThe user wants me to act as the narrator.\n\n**Plan:**\n1. Describe the harbor.<channel|>You stand at the ragged edge of the city.';
+
+describe("Gemma's thought channel", () => {
+  it('is stripped from the reply, leaving the narration', () => {
+    expect(stripReasoning(CHANNEL_SPILL)).toBe('You stand at the ragged edge of the city.');
+  });
+
+  it('is the reasoning the aside shows', () => {
+    expect(extractReasoning(CHANNEL_SPILL)).toBe('The user wants me to act as the narrator.\n\n**Plan:**\n1. Describe the harbor.');
+    expect(extractReasoningLive('<|channel>thought\nThe user wants')).toBe('The user wants');
+  });
+
+  it('moves the answer start past the block, and is null while it is open', () => {
+    expect(answerStart(CHANNEL_SPILL)).toBe(CHANNEL_SPILL.indexOf('You stand'));
+    expect(answerStart('<|channel>thought\nThe user wants')).toBeNull();
+  });
+
+  it('leaves a lone channel close and other template tokens alone', () => {
+    expect(stripReasoning('You stand.<channel|>')).toBe('You stand.<channel|>');
+    expect(stripReasoning('<|tool_call>call:x{}<tool_call|>')).toBe('<|tool_call>call:x{}<tool_call|>');
   });
 });
 

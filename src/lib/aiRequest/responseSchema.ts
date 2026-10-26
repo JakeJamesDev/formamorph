@@ -20,6 +20,26 @@ export interface ResponseFormat {
 export const responseFormat = ({ name, schema }: ResponseSchema): ResponseFormat =>
   ({ type: 'json_schema', json_schema: { name, strict: true, schema } });
 
+function followsNode(value: unknown, node: ResponseSchemaNode): boolean {
+  if (node.type === 'integer') {
+    return Number.isInteger(value) && (node.minimum === undefined || (value as number) >= node.minimum)
+      && (node.maximum === undefined || (value as number) <= node.maximum);
+  }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const keys = Object.keys(value);
+  return node.required.every((key) => keys.includes(key))
+    && keys.every((key) => key in node.properties && followsNode((value as Record<string, unknown>)[key], node.properties[key]));
+}
+
+/** Whether `text` is one JSON value that follows `schema`, as a strict server would have forced it. A code fence around it counts. */
+export function followsResponseSchema(text: string, schema: ResponseSchemaNode): boolean {
+  try {
+    return followsNode(JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')), schema);
+  } catch {
+    return false;
+  }
+}
+
 /** A schema request the endpoint refused with a client error, before a text-pass answer proves the schema was why. */
 export class SchemaRefused extends Error {
   constructor(readonly target: { url: string; model: string }, cause: unknown) {

@@ -7,6 +7,7 @@ import { AiStreamError } from './aiStream';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import type { ResponseSchema } from './responseSchema';
 import type { ToolExecutor } from './toolLoop';
+import { narrationStream } from './narrationStream';
 import {
   transportRequest, type TransportContext, type TransportEvent, type TransportRequest, type TransportTarget,
 } from './requestTransport';
@@ -139,6 +140,23 @@ describe('a plain reply', () => {
     const fetchImpl = scripted([() => sseResponse(sseTokens(['<think>hm</think>', 'Rain.']))]);
     await send(request(), context(fetchImpl, { noteReasoningReply }));
     expect(noteReasoningReply).toHaveBeenCalledWith(expect.objectContaining({ model: 'test-model' }), '', '<think>hm</think>Rain.', null);
+  });
+});
+
+describe("Gemma's thought channel in the content", () => {
+  // The reply shape the cloud endpoint gave with a judgment Tool offered: the channel tokens kept, then the story.
+  const SPILL = ['<|channel>', 'thought\nThe user wants a scene. ', 'Plan: the harbor.', '<channel|>', 'The gulls ', 'cry.'];
+
+  it('answers the story alone and keeps the thought out of every narration sentence', async () => {
+    const sentences: string[] = [];
+    const fetchImpl = scripted([() => sseResponse(sseTokens(SPILL))]);
+    const events: TransportEvent[] = [];
+    const sink = narrationStream((event) => { if (event.type === 'sentence') sentences.push(event.text); });
+    const text = await transportRequest(request(), context(fetchImpl), (event) => { events.push(event); sink(event); });
+
+    expect(text).toBe('The gulls cry.');
+    expect(sentences).toEqual(['The gulls cry.']);
+    expect(events.at(-1)).toMatchObject({ type: 'done', raw: SPILL.join('') });
   });
 });
 

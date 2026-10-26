@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { streamAiRequest } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
-import { SchemaRefused, schemaRejected, withTextFallback, type ResponseSchema } from './responseSchema';
+import { followsResponseSchema, SchemaRefused, schemaRejected, withTextFallback, type ResponseSchema, type ResponseSchemaNode } from './responseSchema';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
@@ -97,5 +97,28 @@ describe('schemaRejected', () => {
   it('reads a network failure or a plain error as some other failure', () => {
     expect(schemaRejected(new Error('offline'))).toBe(false);
     expect(schemaRejected(null)).toBe(false);
+  });
+});
+
+describe('followsResponseSchema', () => {
+  const schema: ResponseSchemaNode = {
+    type: 'object', additionalProperties: false, required: ['Hero'],
+    properties: { Hero: { type: 'object', additionalProperties: false, required: ['Health'], properties: { Health: { type: 'integer', minimum: -10, maximum: 10 } } } },
+  };
+
+  it('accepts a reply that follows the schema, fenced or not', () => {
+    expect(followsResponseSchema('{"Hero": {"Health": -2}}', schema)).toBe(true);
+    expect(followsResponseSchema('```json\n{"Hero": {"Health": 3}}\n```', schema)).toBe(true);
+  });
+
+  it.each([
+    ['prose', 'Health: -2'],
+    ['a missing key', '{"Hero": {}}'],
+    ['an extra key', '{"Hero": {"Health": 1}, "Villain": {}}'],
+    ['a fraction', '{"Hero": {"Health": 1.5}}'],
+    ['a value past its bound', '{"Hero": {"Health": 11}}'],
+    ['an array for an object', '{"Hero": []}'],
+  ])('refuses %s', (_label, text) => {
+    expect(followsResponseSchema(text, schema)).toBe(false);
   });
 });

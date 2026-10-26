@@ -26,15 +26,28 @@ export function storyText(history: ChatMessage[]): string {
 const REASONING_TAGS = ['think', 'thinking', 'reasoning', 'thought'];
 const REASONING_ALT = REASONING_TAGS.join('|');
 
+// Gemma 4's thought channel. A server that keeps special tokens, as a tool parser needs, leaves it in the content.
+const CHANNEL_OPEN = '<\\|channel>';
+const CHANNEL_CLOSE = '<channel\\|>';
+
+/** Each reasoning block's opening and closing patterns. */
+const REASONING_BLOCKS = [
+  ...REASONING_TAGS.map((tag) => ({ open: `<${tag}(?:\\s[^>]*)?>`, close: `</${tag}>` })),
+  { open: `${CHANNEL_OPEN}thought`, close: CHANNEL_CLOSE },
+];
+
+/** The start of any reasoning block, complete or not. (`\b` keeps `<thinker` from matching.) */
+const ANY_OPEN = `<(?:${REASONING_ALT})\\b|${CHANNEL_OPEN}`;
+
 /**
- * Remove complete reasoning blocks (`<think>…</think>` and the other known tags) from model
- * output so a model's private scratchpad never reaches the narration. Case-insensitive,
- * spans newlines. Pure.
+ * Remove complete reasoning blocks (`<think>…</think>`, the other known tags, and Gemma's thought
+ * channel) from model output so a model's private scratchpad never reaches the narration.
+ * Case-insensitive, spans newlines. Pure.
  */
 export function stripReasoning(text: string): string {
   let out = text || '';
-  for (const tag of REASONING_TAGS) {
-    out = out.replace(new RegExp(`<${tag}(?:\\s[^>]*)?>[\\s\\S]*?</${tag}>`, 'gi'), '');
+  for (const { open, close } of REASONING_BLOCKS) {
+    out = out.replace(new RegExp(`${open}[\\s\\S]*?${close}`, 'gi'), '');
   }
   return out;
 }
@@ -42,11 +55,11 @@ export function stripReasoning(text: string): string {
 /**
  * Streaming-safe variant: strips complete blocks, then truncates at a trailing opening tag
  * whose closing tag has not arrived yet — so an in-progress reasoning block isn't shown while
- * it streams. (`\b` keeps `<thinker` from matching.)
+ * it streams.
  */
 export function stripReasoningLive(text: string): string {
   const out = stripReasoning(text);
-  const m = out.match(new RegExp(`<(?:${REASONING_ALT})\\b`, 'i'));
+  const m = out.match(new RegExp(ANY_OPEN, 'i'));
   return m ? out.slice(0, m.index) : out;
 }
 
@@ -55,9 +68,9 @@ export function stripReasoningLive(text: string): string {
  * that block has not closed. Pure.
  */
 export function answerStart(text: string): number | null {
-  const open = text.match(new RegExp(`^\\s*<(${REASONING_ALT})(?:\\s[^>]*)?>`, 'i'));
+  const open = text.match(new RegExp(`^\\s*(?:<(${REASONING_ALT})(?:\\s[^>]*)?>|${CHANNEL_OPEN})`, 'i'));
   if (!open) return 0;
-  const close = new RegExp(`</${open[1]}>`, 'i').exec(text.slice(open[0].length));
+  const close = new RegExp(open[1] ? `</${open[1]}>` : CHANNEL_CLOSE, 'i').exec(text.slice(open[0].length));
   return close ? open[0].length + close.index + close[0].length : null;
 }
 
@@ -68,8 +81,8 @@ export function answerStart(text: string): number | null {
  */
 export function extractReasoning(text: string): string {
   const blocks: string[] = [];
-  for (const tag of REASONING_TAGS) {
-    const re = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, 'gi');
+  for (const { open, close } of REASONING_BLOCKS) {
+    const re = new RegExp(`${open}([\\s\\S]*?)${close}`, 'gi');
     let m: RegExpExecArray | null;
     while ((m = re.exec(text || ''))) blocks.push(m[1]);
   }
@@ -83,7 +96,9 @@ export function extractReasoning(text: string): string {
 export function extractReasoningLive(text: string): string {
   const complete = extractReasoning(text);
   // A trailing opening tag with no closing tag after it → the still-streaming block's partial body.
-  const open = (text || '').match(new RegExp(`<(?:${REASONING_ALT})\\b[^>]*>(?![\\s\\S]*</(?:${REASONING_ALT})>)`, 'i'));
+  const open = (text || '').match(new RegExp(
+    `(?:<(?:${REASONING_ALT})\\b[^>]*>|${CHANNEL_OPEN}(?:thought)?)(?![\\s\\S]*(?:</(?:${REASONING_ALT})>|${CHANNEL_CLOSE}))`, 'i',
+  ));
   const partial = open ? (text || '').slice(open.index! + open[0].length) : '';
   return [complete, partial.trim()].filter(Boolean).join('\n\n').trim();
 }
