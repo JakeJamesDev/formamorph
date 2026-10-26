@@ -81,9 +81,12 @@ The server will hold new listings and updates for review before players can see 
   - The details modal gets a **Pending Update** section for the author, with **Compare** and **Discard Update**. The pending thumbnail loads from the review thumbnail URL the server sends.
 - **Publish result.** The publish and update calls read the server's answer. A pending result shows "Sent for review". A live result keeps today's message. The changelog entry that the publish modal posts after an update becomes part of the pending update on the server. The modal shows the entry as pending.
 - **Review tab.**
-  - A new tab in the staff panel for anyone who passes `canModerate`, with two views: **Queue** and **Auto-Approved**.
-  - The waiting count goes in the tab label, like the Reports count.
-  - The tab strip is a fixed grid with measured widths, so adding a tab means changing the grid column counts for admins and mods. It also means running `admin-panel-widths.spec.ts` again.
+  - Reports and Review share one **Moderation** tab in the staff panel, split by a segmented control (the user's ruling for ticket 08). The tab count stays at 8 for admins and 5 for mods.
+  - The panel's width cap rises from 900px to 1000px. The tab breakpoints and `admin-panel-widths.spec.ts` change to match.
+  - Review shows for anyone who passes `canModerate` on a server that supports review, with two views: **Queue** and **Auto-Approved**.
+  - Each segment's label carries its own count: Reports (n) and Review (n). The Moderation tab label shows their sum.
+  - The Admin Panel button's badge in the main menu adds the waiting-review count to the open-report count.
+  - Rejecting a resubmission leaves out the template's extension sentence when the answer says `quarantineExtended: true`.
 - **Item detail.** A dialog shows the item. For an update, a field table shows live and pending values. Thumbnails show as images. The changelog operations show as a list. **Download** fetches the pending content.
 - **Reject flow.**
   - **New listing:** `QuarantineDialog` → the reject route with the chosen days → the composer opens with the quarantine template, filled from the route's answer.
