@@ -1,6 +1,6 @@
 # 06: Side Edits Wait For Review
 
-Status: ready-for-human
+Status: done
 Base: 7b2c0a8
 Blocked by: 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
