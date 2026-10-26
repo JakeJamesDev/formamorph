@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Daypart, Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
-  GalleryImage, Script, StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
+  GalleryImage, Script, StatRequirement, Tool, TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -4495,6 +4495,53 @@ describe('dictionary visibility rules', () => {
     expect(runRules(base({
       dictionaries: [book([entry({ id: 'd1', name: 'Herbs', key: ['herb'] })])],
     }))).toEqual([]);
+  });
+
+  const bulletin = (): Dictionary => ({
+    id: 'b2', name: 'Ashburn Bulletin', entries: [
+      entry({ id: 'n1', name: 'Wanted Notice', key: ['notice'], enabled: false }),
+      entry({ id: 'n2', name: 'Curfew', key: ['curfew'], enabled: false }),
+    ],
+  });
+  const herbs = () => book([entry({ id: 'd1', name: 'Herbs', key: ['herb'], enabled: false })]);
+  const scriptTool = (code: string): Tool => ({
+    id: 't1', name: 'mark_overrun', description: 'Marks a block overrun.', params: [],
+    handler: { kind: 'script', code }, emptyResult: '', offeredTo: ['narration'],
+  });
+  const flaggedIds = (w: RuleWorld) => only(w, 'dictionary-disabled').flatMap((f) => f.items.map((i) => i.id));
+
+  it('leaves a disabled entry alone when a script switches it on by name, and still flags the untouched ones', () => {
+    const inline = 'if (stats.Suspicion.value >= 75) dictionaries["Ashburn Bulletin"].entries["Wanted Notice"].enabled = true;';
+    const w = base({ dictionaries: [bulletin(), herbs()], scripts: [{ id: 'w1', timing: 'after', code: inline }] });
+    expect(flaggedIds(w)).toEqual(['n2', 'd1']);
+    expect(only(w, 'dictionary-disabled')[0].message).toContain('no script switches it on');
+
+    const onStat = base({
+      dictionaries: [herbs()],
+      stats: [stat({ id: 's1', name: 'Suspicion', scripts: boxScripts({ after: 'dictionaries.Book.entries.Herbs.enabled = self.value > 5;' }) })],
+    });
+    expect(flaggedIds(onStat)).toEqual([]);
+  });
+
+  it('leaves every disabled entry of a book alone when a Tool switches one on by a computed name', () => {
+    const computed = 'const reportName = String(args.block);\ndictionaries["Ashburn Bulletin"].entries[reportName].enabled = true;';
+    const w = base({ dictionaries: [bulletin(), herbs()], tools: [scriptTool(computed)] });
+    expect(flaggedIds(w)).toEqual(['d1']);
+  });
+
+  it('leaves every book’s entry of that name alone when the book is not named in the write', () => {
+    const aliased = 'const lore = dictionaries.Book;\nlore.entries.Herbs.enabled = true;';
+    expect(flaggedIds(base({ dictionaries: [herbs()], tools: [scriptTool(aliased)] }))).toEqual([]);
+  });
+
+  it('still flags an entry a script only reads or compares', () => {
+    const reads = [
+      'if (dictionaries.Book.entries.Herbs.enabled === false) stats.Fear.value += 1;',
+      'return dictionaries.Book.entries.Herbs.enabled ? 1 : 0;',
+      'dictionaries.Book.entries.Tides.enabled = true;',
+    ];
+    const w = base({ dictionaries: [herbs()], scripts: reads.map((code, i) => ({ id: `w${i}`, timing: 'after', code })) });
+    expect(flaggedIds(w)).toEqual(['d1']);
   });
 });
 
