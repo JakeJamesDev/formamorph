@@ -88,7 +88,7 @@ timing. The probe only adds `reasoning_effort: "none"` to each request.
 
 | Flag | Meaning | Default |
 |---|---|---|
-| `--arms A,B` | Two or more arms. `worktree` is the file on disk; anything else is a git revision (`HEAD`, `HEAD~2`, a sha). | `worktree,ace2e0204` |
+| `--arms A,B` | Two or more arms. `worktree` is the file on disk; anything else is a git revision (`HEAD`, `HEAD~2`, a sha). | `worktree,2f45261a5` |
 | `--worlds` | `all`, or world ids (file names in `src/defaultworlds/`). | `all` |
 | `--runs` | Runs per arm. | `5` |
 | `--endpoint` / `--model` | Where requests go. | the cloud default |
@@ -99,7 +99,7 @@ timing. The probe only adds `reasoning_effort: "none"` to each request.
   at once. A port already in use stops the run; it never attaches to another server. Port 5180 is refused:
   the launch config owns it.
 
-- `ace2e0204` is the last commit before the refresh, so the default compares the new world with the old one.
+- `2f45261a5` is the last commit before the expansion, so the default compares the new world with the old one. Pass `--arms worktree,ace2e0204` to compare against the world before the refresh.
 - An old revision loads through the app's own import, so legacy fields migrate as they do for a player.
 - Arms alternate run by run (A B, then B A), so each batch carries its own control. The cloud model drifts
   between batches, so compare arms only within one batch.

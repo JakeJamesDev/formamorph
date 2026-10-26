@@ -1,6 +1,6 @@
 # 01: Shared Suite and Probe Default
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,8 +17,16 @@ The prefactor. After it lands, the shared bundled-world suite knows the expansio
 
 ## Acceptance criteria
 
-- [ ] Each new detector is shown to bite: a world edited to lack the feature fails its row check.
-- [ ] The suite is green on the current worlds with every new feature still planned, and the set check is shown to fail once with a planned feature removed from every row by hand.
-- [ ] The old-save check reads the pre-expansion revision and is shown to fail with a missing revision, never skip.
-- [ ] The world probe runs with no `--arms` flag and reports the pre-expansion revision as its before arm.
-- [ ] The changelog fragment is in place with a lead that stands alone.
+- [x] Each new detector is shown to bite: a world edited to lack the feature fails its row check. All seven new features added to Drone's row failed `shows <feature>`; `tools` added to Valentines' row failed. Committed: `the expansion feature detectors > finds …` (false before the edit, true after) and `ignores …` near misses.
+- [x] The suite is green on the current worlds with every new feature still planned, and the set check is shown to fail once with a planned feature removed from every row by hand. `bundledWorlds.test.ts` 86 pass, strict set check skipped; `scriptExits` removed from Rampage's planned row failed `shows or plans every feature`; strict check forced on failed with seven features listed.
+- [x] The old-save check reads the pre-expansion revision and is shown to fail with a missing revision, never skip. `GameViewer.bundledSaves.test.tsx` 23 pass (8 pre-expansion cases); a bogus `PRE_EXPANSION_SHA` failed with git's `fatal: … not in '0000000a…'`.
+- [x] The world probe runs with no `--arms` flag and reports the pre-expansion revision as its before arm. Ran against a dead endpoint: `arms worktree vs 2f45261a5`, both arms played Drone.
+- [x] The changelog fragment is in place with a lead that stands alone. `docs-internal/changelog.d/bundled-worlds-expansion-01.md`, lead as ruled by the spec session.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Nothing to judge in play. World tickets: move each delivered feature from `PLANNED` into the world's `FEATURES` row in `src/lib/bundledWorlds.test.ts`. The `scriptLore` detector matches the inline form `dictionaries.<Book>.entries.<Entry>.enabled = …`; an aliased entry is not detected.

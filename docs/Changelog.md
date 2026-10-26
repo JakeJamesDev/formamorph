@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.4.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The seven bundled worlds are about twice as big, and every location and entity has art.** They also show newer features: World Tools, Relationship labels, Time of Day gates, Image Visibility rules and Map Backgrounds.
+
 ### Minor Changes
 
 #### ➕ Added

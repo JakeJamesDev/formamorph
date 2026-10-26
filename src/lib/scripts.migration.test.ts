@@ -12,7 +12,7 @@ import { executeStatCode, type SandboxEntity } from './statCodeExecutor';
 import { globalStatsOf, resolvedEntityStats, statLinkState } from './statLinks';
 import { bindOwnedStats } from './portableStats';
 import { codeAt } from '@/test/scriptFixtures';
-import { preRefreshWorld } from '@/test/preRefreshWorlds';
+import { PRE_REFRESH_SHA, worldAt } from '@/test/bundledRevisions';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { statCodeNamed } from './statCodeNames';
 import { parseEntityCardData } from './entityFile';
@@ -166,7 +166,7 @@ describe('the shipped bundled worlds', () => {
   type RawStat = Stat & { beforeCode?: string; code?: string };
   type RawWorld = { stats: RawStat[]; statGroups?: World['statGroups']; entities: (Entity & { stats?: RawStat[] })[]; placeholders?: World['placeholders'] };
   // Parsed JSON: the box-code fields the World type no longer carries are read as RawWorld.
-  const raws = DEFAULT_WORLDS.map(({ id }) => [`${id}.json`, preRefreshWorld(id) as unknown as RawWorld] as const);
+  const raws = DEFAULT_WORLDS.map(({ id }) => [`${id}.json`, worldAt(PRE_REFRESH_SHA, id) as unknown as RawWorld] as const);
   const boxed = raws.filter(([, raw]) =>
     [...raw.stats, ...raw.entities.flatMap((e) => e.stats ?? [])].some((s) => s.code?.trim() || s.beforeCode?.trim()));
 

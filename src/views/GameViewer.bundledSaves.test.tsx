@@ -2,14 +2,14 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { toast } from 'react-toastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
-import { preRefreshWorld } from '@/test/preRefreshWorlds';
+import { PRE_EXPANSION_SHA, PRE_REFRESH_SHA, worldAt } from '@/test/bundledRevisions';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
 import type { SaveRecord, World } from '@/types';
 
-/** Q10: a save made against a bundled world's pre-refresh revision loads against the current file and plays a turn. */
+/** A save made against a bundled world's pre-refresh or pre-expansion revision loads against the current file and plays a turn. */
 
 // The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
@@ -101,16 +101,18 @@ async function playSaveAcross(before: World, after: World) {
   expect(vi.mocked(toast.error)).not.toHaveBeenCalled();
 }
 
-describe.each(DEFAULT_WORLDS.map((seed) => [seed.id, seed] as const))('a pre-refresh save of %s', (id, seed) => {
-  const before = () => seedWorldData(preRefreshWorld(id), seed);
+describe.each(DEFAULT_WORLDS.map((seed) => [seed.id, seed] as const))('a save of %s', (id, seed) => {
+  const before = (sha: string) => seedWorldData(worldAt(sha, id), seed);
   const after = () => seedWorldData(currentRaw(id), seed);
 
-  it('loads against the current world and plays a turn', { timeout: 60_000 }, async () => {
-    await playSaveAcross(before(), after());
-  });
+  it.each([['pre-refresh', PRE_REFRESH_SHA], ['pre-expansion', PRE_EXPANSION_SHA]])(
+    'made at the %s revision loads against the current world and plays a turn', { timeout: 60_000 }, async (_label, sha) => {
+      await playSaveAcross(before(sha), after());
+    },
+  );
 
   // Q10: drift is accepted, so a stat the world cut drops from the save without breaking play.
   it.runIf(withoutAStat(after()))('plays a turn after the world cuts a stat the save holds', { timeout: 60_000 }, async () => {
-    await playSaveAcross(before(), withoutAStat(after())!);
+    await playSaveAcross(before(PRE_REFRESH_SHA), withoutAStat(after())!);
   });
 });
