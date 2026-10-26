@@ -1,6 +1,7 @@
 /** DEV only: mounts each `DEV_PANE_MODALS` pane on canned props; closing one clears the route. */
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ChangelogEntryDialog } from '@/components/community/ChangelogEntryDialog';
+import { PendingUpdateSection } from '@/components/community/PendingUpdateSection';
 import PlaceholderSectionList from '@/components/editor/PlaceholderSectionList';
 import { FontTuneDialog } from '@/components/FontTuneDialog';
 import { GenerateImageButton } from '@/components/GenerateImageButton';
@@ -17,6 +18,7 @@ import { ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { RootCrashScreen } from '@/components/RootCrashScreen';
 import { RevealAnimationDialog } from '@/components/RevealAnimationDemo';
 import { devContestSamples } from '@/lib/devEventSample';
+import { DEV_LIVE_THUMBNAIL, devApprovedChangelog, devPendingUpdate } from '@/lib/dev/devReviewStub';
 import { devChangelogDraft, devFeedbackThread, devPickerRows, devPresetShareJson } from '@/lib/devPaneSamples';
 import { useDevRoute } from '@/lib/devRouter';
 import { IMAGE_CAPS } from '@/lib/imageSlots';
@@ -94,6 +96,19 @@ export default function DevPaneRoutes() {
     case 'rootCrash': return (
       <div className="fixed inset-0 z-50 bg-background">
         <RootCrashScreen error={new Error('Sample crash')} componentStack={'\n    at SampleComponent\n    at App'} />
+      </div>
+    );
+    case 'pendingUpdate': return (
+      <div className="fixed left-4 top-4 z-40 w-80 rounded-md border border-border bg-background p-4">
+        <PendingUpdateSection
+          listingId="dev-review-update"
+          name="Lanterns Over the Marsh"
+          update={devPendingUpdate()}
+          liveThumbnail={DEV_LIVE_THUMBNAIL}
+          approvedChangelog={devApprovedChangelog()}
+          onDiscarded={() => clearRouteOnClose(false)}
+          initialCompareOpen={route.tab === 'compare'}
+        />
       </div>
     );
     default: return null;

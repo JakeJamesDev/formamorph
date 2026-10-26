@@ -20,6 +20,7 @@ import {
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
+import type { PendingUpdate } from '@/lib/listingModeration';
 import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { LikeState } from '@/lib/likeCount';
@@ -81,12 +82,26 @@ export interface ListingDetails {
   /** The file under `/thumbnails/`, absent for a listing with no art. */
   thumbnailFile?: string;
   updatedAt?: string;
+  /** The listing's name as served now. */
+  name?: string;
+  /** The author's waiting update, null when none waits, absent for a player or an older server. */
+  pendingUpdate?: PendingUpdate | null;
 }
+
+/**
+ * A changelog write's answer. A held create adds `pending`; a held edit adds the listing's pending update
+ * and shows the approved entry.
+ */
+export type ChangelogWriteAnswer = ChangelogEntry & {
+  pending?: boolean;
+  has_pending_update?: boolean;
+  pending_update?: PendingUpdate | null;
+};
 
 /** One listing read: its details, word that this reader may not see it, or no answer at all. */
 export type ListingDetailsRead =
   | { status: 'ok'; details: ListingDetails }
-  | { status: 'gone' }
+  | { status: 'gone'; /** The listing exists but this reader may not see it. */ hidden?: boolean }
   | { status: 'unreachable' };
 
 /** The toast shown while another tab on an older build holds the library upgrade back. */
@@ -933,6 +948,11 @@ class WorldStorageService {
     if (!response.ok) throw await responseError(response, 'Failed to delete the comment');
   }
 
+  /** Where a listing's live thumbnail file is served. */
+  thumbnailUrl(file: string): string {
+    return `${this.API_URL}/thumbnails/${file}`;
+  }
+
   /**
    * Read what a listing shows only when it is opened on its own: its changelog, and an Avatar's license.
    *
@@ -963,7 +983,8 @@ class WorldStorageService {
         `${this.API_URL}/worlds/${worldId}?includeChangelog=true`,
         { headers, signal },
       );
-      if (response.status === 403 || response.status === 404) return { status: 'gone' };
+      if (response.status === 403) return { status: 'gone', hidden: true };
+      if (response.status === 404) return { status: 'gone' };
       if (!response.ok) return { status: 'unreachable' };
 
       const body = await response.json();
@@ -985,6 +1006,8 @@ class WorldStorageService {
           tags: Array.isArray(body.data?.tags) ? body.data.tags.filter((tag: unknown) => typeof tag === 'string') : undefined,
           thumbnailFile: typeof body.data?.thumbnail_file === 'string' && body.data.thumbnail_file ? body.data.thumbnail_file : undefined,
           updatedAt: typeof body.data?.updated_at === 'string' ? body.data.updated_at : undefined,
+          name: typeof body.data?.name === 'string' ? body.data.name : undefined,
+          ...(body.data && 'pending_update' in body.data ? { pendingUpdate: body.data.pending_update ?? null } : {}),
         },
       };
     } catch (error) {
@@ -1104,7 +1127,7 @@ class WorldStorageService {
    * @param worldId - The listing's server id
    * @param draft - The three authored fields
    */
-  async createChangelogEntry(worldId: string, draft: ChangelogDraft): Promise<ChangelogEntry> {
+  async createChangelogEntry(worldId: string, draft: ChangelogDraft): Promise<ChangelogWriteAnswer> {
     return this.writeChangelog('POST', `/worlds/${worldId}/changelog`, draft, 'Failed to add the entry');
   }
 
@@ -1115,19 +1138,19 @@ class WorldStorageService {
    * @param entryId - The entry's id
    * @param draft - The replacement fields
    */
-  async updateChangelogEntry(worldId: string, entryId: string, draft: ChangelogDraft): Promise<ChangelogEntry> {
+  async updateChangelogEntry(worldId: string, entryId: string, draft: ChangelogDraft): Promise<ChangelogWriteAnswer> {
     return this.writeChangelog(
       'PUT', `/worlds/${worldId}/changelog/${entryId}`, draft, 'Failed to save the entry',
     );
   }
 
   /**
-   * Remove one entry.
+   * Remove one entry. Answers the listing's pending update when the delete joined it, null when it applied.
    *
    * @param worldId - The listing's server id
    * @param entryId - The entry's id
    */
-  async deleteChangelogEntry(worldId: string, entryId: string): Promise<void> {
+  async deleteChangelogEntry(worldId: string, entryId: string): Promise<PendingUpdate | null> {
     if (!AuthService.isAuthenticated()) throw new Error('You must be logged in to edit a changelog');
 
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/changelog/${entryId}`, {
@@ -1136,6 +1159,10 @@ class WorldStorageService {
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to delete the entry');
+
+    const body = (await response.json().catch(() => ({}))) as { data?: { pending_update?: PendingUpdate | null } };
+
+    return body.data?.pending_update ?? null;
   }
 
   /** The half `createChangelogEntry` and `updateChangelogEntry` share: same body, same auth, same refusal. */
@@ -1144,7 +1171,7 @@ class WorldStorageService {
     path: string,
     draft: ChangelogDraft,
     fallbackError: string,
-  ): Promise<ChangelogEntry> {
+  ): Promise<ChangelogWriteAnswer> {
     if (!AuthService.isAuthenticated()) throw new Error('You must be logged in to edit a changelog');
 
     const response = await fetch(`${this.API_URL}${path}`, {
@@ -1157,7 +1184,7 @@ class WorldStorageService {
 
     const body = await response.json();
 
-    return body.data as ChangelogEntry;
+    return body.data as ChangelogWriteAnswer;
   }
 
   /** Fetch the current user's published worlds; returns `[]` when unauthenticated or on error. */

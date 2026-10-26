@@ -66,8 +66,15 @@ export interface TrustAnswer {
   trustedAt: string | null;
 }
 
-/** Thrown on a `409`: the item is no longer waiting, or its approval must wait. Carries the server's text. */
-export class ReviewConflictError extends Error {}
+/** The refusal code the server sends when a contest being judged holds an approval. */
+export const CONTEST_LOCKED = 'CONTEST_LOCKED';
+
+/** Thrown on a `409`: the item is no longer waiting, or its approval must wait. Carries the server's text and code. */
+export class ReviewConflictError extends Error {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+  }
+}
 
 /**
  * Listing review routes.
@@ -171,6 +178,29 @@ class ReviewService {
     return { entries: body.entries ?? [], total: body.total ?? 0 };
   }
 
+  /**
+   * The author withdraws their pending update. Players keep the live version. Answers false when no update
+   * waits any more: a mod decided on it first.
+   */
+  async discardUpdate(id: string): Promise<boolean> {
+    const response = await fetch(`${this.apiUrl}/reviews/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (response.status === 404) return false;
+    if (!response.ok) throw await responseError(response, 'Failed to discard the update');
+
+    return true;
+  }
+
+  /**
+   * The held thumbnail at a `pending_update.thumbnail_url`. The review routes take only a Bearer token,
+   * so a plain image `src` cannot load it.
+   */
+  async fetchPendingThumbnail(url: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await fetch(new URL(url, this.apiUrl).href, { headers: authHeaders(), signal });
+    if (!response.ok) throw await responseError(response, 'Failed to load the pending thumbnail');
+
+    return response.blob();
+  }
+
   /** Grant or revoke an author's trust (admin only). Answers with what the server stored. */
   async setTrusted(userId: string, trusted: boolean): Promise<TrustAnswer> {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/trust`, {
@@ -185,8 +215,8 @@ class ReviewService {
 
   private async throwUnlessOk(response: Response, fallback: string): Promise<void> {
     if (response.status === 409) {
-      const { message } = await readFailure(response, 'This is no longer waiting for review', ['error']);
-      throw new ReviewConflictError(message);
+      const { body, message } = await readFailure(response, 'This is no longer waiting for review', ['error']);
+      throw new ReviewConflictError(message, typeof body.code === 'string' ? body.code : undefined);
     }
     if (!response.ok) throw await responseError(response, fallback);
   }

@@ -68,6 +68,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Your listings show a Pending Review or Resubmitted badge while a mod reviews them.** After you publish, a message says when your listing went to review. The badges show on the card, the details window and your profile's creations.
     - **Mods review new listings in the Admin Panel's new Moderation tab, which holds Reports and Review.** Each queue shows its count. Open an item to see it, download it, and approve or reject it. A rejection opens the message to the author.
     - **Admins trust an author in the Users tab and switch Listing Review on in the Server tab.** Trusted authors skip review. Moderation has a third segment, Auto-Approved, that lists their recent uploads and opens each listing.
+    - **A live listing with an update waiting for review shows Update Pending, and you can compare or discard the update.** Mods see the changed fields side by side, both thumbnails and the changelog edits. A changelog entry you add to a live listing shows as Pending until a mod approves it.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.

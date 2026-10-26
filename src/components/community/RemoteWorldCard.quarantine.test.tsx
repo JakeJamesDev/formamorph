@@ -168,6 +168,13 @@ describe('the review badges', () => {
     expect(screen.queryByText('Quarantined')).toBeNull();
   });
 
+  it('marks a live listing whose update waits for review', () => {
+    show(world({ moderation_state: 'approved', has_pending_update: true }), author);
+
+    expect(screen.getByText('Update Pending')).toBeTruthy();
+    expect(screen.getByText('Players see the live version until a mod approves the update')).toBeTruthy();
+  });
+
   it('marks a fixed rejected listing as resubmitted, with its deadline', () => {
     show(quarantined({ moderation_state: 'pending' }), author);
 

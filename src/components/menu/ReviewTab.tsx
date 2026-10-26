@@ -9,14 +9,16 @@ import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
 import { ReviewItemDialog } from "@/components/menu/ReviewItemDialog";
 import { KIND_LABELS } from "@/lib/catalogKinds";
 import { downloadBlob } from "@/lib/downloadBlob";
-import { REVIEW_TYPE_LABELS, waitedFor } from "@/lib/listingModeration";
+import {
+  JUDGING_APPROVAL_TOAST, REVIEW_TYPE_LABELS, rejectedUpdateTemplate, waitedFor,
+} from "@/lib/listingModeration";
 import { toastError } from "@/lib/linkToast";
 import { quarantineDeadline, quarantineTargetFor, quarantineTemplate, type QuarantineTarget } from "@/lib/quarantine";
 import { canModerate } from "@/lib/roles";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { cn } from "@/lib/utils";
 import AuthService from "@/services/AuthService";
-import ReviewService, { ReviewConflictError, type ReviewQueueItem } from "@/services/ReviewService";
+import ReviewService, { CONTEST_LOCKED, ReviewConflictError, type ReviewQueueItem } from "@/services/ReviewService";
 
 interface ReviewTabProps {
   /** Whether the tab is visible; the queue only fetches while it is. */
@@ -44,7 +46,8 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
   // A new listing picks its quarantine length; anything else confirms first.
   const [quarantining, setQuarantining] = useState<ReviewQueueItem | null>(null);
   const [confirming, setConfirming] = useState<ReviewQueueItem | null>(null);
-  const [notice, setNotice] = useState<QuarantineTarget | null>(null);
+  // Who the composer writes to after a rejection; an update gets its own template.
+  const [notice, setNotice] = useState<(QuarantineTarget & { update?: boolean }) | null>(null);
   const mounted = useMountedRef();
 
   const me = AuthService.getCurrentUser();
@@ -86,8 +89,8 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
   };
 
   /**
-   * Runs a decision. A `409` on a new or resubmitted listing means another mod got there first, so the
-   * row goes. On an update it can mean the approval waits for contest results, so the row stays.
+   * Runs a decision. A `409` means another mod got there first, so the row goes, unless a contest being
+   * judged holds an update's approval: then the row stays.
    */
   const decide = async <T,>(item: ReviewQueueItem, run: () => Promise<T>, failure: string): Promise<T | null> => {
     setBusy(true);
@@ -98,8 +101,8 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
       return result;
     } catch (error) {
       if (!mounted.current) return null;
-      if (error instanceof ReviewConflictError && item.type === 'update') {
-        toast.info(error.message);
+      if (error instanceof ReviewConflictError && error.code === CONTEST_LOCKED) {
+        toast.info(JUDGING_APPROVAL_TOAST);
       } else if (error instanceof ReviewConflictError) {
         toast.info('Another mod already handled this item');
         dropItem(item);
@@ -121,7 +124,7 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
     const result = await decide(item, () => ReviewService.reject(item.id, days), 'Failed to reject this');
     if (!result) return;
 
-    toast.success(`${nounOf(item)} rejected`);
+    toast.success(item.type === 'update' ? 'Update rejected' : `${nounOf(item)} rejected`);
 
     // Opened at once, as after a quarantine: a rejection the author never hears about reads as a bug.
     const target = quarantineTargetFor({
@@ -130,7 +133,7 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
       author: result.author,
       quarantine_expires_at: result.quarantineExpiresAt,
     }, me?.id as string | undefined);
-    if (target && item.type !== 'update') setNotice({ ...target, extended: result.quarantineExtended === true });
+    if (target) setNotice({ ...target, extended: result.quarantineExtended === true, update: item.type === 'update' });
   };
 
   const download = async (item: ReviewQueueItem) => {
@@ -147,6 +150,8 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
     if (item.type === 'new') setQuarantining(item);
     else setConfirming(item);
   };
+
+  const template = notice?.update ? rejectedUpdateTemplate(notice) : notice ? quarantineTemplate(notice) : null;
 
   const dialogs = (
     <>
@@ -175,7 +180,7 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
         onOpenChange={(open) => { if (!open) setConfirming(null); }}
         title={`Reject “${confirming?.name ?? ''}”?`}
         description={confirming?.type === 'update'
-          ? 'The update is dropped. Players keep the live version.'
+          ? 'The update is dropped. Players keep the live version. You’ll write to the author next.'
           : 'It stays in quarantine and keeps its deadline. You’ll write to the author next.'}
         confirmLabel="Reject"
         destructive
@@ -183,14 +188,14 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
       />
 
       {/* Closing it sends nothing. */}
-      {notice && (
+      {notice && template && (
         <MessageComposerDialog
           open
           onOpenChange={(open) => { if (!open) setNotice(null); }}
           target={{ broadcast: false, recipients: [notice.author] }}
           adminUsername={String(me?.username || 'Admin')}
-          initialSubject={quarantineTemplate(notice).subject}
-          initialBody={quarantineTemplate(notice).body}
+          initialSubject={template.subject}
+          initialBody={template.body}
           initialSeverity="warning"
         />
       )}

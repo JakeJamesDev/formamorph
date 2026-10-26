@@ -359,7 +359,7 @@ describe('who may maintain it', () => {
 
   it('takes a deleted entry off the panel', async () => {
     serveChangelog([entry()]);
-    vi.spyOn(WorldStorageService, 'deleteChangelogEntry').mockResolvedValue(undefined);
+    vi.spyOn(WorldStorageService, 'deleteChangelogEntry').mockResolvedValue(null);
 
     show({ currentUser: owner(), downloadStateForWorld: () => 'update' });
 

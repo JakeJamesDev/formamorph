@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, onTestFinished, vi } from 'vitest';
 import ReviewService, { ReviewConflictError } from './ReviewService';
+import AuthService from './AuthService';
 
 const answer = (status: number, body: unknown = {}) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -86,6 +87,15 @@ describe('working the queue', () => {
     expect((failure as Error).message).toBe('This is no longer waiting for review');
   });
 
+  it('carries the server’s code on a 409, so a judging hold reads apart from a settled item', async () => {
+    answer(409, { success: false, code: 'CONTEST_LOCKED', error: 'Spooky Season is being judged' });
+
+    const failure = await ReviewService.approve('w1').catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ReviewConflictError);
+    expect((failure as ReviewConflictError).code).toBe('CONTEST_LOCKED');
+  });
+
   it('throws an ordinary error on any other refusal', async () => {
     answer(403, { success: false, error: 'Staff cannot moderate this account' });
 
@@ -141,5 +151,43 @@ describe('changing trust', () => {
     answer(403, { success: false, error: 'Admins only' });
 
     await expect(ReviewService.setTrusted('u1', true)).rejects.toThrow('Admins only');
+  });
+});
+
+describe('the author’s pending update', () => {
+  it('discards with a DELETE on the review route', async () => {
+    const fetchSpy = answer(200, { success: true, data: { id: 'w1' } });
+
+    expect(await ReviewService.discardUpdate('w1')).toBe(true);
+
+    expect(String(fetchSpy.mock.calls[0][0])).toMatch(/\/reviews\/w1$/);
+    expect(fetchSpy.mock.calls[0][1]?.method).toBe('DELETE');
+  });
+
+  it('answers false when no update waits any more', async () => {
+    answer(404, { success: false, error: 'Not found' });
+
+    expect(await ReviewService.discardUpdate('w1')).toBe(false);
+  });
+
+  it('throws the server’s words on any other refusal', async () => {
+    answer(500, { success: false, error: 'Server down' });
+
+    await expect(ReviewService.discardUpdate('w1')).rejects.toThrow('Server down');
+  });
+
+  it('reads the held thumbnail from the API origin with the Bearer token', async () => {
+    const before = AuthService.token;
+    AuthService.token = 'tok';
+    onTestFinished(() => { AuthService.token = before; });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('png', { status: 200 }));
+
+    const blob = await ReviewService.fetchPendingThumbnail('/api/reviews/w1/thumbnail');
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(new URL(String(url)).pathname).toBe('/api/reviews/w1/thumbnail');
+    expect(new URL(String(url)).origin).toBe(new URL(AuthService.API_URL).origin);
+    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+    expect(await blob.text()).toBe('png');
   });
 });
