@@ -12,10 +12,12 @@ After this lands, an author can read each slot's recommendation as two numbers b
 
 - The image panel's budget line reads "Up to 1280 px on the long edge, about 250 KB" with the slot's own values from the slot table, so a later value change needs no copy edit. The Over Budget badge is unchanged.
 - The World Editor Media help page gets one table of the four slots, thumbnail, entity, background and map, with the long edge and the byte number for each. The Map Background section points at the table instead of carrying its own numbers. The Optimize Images section says in one sentence what Downscale does to a lossless image.
+- A world or import prompt that lists one image reads in the singular ("Downscale shrinks it"), where today it says "them" (ticket 01 landing note).
 - Every new line follows the Writing Guide and passes the copy sweep. No changelog fragment: ticket 01's entry covers the change.
 
 ## Acceptance criteria
 
 - [ ] The image panel shows both numbers for each of the four slots, read from the slot table, with a frame per slot at 1280 wide in both themes: `.scratch/frames/budget-line-<slot>-<theme>.png`.
 - [ ] The help page's table lists the four slots with the values the slot table holds, and no other section states a budget number.
+- [ ] A world prompt for one listed image reads in the singular, shown in the prompt hook suite.
 - [ ] The copy sweep finds nothing on the changed lines.
