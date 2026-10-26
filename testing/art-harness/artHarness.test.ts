@@ -7,7 +7,7 @@ import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import { firstMapFrame } from '@/lib/mapBackground';
 import {
-  ART_PRESET, SHEET, displayName, imageRequest, placeholderNames, isStoredForm, planImages, sheetLayout, writeImage, type PlannedImage, type SheetCell,
+  ART_PRESET, SHEET, displayName, imageRequest, placeholderNames, isStoredForm, planImages, sheetLayout, withFaceFix, writeImage, type PlannedImage, type SheetCell,
 } from './artHarness';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -74,6 +74,16 @@ describe('imageRequest', () => {
     const { params } = imageRequest(world(), byName('Bram'), STYLE, 7, ' treads, legs, ');
     expect(params.negativePrompt).toBe(`${ART_PRESET.imageNegativePrompt}, treads, legs`);
     expect(params.prompt).toBe(`${STYLE}, bram tags`);
+  });
+
+  it('turns the Face Fix pass on only for a run that asks for it', () => {
+    expect(imageRequest(world(), byName('Bram'), STYLE, 7, '', true).params.adetailer).toBe(true);
+    expect(imageRequest(world(), byName('Bram'), STYLE, 7, '').params.adetailer).toBe(false);
+  });
+
+  it('adds the Face Fix pass to a logged request and keeps its seed and prompt', () => {
+    const logged = { slot: 0, ...imageRequest(world(), byName('Bram'), STYLE, 7, ' legs ') };
+    expect(withFaceFix(logged)).toEqual({ ...logged, params: { ...logged.params, adetailer: true } });
   });
 });
 

@@ -12,19 +12,21 @@ import { retryableFiles } from './testRetry.mjs';
 
 const vitest = path.join(path.dirname(createRequire(import.meta.url).resolve('vitest/package.json')), 'vitest.mjs');
 const reporters = ['--reporter=default', '--reporter=./scripts/slowTestReporter.mjs'];
+// Stopgap for the lossless bundled worlds, which vite transforms in this process; bundled-worlds-expansion ticket 23 replaces it.
+const heap = '--max-old-space-size=8192';
 
 /** Runs vitest, reruns timeout-only files alone once, and returns the exit status. */
 export function runTests(args) {
   const reportDir = mkdtempSync(path.join(os.tmpdir(), 'run-tests-'));
   const report = path.join(reportDir, 'report.xml');
   const junit = ['--reporter=junit', `--outputFile.junit=${report}`];
-  const result = spawnSync(process.execPath, [vitest, ...args, ...reporters, ...junit], { stdio: 'inherit' });
+  const result = spawnSync(process.execPath, [heap, vitest, ...args, ...reporters, ...junit], { stdio: 'inherit' });
   let status = result.status ?? 1;
   if (status !== 0) {
     const files = timedOut(report);
     if (files.length) {
       console.log(`\n⚠ ${files.length} file${files.length === 1 ? '' : 's'} failed only by timeout; rerunning alone:\n  ${files.join('\n  ')}`);
-      const rerun = spawnSync(process.execPath, [vitest, 'run', ...files, ...reporters], { stdio: 'inherit' });
+      const rerun = spawnSync(process.execPath, [heap, vitest, 'run', ...files, ...reporters], { stdio: 'inherit' });
       status = rerun.status ?? 1;
       console.log(status === 0 ? '⚠ Green alone: the first run was starved, not red.' : 'Still red alone.');
     }

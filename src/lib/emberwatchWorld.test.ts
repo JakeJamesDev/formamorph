@@ -14,6 +14,9 @@ import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
 import { openingPool } from './openings';
 import { personaStartLocation } from './personaPick';
+import { visibleImages, visibleLocationImages } from './imageVisibility';
+import { scoped } from './scope';
+import type { GateInput, GateStatSet } from './traitGates';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -65,8 +68,10 @@ describe('the Emberwatch default world', () => {
     expect(world.worldOverview.tags).toContain('example');
   });
 
-  it("raises only the Founders' Pact finding on the Test Bench, an entry its script switches on", () => {
-    expect(runRules(world).map((f) => `${f.ruleId}: ${f.message}`)).toEqual(["dictionary-disabled: “The Founders' Pact” is disabled and can’t fire"]);
+  it("raises no Test Bench finding, the Founders' Pact included, since its script switches it on", () => {
+    // Stored art is lossless at full size, so the size budget stays out (Q13).
+    const findings = runRules(world).filter((f) => f.ruleId !== 'world-oversized-images');
+    expect(findings.map((f) => `${f.ruleId}: ${f.message}`)).toEqual([]);
   });
 
   it('carries every copy its owners need, so the reconcile has nothing to add or take', () => {
@@ -284,5 +289,38 @@ describe('owners on Emberwatch', () => {
     expect(gateOf(gateStates({ ...gate, active: start.active }), null, squire)?.unlocked).toBe(true);
     const reclassed = switchTrait({ ...gate, active: start.active }, albus, traitId(world, 'Wizard'), start.cascadeOff)!;
     expect(gateOf(gateStates({ ...gate, active: reclassed.active }), null, squire)?.unlocked).toBe(false);
+  });
+});
+
+describe('the Emberwatch Visibility rules', () => {
+  // Play's gate input under `persona`, with one owner's stat at the given value on its effective max.
+  const statAt = (persona: PersonaRef, ownerId: string, stat: { id: string; name: string }, value: number, max = 100): GateInput => {
+    const { gate } = resolveOwners(ownerWorld(world), persona);
+    const set: GateStatSet = { [stat.id]: { name: stat.name, value, min: 0, max } };
+    return { ...gate, active: settleDefaults(gate).active, stats: scoped<GateStatSet>({}, { [ownerId]: set }) };
+  };
+  const faith = { id: 'faith', name: 'Faith' };
+  const chapel = world.locations.find((l) => l.name === 'Chapel of the Ember')!;
+  const chapelSlots = (persona: PersonaRef, ownerId: string, value: number, max?: number) =>
+    visibleLocationImages(chapel, statAt(persona, ownerId, faith, value, max)).map((image) => image.slot);
+
+  it("lights the Chapel's brazier once the played persona's Faith reaches 70 percent", () => {
+    const wanderer = customPersonaId(world);
+    expect(chapelSlots(NONE, wanderer, 69)).toEqual([0]);
+    expect(chapelSlots(NONE, wanderer, 70)).toEqual([1]);
+  });
+
+  it("reads the Chapel's threshold as a share of a Paladin's larger Faith", () => {
+    const albus = entityNamed(world, 'Albus').id;
+    expect(chapelSlots(asEntity(world, 'Albus'), albus, 97, 140)).toEqual([0]);
+    expect(chapelSlots(asEntity(world, 'Albus'), albus, 98, 140)).toEqual([1]);
+  });
+
+  it('shows Mother Hesk wounded once her own Health falls below 40 percent', () => {
+    const hesk = entityNamed(world, 'Mother Hesk');
+    const slots = (health: number) =>
+      visibleImages(hesk, statAt(NONE, hesk.id, { id: 'health', name: 'Health' }, health)).map((image) => image.slot);
+    expect(slots(40)).toEqual([0]);
+    expect(slots(39)).toEqual([1]);
   });
 });

@@ -187,6 +187,8 @@ export default defineConfig({
     // 5-second tests ran 4.6 s idle and timed out under a peer's load. Half the threads keeps the wall
     // time and gives every fork a thread of its own.
     maxWorkers: '50%',
+    // Stopgap for the lossless bundled worlds, which the Main Menu seeder parses in every mount; bundled-worlds-expansion ticket 23 replaces it.
+    poolOptions: { forks: { execArgv: ['--max-old-space-size=8192'] } },
     // Timeouts catch hangs, not slowness: load stretches a test, and the slow-test report flags it.
     // A fake-timer test's `waitFor` never expires on its own, so this is also how long its miss takes.
     testTimeout: 30_000,

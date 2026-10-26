@@ -19,7 +19,7 @@ import { migrateWorld } from '@/lib/version';
 import type { World } from '@/types';
 import { startDevServer } from '../baseline/harness/appDriver.mjs';
 import {
-  ART_PRESET, displayName, imageLabel, imageRequest, isStoredForm, negativePrompt, placeholderNames, planImages, writeImage, type PlannedImage, type SheetImage,
+  ART_PRESET, displayName, imageLabel, imageRequest, isStoredForm, negativePrompt, placeholderNames, planImages, withFaceFix, writeImage, type PlannedImage, type SheetImage,
 } from './artHarness';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -61,10 +61,13 @@ interface RunLog {
 const relative = (file: string) => path.relative(REPO_ROOT, file);
 const megabytes = (bytes: number) => `${(bytes / 1_048_576).toFixed(2)} MB (${bytes.toLocaleString('en-US')} bytes)`;
 
-function jobsFor(world: World, style: string, negative: string, replayLog: string | undefined): Job[] {
+function jobsFor(world: World, style: string, negative: string, faceFix: boolean, replayLog: string | undefined): Job[] {
   if (replayLog) {
     const log = JSON.parse(readFileSync(path.resolve(REPO_ROOT, replayLog), 'utf8')) as RunLog;
-    return log.images.map(({ bytes: _bytes, ...job }) => ({ ...job, mode: 'replay' as const }));
+    return log.images.map(({ bytes: _bytes, ...logged }) => {
+      const job = { ...logged, mode: 'replay' as const };
+      return faceFix ? withFaceFix(job) : job;
+    });
   }
   if (!style.trim()) throw new Error('Give the world\'s art-direction line with --style.');
   const plan = planImages(world, {
@@ -83,7 +86,7 @@ function jobsFor(world: World, style: string, negative: string, replayLog: strin
     const seed = randomInt(0, 2 ** 31);
     return {
       kind: image.kind, id: image.id, name: displayName(names, image.name), slot: image.slot, mode: image.mode, seed,
-      ...imageRequest(world, image, style, seed, negative),
+      ...imageRequest(world, image, style, seed, negative, faceFix),
     };
   });
 }
@@ -138,6 +141,7 @@ async function main() {
   const style = flagValue('--style') ?? '';
   const negative = flagValue('--negative') ?? '';
   const replayLog = flagValue('--replay');
+  const faceFix = hasFlag('--face-fix');
   const sheetPath = path.join(REPO_ROOT, '.scratch/frames', `${path.basename(outPath, '.json')}-sheet.png`);
 
   // An output that exists already is where an earlier run left off, so the run continues it.
@@ -158,9 +162,10 @@ async function main() {
     return;
   }
 
-  const jobs = jobsFor(world, style, negative, replayLog);
+  const jobs = jobsFor(world, style, negative, faceFix, replayLog);
   console.log(`Art Harness · ${relative(sourcePath)} → ${relative(outPath)} · ${ART_PRESET.imageModel} · ${ART_PRESET.imageSampler}, ${ART_PRESET.imageSteps} steps, cfg ${ART_PRESET.imageCfg}`);
   if (!replayLog) console.log(`Negative: ${negativePrompt(negative)}`);
+  if (faceFix) console.log('Face Fix: on');
   for (const job of jobs) {
     console.log(`  ${imageLabel(job.name, job.slot)} · ${job.kind} · ${job.mode} · ${job.params.width}×${job.params.height} · seed ${job.seed}`);
     console.log(`    ${job.params.prompt}`);
