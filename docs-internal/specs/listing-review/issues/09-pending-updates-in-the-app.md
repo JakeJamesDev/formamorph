@@ -20,8 +20,8 @@ Authors see **Update Pending** on a live listing with a waiting update, can comp
 - [ ] The pending thumbnail loads from the review thumbnail URL, fetched with the Bearer token (a plain image `src` cannot authenticate; ruling T30).
 - [ ] The publish modal shows a changelog entry posted after an update as pending.
 - [ ] The item dialog shows changed fields live versus pending, both thumbnails, and the changelog operations.
-- [ ] Rejecting an update asks first, then opens the composer with a new rejected-update template.
-- [ ] A judging `409` (code `CONTEST_LOCKED`) shows a toast that the approval waits for contest results.
+- [ ] Rejecting an update asks first, then opens the composer with a new rejected-update template. (Ticket 08 already confirms and skips the composer; this adds the template and the composer step.)
+- [ ] A judging `409` (code `CONTEST_LOCKED`) shows a toast that the approval waits for contest results. (Ticket 08 keeps the row and toasts the server's text; this replaces that with the judging copy.)
 - [ ] The field table also covers `visibility`, `spoiler`, `required_dependencies` and `compatible_worlds`, and the changelog list renders `create`, `edit` and `delete` ops (rulings T32–T35).
 - [ ] If the field table needs a new visual pattern, the user approved it before landing.
 - [ ] The Pending Update section has a `devRoutes` entry.
