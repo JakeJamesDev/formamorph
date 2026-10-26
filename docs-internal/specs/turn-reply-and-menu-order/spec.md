@@ -13,7 +13,7 @@ An After the AI script cannot read the page the AI just wrote. The `narration` o
 
 ## Rulings
 
-Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code review of the spec the same day; Q22–Q24 on ticket 02's intent questions, 2026-10-26. It follows the Script Surface Gaps effort, which added `turn`.
+Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code review of the spec the same day; Q22–Q24 on ticket 02's intent questions and Q25–Q27 on ticket 03's, 2026-10-26. It follows the Script Surface Gaps effort, which added `turn`.
 
 | # | Ruling |
 |---|---|
@@ -41,13 +41,16 @@ Settled with the user on 2026-10-25 through a grill; Q19–Q21 in the code revie
 | Q22 | A run between turns while a turn is in progress (a player toggle, a user Tool call, an On Call World Tool during the narration request) reads `turn.narration` as `""` and `turn.choices` as `[]`, as it reads `turn.action` empty at the turn in progress. Once that turn's commit lands, they read this turn's |
 | Q23 | The "[Continue the Story]" pseudo-choice never appears in `turn.choices` |
 | Q24 | The choices-off mask (Q11) is the live setting at every read, between turns included: a stored turn's choices read `[]` once the player turns choices off. `turn.narration` is the stored narration text as is |
+| Q25 | Every timing marshals `turn.choices` as an unfrozen copy, so an in-place edit never throws; a difference at run end outside After the AI lists as a read-only write and lands nothing. The editor check flags `turn.<field> = …` and `turn.choices[i] = …`, skipped for `turn.choices` at After the AI; a mutating call is caught at run time and listed as dropped. Flagging mutating calls, and writes to `clock`, `location` and `notes`, is a follow-up |
+| Q26 | The turn record's AI-choices field is present only when a script changed the shown list; absent means the shown list is the AI's own. A re-roll that ends with no script edit removes it, and a stats re-roll starts from it when present |
+| Q27 | A When a Trait Switches run that the After the AI batch fires reads the choices the batch left; its own choices write drops (Q21) |
 
 ## Surface
 
 | Path | Type | Access | Rulings |
 |---|---|---|---|
 | `turn.narration` | string | read | Q3, Q4, Q5, Q16, Q17, Q22, Q24 |
-| `turn.choices` | string[] | write at After the AI | Q6, Q7, Q9–Q24 |
+| `turn.choices` | string[] | write at After the AI | Q6, Q7, Q9–Q27 |
 
 ## User Stories
 
@@ -107,3 +110,4 @@ A good test drives a public seam with real inputs and asserts what an author or 
 
 - The changelog gets one entry for the two reads and the choices write, and one for the menu order.
 - The help vectors rebuild before release, since the Scripts guide changes.
+- Follow-up (Q25): the editor check flags no write to `clock`, `location` or `notes`, and no mutating call on `turn.choices` outside After the AI. Run time lists them as dropped.
