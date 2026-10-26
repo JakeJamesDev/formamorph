@@ -20,6 +20,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   avatar_removed: 'Image removed',
   role_changed: 'Role changed',
   feedback_edited: 'Feedback edited',
+  feedback_answer_set: 'Answer set',
   event_created: 'Event scheduled',
   event_edited: 'Event edited',
   event_cancelled: 'Event canceled',
@@ -58,6 +59,7 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   avatar_removed: 'bg-destructive/10 text-destructive',
   role_changed: 'bg-info/10 text-info',
   feedback_edited: 'bg-info/10 text-info',
+  feedback_answer_set: 'bg-success/10 text-success',
   event_created: 'bg-info/10 text-info',
   event_edited: 'bg-info/10 text-info',
   event_cancelled: 'bg-warning/10 text-warning',
@@ -203,6 +205,11 @@ export function auditPredicate(entry: AuditEntry): string {
       return target
         ? `edited the ${noun ?? 'thread'}${name ? ` “${name}”` : ''} by ${target}`
         : `edited a ${noun ?? 'thread'}${name ? ` “${name}”` : ''}`;
+    // Only recorded when somebody other than the asker set or cleared it, so there is always a `by`.
+    case 'feedback_answer_set':
+      return target
+        ? `set the answer on the ${noun ?? 'question'}${name ? ` “${name}”` : ''} by ${target}`
+        : `set the answer on a ${noun ?? 'question'}${name ? ` “${name}”` : ''}`;
     case 'event_created':
       return `scheduled the event${name ? ` “${name}”` : ''}`;
     case 'event_edited':

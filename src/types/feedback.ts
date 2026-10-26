@@ -92,6 +92,8 @@ export interface FeedbackThread {
   updatedAt: string;
   /** Whether this reader has a comment on it they haven't seen. */
   unread: boolean;
+  /** The reply marked as the answer, copied from the thread. Questions only; null for none. */
+  acceptedAnswer?: FeedbackComment | null;
 }
 
 export interface FeedbackComment {

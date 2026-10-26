@@ -117,6 +117,18 @@ class FeedbackService {
     await unwrap(response, 'Failed to delete the comment');
   }
 
+  /** Mark a reply as the answer to a question, or clear it with null. The asker and staff only. */
+  async setAnswer(id: string, commentId: string | null): Promise<FeedbackThread> {
+    const response = await fetch(`${this.apiUrl}/feedback/${id}/answer`, {
+      method: 'PUT',
+      headers: authHeaders(true),
+      body: JSON.stringify({ commentId }),
+    });
+
+    const body = await unwrap<{ data: FeedbackThread }>(response, 'Failed to update the answer');
+    return body.data;
+  }
+
   /** Vote for a suggestion or question, or take the vote back. */
   async setVote(id: string, voted: boolean): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/vote`, {

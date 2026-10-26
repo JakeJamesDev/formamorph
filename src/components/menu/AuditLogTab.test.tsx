@@ -187,6 +187,11 @@ describe('what each entry reads as', () => {
       .toBe('root-admin edited the bug report “Save button spins” by trouble');
   });
 
+  it('names whose question had its answer set', () => {
+    expect(line({ action: 'feedback_answer_set', target: { kind: 'question', name: 'How do I use a local model?' } }))
+      .toBe('root-admin set the answer on the question “How do I use a local model?” by trouble');
+  });
+
   it('names the role somebody was given', () => {
     expect(line({ action: 'role_changed', target: { kind: 'account', name: 'trouble' }, snippet: 'normal to mod' }))
       .toBe('root-admin made trouble a mod');

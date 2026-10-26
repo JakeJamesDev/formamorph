@@ -17,6 +17,7 @@ export const AUDIT_ACTIONS = [
   'avatar_removed',
   'role_changed',
   'feedback_edited',
+  'feedback_answer_set',
   'event_created',
   'event_edited',
   'event_cancelled',

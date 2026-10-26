@@ -175,6 +175,25 @@ describe('moving between the branches', () => {
     expect(await screen.findByText(/Moving this to a bug report sets its status back to Open\. Its replies and votes stay\. Only the reporter and staff can reply to a bug\./)).toBeTruthy();
   });
 
+  it('adds that it clears the accepted answer when the question has one', async () => {
+    const answer = { id: 'c1', body: 'Try this.', createdAt: '2026-08-01T01:00:00.000Z', editedAt: null, author: { id: 'a1', username: 'helper' } };
+    show({ mayEditProse: false, thread: thread({ type: 'question', category: 'setup', status: 'answered', acceptedAnswer: answer }) });
+
+    await pickKind('Suggestion');
+
+    const warning = await screen.findByText(/Moving this to a suggestion sets its status back to Open/);
+    expect(warning.textContent).toContain('back to Open and clears the accepted answer.');
+  });
+
+  it('says nothing of an answer when the question has none', async () => {
+    show({ mayEditProse: false, thread: thread({ type: 'question', category: 'setup' }) });
+
+    await pickKind('Suggestion');
+
+    const warning = await screen.findByText(/Moving this to a suggestion sets its status back to Open/);
+    expect(warning.textContent).not.toContain('accepted answer');
+  });
+
   it('keeps the plain warning when it becomes a question', async () => {
     show({ mayEditProse: false });
 
