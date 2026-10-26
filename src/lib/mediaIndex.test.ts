@@ -439,10 +439,10 @@ describe('the slot budgets', () => {
   const exactly = (bytes: number, fill: string) => `data:image/jpeg;base64,${fill.repeat((bytes / 3) * 4)}`;
   // Each pair sits at or just under its budget, then just over it.
   const PAIRS = {
-    thumbnail: [199_998, 200_001],
-    entity: [249_999, 250_002],
-    background: [900_000, 900_003],
-    map: [1_500_000, 1_500_003],
+    thumbnail: [204_798, 204_801],
+    entity: [255_999, 256_002],
+    background: [921_600, 921_603],
+    map: [1_572_864, 1_572_867],
   } as const;
 
   /** One world with an image at and past each budget, in every image slot the scan walks. */
@@ -474,7 +474,7 @@ describe('the slot budgets', () => {
       ['Tide Book Cover Image', true],
     ]);
     expect(Object.fromEntries(Object.entries(IMAGE_CAPS).map(([slot, cap]) => [slot, cap.maxBytes])))
-      .toEqual({ thumbnail: 200_000, entity: 250_000, background: 900_000, map: 1_500_000 });
+      .toEqual({ thumbnail: 204_800, entity: 256_000, background: 921_600, map: 1_572_864 });
   });
 
   it('agrees with the Over Size Budget filter, the Test Bench size rule and the scan', async () => {

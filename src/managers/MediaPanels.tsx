@@ -14,7 +14,6 @@ import { RemoteImg } from '@/lib/useRemoteImage';
 import { useHeldModelBlob } from '@/lib/useHeldModelBlob';
 import { cn } from '@/lib/utils';
 import { trackWork } from '@/lib/pendingWork';
-import { formatBytes } from '@/lib/imageOptim';
 import {
   MEDIA_KIND_LABELS, formatMediaBytes, kindBreakdown, largestItems, namedBySlot, totalBytes,
   type MediaItem, type MediaParent,
@@ -47,7 +46,7 @@ export function MediaFacts({ item, className, children }: { item: MediaItem; cla
     <div className={cn('flex flex-wrap items-center gap-2 text-meta text-muted-foreground', className)}>
       {children}
       <MediaSize item={item} />
-      {item.budget && !item.linked && <span>· Up to {item.budget.maxDim} px on the long edge, about {formatBytes(item.budget.maxBytes)}</span>}
+      {item.budget && !item.linked && <span>· Up to {item.budget.maxDim} px on the long edge, {formatMediaBytes(item.budget.maxBytes)}</span>}
       {item.overBudget && <Badge variant="outline" className="border-warning text-warning">Over Budget</Badge>}
     </div>
   );

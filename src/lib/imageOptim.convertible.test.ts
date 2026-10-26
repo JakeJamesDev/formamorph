@@ -134,10 +134,10 @@ describe('Downscale targets — over budget, or stored lossless at any size', ()
   });
 
   it.each([
-    ['thumbnail', 200_000],
-    ['entity', 250_000],
-    ['background', 900_000],
-    ['map', 1_500_000],
+    ['thumbnail', 204_800],
+    ['entity', 256_000],
+    ['background', 921_600],
+    ['map', 1_572_864],
   ] as const)('flags a %s image over budget past %i bytes', async (slot, budget) => {
     measureInWorker.mockImplementation((url) => Promise.resolve({ w: 100, h: 100, bytes: url.includes('over') ? budget + 1 : budget }));
     const [at] = await scanImages(['data:image/jpeg;base64,at'], IMAGE_CAPS[slot]);
