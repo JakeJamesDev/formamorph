@@ -8,10 +8,15 @@ import { settleDefaults, type SettleResult } from './traitGates';
 import { seedNewGameStats } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import { activeDescriptor } from './statContext';
-import { runStatCodeTurn, runSwitchScripts, type StatCodeTurn } from './statCodeTurn';
+import { runStatCodeTurn, runSwitchScripts, type StatCodeTurn, type StatCodeTurnResult } from './statCodeTurn';
+import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
+import { ownerPins } from './ownedTraitsInPlay';
 import { bundledWorldHarness, valueOf, withValues, type StatValues } from '@/test/bundledWorldHarness';
+import type { CodePins } from '@/types';
 
-const { world, persona: creature, gate, idOf, activeIds, activeTraits, build, personaStats, turn: harnessTurn, personaStatsOut } = bundledWorldHarness(raw);
+const {
+  world, persona: creature, gate, ownerWorld, none, idOf, activeIds, activeTraits, build, personaStats, turn: harnessTurn, personaStatsOut,
+} = bundledWorldHarness(raw);
 
 /** Where the AI left the creature's and the world's stats, and the values the turn started from. */
 interface TurnValues { creature?: StatValues; global?: StatValues; previous?: StatValues }
@@ -109,5 +114,108 @@ describe('the Berserk script', () => {
     const out = await after(settleDefaults(gate), { creature: { Berserk: 0, Rampage: 10, Health: 100 } });
     expect(valueOf(out.creature, 'Rampage')).toBe(10);
     expect(valueOf(out.creature, 'Health')).toBe(100);
+  });
+});
+
+const placeholderNamed = (name: string) => world.placeholders!.find((p) => p.name === name)!;
+const locationNamed = (name: string) => world.locations.find((l) => l.name === name)!;
+
+/** Each chip resolves to its placeholder's first value: the Subway Line reads "Red Line". */
+const firstValue: PlaceholderPick = (values) => values[0].text;
+
+/** Where the play turn stands, and what code pinned on earlier turns. */
+interface PlayInput extends TurnValues { at: string; codePins?: CodePins }
+
+/** The world-level pins in force over `codePins`, through the play pin walk. */
+const pinsInForce = (codePins: CodePins) => ownerPins(
+  { world: ownerWorld, persona: none, globalTraits: [], owned: {}, sharedPlaceholders: world.placeholders! },
+  { placeholders: world.placeholders!, rolls: {}, codePins },
+).world;
+
+/** One turn at the named location, with the world's places and placeholders in play. */
+function playTurn({ at, codePins = {}, ...values }: PlayInput): StatCodeTurn {
+  const base = turn(settleDefaults(gate), values);
+  const here = locationNamed(at);
+  return {
+    ...base,
+    state: {
+      ...base.state,
+      places: { locations: world.locations, location: { id: here.id, name: here.name }, connections: world.connections },
+      placeholders: {
+        placeholders: world.placeholders!, rolls: {}, codePins, pins: pinsInForce(codePins), pick: firstValue,
+        pinsAfter: (after) => pinsInForce(after.codePins),
+      },
+      resolveText: (text) => resolvePlaceholders(text, { placeholders: world.placeholders!, rolls: {}, pick: firstValue }),
+    },
+  };
+}
+
+const pinOf = (out: StatCodeTurnResult, name: string) => out.pinWrites[placeholderNamed(name).id];
+
+describe('the Pursuit script', () => {
+  const sighting = (place: string): CodePins => ({ [placeholderNamed('Last Sighting').id]: place });
+  const before = (input: PlayInput) => runStatCodeTurn({ ...playTurn(input), timing: 'before' });
+
+  it('climbs 3 for each road into a place the creature holds, so a hub fills fast', async () => {
+    // Harbor District: four sibling districts and the Ferry Terminal. The city itself is not a road in.
+    const out = await before({ at: 'Harbor District', codePins: sighting('Harbor District'), global: { Pursuit: 10 } });
+    expect(valueOf(out.stats, 'Pursuit')).toBe(25);
+  });
+
+  it('fills a dead end slowly', async () => {
+    const out = await before({ at: 'Ferry Terminal', codePins: sighting('Ferry Terminal'), global: { Pursuit: 10 } });
+    expect(valueOf(out.stats, 'Pursuit')).toBe(13);
+  });
+
+  it('follows the map to the suburb past the base: two roads, by the back gate and the highway', async () => {
+    const out = await before({ at: 'Cedar Hollow', codePins: sighting('Cedar Hollow'), global: { Pursuit: 10 } });
+    expect(valueOf(out.stats, 'Pursuit')).toBe(16);
+    expect(pinOf(out, 'Pursuit Roads')).toBe("out along the evacuation highway from Old Town and out the base's back gate from Fort Bastion");
+  });
+
+  it('halves when the creature moves on, and fixes the new place', async () => {
+    const out = await before({ at: 'Downtown Core', codePins: sighting('Harbor District'), global: { Pursuit: 40 } });
+    expect(valueOf(out.stats, 'Pursuit')).toBe(20);
+    expect(pinOf(out, 'Last Sighting')).toBe('Downtown Core');
+  });
+
+  it('counts the landing from the bay as a move', async () => {
+    const out = await before({ at: 'Harbor District', global: { Pursuit: 0 } });
+    expect(valueOf(out.stats, 'Pursuit')).toBe(0);
+    expect(pinOf(out, 'Last Sighting')).toBe('Harbor District');
+  });
+
+  it('names the roads in by the hint on the leg that points back, and a road with no hint by its place', async () => {
+    // Neonspire, the city as a whole, is not a road in.
+    expect(pinOf(await before({ at: 'Harbor District', global: { Pursuit: 0 } }), 'Pursuit Roads')).toBe(
+      'from Ferry Terminal, from Old Town, from Fort Bastion, down the waterfront boulevard from Downtown Core'
+      + ' and along the dockside rail line from Industrial Yards',
+    );
+  });
+
+  it('names the rolled subway line on the tunnel road', async () => {
+    const roads = pinOf(await before({ at: 'Metro Underground', global: { Pursuit: 0 } }), 'Pursuit Roads') as string;
+    expect(roads).toContain('down into the Red Line tunnels from Old Town');
+  });
+
+  it('keeps the AI from moving Pursuit, so the map alone paces it', () => {
+    expect(world.stats.find((s) => s.name === 'Pursuit')).toMatchObject({ noIncrease: true, noDecrease: true, hidden: true });
+  });
+});
+
+describe('the Subway Line chip', () => {
+  it('rolls one line for both legs of the tunnels, the Metro and its lore entry', () => {
+    const line = placeholderNamed('Subway Line');
+    const tunnels = world.connections!.find((c) => (c.aToB?.hint ?? '').includes(line.id))!;
+    const lore = world.dictionaries![0].entries.find((e) => e.name === 'Metro Underground')!;
+    const texts = [tunnels.aToB!.hint!, tunnels.bToA!.hint!, locationNamed('Metro Underground').aiDescription!, lore.value];
+    // Each fresh roll draws the next value, so two separate rolls would read differently.
+    let draws = 0;
+    const nextValue: PlaceholderPick = (values) => values[draws++ % values.length].text;
+    const rolls = primeRolls(world.placeholders!, texts, {}, nextValue);
+    const resolved = texts.map((text) => resolvePlaceholders(text, { placeholders: world.placeholders!, rolls }));
+    const rolledLine = line.values.map((value) => value.text).find((name) => resolved[0].includes(name))!;
+    expect(rolledLine).toBeDefined();
+    for (const text of resolved) expect(text).toContain(rolledLine);
   });
 });
