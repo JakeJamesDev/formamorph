@@ -17,7 +17,7 @@ Authors see **Update Pending** on a live listing with a waiting update, can comp
 
 - [ ] The card, details modal and creations tab show Update Pending from `has_pending_update`.
 - [ ] The details modal's Pending Update section has Compare and Discard Update; Discard asks first.
-- [ ] The pending thumbnail loads from the review thumbnail URL.
+- [ ] The pending thumbnail loads from the review thumbnail URL, fetched with the Bearer token (a plain image `src` cannot authenticate; ruling T30).
 - [ ] The publish modal shows a changelog entry posted after an update as pending.
 - [ ] The item dialog shows changed fields live versus pending, both thumbnails, and the changelog operations.
 - [ ] Rejecting an update asks first, then opens the composer with a new rejected-update template.
