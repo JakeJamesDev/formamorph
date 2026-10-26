@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Entity, World } from '@/types';
+import { WEBP_LOSSLESS_4x13 } from '@/test/webpFixtures';
 
 vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(() => 'progress-toast'), {
@@ -25,6 +26,15 @@ const Host = () => {
 };
 
 const OVERSIZED = { w: 5000, h: 5000, bytes: 5_000_000 };
+// Within every budget (thumbnail cap is 1024px / 200 KB); suites that mix the two give URLs naming 'big' OVERSIZED.
+const SMALL = { w: 256, h: 256, bytes: 50_000 };
+
+const worldWith = (thumbnail: string, images: string[] = []) => ({
+  id: 'w',
+  worldOverview: { thumbnail },
+  entities: images.length ? [{ id: 'e1', name: 'Maren', images: images.map((data) => ({ data })) }] : [],
+  locations: [],
+} as unknown as World);
 
 const world = {
   id: 'w',
@@ -114,12 +124,6 @@ describe('useDownscalePrompt progress toast', () => {
  * run that cannot happen, and a run that quietly kept them leaves the same offer standing next time.
  */
 describe('useDownscalePrompt — the Optimize offer counts only what converts', () => {
-  const worldWith = (thumbnail: string, images: string[] = []) => ({
-    id: 'w',
-    worldOverview: { thumbnail },
-    entities: images.length ? [{ id: 'e1', name: 'Maren', images: images.map((data) => ({ data })) }] : [],
-    locations: [],
-  } as unknown as World);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -199,31 +203,25 @@ describe('useDownscalePrompt — the Optimize offer counts only what converts', 
 });
 
 /**
- * Optimize is about total world size, so a convertible image is offered at any size — while Downscale, the
- * size tool, appears only when something is actually over budget.
+ * Optimize is about total world size, so a convertible image is offered at any size — while Downscale appears
+ * only for a set holding an image over budget or stored lossless.
  */
 describe('useDownscalePrompt — within-budget convertibles are still offered Optimize', () => {
-  const worldWith = (thumbnail: string, images: string[] = []) => ({
-    id: 'w',
-    worldOverview: { thumbnail },
-    entities: images.length ? [{ id: 'e1', name: 'Maren', images: images.map((data) => ({ data })) }] : [],
-    locations: [],
-  } as unknown as World);
-
-  // Within every budget (thumbnail cap is 512px / 200 KB); URLs naming 'big' exceed both.
-  const SMALL = { w: 256, h: 256, bytes: 50_000 };
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(measureInWorker).mockImplementation((url: string) =>
       Promise.resolve(url.includes('big') ? OVERSIZED : SMALL));
     vi.mocked(encodeInWorker).mockResolvedValue('data:image/webp;base64,small');
+    // A frame decoder makes a static GIF convertible: the one within-budget format only Optimize acts on.
+    vi.stubGlobal('ImageDecoder', class {});
   });
+  afterEach(() => vi.unstubAllGlobals());
 
-  it('a world of small PNGs still prompts — Optimize offered, Downscale not', async () => {
+  it('a world of small GIFs still prompts — Optimize offered, Downscale not', async () => {
     render(<Host />);
     let run!: Promise<World | null>;
-    act(() => { run = api.promptWorld(worldWith('data:image/png;base64,tiny')); });
+    act(() => { run = api.promptWorld(worldWith('data:image/gif;base64,tiny')); });
 
     // The absence check has to happen while the dialog is still up — once a choice closes it, every button
     // is gone and the assertion would pass no matter what was offered.
@@ -235,7 +233,7 @@ describe('useDownscalePrompt — within-budget convertibles are still offered Op
 
   it('says why the set is listed when nothing in it is over budget', async () => {
     render(<Host />);
-    act(() => { void api.promptWorld(worldWith('data:image/png;base64,tiny')); });
+    act(() => { void api.promptWorld(worldWith('data:image/gif;base64,tiny')); });
 
     expect(await screen.findByText(/1 image lossless WebP would shrink/)).toBeInTheDocument();
     expect(screen.queryByText(/larger than recommended/)).toBeNull();
@@ -253,12 +251,59 @@ describe('useDownscalePrompt — within-budget convertibles are still offered Op
   it('a mixed set names both counts and scopes Downscale to the oversized', async () => {
     render(<Host />);
     act(() => {
-      void api.promptWorld(worldWith('data:image/jpeg;base64,big', ['data:image/png;base64,tiny']));
+      void api.promptWorld(worldWith('data:image/jpeg;base64,big', ['data:image/gif;base64,tiny']));
     });
 
     expect(await screen.findByText(/2 images worth optimizing — 1 larger than recommended/)).toBeInTheDocument();
     expect(screen.getByText(/Downscale also shrinks the 1 larger than recommended/)).toBeInTheDocument();
     expect(screen.getByText('Optimize')).toBeInTheDocument();
     expect(screen.getByText('Downscale')).toBeInTheDocument();
+  });
+});
+
+describe('useDownscalePrompt — lossless images are Downscale targets at any size', () => {
+  const LOSSLESS_WEBP = `data:image/webp;base64,${WEBP_LOSSLESS_4x13}`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(measureInWorker).mockImplementation((url: string) =>
+      Promise.resolve(url.includes('big') ? OVERSIZED : SMALL));
+    vi.mocked(encodeInWorker).mockResolvedValue('data:image/webp;base64,lossy');
+    vi.stubGlobal('ImageDecoder', class {});
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('offers Downscale for a lossless-only within-budget set, at about a tenth of the source', async () => {
+    render(<Host />);
+    let run!: Promise<World | null>;
+    act(() => { run = api.promptWorld(worldWith(LOSSLESS_WEBP)); });
+
+    expect(await screen.findByText(/1 lossless image Downscale would shrink \(50 KB total\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Downscale shrinks them \(~5 KB\)/)).toBeInTheDocument();
+    // Optimize would keep an image that is already WebP, so it is not offered.
+    expect(screen.queryByText('Optimize')).toBeNull();
+    fireEvent.click(screen.getByText('Downscale'));
+    expect((await run)?.worldOverview.thumbnail).toBe('data:image/webp;base64,lossy');
+  });
+
+  it('names both counts for a mixed set and scopes Downscale to the targets', async () => {
+    render(<Host />);
+    act(() => {
+      void api.promptWorld(worldWith('data:image/jpeg;base64,big', ['data:image/png;base64,tiny', 'data:image/gif;base64,tiny']));
+    });
+
+    expect(await screen.findByText(/3 images worth optimizing — 1 larger than recommended, 1 lossless/)).toBeInTheDocument();
+    expect(screen.getByText(/Downscale also shrinks 2 of them/)).toBeInTheDocument();
+    expect(screen.getByText('Optimize')).toBeInTheDocument();
+    expect(screen.getByText('Downscale')).toBeInTheDocument();
+  });
+
+  it('counts a lossless image Downscale shrinks at its estimate, the rest at their bytes', async () => {
+    render(<Host />);
+    act(() => { void api.promptWorld(worldWith('data:image/png;base64,tiny', ['data:image/gif;base64,tiny'])); });
+
+    // The PNG estimates at 5 KB; the GIF, which Downscale leaves, stays at 50 KB.
+    expect(await screen.findByText(/Downscale also shrinks 1 of them \(~55 KB\)/)).toBeInTheDocument();
+    expect(screen.getByText(/2 images worth optimizing — 1 lossless/)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 # 01: Trigger Rule and Budgets
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -18,8 +18,17 @@ After this lands, an author who accepts Downscale gets lossy WebP for every loss
 
 ## Acceptance criteria
 
-- [ ] A within-budget lossless WebP and a within-budget PNG are Downscale targets and come out as lossy WebP through the fake codec; a within-budget JPEG is left alone. Each case shown to fail once with the old rule reinstated.
-- [ ] An 832×1216 entity image keeps its size through Downscale; a 1300 px one is resampled to 1280. Each slot's byte budget flips the over-budget flag at its new value, shown in the media index suite.
-- [ ] The prompt offers Downscale for a lossless-only within-budget set with the lossless sentence, names both counts for a mixed set, and predicts about a tenth of the source for a lossless source, shown in the prompt hook suite.
-- [ ] The Over Size Budget filter, the Over Budget badge and the Test Bench size rule agree with the scan on one world that holds an image over each new budget.
-- [ ] The Map Background help section states 1.5 MB, and the changelog fragment is in place with a lead that stands alone.
+- [x] A within-budget lossless WebP and a within-budget PNG are Downscale targets and come out as lossy WebP through the fake codec; a within-budget JPEG is left alone. Each case shown to fail once with the old rule reinstated. Verified: `imageOptim.convertible.test.ts` › Downscale targets; the oversized-only trigger turned 7 tests red, and a JPEG-counts-as-lossless mutation turned the JPEG case red.
+- [x] An 832×1216 entity image keeps its size through Downscale; a 1300 px one is resampled to 1280. Each slot's byte budget flips the over-budget flag at its new value, shown in the media index suite. Verified: the convertible suite (portrait fit, per-slot flips) and `mediaIndex.test.ts` › the slot budgets; the old budget table turned 10 tests red.
+- [x] The prompt offers Downscale for a lossless-only within-budget set with the lossless sentence, names both counts for a mixed set, and predicts about a tenth of the source for a lossless source, shown in the prompt hook suite. Verified: `useDownscalePrompt.test.tsx` › lossless images are Downscale targets; the old lead, the old button gate and the old 0.5 factor each turned a case red.
+- [x] The Over Size Budget filter, the Over Budget badge and the Test Bench size rule agree with the scan on one world that holds an image over each new budget. Verified: `mediaIndex.test.ts` › agrees with the Over Size Budget filter, the Test Bench size rule and the scan (the badge reads the same `overBudget` flag); the old three-slot rule turned it red.
+- [x] The Map Background help section states 1.5 MB, and the changelog fragment is in place with a lead that stands alone. Verified: `docs/World-Editor-Media.md` Map Background line; `docs-internal/changelog.d/downscale-presets-01.md`.
+
+## Landed
+
+**Not verified**
+- Nothing unticked. The prompt copy was not seen in the running app; the hook suite renders the dialog in jsdom.
+
+**For you**
+- World Editor › Media › Optimize Images on a world with generated PNG or lossless WebP art: the dialog says "N lossless images Downscale would shrink", and Downscale cuts each image to tens of KB.
+- Follow-up, named and not built: a world prompt for one image says "Downscale shrinks them", because world prompts always use the plural.

@@ -42,13 +42,14 @@ import {
 } from '@/lib/statCodeTargets';
 import { worldScriptList, type ListedScript } from '@/lib/worldScripts';
 import { estimateTokens } from '@/lib/memoryUtils';
-import { entityImageData, entityImages } from '@/lib/entityImages';
+import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import {
-  dataUrlBytes, dataUrlMime, dataUrlRealMime, imageFormatLabel, isConvertibleImage, isRemoteImage,
+  dataUrlBytes, dataUrlMime, dataUrlRealMime, imageFormatLabel, isConvertibleImage,
   relabelDataUrl, sniffDataUrlMime,
 } from '@/lib/imageBytes';
-import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
+import { formatBytes, type ImageCap } from '@/lib/imageOptim';
+import { worldImageItems, type MediaItem } from '@/lib/mediaIndex';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
@@ -3550,20 +3551,21 @@ const worldNoReadme: Rule = {
   )],
 };
 
-/** Every embedded image with its display budget — the same slots the Optimize Images action walks. Only the
- *  byte budget is checked: measuring pixels needs a decode the live pass can't afford, so anything this
- *  flags, that action also flags — never the reverse. */
-const embeddedImageSlots = (world: RuleWorld): Array<{ item: FindingItem; url: string; cap: ImageCap }> => [
-  ...(world.worldOverview?.thumbnail
-    ? [{ item: worldItem(world), url: world.worldOverview.thumbnail, cap: IMAGE_CAPS.thumbnail }]
-    : []),
-  ...(world.entities ?? []).flatMap((e) => entityImageData(e).map((url) => ({
-    item: { ...asItem(e, world), section: 'entities' as const }, url, cap: IMAGE_CAPS.entity,
-  }))),
-  ...(world.locations ?? []).flatMap((l) => locationImages(l).map((img) => ({
-    item: namedItem(l.id, l.name, world, 'locations'), url: img.data, cap: IMAGE_CAPS.background,
-  }))),
-];
+/** Every image with its display budget and the Media tab's Over Budget flag — the same slots the Optimize
+ *  Images action walks. Only the byte budget is checked: measuring pixels needs a decode the live pass can't
+ *  afford, so anything this flags, that action also flags — never the reverse. */
+const embeddedImageSlots = (world: RuleWorld): Array<{ item: FindingItem; url: string; cap: ImageCap; overBudget: boolean }> =>
+  worldImageItems(world).map((media) => ({ item: imageOwner(media, world), url: media.value, cap: media.budget, overBudget: media.overBudget }));
+
+/** The row an image's finding opens: its entity or location, the world for the thumbnail, else its Media card. */
+const imageOwner = (media: MediaItem, world: RuleWorld): FindingItem => {
+  const { kind, id, name } = media.parent;
+  const entity = kind === 'entity' ? world.entities?.find((e) => e.id === id) : undefined;
+  if (entity) return { ...asItem(entity, world), section: 'entities' };
+  if (kind === 'location') return namedItem(id, name, world, 'locations');
+  if (kind === 'world') return worldItem(world);
+  return { id: media.id, name, section: 'media' };
+};
 
 const worldOversizedImages: Rule = {
   id: 'world-oversized-images',
@@ -3571,8 +3573,7 @@ const worldOversizedImages: Rule = {
   section: 'overview',
   summary: (count) => `${count} embedded images are over their size budget — Optimize Images can shrink them`,
   check: (world) => embeddedImageSlots(world)
-    // A linked image contributes no bytes to the world, so no budget applies.
-    .filter(({ url, cap }) => !isRemoteImage(url) && dataUrlBytes(url) > cap.maxBytes)
+    .filter(({ overBudget }) => overBudget)
     .map(({ item, url, cap }) => finding(
       worldOversizedImages,
       `${quote(item.name)}’s image is ${formatBytes(dataUrlBytes(url))}, over its ${formatBytes(cap.maxBytes)} budget — Optimize Images can shrink it`,

@@ -12,6 +12,7 @@ export { bytesToDataUrl, dataUrlBytes, dataUrlMime, fitWithin } from './imageByt
 export { IMAGE_CAPS, type ImageCap } from './imageSlots';
 export { countWorldImages } from './mediaIndex';
 export type { DownscaleDeps, OptimizeMode, ScannedImage } from './imageOptimCore';
+export { isDownscaleTarget } from './imageOptimCore';
 
 /** The main thread's codec: every encode and measure runs in the image-encode worker. */
 const workerCodec: core.ImageCodec = {
@@ -19,9 +20,11 @@ const workerCodec: core.ImageCodec = {
   measure: (url) => measureInWorker(url),
 };
 
-// Rough display-only factors: lossy WebP lands near half the source; lossless keeps most of it.
-const LOSSY_FACTOR = 0.5;
-const LOSSLESS_FACTOR = 0.85;
+// Rough display-only factors. Downscale's lossy WebP at quality 0.82 measured ~0.08 of a lossless source
+// and near half of a lossy one (2026-10-26, four generated images); Optimize's lossless keeps most of it.
+const DOWNSCALE_LOSSLESS_FACTOR = 0.1;
+const DOWNSCALE_LOSSY_FACTOR = 0.5;
+const OPTIMIZE_FACTOR = 0.85;
 
 /** Decode a data-URL to pixel dimensions + encoded byte size. Runs off-thread. */
 export const measureDataUrl = (url: string): Promise<{ w: number; h: number; bytes: number }> =>
@@ -59,12 +62,14 @@ export const optimizeToWebpDataUrl = (url: string, cap: ImageCap): Promise<strin
 
 /** Rough display-only estimate of the encoded size for each option (real size is only known after encoding). */
 export function estimateEncodedBytes(
-  bytes: number, w: number, h: number, mode: 'reencode' | 'downscale', cap: ImageCap,
+  item: Pick<ScannedImage, 'bytes' | 'w' | 'h' | 'lossless' | 'cap'>, mode: 'reencode' | 'downscale',
 ): number {
+  const { bytes, w, h, cap } = item;
   // Optimize is lossless (keeps most bytes); Downscale is lossy and area-scaled to the cap.
-  if (mode === 'reencode') return Math.round(bytes * LOSSLESS_FACTOR);
+  if (mode === 'reencode') return Math.round(bytes * OPTIMIZE_FACTOR);
   const fit = fitWithin(w, h, cap.maxDim);
-  return Math.round(bytes * LOSSY_FACTOR * (fit.w * fit.h) / (w * h));
+  const factor = item.lossless ? DOWNSCALE_LOSSLESS_FACTOR : DOWNSCALE_LOSSY_FACTOR;
+  return Math.round(bytes * factor * (fit.w * fit.h) / (w * h));
 }
 
 /** A world's images keyed by the `path` a scan tagged them with — how a caller reads back what one scanned
@@ -72,7 +77,7 @@ export function estimateEncodedBytes(
 export const worldImagesByPath = (world: World): Map<string, string> =>
   new Map(worldImageSlots(world).map((slot) => [slot.path, slot.url]));
 
-/** Scan a world for images worth offering to re-encode — over budget or losslessly convertible — plus their
+/** Scan a world for images worth offering to re-encode — over budget, lossless, or losslessly convertible — plus their
  *  total bytes. */
 export async function scanWorldImages(world: World): Promise<{ items: ScannedImage[]; totalBytes: number }> {
   const items: ScannedImage[] = [];
@@ -83,7 +88,7 @@ export async function scanWorldImages(world: World): Promise<{ items: ScannedIma
   return { items, totalBytes: items.reduce((sum, i) => sum + i.bytes, 0) };
 }
 
-/** Downscale cares about large files: only images over their budget are touched. */
+/** Downscale's deps: over-budget and lossless images come out as lossy WebP. */
 const REAL_DEPS: DownscaleDeps = core.downscaleDeps(workerCodec);
 
 /** Deps for the "Optimize" (WebP, keep resolution) world pass: every losslessly convertible image at any

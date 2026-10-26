@@ -134,6 +134,44 @@ export function dataUrlImageSize(url: string): PixelSize | null {
   return null;
 }
 
+const fourcc = (b: Uint8Array, at: number): string => String.fromCharCode(b[at], b[at + 1], b[at + 2], b[at + 3]);
+
+/** True when a PNG carries an `acTL` chunk before its first `IDAT`: an APNG. */
+function pngIsAnimated(b: Uint8Array): boolean {
+  const view = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  for (let i = 8; i + 8 <= b.length; i += 12 + view.getUint32(i)) {
+    const type = fourcc(b, i + 4);
+    if (type === 'acTL') return true;
+    if (type === 'IDAT') return false;
+  }
+  return false;
+}
+
+/** The WebP's image chunk: `VP8L` lossless, `VP8 ` lossy (an `ALPH` chunk precedes it), `ANIM` animated. */
+function webpImageChunk(b: Uint8Array): string | null {
+  for (let i = 12; i + 8 <= b.length; ) {
+    const type = fourcc(b, i);
+    if (type === 'VP8L' || type === 'VP8 ' || type === 'ANIM') return type;
+    const size = b[i + 4] | (b[i + 5] << 8) | (b[i + 6] << 16) | (b[i + 7] << 24);
+    i += 8 + size + (size & 1);
+  }
+  return null;
+}
+
+/**
+ * True when a still image is stored lossless: PNG or BMP by format, WebP by its `VP8L` image chunk. GIF,
+ * JPEG, lossy WebP and every animated image answer false. What makes an image a Downscale target at any size.
+ */
+export function isLosslessImage(url: string): boolean {
+  if (isRemoteImage(url)) return false;
+  const mime = dataUrlRealMime(url);
+  const b = dataUrlHead(url, SIZE_HEAD_BYTES) ?? new Uint8Array();
+  if (mime === 'image/bmp' || mime === 'image/x-ms-bmp') return true;
+  if (mime === 'image/png') return !pngIsAnimated(b);
+  if (mime === 'image/webp') return webpImageChunk(b) === 'VP8L';
+  return false;
+}
+
 /**
  * The format an image data-URL really holds: its bytes' word when recognized, its label's otherwise.
  * Labels lie — a bundled world ships a JPEG marked `image/png` — so every decision that hinges on format
