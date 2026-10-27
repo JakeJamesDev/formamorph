@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import raw from '@/defaultworlds/open-chat.json?raw';
+import { bundledWorldText } from '@/test/bundledWorldFiles';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
@@ -26,8 +26,8 @@ import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import type { Trait } from '@/types';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
-const world = migrateWorld(JSON.parse(raw));
+// The stored text through the world migration, images included: the Test Bench pass below reads them.
+const world = migrateWorld(JSON.parse(bundledWorldText('open-chat')));
 const chipIds = (text: string) => directChipTargets([text]);
 const byName = (name: string) => (world.placeholders ?? []).find((ph) => ph.name === name)!.id;
 

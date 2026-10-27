@@ -1,6 +1,6 @@
 # 24: Tests Never Transform World Images
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 23
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,12 +17,31 @@ Ticket 23 stopped the seeder's copy of the bundled worlds from carrying images u
 
 ## Acceptance criteria
 
-- [ ] A test proves a test file's own `?raw` import of a bundled world arrives stripped, and goes red with the plugin's test-file exemption restored.
-- [ ] The shared suite's Test Bench pass runs on real image bytes: a mutation that inserts a non-WebP image into a disk-read world makes `image-not-webp` fire in the suite.
-- [ ] The full suite is green with the default heap in the main process and the workers. Main-process and largest-worker peak heap, before and after, are in the comments.
+- [x] A test proves a test file's own `?raw` import of a bundled world arrives stripped, and goes red with the plugin's test-file exemption restored. Stripped-seed test "strips a test file's own `?raw` import of a bundled world too"; red with the exemption back, twice (before and after the review's refactor).
+- [x] The shared suite's Test Bench pass runs on real image bytes: a mutation that inserts a non-WebP image into a disk-read world makes `image-not-webp` fire in the suite. A 1×1 PNG in place of Valentines' first WebP fails "raises no Test Bench finding beyond its open list" with `image-not-webp: Hana Sakuragi`.
+- [x] The full suite is green with the default heap in the main process and the workers. Main-process and largest-worker peak heap, before and after, are in the comments. The after run's one red was the test-selection list missing the new helper, fixed and rerun green; prepare's full gates confirm.
 - [ ] Ticket 14's prepare gate passes on a rebase over this landing, reported by ticket 14.
-- [ ] No changelog fragment; the change is test-only.
+- [x] No changelog fragment; the change is test-only.
 
 ## Landed
 
+**Not verified**
+- Ticket 14's prepare on a rebase over this landing: ticket 14 reports it.
+
+**For you**
+- Nothing to judge in play; the change is test-only.
+
 ## Comments
+
+**Mechanism.** The strip plugin no longer exempts test files, and it now also serves plain JSON imports (`import w from '…/x.json'` and eager JSON globs) as a stripped module (`?raw&stripped-json`, `export default JSON.parse(…)`). The spec session ruled the JSON imports in scope on 2026-10-26: "no module receives" covers them. `src/test/bundledWorldFiles.ts` is the one disk reader for tests that need the stored bytes.
+
+**Sites.** Disk read: `bundledWorlds.test.ts` (shared suite, with two new guards: every image is a `data:image/` value, and the set carries images), `emberwatchWorld.test.ts` and `openChatWorld.test.ts` (each asserts an exact `runRules` set, image rules included), and the stripped-seed test (proves the stored Valentines holds images). Stripped and unchanged: the other `?raw` sites, which read ids, rules, scripts, text and image slots, and the plain JSON importers `locationGraphNeighbors`, `statCodeExecutor`, `testBench/scriptCheck` and `GamePanels`. `bundledPlayerStats` runs `runRules` but keeps only stat rows. The stripped-seed test also guards the JSON path: red when the plugin strips `?raw` only.
+
+**Numbers.** Full `npm test` (`scripts/runTests.mjs`), same machine, same source (main at 041882f18, about 200 MB of worlds, before ticket 14's Sugarscape art), heap sampled every 25 ms in every process through a `--require` preload. No `--max-old-space-size` anywhere.
+
+| | Before | After |
+|---|---|---|
+| Main process heap peak | 3,837 MB of a 4,288 MB limit (did not die on this source) | 1,395 MB |
+| Largest worker heap peak | 3,617 MB | 1,416 MB |
+| Wall time | 392 s | 348 s |
+| Vitest transform time | 82.9 s | 53.7 s |

@@ -4,13 +4,14 @@ import { runRules } from './testBench/rules';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 import { encodePlaceholderToken, PLACEHOLDER_TOKEN_SOURCE } from './placeholders';
+import { worldImageItems } from './mediaIndex';
 import { PRE_EXPANSION_SHA, worldAt } from '@/test/bundledRevisions';
+import { bundledWorldIds, bundledWorldText } from '@/test/bundledWorldFiles';
 import type { Entity, GalleryImage, Script, Tool, Trait, TraitGroup, TraitRequirementRow, World } from '@/types';
 
-/** The shared suite over every bundled world, loaded the way the seeder loads it. */
+/** The shared suite over every bundled world, read as stored so the Test Bench pass sees the real images. */
 
-const raws = import.meta.glob<string>('@/defaultworlds/*.json', { query: '?raw', import: 'default', eager: true });
-const worlds = Object.entries(raws).map(([path, raw]) => [path.replace(/.*\/|\.json$/g, ''), raw] as const);
+const worlds = bundledWorldIds().map((id) => [id, bundledWorldText(id)] as const);
 
 /** What a world shows an author. */
 type Feature =
@@ -132,6 +133,10 @@ describe.each(worlds)('the %s world', (id, raw) => {
     expect(loaded).toEqual(onDisk);
   });
 
+  it('holds every image as stored data, so the image rules below read real bytes', () => {
+    expect(worldImageItems(world).filter((media) => !media.value.startsWith('data:image/')).map((media) => media.value)).toEqual([]);
+  });
+
   it('raises no Test Bench finding beyond its open list', () => {
     const findings = runRules(world)
       .filter((f) => !IGNORED_RULES.has(f.ruleId))
@@ -153,6 +158,10 @@ describe('the bundled set', () => {
     const claimed = new Set(rows.flatMap((r) => Object.values(r).flat()));
     return Object.keys(DETECT).filter((feature) => !claimed.has(feature as Feature));
   };
+
+  it('carries images for the image rules to check', () => {
+    expect(worlds.some(([, raw]) => raw.includes('"data:image/'))).toBe(true);
+  });
 
   it('shows or plans every feature', () => {
     expect(missing([FEATURES, PLANNED])).toEqual([]);
