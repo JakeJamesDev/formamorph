@@ -113,6 +113,7 @@ const FILES = [
   'src/lib/useCachedThumbnail.tsx',
   'src/lib/useMountedRef.ts',
   'src/lib/useResetOnOpen.ts',
+  'src/lib/usernameRule.ts',
   'src/lib/utils.ts',
   'src/lib/uuid.ts',
   'src/services/AuthService.ts',

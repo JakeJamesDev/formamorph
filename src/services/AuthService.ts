@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/lib/apiBase';
+import { USERNAME_TAKEN_MESSAGE, checkUsername } from '@/lib/usernameRule';
 import type { AuthUser } from '@/types';
 import { codedResponseError, readFailure, responseError } from './responseError';
 
@@ -187,12 +188,12 @@ class AuthService {
 
   /** Validate credentials client-side, register, persist the token, and resolve the user profile
    *  (falling back to a bare `{username}` if the server returns none); rethrows on failure. */
-  async register(username: string, password: string, email = '') {
+  async register(typedUsername: string, password: string, email = '') {
     try {
       // Validate username and password according to server requirements
-      if (!username || username.length < 3 || username.length > 20) {
-        throw new Error('Username must be between 3 and 20 characters');
-      }
+      const verdict = checkUsername(typedUsername);
+      if (!verdict.ok) throw new Error(verdict.error);
+      const username = verdict.username;
 
       if (!password || password.length < 6) {
         throw new Error('Password must be at least 6 characters long');
@@ -215,8 +216,12 @@ class AuthService {
       });
 
       // A taken name and a taken address are two sentences with two different fixes — pick another name,
-      // or recover the account holding the address — so the server's text is shown verbatim.
-      if (!response.ok) throw await responseError(response, 'Registration failed');
+      // or recover the account holding the address — so the server's text is shown, except for a taken name.
+      if (!response.ok) {
+        const failure = await codedResponseError(response, 'Registration failed');
+        if (failure.code === 'USERNAME_TAKEN') failure.message = USERNAME_TAKEN_MESSAGE;
+        throw failure;
+      }
 
       const data = await response.json();
 

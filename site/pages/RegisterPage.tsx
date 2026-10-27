@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AuthService from '@/services/AuthService';
+import { USERNAME_RULE_HELP, checkUsername } from '@/lib/usernameRule';
 import PolicyService from '@/services/PolicyService';
 import type { PublicPrivacyPolicy } from '@/types';
 import { AccountForm, Field } from '../components/AccountForm';
@@ -101,12 +102,9 @@ export function RegisterPage() {
     setError('');
 
     // Validate before the policy step; AuthService repeats the server rules at the network boundary.
-    if (!username) {
-      setError('Username is required');
-      return;
-    }
-    if (username.length < 3 || username.length > 20) {
-      setError('Username must be between 3 and 20 characters');
+    const usernameVerdict = checkUsername(username);
+    if (!usernameVerdict.ok) {
+      setError(usernameVerdict.error);
       return;
     }
     if (!password) {
@@ -142,7 +140,7 @@ export function RegisterPage() {
         return;
       }
 
-      await AuthService.register(username, password, email.trim());
+      await AuthService.register(usernameVerdict.username, password, email.trim());
       setAccountCreated(true);
       bindPendingAgeGateAnswer();
       if (policyReadFailed) await checkAccountPolicy();
@@ -161,7 +159,7 @@ export function RegisterPage() {
 
     if (creating) {
       try {
-        await AuthService.register(username, password, email.trim());
+        await AuthService.register(username.trim(), password, email.trim());
         setAccountCreated(true);
         bindPendingAgeGateAnswer();
       } catch (failure) {
@@ -272,7 +270,7 @@ export function RegisterPage() {
           label="Username"
           autoComplete="username"
           autoFocus
-          hint="3 to 20 characters."
+          hint={USERNAME_RULE_HELP}
           value={username}
           onChange={setUsername}
         />
