@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "react-toastify";
-import { toastError } from "@/lib/linkToast";
 import { MessageSquarePlus } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -22,13 +20,17 @@ import {
   loadFeedbackDraft, saveFeedbackDraft,
 } from "@/lib/feedbackDraft";
 import { collectDiagnostics, DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
-import { CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
+import { CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_TYPE_LABELS, TAB_GRID_COLUMNS } from "@/lib/feedbackPresentation";
 import { isStaff } from "@/lib/roles";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import { SimilarQuestions } from "@/components/menu/SimilarQuestions";
 import AuthService from "@/services/AuthService";
 import FeedbackService from "@/services/FeedbackService";
-import { FEEDBACK_TYPES, type BugDiagnostics, type FeedbackCategory, type FeedbackType } from "@/types";
+import {
+  APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify,
+} from "@/lib/feedbackCapabilities";
+import { cn } from "@/lib/utils";
+import type { BugDiagnostics, FeedbackCategory, FeedbackType } from "@/types";
 
 /** What each branch asks for, in its own words. */
 const COPY: Record<FeedbackType, {
@@ -77,6 +79,10 @@ interface FeedbackDialogProps {
   initialBody?: string;
   /** The control focus goes back to on close, for an opener that a dialog makes inert as it opens. */
   returnFocus?: HTMLElement | null;
+  /** Reports each result to the reader. */
+  notify: FeedbackNotify;
+  /** What this surface may show and do; the app's full set when omitted. */
+  capabilities?: FeedbackCapabilities;
 }
 
 /** A fill that waits on the Replace-draft confirm. */
@@ -116,8 +122,13 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics: BugDiagnostics }) {
  * about the machine goes with it, which is not two dialogs' worth of difference.
  */
 export function FeedbackDialog({
-  open, onOpenChange, initialType = 'bug', onFiled, initialTitle, initialBody, returnFocus,
+  open, onOpenChange, initialType: requestedType = 'bug', onFiled, initialTitle, initialBody, returnFocus, notify,
+  capabilities = APP_FEEDBACK_CAPABILITIES,
 }: FeedbackDialogProps) {
+  const { fileTypes } = capabilities;
+  // A type this surface cannot file, asked for or left in a draft, falls back to the first it can.
+  const fileable = (wanted: FeedbackType) => (fileTypes.includes(wanted) ? wanted : fileTypes[0]);
+  const initialType = fileable(requestedType);
   const [type, setType] = useState<FeedbackType>(initialType);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY[initialType]);
@@ -141,12 +152,13 @@ export function FeedbackDialog({
   const [pendingFill, setPendingFill] = useState<PendingFill | null>(null);
 
   const showForm = (next: PendingFill & { category?: FeedbackCategory }, fromDraft: boolean) => {
-    setType(next.type);
+    const nextType = fileable(next.type);
+    setType(nextType);
     setTitle(next.title);
     // A stored category from an older build's list would be refused by the server, so it's only taken
     // when the live options still offer it.
-    const known = CATEGORY_OPTIONS[next.type].some((option) => option.value === next.category);
-    setCategory(known && next.category ? next.category : DEFAULT_CATEGORY[next.type]);
+    const known = CATEGORY_OPTIONS[nextType].some((option) => option.value === next.category);
+    setCategory(known && next.category ? next.category : DEFAULT_CATEGORY[nextType]);
     setBody(next.body);
     setRestored(fromDraft);
   };
@@ -199,11 +211,11 @@ export function FeedbackDialog({
 
   const submit = async () => {
     if (!title.trim()) {
-      toast.error('A title is required');
+      notify('A title is required', 'error');
       return;
     }
     if (!body.trim()) {
-      toast.error('A description is required');
+      notify('A description is required', 'error');
       return;
     }
 
@@ -214,11 +226,11 @@ export function FeedbackDialog({
       // show through the dialog's fade-out — and the mirror is muted so it can't write the sent text back.
       filedRef.current = true;
       clearFeedbackDraft();
-      toast.success(copy.sent);
+      notify(copy.sent, 'success');
       onFiled?.();
       onOpenChange(false);
     } catch (error) {
-      toastError(error, 'Failed to send this');
+      notify('Failed to send this', 'error', error);
     } finally {
       setIsSending(false);
     }
@@ -246,6 +258,8 @@ export function FeedbackDialog({
             <FeedbackThreadView
               threadId={openThreadId}
               isAdmin={isStaff(AuthService.getCurrentUser())}
+              notify={notify}
+              capabilities={capabilities}
               onBack={() => setOpenThreadId(null)}
               onChanged={() => setSimilarRefresh((n) => n + 1)}
             />
@@ -260,8 +274,8 @@ export function FeedbackDialog({
             )}
 
             <Tabs value={type} onValueChange={(value) => switchType(value as FeedbackType)}>
-              <TabsList className="grid w-full grid-cols-3">
-                {FEEDBACK_TYPES.map((value) => (
+              <TabsList className={cn('grid w-full', TAB_GRID_COLUMNS[fileTypes.length])}>
+                {fileTypes.map((value) => (
                   <TabsTrigger key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].tab}</TabsTrigger>
                 ))}
               </TabsList>

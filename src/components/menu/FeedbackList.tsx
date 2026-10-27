@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toastError } from "@/lib/linkToast";
 import { ChevronUp, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +10,7 @@ import {
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { cn } from "@/lib/utils";
+import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 import { isVotableBoard, type FeedbackCategory, type FeedbackStatus, type FeedbackThread, type FeedbackType } from "@/types";
 
 const PAGE_SIZE = 10;
@@ -40,6 +40,12 @@ interface FeedbackListProps {
   onOpen: (id: string) => void;
   /** Shown in place of the list when nothing matches. */
   emptyLabel?: string;
+  /** Reports each result to the reader. */
+  notify: FeedbackNotify;
+  /** What this surface may show and do; the app's full set when omitted. */
+  capabilities?: FeedbackCapabilities;
+  /** Set for a guest: Vote calls it instead of the service. */
+  onGuestWrite?: () => void;
 }
 
 /**
@@ -48,7 +54,7 @@ interface FeedbackListProps {
  */
 export function FeedbackList({
   active, type, scope, status, category, sort, search, page, onPageChange, refreshNonce = 0, onOpen,
-  emptyLabel = 'Nothing here yet.',
+  emptyLabel = 'Nothing here yet.', notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite,
 }: FeedbackListProps) {
   const [threads, setThreads] = useState<FeedbackThread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,6 +62,8 @@ export function FeedbackList({
   // Read through a ref so a caller's inline handler does not rebuild the load and refetch every render.
   const onPageChangeRef = useRef(onPageChange);
   onPageChangeRef.current = onPageChange;
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
   // Ids with a vote in flight, so a double click can't send two of the same request.
   const [voting, setVoting] = useState<Set<string>>(new Set());
 
@@ -100,7 +108,7 @@ export function FeedbackList({
       setTotal(result.total);
     } catch (error) {
       if (!isCurrent()) return;
-      toastError(error, 'Failed to load these');
+      notifyRef.current('Failed to load these', 'error', error);
       setThreads([]);
     } finally {
       if (isCurrent()) setIsLoading(false);
@@ -121,6 +129,10 @@ export function FeedbackList({
   }, []);
 
   const toggleVote = async (thread: FeedbackThread) => {
+    if (onGuestWrite) {
+      onGuestWrite();
+      return;
+    }
     if (voting.has(thread.id)) return;
 
     setVoting((prev) => new Set(prev).add(thread.id));
@@ -132,7 +144,7 @@ export function FeedbackList({
       setThreads((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
     } catch (error) {
       // Still said after an unmount: the vote failed whether or not the list is there to show it.
-      toastError(error, 'Failed to record your vote');
+      notify('Failed to record your vote', 'error', error);
     } finally {
       if (mountedRef.current) setVoting((prev) => {
         const next = new Set(prev);
@@ -163,10 +175,11 @@ export function FeedbackList({
             const style = FEEDBACK_STATUS_STYLES[thread.status];
             // Absent from a server that predates the count, which is not the same as a thread with none.
             const replies = thread.commentCount ?? 0;
+            const unread = capabilities.unreadBadge && thread.unread;
 
             return (
               <div key={thread.id} className="relative flex items-stretch gap-2 rounded-md border min-w-0">
-                {thread.unread && <UnreadEdge kind="feedback" />}
+                {unread && <UnreadEdge kind="feedback" />}
                 {/* Votable boards only. A bug is not a popularity contest — one person hitting it is
                     reason enough to fix it. */}
                 {isVotableBoard(thread.type) && (
@@ -200,12 +213,12 @@ export function FeedbackList({
                     <p className="flex items-center gap-2 text-label">
                       {/* Weight as well as the dot, the way the inbox does it: color alone excludes
                           anybody whose vision does not separate these hues. */}
-                      <span className={cn('truncate', thread.unread ? 'font-semibold' : 'font-medium')}>
+                      <span className={cn('truncate', unread ? 'font-semibold' : 'font-medium')}>
                         {thread.title}
                       </span>
                       {/* A dot rather than a count: a thread is read as a whole, so the number of new
                           replies in it is not something the reader acts on differently. */}
-                      {thread.unread && (
+                      {unread && (
                         <UnreadDot label="New replies" kind="feedback" />
                       )}
                       {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}

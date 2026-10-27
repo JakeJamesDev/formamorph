@@ -11,6 +11,7 @@ import {
 } from "@/lib/feedbackPresentation";
 import AuthService from "@/services/AuthService";
 import { isStaff } from "@/lib/roles";
+import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 import type { FeedbackType } from "@/types";
 
 interface MyFeedbackTabProps {
@@ -20,6 +21,12 @@ interface MyFeedbackTabProps {
   type: FeedbackType;
   /** Called after anything that changes the unread count, so the profile badge can be re-read. */
   onChanged?: () => void;
+  /** Reports each result to the reader. */
+  notify: FeedbackNotify;
+  /** What this surface may show and do; the app's full set when omitted. */
+  capabilities?: FeedbackCapabilities;
+  /** Set for a guest: Vote, Reply and New call it instead of the service. */
+  onGuestWrite?: () => void;
 }
 
 /** What each tab's file button offers, and what it says when nothing matches. */
@@ -54,7 +61,9 @@ const COPY: Record<FeedbackType, {
  * everyone's. No triage controls either way — moving something through triage is the team's call, even
  * when the reader happens to be on the team.
  */
-export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
+export function MyFeedbackTab({
+  active, type, onChanged, notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite,
+}: MyFeedbackTabProps) {
   const { page, setPage, openId, open, back, nonce, refresh, listRef } = useFeedbackListPlace();
   const filters = useFeedbackFilters(userFilterDefaults(type), USER_HIDDEN_FILTERS, () => setPage(1));
   const { search } = filters;
@@ -63,7 +72,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
 
   // Staff who find a thread here are still the team, so they answer from here rather than being told
   // replies are somebody else's business. Triage stays in the Admin Panel.
-  const viewerIsStaff = isStaff(AuthService.getCurrentUser());
+  const viewerIsStaff = capabilities.staffControls && isStaff(AuthService.getCurrentUser());
 
   const changed = () => {
     refresh();
@@ -86,12 +95,15 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
           isAdmin={viewerIsStaff}
           onBack={back}
           onChanged={changed}
+          notify={notify}
+          capabilities={capabilities}
+          onGuestWrite={onGuestWrite}
         />
       )}
 
       {/* Hidden, not unmounted, under an open thread: Back returns to the same rows. */}
       <div ref={listRef} hidden={openId !== null} className="py-4 min-w-0">
-        <UserFilterRow type={type} filters={filters} fileLabel={copy.button} onFile={() => setFiling(true)} />
+        <UserFilterRow type={type} filters={filters} fileLabel={copy.button} onFile={onGuestWrite ?? (() => setFiling(true))} />
 
         <FeedbackList
           active={active}
@@ -106,9 +118,19 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
           refreshNonce={nonce}
           onOpen={open}
           emptyLabel={emptyLabel}
+          notify={notify}
+          capabilities={capabilities}
+          onGuestWrite={onGuestWrite}
         />
 
-        <FeedbackDialog open={filing} onOpenChange={setFiling} initialType={type} onFiled={changed} />
+        <FeedbackDialog
+          open={filing}
+          onOpenChange={setFiling}
+          initialType={type}
+          onFiled={changed}
+          notify={notify}
+          capabilities={capabilities}
+        />
       </div>
     </>
   );

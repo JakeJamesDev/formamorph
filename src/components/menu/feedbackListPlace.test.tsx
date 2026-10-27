@@ -7,6 +7,7 @@ import { FeedbackHubDialog } from './FeedbackHubDialog';
 import FeedbackService from '@/services/FeedbackService';
 import { ANY_STATUS, CATEGORY_OPTIONS, DEFAULT_CATEGORY } from '@/lib/feedbackPresentation';
 import type { FeedbackThread, FeedbackType } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -95,7 +96,7 @@ afterEach(() => {
 
 const TABS = [
   { name: 'the staff queue', renderTab: (type: FeedbackType) => <FeedbackQueueTab active type={type} /> },
-  { name: 'the user tab', renderTab: (type: FeedbackType) => <MyFeedbackTab active type={type} /> },
+  { name: 'the user tab', renderTab: (type: FeedbackType) => <MyFeedbackTab notify={toastFeedbackNotify} active type={type} /> },
 ];
 
 /** Pages forward until the pager reads `page`. */
@@ -193,9 +194,9 @@ describe('a filter change', () => {
     { name: 'status', label: 'Filter by status', tab: <FeedbackQueueTab active type="bug" />, pick: ANY_STATUS },
     { name: 'category on the queue', label: 'Filter by category', tab: <FeedbackQueueTab active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value, hidden: true },
     { name: 'sort on the queue', label: 'Sort by', tab: <FeedbackQueueTab active type="suggestion" />, pick: 'newest' },
-    { name: 'scope', label: 'Which threads', tab: <MyFeedbackTab active type="bug" />, pick: 'all' },
-    { name: 'category on the user tab', label: 'Filter by category', tab: <MyFeedbackTab active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value, hidden: true },
-    { name: 'sort on the user tab', label: 'Sort by', tab: <MyFeedbackTab active type="suggestion" />, pick: 'votes', hidden: true },
+    { name: 'scope', label: 'Which threads', tab: <MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />, pick: 'all' },
+    { name: 'category on the user tab', label: 'Filter by category', tab: <MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value, hidden: true },
+    { name: 'sort on the user tab', label: 'Sort by', tab: <MyFeedbackTab notify={toastFeedbackNotify} active type="suggestion" />, pick: 'votes', hidden: true },
   ];
 
   it.each(CASES)('resets to page 1: $name', async ({ label, tab, pick, hidden }) => {
@@ -212,11 +213,11 @@ describe('a filter change', () => {
 
 describe('the Feedback dialog', () => {
   it('starts on page 1 when it is closed and opened again', async () => {
-    const { rerender } = render(<FeedbackHubDialog open onOpenChange={() => {}} />);
+    const { rerender } = render(<FeedbackHubDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     await pageTo(3);
 
-    rerender(<FeedbackHubDialog open={false} onOpenChange={() => {}} />);
-    rerender(<FeedbackHubDialog open onOpenChange={() => {}} />);
+    rerender(<FeedbackHubDialog notify={toastFeedbackNotify} open={false} onOpenChange={() => {}} />);
+    rerender(<FeedbackHubDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(await screen.findByText('Page 1 of 5')).toBeTruthy();
     expect(lastPageAsked()).toBe(1);

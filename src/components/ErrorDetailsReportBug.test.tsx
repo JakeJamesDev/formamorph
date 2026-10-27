@@ -19,6 +19,7 @@ import { closeErrorDetails, DetailedError } from '@/lib/errorDetails';
 import { closeFeedback } from '@/lib/feedbackOpener';
 import { saveFeedbackDraft } from '@/lib/feedbackDraft';
 import { toastError } from '@/lib/linkToast';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 const FENCED = '```\nNode #4: missing\n```';
 const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
@@ -92,7 +93,7 @@ describe('Report Bug in Error Details', () => {
     act(() => closeFeedback());
     cleanup();
     // The toast may be gone by now; the report itself keeps the details.
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     expect(titleValue()).toBe('ComfyUI rejected the workflow');
     expect(bodyValue()).toBe(FENCED);
   });

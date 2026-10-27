@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "react-toastify";
-import { toastError } from "@/lib/linkToast";
 import { ArrowLeft, Check, ChevronUp, CircleCheck, Lock, LockOpen, Pencil, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
+import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 
 const COMMENT_MAX = 4000;
 
@@ -41,6 +40,12 @@ interface FeedbackThreadViewProps {
   onChanged?: () => void;
   /** Called after a delete, so the caller can drop back to its list. */
   onDeleted?: () => void;
+  /** Reports each result to the reader. */
+  notify: FeedbackNotify;
+  /** What this surface may show and do; the app's full set when omitted. */
+  capabilities?: FeedbackCapabilities;
+  /** Set for a guest: Vote and Reply call it instead of the service. */
+  onGuestWrite?: () => void;
 }
 
 /** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
@@ -82,7 +87,8 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
  * differ in whether triage controls are shown, and the reply box appears only for whoever may write.
  */
 export function FeedbackThreadView({
-  threadId, onBack, isAdmin = false, showTriage = false, onChanged, onDeleted,
+  threadId, onBack, isAdmin: callerIsAdmin = false, showTriage: callerShowsTriage = false, onChanged, onDeleted,
+  notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite,
 }: FeedbackThreadViewProps) {
   const [detail, setDetail] = useState<FeedbackDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -100,8 +106,12 @@ export function FeedbackThreadView({
   const plainVocab = useMemo(() => plainVocabulary(), []);
   // Author-owned, not admin-owned: moderation stops at rewriting somebody else's words, and the server
   // refuses it either way.
-  const myId = String(AuthService.getCurrentUser()?.id ?? '');
-  const viewer = AuthService.getCurrentUser();
+  const account = AuthService.getCurrentUser();
+  const myId = String(account?.id ?? '');
+  // Without staff controls a staff reader is a player: the account's id alone carries no role.
+  const viewer = capabilities.staffControls ? account : (account ? { id: account.id } : null);
+  const isAdmin = capabilities.staffControls && callerIsAdmin;
+  const showTriage = capabilities.staffControls && callerShowsTriage;
 
   const mounted = useMountedRef();
 
@@ -115,7 +125,7 @@ export function FeedbackThreadView({
       onChanged?.();
     } catch (error) {
       if (!mounted.current) return;
-      toastError(error, 'Failed to load this');
+      notify('Failed to load this', 'error', error);
       setDetail(null);
     } finally {
       if (mounted.current) setIsLoading(false);
@@ -138,7 +148,7 @@ export function FeedbackThreadView({
       onChanged?.();
     } catch (error) {
       if (!mounted.current) return;
-      toastError(error, 'Failed to post the comment');
+      notify('Failed to post the comment', 'error', error);
     } finally {
       if (mounted.current) setIsSending(false);
     }
@@ -160,7 +170,7 @@ export function FeedbackThreadView({
       if (detail?.thread.acceptedAnswer?.id === updated.id) void load();
     } catch (error) {
       if (!mounted.current) return;
-      toastError(error, 'Failed to save the comment');
+      notify('Failed to save the comment', 'error', error);
     } finally {
       if (mounted.current) setIsSavingEdit(false);
     }
@@ -178,7 +188,7 @@ export function FeedbackThreadView({
       // Deleting the accepted reply reopens the question, so the pin and the status come from the server.
       if (detail?.thread.acceptedAnswer?.id === commentId) void load();
     } catch (error) {
-      if (mounted.current) toastError(error, 'Failed to delete the comment');
+      if (mounted.current) notify('Failed to delete the comment', 'error', error);
     }
   };
 
@@ -189,7 +199,7 @@ export function FeedbackThreadView({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      if (mounted.current) toastError(error, 'Failed to update the status');
+      if (mounted.current) notify('Failed to update the status', 'error', error);
     }
   };
 
@@ -200,7 +210,7 @@ export function FeedbackThreadView({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      if (mounted.current) toastError(error, 'Failed to update the answer');
+      if (mounted.current) notify('Failed to update the answer', 'error', error);
     }
   };
 
@@ -211,11 +221,15 @@ export function FeedbackThreadView({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      if (mounted.current) toastError(error, 'Failed to lock the thread');
+      if (mounted.current) notify('Failed to lock the thread', 'error', error);
     }
   };
 
   const toggleVote = async () => {
+    if (onGuestWrite) {
+      onGuestWrite();
+      return;
+    }
     if (!detail || isVoting) return;
 
     setIsVoting(true);
@@ -226,7 +240,7 @@ export function FeedbackThreadView({
       onChanged?.();
     } catch (error) {
       if (!mounted.current) return;
-      toastError(error, 'Failed to record your vote');
+      notify('Failed to record your vote', 'error', error);
     } finally {
       if (mounted.current) setIsVoting(false);
     }
@@ -235,11 +249,11 @@ export function FeedbackThreadView({
   const remove = async () => {
     try {
       await FeedbackService.remove(threadId);
-      toast.success('Deleted');
+      notify('Deleted', 'success');
       onChanged?.();
       onDeleted?.();
     } catch (error) {
-      if (mounted.current) toastError(error, 'Failed to delete this');
+      if (mounted.current) notify('Failed to delete this', 'error', error);
     }
   };
 
@@ -497,7 +511,11 @@ export function FeedbackThreadView({
         )}
       </div>
 
-      {!canWrite ? (
+      {onGuestWrite && votable && !thread.locked ? (
+        <Button size="sm" onClick={onGuestWrite}>
+          <Send className="mr-2 h-4 w-4" /> Sign In to Reply
+        </Button>
+      ) : !canWrite ? (
         // The server refuses the post either way, so an empty box here would just be an error waiting
         // to happen.
         <p className="rounded-md border border-dashed p-3 text-center text-helper text-muted-foreground">
@@ -543,6 +561,7 @@ export function FeedbackThreadView({
         thread={thread}
         mayEditProse={canEditProse}
         mayRefile={canRefile}
+        notify={notify}
         onSaved={(saved) => {
           // Written in rather than refetched, so a type move's new status and cleared diagnostics land
           // at once; the list behind it is told separately.

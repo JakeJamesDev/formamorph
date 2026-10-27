@@ -1,0 +1,32 @@
+import type { FeedbackType } from '@/types';
+
+/** Reports a result to the reader; `error` carries the caught failure behind an `error` line. */
+export type FeedbackNotify = (message: string, kind: 'success' | 'error', error?: unknown) => void;
+
+/** What a feedback surface may show and do. */
+export interface FeedbackCapabilities {
+  /** The boards that get a tab, in tab order. */
+  boards: readonly FeedbackType[];
+  /** The types the filing form offers, in tab order. */
+  fileTypes: readonly FeedbackType[];
+  /** Whether a staff reader gets staff powers here; off treats them as a player. */
+  staffControls: boolean;
+  /** Whether unread threads are marked. */
+  unreadBadge: boolean;
+}
+
+/** The complete in-app feedback surface. */
+export const APP_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
+  boards: ['bug', 'suggestion', 'question'],
+  fileTypes: ['bug', 'suggestion', 'question'],
+  staffControls: true,
+  unreadBadge: true,
+};
+
+/** The website board: Votable boards only, no staff powers, no unread marks. */
+export const WEBSITE_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
+  boards: ['suggestion', 'question'],
+  fileTypes: ['suggestion', 'question'],
+  staffControls: false,
+  unreadBadge: false,
+};

@@ -7,6 +7,7 @@ import { MyFeedbackTab } from './MyFeedbackTab';
 import { ANY_STATUS, UNRESOLVED_STATUS, statusFilterValue } from '@/lib/feedbackPresentation';
 import FeedbackService from '@/services/FeedbackService';
 import type { FeedbackThread } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -55,7 +56,7 @@ describe('the list', () => {
     // Each tab pays for its own data only while it is the one being looked at.
     const list = stubList([report()]);
 
-    render(<PagedList type="bug" active={false} onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active={false} onOpen={() => {}} />);
 
     await waitFor(() => expect(list).not.toHaveBeenCalled());
   });
@@ -63,7 +64,7 @@ describe('the list', () => {
   it('shows the title, category and status', async () => {
     stubList([report()]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect(await screen.findByText('Save button does nothing')).toBeTruthy();
     expect(screen.getByText(/Crash or freeze/)).toBeTruthy();
@@ -73,7 +74,7 @@ describe('the list', () => {
   it('flags a thread with replies the reader has not seen', async () => {
     stubList([report({ unread: true })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect(await screen.findByLabelText('New replies')).toBeTruthy();
   });
@@ -82,7 +83,7 @@ describe('the list', () => {
     // The dot is a color, and color alone excludes anybody whose vision does not separate these hues.
     stubList([report({ unread: true })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect((await screen.findByText('Save button does nothing')).className).toContain('font-semibold');
   });
@@ -90,7 +91,7 @@ describe('the list', () => {
   it('leaves a read title at the ordinary weight, or the weight says nothing', async () => {
     stubList([report({ unread: false })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect((await screen.findByText('Save button does nothing')).className).not.toContain('font-semibold');
   });
@@ -99,7 +100,7 @@ describe('the list', () => {
     // Scanning a long list should not mean hunting for dots at the end of each title.
     stubList([report({ unread: true })]);
 
-    const { container } = render(<PagedList type="bug" active onOpen={() => {}} />);
+    const { container } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     const row = container.querySelector('.relative.flex.items-stretch');
@@ -109,7 +110,7 @@ describe('the list', () => {
   it('leaves a read row unrailed', async () => {
     stubList([report({ unread: false })]);
 
-    const { container } = render(<PagedList type="bug" active onOpen={() => {}} />);
+    const { container } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(container.querySelector('[aria-hidden="true"].absolute')).toBeNull();
@@ -118,7 +119,7 @@ describe('the list', () => {
   it('leaves a read thread unflagged', async () => {
     stubList([report({ unread: false })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('New replies')).toBeNull();
@@ -126,18 +127,18 @@ describe('the list', () => {
 
   it('names the reporter only on the admin queue', async () => {
     // Your own list is all yours, so naming you on every row is noise.
-    const { unmount } = render(<PagedList type="bug" active onOpen={() => {}} />);
+    const { unmount } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     stubList([report()]);
     unmount();
 
     stubList([report()]);
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
     expect(screen.queryByText(/finder/)).toBeNull();
     cleanup();
 
     stubList([report()]);
-    render(<PagedList type="bug" active scope="all" onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active scope="all" onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
     expect(screen.getByText(/finder/)).toBeTruthy();
   });
@@ -146,7 +147,7 @@ describe('the list', () => {
     stubList([report({ id: 'b7' })]);
     const onOpen = vi.fn();
 
-    render(<PagedList type="bug" active onOpen={onOpen} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={onOpen} />);
     fireEvent.click(await screen.findByText('Save button does nothing'));
 
     expect(onOpen).toHaveBeenCalledWith('b7');
@@ -155,7 +156,7 @@ describe('the list', () => {
   it('says so when there is nothing to show', async () => {
     stubList([]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} emptyLabel="Nothing here." />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} emptyLabel="Nothing here." />);
 
     expect(await screen.findByText('Nothing here.')).toBeTruthy();
   });
@@ -163,7 +164,7 @@ describe('the list', () => {
   it('shows no pager when everything fits one page', async () => {
     stubList([report()], 1);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByText(/Page 1 of/)).toBeNull();
@@ -200,7 +201,7 @@ describe('the admin queue', () => {
   it('passes a chosen status straight through to the list', async () => {
     const list = stubList([report()]);
 
-    render(<PagedList type="bug" active scope="all" status="confirmed" onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active scope="all" status="confirmed" onOpen={() => {}} />);
 
     await waitFor(() => expect(list).toHaveBeenCalledWith(
       expect.objectContaining({ scope: 'all', status: 'confirmed' })
@@ -221,7 +222,7 @@ describe('the reporter’s own tab', () => {
   it('never asks for anyone else’s reports', async () => {
     const list = stubList([report()]);
 
-    render(<MyFeedbackTab type="bug" active />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} type="bug" active />);
 
     await waitFor(() => expect(list).toHaveBeenCalled());
     expect(list.mock.calls[0][0]).not.toMatchObject({ scope: 'all' });
@@ -230,7 +231,7 @@ describe('the reporter’s own tab', () => {
   it('offers to file a new one', async () => {
     stubList([]);
 
-    render(<MyFeedbackTab type="bug" active />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} type="bug" active />);
 
     expect(await screen.findByRole('button', { name: /Report a Bug/ })).toBeTruthy();
   });
@@ -243,7 +244,7 @@ describe('votes on the list', () => {
   it('offers a vote button on a suggestion', async () => {
     stubList([suggestion({ votes: 3, voted: false })]);
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
 
     expect(await screen.findByRole('button', { name: /Vote for Let me rename a save/ })).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
@@ -252,7 +253,7 @@ describe('votes on the list', () => {
   it('offers a vote button on a question', async () => {
     stubList([report({ type: 'question', category: 'setup', title: 'How do I use a local model?', votes: 7 })]);
 
-    render(<PagedList type="question" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="question" active onOpen={() => {}} />);
 
     expect(await screen.findByRole('button', { name: /Vote for How do I use a local model\?/ })).toBeTruthy();
     expect(screen.getByText('7')).toBeTruthy();
@@ -262,7 +263,7 @@ describe('votes on the list', () => {
     // A bug is not a popularity contest — one person hitting it is reason enough to fix it.
     stubList([report()]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByRole('button', { name: /Vote/ })).toBeNull();
@@ -271,7 +272,7 @@ describe('votes on the list', () => {
   it('says when the vote on screen is the reader’s', async () => {
     stubList([suggestion({ votes: 1, voted: true })]);
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
 
     const button = await screen.findByRole('button', { name: /Remove your vote/ });
     expect(button.getAttribute('aria-pressed')).toBe('true');
@@ -283,7 +284,7 @@ describe('votes on the list', () => {
     // arrow fills and the count thickens, neither of which relies on the color being legible.
     stubList([suggestion({ votes: 1, voted: true })]);
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
 
     const button = await screen.findByRole('button', { name: /Remove your vote/ });
     expect(button.querySelector('svg')?.getAttribute('class')).toContain('fill-current');
@@ -293,7 +294,7 @@ describe('votes on the list', () => {
   it('leaves an unvoted one outlined and light', async () => {
     stubList([suggestion({ votes: 1, voted: false })]);
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
 
     const button = await screen.findByRole('button', { name: /^Vote for/ });
     expect(button.querySelector('svg')?.getAttribute('class')).not.toContain('fill-current');
@@ -307,7 +308,7 @@ describe('votes on the list', () => {
     const setVote = vi.spyOn(FeedbackService, 'setVote')
       .mockResolvedValue(suggestion({ votes: 4, voted: true }));
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Vote for/ }));
 
     await waitFor(() => expect(setVote).toHaveBeenCalledWith('b1', true));
@@ -320,7 +321,7 @@ describe('votes on the list', () => {
     const setVote = vi.spyOn(FeedbackService, 'setVote')
       .mockResolvedValue(suggestion({ votes: 0, voted: false }));
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Remove your vote/ }));
 
     await waitFor(() => expect(setVote).toHaveBeenCalledWith('b1', false));
@@ -330,7 +331,7 @@ describe('votes on the list', () => {
     stubList([suggestion({ votes: 3, voted: false })]);
     vi.spyOn(FeedbackService, 'setVote').mockRejectedValue(new Error('offline'));
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Vote for/ }));
 
     await waitFor(() => expect(screen.getByText('3')).toBeTruthy());
@@ -342,7 +343,7 @@ describe('votes on the list', () => {
     vi.spyOn(FeedbackService, 'setVote').mockResolvedValue(suggestion({ votes: 2, voted: true }));
     const onOpen = vi.fn();
 
-    render(<PagedList type="suggestion" active onOpen={onOpen} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={onOpen} />);
     fireEvent.click(await screen.findByRole('button', { name: /Vote for/ }));
 
     await waitFor(() => expect(FeedbackService.setVote).toHaveBeenCalled());
@@ -366,7 +367,7 @@ describe('a load that answers late', () => {
     const held = heldLoad();
     vi.spyOn(FeedbackService, 'list').mockReturnValue(held.promise);
 
-    const { unmount } = render(<PagedList type="bug" active onOpen={() => {}} />);
+    const { unmount } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     unmount();
     held.reject(new Error('offline'));
     await held.promise.catch(() => {});
@@ -382,8 +383,8 @@ describe('a load that answers late', () => {
       .mockReturnValueOnce(older.promise)
       .mockReturnValueOnce(newer.promise);
 
-    const { rerender } = render(<PagedList type="bug" active onOpen={() => {}} />);
-    rerender(<PagedList type="bug" active category="crash" onOpen={() => {}} />);
+    const { rerender } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
+    rerender(<PagedList notify={toastFeedbackNotify} type="bug" active category="crash" onOpen={() => {}} />);
     newer.resolve({ threads: [report({ id: 'new', title: 'Newer filter row' })], total: 1 });
     expect(await screen.findByText('Newer filter row')).toBeTruthy();
 
@@ -404,10 +405,10 @@ describe('a load that answers late', () => {
       .mockReturnValueOnce(newer.promise);
 
     // Rows on screen first: a first load shows a skeleton, which has no busy state to read.
-    const { rerender, container } = render(<PagedList type="bug" active onOpen={() => {}} />);
+    const { rerender, container } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
-    rerender(<PagedList type="bug" active category="crash" onOpen={() => {}} />);
-    rerender(<PagedList type="bug" active category="editor"onOpen={() => {}} />);
+    rerender(<PagedList notify={toastFeedbackNotify} type="bug" active category="crash" onOpen={() => {}} />);
+    rerender(<PagedList notify={toastFeedbackNotify} type="bug" active category="editor"onOpen={() => {}} />);
     await waitFor(() => expect(FeedbackService.list).toHaveBeenCalledTimes(3));
 
     older.resolve({ threads: [], total: 0 });
@@ -423,12 +424,12 @@ describe('a load that answers late', () => {
       .mockResolvedValueOnce({ threads: [report()], total: 1 })
       .mockReturnValueOnce(held.promise);
 
-    const { rerender, container } = render(<PagedList type="bug" active onOpen={() => {}} />);
+    const { rerender, container } = render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
     await screen.findByText('Save button does nothing');
-    rerender(<PagedList type="bug" active category="crash" onOpen={() => {}} />);
+    rerender(<PagedList notify={toastFeedbackNotify} type="bug" active category="crash" onOpen={() => {}} />);
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
 
-    rerender(<PagedList type="bug" active={false} category="crash" onOpen={() => {}} />);
+    rerender(<PagedList notify={toastFeedbackNotify} type="bug" active={false} category="crash" onOpen={() => {}} />);
 
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).toBeNull());
   });
@@ -438,7 +439,7 @@ describe('what the list asks for', () => {
   it('names its branch', async () => {
     stubList([]);
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
 
     await waitFor(() => expect(vi.mocked(FeedbackService.list).mock.calls[0][0])
       .toMatchObject({ type: 'suggestion' }));
@@ -447,7 +448,7 @@ describe('what the list asks for', () => {
   it('passes the sort through', async () => {
     stubList([]);
 
-    render(<PagedList type="suggestion" active sort="votes" onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active sort="votes" onOpen={() => {}} />);
 
     await waitFor(() => expect(vi.mocked(FeedbackService.list).mock.calls[0][0])
       .toMatchObject({ sort: 'votes' }));
@@ -456,7 +457,7 @@ describe('what the list asks for', () => {
   it('marks a locked thread', async () => {
     stubList([report({ locked: true })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect(await screen.findByLabelText('Locked')).toBeTruthy();
   });
@@ -466,7 +467,7 @@ describe('the reply count', () => {
   it('says how many, so a busy thread reads as busy from the list', async () => {
     stubList([report({ commentCount: 4 })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect((await screen.findByLabelText('4 replies')).textContent).toContain('4');
   });
@@ -474,7 +475,7 @@ describe('the reply count', () => {
   it('is worded singular for one, since the glyph does not carry the number', async () => {
     stubList([report({ commentCount: 1 })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     expect(await screen.findByLabelText('1 reply')).toBeTruthy();
   });
@@ -483,7 +484,7 @@ describe('the reply count', () => {
     // A column of zeroes down an untouched queue says only that the feature exists.
     stubList([report({ commentCount: 0 })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     await screen.findByText('Save button does nothing');
     expect(screen.queryByLabelText(/repl/)).toBeNull();
@@ -494,7 +495,7 @@ describe('the reply count', () => {
     // zero would state something this build does not know.
     stubList([report()]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     await screen.findByText('Save button does nothing');
     expect(screen.queryByLabelText(/repl/)).toBeNull();
@@ -504,7 +505,7 @@ describe('the reply count', () => {
     // Both are per-thread facts about where it stands; splitting them puts one at each end of the row.
     stubList([report({ commentCount: 2 })]);
 
-    render(<PagedList type="bug" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
 
     const count = await screen.findByLabelText('2 replies');
     expect(count.parentElement?.textContent).toContain('Open');
@@ -513,7 +514,7 @@ describe('the reply count', () => {
   it('counts on a suggestion too, where a vote already competes for the eye', async () => {
     stubList([report({ type: 'suggestion', category: 'gameplay', status: 'open', votes: 7, commentCount: 3 })]);
 
-    render(<PagedList type="suggestion" active onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="suggestion" active onOpen={() => {}} />);
 
     expect(await screen.findByLabelText('3 replies')).toBeTruthy();
   });
@@ -529,7 +530,7 @@ describe('the reporter’s badge', () => {
   it('shows on a staff member’s report', async () => {
     stubList([report({ reporter: { id: 'u9', username: 'wren_hallow', role: 'mod' } })]);
 
-    render(<PagedList type="bug" active scope="all" onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active scope="all" onOpen={() => {}} />);
 
     expect(await screen.findByText('Mod')).toBeTruthy();
   });
@@ -537,7 +538,7 @@ describe('the reporter’s badge', () => {
   it('shows none for an ordinary account', async () => {
     stubList([report({ reporter: { id: 'u9', username: 'wren_hallow', role: null } })]);
 
-    render(<PagedList type="bug" active scope="all" onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active scope="all" onOpen={() => {}} />);
     await screen.findByText(/wren_hallow/);
 
     expect(screen.queryByText(/^(Mod|Dev|Admin)$/)).toBeNull();
@@ -548,7 +549,7 @@ describe('the reporter’s badge', () => {
     // and would swallow the click that opens the thread.
     stubList([report({ reporter: { id: 'u9', username: 'wren_hallow', role: 'admin' } })]);
 
-    render(<PagedList type="bug" active scope="all" onOpen={() => {}} />);
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active scope="all" onOpen={() => {}} />);
     await screen.findByText('Admin');
 
     expect(screen.queryByRole('button', { name: /View wren_hallow/ })).toBeNull();

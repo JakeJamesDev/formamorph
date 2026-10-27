@@ -5,6 +5,7 @@ import { FEEDBACK_SEARCH_DELAY_MS } from './FeedbackSearchInput';
 import { SIMILAR_LIMIT } from './SimilarQuestions';
 import FeedbackService, { type FeedbackPage } from '@/services/FeedbackService';
 import type { FeedbackThread } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -65,7 +66,7 @@ describe('similar questions while asking', () => {
   it('searches every question by the title once it has a few characters', async () => {
     const list = vi.spyOn(FeedbackService, 'list').mockResolvedValue(page(question()));
 
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="question" />);
     setTitle('ca');
     await pause();
     expect(list).not.toHaveBeenCalled();
@@ -80,7 +81,7 @@ describe('similar questions while asking', () => {
   it('never searches for a bug or a suggestion', async () => {
     const list = vi.spyOn(FeedbackService, 'list').mockResolvedValue(page(question()));
 
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="suggestion" />);
     setTitle('Let me pin a stat');
     await pause();
 
@@ -94,7 +95,7 @@ describe('similar questions while asking', () => {
       () => new Promise<FeedbackPage>((resolve) => { resolvers.push(resolve); }),
     );
 
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="question" />);
     setTitle('undo turn');
     await waitFor(() => expect(resolvers).toHaveLength(1));
     setTitle('stat location');
@@ -110,7 +111,7 @@ describe('similar questions while asking', () => {
   it('hides the list when a newer search fails', async () => {
     const list = vi.spyOn(FeedbackService, 'list').mockResolvedValueOnce(page(question()));
 
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="question" />);
     setTitle('stat location');
     expect(await screen.findByText('Similar Questions')).toBeTruthy();
 
@@ -123,7 +124,7 @@ describe('similar questions while asking', () => {
   it('sends nothing once the dialog unmounts mid-pause', async () => {
     const list = vi.spyOn(FeedbackService, 'list').mockResolvedValue(page(question()));
 
-    const { unmount } = render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+    const { unmount } = render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="question" />);
     setTitle('stat location');
     unmount();
     await pause();
@@ -139,7 +140,7 @@ describe('similar questions while asking', () => {
       id: 'c1', body: 'Me too.', createdAt: '2026-07-02T00:00:00.000Z', editedAt: null, author: { id: 'me', username: 'me' },
     });
 
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="question" />);
     setTitle('stat location');
     setBody('Tried a script.');
     fireEvent.click(await screen.findByRole('button', { name: /Can a stat change/ }));
