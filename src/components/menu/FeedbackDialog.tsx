@@ -16,6 +16,8 @@ import PromptField from "@/components/prompt/PromptField";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
+import { useMountedRef } from "@/lib/useMountedRef";
+import { FieldError } from "@/components/ui/typography";
 import {
   clearFeedbackDraft, FEEDBACK_BODY_MAX, FEEDBACK_TITLE_MAX, hasDraftContent,
   loadFeedbackDraft, saveFeedbackDraft,
@@ -153,6 +155,9 @@ export function FeedbackDialog({
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [similarRefresh, setSimilarRefresh] = useState(0);
   const [sendError, setSendError] = useState<string | null>(null);
+  // An empty required field, said next to it where the surface shows notes inline.
+  const [fieldNote, setFieldNote] = useState<{ field: 'title' | 'body'; text: string } | null>(null);
+  const mounted = useMountedRef();
 
   // No chip family: this is prose, and an authored world's placeholders mean nothing here.
   const plainVocab = useMemo(() => plainVocabulary(), []);
@@ -190,6 +195,7 @@ export function FeedbackDialog({
     setPendingFill(draft && !same ? fill : null);
     setIsSending(false);
     setSendError(null);
+    setFieldNote(null);
     setOpenThreadId(null);
     filedRef.current = false;
     setDiagnostics(collectDiagnostics());
@@ -225,17 +231,18 @@ export function FeedbackDialog({
   const copy = COPY[type];
 
   const submit = async () => {
-    if (!title.trim()) {
-      notify('A title is required', 'error');
-      return;
-    }
-    if (!body.trim()) {
-      notify('A description is required', 'error');
+    const missing = !title.trim()
+      ? { field: 'title' as const, text: 'A title is required' }
+      : !body.trim() ? { field: 'body' as const, text: 'A description is required' } : null;
+    if (missing) {
+      if (capabilities.inlineNotes) setFieldNote(missing);
+      else notify(missing.text, 'error');
       return;
     }
 
     setIsSending(true);
     setSendError(null);
+    setFieldNote(null);
     try {
       const filed = await FeedbackService.file({ type, title: title.trim(), category, body: body.trim() });
       // Filed, so it is no longer unsent writing. The form itself is left alone — blanking it here would
@@ -246,12 +253,17 @@ export function FeedbackDialog({
       onFiled?.(filed);
       onOpenChange(false);
     } catch (error) {
-      // Said in the form too: a page note sits behind the dialog's overlay.
       const failure = 'Failed to send this';
-      setSendError(error instanceof DetailedError && error.message ? error.message : failure);
-      notify(failure, 'error', error);
+      // Inline surfaces say it once, in the form; a 401 goes to `notify` alone, which owns the session.
+      const unauthorized = error instanceof DetailedError && error.status === 401;
+      const inline = capabilities.inlineNotes && !unauthorized;
+      // The app says it in the form too: a toast sits behind the dialog's overlay.
+      if (mounted.current && (inline || !capabilities.inlineNotes)) {
+        setSendError(error instanceof DetailedError && error.message ? error.message : failure);
+      }
+      if (!inline) notify(failure, 'error', error);
     } finally {
-      setIsSending(false);
+      if (mounted.current) setIsSending(false);
     }
   };
 
@@ -310,7 +322,10 @@ export function FeedbackDialog({
                 maxLength={FEEDBACK_TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={copy.titlePlaceholder}
+                aria-invalid={fieldNote?.field === 'title' || undefined}
+                aria-describedby={fieldNote?.field === 'title' ? 'feedbackTitleNote' : undefined}
               />
+              {fieldNote?.field === 'title' && <FieldError id="feedbackTitleNote" role="alert">{fieldNote.text}</FieldError>}
             </div>
 
             {type === 'question' && (
@@ -356,6 +371,7 @@ export function FeedbackDialog({
               >
                 <FeedbackSuggestPlugin threadTypes={capabilities.threadSearchTypes} />
               </PromptField>
+              {fieldNote?.field === 'body' && <FieldError role="alert">{fieldNote.text}</FieldError>}
             </div>
 
             {/* Bugs only. A suggestion or question is about the game, not about the machine it was written
