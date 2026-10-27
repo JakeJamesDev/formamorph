@@ -11,6 +11,9 @@ import { DAYPARTS } from './gameClock';
 import { canvasRects } from './locationCanvas';
 import { isDescendantLocation } from './locationTree';
 import { bundledWorldHarness, withValues, type StatValues } from '@/test/bundledWorldHarness';
+import { visibleImages, visibleLocationImages } from './imageVisibility';
+import { scoped } from './scope';
+import type { GateInput, GateStatSet } from './traitGates';
 import type { Daypart } from '@/types';
 
 const { world, persona: cursed, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
@@ -162,5 +165,28 @@ describe('the Sugarscape canvas', () => {
     expect(center('The Toffee Ridge').y).toBeLessThan(center('The Candy Dunes').y);
     expect(center('The Stalefront').x).toBeGreaterThan(center('The Candy Dunes').x);
     expect(center('The Leftover Wastes').x).toBeGreaterThan(center('The Stalefront').x);
+  });
+});
+
+describe('the Visibility rules', () => {
+  const defaults = settleDefaults(gate);
+  // The Cursed's Stickiness, as play reads it.
+  const stickinessAt = (value: number): GateInput => ({
+    ...gate,
+    active: defaults.active,
+    stats: scoped<GateStatSet>({}, { [cursed.id]: { stickiness: { name: 'Stickiness', value, min: 0, max: 100 } } }),
+  });
+  const stalefront = world.locations.find((l) => l.name === 'The Stalefront')!;
+
+  it('coats the Cursed in frosting once Stickiness reaches 75', () => {
+    const slots = (value: number) => visibleImages(cursed, stickinessAt(value)).map((image) => image.slot);
+    expect(slots(74)).toEqual([0]);
+    expect(slots(75)).toEqual([1]);
+  });
+
+  it.each(DAYPARTS)('shows the Stalefront seam lit by day and dark at night (%s)', (daypart) => {
+    const atDaypart = { ...gate, daypart };
+    const slots = visibleLocationImages(stalefront, { ...atDaypart, active: settleDefaults(atDaypart).active }).map((image) => image.slot);
+    expect(slots).toEqual(daypart === 'evening' || daypart === 'night' ? [1] : [0]);
   });
 });
