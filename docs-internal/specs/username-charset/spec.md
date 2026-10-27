@@ -1,7 +1,7 @@
 # Spec: Username Character Rule
 
-Status: ready-for-agent
-Status note: Reopened 2026-10-27 for cleanup tickets 08–09. First close: Tickets 01–07; last landing 2c8149b67. Review: spec text corrected (server spec). Gates green on 2026-10-27.
+Status: done
+Status note: Closed 2026-10-27. Tickets 01–09; last landing f7d26972a. Review: spec text corrected; cleanup landed as tickets 08–09. Gates green on 2026-10-27.
 Spec session: username-charset — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/username-charset/spec.md`. It holds the flag, gate and rename contract. This spec holds the rulings (Q1–Q18) and the user stories.
