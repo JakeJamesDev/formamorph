@@ -1,6 +1,7 @@
 # Spec: Feedback on the website
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-27. Tickets 01–06 landed; last landing 5b75e28df. Review: three gaps fixed by ticket 06; spec text corrected. Gates green on 2026-10-27 (lint and test run before ticket 06; ticket 06 passed its own prepare gates).
 Spec session: website-feedback — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/website-feedback/spec.md`. It holds the read-access contract. This spec follows it.
