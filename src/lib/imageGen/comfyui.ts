@@ -7,7 +7,15 @@ import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
 import { DetailedError } from '../errorDetails';
 import { withTimeout } from '../withTimeout';
-import { trimUrl, authHeaders, POLL_INTERVAL_MS, reachFetch } from './http';
+import { trimUrl, authHeaders, POLL_INTERVAL_MS, reachFetch, readBody, refusalDetails } from './http';
+
+// Started without --enable-cors-header, ComfyUI's origin check answers 403 to the desktop app's app://local origin.
+const ORIGIN_REFUSED = 'ComfyUI refused the request (HTTP 403). Check that it started with --enable-cors-header.';
+
+/** The error for a 403, with the request and body in the details. */
+async function originRefused(method: string, url: string, res: Response): Promise<DetailedError> {
+  return new DetailedError(ORIGIN_REFUSED, refusalDetails(method, url, res, await readBody(res)));
+}
 
 /** The canonical ComfyUI txt2img API-format graph, with %tokens% for the values we inject. Users can edit
  *  this in Settings or paste their own "Save (API Format)" export as long as the tokens are present. */
@@ -220,7 +228,9 @@ export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Pr
   const base = trimUrl(endpointUrl);
   const headers = authHeaders(apiToken, 'Bearer');
   const get = async (node: string): Promise<unknown> => {
-    const res = await fetch(`${base}/object_info/${node}`, { headers });
+    const url = `${base}/object_info/${node}`;
+    const res = await fetch(url, { headers });
+    if (res.status === 403) throw await originRefused('GET', url, res);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   };
@@ -234,10 +244,12 @@ export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Pr
 
 /** The first checkpoint the server lists, or `''` when it lists none. */
 async function firstComfyCheckpoint(base: string, opts: ImageGenOpts): Promise<string> {
-  const res = await reachFetch('comfyui', opts.endpointUrl, `${base}/object_info/CheckpointLoaderSimple`, {
+  const url = `${base}/object_info/CheckpointLoaderSimple`;
+  const res = await reachFetch('comfyui', opts.endpointUrl, url, {
     headers: authHeaders(opts.apiToken, 'Bearer'),
     signal: opts.signal,
   });
+  if (res.status === 403) throw await originRefused('GET', url, res);
   if (!res.ok) throw new Error(`ComfyUI could not list its checkpoints: HTTP ${res.status}`);
   return extractEnum(await res.json(), 'CheckpointLoaderSimple', 'ckpt_name')[0] ?? '';
 }
@@ -348,6 +360,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
       body: JSON.stringify({ prompt: graph, client_id: clientId }),
       signal: opts.signal,
     });
+    if (res.status === 403) throw await originRefused('POST', `${base}/prompt`, res);
     if (!res.ok) {
       // ComfyUI returns 400 with { error, node_errors } on a bad graph (e.g. missing checkpoint).
       let body: unknown;
