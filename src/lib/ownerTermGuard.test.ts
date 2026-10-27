@@ -26,6 +26,7 @@ describe('checkOwnerTerm', () => {
     ['the placeholder tree ids', 'drop({ activeHolderId, holderId });'],
     ['the word placeholder', 'const placeholders = [];'],
     ['an account holder', 'reads the request as the account holder’s own act'],
+    ['image bytes', '"data": "data:image/webp;base64,UklGRqZJholderBearerAAA=",'],
   ])('allows %s', (_name, src) => {
     expect(lines(src)).toEqual([]);
   });

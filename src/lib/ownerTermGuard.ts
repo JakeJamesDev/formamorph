@@ -19,6 +19,9 @@ const LEGACY_KEY_FILES = new Set([
   'src/services/EntityStorageService.test.ts',
 ]);
 
+/** Embedded image bytes, whose base64 can spell either word by chance. */
+const DATA_URI = /data:[\w/+.-]+;base64,[A-Za-z0-9+/=]*/g;
+
 /** Doc and glossary lines that name the old words to say they are gone. */
 const NAMES_THE_OLD_WORD = /_Avoid_: bearer, holder|Older files name the owner under `bearer`/;
 
@@ -26,7 +29,8 @@ const NAMES_THE_OLD_WORD = /_Avoid_: bearer, holder|Older files name the owner u
 export function checkOwnerTerm(text: string, path: string): OwnerTermViolation[] {
   const legacy = LEGACY_KEY_FILES.has(path);
   const found: OwnerTermViolation[] = [];
-  text.split(/\r?\n/).forEach((line, i) => {
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.replace(DATA_URI, '');
     if (NAMES_THE_OLD_WORD.test(line)) return;
     const row = (term: OwnerTermViolation['term']) => ({ line: i + 1, term, text: line.trim().slice(0, 120) });
     if (!legacy && /bearer/i.test(line) && !HTTP_BEARER.test(line)) found.push(row('bearer'));
