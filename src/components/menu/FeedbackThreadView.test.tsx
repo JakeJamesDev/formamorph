@@ -4,6 +4,7 @@ import { FeedbackThreadView } from './FeedbackThreadView';
 import FeedbackService from '@/services/FeedbackService';
 import AuthService from '@/services/AuthService';
 import type { FeedbackComment, FeedbackDetail, FeedbackThread } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -77,7 +78,7 @@ describe('the thread', () => {
   it('shows the report and its replies', async () => {
     stubThread({ comments: [comment({ body: 'Looking into it.' })] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText('Save button does nothing')).toBeTruthy();
     expect(screen.getByText('Looking into it.')).toBeTruthy();
@@ -88,7 +89,7 @@ describe('the thread', () => {
     // account's *current* type — so a demotion rewrote every reply somebody had ever left.
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText(/root-admin/)).toBeTruthy();
     expect(screen.getByText('Admin')).toBeTruthy();
@@ -103,7 +104,7 @@ describe('the thread', () => {
       ],
     });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText('Mod')).toBeTruthy();
     expect(screen.getByText('Dev')).toBeTruthy();
@@ -112,7 +113,7 @@ describe('the thread', () => {
   it('signs the reporter’s own reply with their name and no badge', async () => {
     stubThread({ comments: [comment({ author: { id: 'u1', username: 'finder', role: null } })] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     // The report header names the reporter too, and both are now clickable, so there are two.
@@ -124,7 +125,7 @@ describe('the thread', () => {
   it('shows what the reporter filed with it', async () => {
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText('Windows · Chrome')).toBeTruthy();
   });
@@ -134,7 +135,7 @@ describe('the thread', () => {
     stubThread();
     const onChanged = vi.fn();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} onChanged={onChanged} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} onChanged={onChanged} />);
 
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });
@@ -142,7 +143,7 @@ describe('the thread', () => {
   it('says so when the thread cannot be loaded', async () => {
     vi.spyOn(FeedbackService, 'fetchThread').mockRejectedValue(new Error('offline'));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText(/could not be loaded/)).toBeTruthy();
   });
@@ -155,7 +156,7 @@ describe('replying', () => {
     const fetchThread = stubThread();
     vi.spyOn(FeedbackService, 'comment').mockResolvedValue(comment({ id: 'c2', body: 'Version 2.8.0.' }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
     setReply('Version 2.8.0.');
     fireEvent.click(screen.getByRole('button', { name: /Send Reply/ }));
@@ -168,7 +169,7 @@ describe('replying', () => {
     stubThread();
     const post = vi.spyOn(FeedbackService, 'comment').mockResolvedValue(comment());
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.getByRole('button', { name: /Send Reply/ }).hasAttribute('disabled')).toBe(true);
@@ -179,7 +180,7 @@ describe('replying', () => {
     stubThread();
     vi.spyOn(FeedbackService, 'comment').mockResolvedValue(comment({ id: 'c2', body: 'Sent.' }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
     setReply('Sent.');
     fireEvent.click(screen.getByRole('button', { name: /Send Reply/ }));
@@ -196,7 +197,7 @@ describe('reading somebody else’s report', () => {
     signedInAs('onlooker');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Which version?');
 
     expect(screen.queryByLabelText('Reply')).toBeNull();
@@ -208,7 +209,7 @@ describe('reading somebody else’s report', () => {
     signedInAs('onlooker');
     stubThread({ comments: [comment({ body: 'Looking into it.' })] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText('Save button does nothing')).toBeTruthy();
     expect(screen.getByText('Looking into it.')).toBeTruthy();
@@ -218,7 +219,7 @@ describe('reading somebody else’s report', () => {
     signedInAs('u1');
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.getByLabelText('Reply')).toBeTruthy();
@@ -228,7 +229,7 @@ describe('reading somebody else’s report', () => {
     signedInAs('some-admin');
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.getByLabelText('Reply')).toBeTruthy();
@@ -245,7 +246,7 @@ describe('changing your own comment', () => {
     signedInAs('a1');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
 
     expect(screen.getByRole('button', { name: 'Edit comment' })).toBeTruthy();
@@ -257,7 +258,7 @@ describe('changing your own comment', () => {
     signedInAs('someone-else');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
 
     expect(screen.queryByRole('button', { name: 'Edit comment' })).toBeNull();
@@ -268,7 +269,7 @@ describe('changing your own comment', () => {
     signedInAs('someone-else');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
 
     expect(screen.getByRole('button', { name: 'Delete comment' })).toBeTruthy();
@@ -278,7 +279,7 @@ describe('changing your own comment', () => {
     signedInAs('someone-else');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Which version?');
 
     expect(screen.queryByRole('button', { name: 'Edit comment' })).toBeNull();
@@ -291,7 +292,7 @@ describe('changing your own comment', () => {
     const edit = vi.spyOn(FeedbackService, 'editComment')
       .mockResolvedValue(comment({ body: 'Which app version?', editedAt: '2026-07-02T00:00:00.000Z' }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     await openEditor();
     setField('Comment text', 'Which app version?');
@@ -306,7 +307,7 @@ describe('changing your own comment', () => {
     signedInAs('a1');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
 
     expect(((await openEditor()) as HTMLTextAreaElement).value).toBe('Which version?');
@@ -317,7 +318,7 @@ describe('changing your own comment', () => {
     stubThread({ comments: [comment()] });
     const edit = vi.spyOn(FeedbackService, 'editComment').mockResolvedValue(comment());
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     await openEditor();
     setField('Comment text', 'Never mind.');
@@ -334,7 +335,7 @@ describe('changing your own comment', () => {
     stubThread({ comments: [comment()] });
     const edit = vi.spyOn(FeedbackService, 'editComment').mockResolvedValue(comment());
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     await openEditor();
     setField('Comment text', '   ');
@@ -350,7 +351,7 @@ describe('changing your own comment', () => {
     stubThread({ comments: [comment()] });
     vi.spyOn(FeedbackService, 'editComment').mockRejectedValue(new Error('offline'));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     await openEditor();
     setField('Comment text', 'Which app version?');
@@ -363,7 +364,7 @@ describe('changing your own comment', () => {
     signedInAs('a1');
     stubThread({ comments: [comment({ editedAt: '2026-07-02T00:00:00.000Z' })] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
 
     expect(await screen.findByText(/edited/)).toBeTruthy();
   });
@@ -372,7 +373,7 @@ describe('changing your own comment', () => {
     signedInAs('a1');
     stubThread({ comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
 
     expect(screen.queryByText(/edited/)).toBeNull();
@@ -383,7 +384,7 @@ describe('changing your own comment', () => {
     stubThread({ comments: [comment(), comment({ id: 'c2', body: 'Still broken.' })] });
     const remove = vi.spyOn(FeedbackService, 'removeComment').mockResolvedValue(undefined);
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete comment' })[0]);
 
@@ -400,7 +401,7 @@ describe('changing your own comment', () => {
     stubThread({ comments: [comment()] });
     vi.spyOn(FeedbackService, 'removeComment').mockRejectedValue(new Error('offline'));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
@@ -414,7 +415,7 @@ describe('triage controls', () => {
     // Moving a report through triage is the team's call, not the reporter's.
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('Status')).toBeNull();
@@ -426,7 +427,7 @@ describe('triage controls', () => {
     signedInAs('some-admin');
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('Status')).toBeNull();
@@ -438,7 +439,7 @@ describe('triage controls', () => {
   it('are shown to an admin', async () => {
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.getByLabelText('Status')).toBeTruthy();
@@ -450,7 +451,7 @@ describe('triage controls', () => {
     const remove = vi.spyOn(FeedbackService, 'remove').mockResolvedValue(undefined);
     const onDeleted = vi.fn();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage onDeleted={onDeleted} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage onDeleted={onDeleted} />);
     await screen.findByText('Save button does nothing');
     fireEvent.click(screen.getByLabelText('Delete thread'));
 
@@ -465,7 +466,7 @@ describe('triage controls', () => {
     stubThread();
     const remove = vi.spyOn(FeedbackService, 'remove').mockResolvedValue(undefined);
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
     await screen.findByText('Save button does nothing');
     fireEvent.click(screen.getByLabelText('Delete thread'));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
@@ -484,7 +485,7 @@ describe('a suggestion thread', () => {
     signedInAs('passer-by');
     stubThread({ thread: suggestion() });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Let me rename a save');
 
     expect(screen.getByLabelText('Reply')).toBeTruthy();
@@ -494,7 +495,7 @@ describe('a suggestion thread', () => {
     signedInAs('passer-by');
     stubThread({ thread: suggestion({ votes: 4, voted: true }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     const button = await screen.findByRole('button', { name: /Voted/ });
     expect(button.getAttribute('aria-pressed')).toBe('true');
@@ -507,7 +508,7 @@ describe('a suggestion thread', () => {
     const setVote = vi.spyOn(FeedbackService, 'setVote')
       .mockResolvedValue(suggestion({ votes: 5, voted: true }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Vote/ }));
 
     await waitFor(() => expect(setVote).toHaveBeenCalledWith('b1', true));
@@ -518,7 +519,7 @@ describe('a suggestion thread', () => {
     signedInAs('u1');
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByRole('button', { name: /Vote/ })).toBeNull();
@@ -541,7 +542,7 @@ describe('a question thread', () => {
     signedInAs('passer-by');
     stubThread({ thread: question() });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('How do I use a local model?');
 
     expect(screen.getByLabelText('Reply')).toBeTruthy();
@@ -552,7 +553,7 @@ describe('a question thread', () => {
     stubThread({ thread: question({ votes: 1, voted: true }) });
     const setVote = vi.spyOn(FeedbackService, 'setVote').mockResolvedValue(question({ votes: 0, voted: false }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Voted · 1/ }));
 
     await waitFor(() => expect(setVote).toHaveBeenCalledWith('b1', false));
@@ -563,7 +564,7 @@ describe('a question thread', () => {
     // Answered comes only from accepting a reply; the server refuses it on the status route.
     stubThread({ thread: question({ status: 'answered' }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
     await screen.findByText('How do I use a local model?');
 
     expect(await statusOptions()).toEqual(['Open', 'Answered', 'Closed']);
@@ -575,7 +576,7 @@ describe('a question thread', () => {
     stubThread({ thread: question() });
     vi.spyOn(FeedbackService, 'setStatus').mockResolvedValue(question({ status: 'closed', locked: true }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
     await screen.findByText('How do I use a local model?');
     await statusOptions();
     const option = screen.getAllByRole('option').find((item) => item.textContent === 'Closed') as HTMLElement;
@@ -599,7 +600,7 @@ describe('an accepted answer', () => {
     signedInAs('passer-by');
     stubThread({ thread: answered(), comments: [fix, chatter] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     const pin = await screen.findByTestId('accepted-answer');
     expect(pin.textContent).toContain('Point it at port 1234.');
@@ -613,7 +614,7 @@ describe('an accepted answer', () => {
     signedInAs('passer-by');
     stubThread({ thread: question(), comments: [fix] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Point it at port 1234.');
 
     expect(screen.queryByTestId('accepted-answer')).toBeNull();
@@ -625,7 +626,7 @@ describe('an accepted answer', () => {
     stubThread({ thread: question(), comments: [fix, chatter] });
     const setAnswer = vi.spyOn(FeedbackService, 'setAnswer').mockResolvedValue(answered());
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Point it at port 1234.');
     expect(screen.getAllByRole('button', { name: 'Accept Answer' }).length).toBe(2);
     fireEvent.click(screen.getAllByRole('button', { name: 'Accept Answer' })[0]);
@@ -640,7 +641,7 @@ describe('an accepted answer', () => {
     stubThread({ thread: answered(), comments: [fix, chatter] });
     const setAnswer = vi.spyOn(FeedbackService, 'setAnswer').mockResolvedValue(question({ acceptedAnswer: null }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     fireEvent.click(await screen.findByRole('button', { name: 'Clear Answer' }));
 
     await waitFor(() => expect(setAnswer).toHaveBeenCalledWith('b1', null));
@@ -652,7 +653,7 @@ describe('an accepted answer', () => {
     signedInAs('passer-by');
     stubThread({ thread: answered(), comments: [fix, chatter] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByTestId('accepted-answer');
 
     expect(screen.queryByRole('button', { name: 'Accept Answer' })).toBeNull();
@@ -663,7 +664,7 @@ describe('an accepted answer', () => {
     signedInAs('u1');
     stubThread({ comments: [fix] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Point it at port 1234.');
 
     expect(screen.queryByRole('button', { name: 'Accept Answer' })).toBeNull();
@@ -673,7 +674,7 @@ describe('an accepted answer', () => {
     signedInAs('u1');
     stubThread({ thread: report({ type: 'suggestion', category: 'interface', diagnostics: {} }), comments: [fix] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Point it at port 1234.');
 
     expect(screen.queryByRole('button', { name: 'Accept Answer' })).toBeNull();
@@ -686,7 +687,7 @@ describe('an accepted answer', () => {
       .mockResolvedValue({ thread: question(), comments: [chatter] });
     vi.spyOn(FeedbackService, 'removeComment').mockResolvedValue(undefined);
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByTestId('accepted-answer');
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete comment' })[0]);
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
@@ -700,7 +701,7 @@ describe('an accepted answer', () => {
     const fetchThread = stubThread({ thread: answered(), comments: [fix, chatter] });
     vi.spyOn(FeedbackService, 'removeComment').mockResolvedValue(undefined);
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByTestId('accepted-answer');
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
@@ -718,7 +719,7 @@ describe('an accepted answer', () => {
       .mockResolvedValue({ thread: question({ status: 'answered', acceptedAnswer: edited }), comments: [edited] });
     vi.spyOn(FeedbackService, 'editComment').mockResolvedValue(edited);
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByTestId('accepted-answer');
     fireEvent.click(screen.getByRole('button', { name: 'Edit comment' }));
     await waitFor(() => expect(screen.getByLabelText('Comment text')).toBeTruthy());
@@ -739,7 +740,7 @@ describe('an accepted answer', () => {
       .mockResolvedValue({ thread: moved, comments: [fix] });
     vi.spyOn(FeedbackService, 'update').mockResolvedValue({ ...moved, acceptedAnswer: answered().acceptedAnswer });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByTestId('accepted-answer');
     fireEvent.click(screen.getByLabelText('Edit this report'));
     fireEvent.keyDown(await screen.findByLabelText('Kind'), { key: 'Enter' });
@@ -762,7 +763,7 @@ describe('a locked thread', () => {
     signedInAs('passer-by');
     stubThread({ thread: locked() });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('Reply')).toBeNull();
@@ -774,7 +775,7 @@ describe('a locked thread', () => {
     signedInAs('some-admin');
     stubThread({ thread: locked() });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.getByLabelText('Reply')).toBeTruthy();
@@ -784,7 +785,7 @@ describe('a locked thread', () => {
     signedInAs('a1');
     stubThread({ thread: locked(), comments: [comment()] });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Which version?');
 
     expect(screen.queryByRole('button', { name: 'Edit comment' })).toBeNull();
@@ -795,7 +796,7 @@ describe('a locked thread', () => {
     signedInAs('passer-by');
     stubThread({ thread: locked({ votes: 2 }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByRole('button', { name: /Vote/ })).toBeTruthy();
   });
@@ -804,7 +805,7 @@ describe('a locked thread', () => {
     signedInAs('passer-by');
     stubThread({ thread: locked() });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText('Locked')).toBeTruthy();
   });
@@ -815,7 +816,7 @@ describe('the lock control', () => {
     signedInAs('some-admin');
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
 
     expect(await screen.findByLabelText('Lock thread')).toBeTruthy();
   });
@@ -824,7 +825,7 @@ describe('the lock control', () => {
     signedInAs('some-admin');
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('Lock thread')).toBeNull();
@@ -836,7 +837,7 @@ describe('the lock control', () => {
     const setLocked = vi.spyOn(FeedbackService, 'setLocked')
       .mockResolvedValue(report({ locked: true }));
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
     fireEvent.click(await screen.findByLabelText('Lock thread'));
 
     await waitFor(() => expect(setLocked).toHaveBeenCalledWith('b1', true));
@@ -848,7 +849,7 @@ describe('the lock control', () => {
     signedInAs('some-admin');
     stubThread({ thread: report({ type: 'suggestion', category: 'gameplay', title: 'Let me rename a save', status: 'considering' }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
     await screen.findByText('Let me rename a save');
 
     // The status badge and the closed Select both render the label; the Select is the one under test.
@@ -862,7 +863,7 @@ describe('editing the report itself', () => {
     vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'u1', username: 'finder', accountType: 'normal' });
     stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder' } }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByLabelText('Edit this report')).toBeTruthy();
   });
@@ -873,7 +874,7 @@ describe('editing the report itself', () => {
     vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'u9', username: 'stranger', accountType: 'normal' });
     stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder' } }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('Edit this report')).toBeNull();
@@ -884,7 +885,7 @@ describe('editing the report itself', () => {
     vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
     stubThread({ thread: report({ type: 'bug', reporter: { id: 'u1', username: 'finder' } }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByLabelText('Edit this report')).toBeTruthy();
   });
@@ -893,7 +894,7 @@ describe('editing the report itself', () => {
     // Somebody may already have read the earlier wording.
     stubThread({ thread: report({ editedAt: '2026-08-02T00:00:00.000Z' }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.getAllByText(/edited/).length).toBeGreaterThan(0);
@@ -902,7 +903,7 @@ describe('editing the report itself', () => {
   it('says nothing on one that has not been', async () => {
     stubThread();
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByText(/· edited/)).toBeNull();
@@ -919,7 +920,7 @@ describe('the reporter’s badge on the thread', () => {
   it('badges a report filed by the team', async () => {
     stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder', role: 'mod' } }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
     expect(await screen.findByText('Mod')).toBeTruthy();
   });
@@ -927,7 +928,7 @@ describe('the reporter’s badge on the thread', () => {
   it('leaves an ordinary reporter unbadged', async () => {
     stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder', role: null } }) });
 
-    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByText(/^(Mod|Dev|Admin)$/)).toBeNull();

@@ -8,6 +8,7 @@ import { FEEDBACK_SEARCH_DELAY_MS, FEEDBACK_SEARCH_MAX, FeedbackSearchInput } fr
 import FeedbackService from '@/services/FeedbackService';
 import { DEFAULT_CATEGORY, SEARCH_LABELS } from '@/lib/feedbackPresentation';
 import type { FeedbackThread, FeedbackType } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -71,7 +72,7 @@ afterEach(() => {
 });
 
 const queue = (type: FeedbackType) => <FeedbackQueueTab active type={type} />;
-const userTab = (type: FeedbackType) => <MyFeedbackTab active type={type} />;
+const userTab = (type: FeedbackType) => <MyFeedbackTab notify={toastFeedbackNotify} active type={type} />;
 
 const TABS = [
   { name: 'the staff queue', type: 'bug', renderTab: queue, empty: 'No reports match this filter.' },
@@ -215,7 +216,7 @@ const switchTo = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', {
 
 describe.each([
   { name: 'the Admin Panel', renderHost: () => <FeedbackTab active /> },
-  { name: 'the Feedback dialog', renderHost: () => <FeedbackHubDialog open onOpenChange={() => {}} /> },
+  { name: 'the Feedback dialog', renderHost: () => <FeedbackHubDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} /> },
 ])('a tab switch in $name', ({ renderHost }) => {
   it('keeps each tab’s search and page', async () => {
     render(renderHost());
@@ -237,13 +238,13 @@ describe.each([
 
 describe('the Feedback dialog', () => {
   it('starts with an empty search when it is closed and opened again', async () => {
-    const { rerender } = render(<FeedbackHubDialog open onOpenChange={() => {}} />);
+    const { rerender } = render(<FeedbackHubDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     await screen.findByText('Page 1 of 5');
     type_('bug', 'Thread 1');
     await screen.findByText('Page 1 of 2');
 
-    rerender(<FeedbackHubDialog open={false} onOpenChange={() => {}} />);
-    rerender(<FeedbackHubDialog open onOpenChange={() => {}} />);
+    rerender(<FeedbackHubDialog notify={toastFeedbackNotify} open={false} onOpenChange={() => {}} />);
+    rerender(<FeedbackHubDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(await screen.findByText('Page 1 of 5')).toBeTruthy();
     expect(searchBox('bug')).toHaveProperty('value', '');

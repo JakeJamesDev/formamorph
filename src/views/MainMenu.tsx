@@ -133,6 +133,7 @@ import { useEventBanners } from "@/components/events/useEventBanners";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
 import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
+import { toastFeedbackNotify } from "@/lib/feedbackToast";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { onSignInSucceeded, requestSignIn } from "@/lib/signInStore";
 import { PublishModal } from "@/components/menu/PublishModal";
@@ -3021,6 +3022,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialTab={surfaceNav.tab('feedbackHub') ?? (devRoute?.modal === 'feedbackHub' ? (devRoute.tab as MyFeedbackTabKey | undefined) : undefined)}
         requestKey={surfaceNav.key}
         onChanged={handleBugsChange}
+        notify={toastFeedbackNotify}
       />
 
       <AdminPanelDialog

@@ -7,6 +7,7 @@ import { FontTuneDialog } from '@/components/FontTuneDialog';
 import { GenerateImageButton } from '@/components/GenerateImageButton';
 import { EventFormDialog } from '@/components/menu/EventFormDialog';
 import { FeedbackDialog } from '@/components/menu/FeedbackDialog';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 import { FeedbackEditDialog } from '@/components/menu/FeedbackEditDialog';
 import { FeedbackThreadView } from '@/components/menu/FeedbackThreadView';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -59,9 +60,9 @@ export default function DevPaneRoutes() {
     case 'feedbackForm': {
       const type = FEEDBACK_TYPES.find((value) => value === route.tab) ?? 'bug';
       const { title, body } = devFeedbackThread(type);
-      return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialType={type} initialTitle={title} initialBody={body} />;
+      return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialType={type} initialTitle={title} initialBody={body} notify={toastFeedbackNotify} />;
     }
-    case 'feedbackEdit': return <FeedbackEditDialog open onOpenChange={clearRouteOnClose} thread={devFeedbackThread()} mayEditProse mayRefile onSaved={ignore} />;
+    case 'feedbackEdit': return <FeedbackEditDialog open onOpenChange={clearRouteOnClose} thread={devFeedbackThread()} mayEditProse mayRefile onSaved={ignore} notify={toastFeedbackNotify} />;
     case 'feedbackThread': {
       const staff = route.tab === 'staff';
       return (
@@ -69,7 +70,7 @@ export default function DevPaneRoutes() {
           <DialogContent surface="feedbackHub" aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
             <DialogTitle className="sr-only">Feedback</DialogTitle>
             <ScrollArea className="flex-1 min-h-0 min-w-0 px-1">
-              <FeedbackThreadView threadId="dev-question-answered" onBack={() => clearRouteOnClose(false)} isAdmin={staff} showTriage={staff} />
+              <FeedbackThreadView threadId="dev-question-answered" onBack={() => clearRouteOnClose(false)} isAdmin={staff} showTriage={staff} notify={toastFeedbackNotify} />
             </ScrollArea>
           </DialogContent>
         </Dialog>

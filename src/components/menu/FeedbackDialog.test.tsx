@@ -2,6 +2,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FeedbackDialog } from './FeedbackDialog';
 import FeedbackService from '@/services/FeedbackService';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -53,7 +54,7 @@ describe('filing a report', () => {
   it('sends the title, category and description', async () => {
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     fillDraft();
     send();
 
@@ -67,7 +68,7 @@ describe('filing a report', () => {
   it('refuses a report with no title or no description', async () => {
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     setField('feedbackBody', 'Body only.');
     send();
@@ -82,7 +83,7 @@ describe('filing a report', () => {
     // Trimmed rather than passed through, or the server would reject what looked filled in.
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     setField('feedbackTitle', 'A title');
     setField('feedbackBody', '   \n  ');
     send();
@@ -95,7 +96,7 @@ describe('filing a report', () => {
     const onOpenChange = vi.fn();
     const onFiled = vi.fn();
 
-    render(<FeedbackDialog open onOpenChange={onOpenChange} onFiled={onFiled} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={onOpenChange} onFiled={onFiled} />);
     fillDraft();
     send();
 
@@ -108,7 +109,7 @@ describe('filing a report', () => {
     vi.spyOn(FeedbackService, 'file').mockRejectedValue(new Error('offline'));
     const onOpenChange = vi.fn();
 
-    render(<FeedbackDialog open onOpenChange={onOpenChange} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={onOpenChange} />);
     fillDraft();
     send();
 
@@ -118,7 +119,7 @@ describe('filing a report', () => {
 
   it('holds the description to the length the server accepts', () => {
     // PromptField has no maxLength of its own, so the cap is applied here.
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     setField('feedbackBody', 'x'.repeat(5000));
 
@@ -126,7 +127,7 @@ describe('filing a report', () => {
   });
 
   it('writes the description in the markdown editor', () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(fieldProps.last).toMatchObject({ markdown: true, ariaLabel: 'What Happened' });
   });
@@ -135,7 +136,7 @@ describe('filing a report', () => {
 describe('the diagnostics panel', () => {
   it('shows what will be sent before it is sent', async () => {
     // Nothing about the reporter's machine leaves without them having seen it.
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(screen.getByText('Sent with your report')).toBeTruthy();
     expect(screen.getByText('Version')).toBeTruthy();
@@ -144,7 +145,7 @@ describe('the diagnostics panel', () => {
   });
 
   it('says the playthrough is not included', async () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(screen.getByText(/Nothing about your worlds or saves/)).toBeTruthy();
   });
@@ -153,7 +154,7 @@ describe('the diagnostics panel', () => {
     // The service collects diagnostics itself, so the panel and the payload must come from one place.
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     const shownPlatform = screen.getByText('Platform').nextElementSibling?.textContent;
     fillDraft();
     send();
@@ -167,14 +168,14 @@ describe('the diagnostics panel', () => {
 
 describe('reopening', () => {
   const reopen = (rerender: (ui: React.ReactElement) => void, props = {}) => {
-    rerender(<FeedbackDialog open={false} onOpenChange={() => {}} {...props} />);
-    rerender(<FeedbackDialog open onOpenChange={() => {}} {...props} />);
+    rerender(<FeedbackDialog notify={toastFeedbackNotify} open={false} onOpenChange={() => {}} {...props} />);
+    rerender(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} {...props} />);
   };
   const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
   const bodyValue = () => (document.getElementById('feedbackBody') as HTMLTextAreaElement).value;
 
   it('holds an unsent report so it can be closed to check something in game', async () => {
-    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    const { rerender } = render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     fillDraft();
 
     reopen(rerender);
@@ -185,18 +186,18 @@ describe('reopening', () => {
   });
 
   it('holds it across a reload, not just a close', async () => {
-    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    const { rerender } = render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     fillDraft();
     // A fresh mount with nothing carried in memory is what a reload leaves behind.
     cleanup();
     void rerender;
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(titleValue()).toBe('Save button does nothing');
   });
 
   it('reopens on the branch that was being written, not the caller’s default', async () => {
-    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    const { rerender } = render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="suggestion" />);
     fillDraft();
 
     reopen(rerender, { initialType: 'bug' });
@@ -206,7 +207,7 @@ describe('reopening', () => {
   });
 
   it('starts blank again once the draft is discarded', async () => {
-    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    const { rerender } = render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     fillDraft();
 
     fireEvent.click(screen.getByRole('button', { name: 'Discard Draft' }));
@@ -219,7 +220,7 @@ describe('reopening', () => {
 
   it('starts blank after the report is filed', async () => {
     vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
-    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    const { rerender } = render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     fillDraft();
     send();
     await waitFor(() => expect(FeedbackService.file).toHaveBeenCalled());
@@ -231,7 +232,7 @@ describe('reopening', () => {
   });
 
   it('offers nothing to discard on a blank form', async () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(screen.getByRole('button', { name: 'Discard Draft' })).toBeDisabled();
   });
@@ -244,14 +245,14 @@ describe('a fill over a draft', () => {
   const confirm = () => screen.queryByRole('alertdialog', { name: 'Replace Unsent Draft?' });
   const activeTab = () => screen.getAllByRole('tab').find((tab) => tab.getAttribute('data-state') === 'active')?.textContent;
   const writeDraft = () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     fillDraft();
     cleanup();
   };
 
   it('asks first, and Replace takes the fill in the draft’s place', async () => {
     writeDraft();
-    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} {...FILL} />);
     expect(confirm()).toHaveAccessibleDescription('This deletes your unsent draft.');
     expect(titleValue()).toBe('Save button does nothing');
 
@@ -264,13 +265,13 @@ describe('a fill over a draft', () => {
 
     // The fill is the draft now.
     cleanup();
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     expect(titleValue()).toBe('How do I change the theme?');
   });
 
   it('opens on the draft and its branch, unchanged, with Keep Draft', async () => {
     writeDraft();
-    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} {...FILL} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Keep Draft' }));
     await waitFor(() => expect(confirm()).toBeNull());
@@ -280,16 +281,16 @@ describe('a fill over a draft', () => {
   });
 
   it('does not ask when the draft already is the fill', () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} {...FILL} />);
     cleanup();
-    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} {...FILL} />);
 
     expect(confirm()).toBeNull();
     expect(titleValue()).toBe('How do I change the theme?');
   });
 
   it('takes the fill at once over no draft', () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} {...FILL} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} {...FILL} />);
 
     expect(confirm()).toBeNull();
     expect(titleValue()).toBe('How do I change the theme?');
@@ -302,14 +303,14 @@ describe('the two branches', () => {
   const pickTab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
   it('opens on a bug report', async () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
 
     expect(screen.getByRole('tab', { name: 'Bug' }).getAttribute('data-state')).toBe('active');
   });
 
   it('opens where the caller asks', async () => {
     // The profile's Suggestions tab files suggestions; landing on Bug there would be wrong every time.
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="suggestion" />);
 
     expect(screen.getByRole('tab', { name: 'Suggestion' }).getAttribute('data-state')).toBe('active');
   });
@@ -317,7 +318,7 @@ describe('the two branches', () => {
   it('files against the branch on screen', async () => {
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     pickTab('Suggestion');
     fillDraft();
     send();
@@ -329,7 +330,7 @@ describe('the two branches', () => {
     // The two lists share no values a draft could carry across, so a stale one would be refused.
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     pickTab('Suggestion');
     fillDraft();
     send();
@@ -339,7 +340,7 @@ describe('the two branches', () => {
 
   it('keeps what has been written across a switch', async () => {
     // Losing a half-written description to a mis-click would be the worst part of the form.
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     setField('feedbackTitle', 'Half a thought');
     pickTab('Suggestion');
 
@@ -347,7 +348,7 @@ describe('the two branches', () => {
   });
 
   it('asks for the suggestion in its own words', async () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="suggestion" />);
 
     expect(screen.getByRole('button', { name: /Send Suggestion/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Send Report/ })).toBeNull();
@@ -360,7 +361,7 @@ describe('a question', () => {
   it('files with the question type and its category', async () => {
     const file = vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
 
-    render(<FeedbackDialog open onOpenChange={() => {}} />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} />);
     pickTab('Question');
     fillDraft();
     send();
@@ -369,7 +370,7 @@ describe('a question', () => {
   });
 
   it('asks in its own words, with no diagnostics panel', async () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="question" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="question" />);
 
     expect(screen.getByRole('button', { name: 'Post Question' })).toBeTruthy();
     expect(screen.getByLabelText('What You Tried')).toBeTruthy();
@@ -383,13 +384,13 @@ describe('what a suggestion does not carry', () => {
   it('shows no diagnostics panel', async () => {
     // A suggestion is about the game, not the machine it was written on — so there is nothing to
     // disclose, because nothing is collected.
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="suggestion" />);
 
     expect(screen.queryByText('Sent with your report')).toBeNull();
   });
 
   it('brings the panel back on the bug tab', async () => {
-    render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    render(<FeedbackDialog notify={toastFeedbackNotify} open onOpenChange={() => {}} initialType="suggestion" />);
     pickTab('Bug');
 
     expect(screen.getByText('Sent with your report')).toBeTruthy();

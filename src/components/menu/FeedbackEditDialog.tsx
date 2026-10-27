@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import { toastError } from "@/lib/linkToast";
 import { Pencil } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -14,6 +12,7 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { CATEGORY_OPTIONS, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 import { categoryForType, changedFields, type EditDraft } from "@/lib/feedbackEditing";
 import FeedbackService from "@/services/FeedbackService";
+import type { FeedbackNotify } from "@/lib/feedbackCapabilities";
 import { FEEDBACK_TYPES, type FeedbackCategory, type FeedbackThread, type FeedbackType } from "@/types";
 
 /** Mirrors the server's caps so the fields agree with what it will accept. */
@@ -30,6 +29,8 @@ interface FeedbackEditDialogProps {
   mayRefile: boolean;
   /** Handed the thread as it now reads. */
   onSaved: (thread: FeedbackThread) => void;
+  /** Reports each result to the reader. */
+  notify: FeedbackNotify;
 }
 
 /**
@@ -39,7 +40,7 @@ interface FeedbackEditDialogProps {
  * refused: a reporter sees their own words, the team sees the filing, and on a bug they see both.
  */
 export function FeedbackEditDialog({
-  open, onOpenChange, thread, mayEditProse, mayRefile, onSaved,
+  open, onOpenChange, thread, mayEditProse, mayRefile, onSaved, notify,
 }: FeedbackEditDialogProps) {
   const [draft, setDraft] = useState<EditDraft>({
     title: thread.title, body: thread.body, category: thread.category, type: thread.type,
@@ -74,9 +75,9 @@ export function FeedbackEditDialog({
         title?: string; body?: string; category?: FeedbackCategory; type?: FeedbackType;
       }));
       onOpenChange(false);
-      toast.success('Saved');
+      notify('Saved', 'success');
     } catch (error) {
-      toastError(error, 'Failed to save the changes');
+      notify('Failed to save the changes', 'error', error);
     } finally {
       setSaving(false);
     }

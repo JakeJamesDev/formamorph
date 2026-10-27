@@ -2,6 +2,7 @@ import { render, cleanup } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FeedbackQueueTab } from './FeedbackQueueTab';
 import { MyFeedbackTab } from './MyFeedbackTab';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -53,13 +54,13 @@ describe('the admin queue hands the list its filters', () => {
 
 describe('the profile tab hands the list its filters', () => {
   it('passes a category through', () => {
-    render(<MyFeedbackTab active type="suggestion" />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} active type="suggestion" />);
 
     expect(listProps.last).toHaveProperty('category');
   });
 
   it('passes a scope and a sort through', () => {
-    render(<MyFeedbackTab active type="bug" />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />);
 
     expect(listProps.last).toHaveProperty('scope');
     expect(listProps.last).toHaveProperty('sort');

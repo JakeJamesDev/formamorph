@@ -6,6 +6,7 @@ import { MyFeedbackTab } from './MyFeedbackTab';
 import FeedbackService from '@/services/FeedbackService';
 import { ANY_STATUS, CATEGORY_OPTIONS, UNRESOLVED_STATUSES } from '@/lib/feedbackPresentation';
 import type { FeedbackThread, FeedbackType } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -121,7 +122,7 @@ describe('the Filters badge on the staff queue', () => {
 
 describe('the Filters badge on the user tab', () => {
   it('counts each hidden filter that differs', async () => {
-    render(<MyFeedbackTab active type="bug" />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />);
     await screen.findByText('Page 1 of 5');
     openFilters();
 
@@ -132,7 +133,7 @@ describe('the Filters badge on the user tab', () => {
   });
 
   it('drops the count when a filter returns to its default', async () => {
-    render(<MyFeedbackTab active type="bug" />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />);
     await screen.findByText('Page 1 of 5');
     openFilters();
 
@@ -143,7 +144,7 @@ describe('the Filters badge on the user tab', () => {
   });
 
   it('leaves out the scope, which the row shows', async () => {
-    render(<MyFeedbackTab active type="bug" />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />);
     await screen.findByText('Page 1 of 5');
 
     pickIn('Which threads', 'all');
@@ -195,7 +196,7 @@ describe('Reset Filters', () => {
   });
 
   it('restores every user default, the scope included, and keeps the search', async () => {
-    render(<MyFeedbackTab active type="bug" />);
+    render(<MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />);
     await screen.findByText('Page 1 of 5');
     searchFor('Search Reports', 'crash');
     pickIn('Which threads', 'all');

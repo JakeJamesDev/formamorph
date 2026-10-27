@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FeedbackEditDialog } from './FeedbackEditDialog';
 import FeedbackService from '@/services/FeedbackService';
 import type { FeedbackThread } from '@/types';
+import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -26,7 +27,7 @@ const thread = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
-    <FeedbackEditDialog
+    <FeedbackEditDialog notify={toastFeedbackNotify}
       open
       onOpenChange={() => {}}
       thread={thread()}

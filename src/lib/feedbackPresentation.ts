@@ -248,3 +248,6 @@ export const userFilterDefaults = (type: FeedbackType): UserFilterValues => ({
 
 // A thread timestamp is a server timestamp like any other — see `lib/serverDate`.
 export { formatServerDateTime as formatFeedbackDate } from './serverDate';
+
+/** Tab-strip grid classes by tab count, spelled out so Tailwind's scan finds them. */
+export const TAB_GRID_COLUMNS: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };

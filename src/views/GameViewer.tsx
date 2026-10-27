@@ -76,6 +76,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { asSettingsTab, type SettingsTabId } from "../components/modals/settingsTabs";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
+import { toastFeedbackNotify } from "@/lib/feedbackToast";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import AuthService from "@/services/AuthService";
 import { useDevRoute } from "../lib/devRouter";
@@ -6267,7 +6268,7 @@ const GameViewer = ({
         </Suspense>
       )}
 
-      <FeedbackDialog open={showBugReport} onOpenChange={setShowBugReport} />
+      <FeedbackDialog open={showBugReport} onOpenChange={setShowBugReport} notify={toastFeedbackNotify} />
 
       <SettingsModal
         isOpen={isSettingsOpen}

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MyFeedbackSection } from "@/components/menu/MyFeedbackSection";
 import { type FeedbackTab as MyFeedbackTabKey } from "@/components/menu/feedbackTabs";
+import type { FeedbackCapabilities, FeedbackNotify } from "@/lib/feedbackCapabilities";
 
 interface FeedbackHubDialogProps {
   open: boolean;
@@ -13,6 +14,12 @@ interface FeedbackHubDialogProps {
   requestKey?: string;
   /** Fired when a thread is read or replied to, so the count on the button outside stays in step. */
   onChanged?: () => void;
+  /** Reports each result to the reader. */
+  notify: FeedbackNotify;
+  /** What this surface may show and do; the app's full set when omitted. */
+  capabilities?: FeedbackCapabilities;
+  /** Set for a guest: Vote, Reply and New call it instead of the service. */
+  onGuestWrite?: () => void;
 }
 
 /**
@@ -24,7 +31,9 @@ interface FeedbackHubDialogProps {
  * same thing already filed get filed again. Triage stays in the Admin Panel: reading a thread and
  * deciding what happens to it are different jobs, even for the person who can do both.
  */
-export function FeedbackHubDialog({ open, onOpenChange, initialTab, requestKey, onChanged }: FeedbackHubDialogProps) {
+export function FeedbackHubDialog({
+  open, onOpenChange, initialTab, requestKey, onChanged, notify, capabilities, onGuestWrite,
+}: FeedbackHubDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* No description: the tab labels say what each list is. `aria-describedby={undefined}` is Radix's
@@ -39,7 +48,11 @@ export function FeedbackHubDialog({ open, onOpenChange, initialTab, requestKey, 
         {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets a wide thread
             widen the dialog past its max width instead of being contained. */}
         <ScrollArea className="flex-1 min-h-0 min-w-0 px-1">
-          <MyFeedbackSection active={open} initialTab={initialTab} requestKey={requestKey} onChanged={onChanged} />
+          <MyFeedbackSection active={open} initialTab={initialTab} requestKey={requestKey} onChanged={onChanged}
+            notify={notify}
+            capabilities={capabilities}
+            onGuestWrite={onGuestWrite}
+          />
         </ScrollArea>
       </DialogContent>
     </Dialog>
