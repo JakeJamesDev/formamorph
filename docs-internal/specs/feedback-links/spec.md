@@ -25,7 +25,7 @@ The text is stored exactly as typed. The app and the website show links at read 
 2. As a mentioned player, I want the thread to count on my feedback badge, so that I know someone asked for me.
 3. As a mentioned player, I want later comments on that thread to badge me, so that I can follow the discussion I was pulled into.
 4. As a mentioned player, I want opening the thread to clear the badge, so that the badge works the same as for a thread I replied to.
-5. As a mentioned player on a suggestion or question, I want the thread in my own feedback list, so that I can find it again.
+5. As a mentioned player on a suggestion or question, I want the thread marked unread in the board lists, the same as a thread I replied to, so that I can find it again.
 6. As a player, I want `@username` to work regardless of letter case, so that `@Alice` and `@alice` reach the same account.
 7. As a reader, I want a mention to link to the player's profile, so that I can see who was mentioned.
 8. As a reader, I want a mention of an account that does not exist to show as "unknown user", so that a deleted account's name never shows.
@@ -69,7 +69,7 @@ The text is stored exactly as typed. The app and the website show links at read 
   - Q5: A mention makes the user a party to the thread, the same as a reply.
   - Q6: In a bug thread, a mention links but never badges.
   - Q7: Bugs, suggestions and questions share one `#N` sequence.
-  - Q8: Mention cap per post: admin none, moderator 10, everyone else 5.
+  - Q8: Mention cap per post: admin none, moderator and dev 10, everyone else 5.
   - Q9: A post over the cap is refused.
   - Q10: Mention claims follow the current text. An edit re-parses. A deleted post drops its mentions. Other participation stays.
   - Q11: `#N` to a bug links only where the reader can read it.
