@@ -4,7 +4,9 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WorldStorageService from './WorldStorageService';
 import { DEFAULT_WORLDS, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
-import valentinesSource from '@/defaultworlds/valentines.json?raw';
+import valentinesRaw from '@/defaultworlds/valentines.json?raw';
+import valentinesJson from '@/defaultworlds/valentines.json';
+import { bundledWorldText } from '@/test/bundledWorldFiles';
 
 const ids = DEFAULT_WORLDS.map((w) => w.id);
 const storedIds = async () => (await WorldStorageService.getWorldMetadata()).map((m) => m.id).sort();
@@ -26,11 +28,22 @@ describe('loadDefaultWorlds (stripped seed)', () => {
 
     expect(failed).toEqual([]);
     expect(await storedIds()).toEqual([...ids].sort());
-    // A test file's own `?raw` import keeps the art; the seeder's copy holds only markers.
-    expect(valentinesSource).toContain('data:image/');
+    // The stored file holds art; the seeder's copy holds only markers.
+    expect(bundledWorldText('valentines')).toContain('data:image/');
     const valentines = JSON.stringify(await WorldStorageService.getWorldData('valentines'));
     expect(valentines).toContain('<stripped image/');
     expect(valentines).not.toContain('data:image/');
+  });
+
+  it("strips a test file's own `?raw` import of a bundled world too", () => {
+    expect(valentinesRaw).toContain('<stripped image/');
+    expect(valentinesRaw).not.toContain('data:image/');
+  });
+
+  it('strips a JSON import of a bundled world too', () => {
+    const text = JSON.stringify(valentinesJson);
+    expect(text).toContain('<stripped image/');
+    expect(text).not.toContain('data:image/');
   });
 
   it('skips a bundled world the player deleted', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import raw from '@/defaultworlds/emberwatch.json?raw';
+import { bundledWorldText } from '@/test/bundledWorldFiles';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
@@ -19,7 +19,8 @@ import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
 import type { Entity, PersonaRef, World } from '@/types';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
+// The stored text through the world migration, images included: the Test Bench pass below reads them.
+const raw = bundledWorldText('emberwatch');
 const world: World = migrateWorld(JSON.parse(raw));
 const NONE: PersonaRef = { source: 'none' };
 
