@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import AuthService from './AuthService';
+import { USERNAME_RULE_HELP } from '@/lib/usernameRule';
 
 // Minimal fetch Response stub (only the bits AuthService reads).
 const res = (body: unknown, ok = true, status = 200): Response =>
@@ -41,7 +42,12 @@ describe('isValidEmail', () => {
 
 describe('register validation (rejects before any network call)', () => {
   it('rejects a too-short username', async () => {
-    await expect(AuthService.register('ab', 'password')).rejects.toThrow(/3 and 20/);
+    await expect(AuthService.register('ab', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects a username with a space or a dot', async () => {
+    await expect(AuthService.register('ann lee', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
+    await expect(AuthService.register('ann.lee', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
     expect(fetch).not.toHaveBeenCalled();
   });
   it('rejects a too-short password', async () => {

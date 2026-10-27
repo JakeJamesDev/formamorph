@@ -1,6 +1,6 @@
 # 02: Rule on Register Forms
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -12,10 +12,20 @@ The game's sign-up dialog and the site's register page apply the username rule b
 
 ## Acceptance criteria
 
-- [ ] One shared client function decides the rule and exports the help text. The game and the site both import it.
-- [ ] A table test covers boundary lengths, inner spaces, a dot, non-ASCII letters and `[deleted user]`.
-- [ ] The game's sign-up dialog and the site's register page show the help line and refuse a bad name before any request.
-- [ ] A trailing space is trimmed before the check and before the request.
-- [ ] The server's `USERNAME_TAKEN` refusal shows as a "name taken" error on both surfaces.
-- [ ] The **Register** row on the Community Creations wiki page states the new rule.
-- [ ] A changelog fragment describes the rule.
+- [x] One shared client function decides the rule and exports the help text. The game and the site both import it. (`src/lib/usernameRule.ts`; `SignInDialog`, `RegisterPage` and `AuthService.register` import it)
+- [x] A table test covers boundary lengths, inner spaces, a dot, non-ASCII letters and `[deleted user]`. (`usernameRule.test.ts`; widening `{3,20}` to `{3,21}` turned "refuses twenty-one characters" red)
+- [x] The game's sign-up dialog and the site's register page show the help line and refuse a bad name before any request. (`SignInDialog.username.test.tsx`, `RegisterPage.test.tsx`: no fetch, no policy read)
+- [x] A trailing space is trimmed before the check and before the request. (`sends the trimmed name`, `sends the username without its trailing space`)
+- [x] The server's `USERNAME_TAKEN` refusal shows as a "name taken" error on both surfaces. (both tests send the server's 400 body and read "That username is taken")
+- [x] The **Register** row on the Community Creations wiki page states the new rule.
+- [x] A changelog fragment describes the rule.
+
+## Landed
+
+**Not verified**
+- Rendering of the help line in both themes and on mobile: no frame taken. It uses the same `text-meta text-muted-foreground` classes as the email hint beside it.
+
+**For you**
+- Open **Register** in the game's sign-in dialog: the help line sits under **Username** and is absent in **Login**.
+- Open formamorph.ai `/register`: the hint under **Username** reads the new rule.
+- Server ticket 01 must send `code: 'USERNAME_TAKEN'` for the "That username is taken" text to show; without the code the server's own text shows.

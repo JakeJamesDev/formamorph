@@ -9,6 +9,7 @@ import { leaveTo } from '../leaveSite';
 import { at, res, resetAccountPage, signIn } from '../test/support';
 import { AGE_GATE_VERSION } from '@/lib/ageGate';
 import AuthService from '@/services/AuthService';
+import { USERNAME_RULE_HELP, USERNAME_TAKEN_MESSAGE } from '@/lib/usernameRule';
 
 vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
 
@@ -307,12 +308,16 @@ describe('RegisterPage', () => {
   });
 
   it('shows the refusal inline when the name is taken', async () => {
-    vi.mocked(fetch).mockResolvedValue(res({ message: 'Username already exists' }, false, 409));
+    vi.mocked(fetch).mockResolvedValue(res(
+      { success: false, code: 'USERNAME_TAKEN', error: 'Username already exists' },
+      false,
+      400,
+    ));
     render(<RegisterPage />);
 
     await fillIn('alice', 'hunter22');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Username already exists');
+    expect(await screen.findByRole('alert')).toHaveTextContent(USERNAME_TAKEN_MESSAGE);
     expect(localStorage.getItem('authToken')).toBeNull();
     expect(leaveTo).not.toHaveBeenCalled();
   });
@@ -327,14 +332,32 @@ describe('RegisterPage', () => {
   });
 
   // Keep the site's pre-policy checks aligned with the AuthService request boundary.
-  it('shows the username length rule before loading the policy', async () => {
+  it('shows the username help line under the field', () => {
     render(<RegisterPage />);
 
-    await fillIn('ab', 'hunter22');
+    expect(screen.getByText(USERNAME_RULE_HELP)).toBeInTheDocument();
+  });
 
-    expect(await screen.findByRole('alert'))
-      .toHaveTextContent('Username must be between 3 and 20 characters');
-    expect(fetch).not.toHaveBeenCalled();
+  it.each(['ab', 'ann lee', 'ann.lee', 'Zoë_1'])(
+    'refuses the username %j with the rule text before loading the policy',
+    async (name) => {
+      render(<RegisterPage />);
+
+      await fillIn(name, 'hunter22');
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(USERNAME_RULE_HELP);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('sends the username without its trailing space', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ token: 'tok', user: { username: 'alice' } }));
+    render(<RegisterPage />);
+
+    await fillIn('alice ', 'hunter22');
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(sentBody().username).toBe('alice');
   });
 
   it('shows the password length rule before loading the policy', async () => {

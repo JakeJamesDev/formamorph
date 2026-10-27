@@ -62,6 +62,7 @@ const ALLOWED = [
   '@/lib/communityCaches',
   '@/lib/deletionCancellation',
   '@/lib/serverDate',
+  '@/lib/usernameRule',
   '@/lib/utils',
   '@/types',
 ];
@@ -183,7 +184,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 63: `filesFrom`, the file-input reset the profile image picker reads; a type-only leaf, no toast.
     // 64: `responseBody`, the string-only leaf `responseError` reads to cut an HTML error page to its title.
     // 66: `listingModeration` and the `quarantine` date helpers it reads, for the review badges in the creations list.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(66);
+    // 67: `usernameRule`, the one username check the register page and `AuthService` share; a pure leaf.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(67);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
@@ -272,8 +274,8 @@ describe('the site entry stays out of the game bundle', () => {
 
   it('reaches a countable number of app modules from the feedback route', () => {
     // Raise the ceiling deliberately, having looked at what moved.
-    // 89: the feedback components, the markdown renderer and the prompt field.
-    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(89);
+    // 90: the feedback components, the markdown renderer, the prompt field and the username rule.
+    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(90);
   });
 
   it('scans every shared component the lazy feedback route reaches', () => {

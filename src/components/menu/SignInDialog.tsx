@@ -17,6 +17,7 @@ import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
+import { USERNAME_RULE_HELP, checkUsername } from "@/lib/usernameRule";
 import type { PublicPrivacyPolicy } from "@/types";
 
 interface SignInDialogProps {
@@ -87,15 +88,11 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
 
   const handleRegister = async () => {
     setAuthError('');
+    const usernameVerdict = checkUsername(username);
 
     // Validate username and password according to server requirements
-    if (!username) {
-      setAuthError('Username is required');
-      return;
-    }
-
-    if (username.length < 3 || username.length > 20) {
-      setAuthError('Username must be between 3 and 20 characters');
+    if (!usernameVerdict.ok) {
+      setAuthError(usernameVerdict.error);
       return;
     }
 
@@ -147,7 +144,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
   /** Register, and report a refusal the same way whichever path arrived here. */
   const createAccount = async (): Promise<boolean> => {
     try {
-      await AuthService.register(username, password, email.trim());
+      await AuthService.register(username.trim(), password, email.trim());
       authenticationSucceeded();
       return true;
     } catch (error) {
@@ -242,6 +239,9 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
               />
+              {authMode === 'register' && (
+                <p className="text-meta text-muted-foreground">{USERNAME_RULE_HELP}</p>
+              )}
             </div>
 
             <div className="space-y-2">

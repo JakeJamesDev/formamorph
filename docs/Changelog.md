@@ -80,6 +80,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Mods review new listings in the Admin Panel's new Moderation tab, which holds Reports and Review.** Each queue shows its count. Open an item to see it, download it, and approve or reject it. A rejection opens the message to the author.
     - **Admins trust an author in the Users tab and switch Listing Review on in the Server tab.** Trusted authors skip review. Moderation has a third segment, Auto-Approved, that lists their recent uploads and opens each listing.
     - **A live listing with an update waiting for review shows Update Pending, and you can compare or discard the update.** Mods see the changed fields side by side, both thumbnails and the changelog edits. A changelog entry you add to a live listing shows as Pending until a mod approves it.
+  - **Usernames:**
+    - **New usernames are 3–20 letters, numbers, `_` or `-` on the game's Register dialog and the website's Create Account page.** Both show the rule under the field, trim stray spaces, and show "That username is taken" for a used name.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
   - **The World Editor's Downscale now turns every PNG, BMP and lossless WebP image into a smaller lossy WebP.** It works at any size. The size budgets changed too: thumbnail 200 KB, entity 1280 px and 250 KB, background 900 KB, map 1.5 MB.
   - **The Suggestions and Questions boards are now readable on formamorph.ai/feedback.** No account is needed to read. Sign in to vote or reply. Each thread has its own link.
