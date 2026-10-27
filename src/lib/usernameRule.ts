@@ -14,6 +14,9 @@ const USERNAME_PATTERN = /^[A-Za-z0-9_-]+(?: [A-Za-z0-9_-]+)*$/;
 const USERNAME_MIN = 3;
 const USERNAME_MAX = 20;
 
+/** A stored name in its link form: each space becomes `_`, capitals stay. Profile links and `@` inserts use it. */
+export const usernameLinkForm = (username: string): string => username.replace(/ /g, '_');
+
 export type UsernameVerdict =
   | { ok: true; username: string }
   | { ok: false; error: string };

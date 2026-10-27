@@ -58,6 +58,16 @@ describe('FeedbackSuggestPlugin', () => {
     expect(rows()).toHaveLength(0);
   });
 
+  it('inserts the underscore form of a spaced account', async () => {
+    vi.spyOn(FeedbackService, 'searchUsers').mockResolvedValue([user('Jake James', false)]);
+    render(<Harness thread="t1" />);
+    await type('@jake_j');
+
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    fireEvent.mouseDown(rows()[0]);
+    await waitFor(() => expect(value()).toBe('@Jake_James  end'));
+  });
+
   it('debounces typing into one request', async () => {
     const search = vi.spyOn(FeedbackService, 'searchUsers').mockResolvedValue([user('Wren_H', true)]);
     render(<Harness thread="t1" />);

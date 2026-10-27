@@ -1,6 +1,6 @@
 # 05: Underscore Links and Mentions
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -14,6 +14,14 @@ The server owns every lookup (tickets 01–03). The client never resolves a name
 
 ## Acceptance criteria
 
-- [ ] Every client builder of a `/u/` link uses the helper; a spaced name builds `/u/Jake_James`.
-- [ ] Picking a spaced account in the `@` suggestions inserts `@Jake_James`.
-- [ ] A chip for a mention resolved to "Jake James" shows "Jake James".
+- [x] Every client builder of a `/u/` link uses the helper; a spaced name builds `/u/Jake_James`. (`feedbackProfileUrl`, the four site builders; tests in the links, OwnProfilePage and SupportersPage suites)
+- [x] Picking a spaced account in the `@` suggestions inserts `@Jake_James`. (`FeedbackSuggestPlugin.test.tsx`, `feedbackSuggest.test.ts`)
+- [x] A chip for a mention resolved to "Jake James" shows "Jake James". (`FeedbackThreadView.links.test.tsx`)
+
+## Landed
+
+**Not verified**
+- The SiteAccountControls and FeedbackPage links use the helper but have no spaced-name test of their own.
+
+**For you**
+- None.

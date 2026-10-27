@@ -24,6 +24,7 @@ const FEEDBACK_ALLOWED = [
   '@/contexts/userProfileStore',
   '@/lib/feedbackCapabilities',
   '@/lib/errorDetails',
+  '@/lib/usernameRule',
   '@/services/AuthService',
   '@/types',
 ];

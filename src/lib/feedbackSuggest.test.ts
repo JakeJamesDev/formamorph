@@ -36,5 +36,6 @@ describe('feedbackSuggestInsert', () => {
   it('writes the link and one space', () => {
     expect(feedbackSuggestInsert('user', 'Wren_H')).toBe('@Wren_H ');
     expect(feedbackSuggestInsert('thread', 12)).toBe('#12 ');
+    expect(feedbackSuggestInsert('user', 'Jake James')).toBe('@Jake_James ');
   });
 });
