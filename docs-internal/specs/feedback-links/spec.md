@@ -104,13 +104,13 @@ The text is stored exactly as typed. The app and the website show links at read 
 - **Shared rendering.** One feedback link layer sits on the shared markdown renderer and is used by the feedback thread view in the app and on the site. It must stay inside the site bundle boundary: no game imports.
 - **Profile and listing destinations.** A user link opens the user's profile; a listing chip opens the listing; a thread link opens the thread. Each surface opens its own route for these. The app opens the in-app view where one exists.
 - **Autocomplete.** Builds on the existing suggestion list and keyboard handling in the editor components. Suggestions come from two new server reads: a username prefix search and a thread search by number or title. Both respect read rules.
-- **Over-cap refusal.** The server refuses the write with an error that names the cap. The editor shows that error in the post's existing error place.
+- **Over-cap refusal.** The server refuses the write with an error that names the cap. The client shows it in the existing error toast and keeps the typed text (Q37).
 - **Export shape.** None. Feedback is server data, not part of world or save files.
 
 ## Testing Decisions
 
 - A good test drives the public surface: an HTTP request, a rendered component with user events. It never asserts on private helpers or SQL.
-- **Grammar case table.** One table of input text → expected links (kind, target, position), covering code spans, code blocks, word boundaries, case, repeats and URL forms. The client parser runs it here. The server repo holds a copy and runs its parser against it. A grammar change updates both copies in one pair of tickets.
+- **Grammar case table.** One table of input text → expected links (kind, ref, position), covering code spans, code blocks, word boundaries, case, repeats and URL forms. The server repo holds the canonical table (Q32, Q33); the client holds a copy and runs its parser against it. A grammar change updates both copies.
 - **Rendered thread.** The feedback thread view rendered with a mocked feedback service: user links, thread links, listing chips, the unknown-user form and the unavailable forms. Run it once in app mode and once in site mode. Prior art: the feedback thread view tests and the community page link integration tests on the site.
 - **Editor autocomplete.** The editor with `@` and `#` typed: participant ranking first, prefix search second, readable threads only, keyboard pick. Prior art: the token autocomplete and suggestion list tests.
 - **Site bundle boundary.** The existing boundary test must stay green with the link layer in the site bundle.
