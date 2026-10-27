@@ -29,21 +29,21 @@ export const FEEDBACK_CATEGORY_LABELS: Record<FeedbackCategory, string> = {
 };
 
 /** How each state reads, and the badge that carries it. */
-export const FEEDBACK_STATUS_STYLES: Record<FeedbackStatus, { label: string; badge: string }> = {
+export const FEEDBACK_STATUS_STYLES: Record<FeedbackStatus, { label: string; badge: string; dot: string }> = {
   // Bugs
-  open: { label: 'Open', badge: 'bg-primary/10 text-primary' },
-  need_info: { label: 'Need Info', badge: 'bg-warning/10 text-warning' },
-  confirmed: { label: 'Confirmed', badge: 'bg-info/10 text-info' },
-  resolved: { label: 'Resolved', badge: 'bg-success/10 text-success' },
-  wontfix: { label: "Won't Fix", badge: 'bg-muted text-muted-foreground' },
+  open: { label: 'Open', badge: 'bg-primary/10 text-primary', dot: 'bg-primary' },
+  need_info: { label: 'Need Info', badge: 'bg-warning/10 text-warning', dot: 'bg-warning' },
+  confirmed: { label: 'Confirmed', badge: 'bg-info/10 text-info', dot: 'bg-info' },
+  resolved: { label: 'Resolved', badge: 'bg-success/10 text-success', dot: 'bg-success' },
+  wontfix: { label: "Won't Fix", badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
   // Suggestions — `open` is shared with the list above.
-  considering: { label: 'Considering', badge: 'bg-warning/10 text-warning' },
-  planned: { label: 'Planned', badge: 'bg-info/10 text-info' },
-  done: { label: 'Done', badge: 'bg-success/10 text-success' },
-  declined: { label: 'Declined', badge: 'bg-muted text-muted-foreground' },
+  considering: { label: 'Considering', badge: 'bg-warning/10 text-warning', dot: 'bg-warning' },
+  planned: { label: 'Planned', badge: 'bg-info/10 text-info', dot: 'bg-info' },
+  done: { label: 'Done', badge: 'bg-success/10 text-success', dot: 'bg-success' },
+  declined: { label: 'Declined', badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
   // Questions — `open` is shared with the lists above.
-  answered: { label: 'Answered', badge: 'bg-success/10 text-success' },
-  closed: { label: 'Closed', badge: 'bg-muted text-muted-foreground' },
+  answered: { label: 'Answered', badge: 'bg-success/10 text-success', dot: 'bg-success' },
+  closed: { label: 'Closed', badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
 };
 
 /** The categories each branch offers, in the order the server declares them. */

@@ -26,6 +26,7 @@ export function devFeedbackThread(type: FeedbackType = 'bug'): FeedbackThread {
   const at = new Date().toISOString();
   return {
     id: 'dev-feedback-thread',
+    number: 1,
     type,
     ...FEEDBACK_SAMPLES[type],
     body: prose(6),

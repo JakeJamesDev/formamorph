@@ -17,6 +17,7 @@ vi.mock('./FeedbackDialog', () => ({ FeedbackDialog: () => null }));
 
 const report = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
   id: 'b1',
+  number: 1,
   type: 'bug',
   title: 'Save button does nothing',
   category: 'crash',
@@ -144,13 +145,21 @@ describe('the list', () => {
   });
 
   it('opens the report that was clicked', async () => {
-    stubList([report({ id: 'b7' })]);
+    stubList([report({ id: 'b7', number: 7 })]);
     const onOpen = vi.fn();
 
     render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={onOpen} />);
     fireEvent.click(await screen.findByText('Save button does nothing'));
 
-    expect(onOpen).toHaveBeenCalledWith('b7');
+    expect(onOpen).toHaveBeenCalledWith('b7', 7);
+  });
+
+  it('labels each row with its thread number', async () => {
+    stubList([report({ number: 23 })]);
+
+    render(<PagedList notify={toastFeedbackNotify} type="bug" active onOpen={() => {}} />);
+
+    expect(await screen.findByText(/^#23 · /)).toBeInTheDocument();
   });
 
   it('says so when there is nothing to show', async () => {

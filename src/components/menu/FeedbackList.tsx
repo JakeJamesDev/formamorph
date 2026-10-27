@@ -37,7 +37,7 @@ interface FeedbackListProps {
   /** Bumped by the parent after something changes a thread, to pull the change in. */
   refreshNonce?: number;
   /** Open one thread. */
-  onOpen: (id: string) => void;
+  onOpen: (id: string, number: number) => void;
   /** Shown in place of the list when nothing matches. */
   emptyLabel?: string;
   /** Reports each result to the reader. */
@@ -220,7 +220,7 @@ export function FeedbackList({
 
                 <button
                   type="button"
-                  onClick={() => onOpen(thread.id)}
+                  onClick={() => onOpen(thread.id, thread.number)}
                   className="flex flex-1 items-start gap-2 p-3 text-left hover:bg-accent/50 min-w-0"
                 >
                   <div className="flex-1 min-w-0">
@@ -238,7 +238,7 @@ export function FeedbackList({
                       {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
                     </p>
                     <p className="text-meta text-muted-foreground truncate">
-                      {FEEDBACK_CATEGORY_LABELS[thread.category]}
+                      #{thread.number} · {FEEDBACK_CATEGORY_LABELS[thread.category]}
                       {scope === 'all' && (
                         <>
                           {' · '}{thread.reporter.username || 'Unknown'}

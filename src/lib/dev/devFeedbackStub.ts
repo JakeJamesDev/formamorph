@@ -2,9 +2,10 @@
 import { FEEDBACK_SEARCH_MAX } from '@/components/menu/FeedbackSearchInput';
 import { getDevRoute } from '@/lib/devRouter';
 import type { FeedbackSort } from '@/lib/feedbackPresentation';
+import { parseFeedbackLinks } from '@/lib/feedbackLinks';
 import AuthService from '@/services/AuthService';
 import FeedbackService from '@/services/FeedbackService';
-import type { FeedbackComment, FeedbackDetail, FeedbackStatus, FeedbackThread } from '@/types';
+import type { FeedbackComment, FeedbackDetail, FeedbackLinkTarget, FeedbackStatus, FeedbackThread } from '@/types';
 
 export const DEV_FEEDBACK_FIXTURE = 'feedback';
 
@@ -30,7 +31,7 @@ const person = (id: string, username: string, role: string | null = null) => ({ 
  * @param fields - The thread's own values; the rest default to an open, unvoted thread by another player
  * @returns The thread
  */
-export function devFeedbackFixtureThread(fields: Partial<FeedbackThread> & Pick<FeedbackThread, 'id' | 'type' | 'title' | 'category'>): FeedbackThread {
+export function devFeedbackFixtureThread(fields: Partial<FeedbackThread> & Pick<FeedbackThread, 'id' | 'number' | 'type' | 'title' | 'category'>): FeedbackThread {
   const at = hoursAgo(48);
   return {
     body: 'A few sentences about it, as a player would write them.',
@@ -58,19 +59,19 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
   return [
     {
       thread: devFeedbackFixtureThread({
-        id: 'dev-question-answered', type: 'question', category: 'setup', status: 'answered', votes: 9, commentCount: 2,
+        id: 'dev-question-answered', number: 1, type: 'question', category: 'setup', status: 'answered', votes: 9, commentCount: 2,
         title: 'How do I point the game at a model running on my own PC?',
         body: 'I have a model loaded in a local server, but the game still uses the default endpoint.',
         updatedAt: hoursAgo(3), acceptedAnswer: answer,
       }),
       comments: [
         answer,
-        reply('dev-reply-2', 'That worked, thanks. I had the port wrong.', person('dev-other', 'Lantern Keeper'), 3),
+        reply('dev-reply-2', 'That worked, thanks. I had the port wrong. The stat question is #2, and https://formamorph.ai/feedback/5 asks for the panel. #57 is gone, and `#2` in code stays plain.', person('dev-other', 'Lantern Keeper'), 3),
       ],
     },
     {
       thread: devFeedbackFixtureThread({
-        id: 'dev-question-open', type: 'question', category: 'editor', votes: 14, voted: true,
+        id: 'dev-question-open', number: 2, type: 'question', category: 'editor', votes: 14, voted: true,
         title: 'Can a stat change when the player enters a location?',
         body: 'I want warmth to drop each time the player walks into the cave.',
       }),
@@ -78,7 +79,7 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
     },
     {
       thread: devFeedbackFixtureThread({
-        id: 'dev-question-mine', type: 'question', category: 'account', votes: 2, voted: true, unread: true, commentCount: 1,
+        id: 'dev-question-mine', number: 3, type: 'question', category: 'account', votes: 2, voted: true, unread: true, commentCount: 1,
         reporter: person(me, 'Sample Player'),
         title: 'Where do I change my username?',
       }),
@@ -86,21 +87,21 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
     },
     {
       thread: devFeedbackFixtureThread({
-        id: 'dev-question-closed', type: 'question', category: 'gameplay', status: 'closed', locked: true, votes: 1,
+        id: 'dev-question-closed', number: 4, type: 'question', category: 'gameplay', status: 'closed', locked: true, votes: 1,
         title: 'Is there a way to undo the last turn?',
       }),
       comments: [],
     },
     {
       thread: devFeedbackFixtureThread({
-        id: 'dev-suggestion', type: 'suggestion', category: 'interface', votes: 6,
+        id: 'dev-suggestion', number: 5, type: 'suggestion', category: 'interface', votes: 6,
         title: 'Let me pin a stat to the top of the panel',
       }),
       comments: [],
     },
     {
       thread: devFeedbackFixtureThread({
-        id: 'dev-bug', type: 'bug', category: 'visuals', votes: 0, reporter: person(me, 'Sample Player'),
+        id: 'dev-bug', number: 6, type: 'bug', category: 'visuals', votes: 0, reporter: person(me, 'Sample Player'),
         diagnostics: { version: '3.1.2', platform: 'browser', system: 'Windows 11' },
         title: 'The map stops panning after a long session',
       }),
@@ -130,8 +131,9 @@ const SORTS: Record<FeedbackSort, (a: FeedbackThread, b: FeedbackThread) => numb
  * @returns The methods to put on `FeedbackService`
  */
 export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
+  // A read takes the number too, as the server's does.
   const find = (id: string): FeedbackDetail => {
-    const detail = board.find((entry) => entry.thread.id === id);
+    const detail = board.find((entry) => entry.thread.id === id || String(entry.thread.number) === id);
     if (!detail) throw new Error('Not found');
     return detail;
   };
@@ -140,11 +142,22 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
     return detail.thread;
   };
   const author = () => person(viewerId(), 'Sample Player');
+  /** Thread links resolved as the server would for a reader who may read every thread here. */
+  const targetsOf = (text: string): FeedbackLinkTarget[] => {
+    const refs = new Set(parseFeedbackLinks(text).filter((link) => link.kind === 'thread').map((link) => link.ref));
+    return [...refs].map((ref) => {
+      const linked = board.find((entry) => String(entry.thread.number) === ref)?.thread;
+      return linked
+        ? { kind: 'thread', ref, available: true, number: linked.number, title: linked.title, type: linked.type, status: linked.status }
+        : { kind: 'thread', ref, available: false };
+    });
+  };
+  const withTargets = <T extends { body: string }>(post: T): T => ({ ...post, targets: targetsOf(post.body) });
 
   return {
     async file(draft) {
       const thread = devFeedbackFixtureThread({
-        ...draft, id: `dev-filed-${Date.now()}`, reporter: author(), votes: draft.type === 'bug' ? 0 : 1,
+        ...draft, id: `dev-filed-${Date.now()}`, number: Math.max(0, ...board.map((entry) => entry.thread.number)) + 1, reporter: author(), votes: draft.type === 'bug' ? 0 : 1,
         voted: draft.type !== 'bug', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
       board.unshift({ thread, comments: [] });
@@ -166,26 +179,28 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
         && (!words.length || hits(thread) > 0));
       const order = SORTS[(sort ?? 'newest') as FeedbackSort];
       rows.sort((a, b) => hits(b) - hits(a) || order(a, b));
-      return { threads: rows.slice((page - 1) * limit, page * limit), total: rows.length };
+      return { threads: rows.slice((page - 1) * limit, page * limit).map(withTargets), total: rows.length };
     },
     async fetchThread(id) {
       const detail = find(id);
       detail.thread = { ...detail.thread, unread: false };
-      return { thread: detail.thread, comments: [...detail.comments] };
+      const thread = withTargets(detail.thread);
+      const acceptedAnswer = thread.acceptedAnswer && withTargets(thread.acceptedAnswer);
+      return { thread: { ...thread, acceptedAnswer }, comments: detail.comments.map(withTargets) };
     },
     async comment(id, body) {
       const detail = find(id);
       const added: FeedbackComment = { id: `dev-reply-${Date.now()}`, body, createdAt: new Date().toISOString(), editedAt: null, author: author() };
       detail.comments = [...detail.comments, added];
       touch(detail, { commentCount: detail.comments.length });
-      return added;
+      return withTargets(added);
     },
     async editComment(id, commentId, body) {
       const detail = find(id);
       const edited = { ...detail.comments.find((comment) => comment.id === commentId)!, body, editedAt: new Date().toISOString() };
       detail.comments = detail.comments.map((comment) => (comment.id === commentId ? edited : comment));
       if (detail.thread.acceptedAnswer?.id === commentId) detail.thread = { ...detail.thread, acceptedAnswer: edited };
-      return edited;
+      return withTargets(edited);
     },
     async removeComment(id, commentId) {
       const detail = find(id);

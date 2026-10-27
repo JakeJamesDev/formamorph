@@ -22,6 +22,7 @@ vi.mock('@/components/prompt/PromptField', () => ({
 
 const question = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
   id: 'q1',
+  number: 1,
   type: 'question',
   title: 'Can a stat change when the player enters a location?',
   category: 'editor',

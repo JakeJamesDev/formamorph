@@ -473,6 +473,21 @@ On your own question, select **Accept Answer** on the reply that solved it. Staf
 
 Select **Clear Answer** to undo the pick. The question goes back to **Open**. A closed question stays **Closed**. If the author edits the accepted reply, the text under the question changes too. If the reply is deleted, or staff change the question to a bug or a suggestion, the question goes back to **Open** with no answer.
 
+### Thread Links
+<!-- keywords: link a thread, thread number, hash number, refer to a suggestion, duplicate, see also, feedback url -->
+
+Every bug, suggestion and question has a number, such as **#23**. It shows beside the title and in the list. The website address of a thread uses the same number: `formamorph.ai/feedback/23`.
+
+To link another thread in a report or a reply, type `#` and its number, or paste its website address. The link shows as a chip with the thread's type, number, title and status. Select the chip to open that thread.
+
+| You type | What shows |
+|---|---|
+| `#23` | A chip for thread 23 |
+| `https://formamorph.ai/feedback/23` | The same chip |
+| `` `#23` `` or a code block | Plain text, as typed |
+
+A thread you can't read, or one that was deleted, shows as **Unavailable thread** with its number and no title. On the website, a link to a bug report shows the same way, because bug reports stay in the app.
+
 ## Related
 
 - [Linked Content](LinkedContent): required content, add-ons and updates for linked copies.
