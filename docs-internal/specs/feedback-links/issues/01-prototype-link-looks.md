@@ -1,6 +1,6 @@
 # 01: Prototype Link Looks
 
-Status: ready-for-agent
+Status: ready-for-human
 Type: prototype
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -43,6 +43,17 @@ For you: pick the `#N` look and approve the chip and unavailable forms from the 
 
 - Pick the `#N` look and approve the chip and unavailable forms from the prototype frames. Start with `links-all-light-desktop.png` and `links-all-dark-mobile.png`.
 - A hover card has no hover on touch screens. If you pick A, say what a tap does on mobile.
+
+**Second pass (chips)**
+
+- [x] All three kinds as chips in one prose comment, plus each unavailable form, light and dark, desktop and mobile: `links-chips-<theme>-<width>.png` (4 Playwright frames).
+- Look changes the user asked for while reviewing, then approved in chat (2026-10-27):
+  - No `@` on a user chip and no `#` on a thread chip. The avatar and the type icon mark the kind.
+  - The chip is 20px tall, the same as the 14px text's line height, with a 16px avatar, thumbnail or icon.
+  - Every chip is centered on its text line (`vertical-align: top` at line height; measured 0.0px off for all eight chips). Equal inner padding on both sides.
+- Code: the same kept worktree, now chips only. Patches and the capture script are kept with the frames.
+- Frames: `.scratch/feedback-links-01/frames/links-chips-*.png`.
+- Not verified: criterion 2. The spec session folds the look changes above into the rulings.
 
 ## Comments
 
