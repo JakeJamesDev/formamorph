@@ -7,7 +7,7 @@
 import type { World } from '@/types';
 import { migrateWorld } from '@/lib/version';
 
-/** A built-in world to seed on first run; its JSON is imported from `../defaultworlds/<id>.json`. */
+/** A built-in world to seed on first run; `readBundledWorld` reads its JSON by `id`. */
 export interface DefaultWorldSeed {
   id: string;
   defaultName: string;

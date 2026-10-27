@@ -13,6 +13,7 @@ import { promisifyRequest } from '@/lib/idb';
 import {
   WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, worldMetaOf, type WorldMetaRecord,
 } from './worldLibrary';
+import { readBundledWorld } from '@/lib/bundledWorldText';
 
 /** Open the library database the way a version 1 build did. */
 function openVersion1(): Promise<IDBDatabase> {
@@ -223,7 +224,7 @@ describe('every write keeps metadata in step', () => {
   });
 
   it('default seeding', async () => {
-    const { failed } = await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }]);
+    const { failed } = await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
 
     expect(failed).toEqual([]);
     await expectMetaInSync();

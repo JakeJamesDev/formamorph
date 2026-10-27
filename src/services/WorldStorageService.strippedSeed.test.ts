@@ -7,6 +7,7 @@ import { DEFAULT_WORLDS, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import valentinesRaw from '@/defaultworlds/valentines.json?raw';
 import valentinesJson from '@/defaultworlds/valentines.json';
 import { bundledWorldText } from '@/test/bundledWorldFiles';
+import { readBundledWorld } from '@/lib/bundledWorldText';
 
 const ids = DEFAULT_WORLDS.map((w) => w.id);
 const storedIds = async () => (await WorldStorageService.getWorldMetadata()).map((m) => m.id).sort();
@@ -24,7 +25,7 @@ afterEach(async () => {
 
 describe('loadDefaultWorlds (stripped seed)', () => {
   it('seeds every bundled world from its image-stripped copy', async () => {
-    const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+    const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
 
     expect(failed).toEqual([]);
     expect(await storedIds()).toEqual([...ids].sort());
@@ -47,10 +48,10 @@ describe('loadDefaultWorlds (stripped seed)', () => {
   });
 
   it('skips a bundled world the player deleted', async () => {
-    await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+    await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
     await WorldStorageService.deleteWorld('drone');
 
-    const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+    const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
 
     expect(failed).toEqual([]);
     expect(await storedIds()).toEqual(ids.filter((id) => id !== 'drone').sort());
