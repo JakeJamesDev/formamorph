@@ -12,6 +12,7 @@ import { KIND_LABELS } from '@/lib/catalogKinds';
 import { openWorldLibrary, putWorldRecords } from '@/lib/worldLibrary';
 import { Blob as NodeBlob } from 'node:buffer';
 import { WORLD_CHANGE_CHANNEL } from '@/lib/worldChangeSignal';
+import { readBundledWorld } from '@/lib/bundledWorldText';
 
 vi.mock('@/lib/jsonFileWorkerUtils', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -599,7 +600,7 @@ describe('what the launch reads actually touch', () => {
     await writeRaw({ id: 'mine-1', name: 'Mine', data: { worldOverview: {} } } as StoredWorldRecord);
     const store = watchStore();
 
-    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }]);
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
 
     expect(store.getAll).not.toHaveBeenCalled();
     const asked = store.get.mock.calls.map(([key]) => key);
@@ -610,7 +611,7 @@ describe('what the launch reads actually touch', () => {
   it('still seeds a default it has never stored, reading by id', async () => {
     // The narrowed read must not turn "absent" into "present": a missing key returns undefined, and the
     // seed path depends on telling that apart from a stored copy.
-    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }]);
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
 
     expect((await readRaw('rampage'))?.sourceHash).toEqual(expect.any(String));
   });
@@ -625,7 +626,7 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
   });
 
   it('seeds a missing world with its content hash, announcing nothing on a first run', async () => {
-    const { failed, updated } = await WorldStorageService.loadDefaultWorlds(seed);
+    const { failed, updated } = await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
 
     expect(failed).toEqual([]);
     expect(updated).toEqual([]); // a first seed isn't news to the player
@@ -633,14 +634,14 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
   });
 
   it('does not rewrite an already-converged world (the every-launch re-save loop)', async () => {
-    await WorldStorageService.loadDefaultWorlds(seed);
+    await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
 
     // A sentinel that only a rewrite would clobber, plus a direct watch on the write path.
     const record = (await readRaw('rampage'))!;
     await writeRaw({ ...record, name: 'SENTINEL' });
     const storeSpy = vi.spyOn(WorldStorageService, 'storeWorld');
 
-    const { updated } = await WorldStorageService.loadDefaultWorlds(seed);
+    const { updated } = await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
 
     expect(storeSpy).not.toHaveBeenCalled();
     expect(updated).toEqual([]);
@@ -648,11 +649,11 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
   });
 
   it('reseeds and announces when the bundled content changed', async () => {
-    await WorldStorageService.loadDefaultWorlds(seed);
+    await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
     const record = (await readRaw('rampage'))!;
     await writeRaw({ ...record, sourceHash: 'STALE-HASH', name: 'OLD NAME' });
 
-    const { updated } = await WorldStorageService.loadDefaultWorlds(seed);
+    const { updated } = await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
 
     expect(updated).toHaveLength(1);
     const healed = await readRaw('rampage');
@@ -661,25 +662,25 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
   });
 
   it('backfills a hashless copy silently, then converges', async () => {
-    await WorldStorageService.loadDefaultWorlds(seed);
+    await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
     const record = (await readRaw('rampage'))!;
     delete record.sourceHash; // a world seeded before hashing existed
     await writeRaw(record);
 
-    const first = await WorldStorageService.loadDefaultWorlds(seed);
+    const first = await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
     expect(first.updated).toEqual([]); // adopting a hash isn't a content change — don't announce it
     expect((await readRaw('rampage'))?.sourceHash).toEqual(expect.any(String));
 
-    const second = await WorldStorageService.loadDefaultWorlds(seed);
+    const second = await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
     expect(second.updated).toEqual([]);
   });
 
   it('leaves an edited world alone even when the bundle changed', async () => {
-    await WorldStorageService.loadDefaultWorlds(seed);
+    await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
     const record = (await readRaw('rampage'))!;
     await writeRaw({ ...record, sourceHash: 'STALE-HASH', dirty: true, name: 'MY EDIT' });
 
-    const { updated } = await WorldStorageService.loadDefaultWorlds(seed);
+    const { updated } = await WorldStorageService.loadDefaultWorlds(seed, readBundledWorld);
 
     expect(updated).toEqual([]);
     const stored = await readRaw('rampage');
@@ -690,7 +691,7 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
   it('reports a world with no bundled JSON as failed without throwing', async () => {
     const { failed, updated } = await WorldStorageService.loadDefaultWorlds([
       { id: 'no-such-world', defaultName: 'Nope' },
-    ]);
+    ], readBundledWorld);
 
     expect(failed).toEqual(['no-such-world']);
     expect(updated).toEqual([]);
@@ -699,7 +700,7 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
   it('keeps the error behind each failed world, named by its id', async () => {
     const { errors } = await WorldStorageService.loadDefaultWorlds([
       { id: 'no-such-world', defaultName: 'Nope' },
-    ]);
+    ], readBundledWorld);
 
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toBe('no-such-world');
@@ -711,7 +712,7 @@ describe('default worlds: seed vs. the player deleting one', () => {
   const RAMPAGE = [{ id: 'rampage', defaultName: 'City Rampage' }];
 
   it('seeds a default that has never been stored', async () => {
-    const { failed } = await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    const { failed } = await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     expect(failed).toEqual([]);
     await expect(WorldStorageService.getWorldData('rampage')).resolves.toBeTruthy();
   });
@@ -719,16 +720,16 @@ describe('default worlds: seed vs. the player deleting one', () => {
   it('does not re-create a default the player deleted', async () => {
     // The bug: the seeder decides on presence alone, so a deleted default looked "never seeded" and came
     // back on the next Main Menu mount.
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     await WorldStorageService.deleteWorld('rampage');
 
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
 
     await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
   });
 
   it('stops counting a deleted default once it is stored again, as Keep Mine in another tab saves it back', async () => {
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     const world = await WorldStorageService.getWorldData('rampage');
     await WorldStorageService.deleteWorld('rampage');
     expect(readDeletedDefaultWorlds().has('rampage')).toBe(true);
@@ -740,29 +741,29 @@ describe('default worlds: seed vs. the player deleting one', () => {
   });
 
   it('leaves a deleted default gone across repeated seed passes', async () => {
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     await WorldStorageService.deleteWorld('rampage');
-    for (let i = 0; i < 3; i++) await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    for (let i = 0; i < 3; i++) await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
   });
 
   it('still seeds the other defaults after one is deleted', async () => {
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     await WorldStorageService.deleteWorld('rampage');
 
-    await WorldStorageService.loadDefaultWorlds([...RAMPAGE, { id: 'drone', defaultName: 'Reincarnated Drone' }]);
+    await WorldStorageService.loadDefaultWorlds([...RAMPAGE, { id: 'drone', defaultName: 'Reincarnated Drone' }], readBundledWorld);
 
     await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
     await expect(WorldStorageService.getWorldData('drone')).resolves.toBeTruthy();
   });
 
   it('re-seeds a deleted default once the tombstones are cleared (the Restore button)', async () => {
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
     await WorldStorageService.deleteWorld('rampage');
     await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
 
     clearDeletedDefaultWorlds();
-    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE, readBundledWorld);
 
     await expect(WorldStorageService.getWorldData('rampage')).resolves.toBeTruthy();
   });

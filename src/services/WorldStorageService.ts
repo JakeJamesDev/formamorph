@@ -176,16 +176,6 @@ export interface DefaultWorldSyncResult {
   updated: string[];
 }
 
-/**
- * The bundled default worlds as raw JSON text, so their content can be hashed without re-serializing the
- * parsed object (they carry base64 images and run to megabytes). Parsing happens only when a world actually
- * needs (re)seeding.
- */
-const DEFAULT_WORLD_RAW = import.meta.glob('../defaultworlds/*.json', {
-  query: '?raw',
-  import: 'default',
-}) as Record<string, () => Promise<string>>;
-
 /** Singleton owning local world persistence (the world library in `@/lib/worldLibrary`) and community server calls
  *  (fetch/publish/comments). Default-exported as one shared instance; the constructor kicks off DB init. */
 class WorldStorageService {
@@ -515,8 +505,12 @@ class WorldStorageService {
    *  the player has edited it (`dirty`), since that diverges from the bundled default (git-dirty model), or if
    *  they deleted it — absent alone can't be trusted to mean "never seeded", so a deleted default carries a
    *  tombstone and stays gone even when the bundled copy changes.
+   *  `readBundled` is `readBundledWorld`, passed in so this module never bundles the worlds.
    *  Returns the ids that failed to load plus the display names auto-updated in place. */
-  async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]): Promise<DefaultWorldSyncResult> {
+  async loadDefaultWorlds(
+    defaultWorlds: DefaultWorldSeed[],
+    readBundled: (id: string) => Promise<string>,
+  ): Promise<DefaultWorldSyncResult> {
     await this.ensureInitialized();
     const deleted = readDeletedDefaultWorlds();
     defaultWorlds = defaultWorlds.filter((w) => !deleted.has(w.id));
@@ -533,10 +527,8 @@ class WorldStorageService {
       defaultWorlds.map(async world => {
         try {
           const existing = byId.get(world.id);
-          const loadRaw = DEFAULT_WORLD_RAW[`../defaultworlds/${world.id}.json`];
-          if (!loadRaw) throw new Error(`No bundled JSON for default world "${world.id}"`);
           // Hash the raw text, then parse it — one read, and no re-serializing a multi-MB parsed world.
-          const raw = await loadRaw();
+          const raw = await readBundled(world.id);
           const hash = contentHash(raw);
           // A copy seeded before hashing existed has no hash to compare; reseed once to adopt the current
           // bundle (its content may genuinely differ), then it converges like any other.

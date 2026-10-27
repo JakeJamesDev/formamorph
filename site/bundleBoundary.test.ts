@@ -310,6 +310,22 @@ describe('the site entry stays out of the game bundle', () => {
     expect(app).not.toMatch(/from ['"]\.\/pages\/FeedbackPage['"]/);
   });
 
+  it('bundles no world file through any route, lazy ones included', () => {
+    // A bundled world runs to tens of MB; one in the site output breaks the Cloudflare Pages per-file cap.
+    const reached = reachableFrom(sourceFiles(SITE));
+    expect(reached.has('@/services/WorldStorageService')).toBe(true);
+
+    // An import, a dynamic import or a glob whose path names the worlds folder; a comment does not count.
+    const WORLDS_IMPORT = /(?:from\s*|import\s*\(\s*|import\.meta\.glob\s*\(\s*)['"`][^'"`]*defaultworlds/;
+    const namesWorlds = (specifier: string) => {
+      const file = resolveApp(specifier);
+      return /defaultworlds|bundledWorldText/.test(specifier) || (!!file && WORLDS_IMPORT.test(readFileSync(file, 'utf-8')));
+    };
+    const strays = [...reached].filter(([specifier]) => namesWorlds(specifier)).map(([specifier, via]) => `${via} → ${specifier}`);
+
+    expect(strays).toEqual([]);
+  });
+
   it('has an allow list that really is a list, not everything under src', () => {
     // A guard that allowed '@/' would pass forever. This is what stops the list being widened to
     // nothing by a later edit.

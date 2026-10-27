@@ -6,6 +6,7 @@ import WorldStorageService from '@/services/WorldStorageService';
 import type { World } from '@/types';
 import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { buildWorldPublish, BUNDLED_WORLD_REFUSAL } from './worldPublish';
+import { readBundledWorld } from '@/lib/bundledWorldText';
 
 // The real bundled world, seeded through the real loader — the smallest one keeps the parse cheap.
 const SEED = [{ id: 'rampage', defaultName: 'Rampage' }];
@@ -29,7 +30,7 @@ afterEach(async () => {
 
 describe('buildWorldPublish', () => {
   it('refuses a bundled world the player never edited', async () => {
-    await WorldStorageService.loadDefaultWorlds(SEED);
+    await WorldStorageService.loadDefaultWorlds(SEED, readBundledWorld);
 
     const attempt = buildWorldPublish(await libraryRecord('rampage'));
 
@@ -38,7 +39,7 @@ describe('buildWorldPublish', () => {
   });
 
   it('allows the same bundled world after one editor save', async () => {
-    await WorldStorageService.loadDefaultWorlds(SEED);
+    await WorldStorageService.loadDefaultWorlds(SEED, readBundledWorld);
     const seeded = await libraryRecord('rampage');
     // What the editor's save writes: the same content, flagged as edited.
     await WorldStorageService.storeWorld({ ...seeded, dirty: true, editedAt: new Date().toISOString() });
@@ -50,7 +51,7 @@ describe('buildWorldPublish', () => {
   });
 
   it('allows a world the player wrote, edited or not', async () => {
-    await WorldStorageService.loadDefaultWorlds(SEED);
+    await WorldStorageService.loadDefaultWorlds(SEED, readBundledWorld);
     const bundled = await libraryRecord('rampage');
     const id = crypto.randomUUID();
     // A duplicate carries bundled content under a new id; the client passes it and the server judges it.

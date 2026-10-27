@@ -2,6 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { newBlankWorld } from "@/lib/blankWorld";
 import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from "@/lib/scripts";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
+import { readBundledWorld } from "@/lib/bundledWorldText";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
@@ -864,7 +865,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         if (!isMountedRef.current) return;
         setSkeletonWorlds(existingIds.map((id) => ({ id, isLoading: true })));
         const firstRun = existingIds.length === 0;
-        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
         if (!isMountedRef.current) return;
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
