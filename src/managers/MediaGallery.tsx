@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { RemoteImg } from '@/lib/useRemoteImage';
-import { formatMediaBytes, namedBySlot, sectionCards, sectionSelection, sectionTitle, totalBytes, type MediaItem, type MediaKind, type MediaSection } from '@/lib/mediaIndex';
+import { formatMediaBytes, mediaAspect, namedBySlot, sectionCards, sectionSelection, sectionTitle, totalBytes, type MediaItem, type MediaKind, type MediaSection } from '@/lib/mediaIndex';
+import { THUMB_FRAME, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 
@@ -47,19 +48,22 @@ function MediaCard({ item, images, selected, onSelect, placeholders }: {
   const stacked = !!images && images.length > 1;
   const members = stacked ? images : [item];
   const rules = members.reduce((n, i) => n + (i.rules?.length ?? 0), 0);
+  const aspect = mediaAspect(item);
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
       data-media-card={stacked ? 'stack' : item.blank ? 'blank' : item.kind}
+      data-media-aspect={aspect}
       className={cn(
         'relative min-w-0 rounded-md border bg-card text-left',
+        aspect === 'landscape' && 'col-span-2',
         stacked && 'mr-2 mt-2 shadow-[4px_-4px_0_-1px_hsl(var(--card)),4px_-4px_0_0_hsl(var(--muted-foreground)/0.6),8px_-8px_0_-1px_hsl(var(--card)),8px_-8px_0_0_hsl(var(--muted-foreground)/0.35)]',
         selected ? 'ring-2 ring-primary' : 'hover:border-foreground/40',
       )}
     >
-      <span className="block overflow-hidden rounded-t-md"><MediaThumb item={item} className="aspect-square w-full" /></span>
+      <span className="block overflow-hidden rounded-t-md"><MediaThumb item={item} className={cn(THUMB_FRAME[aspect], thumbFit(aspect), 'w-full')} /></span>
       {rules > 0 && (
         <Badge variant="secondary" className="absolute left-1 top-1 px-1.5 py-0 text-meta font-normal">{rulesLabel(rules)}</Badge>
       )}

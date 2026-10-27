@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import {
-  blankSections, buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaFileName, mediaHolds, mediaSections,
+  blankSections, buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaAspect, mediaFileName, mediaHolds, mediaSections,
   sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, withAvatarsSection, worldImageSlots, type MediaFilter,
 } from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
@@ -99,6 +99,28 @@ describe('buildMediaIndex', () => {
     const wick = buildMediaIndex(mediaFixtureWorld()).filter((i) => i.parent.name === 'Odd Wick' && i.kind === 'image');
 
     expect(wick.map((i) => [i.galleryIndex, i.rules?.length ?? 0])).toEqual([[0, 0], [1, 1], [2, 0]]);
+  });
+});
+
+describe('mediaAspect', () => {
+  it('frames Avatars and entity media as portraits, everything else as landscape', () => {
+    expect(buildMediaIndex(mediaFixtureWorld()).map((i) => `${where([i])[0]}: ${mediaAspect(i)}`)).toEqual([
+      'image world:World Thumbnail: landscape',
+      'sound world:World Background Music: landscape',
+      'avatar world:World Fen Walker: portrait',
+      'avatar world:World Spare: portrait',
+      'image entity:Odd Wick Image 1: portrait',
+      'image entity:Odd Wick Image 2: portrait',
+      'image entity:Odd Wick Image 3: portrait',
+      'sound entity:Odd Wick Sound: portrait',
+      'model entity:Odd Wick 3D Model: portrait',
+      'image entity:Bram Image 1: portrait',
+      'image location:Marsh Image 1: landscape',
+      'image location:Harbor Steps Image 1: landscape',
+      'image location:Lamp Room Image 1: landscape',
+      'sound location:Lamp Room Ambient Sound: landscape',
+      'image dictionary:Fen Lore Cover Image: landscape',
+    ]);
   });
 });
 
