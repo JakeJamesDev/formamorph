@@ -87,7 +87,9 @@ For you: open the contact sheet and reject or redo by name. In play, reach the s
 | Ashburn#0 | old JPEG in another style (user ruling) | stored port-city tags, scene negatives | 1594892554 |
 | Green Slime#0 | old WebP in another style (user ruling); then a face | stored tags, scene negatives plus `face, eyes, mouth, kawaii, mountains, sky` | 853595392 |
 
-**Face Fix.** Ticket 11's `--face-fix` had not landed, so the Okonjo and Gus Marrow redos set `adetailer: true` in their hand-written replay logs (the provider's second pass). Every other face reads clean on the sheet.
+**Face Fix.** Ticket 11's `--face-fix` had not landed, so the Okonjo and Gus Marrow redos set `adetailer: true` in their hand-written replay logs (the provider's second pass).
+
+**Face Fix follow-up (user ruling).** Every image that shows a character was made again with `--face-fix --replay`, at its stored seed and its exact prompt and negative, read back from InvokeAI's stored graph. Nine images changed, only inside the face box: The Resident#0 and #1, Hollis Pratt, Neighbor, Dee Halloran, Dr. Ines Varga, Father Tomas Reyes, Quarantine Watch and The Night Pharmacy#0. The Chemical Works and The Storm Sewers show silhouettes with no face to detect, so they did not change. File size: 34,869,154 → 34,882,154 bytes.
 
 **First-pass seeds** (kept): Crescent Row 1064674608 · Ashburn High Shelter 1828561145 · The Night Pharmacy#0 370189932 · Harborfront 1431550394 · The Chemical Works 1798129466 · The Causeway Bridge 988307392 · St. Anselm's 28874856 · The Storm Sewers 248531787 · KASH Radio 1101966075 · The Bloom 1904674017 · The Fog Veil 723588434 · The Signal Slime 385377807.
 
