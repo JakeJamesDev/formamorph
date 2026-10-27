@@ -13,7 +13,7 @@ In the feedback body and comment editors, in the app and on the website, typing 
 ## Acceptance criteria
 
 - [ ] Typing `@` then letters lists thread participants first, then other prefix matches.
-- [ ] Typing `#` then digits or words lists readable threads by number or title.
+- [ ] Typing `#` then digits or words lists readable threads by number or title. On the website the request passes the Votable boards as its `type` filter, so no bug is listed (spec Q31).
 - [ ] Arrow keys move, Enter picks, Escape closes without inserting. A click picks too.
 - [ ] No suggestions open inside a code span or code block.
 - [ ] Requests are debounced, and a late response after unmount or a newer query is dropped.
