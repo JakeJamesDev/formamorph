@@ -122,7 +122,7 @@ describe('engine lifecycle through the fake server', () => {
     expect(ready).toMatchObject({
       status: 'ready', modelPath: MODEL, modelId: 'Tiny-Q4_K_M.gguf', port, error: null, loadProgress: null,
       contextSize: 8192, gpuLayers: GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2, unifiedKvCache: true,
-      maxContextSize: 131072, engineVramMB: 3023, deviceVramTotalMB: 24138, deviceVramFreeMB: 21970,
+      maxContextSize: 131072, engineVramMB: 3025, deviceVramTotalMB: 24138, deviceVramFreeMB: 23365,
       gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'], gpuDeviceOptions: ['NVIDIA GeForce RTX 4090'],
       gpuDeviceIndex: null, gpuDeviceOrigin: null,
     });
@@ -418,7 +418,9 @@ describe('proxy request path', () => {
     expect(frames.at(-1)).toBe('[DONE]');
     const chunks = frames.slice(0, -1).map((f) => JSON.parse(f));
     expect(chunks.every((c) => c.object === 'chat.completion.chunk')).toBe(true);
-    expect(chunks.map((c) => c.choices[0].delta.content ?? '').join('')).toBe(expected);
+    // The recorded stream is its own request, so its text can differ from the non-streamed reply.
+    const recordedStream = fixture.scenarios.loaded.chatStream.split('\n\n').filter((f) => f.startsWith('data: {')).map((f) => JSON.parse(f.slice(6)));
+    expect(chunks.map((c) => c.choices[0].delta.content ?? '').join('')).toBe(recordedStream.map((c) => c.choices[0].delta.content ?? '').join(''));
     expect(chunks.at(-1).choices[0].finish_reason).toBe('stop');
   });
 
@@ -872,9 +874,9 @@ describe('VRAM viewer fields from the load log', () => {
   it('fills share, free-at-load, total, names and backend from an Auto load', async () => {
     setup();
     const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
-    // Recorded: Vulkan0 model 2430.74 + KV 512 + compute 80.01 MiB; the CPU_Mapped and Vulkan_Host buffers stay out.
+    // Recorded: Vulkan0 model 2430.74 + KV 512 + compute 82.01 MiB; the CPU_Mapped and Vulkan_Host buffers stay out.
     expect(s).toMatchObject({
-      engineVramMB: 3023, deviceVramFreeMB: 21970, deviceVramTotalMB: 24138,
+      engineVramMB: 3025, deviceVramFreeMB: 23365, deviceVramTotalMB: 24138,
       gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'],
     });
   });
@@ -882,7 +884,7 @@ describe('VRAM viewer fields from the load log', () => {
   it('fills them from a fit-off load too', async () => {
     setup({ scenarioFor: () => 'max' });
     const s = await engine.start({ ...SETTINGS, gpuLayers: GPU_LAYERS_MAX, modelPath: MODEL, port: await freePort() });
-    expect(s).toMatchObject({ engineVramMB: 3023, deviceVramFreeMB: 22293, deviceVramTotalMB: 24138 });
+    expect(s).toMatchObject({ engineVramMB: 3025, deviceVramFreeMB: 23370, deviceVramTotalMB: 24138 });
   });
 
   it('reports no share and no device VRAM after a CPU fallback', async () => {
@@ -895,7 +897,7 @@ describe('VRAM viewer fields from the load log', () => {
     // GPU Device All with an iGPU listed after the card; the recorded instance used Vulkan0 alone.
     setup({ listDevices: `${fixture.listDevices}  Vulkan1: Intel(R) UHD Graphics 770 (16252 MiB, 15000 MiB free)\r\n` });
     const s = await engine.start({ ...SETTINGS, gpuDevice: 'all', modelPath: MODEL, port: await freePort() });
-    expect(s).toMatchObject({ deviceVramTotalMB: 24138, deviceVramFreeMB: 21970 });
+    expect(s).toMatchObject({ deviceVramTotalMB: 24138, deviceVramFreeMB: 23365 });
   });
 
   it('drops the share when the model is lost, keeping the device line for the error', async () => {

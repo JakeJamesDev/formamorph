@@ -35,6 +35,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
-      # The pre-refresh and pre-expansion bundled worlds; the shas match src/test/bundledRevisions.ts.
-      - run: git fetch --depth=1 origin ace2e02040d6e94e0367beae64e72bc0aa65bdef 2f45261a55abe56fc50148c08097301b57d8b05c
+      # The pre-refresh and pre-expansion bundled worlds (src/test/bundledRevisions.ts) and SHIPPED_SINCE (scripts/bundledRevisions.ts).
+      - run: git fetch --depth=1 origin ace2e02040d6e94e0367beae64e72bc0aa65bdef 2f45261a55abe56fc50148c08097301b57d8b05c cd6fe508c480fa5921f48dd65befc892ac73fb4b
       - run: npx vitest run --shard=${{ matrix.shard }}/4
