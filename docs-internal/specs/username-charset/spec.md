@@ -81,7 +81,7 @@ Flagged accounts drop out of username search and mentions, so `@alice` always re
 - **Rename call.** One authenticated call sets the new name. It applies the same rule and case-insensitive uniqueness as registration, and it works while the account is gated. On success the client refreshes the stored account and closes the screen.
 - **Game gate surface.** A dialog over the current view, so local play continues underneath when the player closes it. No control on it unlocks account features without a rename.
 - **Site gate surface.** A rename page on the account site. A gated session goes there after sign-in and on any refused write.
-- **Copy.** Help line: "3–20 letters, numbers, _ or -". The rename dialog and page follow `docs/Writing-Guide.md` and the design system.
+- **Copy.** Help line: "3–20 letters, numbers, _ or -". Every rule failure shows that same text. An empty field shows "Username is required". The client maps `USERNAME_TAKEN` to "That username is taken". In the game, the help line shows in register mode only. The rule module exports only the verdict, the help text and the error text, because the server owns the suggestion (ticket 02 intent answers). The rename dialog and page follow `docs/Writing-Guide.md` and the design system.
 
 ## Testing Decisions
 
