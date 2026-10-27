@@ -5,7 +5,9 @@
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/valentines.json?raw';
 import { runStatCodeTurn } from './statCodeTurn';
-import type { SettleResult } from './traitGates';
+import { settleDefaults, type GateInput, type GateStatSet, type SettleResult } from './traitGates';
+import { visibleImages, visibleLocationImages } from './imageVisibility';
+import { scoped } from './scope';
 import type { Entity, PlayerStat } from '@/types';
 import { bundledWorldHarness, withValues, type StatValues } from '@/test/bundledWorldHarness';
 import { canvasRects, GROUP_HEADER, type CanvasRect } from './locationCanvas';
@@ -14,7 +16,7 @@ import { relationshipCast, relationshipLines } from './entityRelationships';
 import { resolveEntityText } from './placeholders';
 import { resolveEntityTexts } from './resolveWorldNames';
 
-const { world, persona: student, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
+const { world, persona: student, gate, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 const place = (name: string) => world.locations.find((l) => l.name === name)!;
 const entity = (name: string) => world.entities.find((e) => e.name === name)!;
 
@@ -166,5 +168,37 @@ describe('Relationship labels', () => {
     const owners = cast.filter((owner) => owner.id !== persona.id && lines.some((line) => line.startsWith(`${persona.name} is ${owner.name}'s `)));
     const friend = world.entities.find((e) => e.aliases?.includes('best friend'))!;
     expect(owners.map((owner) => owner.id).sort()).toEqual([friend.id, entity('Mr. Kuroda').id].sort());
+  });
+});
+
+describe('the Visibility rules', () => {
+  it('fills the Second-Floor Hallway with the swarm once Pursuit reaches 60', () => {
+    // Pursuit is a world stat, so the owner-less rule reads the global scope.
+    const pursuitAt = (value: number): GateInput => ({
+      ...gate,
+      active: settleDefaults(gate).active,
+      stats: scoped<GateStatSet>({ pursuit: { name: 'Pursuit', value, min: 0, max: 100 } }),
+    });
+    const slots = (value: number) => visibleLocationImages(place('Second-Floor Hallway'), pursuitAt(value)).map((image) => image.slot);
+    expect(slots(59)).toEqual([0]);
+    expect(slots(60)).toEqual([1]);
+  });
+
+  it.each([
+    // Sugar's max follows the Constitution, so the swap sits at 70% of each build's stomach.
+    ['Iron Stomach', 69, 70],
+    ['Sweet Tooth', 87, 88],
+    ['Dainty Appetite', 55, 56],
+  ])('shows the sugar-high Student at 70%% of the Sugar a %s build holds', (constitution, below, at) => {
+    const state = build('Class Idol', constitution);
+    const { max } = statOf(studentStats(state, {}), 'Sugar');
+    const sugarAt = (value: number): GateInput => ({
+      ...gate,
+      active: state.active,
+      stats: scoped<GateStatSet>({}, { [student.id]: { stomach: { name: 'Sugar', value, min: 0, max } } }),
+    });
+    const slots = (value: number) => visibleImages(student, sugarAt(value)).map((image) => image.slot);
+    expect(slots(below)).toEqual([0]);
+    expect(slots(at)).toEqual([1]);
   });
 });
