@@ -1,7 +1,7 @@
 # Spec: Username Character Rule
 
-Status: done
-Status note: Closed 2026-10-27. Tickets 01–07; last landing 2c8149b67. Review: spec text corrected (server spec). Gates green on 2026-10-27.
+Status: ready-for-agent
+Status note: Reopened 2026-10-27 for cleanup tickets 08–09. First close: Tickets 01–07; last landing 2c8149b67. Review: spec text corrected (server spec). Gates green on 2026-10-27.
 Spec session: username-charset — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/username-charset/spec.md`. It holds the flag, gate and rename contract. This spec holds the rulings (Q1–Q18) and the user stories.
@@ -76,6 +76,10 @@ Flagged accounts drop out of username search and mentions, so `@alice` always re
   - Q16: In the game, the gate blocks account features only. Local play stays open.
   - Q17: The rename field is prefilled with a cleaned suggestion when that name is valid and free.
   - Q18: Staff logs and report snapshots keep the name as recorded.
+  - Q19 (close): the game keeps its "Username changed to <name>" toast.
+  - Q20 (close): the site keeps its one-time "Username changed" banner.
+  - Q21 (close): message read and delete stay behind the rename gate.
+  - Q22 (close): the review's duplication and naming findings land as tickets 08 and 09. The suspended exact-match mention pick is feedback-links Q34, not a defect.
 - **One rule module, shared.** The game and the site share one client function for the rule, with its help text. Registration and rename use it. The server holds its own copy of the pattern.
 - **Account payload.** The signed-in account carries a rename state: required or not, plus the server's suggestion or none. The client opens the rename screen from that state at sign-in and at app start.
 - **Refusal watcher.** The game watches community-server replies for the rename refusal code, the same way it watches for the Privacy Policy refusal, and opens the rename dialog. The site handles the same code and sends the player to its rename page.
