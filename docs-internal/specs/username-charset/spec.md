@@ -39,7 +39,7 @@ Flagged accounts drop out of username search and mentions, so `@alice` always re
 11. As a player renaming, I want to be told when a name is taken, ignoring case, so that I can pick another.
 12. As a player already signed in when the rule ships, I want the rename screen on my next account action, so that my open session does not fail in an unclear way.
 13. As a flagged player in the game, I want local play to keep working, so that a rename never blocks me from playing.
-14. As a flagged player in the game, I want the rename dialog when I open Community, feedback or upload, so that I can rename in place.
+14. As a flagged player in the game, I want the rename dialog when an account action is refused, so that I can rename in place.
 15. As a flagged player on the website, I want the website to send me to the rename page, so that I can rename there too.
 16. As a flagged player, I want my listings, likes, follows and comments to show my new name after the rename, so that my history stays mine.
 17. As a flagged player, I want to sign in with my new name after the rename, so that the change is complete.
@@ -79,7 +79,7 @@ Flagged accounts drop out of username search and mentions, so `@alice` always re
 - **Account payload.** The signed-in account carries a rename state: required or not, plus the server's suggestion or none. The client opens the rename screen from that state at sign-in and at app start.
 - **Refusal watcher.** The game watches community-server replies for the rename refusal code, the same way it watches for the Privacy Policy refusal, and opens the rename dialog. The site handles the same code and sends the player to its rename page.
 - **Rename call.** One authenticated call sets the new name. It applies the same rule and case-insensitive uniqueness as registration, and it works while the account is gated. On success the client refreshes the stored account and closes the screen.
-- **Game gate surface.** A dialog over the current view, so local play continues underneath when the player closes it. No control on it unlocks account features without a rename.
+- **Game gate surface.** A dialog over the current view, so local play continues underneath when the player closes it. No control on it unlocks account features without a rename. Ticket 06 intent answers: the buttons are **Save Username** and **Later**, with no Sign Out. After **Later**, the dialog reopens on the next sign-in, the next app start, and the next refused write. It waits while the Privacy Policy prompt is open. The shared call trims, checks the rule, posts the rename and adopts the returned account. The existing refusal watcher takes the code as a parameter, so no second copy exists.
 - **Site gate surface.** A rename page on the account site. A gated session goes there after sign-in and on any refused write.
 - **Copy.** Help line: "3–20 letters, numbers, _ or -". Every rule failure shows that same text. An empty field shows "Username is required". The client maps `USERNAME_TAKEN` to "That username is taken". In the game, the help line shows in register mode only. The rule module exports only the verdict, the help text and the error text, because the server owns the suggestion (ticket 02 intent answers). The rename dialog and page follow `docs/Writing-Guide.md` and the design system.
 
