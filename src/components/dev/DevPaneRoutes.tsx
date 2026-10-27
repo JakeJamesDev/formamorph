@@ -62,7 +62,7 @@ export default function DevPaneRoutes() {
       const { title, body } = devFeedbackThread(type);
       return <FeedbackDialog open onOpenChange={clearRouteOnClose} initialType={type} initialTitle={title} initialBody={body} notify={toastFeedbackNotify} />;
     }
-    case 'feedbackEdit': return <FeedbackEditDialog open onOpenChange={clearRouteOnClose} thread={devFeedbackThread()} mayEditProse mayRefile onSaved={ignore} notify={toastFeedbackNotify} />;
+    case 'feedbackEdit': return <FeedbackEditDialog open onOpenChange={clearRouteOnClose} thread={devFeedbackThread()} mayEditProse mayRefile onSaved={ignore} notify={toastFeedbackNotify} threadSearchTypes={null} />;
     case 'feedbackThread': {
       const staff = route.tab === 'staff';
       return (

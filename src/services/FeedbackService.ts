@@ -3,7 +3,7 @@ import { authHeaders, unwrap } from './authRequest';
 import { collectDiagnostics } from '@/lib/bugDiagnostics';
 import type {
   FeedbackCategory, FeedbackComment, FeedbackDetail, FeedbackDraft, FeedbackStatus, FeedbackThread,
-  FeedbackType,
+  FeedbackThreadSuggestion, FeedbackType, FeedbackUserSuggestion,
 } from '@/types';
 
 /** A page of threads, with the match count before paging so a pager can be drawn. */
@@ -81,6 +81,29 @@ class FeedbackService {
     const body = await unwrap<{ data: FeedbackThread; comments: FeedbackComment[] }>(response, 'Failed to load this');
 
     return { thread: body.data, comments: body.comments };
+  }
+
+  /**
+   * Accounts whose username starts with `query`, participants of `thread` first. An empty query lists only
+   * the participants.
+   */
+  async searchUsers(query: string, thread?: string, signal?: AbortSignal): Promise<FeedbackUserSuggestion[]> {
+    const params = new URLSearchParams({ q: query });
+    if (thread) params.set('thread', thread);
+    const response = await fetch(`${this.apiUrl}/feedback/search/users?${params}`, { headers: authHeaders(), signal });
+    const body = await unwrap<{ data: FeedbackUserSuggestion[] }>(response, 'Failed to search accounts');
+    return body.data;
+  }
+
+  /** Threads the caller can read, by number prefix or title words; `types` narrows the boards. */
+  async searchThreads(
+    query: string, types?: readonly FeedbackType[] | null, signal?: AbortSignal,
+  ): Promise<FeedbackThreadSuggestion[]> {
+    const params = new URLSearchParams({ q: query });
+    if (types?.length) params.set('types', types.join(','));
+    const response = await fetch(`${this.apiUrl}/feedback/search/threads?${params}`, { headers: authHeaders(), signal });
+    const body = await unwrap<{ data: FeedbackThreadSuggestion[] }>(response, 'Failed to search threads');
+    return body.data;
   }
 
   /** Add a comment to a thread. */

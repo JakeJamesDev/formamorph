@@ -11,7 +11,7 @@ export const DEV_FEEDBACK_FIXTURE = 'feedback';
 
 const STUBBED_KEYS = [
   'file', 'list', 'fetchThread', 'comment', 'editComment', 'removeComment', 'setVote', 'update',
-  'setStatus', 'setLocked', 'setAnswer', 'remove', 'fetchUnreadCount',
+  'setStatus', 'setLocked', 'setAnswer', 'remove', 'fetchUnreadCount', 'searchUsers', 'searchThreads',
 ] as const satisfies readonly (keyof typeof FeedbackService)[];
 type Stubbed = Pick<typeof FeedbackService, (typeof STUBBED_KEYS)[number]>;
 
@@ -259,6 +259,31 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
     },
     async fetchUnreadCount() {
       return board.filter((entry) => entry.thread.unread).length;
+    },
+    // The board's people stand in for every account; participants first, then by name, as the server orders.
+    async searchUsers(query, thread) {
+      const peopleIn = (entries: FeedbackDetail[]) => entries
+        .flatMap((entry) => [entry.thread.reporter, ...entry.comments.map((c) => c.author)])
+        .flatMap((p) => (p.id && p.username ? [{ ...p, id: p.id, username: p.username.replace(/ /g, '_') }] : []));
+      const inThread = thread ? board.filter((entry) => entry.thread.id === thread || String(entry.thread.number) === thread) : [];
+      const participants = new Set(peopleIn(inThread).map((p) => p.id));
+      const everyone = [...new Map(peopleIn(board).map((p) => [p.id, p])).values()];
+      return everyone
+        .filter((p) => (query ? p.username.toLowerCase().startsWith(query.toLowerCase()) : participants.has(p.id)))
+        .map((p) => ({ id: p.id, username: p.username, avatarUrl: p.avatarUrl ?? null, role: p.role ?? null, supporter: p.supporter ?? null, participant: participants.has(p.id) }))
+        .sort((a, b) => Number(b.participant) - Number(a.participant) || a.username.localeCompare(b.username))
+        .slice(0, 8);
+    },
+    async searchThreads(query, types) {
+      const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const matches = (thread: FeedbackThread) => (/^\d+$/.test(query)
+        ? String(thread.number).startsWith(query)
+        : words.every((word) => thread.title.toLowerCase().split(/\W+/).some((part) => part.startsWith(word))));
+      return board.map((entry) => entry.thread)
+        .filter((thread) => (!types?.length || types.includes(thread.type)) && matches(thread))
+        .sort((a, b) => Number(String(b.number) === query) - Number(String(a.number) === query) || b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 8)
+        .map(({ number, title, type, status }) => ({ number, title, type, status }));
     },
   };
 }

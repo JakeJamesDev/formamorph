@@ -17,6 +17,8 @@ export interface FeedbackCapabilities {
   profileThreads: boolean;
   /** Whether a failed write is said under its control; off sends it to `notify` alone. */
   inlineNotes: boolean;
+  /** The boards `#` suggestions search, or null for every board the reader may read. */
+  threadSearchTypes: readonly FeedbackType[] | null;
 }
 
 /** The complete in-app feedback surface. */
@@ -27,6 +29,7 @@ export const APP_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   unreadBadge: true,
   profileThreads: true,
   inlineNotes: false,
+  threadSearchTypes: null,
 };
 
 /** The website board: Votable boards only, no staff powers, no unread marks. */
@@ -37,4 +40,5 @@ export const WEBSITE_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   unreadBadge: false,
   profileThreads: false,
   inlineNotes: true,
+  threadSearchTypes: ['suggestion', 'question'],
 };

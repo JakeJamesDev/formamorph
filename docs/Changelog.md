@@ -88,6 +88,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Every feedback thread shows its number, and #23 or a pasted thread address in a post shows as a chip.** The chip shows the thread's type, title and status, and opens it in the app or on formamorph.ai. A thread you can't read shows as **Unavailable thread**. Text in code stays plain.
     - **A listing address in a feedback post now shows as a chip with its image, title and kind.** Select it to open the listing. A hidden or deleted listing shows as **Unavailable listing**.
     - **Typing @username in a feedback post shows the player as a chip that opens their profile.** On suggestions and questions it also badges them. A name with no account shows as **Unknown user**. A post over your mention limit is refused.
+    - **Typing @ or # in a feedback post suggests players or threads to link.** Players in the thread come first. Pick one with the arrow keys and Enter, or select it. Text in code gets no suggestions.
   - **Website Feedback:**
     - **File suggestions and questions from the website.** Press New on the feedback board, fill in the form, and land on your new thread. Similar questions show as you type, and bug reports point to the app.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.

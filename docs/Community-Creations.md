@@ -520,6 +520,17 @@ To point a thread at a player, type `@` and their username in a report, a questi
 
 On a suggestion or a question, a mention adds the thread to that player's feedback badge until they open it. Their later replies badge them too. Take the mention out and the badge goes with it. On a bug report a mention links, but never badges.
 
+### Suggestions While You Type
+<!-- keywords: autocomplete, suggest a name, suggest a thread, find a player, find a thread number, at sign list, hash list -->
+
+When you type `@` and a letter in a report or a reply, a list of players opens. Players who already posted in the thread come first. In a reply, `@` alone lists those players. When you type `#` and a number or a word, a list of threads you can read opens.
+
+- Press the arrow keys to move, then press **Enter** or **Tab** to insert the pick. You can also select a row.
+- Press **Escape** to close the list without inserting anything.
+- Text in code, between backticks or in a code block, gets no list.
+
+On the website, the `#` list shows only suggestions and questions.
+
 Each post can mention a limited number of players. Players can mention 5. Moderators and developers can mention 10. Admins have no limit. A repeat of one name counts once, and a mention of yourself counts for nothing. A post over the limit is refused with a message that names the limit. Your text stays in the box, so remove a name and send it again.
 
 ## Related

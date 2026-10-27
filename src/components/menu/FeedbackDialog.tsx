@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PromptField from "@/components/prompt/PromptField";
+import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import {
@@ -350,7 +351,9 @@ export function FeedbackDialog({
                 ariaLabel={copy.bodyLabel}
                 placeholder={copy.bodyPlaceholder}
                 className="h-[260px]"
-              />
+              >
+                <FeedbackSuggestPlugin threadTypes={capabilities.threadSearchTypes} />
+              </PromptField>
             </div>
 
             {/* Bugs only. A suggestion or question is about the game, not about the machine it was written

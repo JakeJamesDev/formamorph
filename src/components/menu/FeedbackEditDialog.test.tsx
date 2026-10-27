@@ -27,7 +27,7 @@ const thread = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
-    <FeedbackEditDialog notify={toastFeedbackNotify}
+    <FeedbackEditDialog notify={toastFeedbackNotify} threadSearchTypes={null}
       open
       onOpenChange={() => {}}
       thread={thread()}

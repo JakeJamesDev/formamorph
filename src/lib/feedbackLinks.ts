@@ -47,8 +47,11 @@ const USER_PATTERN = /@([A-Za-z0-9_-]{3,20})(?![A-Za-z0-9_-])/g;
 /** A sigil links only at the start or after none of these, so `C#`, `a@b.com` and `&#23;` stay plain. */
 const NO_SIGIL_AFTER = /[\p{L}\p{N}_@#&/`]/u;
 
+/** Whether a `#` or `@` at `at` may start a link, by the character before it. */
+export const sigilMayStartAt = (text: string, at: number): boolean => at === 0 || !NO_SIGIL_AFTER.test(text[at - 1]);
+
 /** Blank out fenced code blocks and inline code spans, keeping every offset where it was. */
-function maskCode(text: string): string {
+export function maskCode(text: string): string {
   const chars = text.split('');
   const blank = (from: number, to: number) => { for (let i = from; i < to; i += 1) chars[i] = ' '; };
 
@@ -130,7 +133,7 @@ export function parseFeedbackLinks(text: string): FeedbackLink[] {
   ];
   for (const [pattern, kind, refOf] of sigils) {
     for (const match of source.matchAll(pattern)) {
-      if (inUrl(match.index) || (match.index > 0 && NO_SIGIL_AFTER.test(source[match.index - 1]))) continue;
+      if (inUrl(match.index) || !sigilMayStartAt(source, match.index)) continue;
       links.push({ kind, ref: refOf(match[1]), start: match.index, end: match.index + match[0].length });
     }
   }

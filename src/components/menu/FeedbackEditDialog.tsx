@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PromptField from "@/components/prompt/PromptField";
+import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { CATEGORY_OPTIONS, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 import { categoryForType, changedFields, type EditDraft } from "@/lib/feedbackEditing";
@@ -34,6 +35,8 @@ interface FeedbackEditDialogProps {
   notify: FeedbackNotify;
   /** Says a failed save inside the dialog, where the reader is looking; a 401 still goes to `notify`. */
   inlineNote?: boolean;
+  /** The boards `#` suggestions search, or null for every board the reader may read. */
+  threadSearchTypes: readonly FeedbackType[] | null;
 }
 
 /**
@@ -43,7 +46,7 @@ interface FeedbackEditDialogProps {
  * refused: a reporter sees their own words, the team sees the filing, and on a bug they see both.
  */
 export function FeedbackEditDialog({
-  open, onOpenChange, thread, mayEditProse, mayRefile, onSaved, notify, inlineNote = false,
+  open, onOpenChange, thread, mayEditProse, mayRefile, onSaved, notify, inlineNote = false, threadSearchTypes,
 }: FeedbackEditDialogProps) {
   const [failure, setFailure] = useState<string | null>(null);
   const [draft, setDraft] = useState<EditDraft>({
@@ -130,7 +133,9 @@ export function FeedbackEditDialog({
                     markdown
                     ariaLabel="Description"
                     className="h-[240px]"
-                  />
+                  >
+                    <FeedbackSuggestPlugin thread={thread.id} threadTypes={threadSearchTypes} />
+                  </PromptField>
                 </div>
               </>
             )}
