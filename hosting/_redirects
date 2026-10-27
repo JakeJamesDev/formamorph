@@ -12,6 +12,7 @@
 /login             /site-app/              200
 /register          /site-app/              200
 /account           /site-app/              200
+/rename            /site-app/              200
 /profile           /site-app/              200
 /reset-password    /site-app/              200
 /verify-email      /site-app/              200
@@ -29,6 +30,7 @@
 /login/            /login                  301
 /register/         /register               301
 /account/          /account                301
+/rename/           /rename                 301
 /profile/          /profile                301
 /reset-password/   /reset-password         301
 /verify-email/     /verify-email           301

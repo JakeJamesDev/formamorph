@@ -83,6 +83,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Usernames:**
     - **New usernames are 3–20 letters, numbers, `_` or `-` on the game's Register dialog and the website's Create Account page.** Both show the rule under the field, trim stray spaces, and show "That username is taken" for a used name.
     - **An account whose username breaks the rule now chooses a new name in a rename dialog after login.** The field suggests a free name. Select Later to keep playing; likes, comments and publishing stay locked until you rename.
+    - **The website asks an account with a rule-breaking username to choose a new name.** Sign-in and any refused action open the **Choose a New Username** page. Select Later to leave it; account actions stay locked until you rename.
   - **Feedback Links:**
     - **Every feedback thread shows its number, and #23 or a pasted thread address in a post shows as a chip.** The chip shows the thread's type, title and status, and opens it in the app or on formamorph.ai. A thread you can't read shows as **Unavailable thread**. Text in code stays plain.
     - **A listing address in a feedback post now shows as a chip with its image, title and kind.** Select it to open the listing. A hidden or deleted listing shows as **Unavailable listing**.

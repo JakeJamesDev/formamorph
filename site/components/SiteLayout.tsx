@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { clearDeletionCancellation, hasDeletionCancellation } from '@/lib/deletionCancellation';
+import { clearRename, readRename } from '../renameNotice';
 import { SiteHeader } from './SiteHeader';
 
 interface SiteLayoutProps {
@@ -25,11 +26,16 @@ const WIDTHS = {
 /** Shared website frame with a content column and footer. */
 export function SiteLayout({ title, subtitle, width = 'form', surface = false, children }: SiteLayoutProps) {
   const [deletionCanceled] = useState(hasDeletionCancellation);
+  const [renamedTo] = useState(readRename);
 
   // Cleared after render so React's development double-render cannot consume it before it is visible.
   useEffect(() => {
     if (deletionCanceled) clearDeletionCancellation();
   }, [deletionCanceled]);
+
+  useEffect(() => {
+    if (renamedTo) clearRename();
+  }, [renamedTo]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
@@ -46,6 +52,11 @@ export function SiteLayout({ title, subtitle, width = 'form', surface = false, c
               <p className="mt-1 text-muted-foreground">
                 Signing in called it off. Your account and everything in it are still here.
               </p>
+            </div>
+          )}
+          {renamedTo && (
+            <div role="status" className="mb-6 rounded-lg border border-primary/40 bg-primary/10 p-4 text-label">
+              <p className="font-semibold text-foreground">Username changed to {renamedTo}</p>
             </div>
           )}
           {surface ? children : <>
