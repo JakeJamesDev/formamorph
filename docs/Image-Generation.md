@@ -22,8 +22,8 @@ The **Generate with AI** buttons now show beside the World Editor's image fields
 <!-- route: settingsEndpoints.image#enable-image-generation -->
 
 1. Install ComfyUI.
-2. Add `--enable-cors-header` to the start command in your `run_*.bat` file.
-3. Run that file to start ComfyUI.
+2. In the browser only: add `--enable-cors-header` and the app's address to the start command in your `run_*.bat` file. **How to Set Up** shows the exact flag. The desktop app needs no flag.
+3. Start ComfyUI.
 4. In **Provider**, select **ComfyUI (local)**.
 5. Leave **Endpoint URL** empty to use `http://localhost:8188`, or type your server's address.
 6. In **Model**, select a checkpoint. The **Model** and **Sampler** lists load from your server.

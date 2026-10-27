@@ -6,6 +6,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('formamorphDesktop', {
   fetch: (req) => ipcRenderer.invoke('net-fetch', req),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
+  // The ComfyUI server whose Origin check the main process passes for this window; null for none.
+  setComfyEndpoint: (url) => ipcRenderer.invoke('comfy-endpoint', url),
   // Local LLM engine: stop/load a GGUF served on a localhost OpenAI endpoint, read its status, learn
   // where models live, and subscribe to status changes (auto-start, load progress, errors). Loading takes a
   // ref (`load`), which main resolves inside a searched folder — no arbitrary-path start is exposed.

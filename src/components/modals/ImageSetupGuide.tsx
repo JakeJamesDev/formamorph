@@ -6,6 +6,7 @@ import {
   closeImageSetupGuide, getImageSetupGuideState, subscribeImageSetupGuide, toastImageFailure,
 } from "@/lib/imageGen/failureToast";
 import { imageConnectionError } from "@/lib/imageGen/http";
+import { isDesktop } from "@/lib/imageGen/desktop";
 import { Code, Snippet } from "./guideBits";
 
 const TITLES: Record<ImageProviderId, string> = {
@@ -50,9 +51,18 @@ const ImageSetupGuide = ({
 
         {provider === "comfyui" && (
           <>
-            <p>Add this flag to the start command in your <Code>run_*.bat</Code>, then run that file to launch:</p>
-            <Snippet>--enable-cors-header</Snippet>
+            {isDesktop() ? (
+              <p>The desktop app needs no setup. Start ComfyUI, then leave <strong>Endpoint URL</strong> empty or type your server&apos;s address.</p>
+            ) : (
+              <>
+                <p>Add this flag to the start command in your <Code>run_*.bat</Code>, then run that file to launch:</p>
+                <Snippet>{`--enable-cors-header ${window.location.origin}`}</Snippet>
+              </>
+            )}
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+              {!isDesktop() && (
+                <li>Keep the address after the flag. Without it, any website you visit can send ComfyUI work.</li>
+              )}
               <li>The Model &amp; Sampler lists load from the server automatically; the Workflow field ships an editable default.</li>
             </ul>
           </>

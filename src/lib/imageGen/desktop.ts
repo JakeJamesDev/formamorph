@@ -187,6 +187,8 @@ declare global {
       fetch: (req: DesktopFetchRequest) => Promise<DesktopFetchResponse>;
       /** Live nvidia-smi VRAM numbers from the main process (same shape as the standalone helper's JSON). */
       vramStats?: () => Promise<unknown>;
+      /** Tell the main process which ComfyUI server to remove this window's Origin for; null for none. */
+      setComfyEndpoint?: (url: string | null) => Promise<void>;
       /** Local LLM engine: load a GGUF served on a localhost OpenAI endpoint and read its status. */
       llm?: {
         stop: () => Promise<LocalLlmState>;
@@ -278,6 +280,12 @@ export async function desktopFetch(req: DesktopFetchRequest): Promise<DesktopFet
   const bridge = typeof window !== 'undefined' ? window.formamorphDesktop : undefined;
   if (!bridge) throw new Error('This image provider is only available in the Formamorph desktop app.');
   return bridge.fetch(req);
+}
+
+/** Point the desktop Origin strip at a ComfyUI server, or at none. A no-op outside the desktop app. */
+export function setDesktopComfyEndpoint(url: string | null): void {
+  const set = typeof window !== 'undefined' ? window.formamorphDesktop?.setComfyEndpoint : undefined;
+  void set?.(url)?.catch(() => {});
 }
 
 /** True when the desktop build exposes the local-LLM engine bridge. */
