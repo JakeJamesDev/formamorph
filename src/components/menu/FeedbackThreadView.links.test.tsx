@@ -53,8 +53,6 @@ const serve = (...details: FeedbackDetail[]) =>
     return found;
   });
 
-const chip = (name: RegExp) => screen.getByRole('link', { name });
-
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'u1', username: 'morgan' });
@@ -87,12 +85,23 @@ describe('thread links in the app', () => {
     expect(planned).toHaveTextContent('7Pin a stat to the panel');
     expect(planned).toHaveAttribute('href', 'https://formamorph.ai/feedback/7');
     expect(within(planned).getByRole('img', { name: 'Planned' })).toBeInTheDocument();
-    // The app shows the bug board, so a bug it may read links.
-    expect(chip(/Map stops panning/)).toHaveAttribute('href', 'https://formamorph.ai/feedback/9');
+    // The website never serves a bug, so the app's bug chip carries no address and opens only in place.
+    expect(screen.queryByRole('link', { name: /Map stops panning/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Map stops panning/ })).not.toHaveAttribute('href');
     expect(screen.queryByText(/formamorph\.ai\/feedback\/9/)).not.toBeInTheDocument();
 
     expect(screen.getByText('57 · Unavailable thread')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Unavailable/ })).not.toBeInTheDocument();
+  });
+
+  it('opens a bug chip in this view on a click', async () => {
+    serve({ thread: thread({ body: 'See #9.', targets: [BUG] }), comments: [] });
+    const onOpen = vi.fn();
+
+    render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} onOpenThread={onOpen} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Map stops panning/ }));
+    expect(onOpen).toHaveBeenCalledWith(9);
   });
 
   it('draws a markdown link to a thread as the chip, dropping its own text', async () => {

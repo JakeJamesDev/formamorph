@@ -6,7 +6,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useUserProfile } from '@/contexts/userProfileStore';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf } from '@/lib/catalogKinds';
-import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadUrl, type FeedbackLinkKind } from '@/lib/feedbackLinks';
+import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref, type FeedbackLinkKind } from '@/lib/feedbackLinks';
 import { serverAssetSrc } from '@/lib/serverAssets';
 import { FEEDBACK_STATUS_STYLES } from '@/lib/feedbackPresentation';
 import { remarkFeedbackLinks } from '@/lib/remarkFeedbackLinks';
@@ -17,8 +17,8 @@ import type { FeedbackLinkTarget, FeedbackType } from '@/types';
 export interface FeedbackLinkPlace {
   /** The boards this surface shows; a thread on any other renders unavailable. */
   boards: readonly FeedbackType[];
-  /** The address a thread chip carries, for a new tab or a copied link. */
-  threadHref: (number: number) => string;
+  /** The address a thread chip carries, for a new tab or a copied link. None means the thread opens only in place. */
+  threadHref: (number: number, type: FeedbackType) => string | undefined;
   /** Opens a thread here. Without it a chip follows its address. */
   openThread?: (number: number) => void;
   /** The address a listing chip carries. */
@@ -31,7 +31,7 @@ export interface FeedbackLinkPlace {
 
 export const FeedbackLinkContext = createContext<FeedbackLinkPlace>({
   boards: ['bug', 'suggestion', 'question'],
-  threadHref: feedbackThreadUrl,
+  threadHref: feedbackThreadChipHref,
   listingHref: feedbackListingUrl,
   profileHref: feedbackProfileUrl,
 });
@@ -68,9 +68,23 @@ function ThreadChip({ linkRef, target }: FeedbackChipProps) {
   const Icon = TYPE_ICONS[target.type];
   const status = FEEDBACK_STATUS_STYLES[target.status];
   const { openThread } = place;
+  const href = place.threadHref(target.number, target.type);
+  const content = (
+    <>
+      <span className={CHIP_SLOT_CLASS}><Icon className="h-3 w-3 text-muted-foreground" /></span>
+      <span className="shrink-0 whitespace-nowrap font-medium text-primary">{target.number}</span>
+      <span className="truncate text-foreground">{target.title}</span>
+      <span className={cn('h-2 w-2 shrink-0 rounded-full', status.dot)} role="img" aria-label={status.label} />
+    </>
+  );
+
+  // No address: a button, so the chip stays focusable and opens only in place.
+  if (href === undefined) {
+    return <button type="button" className={CHIP_CLASS} onClick={() => openThread?.(target.number)}>{content}</button>;
+  }
   return (
     <a
-      href={place.threadHref(target.number)}
+      href={href}
       className={CHIP_CLASS}
       onClick={openThread && ((event) => {
         if (!opensInPlace(event)) return;
@@ -78,10 +92,7 @@ function ThreadChip({ linkRef, target }: FeedbackChipProps) {
         openThread(target.number);
       })}
     >
-      <span className={CHIP_SLOT_CLASS}><Icon className="h-3 w-3 text-muted-foreground" /></span>
-      <span className="shrink-0 whitespace-nowrap font-medium text-primary">{target.number}</span>
-      <span className="truncate text-foreground">{target.title}</span>
-      <span className={cn('h-2 w-2 shrink-0 rounded-full', status.dot)} role="img" aria-label={status.label} />
+      {content}
     </a>
   );
 }
