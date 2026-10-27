@@ -17,6 +17,7 @@ Model rationale: new site routes, the age gate, the bundle-boundary widening and
 - [ ] Vote, Comment and New as a guest each go to `/login?next=…` and return to the same place; no vote, comment or form is sent after sign-in.
 - [ ] A server outage and an empty board show different messages.
 - [ ] A guest read refused by a server without ticket 01 (401) shows the sign-in nudge in place of the board.
+- [ ] A feedback read that answers 401 to a held token clears the site session and retries once as a guest, so a stale token shows the guest board, not an error. (The server treats any Authorization header as `protect`; ticket 01 ruling.)
 - [ ] No staff control shows for a staff session.
 - [ ] The bundle-boundary test passes with a deliberate allow-list and ceiling change, and still fails when a forbidden import is added once.
 - [ ] The website Tailwind scan covers every newly reachable component.
