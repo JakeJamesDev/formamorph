@@ -279,7 +279,9 @@ describe('the site entry stays out of the game bundle', () => {
     // 93: the feedback components, the markdown renderer, the prompt field and the username rule, plus the
     // link layer (its markdown, grammar and remark plugin).
     // 95: the listing chip's kind labels and icons (`catalogKinds` and the element icons it wears).
-    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(95);
+    // 101: the editors' @ and # suggestions (the plugin, its query rule, the shared suggestion list and its
+    // wheel hook, the caret anchor).
+    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(101);
   });
 
   it('scans every shared component the lazy feedback route reaches', () => {

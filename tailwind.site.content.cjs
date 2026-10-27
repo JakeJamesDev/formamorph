@@ -61,6 +61,8 @@ const FEEDBACK_FILES = [
   'src/components/menu/FeedbackSearchInput.tsx',
   'src/components/menu/FeedbackStatusSelect.tsx',
   'src/components/menu/SimilarQuestions.tsx',
+  'src/components/menu/FeedbackSuggestPlugin.tsx',
+  'src/components/SuggestionList.tsx',
   'src/components/UnreadDot.tsx',
   'src/components/UnreadEdge.tsx',
   'src/lib/feedbackPresentation.ts',

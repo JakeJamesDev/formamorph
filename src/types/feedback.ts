@@ -67,6 +67,26 @@ export interface FeedbackReporter {
   supporter?: SupporterFlair | null;
 }
 
+/** An account the `@` suggestions offer. */
+export interface FeedbackUserSuggestion {
+  id: string;
+  username: string;
+  /** Root-relative, or null for none; see `serverAssetSrc`. */
+  avatarUrl: string | null;
+  role: string | null;
+  supporter?: SupporterFlair | null;
+  /** Whether they filed or replied to the thread being written in. */
+  participant: boolean;
+}
+
+/** A thread the `#` suggestions offer. */
+export interface FeedbackThreadSuggestion {
+  number: number;
+  title: string;
+  type: FeedbackType;
+  status: FeedbackStatus;
+}
+
 /** A link target the reader cannot see, or that does not exist. Carries nothing but the typed ref. */
 export interface UnavailableLinkTarget {
   kind: 'thread' | 'user' | 'listing';

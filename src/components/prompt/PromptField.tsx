@@ -440,7 +440,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField, children }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -508,6 +508,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   tourAnchor?: string;
   /** The World Editor field identity, set on the field's own wrapper (see `historyField`). */
   historyField?: string;
+  /** Extra Lexical plugins, rendered inside this field's composer while it is editable. */
+  children?: ReactNode;
 }) => {
   const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
@@ -980,6 +982,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
             <ChipInsertTargetPlugin vocab={vocab} ownerId={insertOwnerId} />
           </>
         )}
+        {!readOnly && children}
       </PromptDragContext.Provider>
       </ActiveValueContext.Provider>
       </EditValueContext.Provider>

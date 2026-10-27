@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import PromptField from "@/components/prompt/PromptField";
+import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -570,7 +571,9 @@ function ThreadPane({
                       markdown
                       ariaLabel="Comment text"
                       className="h-[280px]"
-                    />
+                    >
+                      <FeedbackSuggestPlugin thread={thread.id} threadTypes={capabilities.threadSearchTypes} />
+                    </PromptField>
                     <div className="flex items-center gap-2">
                       <Button size="sm" onClick={saveEdit} disabled={isSavingEdit || !editDraft.trim()}>
                         {isSavingEdit ? 'Saving…' : 'Save'}
@@ -617,7 +620,9 @@ function ThreadPane({
           ariaLabel="Reply"
           placeholder="Add to the thread"
           className="h-[280px]"
-        />
+        >
+          <FeedbackSuggestPlugin thread={thread.id} threadTypes={capabilities.threadSearchTypes} />
+        </PromptField>
         <Button size="sm" onClick={send} disabled={isSending || !reply.trim()}>
           <Send className="mr-2 h-4 w-4" /> {isSending ? 'Sending…' : 'Send Reply'}
         </Button>
@@ -646,6 +651,7 @@ function ThreadPane({
         mayRefile={canRefile}
         notify={notify}
         inlineNote={capabilities.inlineNotes}
+        threadSearchTypes={capabilities.threadSearchTypes}
         onSaved={(saved) => {
           // Written in rather than refetched, so a type move's new status and cleared diagnostics land
           // at once; the list behind it is told separately.

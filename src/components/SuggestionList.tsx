@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useWheelScroll } from "@/lib/useWheelScroll";
 
@@ -14,9 +15,9 @@ export function SuggestionList({ items, active, onPick, onHover, label, classNam
   active: number;
   onPick: (item: string) => void;
   onHover: (index: number) => void;
-  /** What a row reads as, where the item itself isn't readable (a placeholder chip's stored token). The
-   *  item is still what a pick commits. */
-  label?: (item: string) => string;
+  /** What a row reads as, where the item itself isn't readable (a placeholder chip's stored token, an
+   *  account's face and name). The item is still what a pick commits. */
+  label?: (item: string) => ReactNode;
   className?: string;
 }) {
   const scroller = useWheelScroll<HTMLDivElement>();

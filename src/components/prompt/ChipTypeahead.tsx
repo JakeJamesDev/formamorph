@@ -17,6 +17,7 @@ import ChipRowHeading from './ChipRowHeading';
 import BuiltinMark from './BuiltinMark';
 import BlueprintMark from './BlueprintMark';
 import { $createVariableNode } from './VariableNode';
+import { caretMenuPosition, caretRect, type CaretRect } from './caretRect';
 
 /**
  * Insert a chip by typing rather than reaching for a palette: the trigger character opens a filtered menu
@@ -52,25 +53,12 @@ interface Match {
   rows: Row[];
   /** Whether the create row is on offer, which decides how far the selection may run. */
   offersCreate: boolean;
-  rect: { left: number; top: number; bottom: number };
+  rect: CaretRect;
 }
 
 /** A modifier turns a horizontal arrow into a selection or a word jump, which is the caret's business
  *  rather than the menu's. */
 const held = (e: KeyboardEvent | null) => !!e && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey);
-
-/** The caret's viewport box, falling back to the editor's own when the caret sits against a chip and
- *  collapses to an empty rect. */
-function caretRect(root: HTMLElement | null): Match['rect'] | null {
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount > 0) {
-    const r = sel.getRangeAt(0).getBoundingClientRect();
-    if (r.height) return { left: r.left, top: r.top, bottom: r.bottom };
-  }
-  if (!root) return null;
-  const r = root.getBoundingClientRect();
-  return { left: r.left, top: r.top, bottom: r.bottom };
-}
 
 export function ChipTypeaheadPlugin({ trigger, vocab }: {
   /** Character that opens the menu (the placeholder family uses `{`). */
@@ -263,18 +251,13 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
   const parent = path.length > 1 ? path[path.length - 2].label : null;
 
   // Fixed to the caret and portaled to the body so a field inside a scroll pane or dialog isn't clipped by it.
-  const MENU_MAX = 240;
-  const below = match.rect.bottom + MENU_MAX < window.innerHeight;
   return createPortal(
     <div
       data-testid="chip-typeahead"
       // `pointer-events-auto`: a modal Radix dialog sets `pointer-events: none` on the body, so anything
       // portaled out of its content is visible but unclickable. z-60: above dialogs, below the help window.
       className="pointer-events-auto fixed z-[60] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
-      style={{
-        left: Math.min(match.rect.left, window.innerWidth - 240),
-        ...(below ? { top: match.rect.bottom + 4 } : { bottom: window.innerHeight - match.rect.top + 4 }),
-      }}
+      style={caretMenuPosition(match.rect, 224)}
     >
       {path.length > 0 && (
         <button

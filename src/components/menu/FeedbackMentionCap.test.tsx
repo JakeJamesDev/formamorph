@@ -104,7 +104,7 @@ describe('a post refused for the mention cap', () => {
     refuseWrites();
     render(
       <FeedbackEditDialog
-        notify={toastFeedbackNotify} open onOpenChange={() => {}} thread={thread} mayEditProse mayRefile={false}
+        notify={toastFeedbackNotify} open onOpenChange={() => {}} thread={thread} mayEditProse mayRefile={false} threadSearchTypes={null}
         onSaved={() => {}}
       />,
     );
