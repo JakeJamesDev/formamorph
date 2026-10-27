@@ -1,6 +1,6 @@
 # 01: Server Folded Key
 
-Status: ready-for-human
+Status: done
 Base: 22a3329
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
