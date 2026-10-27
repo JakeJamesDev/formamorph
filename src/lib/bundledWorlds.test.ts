@@ -28,7 +28,7 @@ const FEATURES: Record<string, Feature[]> = {
   'slime': ['scripts', 'traitModes', 'traitGates', 'tools', 'relationships', 'timeGates', 'scriptLore', 'newFieldChips', 'visibilityRules'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips', 'mapBackground', 'visibilityRules'],
   'valentines': ['scripts', 'relationships', 'newFieldChips', 'visibilityRules'],
-  'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips'],
+  'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights', 'timeGates', 'newFieldChips', 'mapBackground', 'visibilityRules'],
 };
 
 /** The expansion's assignment table: features a world ticket still has to deliver. */
@@ -39,7 +39,7 @@ const PLANNED: Record<string, Feature[]> = {
   'slime': [],
   'sugarscape': [],
   'valentines': [],
-  'veilwood': ['mapBackground', 'visibilityRules'],
+  'veilwood': [],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */

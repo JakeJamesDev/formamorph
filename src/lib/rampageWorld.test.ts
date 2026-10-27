@@ -13,16 +13,14 @@ import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeho
 import { ownerPins } from './ownedTraitsInPlay';
 import { bundledWorldHarness, valueOf, withValues, type StatValues } from '@/test/bundledWorldHarness';
 import type { CodePins } from '@/types';
-import { visibleImages, visibleLocationImages } from './imageVisibility';
-import { scoped } from './scope';
 import { readWorldTools } from './tools/worldTools';
 import { openWorldToolTurn } from './tools/worldToolTurn';
 import { onCallRunner } from './tools/onCallRunner';
 import type { SandboxMemory } from './statCodeExecutor';
-import type { GateInput, GateStatSet } from './traitGates';
 
 const {
   world, persona: creature, gate, ownerWorld, none, idOf, activeIds, activeTraits, build, personaStats, turn: harnessTurn, personaStatsOut,
+  statAt, entitySlots, locationSlots,
 } = bundledWorldHarness(raw);
 
 /** Where the AI left the creature's and the world's stats, and the values the turn started from. */
@@ -309,27 +307,15 @@ describe('the Subway Line chip', () => {
 });
 
 describe('the Visibility rules', () => {
-  const statNamed = (name: string) => world.stats.find((stat) => stat.name === name)!;
-  // Play's gate input with one global stat at the given value.
-  const globalAt = (name: string, value: number): GateInput => {
-    const stat = statNamed(name);
-    return {
-      ...gate,
-      active: settleDefaults(gate).active,
-      stats: scoped<GateStatSet>({ [stat.id]: { name, value, min: stat.min ?? 0, max: stat.max ?? 100 } }),
-    };
-  };
-
   it('swaps Downtown Core to its ruined skyline once Destruction reaches 40', () => {
-    const slots = (destruction: number) =>
-      visibleLocationImages(locationNamed('Downtown Core'), globalAt('Destruction', destruction)).map((image) => image.slot);
+    const slots = (destruction: number) => locationSlots(locationNamed('Downtown Core'), statAt('Destruction', destruction));
     expect(slots(39)).toEqual([0]);
     expect(slots(40)).toEqual([1]);
   });
 
   it('swaps Aegis-One from its hangar to the streets once Alert Level reaches 75', () => {
     const aegis = world.entities.find((entity) => entity.name === 'Aegis-One')!;
-    const slots = (alert: number) => visibleImages(aegis, globalAt('Alert Level', alert)).map((image) => image.slot);
+    const slots = (alert: number) => entitySlots(aegis, statAt('Alert Level', alert));
     expect(slots(74)).toEqual([0]);
     expect(slots(75)).toEqual([1]);
   });
@@ -339,7 +325,7 @@ describe('the Visibility rules', () => {
     ['Giant', 'Masculine', 3], ['Giant', 'Feminine', 4],
   ])('shows The Creature as the %s it was built as (%s)', (type, presentation, slot) => {
     const state = build(type, presentation);
-    expect(visibleImages(creature, { ...gate, active: state.active }).map((image) => image.slot)).toEqual([slot]);
+    expect(entitySlots(creature, { ...gate, active: state.active })).toEqual([slot]);
   });
 });
 

@@ -1,12 +1,14 @@
 import { migrateWorld } from '@/lib/version';
 import { resolveOwners, type OwnerWorld } from '@/lib/owners';
-import { settleDefaults, switchTrait, type SettleResult } from '@/lib/traitGates';
+import { settleDefaults, switchTrait, type GateInput, type GateStatSet, type SettleResult } from '@/lib/traitGates';
+import { visibleImages, visibleLocationImages } from '@/lib/imageVisibility';
+import { scoped } from '@/lib/scope';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { seedEntityStats } from '@/lib/entityStats';
 import type { SandboxState, StatCodeTurn, StatCodeTurnResult } from '@/lib/statCodeTurn';
-import type { Entity, PersonaRef, PlayerStat, Trait, World } from '@/types';
+import type { Daypart, Entity, GameLocation, PersonaRef, PlayerStat, Trait, World } from '@/types';
 
 /** Stat name → value. */
 export type StatValues = Record<string, number>;
@@ -101,8 +103,29 @@ export function bundledWorldHarness(raw: string) {
     return stats;
   }
 
+  /** Play's gate input on the default build with one stat at `value`: the owner's own stat, or a world stat
+   *  when `ownerId` is absent. */
+  function statAt(statName: string, value: number, ownerId?: string): GateInput {
+    const stats = ownerId ? world.entities.find((e) => e.id === ownerId)?.stats : world.stats;
+    const stat = stats?.find((s) => s.name === statName);
+    if (!stat) throw new Error(`no stat ${statName}`);
+    const set: GateStatSet = { [stat.id]: { name: stat.name, value, min: stat.min ?? 0, max: stat.max ?? 100 } };
+    return { ...gate, active: settleDefaults(gate).active, stats: ownerId ? scoped<GateStatSet>({}, { [ownerId]: set }) : scoped(set) };
+  }
+
+  /** Play's gate input at `daypart`, with the build that daypart settles. */
+  function atDaypart(daypart: Daypart): GateInput {
+    const input = { ...gate, daypart };
+    return { ...input, active: settleDefaults(input).active };
+  }
+
+  /** The image slots play shows for an entity. */
+  const entitySlots = (entity: Entity, input: GateInput) => visibleImages(entity, input).map((image) => image.slot);
+  /** The image slots play shows for a location. */
+  const locationSlots = (location: GameLocation, input: GateInput) => visibleLocationImages(location, input).map((image) => image.slot);
+
   return {
     world, persona, gate, ownerWorld, none, traitNamed, idOf, activeIds, activeTraits, activeNames,
-    ownedOf, build, personaStats, turn, personaStatsOut,
+    ownedOf, build, personaStats, turn, personaStatsOut, statAt, atDaypart, entitySlots, locationSlots,
   };
 }

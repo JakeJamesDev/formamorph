@@ -16,6 +16,7 @@ import { DAYPARTS } from './gameClock';
 import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { canvasRects } from './locationCanvas';
 import { isDescendantLocation } from './locationTree';
+import { bundledWorldHarness } from '@/test/bundledWorldHarness';
 import type { Daypart, Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -257,5 +258,20 @@ describe('Move Quietly', () => {
     const panicked = settled(withStats(sneaking, { Stress: 80 }));
     expect(owned(panicked)).not.toContain('Move Quietly');
     expect(owned(settled(withStats(panicked, { Stress: 30 })))).toContain('Move Quietly');
+  });
+});
+
+describe('the Visibility rules', () => {
+  const { statAt, atDaypart, entitySlots, locationSlots } = bundledWorldHarness(raw);
+  const hollow = world.locations.find((l) => l.name === 'The Drowned Hollow')!;
+
+  it('shows the Wanderer running once Predator Attention reaches Stalked (46)', () => {
+    const slots = (value: number) => entitySlots(wanderer, statAt('Predator Attention', value));
+    expect(slots(45)).toEqual([0]);
+    expect(slots(46)).toEqual([1]);
+  });
+
+  it.each(DAYPARTS)('shows the Drowned Hollow with eyes in the dark in the evening and at night (%s)', (daypart) => {
+    expect(locationSlots(hollow, atDaypart(daypart))).toEqual(daypart === 'evening' || daypart === 'night' ? [1] : [0]);
   });
 });
