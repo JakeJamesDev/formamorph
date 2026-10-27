@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ImageSetupGuide from './ImageSetupGuide';
 
@@ -6,10 +6,21 @@ import ImageSetupGuide from './ImageSetupGuide';
 // providers' are not. The CORS flag is the meaningful discriminator (the actual command a user must run), so
 // we keep it; the surrounding heading/instruction copy is free to iterate and isn't pinned.
 describe('ImageSetupGuide', () => {
-  it("shows the ComfyUI CORS flag for the comfyui provider, not A1111's", () => {
+  it("shows the ComfyUI CORS flag with this page's origin for the comfyui provider, not A1111's", () => {
     render(<ImageSetupGuide provider="comfyui" open onOpenChange={() => {}} />);
-    expect(screen.getByText(/--enable-cors-header/)).toBeInTheDocument();
+    expect(screen.getByText(`--enable-cors-header ${window.location.origin}`)).toBeInTheDocument();
     expect(screen.queryByText(/--api --cors-allow-origins/)).not.toBeInTheDocument();
+  });
+
+  it('tells a desktop ComfyUI user there is no flag to add', () => {
+    window.formamorphDesktop = { fetch: vi.fn() };
+    try {
+      render(<ImageSetupGuide provider="comfyui" open onOpenChange={() => {}} />);
+      expect(screen.getByText(/needs no setup/)).toBeInTheDocument();
+      expect(screen.queryByText(/--enable-cors-header/)).not.toBeInTheDocument();
+    } finally {
+      delete window.formamorphDesktop;
+    }
   });
 
   it("shows the A1111 CORS flag for the a1111 provider, not ComfyUI's", () => {

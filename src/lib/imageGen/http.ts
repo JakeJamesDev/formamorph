@@ -72,7 +72,7 @@ const PROVIDER_NAMES: Record<ImageProviderId, string> = {
   openai: 'the image API',
 };
 
-// Shown in the browser only. The desktop shim rewrites responses, so ComfyUI still 403s desktop requests without the flag.
+// Browser only: desktop adds CORS headers (corsShim.cjs) and strips ComfyUI's Origin (originStrip.cjs).
 const BROWSER_CORS_STEP: Partial<Record<ImageProviderId, string>> = {
   a1111: 'it started with --api and --cors-allow-origins',
   comfyui: 'it started with --enable-cors-header',

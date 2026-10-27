@@ -19,6 +19,7 @@ const { scanModels, resolveModelRef, isRootRef, projectorFileName } = require('.
 const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { corsResponse } = require('./corsShim.cjs');
+const { httpOrigin, stripOrigin } = require('./originStrip.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
 const { confirmLeave } = require('./leavePrompt.cjs');
 const updater = require('./updater.cjs');
@@ -292,6 +293,13 @@ ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, 
   return { ok: res.ok, status: res.status, body: await res.text() };
 });
 
+// The ComfyUI server the Origin strip applies to, pushed by the renderer on every image-settings change.
+let comfyOrigin = null;
+ipcMain.handle('comfy-endpoint', (event, url) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  comfyOrigin = typeof url === 'string' ? httpOrigin(url) : null;
+});
+
 // Desktop-native VRAM readout: run nvidia-smi in the main process so the Hardware tab works without a
 // separate helper. Mirrors the standalone helper's "no GPU" payload when nvidia-smi is missing/errors.
 ipcMain.handle('vram-stats', async () => {
@@ -507,6 +515,11 @@ app.whenReady().then(() => {
   // CORS headers and force an ok status onto the OPTIONS preflight — keeps streaming + webSecurity. See corsShim.cjs.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback(corsResponse(details));
+  });
+  // ComfyUI's Origin check refuses our window. See originStrip.cjs.
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const own = !!mainWindow && !mainWindow.isDestroyed() && details.webContentsId === mainWindow.webContents.id;
+    callback({ requestHeaders: stripOrigin(details.url, details.requestHeaders, comfyOrigin, own) });
   });
 
   // Map app://local/<path> → dist/<path>, defaulting to index.html. Files are kept inside DIST.
