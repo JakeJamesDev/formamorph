@@ -73,6 +73,7 @@ The site header gets a Feedback link next to Community.
 - **Bundle boundary.** The site's allow list and module ceiling widen deliberately for the feedback components, the markdown renderer and the prompt field. Each widening is reviewed against the forbidden downstream list. The website Tailwind content scan covers every newly reachable component.
 - **Guest reads skip per-user state.** For a guest, the server returns `voted: false` and `unread: false` and records no seen-marker. A signed-in read on the website marks a thread seen exactly as the app does.
 - **A stale token never becomes a guest on the server (ticket 01 ruling).** Any Authorization header gets full `protect`, so the site clears a session whose feedback read answers 401 and retries once as a guest.
+- **A converted bug keeps its comments (ruling after ticket 01).** A bug refiled as a suggestion or question is a Votable board thread, and every comment on it stays readable, guests included. Only its diagnostics are cleared.
 - **A bug ID on the website is not-found.** For a guest, the server refuses it. For a signed-in visitor, the page refuses to render a thread whose type is not a Votable board, so a bug never renders on the website for anyone.
 - **Filing on the site** offers only suggestion and question. It collects no diagnostics. A short line in the form tells the visitor to report bugs in the app, with a link to open it.
 - **Session changes.** The page reads session changes through the existing shared-session listener. A sign-out moves the page to the guest view without a reload.
