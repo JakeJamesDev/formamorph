@@ -55,6 +55,10 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q22 | Installed Supporter content updates on its own at the next check after staff publish a new revision. |
 | Q23 | A Mascot upload is capped at 10 MB. Morphie's 26 layers total 1.1 MB. |
 | Q24 | A Mascot listing's thumbnail defaults to the card's Initial render. The author can replace it. |
+| Q25 | The 10 MB cap counts the decoded bytes of every data-URL image in the card, not the serialized JSON. The refusal states the measured size and the limit. Server and client measure the same way. |
+| Q26 | A Mascot listing can't enter a contest. |
+| Q27 | The watermark carries a random 32-bit mark number, one per account and stable across listings and revisions. A server table maps it to the account. The full account id would cost robustness on small layers. |
+| Q28 | Every layer must round-trip its mark. The attack list (re-encode, downscale, crop, composite) must pass on the full composite and on every layer at or above a measured opaque-area floor. Smaller layers need only the round-trip. A leaked rig is traced through its base layer. |
 
 ## User Stories
 

@@ -14,11 +14,11 @@ Model rationale: wires two proven modules into the gated route and adds a revisi
 
 ## What to build
 
-The gated route's processing hook watermarks each image layer with the account id (ticket 04), then scrambles it (ticket 05) with a per-account, per-revision seed. The response carries the seed and format version beside the content. The result is cached in the private area per account and revision, and dropped when the revision changes. Non-image content passes through unmarked.
+The gated route's processing hook watermarks each image layer with the account's mark number, from ticket 04's helper (Q27),, then scrambles it (ticket 05) with a per-account, per-revision seed. The response carries the seed and format version beside the content. The result is cached in the private area per account and revision, and dropped when the revision changes. Non-image content passes through unmarked.
 
 ## Acceptance criteria
 
-- [ ] Every image layer of a Mascot served through the gated route unscrambles and reads back the requesting account's id.
+- [ ] Every image layer of a Mascot served through the gated route unscrambles and reads back the requesting account's mark number.
 - [ ] Two accounts get different seeds and different marks.
 - [ ] A second request for the same revision is served from the cache; a new revision drops the old cache.
 - [ ] The response carries the seed and format version.

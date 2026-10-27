@@ -1,6 +1,7 @@
 # 02: Server: Mascot listing kind
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4260262
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -18,9 +19,19 @@ FormamorphServer accepts a sixth listing kind, `mascot` (Q13). Its content is th
 
 ## Acceptance criteria
 
-- [ ] The kinds list includes `mascot`; kind drift assertions are updated.
-- [ ] Create, update and download of a Mascot listing work and store the content verbatim.
-- [ ] Content over 10 MB is refused with a 400 that states the size; a missing thumbnail is refused.
-- [ ] A Mascot listing goes to review when Listing Review is on and lists at once when it is off.
-- [ ] Ownership, quarantine, comments, likes, changelog and reports behave for `mascot` as for other kinds (route tests in the `model` kind suite's style).
-- [ ] List reads filtered to `mascot` return only Mascot listings.
+- [x] The kinds list includes `mascot`; kind drift assertions are updated. (`kind.test.js` KINDS list)
+- [x] Create, update and download of a Mascot listing work and store the content verbatim. (`mascotKind.test.js` "creates, then returns the card content verbatim", "replaces the content on update")
+- [x] Content over 10 MB is refused with a 400 that states the size; a missing thumbnail is refused. (size cap suite; "refuses a missing thumbnail"; cap proven by flipping `measuresDecodedImages` and watching 3 tests fail)
+- [x] A Mascot listing goes to review when Listing Review is on and lists at once when it is off. (Listing Review suite)
+- [x] Ownership, quarantine, comments, likes, changelog and reports behave for `mascot` as for other kinds (route tests in the `model` kind suite's style). (kind-agnostic suite)
+- [x] List reads filtered to `mascot` return only Mascot listings. ("returns only Mascots when asked for the mascot kind")
+
+## Landed
+
+Spec rulings from the spec session: the 10 MB cap counts decoded bytes of every base64 image data URL in the card (not serialized JSON), the 400 states the measured size for `mascot` only, and a Mascot cannot enter a contest. Client ticket 07 should measure the same way.
+
+**Not verified**
+- Nothing unticked. The review ran inline against `4260262` with no documented standards files in the repo.
+
+**For you**
+- Note: `src/utils/feedbackLinks.js` `LISTING_KINDS` omits `mascot` (no website page exists). Not changed.
