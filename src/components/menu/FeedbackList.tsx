@@ -10,6 +10,8 @@ import {
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { cn } from "@/lib/utils";
+import { FieldError } from "@/components/ui/typography";
+import { DetailedError } from "@/lib/errorDetails";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 import { isVotableBoard, type FeedbackCategory, type FeedbackStatus, type FeedbackThread, type FeedbackType } from "@/types";
 
@@ -68,6 +70,8 @@ export function FeedbackList({
   notifyRef.current = notify;
   // Ids with a vote in flight, so a double click can't send two of the same request.
   const [voting, setVoting] = useState<Set<string>>(new Set());
+  // The last failed vote, said under its row where the surface shows notes inline.
+  const [voteNote, setVoteNote] = useState<{ id: string; text: string } | null>(null);
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
@@ -94,6 +98,7 @@ export function FeedbackList({
     const statusArg = asked.length > 1 ? asked : asked[0];
 
     setIsLoading(true);
+    setVoteNote(null);
     try {
       const result = await FeedbackService.list({
         type, page, limit: PAGE_SIZE, scope, status: statusArg, category, sort, search,
@@ -143,6 +148,7 @@ export function FeedbackList({
     if (voting.has(thread.id)) return;
 
     setVoting((prev) => new Set(prev).add(thread.id));
+    setVoteNote((prev) => (prev?.id === thread.id ? null : prev));
     try {
       const updated = await FeedbackService.setVote(thread.id, !thread.voted);
       if (!mountedRef.current) return;
@@ -150,8 +156,14 @@ export function FeedbackList({
       // out from under the pointer.
       setThreads((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
     } catch (error) {
-      // Still said after an unmount: the vote failed whether or not the list is there to show it.
-      notify('Failed to record your vote', 'error', error);
+      const message = 'Failed to record your vote';
+      // A 401 always goes to `notify`, which owns the session.
+      if (capabilities.inlineNotes && !(error instanceof DetailedError && error.status === 401)) {
+        if (mountedRef.current) setVoteNote({ id: thread.id, text: message });
+      } else {
+        // Still said after an unmount: the vote failed whether or not the list is there to show it.
+        notify(message, 'error', error);
+      }
     } finally {
       if (mountedRef.current) setVoting((prev) => {
         const next = new Set(prev);
@@ -192,81 +204,86 @@ export function FeedbackList({
             const unread = capabilities.unreadBadge && thread.unread;
 
             return (
-              <div key={thread.id} className="relative flex items-stretch gap-2 rounded-md border min-w-0">
-                {unread && <UnreadEdge kind="feedback" />}
-                {/* Votable boards only. A bug is not a popularity contest — one person hitting it is
-                    reason enough to fix it. */}
-                {isVotableBoard(thread.type) && (
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      'h-auto shrink-0 flex-col gap-0 rounded-r-none border-r px-3 py-2',
-                      // Weight and fill move with the tint rather than the tint alone: on a light theme
-                      // --primary is a pale mint against a near-white card, so a color change by itself
-                      // was invisible in the list even though the thread it opens said Voted plainly.
-                      thread.voted && 'text-primary'
-                    )}
-                    aria-label={thread.voted ? `Remove your vote for ${thread.title}` : `Vote for ${thread.title}`}
-                    aria-pressed={thread.voted}
-                    disabled={voting.has(thread.id)}
-                    onClick={() => toggleVote(thread)}
-                  >
-                    {/* Filled once it is yours: the outline chevron closes into a solid arrowhead, which
-                        reads at a glance down a column of rows in a way a hue change does not. */}
-                    <ChevronUp className={cn('h-4 w-4', thread.voted && 'fill-current')} />
-                    <span className={cn('text-meta tabular-nums', thread.voted && 'font-bold')}>{thread.votes}</span>
-                  </Button>
-                )}
+              <div key={thread.id} className="min-w-0">
+                <div className="relative flex items-stretch gap-2 rounded-md border min-w-0">
+                  {unread && <UnreadEdge kind="feedback" />}
+                  {/* Votable boards only. A bug is not a popularity contest — one person hitting it is
+                      reason enough to fix it. */}
+                  {isVotableBoard(thread.type) && (
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        'h-auto shrink-0 flex-col gap-0 rounded-r-none border-r px-3 py-2',
+                        // Weight and fill move with the tint rather than the tint alone: on a light theme
+                        // --primary is a pale mint against a near-white card, so a color change by itself
+                        // was invisible in the list even though the thread it opens said Voted plainly.
+                        thread.voted && 'text-primary'
+                      )}
+                      aria-label={thread.voted ? `Remove your vote for ${thread.title}` : `Vote for ${thread.title}`}
+                      aria-pressed={thread.voted}
+                      disabled={voting.has(thread.id)}
+                      onClick={() => toggleVote(thread)}
+                    >
+                      {/* Filled once it is yours: the outline chevron closes into a solid arrowhead, which
+                          reads at a glance down a column of rows in a way a hue change does not. */}
+                      <ChevronUp className={cn('h-4 w-4', thread.voted && 'fill-current')} />
+                      <span className={cn('text-meta tabular-nums', thread.voted && 'font-bold')}>{thread.votes}</span>
+                    </Button>
+                  )}
 
-                <button
-                  type="button"
-                  onClick={() => onOpen(thread.id, thread.number)}
-                  className="flex flex-1 items-start gap-2 p-3 text-left hover:bg-accent/50 min-w-0"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="flex items-center gap-2 text-label">
-                      {/* Weight as well as the dot, the way the inbox does it: color alone excludes
-                          anybody whose vision does not separate these hues. */}
-                      <span className={cn('truncate', unread ? 'font-semibold' : 'font-medium')}>
-                        {thread.title}
+                  <button
+                    type="button"
+                    onClick={() => onOpen(thread.id, thread.number)}
+                    className="flex flex-1 items-start gap-2 p-3 text-left hover:bg-accent/50 min-w-0"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="flex items-center gap-2 text-label">
+                        {/* Weight as well as the dot, the way the inbox does it: color alone excludes
+                            anybody whose vision does not separate these hues. */}
+                        <span className={cn('truncate', unread ? 'font-semibold' : 'font-medium')}>
+                          {thread.title}
+                        </span>
+                        {/* A dot rather than a count: a thread is read as a whole, so the number of new
+                            replies in it is not something the reader acts on differently. */}
+                        {unread && (
+                          <UnreadDot label="New replies" kind="feedback" />
+                        )}
+                        {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
+                      </p>
+                      <p className="text-meta text-muted-foreground truncate">
+                        #{thread.number} · {FEEDBACK_CATEGORY_LABELS[thread.category]}
+                        {scope === 'all' && (
+                          <>
+                            {' · '}{thread.reporter.username || 'Unknown'}
+                            {/* The badge alone, not `UserName`: the whole row is already a button that opens
+                                the thread, and a name-button inside it would be a button within a button. */}
+                            <RoleBadge role={thread.reporter.role} className="ml-1 align-middle" />
+                          </>
+                        )}
+                        {' · '}{formatFeedbackDate(thread.createdAt)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 flex flex-col items-end gap-1">
+                      <span className={cn('px-2 inline-flex text-meta leading-5 font-semibold rounded-full', style.badge)}>
+                        {style.label}
                       </span>
-                      {/* A dot rather than a count: a thread is read as a whole, so the number of new
-                          replies in it is not something the reader acts on differently. */}
-                      {unread && (
-                        <UnreadDot label="New replies" kind="feedback" />
+                      {/* Hidden at zero: the point of the number is that there is activity, and a column
+                          of "0" beside every untouched row says only that the feature exists. */}
+                      {replies > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 pr-0.5 text-meta text-muted-foreground"
+                          aria-label={replies === 1 ? '1 reply' : `${replies} replies`}
+                        >
+                          <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                          <span className="tabular-nums">{replies}</span>
+                        </span>
                       )}
-                      {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
-                    </p>
-                    <p className="text-meta text-muted-foreground truncate">
-                      #{thread.number} · {FEEDBACK_CATEGORY_LABELS[thread.category]}
-                      {scope === 'all' && (
-                        <>
-                          {' · '}{thread.reporter.username || 'Unknown'}
-                          {/* The badge alone, not `UserName`: the whole row is already a button that opens
-                              the thread, and a name-button inside it would be a button within a button. */}
-                          <RoleBadge role={thread.reporter.role} className="ml-1 align-middle" />
-                        </>
-                      )}
-                      {' · '}{formatFeedbackDate(thread.createdAt)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 flex flex-col items-end gap-1">
-                    <span className={cn('px-2 inline-flex text-meta leading-5 font-semibold rounded-full', style.badge)}>
-                      {style.label}
                     </span>
-                    {/* Hidden at zero: the point of the number is that there is activity, and a column
-                        of "0" beside every untouched row says only that the feature exists. */}
-                    {replies > 0 && (
-                      <span
-                        className="inline-flex items-center gap-1 pr-0.5 text-meta text-muted-foreground"
-                        aria-label={replies === 1 ? '1 reply' : `${replies} replies`}
-                      >
-                        <MessageSquare className="h-3 w-3" aria-hidden="true" />
-                        <span className="tabular-nums">{replies}</span>
-                      </span>
-                    )}
-                  </span>
-                </button>
+                  </button>
+                </div>
+              {voteNote?.id === thread.id && (
+                <FieldError role="alert" className="mt-1">{voteNote.text}</FieldError>
+              )}
               </div>
             );
           })

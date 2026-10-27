@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMountedRef } from "@/lib/useMountedRef";
 import { Pencil } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -53,6 +54,7 @@ export function FeedbackEditDialog({
     title: thread.title, body: thread.body, category: thread.category, type: thread.type,
   });
   const [saving, setSaving] = useState(false);
+  const mounted = useMountedRef();
   // No chip family: a report is prose, and an authored world's placeholders mean nothing in one.
   const [plainVocab] = useState(() => plainVocabulary());
 
@@ -86,10 +88,11 @@ export function FeedbackEditDialog({
       onOpenChange(false);
       notify('Saved', 'success');
     } catch (error) {
-      if (inlineNote && !(error instanceof DetailedError && error.status === 401)) setFailure('Failed to save the changes');
-      else notify('Failed to save the changes', 'error', error);
+      if (inlineNote && !(error instanceof DetailedError && error.status === 401)) {
+        if (mounted.current) setFailure('Failed to save the changes');
+      } else notify('Failed to save the changes', 'error', error);
     } finally {
-      setSaving(false);
+      if (mounted.current) setSaving(false);
     }
   };
 
