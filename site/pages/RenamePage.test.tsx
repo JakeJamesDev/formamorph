@@ -41,7 +41,7 @@ describe('the rename page', () => {
     render(<RenamePage />);
 
     expect(await screen.findByLabelText('New Username')).toHaveValue('Ann_Lee');
-    expect(screen.getByText('3–20 letters, numbers, _ or -')).toBeTruthy();
+    expect(screen.getByText('3–20 letters, numbers, spaces, _ or -')).toBeTruthy();
   });
 
   it('starts empty when the server has no suggestion', async () => {
@@ -55,9 +55,9 @@ describe('the rename page', () => {
     flagged('Ann_Lee');
     render(<RenamePage />);
 
-    await save('no spaces');
+    await save('no.dots');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('3–20 letters, numbers, _ or -');
+    expect(await screen.findByRole('alert')).toHaveTextContent('3–20 letters, numbers, spaces, _ or -');
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 

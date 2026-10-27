@@ -338,7 +338,7 @@ describe('RegisterPage', () => {
     expect(screen.getByText(USERNAME_RULE_HELP)).toBeInTheDocument();
   });
 
-  it.each(['ab', 'ann lee', 'ann.lee', 'Zoë_1'])(
+  it.each(['ab', 'ann\tlee', 'ann.lee', 'Zoë_1'])(
     'refuses the username %j with the rule text before loading the policy',
     async (name) => {
       render(<RegisterPage />);

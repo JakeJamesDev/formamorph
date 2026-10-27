@@ -60,7 +60,7 @@ describe('the username rule at signup', () => {
     expect(screen.getByText(USERNAME_RULE_HELP)).toBeTruthy();
   });
 
-  it.each(['ann lee', 'ann.lee', 'ab'])('refuses %j with the help text before any request', async (name) => {
+  it.each(['ann\tlee', 'ann.lee', 'ab'])('refuses %j with the help text before any request', async (name) => {
     const register = vi.spyOn(AuthService, 'register').mockResolvedValue(true);
     renderAuth();
 

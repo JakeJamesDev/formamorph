@@ -402,7 +402,7 @@ Select the round button at the bottom left of the main menu to open **Login**. T
 | Dialog | Fields |
 |---|---|
 | **Login** | **Username** and **Password**. **Forgot password?** opens the reset page on formamorph.ai. |
-| **Register** | **Username** (3–20 letters, numbers, `_` or `-`; no two names can differ only by case), **Password** (at least 6), **Confirm Password**, and **Email (Optional)**. The email lets you reset your password. |
+| **Register** | **Username** (3–20 letters, numbers, spaces, `_` or `-`; no two names can differ only by case), **Password** (at least 6), **Confirm Password**, and **Email (Optional)**. The email lets you reset your password. |
 
 Select **Create Account** to switch to **Register**, and **Back to Login** to switch back. To change your email, use the account page on formamorph.ai.
 

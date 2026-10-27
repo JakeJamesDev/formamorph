@@ -7,6 +7,10 @@ describe('checkUsername', () => {
     ['twenty-character maximum', 'a'.repeat(20)],
     ['letters, digits, underscore and hyphen', 'Ann_Lee-42'],
     ['digits only', '123'],
+    ['a single inner space', 'Jake James'],
+    ['a space next to an underscore', 'Jake _James'],
+    ['a space next to a hyphen', 'Jake- James'],
+    ['a twenty-character name with spaces', 'abcde fghij klmno pq'],
   ];
   it.each(valid)('accepts %s', (_label, name) => {
     expect(checkUsername(name)).toEqual({ ok: true, username: name });
@@ -15,7 +19,9 @@ describe('checkUsername', () => {
   const invalid: [string, string][] = [
     ['two characters', 'ab'],
     ['twenty-one characters', 'a'.repeat(21)],
-    ['an inner space', 'ann lee'],
+    ['twenty-one characters with spaces', 'abcde fghij klmno pqrs'],
+    ['two characters plus padding spaces', ' ab  '],
+    ['an inner no-break space', 'ann lee'],
     ['a dot', 'ann.lee'],
     ['an email address', 'ann@example.com'],
     ['a non-ASCII letter', 'Zoë_1'],
@@ -28,6 +34,18 @@ describe('checkUsername', () => {
 
   it('trims outer whitespace before the check and returns the trimmed name', () => {
     expect(checkUsername('  alice \t')).toEqual({ ok: true, username: 'alice' });
+  });
+
+  it('collapses a doubled space and returns the collapsed name', () => {
+    expect(checkUsername('Jake   James')).toEqual({ ok: true, username: 'Jake James' });
+  });
+
+  it('trims leading and trailing spaces around a spaced name', () => {
+    expect(checkUsername('  Jake James  ')).toEqual({ ok: true, username: 'Jake James' });
+  });
+
+  it('counts the length after collapsing', () => {
+    expect(checkUsername(`${'a'.repeat(9)}      ${'b'.repeat(10)}`)).toEqual({ ok: true, username: `${'a'.repeat(9)} ${'b'.repeat(10)}` });
   });
 
   it('counts the length after trimming', () => {
