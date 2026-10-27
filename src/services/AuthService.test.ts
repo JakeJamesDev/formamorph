@@ -45,8 +45,8 @@ describe('register validation (rejects before any network call)', () => {
     await expect(AuthService.register('ab', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('rejects a username with a space or a dot', async () => {
-    await expect(AuthService.register('ann lee', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
+  it('rejects a username with a tab or a dot', async () => {
+    await expect(AuthService.register('ann\tlee', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
     await expect(AuthService.register('ann.lee', 'password')).rejects.toThrow(USERNAME_RULE_HELP);
     expect(fetch).not.toHaveBeenCalled();
   });

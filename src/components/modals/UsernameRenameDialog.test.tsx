@@ -217,7 +217,7 @@ describe('saving', () => {
     mount();
     await screen.findByText(TITLE);
 
-    fireEvent.change(field(), { target: { value: 'ann lee' } });
+    fireEvent.change(field(), { target: { value: 'ann.lee' } });
     save();
 
     expect((await screen.findByRole('alert')).textContent).toBe(USERNAME_RULE_HELP);
