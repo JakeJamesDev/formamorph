@@ -54,9 +54,10 @@ describe('kind mappings', () => {
     }
   });
 
-  it('gives a prompt no library tab, because presets live in Settings', () => {
-    expect(Object.keys(CARD_TYPE_BY_KIND).sort()).toEqual(CATALOG_KINDS.filter((k) => k !== 'prompt').sort());
+  it('gives a prompt and a Mascot no library tab, because presets live in Settings', () => {
+    expect(Object.keys(CARD_TYPE_BY_KIND).sort()).toEqual(CATALOG_KINDS.filter((k) => k !== 'prompt' && k !== 'mascot').sort());
     expect(Object.values(KIND_BY_CARD_TYPE)).not.toContain('prompt');
+    expect(Object.values(KIND_BY_CARD_TYPE)).not.toContain('mascot');
   });
 
   it('gives every kind an icon, a publish limit, and a browse section', () => {
@@ -71,7 +72,7 @@ describe('kind mappings', () => {
     expect(KIND_LABELS.prompt).toEqual({ one: 'Prompt', many: 'Prompts' });
     expect(PUBLISH_LIMITS.prompt).toBe(1024 * 1024);
     expect(kindHasThumbnail('prompt')).toBe(false);
-    expect(CATALOG_KINDS.filter(kindHasThumbnail)).toEqual(['world', 'entity', 'dictionary', 'model']);
+    expect(CATALOG_KINDS.filter(kindHasThumbnail)).toEqual(['world', 'entity', 'dictionary', 'model', 'mascot']);
   });
 
   it('labels every kind', () => {
@@ -83,6 +84,6 @@ describe('kind mappings', () => {
 
   it('matches the server’s kinds', () => {
     // Mirrors FormamorphServer's config/kinds KINDS — they must not drift.
-    expect([...CATALOG_KINDS]).toEqual(['world', 'entity', 'dictionary', 'model', 'prompt']);
+    expect([...CATALOG_KINDS]).toEqual(['world', 'entity', 'dictionary', 'model', 'prompt', 'mascot']);
   });
 });

@@ -122,7 +122,7 @@ const ENTRIES: [string, string][] = [
     { value: 'dictionaries', label: BROWSE_TAB_LABELS.dictionary.many },
     { value: 'models', label: BROWSE_TAB_LABELS.model.many },
   ]),
-  ...(['world', 'entity', 'dictionary', 'model', 'prompt', 'contest'] as const).map((tab): [string, string] => [`community.${tab}`, BROWSE_TAB_LABELS[tab].many]),
+  ...(['world', 'entity', 'dictionary', 'model', 'prompt', 'mascot', 'contest'] as const).map((tab): [string, string] => [`community.${tab}`, BROWSE_TAB_LABELS[tab].many]),
   ['publish.world', KIND_LABELS.world.one],
   ['publish.prompt', KIND_LABELS.prompt.one],
   ['feedbackHub.bugs', FEEDBACK_TYPE_LABELS.bug.many],

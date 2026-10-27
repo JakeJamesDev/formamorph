@@ -39,6 +39,7 @@ import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDownloadCoordinator, type DownloadPlan } from "@/lib/useDownloadCoordinator";
 import { useLibraryDownload, type LibraryTarget } from "@/lib/useLibraryDownload";
 import type { PromptLibrary, PromptListingContent } from "@/lib/promptDownload";
+import type { MascotLibrary, MascotListingContent } from "@/lib/mascotDownload";
 import { useDeviceDownload } from "@/lib/useDeviceDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import EntityStorageService from "@/services/EntityStorageService";
@@ -103,6 +104,11 @@ const NO_ROWS: WorldRecord[] = [];
 /** The prompt target for a host without the preset store. `downloadFor` never hands it a listing. */
 const NO_PROMPT_LIBRARY: LibraryTarget<PromptListingContent> = {
   kind: 'prompt', records: [], store: async () => {}, refresh: () => {},
+};
+
+/** The Mascot target for a host without the preset store. `downloadFor` never hands it a listing. */
+const NO_MASCOT_LIBRARY: LibraryTarget<MascotListingContent> = {
+  kind: 'mascot', records: [], store: async () => {}, refresh: () => {},
 };
 
 /** A row in the section switcher: one per catalog kind, plus Contest while a contest exists. */
@@ -220,6 +226,8 @@ interface CommunityCreationsBrowserProps {
   detailsAction?: React.ReactNode;
   /** The preset store prompt listings download into. Absent offers no prompt download. */
   promptLibrary?: PromptLibrary;
+  /** The preset store Mascot listings download into. Absent offers no Mascot download. */
+  mascotLibrary?: MascotLibrary;
   /** Running community events, announced in the header the same way the main menu announces them. */
   events?: ServerEvent[];
   /** Open the place an event's content lives — the contest tab, for a contest. */
@@ -236,7 +244,7 @@ const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries, models,
   refreshEntities, refreshDictionaries, refreshModels,
   isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, requestKey: landingKey, openListing, onListingOpened, listing: controlledListing,
-  onListingChange, onListingUnavailable, detailsAction, promptLibrary,
+  onListingChange, onListingUnavailable, detailsAction, promptLibrary, mascotLibrary,
   events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   const requestKey = useRequestKey(landingKey);
@@ -338,6 +346,7 @@ const CommunityCreationsBrowser = ({
   });
   // Prompt listings download into the preset store, which only the app host can reach.
   const promptDownload = useLibraryDownload<PromptListingContent>(promptLibrary?.target ?? NO_PROMPT_LIBRARY);
+  const mascotDownload = useLibraryDownload<MascotListingContent>(mascotLibrary?.target ?? NO_MASCOT_LIBRARY);
   const deviceDownload = useDeviceDownload();
 
   /**
@@ -349,7 +358,7 @@ const CommunityCreationsBrowser = ({
    */
   const downloadFor = (kind: CatalogKind) => (
     kind === 'entity' ? entityDownload : kind === 'dictionary' ? dictionaryDownload : kind === 'model' ? modelDownload
-      : kind === 'prompt' && promptLibrary ? promptDownload : null
+      : kind === 'prompt' && promptLibrary ? promptDownload : kind === 'mascot' && mascotLibrary ? mascotDownload : null
   );
 
   /**
@@ -364,7 +373,7 @@ const CommunityCreationsBrowser = ({
     // A kind with no library holds no copy, so it is never downloaded and never out of date.
     return downloadFor(kind)?.downloadStateFor(record) ?? 'none';
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource, modelDownload.copyBySource, promptDownload.copyBySource]);
+  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource, modelDownload.copyBySource, promptDownload.copyBySource, mascotDownload.copyBySource]);
 
   // Every in-flight bar, keyed by listing id — unique across kinds, so the four sources merge cleanly.
   const allDownloadProgress = {
@@ -373,6 +382,7 @@ const CommunityCreationsBrowser = ({
     ...dictionaryDownload.downloadProgress,
     ...modelDownload.downloadProgress,
     ...promptDownload.downloadProgress,
+    ...mascotDownload.downloadProgress,
     ...deviceDownload.downloadProgress,
   };
 
@@ -1131,6 +1141,14 @@ const CommunityCreationsBrowser = ({
         title="Replace your edited preset?"
         description={`You've edited your copy of "${promptDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
         onConfirm={promptDownload.confirmDirtyDownload}
+      />
+
+      <ConfirmDialog
+        open={!!mascotDownload.dirtyConfirm}
+        onOpenChange={(v) => { if (!v) mascotDownload.setDirtyConfirm(null); }}
+        title="Replace your edited Mascot?"
+        description={`You've edited your copy of "${mascotDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
+        onConfirm={mascotDownload.confirmDirtyDownload}
       />
       {/* Community Creations browser, in whichever shell the host asked for */}
       <BrowserShell presentation={presentation} open={open} onOpenChange={onOpenChange}>

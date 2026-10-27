@@ -10,6 +10,7 @@ import {
   EntityIcon,
   GroupIcon,
   LocationIcon,
+  MascotIcon,
   OpeningIcon,
   PersonaIcon,
   PlaceholderIcon,
@@ -132,7 +133,7 @@ describe('element icon map', () => {
   it('exports every component alias for its map entry', () => {
     expect([
       TraitIcon, EntityIcon, EntitiesIcon, LocationIcon, StatIcon, DictionaryIcon, PlaceholderIcon,
-      BlueprintIcon, PersonaIcon, AvatarIcon, OpeningIcon, WorldIcon, GroupIcon,
+      BlueprintIcon, PersonaIcon, AvatarIcon, MascotIcon, OpeningIcon, WorldIcon, GroupIcon,
     ]).toEqual(Object.values(ELEMENT_ICONS));
   });
 

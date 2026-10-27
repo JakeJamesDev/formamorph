@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.5.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Mascots:**
+    - **Community Creations has a Mascots section, and you can download a Mascot as your own.** A download becomes a custom Mascot that you can select, edit, duplicate and export. Downloading again replaces the copy, and the card shows Update Available after a new version.
+
 ---
 
 <details>
