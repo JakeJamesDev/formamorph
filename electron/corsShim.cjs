@@ -7,6 +7,9 @@
 // permissive CORS headers (including on the OPTIONS preflight). This keeps the normal streaming fetch and
 // leaves webSecurity on. electron-free so it's unit-testable in plain Node.
 //
+// Responses only: a server that refuses the request by its Origin still fails. ComfyUI without
+// --enable-cors-header returns 403 to the app://local origin before this shim sees anything.
+//
 // The transform must never end up NARROWER than the server's own answer or than what the app sends: it
 // widens, it doesn't gate. A hardcoded allow-list that replaces the server's is how PUT/DELETE to the
 // community server broke on desktop while working on web.

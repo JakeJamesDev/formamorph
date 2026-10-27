@@ -141,10 +141,18 @@ describe('fetchComfyMeta', () => {
   });
 
   it('throws when the server responds with an error', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403 } as Response)));
-    await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow(/403/);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 } as Response)));
+    await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow(/500/);
+  });
+
+  it('names the CORS flag when the origin check refuses the request', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => originCheck403()));
+    await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow(/--enable-cors-header/);
   });
 });
+
+// What ComfyUI started without --enable-cors-header sends the desktop app: 403, empty body.
+const originCheck403 = () => ({ ok: false, status: 403, statusText: 'Forbidden', text: async () => '' } as Response);
 
 // The /prompt 400 body ComfyUI sends for a checkpoint that isn't installed (shape from execution.py).
 const missingCheckpointRejection = {
@@ -278,6 +286,22 @@ describe('comfyuiProvider', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) } as Response)));
     const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
     expect((error as Error).message).toBe('ComfyUI could not list its checkpoints: HTTP 500');
+  });
+
+  it('names the CORS flag when the origin check refuses the checkpoint lookup', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => originCheck403()));
+    const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DetailedError);
+    expect((error as DetailedError).message).toMatch(/--enable-cors-header/);
+    expect((error as DetailedError).details).toContain('Request: GET http://127.0.0.1:8188/object_info/CheckpointLoaderSimple');
+  });
+
+  it('names the CORS flag when the origin check refuses the workflow', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => originCheck403()));
+    const error = await comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DetailedError);
+    expect((error as DetailedError).message).toMatch(/--enable-cors-header/);
+    expect((error as DetailedError).details).toContain('Request: POST http://127.0.0.1:8188/prompt');
   });
 
   it('says so when Model is empty and the server has no checkpoints', async () => {

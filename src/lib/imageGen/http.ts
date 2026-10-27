@@ -72,7 +72,7 @@ const PROVIDER_NAMES: Record<ImageProviderId, string> = {
   openai: 'the image API',
 };
 
-// The desktop app adds CORS headers itself, so the server-side CORS step applies to the browser only.
+// Shown in the browser only. The desktop shim rewrites responses, so ComfyUI still 403s desktop requests without the flag.
 const BROWSER_CORS_STEP: Partial<Record<ImageProviderId, string>> = {
   a1111: 'it started with --api and --cors-allow-origins',
   comfyui: 'it started with --enable-cors-header',
