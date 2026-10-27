@@ -1,7 +1,18 @@
 import { API_BASE_URL } from '@/lib/apiBase';
-import { USERNAME_TAKEN_MESSAGE, checkUsername } from '@/lib/usernameRule';
+import { USERNAME_RULE_HELP, USERNAME_TAKEN_MESSAGE, checkUsername } from '@/lib/usernameRule';
 import type { AuthUser } from '@/types';
 import { codedResponseError, readFailure, responseError } from './responseError';
+
+/** The code the server returns when a flagged account's write is refused until it renames. */
+export const USERNAME_RENAME_REQUIRED = 'USERNAME_RENAME_REQUIRED';
+
+/** A refused registration or rename, with the rule module's text for the two username codes. */
+async function usernameRefusal(response: Response, fallback: string) {
+  const failure = await codedResponseError(response, fallback);
+  if (failure.code === 'USERNAME_TAKEN') failure.message = USERNAME_TAKEN_MESSAGE;
+  if (failure.code === 'USERNAME_INVALID') failure.message = USERNAME_RULE_HELP;
+  return failure;
+}
 
 /** What a sign-in tells the caller beyond the session it establishes. */
 export interface LoginResult {
@@ -216,11 +227,9 @@ class AuthService {
       });
 
       // A taken name and a taken address are two sentences with two different fixes — pick another name,
-      // or recover the account holding the address — so the server's text is shown, except for a taken name.
+      // or recover the account holding the address — so the server's text is shown, except for a name refusal.
       if (!response.ok) {
-        const failure = await codedResponseError(response, 'Registration failed');
-        if (failure.code === 'USERNAME_TAKEN') failure.message = USERNAME_TAKEN_MESSAGE;
-        throw failure;
+        throw await usernameRefusal(response, 'Registration failed');
       }
 
       const data = await response.json();
@@ -394,6 +403,39 @@ class AuthService {
     if (data.user) this.adoptUser(data.user as AuthUser);
 
     return { emailVerified: data.user?.emailVerified === true, mailSent: data.mailSent === true };
+  }
+
+  /**
+   * Replace a flagged account's username and adopt the account the server answers with.
+   *
+   * The server refuses an unflagged account, so this is the rename screen's call only, shared by the
+   * game and the site.
+   *
+   * @param typed - The name as typed; it is trimmed and checked against the rule before it is sent
+   * @returns The adopted account, which no longer carries a rename demand
+   */
+  async renameUsername(typed: string): Promise<AuthUser> {
+    const verdict = checkUsername(typed);
+    if (!verdict.ok) throw new Error(verdict.error);
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/auth/username`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({ username: verdict.username })
+    });
+
+    if (!response.ok) {
+      throw await usernameRefusal(response, 'Failed to change the username');
+    }
+
+    const data = await response.json();
+    const user = data.user as AuthUser;
+    this.adoptUser(user);
+    return user;
   }
 
   /**

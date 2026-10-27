@@ -149,6 +149,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   ageGate: community('the-adult-content-warning'),
   auth: community('login-and-register'),
   privacyPolicy: community('the-privacy-policy'),
+  usernameRename: community('choose-a-new-username'),
   profile: USER_PROFILE,
   'profile.messages': USER_PROFILE,
   'profile.notifications': community('the-follow-feed'),
