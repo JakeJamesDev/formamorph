@@ -1,6 +1,6 @@
 # 01: Prototype Link Looks
 
-Status: ready-for-human
+Status: ready-for-agent
 Type: prototype
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -43,3 +43,15 @@ For you: pick the `#N` look and approve the chip and unavailable forms from the 
 
 - Pick the `#N` look and approve the chip and unavailable forms from the prototype frames. Start with `links-all-light-desktop.png` and `links-all-dark-mobile.png`.
 - A hover card has no hover on touch screens. If you pick A, say what a tap does on mobile.
+
+## Comments
+
+**Second pass (spec session, 2026-10-27).** The user ruled one look family for every link kind: chips (spec Q25–Q28). Reopened to frame that family before tickets 05–07 build it.
+
+- `#N`: the titled chip (variant C). Drop variants A and B.
+- `@user`: a chip with the avatar and name, beside the "unknown user" form restyled to match.
+- Listings and the unavailable listing chip: as framed in the first pass.
+- One comment with all three kinds together, in prose, plus the unavailable form of each.
+- Frames: light and dark, desktop and mobile, `.scratch/frames/links-chips-<theme>-<width>.png`.
+
+For you: approve the chip family from the second-pass frames.

@@ -3,7 +3,7 @@
 Status: ready-for-agent
 Spec session: feedback-links — spec
 
-Server side: the FormamorphServer repo, `docs-internal/specs/feedback-links/spec.md`. It holds the thread number, mention and link-target contract. This spec holds the rulings (Q1–Q24) and the user stories.
+Server side: the FormamorphServer repo, `docs-internal/specs/feedback-links/spec.md`. It holds the thread number, mention and link-target contract. This spec holds the rulings (Q1–Q28) and the user stories.
 
 ## Problem Statement
 
@@ -81,10 +81,13 @@ The text is stored exactly as typed. The app and the website show links at read 
   - Q17: `#` searches number prefix or title words, over threads the writer can read.
   - Q18 / Q23: An unknown `@name` shows as "unknown user" and hides the typed name. A typo and a deleted account look the same.
   - Q19: The cap counts distinct users. A self-mention does not count.
-  - Q20: How a resolved `#N` looks inline is OPEN. A prototype settles it.
+  - Q20: Settled by Q25–Q28: every link kind is a chip.
   - Q21: The spec ships now. The first ticket is a `/prototype` of the `#N`, `@` and content-chip looks. The render work waits on it.
   - Q22: A deleted or missing thread, or a bug the reader cannot read, shows the same unavailable form.
   - Q24: Test seams as listed under Testing Decisions.
+  - Q25 / Q27 (prototype review, 2026-10-27): all link kinds share one look family, and that family is chips. `#N` is the titled chip (type icon, number, title, status dot). `@user` becomes a chip with the avatar and name. Listings stay as framed. Chips need no hover, so touch works the same.
+  - Q26: The listing chip, the unavailable listing chip and the "unknown user" form ship as framed in ticket 01.
+  - Q28: Ticket 01 reopens for a second pass that frames the chip family for all three kinds together. Tickets 05, 06 and 07 build from that pass's frames.
 - **Link grammar.** One grammar, two parsers: the server's (for mentions and target lookup) and the client's (for render positions). Both skip fenced code blocks and inline code spans. `@` and `#` need a word boundary before them, so an email address or a `C#` stays plain. A username token follows the server's username rules. Links parse in thread bodies and comments, never in titles.
 - **Thread number.** Each thread carries a `number`, returned on every thread DTO and shown in the thread header and list rows. The website and app routes address a thread by number.
 - **Resolved targets come with the text.** Each thread and comment DTO carries the resolved targets for its own text, resolved for the reader making the request. The client never sends a second lookup to render. A target the reader cannot see arrives as unavailable, with no name, title or type.
