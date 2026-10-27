@@ -19,6 +19,7 @@ Model rationale: new site routes, the age gate, the bundle-boundary widening and
 - [ ] A guest read refused by a server without ticket 01 (401) shows the sign-in nudge in place of the board.
 - [ ] A feedback read that answers 401 to a held token clears the site session and retries once as a guest, so a stale token shows the guest board, not an error. (The server treats any Authorization header as `protect`; ticket 01 ruling.)
 - [ ] No staff control shows for a staff session.
+- [ ] The guest copy ticket 02 added ("Sign In to Reply") and any new guest labels pass the copy-sweep rules.
 - [ ] The bundle-boundary test passes with a deliberate allow-list and ceiling change, and still fails when a forbidden import is added once.
 - [ ] The website Tailwind scan covers every newly reachable component.
 - [ ] `docs/Community-Creations.md` says the Suggestions and Questions boards can also be read at formamorph.ai/feedback.
