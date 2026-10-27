@@ -22,6 +22,10 @@ export const FEEDBACK_SITE_HOST = 'formamorph.ai';
 /** The website address of one thread. */
 export const feedbackThreadUrl = (number: string | number): string => `https://${FEEDBACK_SITE_HOST}/feedback/${number}`;
 
+/** The address a thread chip carries in the app: none for a bug, which the website never serves. */
+export const feedbackThreadChipHref = (number: number, type: string): string | undefined =>
+  type === 'bug' ? undefined : feedbackThreadUrl(number);
+
 /** The site address of one community listing. */
 export const feedbackListingUrl = ({ kind, id }: { kind: string; id: string }): string =>
   `https://${FEEDBACK_SITE_HOST}/community/${kind}/${encodeURIComponent(id)}`;

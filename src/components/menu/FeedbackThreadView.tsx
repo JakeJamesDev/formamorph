@@ -21,12 +21,12 @@ import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
 import {
-  isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus, type FeedbackThread,
+  isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus, type FeedbackThread, type FeedbackType,
 } from "@/types";
 import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
-import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadUrl } from "@/lib/feedbackLinks";
+import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref } from "@/lib/feedbackLinks";
 import { useUserProfile } from "@/contexts/userProfileStore";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 
@@ -58,8 +58,8 @@ interface FeedbackThreadViewProps {
   onUnavailable?: () => void;
   /** Opens a linked thread. Without it the link opens in this view. */
   onOpenThread?: (number: number) => void;
-  /** The address a thread link carries; the website's by default. */
-  threadHref?: (number: number) => string;
+  /** The address a thread link carries; the website's by default, and none for a bug. */
+  threadHref?: (number: number, type: FeedbackType) => string | undefined;
   /** Opens a linked listing. Without it the app's catalog browser opens it, or the link follows its address. */
   onOpenListing?: (listing: { kind: string; id: string }) => void;
   /** The address a listing link carries; the website's by default. */
@@ -108,7 +108,8 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
  */
 export function FeedbackThreadView(props: FeedbackThreadViewProps) {
   const {
-    threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread, threadHref = feedbackThreadUrl,
+    threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread,
+    threadHref = feedbackThreadChipHref,
     onOpenListing, listingHref = feedbackListingUrl, profileHref = feedbackProfileUrl,
   } = props;
   const lentListingOpener = useUserProfile().openListing;

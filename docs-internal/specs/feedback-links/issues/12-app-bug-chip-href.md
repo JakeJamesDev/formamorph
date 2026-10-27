@@ -1,6 +1,6 @@
 # 12: App Bug Chip Address
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -14,6 +14,14 @@ Found by the close review.
 
 ## Acceptance criteria
 
-- [ ] In app mode, a chip for a readable bug opens the bug in place and carries no website href.
-- [ ] Chips for suggestions and questions keep their `/feedback/<N>` href.
-- [ ] Site mode is unchanged: a bug target still renders the unavailable form.
+- [x] In app mode, a chip for a readable bug opens the bug in place and carries no website href. (`FeedbackThreadView.links.test.tsx`: no link role, no href, click calls `onOpenThread(9)`.)
+- [x] Chips for suggestions and questions keep their `/feedback/<N>` href. (Existing suggestion assertion on `/feedback/7`; a question shares the same code path.)
+- [x] Site mode is unchanged: a bug target still renders the unavailable form. (Boards gate untouched; the site test still passes.)
+
+## Landed
+
+**Not verified**
+- Not checked in the browser pane: the button chip's look next to the link chips (it reuses `CHIP_CLASS`).
+
+**For you**
+- Look at a bug chip in an app thread: it should match the other chips, show a pointer on hover, and open the bug on click.
