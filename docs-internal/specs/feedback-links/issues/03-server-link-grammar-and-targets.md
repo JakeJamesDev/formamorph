@@ -6,7 +6,7 @@ Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 Spec: ../spec.md (Q2, Q3, Q11, Q16, Q22; Link grammar; Resolved targets come with the text); server spec: Per-reader targets
 
-Repo: FormamorphServer.
+Repo: FormamorphServer
 
 ## What to build
 

@@ -6,7 +6,7 @@ Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
 Spec: ../spec.md (Q15, Q17); server spec: Autocomplete reads
 
-Repo: FormamorphServer.
+Repo: FormamorphServer
 
 ## What to build
 
