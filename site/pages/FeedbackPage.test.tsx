@@ -11,9 +11,11 @@ const { leaveTo } = vi.hoisted(() => ({ leaveTo: vi.fn() }));
 vi.mock('../leaveSite', () => ({ leaveTo }));
 
 const ID = '3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b';
+const NUMBER = 42;
 
 const thread = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
   id: ID,
+  number: NUMBER,
   type: 'suggestion',
   title: 'Add a map',
   category: 'general',
@@ -68,8 +70,8 @@ afterEach(() => {
 });
 
 describe('the website feedback page', () => {
-  it('shows not-found for an invalid thread ID and sends nothing', () => {
-    resetAccountPage('/feedback/42');
+  it('shows not-found for a thread UUID and sends nothing', () => {
+    resetAccountPage(`/feedback/${ID}`);
     const fetchMock = serve(() => board([]));
 
     render(<FeedbackPage />);
@@ -120,7 +122,7 @@ describe('the website feedback page', () => {
   });
 
   it('shows not-found when a guest opens a missing thread', async () => {
-    resetAccountPage(`/feedback/${ID}`);
+    resetAccountPage(`/feedback/${NUMBER}`);
     acceptAgeGate();
     serve(() => ({ status: 404, body: { error: 'Not found' } }));
 
@@ -130,9 +132,9 @@ describe('the website feedback page', () => {
   });
 
   it('refuses to render a bug a signed-in reader may open in the app', async () => {
-    resetAccountPage(`/feedback/${ID}`);
+    resetAccountPage(`/feedback/${NUMBER}`);
     signIn(reader);
-    serve((url) => (url.pathname.endsWith(`/feedback/${ID}`)
+    serve((url) => (url.pathname.endsWith(`/feedback/${NUMBER}`)
       ? { status: 200, body: { data: thread({ type: 'bug', title: 'Secret crash' }), comments: [] } }
       : board([])));
 
@@ -143,7 +145,7 @@ describe('the website feedback page', () => {
   });
 
   it('shows no staff control to a staff session', async () => {
-    resetAccountPage(`/feedback/${ID}`);
+    resetAccountPage(`/feedback/${NUMBER}`);
     signIn({ ...reader, accountType: 'admin' } as AuthUser);
     serve(() => ({
       status: 200,
@@ -166,7 +168,7 @@ describe('the website feedback page', () => {
   it('sends a guest to sign in from Vote, New and Reply, and back to the same address', async () => {
     const user = userEvent.setup();
     acceptAgeGate();
-    const fetchMock = serve((url) => (url.pathname.endsWith(`/feedback/${ID}`)
+    const fetchMock = serve((url) => (url.pathname.endsWith(`/feedback/${NUMBER}`)
       ? { status: 200, body: { data: thread(), comments: [] } }
       : board([thread()])));
     render(<FeedbackPage />);
@@ -178,7 +180,7 @@ describe('the website feedback page', () => {
 
     await user.click(screen.getByText('Add a map'));
     await user.click(await screen.findByRole('button', { name: 'Sign In to Reply' }));
-    expect(leaveTo).toHaveBeenLastCalledWith(`/login?next=${encodeURIComponent(`/feedback/${ID}`)}`);
+    expect(leaveTo).toHaveBeenLastCalledWith(`/login?next=${encodeURIComponent(`/feedback/${NUMBER}`)}`);
 
     expect(feedbackCalls(fetchMock).every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
   });
@@ -212,9 +214,43 @@ describe('the website feedback page', () => {
     expect(leaveTo).toHaveBeenLastCalledWith('/login?next=%2Ffeedback');
   });
 
+  it('opens a linked thread at its own address, and shows a linked bug as unavailable', async () => {
+    const user = userEvent.setup();
+    resetAccountPage(`/feedback/${NUMBER}`);
+    acceptAgeGate();
+    const linked = thread({ id: 'uuid-7', number: 7, title: 'Pin a stat to the panel' });
+    const fetchMock = serve((url) => (url.pathname.endsWith('/feedback/7')
+      ? { status: 200, body: { data: linked, comments: [] } }
+      : {
+        status: 200,
+        body: {
+          data: thread({
+            body: 'See #7 and #9.',
+            targets: [
+              { kind: 'thread', ref: '7', available: true, number: 7, title: linked.title, type: 'suggestion', status: 'open' },
+              { kind: 'thread', ref: '9', available: true, number: 9, title: 'Secret crash', type: 'bug', status: 'open' },
+            ],
+          }),
+          comments: [],
+        },
+      }));
+    render(<FeedbackPage />);
+
+    const chip = await screen.findByRole('link', { name: /Pin a stat to the panel/ });
+    expect(chip).toHaveAttribute('href', '/feedback/7');
+    expect(screen.getByText('9 · Unavailable thread')).toBeInTheDocument();
+    expect(screen.queryByText('Secret crash')).not.toBeInTheDocument();
+
+    await user.click(chip);
+
+    expect(window.location.pathname).toBe('/feedback/7');
+    expect(await screen.findByRole('heading', { name: /Pin a stat to the panel #7/ })).toBeInTheDocument();
+    expect(feedbackCalls(fetchMock).some(([input]) => String(input).endsWith('/feedback/7'))).toBe(true);
+  });
+
   it('sends a name to the site profile page', async () => {
     const user = userEvent.setup();
-    resetAccountPage(`/feedback/${ID}`);
+    resetAccountPage(`/feedback/${NUMBER}`);
     acceptAgeGate();
     serve(() => ({ status: 200, body: { data: thread(), comments: [] } }));
     render(<FeedbackPage />);

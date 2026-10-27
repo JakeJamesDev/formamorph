@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
@@ -25,12 +25,13 @@ import {
 import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
+import { feedbackThreadUrl } from "@/lib/feedbackLinks";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 
 const COMMENT_MAX = 4000;
 
 interface FeedbackThreadViewProps {
-  /** The thread to show. */
+  /** The thread to show, by UUID or number. */
   threadId: string;
   /** Back to the list this was opened from. */
   onBack: () => void;
@@ -53,6 +54,10 @@ interface FeedbackThreadViewProps {
   onLoaded?: (thread: FeedbackThread) => void;
   /** Called in place of an error when the thread is gone or not on a board this surface shows. */
   onUnavailable?: () => void;
+  /** Opens a linked thread. Without it the link opens in this view. */
+  onOpenThread?: (number: number) => void;
+  /** The address a thread link carries; the website's by default. */
+  threadHref?: (number: number) => string;
 }
 
 /** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
@@ -93,7 +98,27 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
  * One thread and its conversation, with a box to add to it. Shared by every surface that opens one; they
  * differ in whether triage controls are shown, and the reply box appears only for whoever may write.
  */
-export function FeedbackThreadView({
+export function FeedbackThreadView(props: FeedbackThreadViewProps) {
+  const { threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread, threadHref = feedbackThreadUrl } = props;
+  // A thread opened from a link replaces this one until the caller opens another.
+  const [linked, setLinked] = useState<{ from: string; id: string } | null>(null);
+  const shownId = linked?.from === threadId ? linked.id : threadId;
+
+  const place = useMemo<FeedbackLinkPlace>(() => ({
+    boards: capabilities.boards,
+    threadHref,
+    openThread: onOpenThread ?? ((number) => setLinked({ from: threadId, id: String(number) })),
+  }), [capabilities.boards, threadHref, onOpenThread, threadId]);
+
+  return (
+    <FeedbackLinkContext.Provider value={place}>
+      {/* Keyed, so a linked thread starts with no draft, edit or vote of the last one. */}
+      <ThreadPane key={shownId} {...props} threadId={shownId} />
+    </FeedbackLinkContext.Provider>
+  );
+}
+
+function ThreadPane({
   threadId, onBack, isAdmin: callerIsAdmin = false, showTriage: callerShowsTriage = false, onChanged, onDeleted,
   notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite, onLoaded, onUnavailable,
 }: FeedbackThreadViewProps) {
@@ -121,6 +146,8 @@ export function FeedbackThreadView({
   const showTriage = capabilities.staffControls && callerShowsTriage;
 
   const mounted = useMountedRef();
+  // Only a read takes a number; every write names the thread by its UUID.
+  const uuid = detail?.thread.id ?? threadId;
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -159,7 +186,7 @@ export function FeedbackThreadView({
 
     setIsSending(true);
     try {
-      const comment = await FeedbackService.comment(threadId, reply.trim());
+      const comment = await FeedbackService.comment(uuid, reply.trim());
       if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, comments: [...prev.comments, comment] } : prev));
       setReply('');
@@ -178,7 +205,7 @@ export function FeedbackThreadView({
 
     setIsSavingEdit(true);
     try {
-      const updated = await FeedbackService.editComment(threadId, editingId, next);
+      const updated = await FeedbackService.editComment(uuid, editingId, next);
       if (!mounted.current) return;
       setDetail((prev) => (prev
         ? { ...prev, comments: prev.comments.map((c) => (c.id === updated.id ? updated : c)) }
@@ -196,7 +223,7 @@ export function FeedbackThreadView({
 
   const removeCommentById = async (commentId: string) => {
     try {
-      await FeedbackService.removeComment(threadId, commentId);
+      await FeedbackService.removeComment(uuid, commentId);
       if (!mounted.current) return;
       setDetail((prev) => (prev
         ? { ...prev, comments: prev.comments.filter((c) => c.id !== commentId) }
@@ -212,7 +239,7 @@ export function FeedbackThreadView({
 
   const changeStatus = async (status: FeedbackStatus) => {
     try {
-      const updated = await FeedbackService.setStatus(threadId, status);
+      const updated = await FeedbackService.setStatus(uuid, status);
       if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
@@ -223,7 +250,7 @@ export function FeedbackThreadView({
 
   const setAnswer = async (commentId: string | null) => {
     try {
-      const updated = await FeedbackService.setAnswer(threadId, commentId);
+      const updated = await FeedbackService.setAnswer(uuid, commentId);
       if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
@@ -234,7 +261,7 @@ export function FeedbackThreadView({
 
   const toggleLock = async (locked: boolean) => {
     try {
-      const updated = await FeedbackService.setLocked(threadId, locked);
+      const updated = await FeedbackService.setLocked(uuid, locked);
       if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
@@ -252,7 +279,7 @@ export function FeedbackThreadView({
 
     setIsVoting(true);
     try {
-      const updated = await FeedbackService.setVote(threadId, !detail.thread.voted);
+      const updated = await FeedbackService.setVote(uuid, !detail.thread.voted);
       if (!mounted.current) return;
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
@@ -266,7 +293,7 @@ export function FeedbackThreadView({
 
   const remove = async () => {
     try {
-      await FeedbackService.remove(threadId);
+      await FeedbackService.remove(uuid);
       notify('Deleted', 'success');
       onChanged?.();
       onDeleted?.();
@@ -364,7 +391,9 @@ export function FeedbackThreadView({
 
       <section className="space-y-2 rounded-md border p-4 min-w-0">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="font-medium">{thread.title}</h3>
+          <h3 className="font-medium">
+            {thread.title} <span className="font-normal text-muted-foreground">#{thread.number}</span>
+          </h3>
           <div className="flex items-center gap-2">
             {thread.locked && (
               <span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
@@ -397,7 +426,7 @@ export function FeedbackThreadView({
           {/* Said plainly: somebody may already have read the earlier wording. */}
           {thread.editedAt && <span className="italic"> · edited</span>}
         </p>
-        <div className="text-label min-w-0"><MarkdownRenderer text={thread.body} /></div>
+        <div className="text-label min-w-0"><FeedbackMarkdown text={thread.body} targets={thread.targets} /></div>
 
         {/* Votable boards only, and votable even when locked: closing a discussion doesn't make it less
             wanted. */}
@@ -423,7 +452,7 @@ export function FeedbackThreadView({
               <CircleCheck className="h-3.5 w-3.5" /> Accepted Answer
             </p>
             <ReplyByline comment={accepted} />
-            <div className="text-label min-w-0"><MarkdownRenderer text={accepted.body} /></div>
+            <div className="text-label min-w-0"><FeedbackMarkdown text={accepted.body} targets={accepted.targets} /></div>
           </div>
         )}
       </section>
@@ -521,7 +550,7 @@ export function FeedbackThreadView({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1 text-label min-w-0"><MarkdownRenderer text={comment.body} /></div>
+                  <div className="mt-1 text-label min-w-0"><FeedbackMarkdown text={comment.body} targets={comment.targets} /></div>
                 )}
               </div>
             );

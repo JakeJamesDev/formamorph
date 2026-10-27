@@ -26,7 +26,7 @@ interface MyFeedbackSectionProps {
   /** The selected tab and its setter, when the caller owns the selection. */
   tabControl?: { tab: MyFeedbackTabKey; onTabChange: (tab: MyFeedbackTabKey) => void };
   /** Opens a thread somewhere else; the tabs then never show one themselves. */
-  onOpenThread?: (id: string) => void;
+  onOpenThread?: (id: string, number: number) => void;
 }
 
 /** The profile dialog's Feedback tab. Every branch under one tab, the same shape the Admin Panel uses —

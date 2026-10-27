@@ -21,6 +21,7 @@ vi.mock('@/components/prompt/PromptField', () => ({
 
 const thread = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
   id: 's1',
+  number: 1,
   type: 'suggestion',
   title: 'Darker map tiles',
   category: 'other',

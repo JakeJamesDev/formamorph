@@ -17,6 +17,7 @@ vi.mock('./FeedbackThreadView', () => ({
 
 const thread = (over: Partial<FeedbackThread> = {}): FeedbackThread => ({
   id: 'b1',
+  number: 1,
   type: 'bug',
   title: 'Save button does nothing',
   category: 'crash',

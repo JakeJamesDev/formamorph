@@ -67,9 +67,59 @@ export interface FeedbackReporter {
   supporter?: SupporterFlair | null;
 }
 
+/** A link target the reader cannot see, or that does not exist. Carries nothing but the typed ref. */
+export interface UnavailableLinkTarget {
+  kind: 'thread' | 'user' | 'listing';
+  ref: string;
+  available: false;
+}
+
+/** A thread a link points at, as this reader may know it. */
+export interface ThreadLinkTarget {
+  kind: 'thread';
+  /** The thread number as typed. */
+  ref: string;
+  available: true;
+  number: number;
+  title: string;
+  type: FeedbackType;
+  status: FeedbackStatus;
+}
+
+/** A publicly visible community listing a pasted URL points at. */
+export interface ListingLinkTarget {
+  kind: 'listing';
+  /** `<kind>/<id>`. */
+  ref: string;
+  available: true;
+  listingKind: string;
+  id: string;
+  title: string;
+  /** Root-relative; see `serverAssetSrc`. */
+  thumbnailUrl: string;
+}
+
+/** An account a mention points at. */
+export interface UserLinkTarget {
+  kind: 'user';
+  /** The lower-cased username. */
+  ref: string;
+  available: true;
+  id: string;
+  /** As the account spells it. */
+  username: string;
+  /** Root-relative, or null for none; see `serverAssetSrc`. */
+  avatarUrl: string | null;
+}
+
+/** One resolved link of a post. The client matches a link to its target by kind and ref. */
+export type FeedbackLinkTarget = ThreadLinkTarget | ListingLinkTarget | UserLinkTarget | UnavailableLinkTarget;
+
 /** One piece of feedback — a bug report, a suggestion or a question — as any reader of it sees it. */
 export interface FeedbackThread {
   id: string;
+  /** The short number from the sequence every type shares; its address on the website. */
+  number: number;
   type: FeedbackType;
   title: string;
   category: FeedbackCategory;
@@ -94,6 +144,8 @@ export interface FeedbackThread {
   unread: boolean;
   /** The reply marked as the answer, copied from the thread. Questions only; null for none. */
   acceptedAnswer?: FeedbackComment | null;
+  /** The resolved links of `body`, for this reader. Absent from a server that predates them. */
+  targets?: FeedbackLinkTarget[];
 }
 
 export interface FeedbackComment {
@@ -117,6 +169,8 @@ export interface FeedbackComment {
     /** Their Supporter Flair, or null for none. Absent from a server that predates it. */
     supporter?: SupporterFlair | null;
   };
+  /** The resolved links of `body`, for this reader. Absent from a server that predates them. */
+  targets?: FeedbackLinkTarget[];
 }
 
 /** A thread with its comments, as the detail view holds it. */

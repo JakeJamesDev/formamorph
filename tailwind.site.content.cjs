@@ -53,6 +53,7 @@ const FEEDBACK_FILES = [
   'src/components/menu/MyFeedbackSection.tsx',
   'src/components/menu/MyFeedbackTab.tsx',
   'src/components/menu/FeedbackThreadView.tsx',
+  'src/components/menu/FeedbackMarkdown.tsx',
   'src/components/menu/FeedbackEditDialog.tsx',
   'src/components/menu/FeedbackList.tsx',
   'src/components/menu/FeedbackDialog.tsx',

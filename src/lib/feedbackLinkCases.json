@@ -1,0 +1,567 @@
+[
+  {
+    "name": "a thread number",
+    "text": "See #23 for that.",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "23",
+        "start": 4,
+        "end": 7
+      }
+    ]
+  },
+  {
+    "name": "a thread number at the start",
+    "text": "#5 is related",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "5",
+        "start": 0,
+        "end": 2
+      }
+    ]
+  },
+  {
+    "name": "a repeated thread number links each time",
+    "text": "#4 and #4",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 0,
+        "end": 2
+      },
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 7,
+        "end": 9
+      }
+    ]
+  },
+  {
+    "name": "a thread number in parentheses or quotes",
+    "text": "(#23) \"#7\"",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "23",
+        "start": 1,
+        "end": 4
+      },
+      {
+        "kind": "thread",
+        "ref": "7",
+        "start": 7,
+        "end": 9
+      }
+    ]
+  },
+  {
+    "name": "a thread number before punctuation",
+    "text": "Fixed in #23.",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "23",
+        "start": 9,
+        "end": 12
+      }
+    ]
+  },
+  {
+    "name": "C# stays plain",
+    "text": "Written in C# mostly",
+    "links": []
+  },
+  {
+    "name": "a hash after a letter or digit stays plain",
+    "text": "a#23 1#2",
+    "links": []
+  },
+  {
+    "name": "an HTML entity stays plain",
+    "text": "Use &#23; here",
+    "links": []
+  },
+  {
+    "name": "a hash after a slash stays plain",
+    "text": "path x/#2",
+    "links": []
+  },
+  {
+    "name": "a doubled hash stays plain",
+    "text": "##5",
+    "links": []
+  },
+  {
+    "name": "zero and zero-padded numbers stay plain",
+    "text": "#0 #007",
+    "links": []
+  },
+  {
+    "name": "a number followed by letters stays plain",
+    "text": "#23abc #23_x",
+    "links": []
+  },
+  {
+    "name": "a hash with no number stays plain",
+    "text": "# heading and #",
+    "links": []
+  },
+  {
+    "name": "a mention",
+    "text": "Thanks @alice!",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "alice",
+        "start": 7,
+        "end": 13
+      }
+    ]
+  },
+  {
+    "name": "a mention is lower-cased",
+    "text": "@Alice and @ALICE",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "alice",
+        "start": 0,
+        "end": 6
+      },
+      {
+        "kind": "user",
+        "ref": "alice",
+        "start": 11,
+        "end": 17
+      }
+    ]
+  },
+  {
+    "name": "a mention with underscore and dash",
+    "text": "@alice_bob-x said",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "alice_bob-x",
+        "start": 0,
+        "end": 12
+      }
+    ]
+  },
+  {
+    "name": "a mention ends at a character outside the username set",
+    "text": "@ann.lee wrote",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "ann",
+        "start": 0,
+        "end": 4
+      }
+    ]
+  },
+  {
+    "name": "a name shorter than 3 is not a mention",
+    "text": "@a.b @ab",
+    "links": []
+  },
+  {
+    "name": "a 20-character name is a mention",
+    "text": "@abcdefghijabcdefghij",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "abcdefghijabcdefghij",
+        "start": 0,
+        "end": 21
+      }
+    ]
+  },
+  {
+    "name": "a 21-character name is not a mention",
+    "text": "@abcdefghijabcdefghijk",
+    "links": []
+  },
+  {
+    "name": "an email address stays plain",
+    "text": "mail bob@example.com",
+    "links": []
+  },
+  {
+    "name": "a doubled at sign stays plain",
+    "text": "@@alice",
+    "links": []
+  },
+  {
+    "name": "a mention after punctuation",
+    "text": "cc:@bob,@carol",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "bob",
+        "start": 3,
+        "end": 7
+      },
+      {
+        "kind": "user",
+        "ref": "carol",
+        "start": 8,
+        "end": 14
+      }
+    ]
+  },
+  {
+    "name": "inline code stays plain",
+    "text": "Type `#23` or `@alice`",
+    "links": []
+  },
+  {
+    "name": "a double-backtick span holds a backtick",
+    "text": "``a ` #4 @alice`` then #5",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "5",
+        "start": 23,
+        "end": 25
+      }
+    ]
+  },
+  {
+    "name": "an unclosed backtick is literal",
+    "text": "a ` #4",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 4,
+        "end": 6
+      }
+    ]
+  },
+  {
+    "name": "a fenced block stays plain",
+    "text": "Before #1\n```\n#2 @alice\n```\nAfter #3",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "1",
+        "start": 7,
+        "end": 9
+      },
+      {
+        "kind": "thread",
+        "ref": "3",
+        "start": 34,
+        "end": 36
+      }
+    ]
+  },
+  {
+    "name": "a tilde fence stays plain",
+    "text": "~~~js\n#2\n~~~\n#3",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "3",
+        "start": 13,
+        "end": 15
+      }
+    ]
+  },
+  {
+    "name": "a longer fence closes only on one as long",
+    "text": "````\n```\n#2\n````\n#3",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "3",
+        "start": 17,
+        "end": 19
+      }
+    ]
+  },
+  {
+    "name": "an unclosed fence runs to the end",
+    "text": "#1\n```\n#2\n#3",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "1",
+        "start": 0,
+        "end": 2
+      }
+    ]
+  },
+  {
+    "name": "indented code is not skipped",
+    "text": "Text\n\n    #9 @alice",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "9",
+        "start": 10,
+        "end": 12
+      },
+      {
+        "kind": "user",
+        "ref": "alice",
+        "start": 13,
+        "end": 19
+      }
+    ]
+  },
+  {
+    "name": "a thread URL",
+    "text": "Look at https://formamorph.ai/feedback/23 please",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "23",
+        "start": 8,
+        "end": 41
+      }
+    ]
+  },
+  {
+    "name": "a thread URL over http with www and a slash",
+    "text": "http://www.formamorph.ai/feedback/23/",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "23",
+        "start": 0,
+        "end": 37
+      }
+    ]
+  },
+  {
+    "name": "a thread URL keeps its query and fragment",
+    "text": "https://formamorph.ai/feedback/4?x=1#c5",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 0,
+        "end": 39
+      }
+    ]
+  },
+  {
+    "name": "a hash in a URL fragment is not a thread link",
+    "text": "https://formamorph.ai/feedback/4#5",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 0,
+        "end": 34
+      }
+    ]
+  },
+  {
+    "name": "trailing punctuation is not part of a URL",
+    "text": "(see https://formamorph.ai/feedback/4).",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 5,
+        "end": 37
+      }
+    ]
+  },
+  {
+    "name": "a URL inside a markdown link",
+    "text": "[my world](https://formamorph.ai/community/entity/e1)",
+    "links": [
+      {
+        "kind": "listing",
+        "ref": "entity/e1",
+        "start": 11,
+        "end": 52
+      }
+    ]
+  },
+  {
+    "name": "a URL inside an autolink",
+    "text": "<https://formamorph.ai/feedback/4>",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "4",
+        "start": 1,
+        "end": 33
+      }
+    ]
+  },
+  {
+    "name": "a listing URL",
+    "text": "Try https://formamorph.ai/community/world/abc-123",
+    "links": [
+      {
+        "kind": "listing",
+        "ref": "world/abc-123",
+        "start": 4,
+        "end": 49
+      }
+    ]
+  },
+  {
+    "name": "each listing kind with a page",
+    "text": "https://formamorph.ai/community/dictionary/d1 https://formamorph.ai/community/prompt/p1",
+    "links": [
+      {
+        "kind": "listing",
+        "ref": "dictionary/d1",
+        "start": 0,
+        "end": 45
+      },
+      {
+        "kind": "listing",
+        "ref": "prompt/p1",
+        "start": 46,
+        "end": 87
+      }
+    ]
+  },
+  {
+    "name": "a percent-encoded listing id is decoded",
+    "text": "https://formamorph.ai/community/world/abc%20d",
+    "links": [
+      {
+        "kind": "listing",
+        "ref": "world/abc d",
+        "start": 0,
+        "end": 45
+      }
+    ]
+  },
+  {
+    "name": "a model URL is not a link",
+    "text": "https://formamorph.ai/community/model/m1",
+    "links": []
+  },
+  {
+    "name": "another host is not a link",
+    "text": "https://example.com/feedback/23 https://formamorph.ai.example.com/feedback/3",
+    "links": []
+  },
+  {
+    "name": "a URL without a scheme is not a link",
+    "text": "formamorph.ai/feedback/2",
+    "links": []
+  },
+  {
+    "name": "a thread URL by UUID is not a link",
+    "text": "https://formamorph.ai/feedback/3f2c9a1e-0000-4000-8000-000000000000",
+    "links": []
+  },
+  {
+    "name": "a malformed thread URL is not a link",
+    "text": "https://formamorph.ai/feedback/007 https://formamorph.ai/feedback/23abc",
+    "links": []
+  },
+  {
+    "name": "a URL in inline code stays plain",
+    "text": "`https://formamorph.ai/feedback/4`",
+    "links": []
+  },
+  {
+    "name": "a URL with more path after the thread is not a link",
+    "text": "https://formamorph.ai/feedback/23/comments https://formamorph.ai/feedback/23.html",
+    "links": []
+  },
+  {
+    "name": "a URL with more path after the listing is not a link",
+    "text": "https://formamorph.ai/community/world/abc/edit",
+    "links": []
+  },
+  {
+    "name": "a closing bracket after a URL is not part of it",
+    "text": "[see https://formamorph.ai/feedback/5]",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "5",
+        "start": 5,
+        "end": 37
+      }
+    ]
+  },
+  {
+    "name": "trailing punctuation is not part of a listing URL",
+    "text": "Try https://formamorph.ai/community/world/w9.",
+    "links": [
+      {
+        "kind": "listing",
+        "ref": "world/w9",
+        "start": 4,
+        "end": 44
+      }
+    ]
+  },
+  {
+    "name": "a malformed percent escape is not a link",
+    "text": "https://formamorph.ai/community/world/%E0%A4%A",
+    "links": []
+  },
+  {
+    "name": "a URL links after a letter",
+    "text": "xhttps://formamorph.ai/feedback/5",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "5",
+        "start": 1,
+        "end": 33
+      }
+    ]
+  },
+  {
+    "name": "a host in capitals is not a link",
+    "text": "HTTPS://FORMAMORPH.AI/feedback/5",
+    "links": []
+  },
+  {
+    "name": "a backtick fence with a backtick in its info string is not a fence",
+    "text": "```js `x`\n#11",
+    "links": [
+      {
+        "kind": "thread",
+        "ref": "11",
+        "start": 10,
+        "end": 13
+      }
+    ]
+  },
+  {
+    "name": "every kind together",
+    "text": "@bob see #2 and https://formamorph.ai/community/world/w9",
+    "links": [
+      {
+        "kind": "user",
+        "ref": "bob",
+        "start": 0,
+        "end": 4
+      },
+      {
+        "kind": "thread",
+        "ref": "2",
+        "start": 9,
+        "end": 11
+      },
+      {
+        "kind": "listing",
+        "ref": "world/w9",
+        "start": 16,
+        "end": 56
+      }
+    ]
+  }
+]

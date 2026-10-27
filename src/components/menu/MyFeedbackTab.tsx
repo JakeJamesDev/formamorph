@@ -28,7 +28,7 @@ interface MyFeedbackTabProps {
   /** Set for a guest: Vote, Reply and New call it instead of the service. */
   onGuestWrite?: () => void;
   /** Opens a thread somewhere else; the tab then never shows one itself. */
-  onOpenThread?: (id: string) => void;
+  onOpenThread?: (id: string, number: number) => void;
 }
 
 /** What each tab's file button offers, and what it says when nothing matches. */

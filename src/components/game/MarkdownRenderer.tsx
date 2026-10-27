@@ -19,7 +19,11 @@ import 'streamdown/styles.css';
 // marker rather than leaving a hollow mark for the stylesheet to paint. Styling lives in index.css against
 // the classes it emits. `codeMeta` is Streamdown's: it hands a fence's info string after the language to the
 // block renderer.
-const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
+type RemarkPlugins = NonNullable<ComponentProps<typeof Streamdown>['remarkPlugins']>;
+/** One remark plugin, or a plugin and its options. */
+export type RemarkPlugin = RemarkPlugins[number];
+
+const REMARK_PLUGINS: RemarkPlugins = [
   [remarkGfm, { singleTilde: false }],
   remarkNoIndentedCode,
   remarkBreaks,
@@ -27,6 +31,12 @@ const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
   [remarkFlexibleMarkers, { actionForEmptyContent: 'remove' }],
   defaultRemarkPlugins.codeMeta,
 ];
+
+/** Where `links` joins the chain: after the parser extensions, ahead of `remarkBreaks` and the transformers
+ *  that rebuild text nodes, since it reads source offsets. */
+const LINKS_AT = REMARK_PLUGINS.indexOf(remarkBreaks);
+const remarkPluginsWith = (links: RemarkPlugin): RemarkPlugins =>
+  [...REMARK_PLUGINS.slice(0, LINKS_AT), links, ...REMARK_PLUGINS.slice(LINKS_AT)];
 
 // Streamdown boxes every table in a bordered card inside a second bordered scroller. Our markdown
 // surfaces are already panels, so that reads as a box in a box. Keep the scroller and the solid fill
@@ -56,10 +66,15 @@ interface SanitizeSchema { tagNames?: string[]; attributes?: Record<string, unkn
 const { raw, sanitize, harden } = defaultRehypePlugins;
 const [sanitizePlugin, sanitizeSchema] =
   (Array.isArray(sanitize) ? sanitize : [sanitize, {}]) as [unknown, SanitizeSchema];
+/** The hast property a `links` plugin marks its links with; the `a` renderer reads it. Author HTML may forge
+ *  one, which only reaches a renderer that resolves it the same way. */
+export const LINK_MARK_PROPERTY = 'dataLinkMark';
+
+const anchorAttributes = (sanitizeSchema.attributes?.a ?? []) as unknown[];
 const MARK_SCHEMA: SanitizeSchema = {
   ...sanitizeSchema,
   tagNames: [...(sanitizeSchema.tagNames ?? []), 'mark'],
-  attributes: { ...sanitizeSchema.attributes, mark: ['className'] },
+  attributes: { ...sanitizeSchema.attributes, mark: ['className'], a: [...anchorAttributes, LINK_MARK_PROPERTY] },
 };
 
 // Module constants because Streamdown memoizes each block on plugin-array identity.
@@ -121,6 +136,9 @@ const COMPONENTS: MarkdownComponents = {
  * `components` replaces the renderer of the tags it names, such as the reader's links. Pass a stable
  * object: Streamdown memoizes each block on its identity.
  *
+ * `links` is a remark plugin that marks links in the text, such as feedback's `#N`. Pass a stable value, like
+ * `components`.
+ *
  * `timing` is the word timing of a reveal with its own pace, such as a help answer. Without it the
  * renderer reads the narration timing store.
  *
@@ -131,11 +149,12 @@ const COMPONENTS: MarkdownComponents = {
  * chrome around it grows with the text rather than to the whole released sentence at once.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, resume = false, fitShown = false }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; resume?: boolean; fitShown?: boolean },
+  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, links, resume = false, fitShown = false }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; links?: RemarkPlugin; resume?: boolean; fitShown?: boolean },
 ) {
   const root = useRef<HTMLDivElement>(null);
   useFitShown(root, animate && fitShown, text);
   const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
+  const remarkPlugins = useMemo(() => (links ? remarkPluginsWith(links) : REMARK_PLUGINS), [links]);
   // Fixed at mount: Streamdown keys its reveal state on the animated options, so a change would replay it.
   const [skipInitial] = useState(resume);
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
@@ -143,7 +162,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
   return (
     <div ref={root} className="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
-        remarkPlugins={REMARK_PLUGINS}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePluginsFor(tinted, dialogue)}
         components={allComponents}
         plugins={PLUGINS}

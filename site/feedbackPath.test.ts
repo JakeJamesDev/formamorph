@@ -13,17 +13,17 @@ describe('feedback addresses', () => {
     expect(feedbackTarget('/feedback', '?board=bugs')).toEqual({ status: 'board', board: 'suggestions' });
   });
 
-  it('reads a thread ID', () => {
-    expect(feedbackTarget(`/feedback/${ID}`, '')).toEqual({ status: 'thread', id: ID });
+  it('reads a thread number', () => {
+    expect(feedbackTarget('/feedback/23', '')).toEqual({ status: 'thread', number: '23' });
   });
 
   it('reads a trailing slash as the same address', () => {
-    expect(feedbackTarget(`/feedback/${ID}/`, '')).toEqual({ status: 'thread', id: ID });
+    expect(feedbackTarget('/feedback/23/', '')).toEqual({ status: 'thread', number: '23' });
     expect(feedbackTarget('/feedback/', '?board=questions')).toEqual({ status: 'board', board: 'questions' });
   });
 
-  it('calls anything else under the route invalid', () => {
-    for (const path of ['/feedback/42', '/feedback/not-an-id', `/feedback/${ID}/x`, `/feedback/${ID}x`]) {
+  it('calls anything else under the route invalid, a thread UUID included', () => {
+    for (const path of [`/feedback/${ID}`, '/feedback/0', '/feedback/007', '/feedback/23x', '/feedback/not-a-number', '/feedback/23/x']) {
       expect(feedbackTarget(path, '')).toEqual({ status: 'invalid' });
     }
   });
@@ -32,6 +32,6 @@ describe('feedback addresses', () => {
     const [pathname, query] = feedbackBoardPath('questions').split('?');
     expect(feedbackTarget(pathname, query)).toEqual({ status: 'board', board: 'questions' });
     expect(feedbackBoardPath('suggestions')).toBe('/feedback');
-    expect(feedbackTarget(feedbackThreadPath(ID), '')).toEqual({ status: 'thread', id: ID });
+    expect(feedbackTarget(feedbackThreadPath(23), '')).toEqual({ status: 'thread', number: '23' });
   });
 });

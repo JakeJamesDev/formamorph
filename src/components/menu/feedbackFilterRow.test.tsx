@@ -41,6 +41,7 @@ vi.mock('@/services/AuthService', () => ({
 
 const thread = (id: string, type: FeedbackType): FeedbackThread => ({
   id,
+  number: 1,
   type,
   title: `Thread ${id}`,
   category: CATEGORY_OPTIONS[type][0].value,

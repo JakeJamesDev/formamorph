@@ -16,6 +16,7 @@ vi.mock('@/services/AuthService', () => ({
 
 const thread = (type: FeedbackType): FeedbackThread => ({
   id: 't1',
+  number: 1,
   type,
   title: 'Save button does nothing',
   category: 'other',

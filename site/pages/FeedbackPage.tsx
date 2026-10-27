@@ -69,7 +69,7 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
   const openedFromBoard = useRef(false);
   const boardScroll = useRef<number | null>(null);
 
-  const threadId = target.status === 'thread' ? target.id : null;
+  const threadNumber = target.status === 'thread' ? target.number : null;
 
   const targetBoard = target.status === 'board' ? target.board : null;
   useEffect(() => {
@@ -78,13 +78,13 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
 
   // Before paint, so the board never shows at the thread's offset first.
   useLayoutEffect(() => {
-    if (threadId) {
+    if (threadNumber) {
       window.scrollTo(0, 0);
     } else if (boardScroll.current !== null) {
       window.scrollTo(0, boardScroll.current);
       boardScroll.current = null;
     }
-  }, [threadId]);
+  }, [threadNumber]);
 
   const notify = useCallback<FeedbackNotify>((message, kind, error) => {
     if (error instanceof DetailedError && error.status === 401) {
@@ -98,11 +98,18 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
 
   const signInHere = useCallback(() => leaveTo(signInTo(here())), []);
 
-  const openThread = useCallback((id: string) => {
+  const openThread = useCallback((_id: string, number: number) => {
     openedFromBoard.current = true;
     boardScroll.current = window.scrollY;
     setNote(null);
-    navigateSite(feedbackThreadPath(id));
+    navigateSite(feedbackThreadPath(number));
+  }, []);
+
+  // A link inside a thread is a new page: the browser's Back returns to the last thread, the thread's Back to its board.
+  const openLinkedThread = useCallback((number: number) => {
+    openedFromBoard.current = false;
+    setNote(null);
+    navigateSite(feedbackThreadPath(number));
   }, []);
 
   const changeBoard = useCallback((tab: FeedbackTab) => {
@@ -122,10 +129,10 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
   const loaded = useCallback((thread: FeedbackThread) => setBoard(boardOf(thread)), []);
 
   const unavailable = useCallback(() => {
-    if (threadId) setMissing(threadId);
-  }, [threadId]);
+    if (threadNumber) setMissing(threadNumber);
+  }, [threadNumber]);
 
-  if (threadId && missing === threadId) return <NotFoundPage />;
+  if (threadNumber && missing === threadNumber) return <NotFoundPage />;
 
   return (
     <UserProfileContext.Provider value={PROFILE_LINKS}>
@@ -143,22 +150,24 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
             </div>
           ) : (
             <>
-              {threadId && (
+              {threadNumber && (
                 <FeedbackThreadView
-                  key={threadId}
-                  threadId={threadId}
+                  key={threadNumber}
+                  threadId={threadNumber}
                   onBack={back}
                   notify={notify}
                   capabilities={WEBSITE_FEEDBACK_CAPABILITIES}
                   onGuestWrite={guest ? signInHere : undefined}
                   onLoaded={loaded}
                   onUnavailable={unavailable}
+                  onOpenThread={openLinkedThread}
+                  threadHref={feedbackThreadPath}
                 />
               )}
               {/* Hidden, not unmounted, under an open thread: Back returns to the same search, filters and page. */}
-              <div hidden={threadId !== null}>
+              <div hidden={threadNumber !== null}>
                 <MyFeedbackSection
-                  active={threadId === null}
+                  active={threadNumber === null}
                   notify={notify}
                   capabilities={WEBSITE_FEEDBACK_CAPABILITIES}
                   onGuestWrite={guest ? signInHere : undefined}
