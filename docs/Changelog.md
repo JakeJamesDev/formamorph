@@ -87,7 +87,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A live listing with an update waiting for review shows Update Pending, and you can compare or discard the update.** Mods see the changed fields side by side, both thumbnails and the changelog edits. A changelog entry you add to a live listing shows as Pending until a mod approves it.
   - **Usernames:**
     - **New usernames are 3–20 letters, numbers, spaces, `_` or `-` on the game's Register dialog and website's Create Account page.** Both show the rule under the field, trim the ends and join double spaces. A space and `_` count as the same character, so "That username is taken" shows for "Jake_James" when "Jake James" exists.
-    - **An account whose username breaks the rule now chooses a new name in a rename dialog after login.** The field suggests a free name. Select Later to keep playing; likes, comments and publishing stay locked until you rename.
+    - **An account whose username breaks the rule chooses a new name in a rename dialog after login.** The field suggests a free name. Select Later to keep playing; likes, comments and publishing stay locked until you rename.
     - **The website asks an account with a rule-breaking username to choose a new name.** Sign-in and any refused action open the **Choose a New Username** page. Select Later to leave it; account actions stay locked until you rename.
   - **Feedback Links:**
     - **Every feedback thread shows its number, and #23 or a pasted thread address in a post shows as a chip.** The chip shows the thread's type, title and status, and opens it in the app or on formamorph.ai. A thread you can't read shows as **Unavailable thread**. Text in code stays plain.
