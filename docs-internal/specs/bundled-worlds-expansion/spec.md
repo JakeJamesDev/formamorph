@@ -189,6 +189,7 @@ Each content ticket writes its world's art-direction line into this spec's Comme
 - **Per-world tests** only for behavior that must hold: a Tool handler's write, a script's effect on its stat or lore entry, a gate, a Visibility rule at a stat value or daypart. Each is shown to bite by breaking the world file once.
 - **Probe evidence (Q9)** goes in each content ticket's comments: arms, run counts, structural metrics, and the rubric result, in the refresh's format.
 - **Art tickets add no test seam.** The Test Bench image rules run through the shared suite. The contact sheet is the human check.
+- **No test transforms a lossless world (tickets 23, 24).** Under vitest the strip plugin serves every `?raw` bundled-world import image-free, test files included, so the main vitest process never holds a world's art. A test that needs image bytes reads the file from disk in its worker. The user ruled for this over a heap flag on 2026-10-26, after ticket 14's prepare died at 4 GB in the main process with about 238 MB of world source.
 - Prior art: the shared bundled-world suite, the Veilwood and Emberwatch world tests, the bundled fingerprint test, the refresh tickets' probe tables.
 
 ## Out of Scope
