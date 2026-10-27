@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '@/lib/apiBase';
-import { USERNAME_RULE_HELP, USERNAME_TAKEN_MESSAGE, checkUsername } from '@/lib/usernameRule';
+import { USERNAME_RENAME_FAILED_MESSAGE, USERNAME_RULE_HELP, USERNAME_TAKEN_MESSAGE, checkUsername } from '@/lib/usernameRule';
 import type { AuthUser } from '@/types';
 import { codedResponseError, readFailure, responseError } from './responseError';
 
@@ -429,7 +429,7 @@ class AuthService {
     });
 
     if (!response.ok) {
-      throw await usernameRefusal(response, 'Failed to change the username');
+      throw await usernameRefusal(response, USERNAME_RENAME_FAILED_MESSAGE);
     }
 
     const data = await response.json();

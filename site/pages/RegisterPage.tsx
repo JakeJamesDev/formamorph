@@ -35,6 +35,8 @@ export function RegisterPage() {
   const [checking, setChecking] = useState(startedSignedIn);
   const [policy, setPolicy] = useState<PublicPrivacyPolicy | null>(null);
   const checkedExisting = useRef(false);
+  // The name the rule check passed, for the policy step's retry to send as the first attempt did.
+  const checkedName = useRef('');
   const [authenticationFlow] = useState(() => startedSignedIn ? null : readAgeGateAuthentication());
   const continueAuthentication = useAgeGateAuthenticationHandoff(authenticationFlow);
   const boundAgeGateAuthenticationRef = useRef<BoundAgeGateAuthentication | null>(null);
@@ -124,6 +126,7 @@ export function RegisterPage() {
       return;
     }
 
+    checkedName.current = usernameVerdict.username;
     setBusy(true);
     try {
       let currentPolicy: PublicPrivacyPolicy | null = null;
@@ -159,7 +162,7 @@ export function RegisterPage() {
 
     if (creating) {
       try {
-        await AuthService.register(username.trim(), password, email.trim());
+        await AuthService.register(checkedName.current, password, email.trim());
         setAccountCreated(true);
         bindPendingAgeGateAnswer();
       } catch (failure) {

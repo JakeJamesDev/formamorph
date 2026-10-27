@@ -36,7 +36,7 @@ export function LoginPage() {
   const finish = (deletionCancelled: boolean) => {
     if (deletionCancelled) recordDeletionCancellation();
     // A flagged account owes a rename before anything else works, so it lands there first.
-    leaveTo(AuthService.getCurrentUser()?.usernameRename?.required ? `${RENAME_PATH}${carry}` : next);
+    leaveTo(AuthService.getCurrentUser()?.usernameRename?.required ? RENAME_PATH : next);
   };
 
   const persistAnswer = async (pending: PendingCompletion) => {

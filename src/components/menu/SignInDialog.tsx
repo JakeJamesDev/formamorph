@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -42,6 +42,8 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
   // this point there is no account to hold one.
   const [signupPolicy, setSignupPolicy] = useState<PublicPrivacyPolicy | null>(null);
   const [signupBusy, setSignupBusy] = useState(false);
+  // The name the rule check passed, for the policy step's retry to send as the first attempt did.
+  const checkedName = useRef('');
 
   // The signed-in prompt. Registration answers the policy on its own, but a sign-in has to ask the
   // server whether this account already has.
@@ -95,6 +97,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
       setAuthError(usernameVerdict.error);
       return;
     }
+    checkedName.current = usernameVerdict.username;
 
     if (!password) {
       setAuthError('Password is required');
@@ -141,10 +144,10 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
     if (await createAccount()) finishSignup();
   };
 
-  /** Register, and report a refusal the same way whichever path arrived here. */
+  /** Register under the name the rule check passed, and report a refusal the same way whichever path arrived here. */
   const createAccount = async (): Promise<boolean> => {
     try {
-      await AuthService.register(username.trim(), password, email.trim());
+      await AuthService.register(checkedName.current, password, email.trim());
       authenticationSucceeded();
       return true;
     } catch (error) {

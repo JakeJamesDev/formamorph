@@ -117,6 +117,7 @@ const FILES = [
   'src/lib/thumbAspect.ts',
   'src/lib/useCachedThumbnail.tsx',
   'src/lib/useMountedRef.ts',
+  'src/lib/useRenameSubmit.ts',
   'src/lib/useResetOnOpen.ts',
   'src/lib/usernameRule.ts',
   'src/lib/utils.ts',
