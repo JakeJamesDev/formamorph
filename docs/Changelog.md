@@ -125,8 +125,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A world Tool offered to the stat pass now gets called.** The stat reply's strict format blocked every call. The Tool round now runs first, and the reply still follows the format.
   - **Scripts:**
     - **The code editor's Variable menu lists groups first, then fields, then verbs.** Timing groups such as Narration and Player now sit right after This Stat or This Trait.
-  - **Feedback Links:**
-    - **A bug chip in a feedback post now opens the bug in the app only.** It no longer carries a formamorph.ai address that led to a not-found page.
   - **Turning off Flash Attention in the Local Model panel now turns it off when the model loads.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
   - **The bundled model's out-of-VRAM error names your Context Size and Parallel Requests settings.** It said "sequences" before and gave no next step. Now it tells you which setting to lower.
   - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.

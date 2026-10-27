@@ -1,6 +1,6 @@
 # 08: Server Autocomplete Searches
 
-Status: ready-for-human
+Status: done
 Base: 872f0f8
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
