@@ -27,6 +27,13 @@ describe('SupportersPage', () => {
     expect(within(plus).queryByText('Bo')).toBeNull();
   });
 
+  it('links a spaced name in its underscore form', async () => {
+    wallIs([row('1', 'Jake James', 'supporter')]);
+    render(<SupportersPage />);
+
+    expect(await screen.findByRole('link', { name: 'Jake James' })).toHaveAttribute('href', '/u/Jake_James');
+  });
+
   it('keeps the order the server sent inside a section', async () => {
     wallIs([
       row('1', 'Zed', 'supporter_plus'),

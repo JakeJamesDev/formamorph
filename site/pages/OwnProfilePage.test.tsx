@@ -31,6 +31,13 @@ describe('/profile', () => {
     await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/u/wren_hallow'));
   });
 
+  it('links a spaced name in its underscore form', async () => {
+    signedInAs('Jake James');
+    render(<OwnProfilePage />);
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/u/Jake_James'));
+  });
+
   it('escapes a name that needs it, so the path stays one segment', async () => {
     signedInAs('wren/hallow');
     render(<OwnProfilePage />);

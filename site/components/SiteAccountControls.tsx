@@ -6,6 +6,7 @@ import { useTheme } from '@/components/theme-provider';
 import AuthService from '@/services/AuthService';
 import type { AuthUser } from '@/types';
 import { withAgeGateAuthentication } from '@/lib/ageGateAuthentication';
+import { usernameLinkForm } from '@/lib/usernameRule';
 import { useSiteAgeGateAuthentication } from '../ageGateAuthenticationContext';
 
 interface SiteSession {
@@ -53,7 +54,7 @@ export function SiteAccountControls({ signInPath = '/login' }: { signInPath?: st
         <nav aria-label="Account" className="fm-account-links">
           {username && (
             <a
-              href={`/u/${encodeURIComponent(username)}`}
+              href={`/u/${encodeURIComponent(usernameLinkForm(username))}`}
               aria-label="Profile"
               className="fm-menu-item"
             >

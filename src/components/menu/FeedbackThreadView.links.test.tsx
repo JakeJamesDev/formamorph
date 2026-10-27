@@ -283,6 +283,17 @@ describe('user links', () => {
     expect(container.innerHTML).not.toContain('@lantern_keeper');
   });
 
+  it('shows the stored name on a spaced account’s chip and links its underscore form', async () => {
+    const jake: FeedbackLinkTarget = { kind: 'user', ref: 'jake_james', available: true, id: 'u7', username: 'Jake James', avatarUrl: null };
+    serve({ thread: thread({ body: 'Thanks @Jake_James.', targets: [jake] }), comments: [] });
+
+    render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />);
+
+    const chip = await screen.findByRole('link', { name: /Jake James/ });
+    expect(chip).toHaveTextContent('Jake James');
+    expect(chip.getAttribute('href')).toMatch(/\/u\/Jake_James$/);
+  });
+
   it('opens the profile on a plain click and leaves a modified click to the browser', async () => {
     serve({ thread: thread({ body, targets: [LANTERN, GHOST] }), comments: [] });
     const openProfile = vi.fn();

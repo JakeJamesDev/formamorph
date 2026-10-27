@@ -9,6 +9,7 @@ import {
 import type { SupporterTier } from '@/types';
 import { PatreonService, type Supporter } from '@/services/PatreonService';
 import { cn } from '@/lib/utils';
+import { usernameLinkForm } from '@/lib/usernameRule';
 import { SiteLayout } from '../components/SiteLayout';
 
 type State =
@@ -26,7 +27,7 @@ function SupporterRow({ supporter }: { supporter: Supporter }) {
     <li className="flex items-center gap-3 min-w-0">
       <UserAvatar username={supporter.username} avatarUrl={supporter.avatarUrl} supporter={flair} size="md" />
       <a
-        href={`/u/${encodeURIComponent(supporter.username)}`}
+        href={`/u/${encodeURIComponent(usernameLinkForm(supporter.username))}`}
         className={cn('truncate rounded-sm underline-offset-2 hover:underline', SUPPORTER_NAME_STYLES[supporter.tier])}
       >
         {supporter.username}

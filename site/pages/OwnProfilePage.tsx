@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import AuthService from '@/services/AuthService';
+import { usernameLinkForm } from '@/lib/usernameRule';
 import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
 import { SiteLayout } from '../components/SiteLayout';
@@ -18,7 +19,7 @@ export function OwnProfilePage() {
   const username = AuthService.getCurrentUser()?.username;
 
   useEffect(() => {
-    leaveTo(username ? `/u/${encodeURIComponent(username)}` : SIGN_IN);
+    leaveTo(username ? `/u/${encodeURIComponent(usernameLinkForm(username))}` : SIGN_IN);
   }, [username]);
 
   // On screen only for the moment the browser takes to leave, so it says where, not nothing.

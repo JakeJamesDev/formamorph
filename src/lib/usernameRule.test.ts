@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { USERNAME_RULE_HELP, checkUsername } from './usernameRule';
+import { USERNAME_RULE_HELP, checkUsername, usernameLinkForm } from './usernameRule';
+
+describe('usernameLinkForm', () => {
+  it.each([
+    ['one inner space', 'Jake James', 'Jake_James'],
+    ['every space, keeping capitals', 'Ann Lee Ray', 'Ann_Lee_Ray'],
+    ['a name with no space', 'Ann_Lee-42', 'Ann_Lee-42'],
+  ])('turns %s into the link form', (_label, name, form) => {
+    expect(usernameLinkForm(name)).toBe(form);
+  });
+});
 
 describe('checkUsername', () => {
   const valid: [string, string][] = [

@@ -5,6 +5,7 @@ import type { FeedbackTab } from '@/components/menu/feedbackTabs';
 import { UserProfileContext, type UserProfileContextValue } from '@/contexts/userProfileStore';
 import { WEBSITE_FEEDBACK_CAPABILITIES, type FeedbackNotify } from '@/lib/feedbackCapabilities';
 import { DetailedError } from '@/lib/errorDetails';
+import { usernameLinkForm } from '@/lib/usernameRule';
 import AuthService from '@/services/AuthService';
 import type { FeedbackThread } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ const openListingHref = (listing: { kind: string; id: string }) => communityList
 /** A listing link is a page of its own, reached without a reload. */
 const openLinkedListing = (listing: { kind: string; id: string }) => navigateSite(openListingHref(listing));
 
-const profilePath = (username: string) => `/u/${encodeURIComponent(username)}`;
+const profilePath = (username: string) => `/u/${encodeURIComponent(usernameLinkForm(username))}`;
 
 /** A name opens the site's own profile page. */
 const PROFILE_LINKS: UserProfileContextValue = {

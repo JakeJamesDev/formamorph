@@ -1,4 +1,5 @@
 import { maskCode, sigilMayStartAt } from './feedbackLinks';
+import { usernameLinkForm } from './usernameRule';
 
 /** What the editor should suggest for the run the caret ends. */
 export interface FeedbackSuggestQuery {
@@ -31,4 +32,4 @@ export function feedbackSuggestQuery(before: string): FeedbackSuggestQuery | nul
 
 /** The text a pick inserts in place of the typed run. */
 export const feedbackSuggestInsert = (kind: FeedbackSuggestQuery['kind'], value: string | number): string =>
-  `${kind === 'user' ? '@' : '#'}${value} `;
+  `${kind === 'user' ? `@${usernameLinkForm(String(value))}` : `#${value}`} `;
