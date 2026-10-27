@@ -161,3 +161,13 @@ export function relatedFiles(changed, requirers) {
   for (const test of Object.keys(ALWAYS_RUN)) out.add(test);
   return [...out].sort();
 }
+
+/** The gate's options after `<base>`, or null when they do not parse; a project run passes when it has no related file. */
+export function gateOptions(args) {
+  const [flag, name, ...extra] = args;
+  if (extra.length) return null;
+  if (flag === undefined) return { list: false, vitest: [] };
+  if (flag === '--list' && name === undefined) return { list: true, vitest: [] };
+  if (flag === '--project' && name && !name.startsWith('-')) return { list: false, vitest: ['--project', name, '--passWithNoTests'] };
+  return null;
+}

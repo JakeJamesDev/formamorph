@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ALWAYS_RUN, GRAPH_COVERED, PATH_TRIGGERS, cjsRequires, gitFiles, relatedFiles, requirersOf } from './testSelection.mjs';
+import { ALWAYS_RUN, GRAPH_COVERED, PATH_TRIGGERS, cjsRequires, gateOptions, gitFiles, relatedFiles, requirersOf } from './testSelection.mjs';
 
 // Tracked and new files; a tracked file deleted in the working tree is gone.
 const FILES = gitFiles('ls-files', '--cached', '--others', '--exclude-standard').filter((file) => existsSync(file));
@@ -160,5 +160,19 @@ describe('cjsRequires', () => {
   it('resolves literal relative requires and flags the rest', () => {
     const source = "const a = require('./a.cjs');\nconst fs = require('node:fs');\nconst b = require(name);";
     expect(cjsRequires('electron/x.cjs', source)).toEqual({ targets: ['electron/a.cjs'], dynamic: ['require(name)'] });
+  });
+});
+
+describe('gateOptions', () => {
+  it('reads no option, --list, or --project with a name', () => {
+    expect(gateOptions([])).toEqual({ list: false, vitest: [] });
+    expect(gateOptions(['--list'])).toEqual({ list: true, vitest: [] });
+    expect(gateOptions(['--project', 'node'])).toEqual({ list: false, vitest: ['--project', 'node', '--passWithNoTests'] });
+  });
+
+  it('refuses a project without a name, a stray word, or extra options', () => {
+    for (const args of [['--project'], ['--project', '--list'], ['--lst'], ['--list', 'node'], ['--project', 'node', '--list']]) {
+      expect(gateOptions(args), args.join(' ')).toBeNull();
+    }
   });
 });
