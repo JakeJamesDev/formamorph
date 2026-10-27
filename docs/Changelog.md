@@ -92,6 +92,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
   - **The World Editor's Downscale now turns every PNG, BMP and lossless WebP image into a smaller lossy WebP.** It works at any size. The size budgets changed too: thumbnail 200 KB, entity 1280 px and 250 KB, background 900 KB, map 1.5 MB.
   - **The Suggestions and Questions boards are now readable on formamorph.ai/feedback.** No account is needed to read. Sign in to vote or reply. Each thread has its own link.
+  - **Signed-in visitors can vote, reply and edit their own posts on formamorph.ai/feedback.** A failed vote, reply or delete shows its message under the control.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
   - **Web, Android and desktop builds ship the bundled worlds downscaled, re-encoded from the lossless files in the repo.** Set `FORMAMORPH_LOSSLESS_WORLDS=1` to ship the lossless files instead. `npm run fingerprints` records both forms, so the publish check knows each one.

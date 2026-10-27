@@ -149,6 +149,8 @@ function ThreadPane({
   const [pendingCommentDelete, setPendingCommentDelete] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [editingThread, setEditingThread] = useState(false);
+  // The last failed write and the control it belongs to: 'vote', 'reply' or a comment id.
+  const [controlNote, setControlNote] = useState<{ at: string; text: string } | null>(null);
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
   // Author-owned, not admin-owned: moderation stops at rewriting somebody else's words, and the server
@@ -196,9 +198,22 @@ function ThreadPane({
 
   useEffect(() => { load(); }, [load]);
 
+  /** A failed write: under its control where the surface says so. A 401 always goes to `notify`, which owns the session. */
+  const fail = (at: string, message: string, error: unknown) => {
+    if (capabilities.inlineNotes && !(error instanceof DetailedError && error.status === 401)) {
+      setControlNote({ at, text: message });
+      return;
+    }
+    notify(message, 'error', error);
+  };
+  const noteAt = (at: string) => (controlNote?.at === at
+    ? <p role="alert" className="text-helper text-destructive">{controlNote.text}</p>
+    : null);
+
   const send = async () => {
     if (!reply.trim()) return;
 
+    setControlNote(null);
     setIsSending(true);
     try {
       const comment = await FeedbackService.comment(uuid, reply.trim());
@@ -208,7 +223,7 @@ function ThreadPane({
       onChanged?.();
     } catch (error) {
       if (!mounted.current) return;
-      notify('Failed to post the comment', 'error', error);
+      fail('reply', 'Failed to post the comment', error);
     } finally {
       if (mounted.current) setIsSending(false);
     }
@@ -218,6 +233,7 @@ function ThreadPane({
     const next = editDraft.trim();
     if (!editingId || !next) return;
 
+    setControlNote(null);
     setIsSavingEdit(true);
     try {
       const updated = await FeedbackService.editComment(uuid, editingId, next);
@@ -230,13 +246,14 @@ function ThreadPane({
       if (detail?.thread.acceptedAnswer?.id === updated.id) void load();
     } catch (error) {
       if (!mounted.current) return;
-      notify('Failed to save the comment', 'error', error);
+      fail(editingId, 'Failed to save the comment', error);
     } finally {
       if (mounted.current) setIsSavingEdit(false);
     }
   };
 
   const removeCommentById = async (commentId: string) => {
+    setControlNote(null);
     try {
       await FeedbackService.removeComment(uuid, commentId);
       if (!mounted.current) return;
@@ -248,7 +265,7 @@ function ThreadPane({
       // Deleting the accepted reply reopens the question, so the pin and the status come from the server.
       if (detail?.thread.acceptedAnswer?.id === commentId) void load();
     } catch (error) {
-      if (mounted.current) notify('Failed to delete the comment', 'error', error);
+      if (mounted.current) fail(commentId, 'Failed to delete the comment', error);
     }
   };
 
@@ -292,6 +309,7 @@ function ThreadPane({
     }
     if (!detail || isVoting) return;
 
+    setControlNote(null);
     setIsVoting(true);
     try {
       const updated = await FeedbackService.setVote(uuid, !detail.thread.voted);
@@ -300,7 +318,7 @@ function ThreadPane({
       onChanged?.();
     } catch (error) {
       if (!mounted.current) return;
-      notify('Failed to record your vote', 'error', error);
+      fail('vote', 'Failed to record your vote', error);
     } finally {
       if (mounted.current) setIsVoting(false);
     }
@@ -458,6 +476,7 @@ function ThreadPane({
             {thread.voted ? 'Voted' : 'Vote'} · {thread.votes}
           </Button>
         )}
+        {noteAt('vote')}
 
         <Diagnostics diagnostics={thread.diagnostics} />
 
@@ -567,6 +586,7 @@ function ThreadPane({
                 ) : (
                   <div className="mt-1 text-label min-w-0"><FeedbackMarkdown text={comment.body} targets={comment.targets} /></div>
                 )}
+                {noteAt(comment.id)}
               </div>
             );
           })
@@ -601,6 +621,7 @@ function ThreadPane({
         <Button size="sm" onClick={send} disabled={isSending || !reply.trim()}>
           <Send className="mr-2 h-4 w-4" /> {isSending ? 'Sending…' : 'Send Reply'}
         </Button>
+        {noteAt('reply')}
       </div>
       )}
 
@@ -624,6 +645,7 @@ function ThreadPane({
         mayEditProse={canEditProse}
         mayRefile={canRefile}
         notify={notify}
+        inlineNote={capabilities.inlineNotes}
         onSaved={(saved) => {
           // Written in rather than refetched, so a type move's new status and cleared diagnostics land
           // at once; the list behind it is told separately.
