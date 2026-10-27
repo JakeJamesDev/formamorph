@@ -1,6 +1,7 @@
 # Spec: Links in Feedback Threads
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-27; tickets 01–12, last landing 43aac7eeca. Review: spec text corrected; gaps landed as tickets 10–12. Gates green on 2026-10-27.
 Spec session: feedback-links — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/feedback-links/spec.md`. It holds the thread number, mention and link-target contract. This spec holds the rulings (Q1–Q38) and the user stories.

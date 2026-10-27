@@ -1,6 +1,6 @@
 # 02: Server Thread Numbers
 
-Status: ready-for-human
+Status: done
 Base: 08047b8
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
