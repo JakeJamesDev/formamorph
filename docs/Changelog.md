@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.4.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.4.0** — the latest released version.
+> ✅ **3.0.0 – 3.5.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.5.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.4.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.5.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.5.0 — Released 2026-10-27</strong> — Bigger bundled worlds with art for every location and entity — Avatars for every entity — the World Editor's Media tab — the bundled llama-server engine with vision models — community questions and listing review — scripts that edit choices and read the clock (click to expand)</summary>
 
 ### Major Changes
 
@@ -43,7 +48,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Media Tab:**
     - **The World Editor's new Media tab shows every image, sound, 3D Model and Avatar in the world, with sizes.** Cards sit in sections that follow your groups and locations, and an entity's images stack into one card. Entity and Avatar cards are tall; other cards are wide. Select a card to preview, download or go to it.
     - **The Media tab header shows Publish Size and lets you group, sort and filter the gallery.** Group by type, show the largest files first, or filter to linked, embedded, rule-bearing or over-budget images. An over-limit world's warning now opens this tab.
-    - **The Media tab's panel can now replace or remove a sound, 3D Model, background, thumbnail or cover image.** A replaced file keeps its slot, and each change undoes in one step.
+    - **The Media tab's panel replaces or removes a sound, 3D Model, background, thumbnail or cover image.** A replaced file keeps its slot, and each change undoes in one step.
     - **Optimize Images moves into the World Editor's Media tab header in both modes, and now shrinks dictionary cover images.** The app bar no longer has the button. Sizes and the meter update when a run ends.
     - **An entity's or location's image opens one Media tab panel with its gallery, and the framed image's actions sit below.** Reorder, generate, replace, download or remove images there. Each image also gets its Visibility rule editor, and an entity's links to its Avatar.
     - **The Media tab's No Images filter lists entities, locations, the thumbnail and the Map Background with no image.** Select a blank card to add its first image. Dictionaries without a cover image stay out.
@@ -67,7 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can now switch a whole dictionary on or off during play, with `enabled`.** A dictionary you ship off is listed as off, so a script can switch it on later. Undo reverses the change. Picked library dictionaries work too.
     - **Scripts can now read a stat's active band text, with `descriptor` and `previous.descriptor`.** The second reads the band at the turn start. It matches the band the AI reads, chips filled in, and reads empty when no band applies. Hover cards and the Variable menu list it.
     - **After the AI scripts can now read the turn's page and read or change its choices, with `turn.narration` and `turn.choices`.** The page includes During AI Output rewrites. Assign a choices list, or use `push`, `splice` or an index; each script reads the edits of the scripts before it. Earlier timings read both empty.
-    - **In a world whose After the AI scripts use `turn`, choices now show once those scripts finish.** The scripted list shows once and never changes after it appears. Other worlds show choices as soon as the narration settles.
+    - **In a world whose After the AI scripts use `turn`, choices show once those scripts finish.** The scripted list shows once and never changes after it appears. Other worlds show choices as soon as the narration settles.
     - **Re-generate Choices now runs a world's After the AI scripts again, so a choice a script removed stays removed.** Only their choice edits apply. A `player` call shows nothing on that run, and the new list shows once the scripts finish.
     - **The script editor now underlines a write to `clock`, `location` or `notes`, which a run ignores.** It also underlines a `push`, `splice` or other in-place edit of `turn.choices` outside After the AI. `location.move` and `clock.advance` stay valid.
   - **Feedback Questions:**
@@ -105,8 +110,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The desktop engine now runs models through the bundled llama-server instead of node-llama-cpp.** Every engine setting maps to a server flag. A failed GPU load retries once on the CPU, and the server exits with the app, even on a crash.
     - **The engine's proxy shapes each chat request the way node-llama-cpp read it.** It merges system messages at the top, sends the last message as a user turn, drops images a text-only model can't see, and passes the model's thoughts in a separate reasoning field.
     - **The VRAM viewer reads the engine's share from llama-server's own load log.** The share sums the model, context and compute buffers on the GPU. The device line shows the free VRAM llama-server saw at load.
-  - **Dependencies:**
-    - **The app runs on React 19.** React, React DOM and their types move to 19.3, with next-themes 0.4.6 and react-resizable-panels 2.1.9. The code editor keeps newer keystrokes when a render lags, and surface requests reach dialogs that mount late.
+  - **The app runs on React 19.** React, React DOM and their types move to 19.3, with next-themes 0.4.6 and react-resizable-panels 2.1.9. The code editor keeps newer keystrokes when a render lags, and surface requests reach dialogs that mount late.
 
 #### ➖ Removed
 
@@ -115,8 +119,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The 3D Player Avatar checkbox and the Custom Player Avatar uploader leave the World Overview.** An older world that had the checkbox on still shows the same Avatar. Its old Avatar now sits in the world's Avatars.
     - **The Enter World avatar step no longer has a Delete button.** Delete an Avatar from its tile menu on the library's **Avatars** tab, which names the saves and entities that use it.
 - **⚙️ Backend**
-  - **Llama Server Engine:**
-    - **The desktop build no longer ships node-llama-cpp.** Its dependency, its prebuilt packages and its packaging rules are gone, and the Windows payload is 4 MB smaller.
+  - **The desktop build no longer ships node-llama-cpp.** Its dependency, its prebuilt packages and its packaging rules are gone, and the Windows payload is 4 MB smaller.
 
 #### 🔧 Fixed
 
@@ -124,8 +127,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World Tools:**
     - **A world Tool on the narration or choices prompt no longer puts the model's planning into the story or choices.** Gemma models sometimes write a thought block first when a Tool is offered. It now shows as reasoning, and a thought that runs out of room retries without Tools.
     - **A world Tool offered to the stat pass now gets called.** The stat reply's strict format blocked every call. The Tool round now runs first, and the reply still follows the format.
-  - **Scripts:**
-    - **The code editor's Variable menu lists groups first, then fields, then verbs.** Timing groups such as Narration and Player now sit right after This Stat or This Trait.
+  - **The code editor's Variable menu lists groups first, then fields, then verbs.** Timing groups such as Narration and Player now sit right after This Stat or This Trait.
   - **Turning off Flash Attention in the Local Model panel now turns it off when the model loads.** A box you unchecked before stays unchecked. A quantized V Cache Type needs Flash Attention on.
   - **The bundled model's out-of-VRAM error names your Context Size and Parallel Requests settings.** It said "sequences" before and gave no next step. Now it tells you which setting to lower.
   - **Editing a stat's or trait's script on the Scripts tab no longer slows down per keystroke and crashes the editor.** Each edit nested the script's stat and owner inside the script, and the next edit nested that again. A long edit ran the browser out of memory.
@@ -145,6 +147,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **`tool-spill-probe.cli.ts` replays captured world requests with a Tool offered or withheld.** It counts reasoning spills, Tool calls and usable replies per arm. On the cloud model, stat-pass calls went from 0 of 20 to 20 of 20.
   - **`npm test` passes on a busy machine and lists slow tests with how much load slowed each.** Timeouts now catch only hangs. Delay checks run on a fake clock, and speed checks compare sizes instead of timing a budget. A file that only timed out reruns alone once.
+
+</details>
 
 ---
 

@@ -7,13 +7,13 @@ import { fileURLToPath } from 'node:url';
 import { BUILDS, fetchLlamaServer, listAssets, platformsFromArgs, readPin } from './fetchLlamaServer.mjs';
 
 // The asset names of the pinned tag's real release, recorded with the API. A pin bump re-records this file.
-const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b11829.json'), 'utf8'));
+const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b11927.json'), 'utf8'));
 
 const json = (status, body) => new Response(JSON.stringify(body), { status });
 
 describe('asset-name mapping', () => {
   it('pins the tag the recorded asset list was taken from', async () => {
-    expect(await readPin()).toBe('b11829');
+    expect(await readPin()).toBe('b11927');
   });
 
   it('maps every desktop build to an asset the pinned release has', async () => {

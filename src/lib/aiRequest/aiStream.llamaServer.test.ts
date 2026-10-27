@@ -51,7 +51,7 @@ async function parse(stream: string) {
 const THOUGHT_TAGS = /<think>|<\/think>|<\|channel>|<channel\|>/;
 
 describe('Recorded llama-server replies at --reasoning-format deepseek', () => {
-  it.each(['b11829-gemma', 'b11829-thinking'])('%s: the thought arrives in reasoning_content, not in content', (name) => {
+  it.each(['b11927-gemma', 'b11927-thinking'])('%s: the thought arrives in reasoning_content, not in content', (name) => {
     const { chat } = recorded(name);
     const message = chat.choices[0].message;
     expect(message.reasoning_content?.length).toBeGreaterThan(0);
@@ -59,18 +59,18 @@ describe('Recorded llama-server replies at --reasoning-format deepseek', () => {
     expect(message.reasoning_content).not.toMatch(THOUGHT_TAGS);
   });
 
-  it('b11829-gemma: the streamed deltas keep the thought out of content', () => {
-    const frames = recorded('b11829-gemma').chatStream
+  it('b11927-gemma: the streamed deltas keep the thought out of content', () => {
+    const frames = recorded('b11927-gemma').chatStream
       .split('\n\n').filter((f) => f.startsWith('data: {')).map((f) => JSON.parse(f.slice(6)).choices[0]?.delta ?? {});
     expect(frames.some((d) => typeof d.reasoning_content === 'string' && d.reasoning_content.length > 0)).toBe(true);
     expect(frames.map((d) => d.content ?? '').join('')).not.toMatch(THOUGHT_TAGS);
   });
 
-  it('b11829-gemma: the app parser returns the answer text and the thought apart', async () => {
-    const result = await parse(recorded('b11829-gemma').chatStream);
-    expect(result.content).toBe(recorded('b11829-gemma').chat.choices[0].message.content);
+  it('b11927-gemma: the app parser returns the answer text and the thought apart', async () => {
+    const result = await parse(recorded('b11927-gemma').chatStream);
+    expect(result.content).toBe(recorded('b11927-gemma').chat.choices[0].message.content);
     expect(result.reasoningField).toBe('reasoning_content');
-    expect(result.reasoningText).toBe(recorded('b11829-gemma').chat.choices[0].message.reasoning_content);
+    expect(result.reasoningText).toBe(recorded('b11927-gemma').chat.choices[0].message.reasoning_content);
     expect(result.content).not.toMatch(THOUGHT_TAGS);
   });
 });

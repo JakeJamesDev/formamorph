@@ -19,7 +19,7 @@ const instanceTexts = (scenario) => fixture.scenarios[scenario].load.map(parseLo
 
 describe('memoryTally', () => {
   it('sums the recorded non-host buffers and reads the device’s free VRAM at load', () => {
-    expect(fieldsOf(instanceTexts('loaded'))).toEqual({ engineVramMB: 3023, deviceVramFreeMB: 21970, deviceVramTotalMB: 24138 });
+    expect(fieldsOf(instanceTexts('loaded'))).toEqual({ engineVramMB: 3025, deviceVramFreeMB: 23365, deviceVramTotalMB: 24138 });
   });
 
   it('counts nothing on a CPU load, whose buffers are all host', () => {
@@ -50,15 +50,15 @@ describe('memoryTally', () => {
     // Synthetic: no recording has an on-device output buffer. Format is llama.cpp's `%10s output buffer size = %8.2f MiB`.
     const output = `llama_context: ${'Vulkan0'.padStart(10)} output buffer size = ${(0.98).toFixed(2).padStart(8)} MiB`;
     const texts = instanceTexts('loaded');
-    expect(fieldsOf(texts).engineVramMB).toBe(3023);
-    expect(fieldsOf([...texts, output]).engineVramMB).toBe(3024);
+    expect(fieldsOf(texts).engineVramMB).toBe(3025);
+    expect(fieldsOf([...texts, output]).engineVramMB).toBe(3026);
   });
 
   it('sums across devices when the load spans two', () => {
     // The recorded single-GPU lines, each device and buffer line repeated for a second card.
     const texts = instanceTexts('max').flatMap((t) => (/Vulkan0/.test(t) ? [t, t.replace('Vulkan0', 'Vulkan1').replace(/- \d+ MiB free/, '- 1000 MiB free')] : [t]));
-    const devices = parseListDevices('Available devices:\n  Vulkan0: NVIDIA GeForce RTX 4090 (24138 MiB, 22065 MiB free)\n  Vulkan1: NVIDIA GeForce RTX 3060 (12288 MiB, 1100 MiB free)\n');
-    expect(fieldsOf(texts, devices)).toEqual({ engineVramMB: 6046, deviceVramFreeMB: 23293, deviceVramTotalMB: 36426 });
+    const devices = parseListDevices('Available devices:\n  Vulkan0: NVIDIA GeForce RTX 4090 (24138 MiB, 23370 MiB free)\n  Vulkan1: NVIDIA GeForce RTX 3060 (12288 MiB, 1100 MiB free)\n');
+    expect(fieldsOf(texts, devices)).toEqual({ engineVramMB: 6050, deviceVramFreeMB: 24370, deviceVramTotalMB: 36426 });
   });
 });
 
@@ -91,7 +91,7 @@ describe('instancePid', () => {
 
 describe('parseListDevices', () => {
   it('reads the recorded --list-devices output', () => {
-    expect(parseListDevices(fixture.listDevices)).toEqual([{ id: 'Vulkan0', name: 'NVIDIA GeForce RTX 4090', totalMB: 24138, freeMB: 22065 }]);
+    expect(parseListDevices(fixture.listDevices)).toEqual([{ id: 'Vulkan0', name: 'NVIDIA GeForce RTX 4090', totalMB: 24138, freeMB: 23370 }]);
   });
 
   it('keeps several devices in the server’s order and names the backend', () => {
@@ -127,7 +127,7 @@ describe('parseLogLine', () => {
     expect(lines.some((l) => l.port == null && l.text.startsWith('srv          load: spawning server instance'))).toBe(true);
     const instance = lines.filter((l) => l.port != null);
     expect(instance.length).toBeGreaterThan(0);
-    expect(instance.some((l) => l.text === 'srv  llama_server: model loaded')).toBe(true);
+    expect(instance.some((l) => l.text === 'srv  server_run_i: model loaded')).toBe(true);
     expect(instance.some((l) => l.data?.type === 'fit_memory_breakdown')).toBe(true);
   });
 });
