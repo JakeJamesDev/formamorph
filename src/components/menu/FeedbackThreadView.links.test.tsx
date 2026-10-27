@@ -159,6 +159,93 @@ describe('thread links in the app', () => {
   });
 });
 
+const LISTING: FeedbackLinkTarget = {
+  kind: 'listing', ref: 'world/w1', available: true, listingKind: 'world', id: 'w1', title: 'Brinewell Harbor', thumbnailUrl: '/api/thumbs/w1.webp',
+};
+const GONE: FeedbackLinkTarget = { kind: 'listing', ref: 'entity/e9', available: false };
+const LISTING_URL = 'https://formamorph.ai/community/world/w1';
+
+describe('listing links', () => {
+  it('draws a pasted listing URL as a chip with title, kind and thumbnail, and a taken-down one as the unavailable form', async () => {
+    serve({
+      thread: thread({ body: `Try ${LISTING_URL} first.`, targets: [LISTING] }),
+      comments: [comment('Gone: https://formamorph.ai/community/entity/e9', [GONE])],
+    });
+
+    const { container } = render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />);
+
+    const chipLink = await screen.findByRole('link', { name: /Brinewell Harbor/ });
+    expect(chipLink).toHaveTextContent('Brinewell HarborWorld');
+    expect(chipLink).toHaveAttribute('href', LISTING_URL);
+    expect(container.querySelector('img')).toHaveAttribute('src', expect.stringContaining('/api/thumbs/w1.webp'));
+    expect(screen.queryByText(LISTING_URL)).not.toBeInTheDocument();
+
+    expect(screen.getByText('Unavailable listing')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Unavailable/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/entity\/e9|community\/entity/)).not.toBeInTheDocument();
+  });
+
+  it('opens the listing in the app catalog on a plain click, and leaves a modified click to the browser', async () => {
+    serve({ thread: thread({ body: LISTING_URL, targets: [LISTING] }), comments: [] });
+    const open = vi.fn();
+
+    render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} onOpenListing={open} />);
+    const link = await screen.findByRole('link', { name: /Brinewell Harbor/ });
+
+    expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+
+    fireEvent.click(link);
+    expect(open).toHaveBeenCalledWith({ kind: 'world', id: 'w1' });
+  });
+
+  it('opens a new tab at the site address when no catalog browser is there', async () => {
+    serve({ thread: thread({ body: LISTING_URL, targets: [LISTING] }), comments: [] });
+
+    render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />);
+
+    expect(await screen.findByRole('link', { name: /Brinewell Harbor/ })).toHaveAttribute('target', '_blank');
+  });
+
+  it('follows the site route in place on the website', async () => {
+    serve({ thread: thread({ body: LISTING_URL, targets: [LISTING] }), comments: [] });
+
+    render(
+      <FeedbackThreadView
+        threadId="1"
+        onBack={() => {}}
+        notify={toastFeedbackNotify}
+        capabilities={WEBSITE_FEEDBACK_CAPABILITIES}
+        listingHref={({ kind, id }) => `/community/${kind}/${id}`}
+      />,
+    );
+
+    const link = await screen.findByRole('link', { name: /Brinewell Harbor/ });
+    expect(link).toHaveAttribute('href', '/community/world/w1');
+    expect(link).not.toHaveAttribute('target');
+  });
+
+  it('keeps a listing URL plain inside code', async () => {
+    serve({ thread: thread({ body: `Paste \`${LISTING_URL}\` like this.`, targets: [LISTING] }), comments: [] });
+
+    render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />);
+
+    expect(await screen.findByText(LISTING_URL, { selector: 'code' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Brinewell Harbor/ })).not.toBeInTheDocument();
+  });
+
+  it('shows the kind icon when the thumbnail fails to load', async () => {
+    serve({ thread: thread({ body: LISTING_URL, targets: [LISTING] }), comments: [] });
+
+    const { container } = render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />);
+    await screen.findByRole('link', { name: /Brinewell Harbor/ });
+    fireEvent.error(container.querySelector('img')!);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByRole('link', { name: /Brinewell Harbor/ }).querySelector('svg')).not.toBeNull();
+  });
+});
+
 describe('thread links on the website', () => {
   it('opens a pasted thread URL at the site route, and shows a bug as unavailable', async () => {
     serve({ thread: thread({ body: 'See https://formamorph.ai/feedback/7 and #9.', targets: [PLANNED, BUG] }), comments: [] });

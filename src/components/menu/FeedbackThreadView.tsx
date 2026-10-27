@@ -25,7 +25,8 @@ import {
 import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
-import { feedbackThreadUrl } from "@/lib/feedbackLinks";
+import { feedbackListingUrl, feedbackThreadUrl } from "@/lib/feedbackLinks";
+import { useUserProfile } from "@/contexts/userProfileStore";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 
 const COMMENT_MAX = 4000;
@@ -58,6 +59,10 @@ interface FeedbackThreadViewProps {
   onOpenThread?: (number: number) => void;
   /** The address a thread link carries; the website's by default. */
   threadHref?: (number: number) => string;
+  /** Opens a linked listing. Without it the app's catalog browser opens it, or the link follows its address. */
+  onOpenListing?: (listing: { kind: string; id: string }) => void;
+  /** The address a listing link carries; the website's by default. */
+  listingHref?: (listing: { kind: string; id: string }) => string;
 }
 
 /** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
@@ -99,7 +104,12 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
  * differ in whether triage controls are shown, and the reply box appears only for whoever may write.
  */
 export function FeedbackThreadView(props: FeedbackThreadViewProps) {
-  const { threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread, threadHref = feedbackThreadUrl } = props;
+  const {
+    threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread, threadHref = feedbackThreadUrl,
+    onOpenListing, listingHref = feedbackListingUrl,
+  } = props;
+  const lentListingOpener = useUserProfile().openListing;
+  const openListing = onOpenListing ?? lentListingOpener;
   // A thread opened from a link replaces this one until the caller opens another.
   const [linked, setLinked] = useState<{ from: string; id: string } | null>(null);
   const shownId = linked?.from === threadId ? linked.id : threadId;
@@ -108,7 +118,9 @@ export function FeedbackThreadView(props: FeedbackThreadViewProps) {
     boards: capabilities.boards,
     threadHref,
     openThread: onOpenThread ?? ((number) => setLinked({ from: threadId, id: String(number) })),
-  }), [capabilities.boards, threadHref, onOpenThread, threadId]);
+    listingHref,
+    openListing,
+  }), [capabilities.boards, threadHref, onOpenThread, threadId, listingHref, openListing]);
 
   return (
     <FeedbackLinkContext.Provider value={place}>

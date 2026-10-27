@@ -488,6 +488,15 @@ To link another thread in a report or a reply, type `#` and its number, or paste
 
 A thread you can't read, or one that was deleted, shows as **Unavailable thread** with its number and no title. On the website, a link to a bug report shows the same way, because bug reports stay in the app.
 
+### Listing Links
+<!-- keywords: link a world, link an entity, link a listing, share a creation, community link, paste a listing address -->
+
+To point at a world, entity, dictionary or prompt, paste its website address in a report or a reply. The address looks like `https://formamorph.ai/community/world/…`. The link shows as a chip with the listing's image, title and kind.
+
+In the app, select the chip to open the listing in **Community Creations**. The **Feedback** window closes first. On the website, the chip opens the listing's page.
+
+A listing that is hidden, waiting for review or deleted shows as **Unavailable listing**, with no title. An address in code, between backticks or in a code block, stays plain text.
+
 ## Related
 
 - [Linked Content](LinkedContent): required content, add-ons and updates for linked copies.

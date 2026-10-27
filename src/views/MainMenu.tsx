@@ -672,6 +672,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     requireAttestation({
       onAccept: () => {
         setShowProfileDialog(false);
+        // A listing link in a feedback thread steps the Feedback window aside.
+        setShowFeedback(false);
         setPendingListing(listing);
         // A no-op when the request came from a profile opened inside the browser: it is already open, and
         // the listing it was handed is what it reacts to either way.

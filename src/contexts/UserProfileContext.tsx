@@ -38,8 +38,8 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
   ), [listingOpener]);
 
   const value = useMemo(
-    () => ({ openProfile, setListingOpener: lendListingOpener }),
-    [openProfile, lendListingOpener]
+    () => ({ openProfile, setListingOpener: lendListingOpener, openListing }),
+    [openProfile, lendListingOpener, openListing]
   );
 
   return (

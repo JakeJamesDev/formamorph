@@ -20,6 +20,8 @@ export interface UserProfileContextValue {
    * while it is mounted, and the rows are plain text whenever nobody has.
    */
   setListingOpener: (open: ListingOpener | null) => void;
+  /** Opens a listing in the catalog browser, or absent while nobody has lent one. */
+  openListing?: ListingOpener;
 }
 
 /** Separate from the provider so that file exports a component and nothing else, which is what keeps
