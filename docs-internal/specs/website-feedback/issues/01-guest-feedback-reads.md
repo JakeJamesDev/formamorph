@@ -1,6 +1,6 @@
 # 01: Guest Feedback Reads
 
-Status: ready-for-human
+Status: done
 Base: 87d5c36
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
