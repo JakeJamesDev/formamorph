@@ -9,6 +9,17 @@
 /site-app/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Scripts and styles the site's HTML loads by a fixed name. Pages caches them for 4 hours by default,
+# which puts an old header over a new page; revalidating makes a deploy live on the next visit.
+/theme.js
+  Cache-Control: public, max-age=0, must-revalidate
+/session.js
+  Cache-Control: public, max-age=0, must-revalidate
+/site-header.css
+  Cache-Control: public, max-age=0, must-revalidate
+/site-app/header.js
+  Cache-Control: public, max-age=0, must-revalidate
+
 # The model and animation files keep their names across releases. A day, so a replacement reaches
 # players without a network round trip on every visit.
 /play/*.vrm
