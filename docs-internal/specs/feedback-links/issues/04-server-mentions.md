@@ -6,7 +6,7 @@ Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 Spec: ../spec.md (Q5, Q6, Q8, Q9, Q10, Q18, Q19, Q23); server spec: Mentions table, Parse on write, Cap, Participation
 
-Repo: FormamorphServer.
+Repo: FormamorphServer
 
 ## What to build
 
