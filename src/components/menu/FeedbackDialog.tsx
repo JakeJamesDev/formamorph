@@ -23,8 +23,7 @@ import { collectDiagnostics, DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_TYPE_LABELS, TAB_GRID_COLUMNS } from "@/lib/feedbackPresentation";
 import { isStaff } from "@/lib/roles";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
-import { SimilarQuestions } from "@/components/menu/SimilarQuestions";
-import AuthService from "@/services/AuthService";
+import { SimilarQuestions } from "@/components/menu/SimilarQuestions";import AuthService from "@/services/AuthService";
 import FeedbackService from "@/services/FeedbackService";
 import {
   APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify,
@@ -261,8 +260,7 @@ export function FeedbackDialog({
               notify={notify}
               capabilities={capabilities}
               onBack={() => setOpenThreadId(null)}
-              onChanged={() => setSimilarRefresh((n) => n + 1)}
-            />
+              onChanged={() => setSimilarRefresh((n) => n + 1)}            />
           )}
 
           {/* Hidden, not unmounted, under an open thread: Back returns to the same draft and caret. */}

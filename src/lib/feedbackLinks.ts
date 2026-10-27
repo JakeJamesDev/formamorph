@@ -22,6 +22,10 @@ export const FEEDBACK_SITE_HOST = 'formamorph.ai';
 /** The website address of one thread. */
 export const feedbackThreadUrl = (number: string | number): string => `https://${FEEDBACK_SITE_HOST}/feedback/${number}`;
 
+/** The site address of one community listing. */
+export const feedbackListingUrl = ({ kind, id }: { kind: string; id: string }): string =>
+  `https://${FEEDBACK_SITE_HOST}/community/${kind}/${encodeURIComponent(id)}`;
+
 /** Listing kinds the website has a page for. A model has none, so its URL is not a link. */
 const LISTING_KINDS = ['world', 'entity', 'dictionary', 'prompt'];
 

@@ -21,7 +21,10 @@ const viewerId = (): string => {
   return typeof id === 'string' ? id : 'dev-user';
 };
 
-const hoursAgo = (hours: number): string => new Date(Date.now() - hours * 3_600_000).toISOString();
+/** A flat teal square, standing in for a listing's stored thumbnail. */
+const DEV_LISTING_THUMBNAIL = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3a8f9c"/></svg>')}`;
+
+const hoursAgo =(hours: number): string => new Date(Date.now() - hours * 3_600_000).toISOString();
 
 const person = (id: string, username: string, role: string | null = null) => ({ id, username, role, avatarUrl: null });
 
@@ -66,7 +69,7 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
       }),
       comments: [
         answer,
-        reply('dev-reply-2', 'That worked, thanks. I had the port wrong. The stat question is #2, and https://formamorph.ai/feedback/5 asks for the panel. #57 is gone, and `#2` in code stays plain.', person('dev-other', 'Lantern Keeper'), 3),
+        reply('dev-reply-2', 'That worked, thanks. I had the port wrong. The stat question is #2, and https://formamorph.ai/feedback/5 asks for the panel. #57 is gone, and `#2` in code stays plain. My world is https://formamorph.ai/community/world/dev-harbor, and https://formamorph.ai/community/entity/dev-gone was taken down.', person('dev-other', 'Lantern Keeper'), 3),
       ],
     },
     {
@@ -144,13 +147,19 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
   const author = () => person(viewerId(), 'Sample Player');
   /** Thread links resolved as the server would for a reader who may read every thread here. */
   const targetsOf = (text: string): FeedbackLinkTarget[] => {
-    const refs = new Set(parseFeedbackLinks(text).filter((link) => link.kind === 'thread').map((link) => link.ref));
-    return [...refs].map((ref) => {
+    const links = parseFeedbackLinks(text);
+    const threads = [...new Set(links.filter((link) => link.kind === 'thread').map((link) => link.ref))].map((ref): FeedbackLinkTarget => {
       const linked = board.find((entry) => String(entry.thread.number) === ref)?.thread;
       return linked
         ? { kind: 'thread', ref, available: true, number: linked.number, title: linked.title, type: linked.type, status: linked.status }
         : { kind: 'thread', ref, available: false };
     });
+    // One visible listing; every other listing reads as taken down.
+    const listings = [...new Set(links.filter((link) => link.kind === 'listing').map((link) => link.ref))].map((ref): FeedbackLinkTarget =>
+      ref === 'world/dev-harbor'
+        ? { kind: 'listing', ref, available: true, listingKind: 'world', id: 'dev-harbor', title: 'Brinewell Harbor', thumbnailUrl: DEV_LISTING_THUMBNAIL }
+        : { kind: 'listing', ref, available: false });
+    return [...threads, ...listings];
   };
   const withTargets = <T extends { body: string }>(post: T): T => ({ ...post, targets: targetsOf(post.body) });
 

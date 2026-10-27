@@ -8,6 +8,7 @@ import { DetailedError } from '@/lib/errorDetails';
 import AuthService from '@/services/AuthService';
 import type { FeedbackThread } from '@/types';
 import { Button } from '@/components/ui/button';
+import { communityListingPath, type CommunityListing } from '../communityListing';
 import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
 import { navigateSite, replaceSite, useSiteLocation } from '../router';
@@ -25,6 +26,11 @@ const boardOf = (thread: FeedbackThread): FeedbackBoard =>
   thread.type === 'question' ? 'questions' : DEFAULT_FEEDBACK_BOARD;
 
 const here = () => `${window.location.pathname}${window.location.search}`;
+
+const openListingHref = (listing: { kind: string; id: string }) => communityListingPath(listing as CommunityListing);
+
+/** A listing link is a page of its own, reached without a reload. */
+const openLinkedListing = (listing: { kind: string; id: string }) => navigateSite(openListingHref(listing));
 
 /** A name opens the site's own profile page. */
 const PROFILE_LINKS: UserProfileContextValue = {
@@ -162,6 +168,8 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
                   onUnavailable={unavailable}
                   onOpenThread={openLinkedThread}
                   threadHref={feedbackThreadPath}
+                  listingHref={openListingHref}
+                  onOpenListing={openLinkedListing}
                 />
               )}
               {/* Hidden, not unmounted, under an open thread: Back returns to the same search, filters and page. */}
