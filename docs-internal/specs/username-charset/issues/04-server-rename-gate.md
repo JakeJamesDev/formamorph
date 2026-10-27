@@ -1,6 +1,6 @@
 # 04: Server Rename Gate
 
-Status: ready-for-human
+Status: done
 Base: 0a8d6b7
 Blocked by: 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

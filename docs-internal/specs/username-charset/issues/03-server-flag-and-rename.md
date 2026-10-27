@@ -1,6 +1,6 @@
 # 03: Server Flag and Rename
 
-Status: ready-for-human
+Status: done
 Base: 977dcc1
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
