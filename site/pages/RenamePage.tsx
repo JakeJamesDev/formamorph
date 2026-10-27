@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AuthService from '@/services/AuthService';
 import { USERNAME_RULE_HELP, checkUsername } from '@/lib/usernameRule';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { AccountForm, Field } from '../components/AccountForm';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
@@ -22,6 +23,7 @@ export function RenamePage() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const mounted = useMountedRef();
 
   useEffect(() => {
     const toLogin = () => replaceSite(`/login?next=${encodeURIComponent(RENAME_PATH)}`);
@@ -65,6 +67,7 @@ export function RenamePage() {
       recordRename(user.username);
       leaveTo(ACCOUNT_PATH);
     } catch (failure) {
+      if (!mounted.current) return;
       setError(failure instanceof Error && failure.message ? failure.message : 'Failed to change the username');
       setBusy(false);
     }

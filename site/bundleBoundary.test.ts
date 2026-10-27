@@ -63,6 +63,7 @@ const ALLOWED = [
   '@/lib/deletionCancellation',
   '@/lib/refusalWatch',
   '@/lib/serverDate',
+  '@/lib/useMountedRef',
   '@/lib/usernameRule',
   '@/lib/utils',
   '@/types',
