@@ -88,3 +88,19 @@ For you: open the contact sheet and reject or redo by name. In play, reach the s
 **Canvas (Q25, Q26).** No node moved; the world has no Map Background (Q12).
 
 **File size (Q13).** `src/defaultworlds/valentines.json`: 942,251 bytes (0.90 MB) before, 36,548,529 bytes (34.86 MB) after, every new image lossless WebP. The thumbnail stays a 223 KB JPEG.
+
+**Follow-up after user review (2026-10-27).** Too many of the cast had pink hair and read as one person. Hana keeps hers; the other eight were redone with a distinct hair color each, two candidates per character, and the user picked each one. Every pass carried `(pink hair)1.5` in the negative and Face Fix on.
+
+| Item | New hair | Pick | Stored seed |
+|---|---|---|---|
+| The Student#0 | chestnut brown | B | 2009611586 |
+| The Student#1 | chestnut brown, sugar high, slot 0's prompt plus the sugar tags | A | 2009611586 |
+| Best Friend#0 | light brown, messy | A | 122386762 |
+| Kenta Ishida#0 | orange | A | 1675970418 |
+| Sora Amagi#0 | silver | A | 863589925 |
+| Mei Tachibana#0 | blonde bob | A | 1049314103 |
+| Ren Takeda#0 | black, spiky | A | 303865397 |
+| Haruto Mori#0 | navy blue | A (B drew a girl) | 206064117 |
+| Ms. Fujimura#0 | dark brown, bun | A | 1364530552 |
+
+The Sugar pair's rules are unchanged. File size after the follow-up: 36,723,378 bytes (35.02 MB).
