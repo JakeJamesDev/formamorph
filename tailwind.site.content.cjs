@@ -48,6 +48,24 @@ const COMMUNITY_FILES = [
   'src/components/GradientButton.tsx',
 ]
 
+/** The lazy feedback route's components, and the presentation table that holds its badge and grid classes. */
+const FEEDBACK_FILES = [
+  'src/components/menu/MyFeedbackSection.tsx',
+  'src/components/menu/MyFeedbackTab.tsx',
+  'src/components/menu/FeedbackThreadView.tsx',
+  'src/components/menu/FeedbackEditDialog.tsx',
+  'src/components/menu/FeedbackList.tsx',
+  'src/components/menu/FeedbackDialog.tsx',
+  'src/components/menu/FeedbackFilterRow.tsx',
+  'src/components/menu/FeedbackSearchInput.tsx',
+  'src/components/menu/FeedbackStatusSelect.tsx',
+  'src/components/menu/SimilarQuestions.tsx',
+  'src/components/UnreadDot.tsx',
+  'src/components/UnreadEdge.tsx',
+  'src/lib/feedbackPresentation.ts',
+  'src/lib/unreadSeverity.ts',
+]
+
 /**
  * Scanned one by one: the app files the site entry reaches.
  *
@@ -106,12 +124,14 @@ const FILES = [
   'src/services/UserService.ts',
   'src/types/index.ts',
   ...COMMUNITY_FILES,
+  ...FEEDBACK_FILES,
 ]
 
 module.exports = {
   DIRECTORIES,
   FILES,
   COMMUNITY_FILES,
+  FEEDBACK_FILES,
   /** The two lists as Tailwind wants them. */
   content: [
     ...DIRECTORIES.map((directory) => `./${directory}**/*.{js,jsx,ts,tsx}`),

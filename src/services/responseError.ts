@@ -64,13 +64,13 @@ export async function readFailure(response: Response, fallback: string, fields =
 /** The error a community call throws on a failed response. */
 export async function responseError(response: Response, fallback: string, fields = ERROR_FIRST): Promise<DetailedError> {
   const { message, details } = await readFailure(response, fallback, fields);
-  return new DetailedError(message, details);
+  return new DetailedError(message, details, response.status);
 }
 
 /** A {@link responseError} that also carries the server's refusal `code`, for callers that branch on it. */
 export async function codedResponseError(response: Response, fallback: string, fields = ERROR_FIRST): Promise<DetailedError & { code?: string }> {
   const { body, message, details } = await readFailure(response, fallback, fields);
-  const failure: DetailedError & { code?: string } = new DetailedError(message, details);
+  const failure: DetailedError & { code?: string } = new DetailedError(message, details, response.status);
   if (typeof body.code === 'string' && body.code) failure.code = body.code;
   return failure;
 }

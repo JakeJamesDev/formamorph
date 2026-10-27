@@ -32,6 +32,10 @@ export function profileUsername(pathname: string): string | null {
   }
 }
 
+/** Whether a path is a section's own page or anything under it. */
+export const underPath = (pathname: string, section: string): boolean =>
+  pathname === section || pathname.startsWith(`${section}/`);
+
 /** Where the reader is: the path that picks the page, and the query that configures it. */
 export interface SiteLocation {
   pathname: string;
@@ -46,6 +50,12 @@ const currentLocation = (): SiteLocation => ({
 /** Updates the address bar and tells lightweight site routes to read the new location. */
 export function navigateSite(path: string): void {
   window.history.pushState(null, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+/** Rewrites the address bar without a new history entry, and tells site routes to read it. */
+export function replaceSite(path: string): void {
+  window.history.replaceState(window.history.state, '', path);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 

@@ -2,11 +2,14 @@ import { collectDiagnostics, formatDiagnostics } from './bugDiagnostics';
 /** An error whose message fits in a toast, plus the full text a user can copy when asking for help. */
 export class DetailedError extends Error {
   details: string;
+  /** The HTTP status of the failed response it describes, when it describes one. */
+  status?: number;
 
-  constructor(message: string, details: string) {
+  constructor(message: string, details: string, status?: number) {
     super(message);
     this.name = 'DetailedError';
     this.details = details;
+    if (status !== undefined) this.status = status;
   }
 }
 

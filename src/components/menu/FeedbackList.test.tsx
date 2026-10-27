@@ -161,6 +161,31 @@ describe('the list', () => {
     expect(await screen.findByText('Nothing here.')).toBeTruthy();
   });
 
+  it('says a failed load failed, not that the board is empty, and still reports it', async () => {
+    vi.spyOn(FeedbackService, 'list').mockRejectedValue(new Error('down'));
+    const notify = vi.fn();
+
+    render(<PagedList notify={notify} type="suggestion" active onOpen={() => {}} emptyLabel="Nothing here." />);
+
+    expect(await screen.findByText('Formamorph couldn’t load these threads.')).toBeTruthy();
+    expect(screen.queryByText('Nothing here.')).toBeNull();
+    expect(notify).toHaveBeenCalledWith('Failed to load these', 'error', expect.any(Error));
+  });
+
+  it('loads again on Try Again and shows the rows once the server answers', async () => {
+    const list = vi.spyOn(FeedbackService, 'list')
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValue({ threads: [report({ type: 'suggestion', title: 'Add a map' })], total: 1 });
+
+    render(<PagedList notify={() => {}} type="suggestion" active onOpen={() => {}} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try Again' }));
+
+    expect(await screen.findByText('Add a map')).toBeTruthy();
+    expect(screen.queryByText('Formamorph couldn’t load these threads.')).toBeNull();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
   it('shows no pager when everything fits one page', async () => {
     stubList([report()], 1);
 

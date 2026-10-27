@@ -19,7 +19,10 @@ import {
 import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
-import { isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus } from "@/types";
+import {
+  isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus, type FeedbackThread,
+} from "@/types";
+import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
@@ -46,6 +49,10 @@ interface FeedbackThreadViewProps {
   capabilities?: FeedbackCapabilities;
   /** Set for a guest: Vote and Reply call it instead of the service. */
   onGuestWrite?: () => void;
+  /** Called with each loaded thread. */
+  onLoaded?: (thread: FeedbackThread) => void;
+  /** Called in place of an error when the thread is gone or not on a board this surface shows. */
+  onUnavailable?: () => void;
 }
 
 /** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
@@ -88,7 +95,7 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
  */
 export function FeedbackThreadView({
   threadId, onBack, isAdmin: callerIsAdmin = false, showTriage: callerShowsTriage = false, onChanged, onDeleted,
-  notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite,
+  notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite, onLoaded, onUnavailable,
 }: FeedbackThreadViewProps) {
   const [detail, setDetail] = useState<FeedbackDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,17 +127,28 @@ export function FeedbackThreadView({
     try {
       const loaded = await FeedbackService.fetchThread(threadId);
       if (!mounted.current) return;
+      // Never rendered, not even for a moment: a surface without the board does not show its threads.
+      if (!capabilities.boards.includes(loaded.thread.type)) {
+        setDetail(null);
+        onUnavailable?.();
+        return;
+      }
       setDetail(loaded);
+      onLoaded?.(loaded.thread);
       // Reading clears this thread's share of the badge, so the count outside has to be re-read.
       onChanged?.();
     } catch (error) {
       if (!mounted.current) return;
-      notify('Failed to load this', 'error', error);
       setDetail(null);
+      if (onUnavailable && error instanceof DetailedError && error.status === 404) {
+        onUnavailable();
+        return;
+      }
+      notify('Failed to load this', 'error', error);
     } finally {
       if (mounted.current) setIsLoading(false);
     }
-    // `onChanged` is the caller's refresh; depending on it would reload the thread on every parent render.
+    // The callbacks are the caller's and `capabilities` is a module constant; depending on them would reload the thread on every parent render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
