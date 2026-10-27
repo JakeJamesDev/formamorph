@@ -120,4 +120,5 @@ The text is stored exactly as typed. The app and the website show links at read 
 ## Further Notes
 
 - **Website feedback effort.** `docs-internal/specs/website-feedback/spec.md` still uses `/feedback/<id>`. Q13 changes it to `/feedback/<N>`. That spec's session needs this ruling before its routing ticket lands.
+- **Username characters.** Names outside the Q32 token set cannot be mentioned. A character rule for usernames is tracked in `docs-internal/specs/username-charset/spec.md`, to grill later.
 - **Bug-read rule.** When the bug-read rule tightens, Q11 and Q22 already behave right: a bug a reader cannot read is unavailable.
