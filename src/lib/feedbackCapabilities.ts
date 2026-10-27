@@ -15,6 +15,8 @@ export interface FeedbackCapabilities {
   unreadBadge: boolean;
   /** Whether filed threads can be followed under a profile tab. */
   profileThreads: boolean;
+  /** Whether a failed write is said under its control; off sends it to `notify` alone. */
+  inlineNotes: boolean;
 }
 
 /** The complete in-app feedback surface. */
@@ -24,6 +26,7 @@ export const APP_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   staffControls: true,
   unreadBadge: true,
   profileThreads: true,
+  inlineNotes: false,
 };
 
 /** The website board: Votable boards only, no staff powers, no unread marks. */
@@ -33,4 +36,5 @@ export const WEBSITE_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   staffControls: false,
   unreadBadge: false,
   profileThreads: false,
+  inlineNotes: true,
 };

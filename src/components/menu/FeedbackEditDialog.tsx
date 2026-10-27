@@ -12,6 +12,7 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { CATEGORY_OPTIONS, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 import { categoryForType, changedFields, type EditDraft } from "@/lib/feedbackEditing";
 import FeedbackService from "@/services/FeedbackService";
+import { DetailedError } from "@/lib/errorDetails";
 import type { FeedbackNotify } from "@/lib/feedbackCapabilities";
 import { FEEDBACK_TYPES, type FeedbackCategory, type FeedbackThread, type FeedbackType } from "@/types";
 
@@ -31,6 +32,8 @@ interface FeedbackEditDialogProps {
   onSaved: (thread: FeedbackThread) => void;
   /** Reports each result to the reader. */
   notify: FeedbackNotify;
+  /** Says a failed save inside the dialog, where the reader is looking; a 401 still goes to `notify`. */
+  inlineNote?: boolean;
 }
 
 /**
@@ -40,8 +43,9 @@ interface FeedbackEditDialogProps {
  * refused: a reporter sees their own words, the team sees the filing, and on a bug they see both.
  */
 export function FeedbackEditDialog({
-  open, onOpenChange, thread, mayEditProse, mayRefile, onSaved, notify,
+  open, onOpenChange, thread, mayEditProse, mayRefile, onSaved, notify, inlineNote = false,
 }: FeedbackEditDialogProps) {
+  const [failure, setFailure] = useState<string | null>(null);
   const [draft, setDraft] = useState<EditDraft>({
     title: thread.title, body: thread.body, category: thread.category, type: thread.type,
   });
@@ -53,6 +57,7 @@ export function FeedbackEditDialog({
   // overwrite somebody else's edit with what was on screen before it.
   useEffect(() => {
     if (open) {
+      setFailure(null);
       setDraft({ title: thread.title, body: thread.body, category: thread.category, type: thread.type });
     }
   }, [open, thread]);
@@ -69,6 +74,7 @@ export function FeedbackEditDialog({
   const incomplete = mayEditProse && (!draft.title.trim() || !draft.body.trim());
 
   const save = async () => {
+    setFailure(null);
     setSaving(true);
     try {
       onSaved(await FeedbackService.update(thread.id, changes as {
@@ -77,7 +83,8 @@ export function FeedbackEditDialog({
       onOpenChange(false);
       notify('Saved', 'success');
     } catch (error) {
-      notify('Failed to save the changes', 'error', error);
+      if (inlineNote && !(error instanceof DetailedError && error.status === 401)) setFailure('Failed to save the changes');
+      else notify('Failed to save the changes', 'error', error);
     } finally {
       setSaving(false);
     }
@@ -170,6 +177,8 @@ export function FeedbackEditDialog({
             )}
           </div>
         </ScrollArea>
+
+        {failure && <p role="alert" className="text-helper text-destructive">{failure}</p>}
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
