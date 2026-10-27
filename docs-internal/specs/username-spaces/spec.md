@@ -51,6 +51,9 @@ A new server pass clears the flag on accounts that pass the new rule. It never f
   - Q10: username-charset Q14 stands. A completed rename is final.
   - Q11: The help line reads "3–20 letters, numbers, spaces, _ or -".
   - Q12 (tickets, 2026-10-27): The client helper for links and mention inserts turns each space into `_` and keeps the stored capitals: "Jake James" → "Jake_James". The lowercase fold is the server's, for lookups only.
+  - Q13 (ticket 04, 2026-10-27): Only U+0020 runs collapse; tabs and other whitespace stay invalid. Ticket 04 writes no changelog fragment; the spec session edits the 3.5.0 Usernames entries on main after it lands.
+  - Q14 (ticket 01, 2026-10-27): `username_key` is a VIRTUAL generated column (`replace(lower(username), ' ', '_')`) with a non-unique index, so no writer sets it. Lookups fold the argument with the same SQL expression. The feedback mention search's character filter admits spaces in ticket 01; the rename flag hides live spaced names until ticket 03.
+  - Q15 (ticket 01, 2026-10-27): World search by author is a username search under Q8 and folds. Forgot password by name stays byte-exact, like sign-in.
 - **Rule module.** `src/lib/usernameRule.ts` stays the one client rule. `checkUsername` trims, collapses space runs, then checks the new pattern. `USERNAME_RULE_HELP` takes the Q11 text. The site and the game read it as before.
 - **Link-form helper.** One client function turns each space into `_` and keeps the capitals (Q12). The mention suggestion insert and the profile link builders use it. The server owns every lookup; the client never resolves a name itself.
 - **Mention suggestions.** The `@` suggestion list inserts the link form of the picked name. The chip renders the account name the server returns.
