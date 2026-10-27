@@ -1,6 +1,6 @@
 # 04: Client Spaced Rule
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -17,7 +17,7 @@ The 3.5.0 changelog section never shipped. Edit its Usernames entries in place t
 - [x] The rule table covers: a single inner space (valid), a doubled space (collapsed, valid), a leading or trailing space (trimmed), a space next to `_` or `-`, and a 20-character name with spaces. (`usernameRule.test.ts` rows, 23 passing)
 - [x] The verdict's `username` is the collapsed name. (`collapses a doubled space…` test)
 - [x] The register page and the rename dialog render the Q11 help line. (`RegisterPage.test.tsx` and `RenamePage.test.tsx` assert the new text; both pass)
-- [ ] The 3.5.0 Usernames entries state the spaced rule. (spec session edits them on main)
+- [x] The 3.5.0 Usernames entries state the spaced rule. (spec session edits them on main)
 
 ## Landed
 

@@ -1,6 +1,6 @@
 # 02: Server Spaced Rule
 
-Status: ready-for-human
+Status: done
 Base: dafce27
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
