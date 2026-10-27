@@ -169,6 +169,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import { promptLibraryTarget } from "@/lib/promptDownload";
+import { mascotLibraryTarget } from "@/lib/mascotDownload";
+import { currentHelpSettings, useHelpSettings } from "@/components/formaquestion/useHelpSettings";
 import PatreonIcon from "@/components/PatreonIcon";
 import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
@@ -278,6 +280,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const promptTarget = useMemo(
     () => promptLibraryTarget({ presets: userPromptPresets, store: storeDownloadedPreset }),
     [userPromptPresets, storeDownloadedPreset],
+  );
+  // The Mascot presets live in the Formaquestion settings, which every user of the hook shares.
+  const [helpSettings, changeHelpSettings] = useHelpSettings();
+  const mascotTarget = useMemo(
+    () => mascotLibraryTarget(helpSettings.mascotPresets.mascots, {
+      read: () => currentHelpSettings().mascotPresets,
+      write: (mascotPresets) => changeHelpSettings({ mascotPresets }),
+    }),
+    [helpSettings.mascotPresets.mascots, changeHelpSettings],
   );
   /** A preset id as the player knows it, or undefined when nothing names that id any more. */
   const presetName = useCallback(
@@ -2980,6 +2991,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             // switched off, and the cap toast's own Sign in. Closing it leaves them on the listing.
             onGuestLike={() => requestSignIn()}
             promptLibrary={{ target: promptTarget, activeId: activePresetId, select: selectPreset }}
+            mascotLibrary={{ target: mascotTarget }}
             openLikersOnMount={devRoute?.modal === 'likers'}
             openManageAddonsOnMount={devRoute?.modal === 'manageAddons'}
           />

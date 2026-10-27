@@ -9,7 +9,7 @@ import { ELEMENT_ICONS } from '@/lib/elementIcons';
  * server names a single row's kind (singular). `CARD_TYPE_BY_KIND` bridges the two so neither side has to
  * adopt the other's vocabulary.
  */
-export const CATALOG_KINDS = ['world', 'entity', 'dictionary', 'model', 'prompt'] as const;
+export const CATALOG_KINDS = ['world', 'entity', 'dictionary', 'model', 'prompt', 'mascot'] as const;
 
 export type CatalogKind = (typeof CATALOG_KINDS)[number];
 
@@ -22,8 +22,8 @@ export type CatalogKind = (typeof CATALOG_KINDS)[number];
  */
 export type CatalogKindQuery = CatalogKind | 'all';
 
-/** A kind the local library has a tab for. Prompt presets live in Settings instead. */
-export type LibraryCatalogKind = Exclude<CatalogKind, 'prompt'>;
+/** A kind the local library has a tab for. Prompt and Mascot presets live in Settings instead. */
+export type LibraryCatalogKind = Exclude<CatalogKind, 'prompt' | 'mascot'>;
 
 /** The local library's tab value for each kind that has one. */
 export const CARD_TYPE_BY_KIND: Record<LibraryCatalogKind, 'worlds' | 'entities' | 'dictionaries' | 'models'> = {
@@ -49,6 +49,7 @@ export const KIND_LABELS: Record<CatalogKind, { one: string; many: string }> = {
   // The kind id keeps the library's own `models` spelling, because `avatar` in code means Profile
   // Picture on both sides of the wire. The player-facing word is Avatar.
   model: { one: 'Avatar', many: 'Avatars' },
+  mascot: { one: 'Mascot', many: 'Mascots' },
   prompt: { one: 'Prompt', many: 'Prompts' },
 };
 
@@ -58,6 +59,7 @@ export const KIND_ICONS: Record<CatalogKind, LucideIcon> = {
   entity: ELEMENT_ICONS.entity,
   dictionary: ELEMENT_ICONS.dictionary,
   model: ELEMENT_ICONS.avatar,
+  mascot: ELEMENT_ICONS.mascot,
   prompt: ScrollText,
 };
 

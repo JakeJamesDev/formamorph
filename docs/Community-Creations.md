@@ -133,6 +133,7 @@ The dialog has no close button. After **Decline**, the app asks again the next t
 | **Entities** | Entities to add to your library and your games. |
 | **Dictionaries** | Dictionaries that teach the AI a world's terms. |
 | **Avatars** | 3D avatars for any world. |
+| **Mascots** | Mascots for the Formaquestion window. |
 | **Prompts** | Prompt presets that change how the AI writes. |
 | **Contest** | The entries of a contest. It shows only while a contest exists. See [Contests](#contests). |
 
@@ -201,11 +202,12 @@ On your own listing, select **Add Entry**. Fill in **Title**, **Date** and **Wha
 | World | A new copy in your library's **Worlds** tab, with the content it requires and the add-ons you checked. |
 | Entity, Dictionary | Your library. A second download replaces the copy you have. |
 | Avatar | Your library's **Avatars** tab. |
+| Mascot | **Settings** → **Formaquestion** → **Mascot**, as a custom Mascot you can select, edit, duplicate and export. A second download replaces the copy you have. If you edited the copy, the app asks first. |
 | Prompt | **Settings** → **Prompts**. Select **Use This Preset** to switch to it. |
 
 A toast says when the download is done. A prompt preset that adds a script Tool warns you first. Read the script in the **Tools** tab. See [Tools](Tools).
 
-On formamorph.ai, the download button saves the file to your device instead. Prompt presets download only in the app. The website has no **Hidden** list and no Reports.
+On formamorph.ai, the download button saves the file to your device instead. Prompt presets and Mascots download only in the app. The website has no **Hidden** list and no Reports.
 
 ### When an Update Is Available
 

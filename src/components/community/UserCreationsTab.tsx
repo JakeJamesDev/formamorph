@@ -17,6 +17,9 @@ import { thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { parseServerDate } from "@/lib/serverDate";
 
 /** The review states the row marks, and the tone of each. A resubmitted listing shows this, not Hidden. */
+/** The kind filter's order: the content kinds, then Prompts apart, as in Community Creations. */
+const PROFILE_KIND_ORDER: readonly CatalogKind[] = [...CATALOG_KINDS.filter((k) => k !== 'prompt'), 'prompt'];
+
 const REVIEW_TONES: Partial<Record<ModerationStatus, string>> = {
   pending: "text-foreground",
   updatePending: "text-foreground",
@@ -90,7 +93,7 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
   }, [userId]);
 
   const counts = useMemo(() => {
-    const tally = { world: 0, entity: 0, dictionary: 0, model: 0, prompt: 0 } satisfies Record<CatalogKind, number>;
+    const tally = { world: 0, entity: 0, dictionary: 0, model: 0, mascot: 0, prompt: 0 } satisfies Record<CatalogKind, number>;
     for (const row of creations) tally[row.kind] += 1;
 
     return tally;
@@ -133,7 +136,7 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
           // shown, so an empty result is ignored rather than stored.
           onValueChange={(v) => { if (v) setKind(v as CatalogKind); }}
         >
-          {CATALOG_KINDS.map((k) => {
+          {PROFILE_KIND_ORDER.map((k) => {
             const Icon = KIND_TAB_ICONS[k];
 
             return (

@@ -5,10 +5,12 @@
  * id in the mascot image store; a duplicate shares its source's ids.
  */
 import { isRecord } from '@/lib/tools/toolValidation';
+import type { CommunityLink } from '@/types';
 import { DEFAULT_MASCOT_RIG, parseMascotRig, type MascotRig } from './mascot';
 import { mascotImageIds } from './mascotRigEdits';
 
-export interface MascotPreset {
+/** A mascot and, for one downloaded from Community Creations, the listing it follows. */
+export interface MascotPreset extends Readonly<CommunityLink> {
   readonly id: string;
   readonly name: string;
   readonly rig: MascotRig;
@@ -57,12 +59,21 @@ export const duplicateMascotPreset = (store: MascotPresetStore, sourceId: string
 const withCustom = (store: MascotPresetStore, id: string, change: (mascot: MascotPreset) => MascotPreset): MascotPresetStore =>
   (customOf(store, id) === undefined ? store : { ...store, mascots: store.mascots.map((mascot) => (mascot.id === id ? change(mascot) : mascot)) });
 
+/** An edit to a copy that follows a listing: it no longer matches what the listing served. */
+const edited = (mascot: MascotPreset): Pick<MascotPreset, 'dirty'> => (mascot.sourceId ? { dirty: true } : {});
+
 export const renameMascotPreset = (store: MascotPresetStore, id: string, name: string): MascotPresetStore =>
-  withCustom(store, id, (mascot) => ({ ...mascot, name }));
+  withCustom(store, id, (mascot) => (mascot.name === name ? mascot : { ...mascot, name, ...edited(mascot) }));
 
 /** Writes a rig to a custom mascot. The Default refuses it. */
 export const saveMascotRig = (store: MascotPresetStore, id: string, rig: MascotRig): MascotPresetStore =>
-  withCustom(store, id, (mascot) => ({ ...mascot, rig }));
+  withCustom(store, id, (mascot) => ({ ...mascot, rig, ...edited(mascot) }));
+
+/** Stores a mascot downloaded from a listing: replaces the copy with the same id, else adds it. The selection stays. */
+export const putDownloadedMascot = (store: MascotPresetStore, mascot: MascotPreset): MascotPresetStore =>
+  (customOf(store, mascot.id) === undefined
+    ? { ...store, mascots: [...store.mascots, mascot] }
+    : { ...store, mascots: store.mascots.map((held) => (held.id === mascot.id ? mascot : held)) });
 
 /** Removes a custom mascot. When it was active, the Default becomes active. */
 export function deleteMascotPreset(store: MascotPresetStore, id: string): MascotPresetStore {
@@ -89,10 +100,23 @@ export function unreferencedMascotImages(candidates: Iterable<string>, store: Ma
   return [...new Set(candidates)].filter((id) => !kept.has(id));
 }
 
+/** The community link fields a stored mascot carries. None without a source id. */
+function readLink(value: Record<string, unknown>): CommunityLink {
+  const text = (key: string): string | undefined => (typeof value[key] === 'string' && value[key] !== '' ? value[key] : undefined);
+  const sourceId = text('sourceId');
+  if (sourceId === undefined) return {};
+  const link: CommunityLink = { sourceId, ...(value.dirty === true ? { dirty: true } : {}) };
+  for (const key of ['downloadedAt', 'sourceUpdatedAt', 'sourceAuthorId', 'sourceAuthorName'] as const) {
+    const field = text(key);
+    if (field !== undefined) link[key] = field;
+  }
+  return link;
+}
+
 function readMascot(value: unknown): MascotPreset | null {
   if (!isRecord(value) || typeof value.id !== 'string' || value.id === '' || value.id === DEFAULT_MASCOT_ID) return null;
   if (typeof value.name !== 'string' || !isRecord(value.rig)) return null;
-  return { id: value.id, name: value.name, rig: parseMascotRig(value.rig) };
+  return { id: value.id, name: value.name, rig: parseMascotRig(value.rig), ...readLink(value) };
 }
 
 /**

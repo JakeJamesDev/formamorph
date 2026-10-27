@@ -15,6 +15,7 @@ import type { BrowseTab } from '@/lib/browseTabs';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { EntityMetadata, DictionaryMetadata, ModelMetadata, ServerEvent } from '@/types';
 import type { PromptLibrary } from '@/lib/promptDownload';
+import type { MascotLibrary } from '@/lib/mascotDownload';
 
 export interface CommunityBrowserHostProps {
   open: boolean;
@@ -45,6 +46,8 @@ export interface CommunityBrowserHostProps {
   onGuestLike?: (world: WorldRecord) => void;
   /** The preset store prompt listings download into. Absent offers no prompt download. */
   promptLibrary?: PromptLibrary;
+  /** The preset store Mascot listings download into. Absent offers no Mascot download. */
+  mascotLibrary?: MascotLibrary;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
   /** DEV only: raise the add-on review over the first world listing, for the dev route. */
@@ -70,7 +73,7 @@ export interface CommunityBrowserHostProps {
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, requestKey, openListing, onListingOpened,
   listing, onListingChange, onListingUnavailable, onGuestLike,
-  detailsAction, promptLibrary,
+  detailsAction, promptLibrary, mascotLibrary,
   openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The four local libraries, each driving its tab's download state.
@@ -238,6 +241,7 @@ export const CommunityBrowserHost = ({
         onListingUnavailable={onListingUnavailable}
         detailsAction={detailsAction}
         promptLibrary={promptLibrary}
+        mascotLibrary={mascotLibrary}
         openLikersOnMount={openLikersOnMount}
         openManageAddonsOnMount={openManageAddonsOnMount}
         events={events}

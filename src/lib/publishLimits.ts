@@ -9,6 +9,8 @@ export const PUBLISH_LIMITS: Record<CatalogKind, number> = {
   entity: 25 * 1024 * 1024,
   dictionary: 5 * 1024 * 1024,
   model: 64 * 1024 * 1024,
+  // Counted in decoded image bytes, not JSON length; the publish flow measures it that way.
+  mascot: 10 * 1024 * 1024,
   prompt: 1024 * 1024,
 };
 

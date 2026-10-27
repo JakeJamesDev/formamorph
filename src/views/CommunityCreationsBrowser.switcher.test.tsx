@@ -105,7 +105,7 @@ describe('the section switcher on landscape (the rail)', () => {
   it('lists the catalog kinds in kind order, with Prompts after a line', async () => {
     renderBrowser();
 
-    expect(railSequence(await rail())).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', '|', 'Prompts']);
+    expect(railSequence(await rail())).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', 'Mascots', '|', 'Prompts']);
   });
 
   it('selects the active tab, and switches the section on click', async () => {
@@ -145,7 +145,7 @@ describe('the section switcher on landscape (the rail)', () => {
     renderBrowser();
 
     await within(await rail()).findByRole('tab', { name: 'Contest' });
-    expect(railSequence(await rail())).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', '|', 'Prompts', '|', 'Contest']);
+    expect(railSequence(await rail())).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', 'Mascots', '|', 'Prompts', '|', 'Contest']);
   });
 
   it('starts expanded and remembers a collapse across a remount', async () => {
