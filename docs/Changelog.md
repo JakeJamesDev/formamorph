@@ -98,6 +98,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
   - **Web, Android and desktop builds ship the bundled worlds downscaled, re-encoded from the lossless files in the repo.** Set `FORMAMORPH_LOSSLESS_WORLDS=1` to ship the lossless files instead. `npm run fingerprints` records both forms, so the publish check knows each one.
+  - **`node scripts/affectedTests.mjs <base> --project node` runs only the node share of the affected tests.** It passes when no node test is related. The ticket review gates use it to catch guard-test failures before prepare.
 - **⚙️ Backend**
   - **Llama Server Engine:**
     - **The desktop build bundles a pinned llama-server.** One llama.cpp release tag names the version, and a fetch step downloads its Windows, macOS and Linux builds.
