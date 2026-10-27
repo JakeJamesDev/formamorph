@@ -32,9 +32,11 @@ const openListingHref = (listing: { kind: string; id: string }) => communityList
 /** A listing link is a page of its own, reached without a reload. */
 const openLinkedListing = (listing: { kind: string; id: string }) => navigateSite(openListingHref(listing));
 
+const profilePath = (username: string) => `/u/${encodeURIComponent(username)}`;
+
 /** A name opens the site's own profile page. */
 const PROFILE_LINKS: UserProfileContextValue = {
-  openProfile: (_userId, username) => { if (username) leaveTo(`/u/${encodeURIComponent(username)}`); },
+  openProfile: (_userId, username) => { if (username) leaveTo(profilePath(username)); },
   setListingOpener: () => {},
 };
 
@@ -170,6 +172,7 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
                   threadHref={feedbackThreadPath}
                   listingHref={openListingHref}
                   onOpenListing={openLinkedListing}
+                  profileHref={profilePath}
                 />
               )}
               {/* Hidden, not unmounted, under an open thread: Back returns to the same search, filters and page. */}

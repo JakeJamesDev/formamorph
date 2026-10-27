@@ -40,6 +40,7 @@ const OTHER_MEANINGS: Record<string, { icons: string[]; meaning: string }> = {
   'components/formaquestion/MinimalChat.tsx': { icons: ['PersonStanding'], meaning: 'full-body view toggle' },
   'components/game/AudioPlayer.tsx': { icons: ['Play'], meaning: 'playback' },
   'components/game/TtsPlaybackBar.tsx': { icons: ['Play'], meaning: 'playback' },
+  'components/menu/FeedbackMarkdown.tsx': { icons: ['User'], meaning: 'unknown player chip' },
   'components/menu/SentMessageList.tsx': { icons: ['Users'], meaning: 'message audience' },
   'components/modals/LoadGameDialog.tsx': { icons: ['Folder'], meaning: 'save folder' },
   'components/modals/ToolTryIt.tsx': { icons: ['Play'], meaning: 'run action' },

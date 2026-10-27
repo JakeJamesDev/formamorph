@@ -497,6 +497,21 @@ In the app, select the chip to open the listing in **Community Creations**. The 
 
 A listing that is hidden, waiting for review or deleted shows as **Unavailable listing**, with no title. An address in code, between backticks or in a code block, stays plain text.
 
+### Mentions
+<!-- keywords: mention a player, at sign, at username, tag someone, notify a player, unknown user, mention limit, too many mentions -->
+
+To point a thread at a player, type `@` and their username in a report, a question, a suggestion or a reply. Names ignore letter case. The mention shows as a chip with the player's image and name. Select the chip to open their profile. On the website it opens their profile page.
+
+| You type | What shows |
+|---|---|
+| `@lantern_keeper` | A chip with that player's image and name |
+| `@` and a name with no account | **Unknown user**, without the name you typed |
+| `` `@lantern_keeper` `` or a code block | Plain text, as typed |
+
+On a suggestion or a question, a mention adds the thread to that player's feedback badge until they open it. Their later replies badge them too. Take the mention out and the badge goes with it. On a bug report a mention links, but never badges.
+
+Each post can mention a limited number of players. Players can mention 5. Moderators and developers can mention 10. Admins have no limit. A repeat of one name counts once, and a mention of yourself counts for nothing. A post over the limit is refused with a message that names the limit. Your text stays in the box, so remove a name and send it again.
+
 ## Related
 
 - [Linked Content](LinkedContent): required content, add-ons and updates for linked copies.

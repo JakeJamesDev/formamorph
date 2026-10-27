@@ -25,7 +25,7 @@ import {
 import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
 import { useMountedRef } from "@/lib/useMountedRef";
-import { feedbackListingUrl, feedbackThreadUrl } from "@/lib/feedbackLinks";
+import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadUrl } from "@/lib/feedbackLinks";
 import { useUserProfile } from "@/contexts/userProfileStore";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 
@@ -63,6 +63,8 @@ interface FeedbackThreadViewProps {
   onOpenListing?: (listing: { kind: string; id: string }) => void;
   /** The address a listing link carries; the website's by default. */
   listingHref?: (listing: { kind: string; id: string }) => string;
+  /** The address a user link carries; the website's by default. */
+  profileHref?: (username: string) => string;
 }
 
 /** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
@@ -106,7 +108,7 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
 export function FeedbackThreadView(props: FeedbackThreadViewProps) {
   const {
     threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread, threadHref = feedbackThreadUrl,
-    onOpenListing, listingHref = feedbackListingUrl,
+    onOpenListing, listingHref = feedbackListingUrl, profileHref = feedbackProfileUrl,
   } = props;
   const lentListingOpener = useUserProfile().openListing;
   const openListing = onOpenListing ?? lentListingOpener;
@@ -117,10 +119,11 @@ export function FeedbackThreadView(props: FeedbackThreadViewProps) {
   const place = useMemo<FeedbackLinkPlace>(() => ({
     boards: capabilities.boards,
     threadHref,
+    profileHref,
     openThread: onOpenThread ?? ((number) => setLinked({ from: threadId, id: String(number) })),
     listingHref,
     openListing,
-  }), [capabilities.boards, threadHref, onOpenThread, threadId, listingHref, openListing]);
+  }), [capabilities.boards, threadHref, profileHref, onOpenThread, threadId, listingHref, openListing]);
 
   return (
     <FeedbackLinkContext.Provider value={place}>
