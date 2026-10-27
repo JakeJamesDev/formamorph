@@ -38,6 +38,8 @@
   .fm-header-inner { padding:0 14px; gap:18px; }
   .fm-brand { font-size:16px; gap:8px; }
   .fm-brand img { width:27px; height:27px; }
+  /* The icon alone on a phone, so both nav links and the account control fit; the name stays for screen readers. */
+  .fm-brand span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   .fm-primary-nav { border:0; padding:0; }
   .fm-primary-nav a { font-size:14px; }
   .fm-sign-in { gap:4px; font-size:13px; }

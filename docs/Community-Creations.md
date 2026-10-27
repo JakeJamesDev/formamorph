@@ -461,6 +461,8 @@ Select the round **Feedback** button at the bottom left of the main menu. It sho
 | **Suggestions** | Everyone's suggestions, or yours with **Mine**. **Suggest Something** opens the form. Anyone can reply and vote. Sort by **Newest** or **Most voted**. |
 | **Questions** | Everyone's questions, or yours with **Mine**. **Ask a Question** opens the form. Anyone can reply, and a vote says you have the same question. The tab opens on **Unanswered**, sorted by **Most Voted**. |
 
+You can also read the **Suggestions** and **Questions** boards at [formamorph.ai/feedback](https://formamorph.ai/feedback), with no account. Sign in there to vote or reply. Bug reports stay in the app.
+
 A bug report includes your app version and platform. Nothing about your worlds or saves goes with it. The form keeps an unsent draft.
 
 Staff set each item's status. A bug is **Open**, **Need Info**, **Confirmed**, **Resolved** or **Won't Fix**. A suggestion is **Open**, **Considering**, **Planned**, **Declined** or **Done**. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.

@@ -82,6 +82,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A live listing with an update waiting for review shows Update Pending, and you can compare or discard the update.** Mods see the changed fields side by side, both thumbnails and the changelog edits. A changelog entry you add to a live listing shows as Pending until a mod approves it.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
   - **The World Editor's Downscale now turns every PNG, BMP and lossless WebP image into a smaller lossy WebP.** It works at any size. The size budgets changed too: thumbnail 200 KB, entity 1280 px and 250 KB, background 900 KB, map 1.5 MB.
+  - **The Suggestions and Questions boards are now readable on formamorph.ai/feedback.** No account is needed to read. Sign in to vote or reply. Each thread has its own link.
 - **🛠️ Developer tooling**
   - **Typing `/turn test` in the action box plays a real turn on canned replies, with no model.** Its two-sentence narration keeps the choices in view. The turn lands in the story, so Rewind removes it. Add a profile such as `slow` to change the pace.
   - **Web, Android and desktop builds ship the bundled worlds downscaled, re-encoded from the lossless files in the repo.** Set `FORMAMORPH_LOSSLESS_WORLDS=1` to ship the lossless files instead. `npm run fingerprints` records both forms, so the publish check knows each one.
@@ -127,6 +128,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Test Bench now accepts an entity whose images cover every pick of a required group.** A group with a minimum and maximum of one always has one pick, so one image always shows. Rows that pair picks of two such groups count too.
   - **Settings copy reads one way on every tab, and four labels drop their asides.** Context Window, Portrait Size, Landscape Size and Workflow now name the field, and the unit or format moves into the line beside it. Section hints and notes follow the same shape as row descriptions.
   - **The desktop app now connects to ComfyUI without the `--enable-cors-header` flag.** Before, ComfyUI refused the app unless you added it. In the browser, **How to Set Up** now shows the flag with the app's address, so other websites can't send ComfyUI work.
+  - **In the Feedback dialog and Admin Panel, a list that fails to load says so and offers Try Again.** It no longer shows the message for an empty list.
 - **🛠️ Developer tooling**
   - **`tool-spill-probe.cli.ts` replays captured world requests with a Tool offered or withheld.** It counts reasoning spills, Tool calls and usable replies per arm. On the cloud model, stat-pass calls went from 0 of 20 to 20 of 20.
   - **`npm test` passes on a busy machine and lists slow tests with how much load slowed each.** Timeouts now catch only hangs. Delay checks run on a fake clock, and speed checks compare sizes instead of timing a budget. A file that only timed out reruns alone once.

@@ -19,6 +19,8 @@
 /community         /site-app/              200
 /community/:kind/:listing/ /community/:kind/:listing 301
 /community/*       /site-app/              200
+/feedback          /site-app/              200
+/feedback/*        /site-app/              200
 /u/*               /site-app/              200
 
 # The same paths with a trailing slash. Pages matches this file before it looks for an asset, so
@@ -32,3 +34,4 @@
 /verify-email/     /verify-email           301
 /supporters/       /supporters             301
 /community/        /community              301
+/feedback/         /feedback               301

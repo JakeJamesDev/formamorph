@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronUp, Lock, MessageSquare } from "lucide-react";
+import { ChevronUp, Lock, MessageSquare, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UnreadDot } from "@/components/UnreadDot";
@@ -59,6 +59,8 @@ export function FeedbackList({
   const [threads, setThreads] = useState<FeedbackThread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
+  // The last load failed, so the list says so rather than calling the board empty.
+  const [failed, setFailed] = useState(false);
   // Read through a ref so a caller's inline handler does not rebuild the load and refetch every render.
   const onPageChangeRef = useRef(onPageChange);
   onPageChangeRef.current = onPageChange;
@@ -106,20 +108,25 @@ export function FeedbackList({
       }
       setThreads(result.threads);
       setTotal(result.total);
+      setFailed(false);
     } catch (error) {
       if (!isCurrent()) return;
       notifyRef.current('Failed to load these', 'error', error);
       setThreads([]);
+      setTotal(0);
+      setFailed(true);
     } finally {
       if (isCurrent()) setIsLoading(false);
     }
   }, [active, type, page, scope, statusKey, category, sort, search]);
 
+  const [retryNonce, setRetryNonce] = useState(0);
+
   useEffect(() => {
     let current = true;
     load(() => current);
     return () => { current = false; };
-  }, [load, refreshNonce]);
+  }, [load, refreshNonce, retryNonce]);
 
   // A vote outlives no filter change, only the list itself, so it needs the mount and not a per-load flag.
   const mountedRef = useRef(true);
@@ -168,7 +175,14 @@ export function FeedbackList({
         className={`space-y-2 min-w-0 transition-opacity${isRefreshing ? ' opacity-50 pointer-events-none' : ''}`}
         aria-busy={isLoading}
       >
-        {threads.length === 0 ? (
+        {failed ? (
+          <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center">
+            <p className="text-helper text-muted-foreground">Formamorph couldn’t load these threads.</p>
+            <Button variant="outline" size="sm" onClick={() => setRetryNonce((n) => n + 1)}>
+              <RotateCcw className="mr-2 h-4 w-4" aria-hidden /> Try Again
+            </Button>
+          </div>
+        ) : threads.length === 0 ? (
           <p className="py-8 text-center text-helper text-muted-foreground">{emptyLabel}</p>
         ) : (
           threads.map((thread) => {

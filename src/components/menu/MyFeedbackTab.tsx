@@ -27,6 +27,8 @@ interface MyFeedbackTabProps {
   capabilities?: FeedbackCapabilities;
   /** Set for a guest: Vote, Reply and New call it instead of the service. */
   onGuestWrite?: () => void;
+  /** Opens a thread somewhere else; the tab then never shows one itself. */
+  onOpenThread?: (id: string) => void;
 }
 
 /** What each tab's file button offers, and what it says when nothing matches. */
@@ -62,7 +64,7 @@ const COPY: Record<FeedbackType, {
  * when the reader happens to be on the team.
  */
 export function MyFeedbackTab({
-  active, type, onChanged, notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite,
+  active, type, onChanged, notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite, onOpenThread,
 }: MyFeedbackTabProps) {
   const { page, setPage, openId, open, back, nonce, refresh, listRef } = useFeedbackListPlace();
   const filters = useFeedbackFilters(userFilterDefaults(type), USER_HIDDEN_FILTERS, () => setPage(1));
@@ -103,7 +105,13 @@ export function MyFeedbackTab({
 
       {/* Hidden, not unmounted, under an open thread: Back returns to the same rows. */}
       <div ref={listRef} hidden={openId !== null} className="py-4 min-w-0">
-        <UserFilterRow type={type} filters={filters} fileLabel={copy.button} onFile={onGuestWrite ?? (() => setFiling(true))} />
+        <UserFilterRow
+          type={type}
+          filters={filters}
+          fileLabel={copy.button}
+          onFile={onGuestWrite ?? (() => setFiling(true))}
+          showScope={!onGuestWrite}
+        />
 
         <FeedbackList
           active={active}
@@ -116,7 +124,7 @@ export function MyFeedbackTab({
           page={page}
           onPageChange={setPage}
           refreshNonce={nonce}
-          onOpen={open}
+          onOpen={onOpenThread ?? open}
           emptyLabel={emptyLabel}
           notify={notify}
           capabilities={capabilities}
