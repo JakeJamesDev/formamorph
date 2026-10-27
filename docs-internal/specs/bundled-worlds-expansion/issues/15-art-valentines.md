@@ -1,7 +1,7 @@
 # 15: Art for Valentines
 
 Status: ready-for-agent
-Blocked by: 02, 08, 14
+Blocked by: 02, 08
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
 Spec: ../spec.md (Q6, Q10, Q11, Q12, Q13, Q16, Q17, Q18, Q19, Q21; Implementation Decisions › Image kinds, Visibility rules, Map Background, Encoding)
