@@ -1669,6 +1669,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setUnreadMessages(0);
   }), []);
 
+  // A held account rewritten elsewhere (a rename, an email change) shows its new fields in the header.
+  useEffect(() => AuthService.onSessionChanged(() => {
+    setCurrentUser((held) => (held && AuthService.isAuthenticated() ? AuthService.getCurrentUser() : held));
+  }), []);
+
   // The sign-in dialog is shared by every view, so a sign-in raised from Error Details lands here too.
   useEffect(() => onSignInSucceeded(() => {
     setIsAuthenticated(true);

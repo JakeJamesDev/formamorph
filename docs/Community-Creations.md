@@ -420,6 +420,16 @@ When the policy changes, it opens after you log in:
 
 Read the policy any time at [formamorph.ai/privacy](https://formamorph.ai/privacy).
 
+### Choose a New Username
+
+Some older usernames don't fit the username rule: they have spaces or other symbols, or they match another account's name except for capital letters. If yours is one of them, **Choose a New Username** opens when you log in or start the app.
+
+- 💡 The **New Username** field starts with a suggested name when one is free. Keep it or type your own.
+- Select **Save Username** to change it. From then on, you log in with the new name.
+- Select **Later** to close the dialog. Your games and saves keep working. Likes, comments, follows and publishing stay locked until you rename, and the dialog opens again when you try one.
+
+Your listings, likes and comments move to the new name. Old links to your profile stop working.
+
 ### The User Profile Dialog
 
 Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](#how-to-change-your-profile-image).

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { watchPrivacyRefusals } from '@/lib/privacyRefusal';
+import { watchRefusals } from '@/lib/refusalWatch';
 
 const API = 'https://api.example.test/api';
 
@@ -24,11 +24,11 @@ const arrange = (answer: () => Response) => {
   vi.stubGlobal('fetch', inner);
 
   const onRefusal = vi.fn();
-  stop = watchPrivacyRefusals(API, onRefusal);
+  stop = watchRefusals(API, 'PRIVACY_REQUIRED', onRefusal);
   return { inner, onRefusal };
 };
 
-describe('watchPrivacyRefusals', () => {
+describe('watchRefusals', () => {
   it('reports the refusal when an API call is answered with the code', async () => {
     const { onRefusal } = arrange(() => reply(403, refusal));
 

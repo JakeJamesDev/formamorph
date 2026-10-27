@@ -4,12 +4,12 @@ import { toastError } from '@/lib/linkToast';
 import { PolicyDialog } from '@/components/menu/PolicyDialog';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { useAgeGate } from '@/contexts/AgeGateContext';
-import { watchPrivacyRefusals } from '@/lib/privacyRefusal';
+import { watchRefusals } from '@/lib/refusalWatch';
 import { useAccountDeletion } from '@/contexts/AccountDeletionContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { DEV_PRIVACY_SAMPLE } from '@/lib/devPrivacySample';
 import AuthService from '@/services/AuthService';
-import PolicyService from '@/services/PolicyService';
+import PolicyService, { PRIVACY_REQUIRED } from '@/services/PolicyService';
 import type { AnswerablePolicy } from '@/types';
 
 interface PrivacyPolicyValue {
@@ -102,7 +102,7 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
   // are exempt server-side, so the read this schedules cannot be refused in turn.
   useEffect(() => {
     if (!COMMUNITY_ENABLED) return;
-    return watchPrivacyRefusals(AuthService.API_URL, () => { void checkNow(); });
+    return watchRefusals(AuthService.API_URL, PRIVACY_REQUIRED, () => { void checkNow(); });
   }, [checkNow]);
 
   // Signing out anywhere — here, the profile dialog, or a 401 — drops a prompt that no longer applies.

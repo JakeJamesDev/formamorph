@@ -1,6 +1,6 @@
 # 06: Game Rename Dialog
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -12,14 +12,23 @@ A flagged player sees a rename dialog over the current view. It opens when the p
 
 ## Acceptance criteria
 
-- [ ] The dialog opens from `usernameRename.required` at sign-in and at app start.
-- [ ] A refused reply with the code opens the dialog, the same way the Privacy Policy refusal opens its dialog.
-- [ ] The field is prefilled with the suggestion, or empty when the suggestion is `null`.
-- [ ] The dialog uses ticket 02's rule and help text, and shows `USERNAME_TAKEN` as a "name taken" error.
-- [ ] A successful rename refreshes the stored account and closes the dialog.
-- [ ] The dialog has a dev-route entry and follows the design system.
-- [ ] Frames: `.scratch/frames/rename-dialog-light.png` and `.scratch/frames/rename-dialog-dark.png` at 1280 px wide.
-- [ ] The Community Creations wiki page describes the rename dialog.
-- [ ] A changelog fragment describes the rename.
+- [x] The dialog opens from `usernameRename.required` at sign-in and at app start. `UsernameRenameDialog.test.tsx`: `opens at app start…`, `opens at sign-in, after Later held it…` (through `AuthService.login`); waits behind the Privacy Policy prompt and the sign-in dialog. Guards mutation-checked.
+- [x] A refused reply with the code opens the dialog, the same way the Privacy Policy refusal opens its dialog. `watchPrivacyRefusals` became `watchRefusals(apiUrl, code, …)`; tests `opens again after Later…`, `…held payload predates the flag`, `stays closed when the fresh account owes no rename`.
+- [x] The field is prefilled with the suggestion, or empty when the suggestion is `null`. `prefilled with the suggestion`, `starts empty…`, `takes the fresher suggestion when the boot profile read lands`.
+- [x] The dialog uses ticket 02's rule and help text, and shows `USERNAME_TAKEN` as a "name taken" error. `shows the rule and sends nothing…`, `shows a taken name as taken`; `USERNAME_INVALID` maps to the help text too.
+- [x] A successful rename refreshes the stored account and closes the dialog. `sends the trimmed name, stores the renamed account and closes` (memory and `localStorage`); the main menu header follows the stored account.
+- [x] The dialog has a dev-route entry and follows the design system. `#dev?modal=usernameRename`, surface `usernameRename`; shadcn Dialog, paired footer, help line under the field.
+- [x] Frames: `.scratch/frames/rename-dialog-light.png` and `.scratch/frames/rename-dialog-dark.png` at 1280 px wide. 1280×800 viewport, dev route.
+- [x] The Community Creations wiki page describes the rename dialog. New section "Choose a New Username" under Your Account.
+- [x] A changelog fragment describes the rename. `docs-internal/changelog.d/username-charset-06.md`, under the Usernames group.
 
-For you: the dialog's wording, and how it reads to a player who never chose to rename (the frames above).
+## Landed
+
+**Not verified**
+
+- None unticked. The refused-write path runs against a stubbed server; ticket 04's gate is not live, so no real `USERNAME_RENAME_REQUIRED` reply was seen.
+
+**For you**
+
+- For you: the dialog's wording, and how it reads to a player who never chose to rename (the frames above). Frames: `.scratch/username-charset-06/frames/rename-dialog-light.png`, `.scratch/username-charset-06/frames/rename-dialog-dark.png`.
+- A success toast, "Username changed to <name>", confirms the rename. No ruling asked for it; drop it if unwanted.

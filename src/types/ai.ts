@@ -239,11 +239,20 @@ export interface TurnToolCall {
   writes?: SavedScriptWrites;
 }
 
+/** The server's rename demand on a flagged account. */
+export interface UsernameRename {
+  required: boolean;
+  /** A cleaned name that is valid and free right now, or null when none is. */
+  suggestion: string | null;
+}
+
 /** An authenticated account as returned by the auth server; extra server fields pass through the index signature. */
 export interface AuthUser {
   username: string;
   /** When a timed suspension ends, as a server timestamp; null or absent for none. */
   suspendedUntil?: string | null;
+  /** Set when the name breaks the username rule and must change; null or absent otherwise. */
+  usernameRename?: UsernameRename | null;
   [key: string]: unknown;
 }
 
