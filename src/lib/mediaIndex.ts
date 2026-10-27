@@ -9,6 +9,7 @@ import { mapImages } from './mapBackground';
 import { buildEntityTree, type EntityTreeNode } from './entityGroupTree';
 import { buildLocationTree, type LocationTreeNode } from './locationTree';
 import type { ImageCap } from './imageSlots';
+import type { ThumbAspect } from './thumbAspect';
 import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 
@@ -233,6 +234,10 @@ export const sectionTitle = (section: MediaSection): string => section.path.join
 
 /** World media goes by its slot ("Thumbnail", an Avatar's name); everything else by its parent's name. */
 export const namedBySlot = (item: MediaItem): boolean => item.parent.kind === 'world';
+
+/** A card's frame: character art for Avatars and entity media, scene art for the rest. */
+export const mediaAspect = (item: MediaItem): ThumbAspect =>
+  item.kind === 'avatar' || item.parent.kind === 'entity' ? 'portrait' : 'landscape';
 
 /** Every media item in the world, in section order. Each Avatar appears once. */
 export const buildMediaIndex = (w: MediaWorld): MediaItem[] => mediaSections(w).flatMap((s) => s.items);
