@@ -1,0 +1,132 @@
+[
+  {
+    "name": "the three-character minimum",
+    "typed": "abc",
+    "username": "abc"
+  },
+  {
+    "name": "the twenty-character maximum",
+    "typed": "aaaaaaaaaaaaaaaaaaaa",
+    "username": "aaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "name": "letters, digits, underscore and hyphen",
+    "typed": "Ann_Lee-42",
+    "username": "Ann_Lee-42"
+  },
+  {
+    "name": "digits only",
+    "typed": "123",
+    "username": "123"
+  },
+  {
+    "name": "a single inner space",
+    "typed": "Jake James",
+    "username": "Jake James"
+  },
+  {
+    "name": "a space next to an underscore",
+    "typed": "Jake _James",
+    "username": "Jake _James"
+  },
+  {
+    "name": "a space next to a hyphen",
+    "typed": "Jake- James",
+    "username": "Jake- James"
+  },
+  {
+    "name": "the shortest name with a space",
+    "typed": "a b",
+    "username": "a b"
+  },
+  {
+    "name": "a twenty-character name with spaces",
+    "typed": "abcde fghij klmno pq",
+    "username": "abcde fghij klmno pq"
+  },
+  {
+    "name": "outer whitespace, trimmed",
+    "typed": "  alice \t",
+    "username": "alice"
+  },
+  {
+    "name": "a doubled space, collapsed",
+    "typed": "Jake  James",
+    "username": "Jake James"
+  },
+  {
+    "name": "a run of spaces, collapsed",
+    "typed": "Jake   James",
+    "username": "Jake James"
+  },
+  {
+    "name": "spaces around a spaced name, trimmed",
+    "typed": "  Jake James  ",
+    "username": "Jake James"
+  },
+  {
+    "name": "a length counted after the collapse",
+    "typed": "aaaaaaaaa      bbbbbbbbbb",
+    "username": "aaaaaaaaa bbbbbbbbbb"
+  },
+  {
+    "name": "a length counted after the trim",
+    "typed": " aaaaaaaaaaaaaaaaaaaa ",
+    "username": "aaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "name": "two characters",
+    "typed": "ab",
+    "username": null
+  },
+  {
+    "name": "twenty-one characters",
+    "typed": "aaaaaaaaaaaaaaaaaaaaa",
+    "username": null
+  },
+  {
+    "name": "twenty-one characters with spaces",
+    "typed": "abcde fghij klmno pqrs",
+    "username": null
+  },
+  {
+    "name": "two characters plus padding spaces",
+    "typed": " ab  ",
+    "username": null
+  },
+  {
+    "name": "too short once collapsed",
+    "typed": "a  ",
+    "username": null
+  },
+  {
+    "name": "an inner no-break space",
+    "typed": "ann lee",
+    "username": null
+  },
+  {
+    "name": "an inner tab",
+    "typed": "ann\tlee",
+    "username": null
+  },
+  {
+    "name": "a dot",
+    "typed": "ann.lee",
+    "username": null
+  },
+  {
+    "name": "an email address",
+    "typed": "ann@example.com",
+    "username": null
+  },
+  {
+    "name": "a non-ASCII letter",
+    "typed": "Zoë_1",
+    "username": null
+  },
+  {
+    "name": "the deletion placeholder",
+    "typed": "[deleted user]",
+    "username": null
+  }
+]

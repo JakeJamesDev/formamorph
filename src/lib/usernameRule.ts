@@ -10,12 +10,16 @@ export const USERNAME_RENAME_FAILED_MESSAGE = 'Failed to change the username';
 /** First clause of the rename screens' intro. The caller adds the current name and the closing sentence. */
 export const USERNAME_RULE_INTRO = 'Formamorph has a new username rule';
 
+// The server applies the same rule; `usernameRuleCases.json` is copied from its `tests/fixtures/usernameRuleCases.json`.
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]+(?: [A-Za-z0-9_-]+)*$/;
 const USERNAME_MIN = 3;
 const USERNAME_MAX = 20;
 
 /** A stored name in its link form: each space becomes `_`, capitals stay. Profile links and `@` inserts use it. */
 export const usernameLinkForm = (username: string): string => username.replace(/ /g, '_');
+
+/** The site path of a player's profile, `/u/<link form>`. */
+export const usernameProfilePath = (username: string): string => `/u/${encodeURIComponent(usernameLinkForm(username))}`;
 
 export type UsernameVerdict =
   | { ok: true; username: string }

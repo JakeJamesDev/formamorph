@@ -3,7 +3,7 @@
  * The server parses the same grammar to resolve targets; `feedbackLinkCases.json` is the case table both
  * copies run, copied from the server's `tests/fixtures/feedbackLinkCases.json`.
  */
-import { usernameLinkForm } from './usernameRule';
+import { usernameProfilePath } from './usernameRule';
 
 /** The kinds of link a post can hold. */
 export type FeedbackLinkKind = 'thread' | 'user' | 'listing';
@@ -32,7 +32,7 @@ export const feedbackListingUrl = ({ kind, id }: { kind: string; id: string }): 
   `https://${FEEDBACK_SITE_HOST}/community/${kind}/${encodeURIComponent(id)}`;
 
 /** The website address of one player's profile. */
-export const feedbackProfileUrl = (username: string): string => `https://${FEEDBACK_SITE_HOST}/u/${encodeURIComponent(usernameLinkForm(username))}`;
+export const feedbackProfileUrl = (username: string): string => `https://${FEEDBACK_SITE_HOST}${usernameProfilePath(username)}`;
 
 /** Listing kinds the website has a page for. A model has none, so its URL is not a link. */
 const LISTING_KINDS = ['world', 'entity', 'dictionary', 'prompt'];

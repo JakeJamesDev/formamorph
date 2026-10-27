@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { USERNAME_RULE_HELP, checkUsername, usernameLinkForm } from './usernameRule';
+import { USERNAME_RULE_HELP, checkUsername, usernameLinkForm, usernameProfilePath } from './usernameRule';
+import cases from './usernameRuleCases.json';
 
 describe('usernameLinkForm', () => {
   it.each([
@@ -11,56 +12,15 @@ describe('usernameLinkForm', () => {
   });
 });
 
+describe('usernameProfilePath', () => {
+  it('builds the profile path from the link form', () => {
+    expect(usernameProfilePath('Jake James')).toBe('/u/Jake_James');
+  });
+});
+
 describe('checkUsername', () => {
-  const valid: [string, string][] = [
-    ['three-character minimum', 'abc'],
-    ['twenty-character maximum', 'a'.repeat(20)],
-    ['letters, digits, underscore and hyphen', 'Ann_Lee-42'],
-    ['digits only', '123'],
-    ['a single inner space', 'Jake James'],
-    ['a space next to an underscore', 'Jake _James'],
-    ['a space next to a hyphen', 'Jake- James'],
-    ['a twenty-character name with spaces', 'abcde fghij klmno pq'],
-  ];
-  it.each(valid)('accepts %s', (_label, name) => {
-    expect(checkUsername(name)).toEqual({ ok: true, username: name });
-  });
-
-  const invalid: [string, string][] = [
-    ['two characters', 'ab'],
-    ['twenty-one characters', 'a'.repeat(21)],
-    ['twenty-one characters with spaces', 'abcde fghij klmno pqrs'],
-    ['two characters plus padding spaces', ' ab  '],
-    ['an inner no-break space', 'ann lee'],
-    ['a dot', 'ann.lee'],
-    ['an email address', 'ann@example.com'],
-    ['a non-ASCII letter', 'Zoë_1'],
-    ['the deletion placeholder', '[deleted user]'],
-    ['an inner tab', 'ann\tlee'],
-  ];
-  it.each(invalid)('refuses %s with the help text', (_label, name) => {
-    expect(checkUsername(name)).toEqual({ ok: false, error: USERNAME_RULE_HELP });
-  });
-
-  it('trims outer whitespace before the check and returns the trimmed name', () => {
-    expect(checkUsername('  alice \t')).toEqual({ ok: true, username: 'alice' });
-  });
-
-  it('collapses a doubled space and returns the collapsed name', () => {
-    expect(checkUsername('Jake   James')).toEqual({ ok: true, username: 'Jake James' });
-  });
-
-  it('trims leading and trailing spaces around a spaced name', () => {
-    expect(checkUsername('  Jake James  ')).toEqual({ ok: true, username: 'Jake James' });
-  });
-
-  it('counts the length after collapsing', () => {
-    expect(checkUsername(`${'a'.repeat(9)}      ${'b'.repeat(10)}`)).toEqual({ ok: true, username: `${'a'.repeat(9)} ${'b'.repeat(10)}` });
-  });
-
-  it('counts the length after trimming', () => {
-    expect(checkUsername(` ${'a'.repeat(20)} `)).toEqual({ ok: true, username: 'a'.repeat(20) });
-    expect(checkUsername(' ab ')).toEqual({ ok: false, error: USERNAME_RULE_HELP });
+  it.each(cases.map((c) => [c.name, c] as const))('%s', (_name, { typed, username }) => {
+    expect(checkUsername(typed)).toEqual(username === null ? { ok: false, error: USERNAME_RULE_HELP } : { ok: true, username });
   });
 
   it('reports an empty or blank field as required', () => {
