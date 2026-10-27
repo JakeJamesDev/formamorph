@@ -1,6 +1,7 @@
 # 11: Server Expired Suspension in Username Search
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 30848fb
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -16,6 +17,14 @@ Found by the close review.
 
 ## Acceptance criteria
 
-- [ ] An account whose suspension ended is suggested by the username search.
-- [ ] An account still inside its suspension is not suggested.
-- [ ] The search and mention resolution agree on every account state, shown by one test that checks both.
+- [x] An account whose suspension ended is suggested by the username search. (`feedbackAutocomplete.test.js`, state `st-expired`; red when the filter is reverted)
+- [x] An account still inside its suspension is not suggested. (same test, states `st-running` and `st-open-ended` with no end)
+- [x] The search and mention resolution agree on every account state, shown by one test that checks both. (same test, four states, both paths asserted)
+
+## Landed
+
+**Not verified**
+- None. The review ran inline on a 2-file diff, with no sub-agents.
+
+**For you**
+- None. The search filters on the end time and writes nothing; the first mention or the sweep still lifts the row.
