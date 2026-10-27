@@ -31,7 +31,7 @@ For you: pick the `#N` look and approve the chip and unavailable forms from the 
 
 - Question: how a resolved `#N` looks inline (Q20), plus the `@`, listing-chip and unavailable forms.
 - Where: one labeled comment in the `feedbackThread` dev route, on the app's FeedbackThreadView. Labels: A Hover card, B Title inline, C Titled chip, Users, Listings. Each thread look shows its own unavailable form for `#57`.
-- Code: uncommitted in the kept worktree `.claude/worktrees/prototype-feedback-links` (the ticket hook refuses commits on `prototype/feedback-links`). Patches and the capture script are kept with the frames: `prototype.patch`, `prototype-newfile.patch`, `frames.mjs`.
+- Code: branch `prototype/feedback-links`, commit `390b3374c` (worktree `.claude/worktrees/prototype-feedback-links`). Patches and the capture script are kept with the frames: `prototype.patch`, `prototype-newfile.patch`, `frames.mjs`.
 - Launch: `preview_start` name `prototype-feedback-links` (port 5262), then `__fmDev.goto('mainMenu', { modal: 'feedbackThread', fixture: 'feedback' })`.
 - Frames: `.scratch/feedback-links-01/frames/`.
 
