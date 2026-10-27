@@ -61,6 +61,7 @@ const ALLOWED = [
   '@/lib/apiBase',
   '@/lib/communityCaches',
   '@/lib/deletionCancellation',
+  '@/lib/refusalWatch',
   '@/lib/serverDate',
   '@/lib/usernameRule',
   '@/lib/utils',
@@ -185,7 +186,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 64: `responseBody`, the string-only leaf `responseError` reads to cut an HTML error page to its title.
     // 66: `listingModeration` and the `quarantine` date helpers it reads, for the review badges in the creations list.
     // 67: `usernameRule`, the one username check the register page and `AuthService` share; a pure leaf.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(67);
+    // 69: `refusalWatch` and the `fetchTarget` leaf it reads, so the rename page can watch for the rename refusal.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(69);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

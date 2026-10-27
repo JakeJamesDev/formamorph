@@ -29,6 +29,20 @@ const signIn = async (username = 'alice', password = 'hunter22') => {
   await user.click(screen.getByRole('button', { name: 'Sign In' }));
 };
 
+describe('a flagged account', () => {
+  it('lands on the rename page after sign-in', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(res({
+      token: 'tok',
+      user: { id: 'u1', username: 'Ann Lee', usernameRename: { required: true, suggestion: 'Ann_Lee' } },
+    }));
+    render(<LoginPage />);
+
+    await signIn('Ann Lee');
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/rename'));
+  });
+});
+
 const beginProfileSignIn = async () => {
   at('/u/alice');
   vi.mocked(fetch).mockImplementation((input) => Promise.resolve(

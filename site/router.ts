@@ -9,6 +9,9 @@ import { useEffect, useState } from 'react';
  * own Back.
  */
 
+/** The page a flagged account renames on. */
+export const RENAME_PATH = '/rename';
+
 /** A profile path and the name in it. The name runs to the next slash, so nothing nested matches. */
 const PROFILE_PATH = /^\/u\/([^/]+)$/;
 

@@ -5,6 +5,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { OwnProfilePage } from './pages/OwnProfilePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { RenamePage } from './pages/RenamePage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { SupportersPage } from './pages/SupportersPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -28,6 +29,7 @@ const ROUTES = {
   '/register': { title: 'Create Account · Formamorph', page: RegisterPage },
   '/reset-password': { title: 'Reset Password · Formamorph', page: ResetPasswordPage },
   '/profile': { title: 'Your Profile · Formamorph', page: OwnProfilePage },
+  '/rename': { title: 'Choose a New Username · Formamorph', page: RenamePage },
   '/account': { title: 'Your Account · Formamorph', page: AccountPage },
   '/supporters': { title: 'Supporters · Formamorph', page: SupportersPage },
   '/verify-email': { title: 'Verify Email · Formamorph', page: VerifyEmailPage },

@@ -3,6 +3,7 @@ import AuthService from '@/services/AuthService';
 import { AccountForm, Field } from '../components/AccountForm';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
+import { RENAME_PATH } from '../router';
 import { useNextPath } from '../useNextPath';
 import { useAgeGateAuthenticationHandoff } from '../ageGateAuthenticationContext';
 import { recordDeletionCancellation } from '@/lib/deletionCancellation';
@@ -34,7 +35,8 @@ export function LoginPage() {
 
   const finish = (deletionCancelled: boolean) => {
     if (deletionCancelled) recordDeletionCancellation();
-    leaveTo(next);
+    // A flagged account owes a rename before anything else works, so it lands there first.
+    leaveTo(AuthService.getCurrentUser()?.usernameRename?.required ? `${RENAME_PATH}${carry}` : next);
   };
 
   const persistAnswer = async (pending: PendingCompletion) => {
