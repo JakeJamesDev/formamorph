@@ -1,5 +1,5 @@
 import { LINK_MARK_PROPERTY } from '@/components/game/MarkdownRenderer';
-import { feedbackThreadUrl, parseFeedbackLinks, type FeedbackLink, type FeedbackLinkKind } from './feedbackLinks';
+import { feedbackProfileUrl, feedbackThreadUrl, parseFeedbackLinks, type FeedbackLink, type FeedbackLinkKind } from './feedbackLinks';
 
 /** The mdast subset this walks; only the fields read are declared. */
 interface MdastNode {
@@ -20,7 +20,8 @@ const isUrl = (text: string) => /^https?:/.test(text);
 
 /** Where a link in text points: a pasted URL to itself, a sigil to the address its kind has. */
 function hrefOf(link: FeedbackLink, typed: string): string {
-  return isUrl(typed) ? typed : feedbackThreadUrl(link.ref);
+  if (isUrl(typed)) return typed;
+  return link.kind === 'user' ? feedbackProfileUrl(link.ref) : feedbackThreadUrl(link.ref);
 }
 
 const marked = (link: FeedbackLink, url: string, typed: string): MdastNode => ({

@@ -1,10 +1,12 @@
 import { createContext, memo, useContext, useMemo, useState, type ComponentPropsWithoutRef, type ComponentType, type MouseEvent } from 'react';
 import { defaultComponents, type ExtraProps } from 'streamdown';
-import { Bug, CircleHelp, ImageOff, Lightbulb } from 'lucide-react';
+import { Bug, CircleHelp, ImageOff, Lightbulb, User } from 'lucide-react';
 import { LINK_MARK_PROPERTY, MarkdownRenderer, type MarkdownComponents, type RemarkPlugin } from '@/components/game/MarkdownRenderer';
+import { UserAvatar } from '@/components/UserAvatar';
+import { useUserProfile } from '@/contexts/userProfileStore';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf } from '@/lib/catalogKinds';
-import { feedbackListingUrl, feedbackThreadUrl, type FeedbackLinkKind } from '@/lib/feedbackLinks';
+import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadUrl, type FeedbackLinkKind } from '@/lib/feedbackLinks';
 import { serverAssetSrc } from '@/lib/serverAssets';
 import { FEEDBACK_STATUS_STYLES } from '@/lib/feedbackPresentation';
 import { remarkFeedbackLinks } from '@/lib/remarkFeedbackLinks';
@@ -23,12 +25,15 @@ export interface FeedbackLinkPlace {
   listingHref: (listing: { kind: string; id: string }) => string;
   /** Opens a listing here. Without it a chip follows its address. */
   openListing?: (listing: { kind: string; id: string }) => void;
+  /** The address a user chip carries, for a new tab or a copied link. A click opens the profile through the surface's profile provider. */
+  profileHref: (username: string) => string;
 }
 
 export const FeedbackLinkContext = createContext<FeedbackLinkPlace>({
   boards: ['bug', 'suggestion', 'question'],
   threadHref: feedbackThreadUrl,
   listingHref: feedbackListingUrl,
+  profileHref: feedbackProfileUrl,
 });
 
 /** What a chip renderer gets: its target, or none when the server sent none for that ref. */
@@ -123,10 +128,41 @@ function ListingChip({ target }: FeedbackChipProps) {
   );
 }
 
+function UserChip({ target }: FeedbackChipProps) {
+  const place = useContext(FeedbackLinkContext);
+  const { openProfile } = useUserProfile();
+
+  // The typed name is never drawn: a typo and a deleted account look the same.
+  if (target?.kind !== 'user' || !target.available) {
+    return (
+      <span className={cn(CHIP_CLASS, UNAVAILABLE_CHIP_CLASS)}>
+        <span className={CHIP_SLOT_CLASS}><User className="h-3 w-3" /></span>
+        Unknown user
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={place.profileHref(target.username)}
+      className={CHIP_CLASS}
+      onClick={(event) => {
+        if (!opensInPlace(event)) return;
+        event.preventDefault();
+        openProfile(target.id, target.username);
+      }}
+    >
+      <UserAvatar username={target.username} avatarUrl={target.avatarUrl} className="h-4 w-4 text-[9px]" />
+      <span className="truncate font-medium text-foreground">{target.username}</span>
+    </a>
+  );
+}
+
 /** The chip for each link kind. A kind without one renders as the markdown it is. */
 const CHIPS: Partial<Record<FeedbackLinkKind, ComponentType<FeedbackChipProps>>> = {
   thread: ThreadChip,
   listing: ListingChip,
+  user: UserChip,
 };
 
 const LINKS: RemarkPlugin = [remarkFeedbackLinks, { kinds: new Set(Object.keys(CHIPS)) }];

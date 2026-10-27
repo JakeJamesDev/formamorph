@@ -1,4 +1,6 @@
+import type { ReactElement } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { UserProfileContext } from '@/contexts/userProfileStore';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FeedbackThreadView } from './FeedbackThreadView';
 import FeedbackService from '@/services/FeedbackService';
@@ -243,6 +245,56 @@ describe('listing links', () => {
 
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByRole('link', { name: /Brinewell Harbor/ }).querySelector('svg')).not.toBeNull();
+  });
+});
+
+const LANTERN: FeedbackLinkTarget = { kind: 'user', ref: 'lantern_keeper', available: true, id: 'u9', username: 'Lantern_Keeper', avatarUrl: null };
+const GHOST: FeedbackLinkTarget = { kind: 'user', ref: 'ghost_typo', available: false };
+
+const withProfiles = (openProfile: () => void, ui: ReactElement) => (
+  <UserProfileContext.Provider value={{ openProfile, setListingOpener: () => {} }}>{ui}</UserProfileContext.Provider>
+);
+
+describe('user links', () => {
+  const body = 'Thanks @lantern_keeper, and @ghost_typo too.';
+
+  it.each([
+    ['the app', {}],
+    ['the website', { capabilities: WEBSITE_FEEDBACK_CAPABILITIES, profileHref: (name: string) => `/u/${name}` }],
+  ])('draws a resolved mention as a user chip and an unavailable one without the typed name in %s', async (_, props) => {
+    serve({ thread: thread({ body, targets: [LANTERN, GHOST] }), comments: [] });
+
+    const { container } = render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} {...props} />);
+
+    const user = await screen.findByRole('link', { name: /Lantern_Keeper/ });
+    expect(user).toHaveTextContent('Lantern_Keeper');
+    expect(user.getAttribute('href')).toMatch(/\/u\/Lantern_Keeper$/);
+    expect(screen.getByText('Unknown user')).toBeInTheDocument();
+    expect(container.innerHTML.toLowerCase()).not.toContain('ghost_typo');
+    expect(container.innerHTML).not.toContain('@lantern_keeper');
+  });
+
+  it('opens the profile on a plain click and leaves a modified click to the browser', async () => {
+    serve({ thread: thread({ body, targets: [LANTERN, GHOST] }), comments: [] });
+    const openProfile = vi.fn();
+
+    render(withProfiles(openProfile, <FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />));
+    const user = await screen.findByRole('link', { name: /Lantern_Keeper/ });
+
+    expect(fireEvent.click(user, { ctrlKey: true })).toBe(true);
+    expect(openProfile).not.toHaveBeenCalled();
+
+    fireEvent.click(user);
+    expect(openProfile).toHaveBeenCalledWith('u9', 'Lantern_Keeper');
+  });
+
+  it('keeps @name plain in a code span', async () => {
+    serve({ thread: thread({ body: 'Type `@lantern_keeper`.', targets: [LANTERN] }), comments: [] });
+
+    render(<FeedbackThreadView threadId="uuid-1" onBack={() => {}} notify={toastFeedbackNotify} />);
+
+    expect(await screen.findByText('@lantern_keeper', { selector: 'code' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Lantern_Keeper/ })).not.toBeInTheDocument();
   });
 });
 

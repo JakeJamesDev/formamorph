@@ -26,6 +26,9 @@ export const feedbackThreadUrl = (number: string | number): string => `https://$
 export const feedbackListingUrl = ({ kind, id }: { kind: string; id: string }): string =>
   `https://${FEEDBACK_SITE_HOST}/community/${kind}/${encodeURIComponent(id)}`;
 
+/** The website address of one player's profile. */
+export const feedbackProfileUrl = (username: string): string => `https://${FEEDBACK_SITE_HOST}/u/${encodeURIComponent(username)}`;
+
 /** Listing kinds the website has a page for. A model has none, so its URL is not a link. */
 const LISTING_KINDS = ['world', 'entity', 'dictionary', 'prompt'];
 

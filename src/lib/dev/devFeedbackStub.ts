@@ -69,7 +69,7 @@ export function devFeedbackFixtures(): FeedbackDetail[] {
       }),
       comments: [
         answer,
-        reply('dev-reply-2', 'That worked, thanks. I had the port wrong. The stat question is #2, and https://formamorph.ai/feedback/5 asks for the panel. #57 is gone, and `#2` in code stays plain. My world is https://formamorph.ai/community/world/dev-harbor, and https://formamorph.ai/community/entity/dev-gone was taken down.', person('dev-other', 'Lantern Keeper'), 3),
+        reply('dev-reply-2', 'That worked, thanks. I had the port wrong. The stat question is #2, and https://formamorph.ai/feedback/5 asks for the panel. #57 is gone, and `#2` in code stays plain. My world is https://formamorph.ai/community/world/dev-harbor, and https://formamorph.ai/community/entity/dev-gone was taken down. Thanks @Lantern_Keeper, and @no_such_player never replied.', person('dev-other', 'Lantern Keeper'), 3),
       ],
     },
     {
@@ -159,7 +159,16 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
       ref === 'world/dev-harbor'
         ? { kind: 'listing', ref, available: true, listingKind: 'world', id: 'dev-harbor', title: 'Brinewell Harbor', thumbnailUrl: DEV_LISTING_THUMBNAIL }
         : { kind: 'listing', ref, available: false });
-    return [...threads, ...listings];
+    // A mention resolves against the people on this board; any other name has no account.
+    const people = board.flatMap((entry) => [entry.thread.reporter, ...entry.comments.map((c) => c.author)]);
+    const names = new Set(links.filter((link) => link.kind === 'user').map((link) => link.ref));
+    const users = [...names].map((ref): FeedbackLinkTarget => {
+      const found = people.find((p) => p.username?.toLowerCase().replace(/ /g, '_') === ref);
+      return found?.username && found.id
+        ? { kind: 'user', ref, available: true, id: found.id, username: found.username.replace(/ /g, '_'), avatarUrl: found.avatarUrl ?? null }
+        : { kind: 'user', ref, available: false };
+    });
+    return [...threads, ...listings, ...users];
   };
   const withTargets = <T extends { body: string }>(post: T): T => ({ ...post, targets: targetsOf(post.body) });
 
