@@ -85,6 +85,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Feedback Links:**
     - **Every feedback thread shows its number, and #23 or a pasted thread address in a post shows as a chip.** The chip shows the thread's type, title and status, and opens it in the app or on formamorph.ai. A thread you can't read shows as **Unavailable thread**. Text in code stays plain.
     - **A listing address in a feedback post now shows as a chip with its image, title and kind.** Select it to open the listing. A hidden or deleted listing shows as **Unavailable listing**.
+  - **Website Feedback:**
+    - **File suggestions and questions from the website.** Press New on the feedback board, fill in the form, and land on your new thread. Similar questions show as you type, and bug reports point to the app.
   - **The Requires picker in a large world opens on Traits, Any Trait in a Group and Stats.** Each list splits by owner and shows a count of targets you can still add. Search still finds every target.
   - **The World Editor's Downscale now turns every PNG, BMP and lossless WebP image into a smaller lossy WebP.** It works at any size. The size budgets changed too: thumbnail 200 KB, entity 1280 px and 250 KB, background 900 KB, map 1.5 MB.
   - **The Suggestions and Questions boards are now readable on formamorph.ai/feedback.** No account is needed to read. Sign in to vote or reply. Each thread has its own link.

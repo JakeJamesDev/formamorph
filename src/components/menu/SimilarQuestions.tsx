@@ -16,7 +16,7 @@ interface SimilarQuestionsProps {
   /** The draft title, searched as typed. */
   title: string;
   /** Opens one match. */
-  onOpen: (id: string) => void;
+  onOpen: (id: string, number: number) => void;
   /** Bumped by the caller to search the same title again, so counts stay current after an opened match closes. */
   refreshKey?: number;
 }
@@ -60,7 +60,7 @@ export function SimilarQuestions({ title, onOpen, refreshKey = 0 }: SimilarQuest
             <li key={thread.id}>
               <button
                 type="button"
-                onClick={() => onOpen(thread.id)}
+                onClick={() => onOpen(thread.id, thread.number)}
                 className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent/50 min-w-0"
               >
                 <span

@@ -135,7 +135,11 @@ export function MyFeedbackTab({
           open={filing}
           onOpenChange={setFiling}
           initialType={type}
-          onFiled={changed}
+          onFiled={(thread) => {
+            changed();
+            onOpenThread?.(thread.id, thread.number);
+          }}
+          onOpenThread={onOpenThread}
           notify={notify}
           capabilities={capabilities}
         />

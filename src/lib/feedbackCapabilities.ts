@@ -13,6 +13,8 @@ export interface FeedbackCapabilities {
   staffControls: boolean;
   /** Whether unread threads are marked. */
   unreadBadge: boolean;
+  /** Whether filed threads can be followed under a profile tab. */
+  profileThreads: boolean;
 }
 
 /** The complete in-app feedback surface. */
@@ -21,6 +23,7 @@ export const APP_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   fileTypes: ['bug', 'suggestion', 'question'],
   staffControls: true,
   unreadBadge: true,
+  profileThreads: true,
 };
 
 /** The website board: Votable boards only, no staff powers, no unread marks. */
@@ -29,4 +32,5 @@ export const WEBSITE_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   fileTypes: ['suggestion', 'question'],
   staffControls: false,
   unreadBadge: false,
+  profileThreads: false,
 };
