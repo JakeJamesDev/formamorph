@@ -27,6 +27,7 @@ const boardOf = (thread: FeedbackThread): FeedbackBoard =>
 
 const here = () => `${window.location.pathname}${window.location.search}`;
 
+// The link grammar admits only the catalog's listing kinds, so the server's kind string is one of them.
 const openListingHref = (listing: { kind: string; id: string }) => communityListingPath(listing as CommunityListing);
 
 /** A listing link is a page of its own, reached without a reload. */
