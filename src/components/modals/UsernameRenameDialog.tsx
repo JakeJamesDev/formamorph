@@ -15,7 +15,8 @@ import { useDevRoute } from '@/lib/devRouter';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { watchRefusals } from '@/lib/refusalWatch';
 import { getSignInState, subscribeSignIn } from '@/lib/signInStore';
-import { USERNAME_RULE_HELP, checkUsername } from '@/lib/usernameRule';
+import { USERNAME_RULE_HELP, USERNAME_RULE_INTRO } from '@/lib/usernameRule';
+import { useRenameSubmit } from '@/lib/useRenameSubmit';
 import AuthService, { USERNAME_RENAME_REQUIRED } from '@/services/AuthService';
 import type { UsernameRename } from '@/types';
 
@@ -43,29 +44,12 @@ interface UsernameRenameDialogProps {
  */
 export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogProps) {
   const [name, setName] = useState(prompt.suggestion ?? '');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const mounted = useMountedRef();
-
-  const save = async () => {
-    const verdict = checkUsername(name);
-    if (!verdict.ok) {
-      setError(verdict.error);
-      return;
-    }
-
-    setError('');
-    setBusy(true);
-    try {
-      const user = await AuthService.renameUsername(verdict.username);
-      toast.success(`Username changed to ${user.username}`);
-      if (mounted.current) onClose();
-    } catch (failure: unknown) {
-      if (!mounted.current) return;
-      setError(failure instanceof Error ? failure.message : 'Failed to change the username');
-      setBusy(false);
-    }
-  };
+  const { error, clearError, busy, submit } = useRenameSubmit((user) => {
+    toast.success(`Username changed to ${user.username}`);
+    if (mounted.current) onClose();
+  });
+  const save = () => submit(name);
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
@@ -80,7 +64,7 @@ export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogPr
           onSubmit={(event) => { event.preventDefault(); void save(); }}
         >
           <p>
-            Formamorph has a new username rule
+            {USERNAME_RULE_INTRO}
             {prompt.currentName ? <>, and <span className="font-medium break-all">{prompt.currentName}</span> doesn&apos;t fit it</> : null}.
             Choose a new name to keep using Community Creations.
           </p>
@@ -93,7 +77,7 @@ export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogPr
             <Input
               id="username-rename-field"
               value={name}
-              onChange={(event) => { setName(event.target.value); setError(''); }}
+              onChange={(event) => { setName(event.target.value); clearError(); }}
               aria-invalid={error ? true : undefined}
               aria-describedby="username-rename-help"
               autoComplete="username"

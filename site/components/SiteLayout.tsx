@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { clearDeletionCancellation, hasDeletionCancellation } from '@/lib/deletionCancellation';
 import { clearRename, readRename } from '../renameNotice';
+import { useOneTimeNotice } from '../useOneTimeNotice';
 import { SiteHeader } from './SiteHeader';
 
 interface SiteLayoutProps {
@@ -23,19 +24,20 @@ const WIDTHS = {
   wide: 'max-w-[760px]',
 } as const;
 
+/** A one-time banner above the page. */
+function Notice({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div role="status" className="mb-6 rounded-lg border border-primary/40 bg-primary/10 p-4 text-label">
+      <p className="font-semibold text-foreground">{title}</p>
+      {children && <p className="mt-1 text-muted-foreground">{children}</p>}
+    </div>
+  );
+}
+
 /** Shared website frame with a content column and footer. */
 export function SiteLayout({ title, subtitle, width = 'form', surface = false, children }: SiteLayoutProps) {
-  const [deletionCanceled] = useState(hasDeletionCancellation);
-  const [renamedTo] = useState(readRename);
-
-  // Cleared after render so React's development double-render cannot consume it before it is visible.
-  useEffect(() => {
-    if (deletionCanceled) clearDeletionCancellation();
-  }, [deletionCanceled]);
-
-  useEffect(() => {
-    if (renamedTo) clearRename();
-  }, [renamedTo]);
+  const deletionCanceled = useOneTimeNotice(hasDeletionCancellation, clearDeletionCancellation);
+  const renamedTo = useOneTimeNotice(readRename, clearRename);
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
@@ -47,18 +49,11 @@ export function SiteLayout({ title, subtitle, width = 'form', surface = false, c
       )}>
         <div className={cn('w-full', surface ? 'flex min-h-0 flex-1 flex-col' : WIDTHS[width])}>
           {deletionCanceled && (
-            <div role="status" className="mb-6 rounded-lg border border-primary/40 bg-primary/10 p-4 text-label">
-              <p className="font-semibold text-foreground">Account deletion canceled</p>
-              <p className="mt-1 text-muted-foreground">
-                Signing in called it off. Your account and everything in it are still here.
-              </p>
-            </div>
+            <Notice title="Account deletion canceled">
+              Signing in called it off. Your account and everything in it are still here.
+            </Notice>
           )}
-          {renamedTo && (
-            <div role="status" className="mb-6 rounded-lg border border-primary/40 bg-primary/10 p-4 text-label">
-              <p className="font-semibold text-foreground">Username changed to {renamedTo}</p>
-            </div>
-          )}
+          {renamedTo && <Notice title={`Username changed to ${renamedTo}`} />}
           {surface ? children : <>
             {title && <h1 className="text-display font-semibold tracking-tight">{title}</h1>}
             {subtitle && <p className="mt-2 text-body text-muted-foreground">{subtitle}</p>}

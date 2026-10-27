@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AuthService from '@/services/AuthService';
-import { USERNAME_RULE_HELP, checkUsername } from '@/lib/usernameRule';
-import { useMountedRef } from '@/lib/useMountedRef';
+import { USERNAME_RULE_HELP, USERNAME_RULE_INTRO } from '@/lib/usernameRule';
+import { useRenameSubmit } from '@/lib/useRenameSubmit';
 import { AccountForm, Field } from '../components/AccountForm';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
-import { RENAME_PATH, replaceSite } from '../router';
+import { ACCOUNT_PATH, RENAME_PATH, replaceSite } from '../router';
 import { recordRename } from '../renameNotice';
-
-const ACCOUNT_PATH = '/account';
 
 /**
  * The rename a flagged account owes before account features work again.
@@ -21,9 +19,10 @@ export function RenamePage() {
   const [ready, setReady] = useState(false);
   const [currentName, setCurrentName] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const mounted = useMountedRef();
+  const { error, clearError, busy, submit } = useRenameSubmit((user) => {
+    recordRename(user.username);
+    leaveTo(ACCOUNT_PATH);
+  });
 
   useEffect(() => {
     const toLogin = () => replaceSite(`/login?next=${encodeURIComponent(RENAME_PATH)}`);
@@ -53,26 +52,6 @@ export function RenamePage() {
     return () => { cancelled = true; };
   }, []);
 
-  const submit = async () => {
-    const verdict = checkUsername(name);
-    if (!verdict.ok) {
-      setError(verdict.error);
-      return;
-    }
-
-    setError('');
-    setBusy(true);
-    try {
-      const user = await AuthService.renameUsername(verdict.username);
-      recordRename(user.username);
-      leaveTo(ACCOUNT_PATH);
-    } catch (failure) {
-      if (!mounted.current) return;
-      setError(failure instanceof Error && failure.message ? failure.message : 'Failed to change the username');
-      setBusy(false);
-    }
-  };
-
   if (!ready) {
     return (
       <SiteLayout title="Choose a New Username">
@@ -85,11 +64,11 @@ export function RenamePage() {
     <SiteLayout
       title="Choose a New Username"
       subtitle={currentName
-        ? `Formamorph has a new username rule, and ${currentName} doesn't fit it. Choose a new name to keep using your account.`
-        : 'Formamorph has a new username rule. Choose a new name to keep using your account.'}
+        ? `${USERNAME_RULE_INTRO}, and ${currentName} doesn't fit it. Choose a new name to keep using your account.`
+        : `${USERNAME_RULE_INTRO}. Choose a new name to keep using your account.`}
     >
       <AccountForm
-        onSubmit={() => { void submit(); }}
+        onSubmit={() => { void submit(name); }}
         error={error}
         busy={busy}
         submitLabel="Save Username"
@@ -112,7 +91,7 @@ export function RenamePage() {
           autoFocus
           hint={USERNAME_RULE_HELP}
           value={name}
-          onChange={(value) => { setName(value); setError(''); }}
+          onChange={(value) => { setName(value); clearError(); }}
         />
       </AccountForm>
     </SiteLayout>

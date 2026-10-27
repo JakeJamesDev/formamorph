@@ -64,6 +64,7 @@ const ALLOWED = [
   '@/lib/refusalWatch',
   '@/lib/serverDate',
   '@/lib/useMountedRef',
+  '@/lib/useRenameSubmit',
   '@/lib/usernameRule',
   '@/lib/utils',
   '@/types',
@@ -188,7 +189,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 66: `listingModeration` and the `quarantine` date helpers it reads, for the review badges in the creations list.
     // 67: `usernameRule`, the one username check the register page and `AuthService` share; a pure leaf.
     // 69: `refusalWatch` and the `fetchTarget` leaf it reads, so the rename page can watch for the rename refusal.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(69);
+    // 70: `useRenameSubmit`, the rename flow the game dialog and the rename page share; it reads only the service and the rule.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(70);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
