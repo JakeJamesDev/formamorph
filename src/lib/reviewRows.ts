@@ -1,8 +1,7 @@
 import type { WorldRecord } from "@/components/WorldDetails";
-import type { ReviewOutcome, ReviewSubject } from "@/components/community/useReviewDecision";
 import { kindOf } from "@/lib/catalogKinds";
 import { moderationStatus } from "@/lib/listingModeration";
-import type { ReviewRejection } from "@/services/ReviewService";
+import type { ReviewOutcome, ReviewRejection, ReviewSubject } from "@/services/ReviewService";
 
 /** A catalog row as the review decision names it. */
 export const reviewSubjectOf = (world: WorldRecord): ReviewSubject => {

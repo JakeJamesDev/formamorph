@@ -1,7 +1,7 @@
 /** DEV only: the review fixture's staff viewer, apart from the stub so the browser imports no services for it. */
 import { useDevRoute } from '@/lib/devRouter';
 import { isStaff } from '@/lib/roles';
-import { type WorldRecord } from '@/components/WorldDetails';
+import type { WorldRecord } from '@/components/WorldDetails';
 
 export const DEV_REVIEW_FIXTURE = 'review';
 

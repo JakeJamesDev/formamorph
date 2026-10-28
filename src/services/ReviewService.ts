@@ -34,6 +34,15 @@ export interface ReviewQueueItem {
   pendingUpdate?: PendingUpdate;
 }
 
+/** What a decision needs to know about the item it decides on. */
+export type ReviewSubject = Pick<ReviewQueueItem, 'id' | 'kind' | 'name' | 'type' | 'author'>;
+
+/**
+ * How a decision ended. `dropped`: another mod or the author settled it first. `kept`: a contest being judged
+ * holds the approval, so the item still waits.
+ */
+export type ReviewOutcome = 'approved' | 'rejected' | 'dropped' | 'kept';
+
 /** What a rejection answers with: who to write to, and the quarantine the listing is in now. */
 export interface ReviewRejection {
   id: string;

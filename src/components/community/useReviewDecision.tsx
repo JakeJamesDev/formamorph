@@ -10,16 +10,9 @@ import { quarantineTargetFor, quarantineTemplate, type QuarantineTarget } from "
 import { canModerate, type AccountLike } from "@/lib/roles";
 import { useMountedRef } from "@/lib/useMountedRef";
 import AuthService from "@/services/AuthService";
-import ReviewService, { CONTEST_LOCKED, ReviewConflictError, type ReviewQueueItem, type ReviewRejection } from "@/services/ReviewService";
-
-/** What a decision needs to know about the item it decides on. */
-export type ReviewSubject = Pick<ReviewQueueItem, 'id' | 'kind' | 'name' | 'type' | 'author'>;
-
-/**
- * How a decision ended. `dropped`: another mod or the author settled it first. `kept`: a contest being judged
- * holds the approval, so the item still waits.
- */
-export type ReviewOutcome = 'approved' | 'rejected' | 'dropped' | 'kept';
+import ReviewService, {
+  CONTEST_LOCKED, ReviewConflictError, type ReviewOutcome, type ReviewRejection, type ReviewSubject,
+} from "@/services/ReviewService";
 
 interface ReviewDecisionOptions {
   /** Called once per decision that settles where the item goes, before the composer opens. A rejection
@@ -30,7 +23,7 @@ interface ReviewDecisionOptions {
 }
 
 /** The noun an item's kind reads as, capitalized. */
-export const nounOf =(subject: ReviewSubject) => (KIND_LABELS[subject.kind]?.one ?? 'Listing');
+export const nounOf = (subject: ReviewSubject) => (KIND_LABELS[subject.kind]?.one ?? 'Listing');
 
 /**
  * Approve and reject a waiting listing: the quarantine length for a new listing, the confirm for anything

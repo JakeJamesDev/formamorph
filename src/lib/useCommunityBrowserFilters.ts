@@ -381,8 +381,8 @@ export function useCommunityBrowserFilters(
     if (order) return { pinnedRows: pinned, filteredRemoteWorlds: order(rows) };
     const dir = sortOrder === 'asc' ? 1 : -1;
     const sorted = [...rows].sort((a, b) => {
-      const pinned = comparePinned(a, b); // pins lead under every sort, as on the server
-      if (pinned !== 0) return pinned;
+      const pinOrder = comparePinned(a, b); // pins lead under every sort, as on the server
+      if (pinOrder !== 0) return pinOrder;
       if (sortUpdatesFirst) {
         const au = downloadStateOf(a) === 'update' ? 1 : 0;
         const bu = downloadStateOf(b) === 'update' ? 1 : 0;
