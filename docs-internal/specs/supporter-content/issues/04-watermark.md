@@ -1,6 +1,6 @@
 # 04: Server: watermark module and leak CLI
 
-Status: ready-for-human
+Status: done
 Base: 4260262
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

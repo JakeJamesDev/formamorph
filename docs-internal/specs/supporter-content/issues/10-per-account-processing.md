@@ -1,6 +1,6 @@
 # 10: Server: per-account watermark and scramble on the gated route
 
-Status: ready-for-human
+Status: done
 Base: 0fab6d4
 Repo: FormamorphServer
 Blocked by: 04, 05, 09

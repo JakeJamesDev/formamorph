@@ -1,6 +1,6 @@
 # 17: Server: version the per-account cache and clear it on erasure
 
-Status: ready-for-human
+Status: done
 Base: 4f1788b
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

@@ -1,6 +1,6 @@
 # 05: Server: scramble format and shared vectors
 
-Status: ready-for-human
+Status: done
 Base: c8420be
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

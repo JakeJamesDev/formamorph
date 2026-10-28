@@ -1,6 +1,6 @@
 # 14: Server: harden the watermark against shifted lossy copies
 
-Status: ready-for-human
+Status: done
 Base: c8420be
 Repo: FormamorphServer
 Blocked by: 04

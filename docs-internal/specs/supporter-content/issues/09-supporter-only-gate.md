@@ -1,6 +1,6 @@
 # 09: Server: Supporter-only listings, gated route and revocation
 
-Status: ready-for-human
+Status: done
 Base: 021e9a3
 Repo: FormamorphServer
 Blocked by: 01

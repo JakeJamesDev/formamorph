@@ -1,6 +1,6 @@
 # 01: Server: storage interface for listing content
 
-Status: ready-for-human
+Status: done
 Base: 4260262
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

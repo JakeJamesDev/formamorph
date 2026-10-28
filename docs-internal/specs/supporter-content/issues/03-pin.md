@@ -1,6 +1,6 @@
 # 03: Server: staff Pin on listings
 
-Status: ready-for-human
+Status: done
 Base: 021e9a3
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
