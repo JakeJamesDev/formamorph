@@ -30,6 +30,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **The audit log reads pins, Supporter changes, Anonymous Like removals and username changes as sentences.** Before, each one showed as "did something the app does not recognize". Each also gets its own label in the action filter.
   - **Saving a world works again after the browser closes its storage connection.** Before, every save failed with "The database connection is closing" until you reloaded the page.
 
 ---

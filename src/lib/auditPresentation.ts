@@ -43,6 +43,15 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   listing_auto_approved: 'Auto-approved',
   author_trusted: 'Trusted',
   author_untrusted: 'Trust removed',
+  listing_pinned: 'Pinned',
+  listing_unpinned: 'Unpinned',
+  anonymous_likes_removed: 'Anonymous Likes removed',
+  anonymous_likes_cleared: 'Anonymous Likes cleared',
+  username_changed: 'Username changed',
+  listing_supporter_only: 'Supporter-only',
+  listing_supporter_only_cleared: 'Supporter-only cleared',
+  supporter_access_revoked: 'Supporter access revoked',
+  supporter_access_restored: 'Supporter access restored',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -92,6 +101,16 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   listing_auto_approved: 'bg-muted text-muted-foreground',
   author_trusted: 'bg-info/10 text-info',
   author_untrusted: 'bg-muted text-muted-foreground',
+  listing_pinned: 'bg-info/10 text-info',
+  listing_unpinned: 'bg-muted text-muted-foreground',
+  anonymous_likes_removed: 'bg-destructive/10 text-destructive',
+  anonymous_likes_cleared: 'bg-destructive/10 text-destructive',
+  // A flagged account doing what it was asked, like an author answering a quarantine.
+  username_changed: 'bg-info/10 text-info',
+  listing_supporter_only: 'bg-info/10 text-info',
+  listing_supporter_only_cleared: 'bg-muted text-muted-foreground',
+  supporter_access_revoked: 'bg-destructive/10 text-destructive',
+  supporter_access_restored: 'bg-success/10 text-success',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -299,6 +318,26 @@ export function auditPredicate(entry: AuditEntry): string {
       return `trusted ${target || 'an account'}`;
     case 'author_untrusted':
       return `removed trust from ${target || 'an account'}`;
+    case 'listing_pinned':
+      return `pinned ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''}`;
+    case 'listing_unpinned':
+      return `unpinned ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''}`;
+    // How many went is the snippet; the address itself is never recorded.
+    case 'anonymous_likes_removed':
+      return `removed the Anonymous Likes from one address on ${name ? `“${name}”` : `a ${noun ?? 'listing'}`}`;
+    case 'anonymous_likes_cleared':
+      return `cleared every Anonymous Like on ${name ? `“${name}”` : `a ${noun ?? 'listing'}`}`;
+    // The actor's snapshot holds the old name; the new one is the snippet.
+    case 'username_changed':
+      return entry.snippet ? `changed their username to ${entry.snippet}` : 'changed their username';
+    case 'listing_supporter_only':
+      return `made ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''} Supporter-only`;
+    case 'listing_supporter_only_cleared':
+      return `opened ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}${target ? ` by ${target}` : ''} to everyone`;
+    case 'supporter_access_revoked':
+      return `took Supporter content away from ${target || 'an account'}`;
+    case 'supporter_access_restored':
+      return `gave Supporter content back to ${target || 'an account'}`;
     // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
     default: {
       const unhandled: never = entry.action;
