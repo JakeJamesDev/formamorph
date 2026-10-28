@@ -1,24 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { ClipboardCheck, Trophy } from "lucide-react";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
-import { QuarantineDialog } from "@/components/community/QuarantineDialog";
-import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
+import { nounOf, useReviewDecision, type ReviewSubject } from "@/components/community/useReviewDecision";
 import { ReviewItemDialog } from "@/components/menu/ReviewItemDialog";
-import { KIND_LABELS } from "@/lib/catalogKinds";
 import { downloadBlob } from "@/lib/downloadBlob";
-import {
-  JUDGING_APPROVAL_TOAST, REVIEW_TYPE_LABELS, rejectedUpdateTemplate, waitedFor,
-} from "@/lib/listingModeration";
+import { REVIEW_TYPE_LABELS, waitedFor } from "@/lib/listingModeration";
 import { toastError } from "@/lib/linkToast";
-import { quarantineDeadline, quarantineTargetFor, quarantineTemplate, type QuarantineTarget } from "@/lib/quarantine";
-import { canModerate } from "@/lib/roles";
+import { quarantineDeadline } from "@/lib/quarantine";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { cn } from "@/lib/utils";
-import AuthService from "@/services/AuthService";
-import ReviewService, { CONTEST_LOCKED, ReviewConflictError, type ReviewQueueItem } from "@/services/ReviewService";
+import ReviewService, { type ReviewQueueItem } from "@/services/ReviewService";
 
 interface ReviewTabProps {
   /** Whether the tab is visible; the queue only fetches while it is. */
@@ -31,9 +23,6 @@ interface ReviewTabProps {
   initialItemId?: string;
 }
 
-/** The noun an item's kind reads as, capitalized. */
-const nounOf = (item: ReviewQueueItem) => (KIND_LABELS[item.kind]?.one ?? 'Listing');
-
 /**
  * Admin Panel → Moderation → Review. New listings and updates that wait for a mod, in the server's
  * order: contest entries first, then the longest-waiting.
@@ -42,21 +31,9 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
   const [items, setItems] = useState<ReviewQueueItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  // A new listing picks its quarantine length; anything else confirms first.
-  const [quarantining, setQuarantining] = useState<ReviewQueueItem | null>(null);
-  const [confirming, setConfirming] = useState<ReviewQueueItem | null>(null);
-  // Who the composer writes to after a rejection; an update gets its own template.
-  const [notice, setNotice] = useState<(QuarantineTarget & { update?: boolean }) | null>(null);
   const mounted = useMountedRef();
 
-  const me = AuthService.getCurrentUser();
   const openItem = items.find((item) => item.id === openId) ?? null;
-
-  // The server's ladder, plus its one extra rule: staff never review their own work.
-  const mayDecide = (item: ReviewQueueItem) => item.author?.id !== me?.id && canModerate(me, item.author
-    ? { id: item.author.id, accountType: item.author.role ?? 'normal' }
-    : null);
 
   const load = useCallback(async (signal: AbortSignal) => {
     setIsLoading(true);
@@ -81,60 +58,15 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
   }, [active, load]);
 
   /** Takes an item off the list once the server has decided it, by this mod or another. */
-  const dropItem = (item: ReviewQueueItem) => {
-    setItems((prev) => prev.filter((row) => row.id !== item.id));
-    setOpenId((prev) => (prev === item.id ? null : prev));
-    setQuarantining((prev) => (prev?.id === item.id ? null : prev));
+  const dropItem = (subject: ReviewSubject) => {
+    setItems((prev) => prev.filter((row) => row.id !== subject.id));
+    setOpenId((prev) => (prev === subject.id ? null : prev));
     onChanged?.();
   };
 
-  /**
-   * Runs a decision. A `409` means another mod got there first, so the row goes, unless a contest being
-   * judged holds an update's approval: then the row stays.
-   */
-  const decide = async <T,>(item: ReviewQueueItem, run: () => Promise<T>, failure: string): Promise<T | null> => {
-    setBusy(true);
-    try {
-      const result = await run();
-      if (!mounted.current) return null;
-      dropItem(item);
-      return result;
-    } catch (error) {
-      if (!mounted.current) return null;
-      if (error instanceof ReviewConflictError && error.code === CONTEST_LOCKED) {
-        toast.info(JUDGING_APPROVAL_TOAST);
-      } else if (error instanceof ReviewConflictError) {
-        toast.info('Another mod already handled this item');
-        dropItem(item);
-      } else {
-        toastError(error, failure);
-      }
-      return null;
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
-  };
-
-  const approve = async (item: ReviewQueueItem) => {
-    const done = await decide(item, () => ReviewService.approve(item.id).then(() => true), 'Failed to approve this');
-    if (done) toast.success(`${nounOf(item)} approved`);
-  };
-
-  const reject = async (item: ReviewQueueItem, days?: number) => {
-    const result = await decide(item, () => ReviewService.reject(item.id, days), 'Failed to reject this');
-    if (!result) return;
-
-    toast.success(item.type === 'update' ? 'Update rejected' : `${nounOf(item)} rejected`);
-
-    // Opened at once, as after a quarantine: a rejection the author never hears about reads as a bug.
-    const target = quarantineTargetFor({
-      kind: item.kind,
-      name: item.name,
-      author: result.author,
-      quarantine_expires_at: result.quarantineExpiresAt,
-    }, me?.id as string | undefined);
-    if (target) setNotice({ ...target, extended: result.quarantineExtended === true, update: item.type === 'update' });
-  };
+  const { busyId, mayDecide, approve, startReject, dialogs: decisionDialogs } = useReviewDecision({
+    onOutcome: (subject, outcome) => { if (outcome !== 'kept') dropItem(subject); },
+  });
 
   const download = async (item: ReviewQueueItem) => {
     try {
@@ -146,59 +78,20 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
     }
   };
 
-  const startReject = (item: ReviewQueueItem) => {
-    if (item.type === 'new') setQuarantining(item);
-    else setConfirming(item);
-  };
-
-  const template = notice?.update ? rejectedUpdateTemplate(notice) : notice ? quarantineTemplate(notice) : null;
-
   const dialogs = (
     <>
       <ReviewItemDialog
         item={openItem}
         onOpenChange={(open) => { if (!open) setOpenId(null); }}
         canDecide={openItem ? mayDecide(openItem) : false}
-        busy={busy}
+        busy={busyId !== null}
         onApprove={() => { if (openItem) void approve(openItem); }}
         onReject={() => { if (openItem) startReject(openItem); }}
         onDownload={() => { if (openItem) void download(openItem); }}
         onOpenListing={onOpenListing && openItem ? () => onOpenListing(openItem.id) : undefined}
       />
 
-      <QuarantineDialog
-        open={quarantining !== null}
-        onOpenChange={(open) => { if (!open) setQuarantining(null); }}
-        what={quarantining ? `The ${nounOf(quarantining).toLowerCase()} “${quarantining.name}”` : ''}
-        willNotifyAuthor={Boolean(quarantining?.author && quarantining.author.id !== me?.id)}
-        busy={busy}
-        onConfirm={(days) => { if (quarantining) void reject(quarantining, days); }}
-      />
-
-      <ConfirmDialog
-        open={confirming !== null}
-        onOpenChange={(open) => { if (!open) setConfirming(null); }}
-        title={`Reject “${confirming?.name ?? ''}”?`}
-        description={confirming?.type === 'update'
-          ? 'The update is dropped. Players keep the live version. You’ll write to the author next.'
-          : 'It stays in quarantine and keeps its deadline. You’ll write to the author next.'}
-        confirmLabel="Reject"
-        destructive
-        onConfirm={() => { if (confirming) void reject(confirming); }}
-      />
-
-      {/* Closing it sends nothing. */}
-      {notice && template && (
-        <MessageComposerDialog
-          open
-          onOpenChange={(open) => { if (!open) setNotice(null); }}
-          target={{ broadcast: false, recipients: [notice.author] }}
-          adminUsername={String(me?.username || 'Admin')}
-          initialSubject={template.subject}
-          initialBody={template.body}
-          initialSeverity="warning"
-        />
-      )}
+      {decisionDialogs}
     </>
   );
 
