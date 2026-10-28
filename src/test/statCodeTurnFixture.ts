@@ -9,7 +9,7 @@ export type FlatStatCodeTurn = Omit<StatCodeTurn, 'state' | 'ownerTurns'> & Omit
 
 /** `flat` as the turn module takes it. A field left out stays out. */
 export function statCodeTurnOf({
-  stats, enabled, owners, gateStats, ownerTraits, placeholders, places, positions, followers, resolveText, clock, memories, notes, turn, loreToggles, ...rest
+  stats, enabled, owners, gateStats, ownerTraits, placeholders, places, positions, followers, resolveText, clock, memories, notes, turn, loreToggles, itemCopies, ...rest
 }: FlatStatCodeTurn): StatCodeTurn {
   // A state field missing from the list above would stay on the turn; this fails to compile then.
   const onlyTurnFields: [Exclude<keyof typeof rest, keyof StatCodeTurn>] extends [never] ? true : false = true;
@@ -29,6 +29,7 @@ export function statCodeTurnOf({
       ...(memories ? { memories } : {}),
       ...(notes ? { notes } : {}),
       ...(loreToggles ? { loreToggles } : {}),
+      ...(itemCopies ? { itemCopies } : {}),
       ...(turn ? { turn } : {}),
     },
     ...(split ? { ownerTurns: split.ownerTurns } : {}),

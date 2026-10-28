@@ -69,3 +69,23 @@ Slots are the places an item can be equipped, such as Hand or Ring. You set them
 4. Set its capacity: how many item units fit. A Ring slot with capacity 2 holds two rings.
 
 When you delete a slot that items use, the editor asks first. Those items become not equippable.
+
+## Starting Items
+<!-- keywords: starting items, starting gear, give items, place items, loot, hidden item, treasure, merchant stock, persona items -->
+<!-- route: worldEditorEntity.items -->
+
+Starting items are the items a new game begins with. You can place them in three spots:
+
+| Where | Where to set it |
+|---|---|
+| 👤 The player | **Overview** tab, under **Persona Items**. The player gets them whoever they play. |
+| 🧑 An entity | The entity's **Items** tab |
+| 📍 A location | The location's **Items** tab. They lie there for anyone to pick up. |
+
+Each row picks an item, a quantity and **Hidden**. A hidden item is there, but the player doesn't see it until the story reveals it.
+
+- When the player plays a world entity, that entity's starting items are the player's.
+- Two rows of the same stackable item on one owner become one stack. A hidden row stays its own row.
+- A persona-only entity that nobody plays gets no items.
+
+> ⚠️ Starting items appear only in a new game. A saved game never gains the items you add later.

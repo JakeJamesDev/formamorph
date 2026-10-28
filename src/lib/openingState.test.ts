@@ -98,4 +98,20 @@ describe('openingStateOf', () => {
     expect(fold.startingTraits.map(({ trait: t, ownerId }) => [t.id, ownerId])).toEqual([['tough', null], ['albus-boast', 'albus']]);
     expect(fold.traitState.entityStats).toBe(fold.entityStats);
   });
+
+  it("carries the seeded Item Copies, with the played Persona entity's placements on the player", () => {
+    const lamp = { id: 'lamp', name: 'Lamp', statEffects: [], traitEffects: [], equipRequires: [] };
+    const state = openingStateOf({
+      ...world,
+      items: [lamp],
+      placements: [
+        { id: 'p1', where: { kind: 'entity', id: 'albus' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } },
+        { id: 'p2', where: { kind: 'location', id: 'gate' }, quantity: 2, hidden: true, source: { kind: 'item', itemId: 'lamp' } },
+      ],
+    }, undefined, { ref: { source: 'world', entityId: 'albus' } });
+    expect(state.itemCopies?.map(({ where, quantity, visibility }) => ({ where, quantity, visibility }))).toEqual([
+      { where: { kind: 'you' }, quantity: 1, visibility: 'visible' },
+      { where: { kind: 'location', id: 'gate' }, quantity: 2, visibility: 'hidden' },
+    ]);
+  });
 });

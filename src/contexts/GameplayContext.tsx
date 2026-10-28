@@ -19,6 +19,7 @@ import { restoreTells, type TellMap } from '../lib/scriptTells';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
+import { withoutOrphanCopies } from '../lib/inventory';
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
@@ -49,6 +50,8 @@ import type {
   EntityStatValues,
   EntityPositions,
   ImageAttachment,
+  Item,
+  ItemCopy,
   LogEntry,
   GameLocation,
   Stat,
@@ -79,6 +82,7 @@ const EMPTY_ENTITY_CHANGES: EntityStatChanges = {};
 const EMPTY_CHOICES: Choice[] = [];
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
+const NO_ITEM_COPIES: readonly ItemCopy[] = [];
 
 const EMPTY_ENTITY_STATS: EntityStatValues = {};
 
@@ -172,6 +176,8 @@ function useProvideGameplay() {
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // What scripts switched on dictionary entries. Snapshotted per turn, so undo and re-roll restore it.
   const [loreToggles, setLoreToggles] = useState<LoreToggles>(NO_LORE_TOGGLES);
+  // Every Item Copy in play. Snapshotted per turn, so undo and re-roll restore it.
+  const [itemCopies, setItemCopies] = useState<readonly ItemCopy[]>(NO_ITEM_COPIES);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -345,6 +351,7 @@ function useProvideGameplay() {
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
+      ...(itemCopies.length ? { itemCopies: [...itemCopies] } : {}),
       visibleEntities,
       discoveredEntities,
       suppressedCharacterNames,
@@ -365,7 +372,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, loreToggles, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, loreToggles, itemCopies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -395,6 +402,7 @@ function useProvideGameplay() {
       setMetEntities(gameState.metEntities ?? []);
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
+      setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
@@ -547,9 +555,27 @@ function useProvideGameplay() {
    *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. */
   const loadGame = useCallback(async (
     saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (PlaceableEntity & Pick<Entity, 'stats'>)[],
-    vrmStore?: WorldVrmStore,
+    vrmStore?: WorldVrmStore, items?: readonly Pick<Item, 'id'>[],
   ) => {
     const locationIds = locations.map((l) => l.id);
+    const orphanIds = new Set<string>();
+    /** The state without Item Copies whose item, owner entity or location the world no longer has (Q60). */
+    const withoutOrphans = (state: GameState): GameState => {
+      if (!items || !worldEntities || !state.itemCopies?.length) return state;
+      const { copies, dropped } = withoutOrphanCopies(state.itemCopies, {
+        itemIds: new Set(items.map((item) => item.id)),
+        entityIds: new Set([...worldEntities.map((e) => e.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]),
+        locationIds: new Set(locationIds),
+      });
+      for (const copy of dropped) orphanIds.add(copy.id);
+      return dropped.length ? { ...state, itemCopies: [...copies] } : state;
+    };
+    /** One log line for every orphan the load dropped, across the state and its history. */
+    const logOrphans = () => {
+      if (!orphanIds.size) return;
+      const n = orphanIds.size;
+      addSystemLogEntry(`Removed ${n} ${n === 1 ? 'item' : 'items'} whose item, owner or location no longer exists`);
+    };
     /** The state with its chosen Avatar remapped against the world's Avatar store. */
     const withChosenVrmRemapped = (raw: GameState) => (raw.characterData
       ? { ...raw, characterData: remapChosenVrm(raw.characterData, vrmStore) }
@@ -557,7 +583,7 @@ function useProvideGameplay() {
     /** The state with every stat the world has since added, global and each entity's, no entity stat
      *  carrying stored code bounds, each position checked against the world, and its chosen Avatar remapped. */
     const backfilled = (raw: GameState, persona?: PersonaRef) => {
-      const state = withChosenVrmRemapped(raw);
+      const state = withoutOrphans(withChosenVrmRemapped(raw));
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
       if (!worldEntities) return players;
       const cast = positionedCast(worldEntities, persona);
@@ -621,6 +647,7 @@ function useProvideGameplay() {
           setOpeningAction(typeof migrated.openingAction === 'string' ? migrated.openingAction : null);
           setPendingAttachments([]);
           addSystemLogEntry(`Game loaded from "${saveName}"`);
+          logOrphans();
           setSaveLoads((n) => n + 1);
         }
         return success;
@@ -673,6 +700,7 @@ function useProvideGameplay() {
             setOpeningAction(null);
             setPendingAttachments([]);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
+            logOrphans();
             setSaveLoads((n) => n + 1);
           }
           return success;
@@ -883,6 +911,8 @@ function useProvideGameplay() {
     setCodePins,
     loreToggles,
     setLoreToggles,
+    itemCopies,
+    setItemCopies,
     runtimeDictionaries,
     setRuntimeDictionaries,
     libraryDictionaries,

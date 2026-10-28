@@ -11,6 +11,7 @@ import { tabForField } from './findFocus';
 export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: ELEMENT_ICONS.entity },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
+  { value: 'items', label: 'Items', icon: ELEMENT_ICONS.item, worldOnly: true },
   { value: 'traits', label: 'Traits', icon: ELEMENT_ICONS.trait, advancedOnly: true },
   { value: 'stats', label: 'Stats', icon: ELEMENT_ICONS.stat, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
@@ -29,10 +30,14 @@ type LibraryTopTab = 'traits' | 'stats' | 'placeholders';
 const isLibraryTopTab = (value: EntityPanelTab): value is LibraryTopTab =>
   value === 'traits' || value === 'stats' || value === 'placeholders';
 
+/** A tab only a world entity has: placements are world records. */
+type WorldOnlyTab = Extract<(typeof ENTITY_PANEL_TABS)[number], { worldOnly: true }>['value'];
+
 /** The library entity editor's sub-tabs, inside its Entity tab. It sits outside Simple and Advanced mode, so it
  *  shows each one, the Advanced-only included. */
 export const ENTITY_EDITOR_SUBTABS = ENTITY_PANEL_TABS.filter(
-  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab }> => !isLibraryTopTab(t.value),
+  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab | WorldOnlyTab }> =>
+    !isLibraryTopTab(t.value) && !('worldOnly' in t),
 );
 
 export type EntityEditorSubTab = (typeof ENTITY_EDITOR_SUBTABS)[number]['value'];

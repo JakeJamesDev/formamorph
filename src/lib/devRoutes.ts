@@ -171,7 +171,7 @@ export const DEV_MODAL_TABS = {
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
   // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
   // `fixture=entityPresence` gives the Archivist Relationships rows on `profile`.
-  worldEditorEntity: ['profile', 'descriptions', 'traits', 'stats', 'placeholders', 'openings'],
+  worldEditorEntity: ['profile', 'descriptions', 'items', 'traits', 'stats', 'placeholders', 'openings'],
   // The item panel's own tabs, in the same `subtab=…` slot over the Items tab
   // (`#dev?modal=worldEditor&tab=items&subtab=properties`). `fixture=items` gives a world with items and slots.
   worldEditorItem: ['profile', 'descriptions', 'properties', 'placeholders'],
@@ -186,7 +186,7 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=worldEditor&tab=locations&subtab=presence`). It shares that tab's `subtab=…` slot with the
   // List/Canvas switch above, which is why no value may appear in both lists. `pins` is Advanced only.
   // `fixture=entityPresence` loads a cast for the Presence tab's Entities Here rows; select The White Room.
-  worldEditorLocation: ['details', 'presence', 'media', 'pins', 'openings'],
+  worldEditorLocation: ['details', 'presence', 'items', 'media', 'pins', 'openings'],
   // The World Editor's stat panel does the same over the Stats tab
   // (`#dev?modal=worldEditor&tab=stats&subtab=code`). `descriptors` and `code` are Advanced only, and
   // Simple mode leaves one tab and no strip, so land those on an Advanced editor.

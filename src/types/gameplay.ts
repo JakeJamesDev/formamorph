@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere } from './world';
 import type { ChatMessage } from './ai';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
@@ -220,6 +220,33 @@ export interface AvatarListingContent {
   hash?: string;
 }
 
+/** What an Item Copy is a copy of: an authored item, or a runtime item the Inventory pass made. */
+export type ItemRef = { kind: 'item'; itemId: string } | { kind: 'runtime'; runtimeItemId: string };
+
+/** Where an Item Copy is: owned by the played Persona or an entity, or lying at a location. */
+export type ItemCopyWhere = PlacementWhere;
+
+export type ItemCopyVisibility = 'visible' | 'hidden';
+
+/** State one Item Copy keeps of its own. */
+export interface ItemCopyState {
+  /** Charges left. Absent = the item has no charges. */
+  charges?: number;
+}
+
+/** One item in play: a stack of `quantity` copies of an item in one place. */
+export interface ItemCopy {
+  id: string;
+  item: ItemRef;
+  where: ItemCopyWhere;
+  quantity: number;
+  /** The slot it is equipped in and when, as a rising order. Absent = carried. */
+  equipped?: { slotId: string; order: number };
+  visibility: ItemCopyVisibility;
+  /** Absent = none. */
+  state?: ItemCopyState;
+}
+
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
 export interface GameState {
   globalStats: PlayerStat[];
@@ -246,6 +273,8 @@ export interface GameState {
   metEntities?: string[];
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
+  /** Every Item Copy in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
+  itemCopies?: ItemCopy[];
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** Absent ⇒ none. */

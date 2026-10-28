@@ -19,6 +19,7 @@ import { Hint } from '@/components/ui/typography';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
+import PlacementsSection from './PlacementsSection';
 import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 
 /**
@@ -139,6 +140,14 @@ const EntityManager = ({
 
         <PanelTabContent value="descriptions">
           <EntityDescriptionFields {...groupProps} />
+        </PanelTabContent>
+
+        <PanelTabContent value="items">
+          <PlacementsSection
+            where={{ kind: 'entity', id: entity.id }}
+            label="Starting Items"
+            hint="Gives this entity items when a game starts"
+          />
         </PanelTabContent>
 
         {advanced && (

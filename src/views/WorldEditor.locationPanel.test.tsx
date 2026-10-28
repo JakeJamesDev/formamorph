@@ -91,17 +91,17 @@ const selectLocation = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor location panel tabs', () => {
-  it('offers five tabs in Advanced mode, Openings last, and opens on Details', () => {
+  it('offers six tabs in Advanced mode, Openings last, and opens on Details', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectLocation('The Veilwood');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Media', 'Pins', 'Openings']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('offers three tabs in Simple mode', () => {
+  it('offers four tabs in Simple mode', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectLocation('The Veilwood');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Media']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
   });
 
   it('puts the name, the starting box and the three descriptions on Details, and nothing else', () => {
@@ -162,7 +162,7 @@ describe('the World Editor location panel tabs', () => {
     selectLocation('The Veilwood');
     openPanelTab('Pins');
     pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Media']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
   });
@@ -172,7 +172,7 @@ describe('the World Editor location panel tabs', () => {
     selectLocation('The Veilwood');
     openPanelTab('Media');
     fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Media', 'Pins', 'Openings']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
     expect(panelTab('Media')).toHaveAttribute('aria-selected', 'true');
   });
 });

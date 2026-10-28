@@ -31,6 +31,9 @@ const world = {
   placeholders: [],
   placeholderOwners: new Map(),
   placementLetters: new Map(),
+  items: [],
+  placements: [],
+  setPlacements: vi.fn(),
   updateEntity: vi.fn(),
 };
 vi.mock('@/contexts/GameDataContext', () => ({
@@ -107,7 +110,8 @@ describe('the two entity editors', () => {
 
     expect(libraryTop).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
-    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    // Placements are world records, so only the World Editor has Items.
+    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Items', 'Traits', 'Stats', 'Placeholders', 'Openings']);
   });
 
   it('drop Traits, Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
@@ -117,7 +121,7 @@ describe('the two entity editors', () => {
       </SettingsProvider>
     );
     render(simple(<WorldPanel />));
-    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
     expect(topTabNames()).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
@@ -165,8 +169,8 @@ describe('the two entity editors', () => {
     const library = await fieldsByTab(['Openings']);
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    // Traits and Stats hold lists of the entity's own traits and stats, not fields.
-    const worldFields = await fieldsByTab(['Traits', 'Stats', 'Openings', 'Placeholders']);
+    // Items, Traits and Stats hold lists of the entity's own placements, traits and stats, not fields.
+    const worldFields = await fieldsByTab(['Items', 'Traits', 'Stats', 'Openings', 'Placeholders']);
 
     expect(library).toEqual({
       Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Persona', 'Type', 'Image Tags', '3D Model'],
