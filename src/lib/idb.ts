@@ -33,8 +33,8 @@ export function openDatabase(
 }
 
 /**
- * One shared connection to a database, opened on first use. A failed open clears the cache, so the next
- * call retries instead of replaying the rejection.
+ * One shared connection to a database, opened on first use. A failed open or a browser-closed connection
+ * clears the cache, so the next call reopens instead of replaying a dead handle.
  */
 export function cachedConnection(
   name: string,
@@ -46,9 +46,8 @@ export function cachedConnection(
     if (!connection) {
       const opening = openDatabase(name, version, stores);
       connection = opening;
-      opening.catch(() => {
-        if (connection === opening) connection = null;
-      });
+      const drop = () => { if (connection === opening) connection = null; };
+      opening.then((db) => db.addEventListener('close', drop), drop);
     }
     return connection;
   };

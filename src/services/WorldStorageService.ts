@@ -249,7 +249,10 @@ class WorldStorageService {
       blocked = true;
       toast.info(LIBRARY_BLOCKED_MESSAGE, { toastId: LIBRARY_BLOCKED_TOAST, autoClose: false });
     }).then((db) => {
-      db.addEventListener('versionchange', () => { if (this.db === db) this.db = null; });
+      const drop = () => { if (this.db === db) this.db = null; };
+      // `close` fires when the browser drops the connection (cleared site data, storage failure).
+      db.addEventListener('versionchange', drop);
+      db.addEventListener('close', drop);
       this.db = db;
     }).finally(() => {
       this.opening = null;

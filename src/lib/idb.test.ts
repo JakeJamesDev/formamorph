@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, forceCloseDatabase } from 'fake-indexeddb';
 import { cachedConnection, pruneLeastRecent, promisifyRequest, transactionDone } from './idb';
 
 const STORES = [{ name: 'rows', keyPath: 'id' }];
+
+// fake-indexeddb types the argument as the class; the function takes a connection.
+const browserClose = (db: IDBDatabase) => forceCloseDatabase(db as unknown as Parameters<typeof forceCloseDatabase>[0]);
 
 describe('cachedConnection', () => {
   beforeEach(() => {
@@ -39,6 +42,15 @@ describe('cachedConnection', () => {
     const db = await connect();
     expect(db.name).toBe('retry-db');
     expect(open).toHaveBeenCalledTimes(2);
+  });
+
+  it('reopens after the browser closes the connection', async () => {
+    const connect = cachedConnection('closed-db', 1, STORES);
+    const first = await connect();
+    browserClose(first);
+    const second = await connect();
+    expect(second).not.toBe(first);
+    expect(() => second.transaction(['rows'], 'readonly')).not.toThrow();
   });
 
   it('keeps separate connections for separate helpers', async () => {
