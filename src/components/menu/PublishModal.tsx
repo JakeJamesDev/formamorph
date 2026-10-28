@@ -60,6 +60,8 @@ interface PublishModalProps {
    * Avatar passes none.
    */
   localId?: string;
+  /** The listing the local copy is linked to. Preselected as the update target when it is one of the user's own. */
+  linkedListingId?: string;
   /** Called once a published world's link has been written, so the caller can re-read its library. */
   onLinked?: () => void;
   /** Called after any successful publish with the listing it became, for a caller that links its own copy. */
@@ -74,7 +76,7 @@ interface PublishModalProps {
  * The overwrite list is fetched per kind: your characters are never offered as targets for a world.
  */
 export function PublishModal({
-  open, onOpenChange, isAuthenticated, payload, events = [], localId, onLinked, onPublished,
+  open, onOpenChange, isAuthenticated, payload, events = [], localId, linkedListingId, onLinked, onPublished,
 }: PublishModalProps) {
   const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
@@ -172,7 +174,8 @@ export function PublishModal({
   kindRef.current = kind;
 
   // Fetch the user's listings of this kind — the only valid overwrite targets.
-  const fetchUserWorlds = async () => {
+  // `preselect` only on opening: a later re-read must not undo a pick the user made.
+  const fetchUserWorlds = async ({ preselect = false } = {}) => {
     if (!isAuthenticated) return;
 
     try {
@@ -182,6 +185,10 @@ export function PublishModal({
       // character dialog with worlds — every row then a wrong-kind overwrite target.
       if (kindRef.current !== kind) return;
       setUserWorlds(listings);
+      // A downloaded copy links to someone else's listing, so only an own listing is preselected.
+      if (preselect && linkedListingId && listings.some((row: WorldRecord) => String(row._id || row.id) === linkedListingId)) {
+        setSelectedWorldToOverride((current) => (current === 'new' ? linkedListingId : current));
+      }
     } catch (error) {
       console.error('Error fetching user listings:', error);
       if (kindRef.current !== kind) return;
@@ -414,7 +421,7 @@ export function PublishModal({
     // Asked again on the next opening rather than held for the app's lifetime: this dialog is mounted for
     // the whole session, and one refused request must not hide the feature until a restart.
     changelogSupportRef.current = null;
-    fetchUserWorlds();
+    void fetchUserWorlds({ preselect: true });
     // Fetch only when the modal opens, auth changes, or the kind changes — not on fetchUserWorlds identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isAuthenticated, kind]);

@@ -16,7 +16,7 @@ Status: draft, 2026-10-28. Willow is the first Supporter Mascot. The client rele
 1. **Publish window → app publish as Supporter-only (ruled 2026-10-28, Q46).** An admin's Publish dialog has a **Supporter-Only** switch for a new Mascot. The server writes the content straight to `supporter-private` and creates the row Supporter-only and pinned in one transaction, so Willow is never public. `npm run publish-supporter` stays as a fallback (FormamorphServer `docs-internal/server.md`, "Publishing a Supporter Mascot").
 2. **3.5.0 clients on the new server → settled.** 3.5.0 asks for `kind=all` and files an unknown kind as a World. The server's `kind=all` now leaves Mascots out, so 3.5.0 never sees Willow. The new client names its kinds, Mascot included. ⚠️ So the new server must be live before the new client.
 3. **Client build time.** UNVERIFIED: minutes from the GitHub release to live web and desktop builds. This sets the gap between the server deploy and the announcement.
-4. **Willow revisions → settled.** Willow's author is the admin account, and the Mascot links to the listing after the publish (Q30). A revision is a normal update: pick the listing under **Or update existing**. The content stays private, the revision bumps, and installed copies update at the next check (Q22). Covered by FormamorphServer `tests/supporterPublishRoute.test.js`.
+4. **Willow revisions → settled.** Willow's author is the admin account, and the Mascot links to the listing after the publish (Q30). A revision is a normal update, and the dialog preselects the linked listing (Q47). The content stays private, the revision bumps, and installed copies update at the next check (Q22). Covered by FormamorphServer `tests/supporterPublishRoute.test.js`.
 
 ## Launch steps
 
@@ -58,7 +58,7 @@ Status: draft, 2026-10-28. Willow is the first Supporter Mascot. The client rele
    - Supporter → **Install**, then Willow is selectable and read-only.
 4. Screenshot the Supporter's installed Willow at full size. On the server, `npm run read-leak -- <file>` must name that account. If it reads `No mark found`, stop: don't announce until the watermark reads.
 5. ⚠️ Never select **Open to All** on Willow. It asks first, and it is admin only.
-6. A later fix to Willow: publish again from the same Mascot and pick Willow under **Or update existing**. ⚠️ Never **Publish as new** with the switch off: that makes a second, public listing.
+6. A later fix to Willow: publish again from the same Mascot. The dialog preselects Willow (Q47); check it is selected, then publish. ⚠️ Never **Publish as new** with the switch off: that makes a second, public listing.
 
 ### 4. Cut the client release
 

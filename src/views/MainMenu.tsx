@@ -621,9 +621,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // becomes; a character or a dictionary uses it to name the library item its Compatible Worlds are
   // derived from. An Avatar has neither and passes none.
   const [publishLocalId, setPublishLocalId] = useState<string | undefined>(undefined);
-  const openPublish = (payload: PublishPayload, localId?: string) => {
+  // The listing that record is linked to, which the modal preselects as the update target.
+  const [publishLinkedId, setPublishLinkedId] = useState<string | undefined>(undefined);
+  const openPublish = (payload: PublishPayload, localId?: string, linkedListingId?: string) => {
     setPublishPayload(payload);
     setPublishLocalId(localId);
+    setPublishLinkedId(linkedListingId);
     setShowPublishModal(true);
   };
 
@@ -635,7 +638,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * side already offers this choice; the publish side is where the big image actually comes from.
    */
   const publishEntity = async (entity: Entity, libraryDetails?: { author?: string }) => {
-    openPublish(entityPublishPayload(await withCarriedVrm(await promptEntity(entity)), libraryDetails), entity.id);
+    openPublish(
+      entityPublishPayload(await withCarriedVrm(await promptEntity(entity)), libraryDetails),
+      entity.id,
+      entities.find((record) => record.id === entity.id)?.sourceId,
+    );
   };
 
   /**
@@ -650,7 +657,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       toast.error(attempt.message);
       return;
     }
-    openPublish(attempt.payload);
+    openPublish(attempt.payload, undefined, models.find((record) => record.id === model.id)?.sourceId);
   };
 
   /** Publish the selected world, unless it is a bundled world the player never edited. */
@@ -661,7 +668,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       toast.error(attempt.message);
       return;
     }
-    openPublish(attempt.payload, world.id);
+    openPublish(attempt.payload, world.id, typeof world.sourceId === 'string' ? world.sourceId : undefined);
   };
   const [showBackup, setShowBackup] = useState(false);
 
@@ -2788,7 +2795,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialTab={devRoute?.modal === 'dictionaryEditor' ? DICTIONARY_EDITOR_TABS.find((t) => t.value === devRoute.tab)?.value : undefined}
         draft={draftDictionary}
         onClose={() => { setEditingDictionaryId(null); setDraftDictionary(null); refreshDictionaries(); }}
-        onPublish={isAuthenticated ? (book, details) => openPublish(dictionaryPublishPayload(book, details), book.id) : undefined}
+        onPublish={isAuthenticated ? (book, details) => openPublish(dictionaryPublishPayload(book, details), book.id, dictionaries.find((record) => record.id === book.id)?.sourceId) : undefined}
       />
 
       <ConfirmDialog
@@ -2980,6 +2987,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             isAuthenticated={isAuthenticated}
             payload={publishPayload}
             localId={publishLocalId}
+            linkedListingId={publishLinkedId}
             onLinked={() => { void refreshWorlds(); }}
             events={activeEvents}
           />
