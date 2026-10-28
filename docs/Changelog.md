@@ -30,6 +30,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Supporter Content:**
+    - **A locked Supporter Mascot now waits for your Supporter check instead of opening its listing.** The Preset list shows it as Checking… until the check ends, then a pick installs or opens the listing.
   - **The audit log reads pins, Supporter changes, Anonymous Like removals and username changes as sentences.** Before, each one showed as "did something the app does not recognize". Each also gets its own label in the action filter.
   - **Saving a world works again after the browser closes its storage connection.** Before, every save failed with "The database connection is closing" until you reloaded the page.
 

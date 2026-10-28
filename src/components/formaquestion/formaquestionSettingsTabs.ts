@@ -106,7 +106,7 @@ export const MASCOT_COPY = {
   storedOverlay: 'Your Image',
   supporterOverlay: 'Supporter Image',
   /** A Supporter-only Mascot this account hasn't installed. */
-  locked: { label: '(Locked)', installFailed: "Couldn't install this Supporter Mascot." },
+  locked: { label: '(Locked)', checking: '(Checking…)', installFailed: "Couldn't install this Supporter Mascot." },
   removeLayer: 'Remove layer',
   removeOverlay: 'Remove overlay',
   preset: {

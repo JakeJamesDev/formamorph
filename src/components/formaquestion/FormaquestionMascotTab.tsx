@@ -541,7 +541,9 @@ function useLockedMascots(control: MascotDraftControl, openListing: ((listingId:
     setSelectOnArrival(null);
     control.select(selectOnArrival);
   }, [selectOnArrival, control]);
+  const checking = supporter.status !== 'ready';
   const pick = (listingId: string) => control.guard(() => {
+    if (checking) return;
     if (!supporter.qualifies || !supporter.entitled.some((item) => item.id === listingId)) {
       openListing?.(listingId);
       return;
@@ -553,7 +555,7 @@ function useLockedMascots(control: MascotDraftControl, openListing: ((listingId:
       .catch((cause: unknown) => toastError(cause, MASCOT_COPY.locked.installFailed))
       .finally(() => { if (mounted.current) setInstalling(null); });
   });
-  return { locked: listings.filter((listing) => !installed.has(listing.id)), installing: installing !== null, pick };
+  return { locked: listings.filter((listing) => !installed.has(listing.id)), installing: installing !== null, checking, pick };
 }
 
 /**
@@ -924,12 +926,12 @@ export function MascotTab({ settings, control, onOpenGeneral, onOpenListing }: {
               <SelectItem value={DEFAULT_MASCOT_ID}>{DEFAULT_MASCOT_NAME}</SelectItem>
               {control.store.mascots.map((mascot) => <SelectItem key={mascot.id} value={mascot.id}>{mascot.name}</SelectItem>)}
               {lockedMascots.locked.map((listing) => (
-                <SelectItem key={listing.id} value={`${LOCKED_PREFIX}${listing.id}`} data-fq-locked-mascot={listing.id}>
+                <SelectItem key={listing.id} value={`${LOCKED_PREFIX}${listing.id}`} disabled={lockedMascots.checking} data-fq-locked-mascot={listing.id}>
                   <span className="flex items-center gap-2">
                     {listing.thumbnailUrl && <img src={listing.thumbnailUrl} alt="" draggable={false} className="h-5 w-5 shrink-0 rounded-sm object-cover" />}
                     {listing.name}
                     <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="sr-only">{` ${MASCOT_COPY.locked.label}`}</span>
+                    <span className="sr-only">{` ${lockedMascots.checking ? MASCOT_COPY.locked.checking : MASCOT_COPY.locked.label}`}</span>
                   </span>
                 </SelectItem>
               ))}
