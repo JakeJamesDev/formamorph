@@ -136,6 +136,10 @@ export const fieldLabel = (name: string): string => FIELD_LABELS[name] ?? name;
 export const awaitsReview = (listing: ModeratedListing): boolean =>
   awaitsFirstReview(listing) || moderationStatus(listing) === 'updatePending';
 
+/** The pending preview a pinned update card shows in place of its live face, null for any other card. */
+export const pendingFaceOf = (listing: ModeratedListing, inReviewGroup: boolean): PendingPreview | null =>
+  inReviewGroup && moderationStatus(listing) === 'updatePending' ? listing.pending_preview ?? null : null;
+
 /**
  * When a listing joined the review queue, in epoch ms, 0 when unknown: an update's own queue time, else its
  * last edit; a new or resubmitted listing's submission.

@@ -8,7 +8,7 @@ import { kindOf, listingModels } from "@/lib/catalogKinds";
 import { BROWSE_TABS, catalogKindOfTab, type BrowseTab } from "@/lib/browseTabs";
 import { asStatusFacet, isViewersListing, matchesStatusFacets, type StatusFacet } from "@/lib/communityStatusFacets";
 import { extractFilterPrefixes } from "@/lib/filterPrefixes";
-import { awaitsFirstReview, awaitsReview, reviewQueuedTime } from "@/lib/listingModeration";
+import { awaitsFirstReview, awaitsReview, pendingFaceOf, reviewQueuedTime } from "@/lib/listingModeration";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 /**
@@ -350,7 +350,9 @@ export function useCommunityBrowserFilters(
       if (hiddenWorldIds.includes(id)) return false;
       if ((world.tags || []).some((t: string) => hiddenTags.includes(sanitizeTag(t)))) return false;
       if (hiddenAuthors.some((a) => a.toLowerCase() === (world.author?.username || '').toLowerCase())) return false;
-      if (q && !`${world.name || ''} ${world.description || ''}`.toLowerCase().includes(q)) return false;
+      // A pinned update shows its pending name, so search finds that name too.
+      const pendingName = pendingFaceOf(world, review === 'pin')?.name;
+      if (q && !`${world.name || ''} ${pendingName || ''} ${world.description || ''}`.toLowerCase().includes(q)) return false;
       if (authors.length && !authors.includes((world.author?.username || '').toLowerCase())) return false;
       if (tags.length) {
         const worldTags = new Set((world.tags || []).map((t: string) => sanitizeTag(t)).filter(Boolean));

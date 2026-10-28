@@ -101,7 +101,7 @@ afterEach(() => {
 });
 
 describe('the pinned review group', () => {
-  const ALL = ['Live One', 'New Two', 'Resubmitted Three', 'Update Four'];
+  const ALL = ['Live One', 'New Two', 'Resubmitted Three', 'Update Four Draft'];
 
   beforeEach(() => {
     catalog.items = [
@@ -116,7 +116,7 @@ describe('the pinned review group', () => {
     renderBrowser();
 
     const group = await screen.findByRole('region', { name: 'Awaiting Review' });
-    expect(namesIn(group, ALL)).toEqual(['Resubmitted Three', 'Update Four', 'New Two']);
+    expect(namesIn(group, ALL)).toEqual(['Resubmitted Three', 'Update Four Draft', 'New Two']);
     expect(gridNames(ALL)).toEqual(['Live One']);
   });
 
@@ -124,15 +124,15 @@ describe('the pinned review group', () => {
     catalog.items = [fresh('new', 'New Two', 3), update('upd', 'Update Four', 8, { moderation_queued_at: day(1) })];
     renderBrowser();
 
-    expect(namesIn(await screen.findByRole('region', { name: 'Awaiting Review' }), ALL)).toEqual(['New Two', 'Update Four']);
+    expect(namesIn(await screen.findByRole('region', { name: 'Awaiting Review' }), ALL)).toEqual(['New Two', 'Update Four Draft']);
   });
 
   it('shows an update listing once, in the group', async () => {
     renderBrowser();
     await screen.findByRole('region', { name: 'Awaiting Review' });
 
-    expect(screen.getAllByText('Update Four')).toHaveLength(1);
-    expect(namesIn(pinnedGroup()!, ['Update Four'])).toEqual(['Update Four']);
+    expect(screen.getAllByText('Update Four Draft')).toHaveLength(1);
+    expect(namesIn(pinnedGroup()!, ['Update Four Draft'])).toEqual(['Update Four Draft']);
   });
 
   it('shows no group and no toggle to a player, and keeps their own pending listing in the grid', async () => {
@@ -154,6 +154,27 @@ describe('the pinned review group', () => {
     expect(namesIn(pinnedGroup()!, ALL)).toEqual(['Resubmitted Three']);
   });
 
+  it('finds an update by the pending name its card shows, and by its live name', async () => {
+    renderBrowser();
+    await screen.findByRole('region', { name: 'Awaiting Review' });
+    const search = screen.getByPlaceholderText(/^Search worlds/);
+
+    fireEvent.change(search, { target: { value: 'four draft' } });
+    expect(namesIn(pinnedGroup()!, ['Update Four Draft'])).toEqual(['Update Four Draft']);
+
+    fireEvent.change(search, { target: { value: 'update four' } });
+    expect(namesIn(pinnedGroup()!, ['Update Four Draft'])).toEqual(['Update Four Draft']);
+  });
+
+  it('does not match the pending name once Show Pending is off', async () => {
+    renderBrowser();
+    fireEvent.click(await screen.findByRole('button', { name: 'Show Pending' }));
+
+    fireEvent.change(screen.getByPlaceholderText(/^Search worlds/), { target: { value: 'four draft' } });
+
+    expect(screen.queryByText('Update Four')).toBeNull();
+  });
+
   it('follows a tag filter', async () => {
     catalog.items = [
       listing('live', 'Live One'),
@@ -165,7 +186,7 @@ describe('the pinned review group', () => {
 
     fireEvent.change(screen.getByPlaceholderText(/^Search worlds/), { target: { value: 'tag:fen ' } });
 
-    expect(namesIn(pinnedGroup()!, ALL)).toEqual(['Update Four']);
+    expect(namesIn(pinnedGroup()!, ALL)).toEqual(['Update Four Draft']);
   });
 
   it('follows the kind', async () => {
