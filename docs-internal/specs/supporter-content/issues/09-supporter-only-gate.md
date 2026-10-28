@@ -1,6 +1,7 @@
 # 09: Server: Supporter-only listings, gated route and revocation
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 021e9a3
 Repo: FormamorphServer
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -20,9 +21,21 @@ Staff can revoke and restore one account's Supporter content access; Supporter F
 
 ## Acceptance criteria
 
-- [ ] Only staff can set or clear Supporter-only; payloads carry the flag.
-- [ ] The public content route returns 403 for a Supporter-only listing.
-- [ ] The gated route serves a Supporter and a Supporter+ account, and refuses a signed-out caller, a non-supporter, a lapsed account and a revoked account.
-- [ ] Revoke and restore are staff-only and don't change Supporter Flair.
-- [ ] The entitlement route returns the qualifying state and each item's revision; a revision bump shows in the next read.
-- [ ] Route tests cover each case above.
+- [x] Only staff can set or clear Supporter-only; payloads carry the flag. (`marking a listing Supporter-only` tests)
+- [x] The public content route returns 403 for a Supporter-only listing. (`the public content route`, direct and as a dependency)
+- [x] The gated route serves a Supporter and a Supporter+ account, and refuses a signed-out caller, a non-supporter, a lapsed account and a revoked account. (`the gated content route`; it also serves the author and staff, per the spec session)
+- [x] Revoke and restore are staff-only and don't change Supporter Flair. (`revoking Supporter content access`)
+- [x] The entitlement route returns the qualifying state and each item's revision; a revision bump shows in the next read. (`the entitlement route`)
+- [x] Route tests cover each case above. (`tests/supporterOnly.test.js`, 39 tests; guards proven by breaking them)
+
+## Landed
+
+**Not verified**
+
+- The review route (`GET /api/reviews/:id/content`) runs a flagged listing's content through the processing hook, but the hook is a pass-through now, so no test can tell. Ticket 10 should cover it.
+
+**For you**
+
+- A world can still declare a Supporter-only listing as a required dependency. The dependency content route answers 403 for it. The spec session got this question and may reply with a change.
+- The gated route counts a download for the author and staff too.
+- Revoking does not block the listing's author or staff, who are never revoked (staff cannot revoke each other).
