@@ -15,7 +15,7 @@ Model rationale: the client's core deep module: entitlement rules, an offline wi
 
 A module with injected fetch and clock. At each app start while signed in it calls the entitlement route, updates installed items, and removes items that are no longer entitled (Q3, Q22). If the check fails it keeps the cache for 7 days after the last good check, then removes it (Q6). It exposes whether the account qualifies, the installed items, and an install action for one item.
 
-Installed content stays scrambled in IndexedDB, keyed by listing id and revision. An unscramble function, tested against ticket 05's vectors copied into this repo, rebuilds a layer onto a canvas in memory. Unscrambled layers are never stored and never become a downloadable Blob (Q4).
+Installed content stays scrambled in IndexedDB, keyed by listing id and revision. An unscramble function, tested against ticket 05's vectors copied into this repo, rebuilds a layer onto a canvas in memory, then crops the padding back to the original size (Q34). Unscrambled layers are never stored and never become a downloadable Blob (Q4).
 
 ## Acceptance criteria
 

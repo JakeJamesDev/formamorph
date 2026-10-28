@@ -64,6 +64,8 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q31 | The public content routes refuse a Supporter-only listing for everyone. The gated route also serves the listing's author and staff whatever their tier, through the same per-account processing. The entitlement route stays tier-based. |
 | Q32 | Ticket 04 lands with a known gap: a copy shifted off the 4 px grid and then saved lossy mostly loses the mark. Ticket 14 hardens it behind the same `embed`/`read` interface. User ruling on new evidence, narrowing Q7 until ticket 14 lands. |
 | Q33 | The client has no All tab, so "in All" (Q16) applies to the server's all-kinds read only. In the app, pinned listings sort first inside each kind's tab, ahead of Updates First and the chosen sort. The Contest tab keeps its own order. |
+| Q34 | Scramble format version 1: pad each layer with transparent pixels to a multiple of 8 per axis, cut a fixed 8×8 grid, and permute the tiles with a single-cycle (Sattolo) shuffle seeded by a 32-bit seed through mulberry32, so no tile stays in place. The route returns seed, version and original size beside the file; the client crops after unscrambling. Scrambled layers travel losslessly. |
+| Q35 | The hardened watermark (ticket 14) need not read ticket 04's marks, since none were served. Budget: embedding a Morphie-sized rig under about 3 s cold, `read-leak` under about 1 min. Two lossy saves in a row are measured, not required. |
 
 ## User Stories
 

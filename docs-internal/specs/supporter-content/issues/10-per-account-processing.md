@@ -21,7 +21,8 @@ The gated route's processing hook watermarks each image layer with the account's
 - [ ] Every image layer of a Mascot served through the gated route unscrambles and reads back the requesting account's mark number.
 - [ ] Two accounts get different seeds and different marks.
 - [ ] A second request for the same revision is served from the cache; a new revision drops the old cache.
-- [ ] The response carries the seed and format version.
+- [ ] The response carries the seed, format version and original size of each layer (Q34).
+- [ ] Scrambled layers are encoded losslessly, so unscrambling restores the marked layer exactly.
 - [ ] Non-image content passes through unchanged.
 - [ ] The staff review content route serves a flagged listing marked for the reviewing account, as ticket 09 wired it through the hook.
 - [ ] Route tests cover each case above, and time the cold and cached request on Morphie-sized content.
