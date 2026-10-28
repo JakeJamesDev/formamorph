@@ -36,6 +36,8 @@ const world = (over: Record<string, unknown> = {}): WorldRecord => ({
 const author = { id: 'author-1', username: 'wren_hallow', accountType: 'normal' } as unknown as WorldRecord;
 const stranger = { id: 'reader-1', username: 'reader', accountType: 'normal' } as unknown as WorldRecord;
 
+const mod = { id: 'mod-1', username: 'warden', accountType: 'mod' } as unknown as WorldRecord;
+
 const liveEntry: ChangelogEntry = {
   id: 'e1', world_id: 'w1', title: 'Update 1', body: 'The drowned quarter.', entry_date: '2026-08-01',
   created_at: '2026-08-01T12:00:00.000Z', updated_at: '2026-08-01T12:00:00.000Z',
@@ -95,13 +97,33 @@ describe('the Pending Update section', () => {
     expect(within(row).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['Sedge Landing', 'Sedge Harbor']);
   });
 
-  it('is not offered to anybody but the author', async () => {
+  it('is not offered to a viewer who is neither the author nor staff', async () => {
     serve(nameChange);
     show({ currentUser: stranger });
 
     await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     await screen.findByText(/no comments yet/i);
     expect(screen.queryByRole('region', { name: 'Pending Update' })).toBeNull();
+  });
+
+  it('lets staff compare, without Discard Update', async () => {
+    serve(nameChange);
+    show({ currentUser: mod });
+
+    const region = await section();
+    expect(within(region).queryByRole('button', { name: /Discard Update/ })).toBeNull();
+    fireEvent.click(within(region).getByRole('button', { name: /Compare/ }));
+
+    const table = await screen.findByRole('table', { name: 'Changed Fields' });
+    const row = within(table).getByRole('rowheader', { name: 'Name' }).closest('tr') as HTMLElement;
+    expect(within(row).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['Sedge Landing', 'Sedge Harbor']);
+  });
+
+  it('keeps Discard Update for the author', async () => {
+    serve(nameChange);
+    show();
+
+    expect(within(await section()).getByRole('button', { name: /Discard Update/ })).toBeTruthy();
   });
 
   it('asks before it discards, and sends nothing when the author cancels', async () => {
