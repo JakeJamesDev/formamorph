@@ -24,8 +24,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Staff can pin a listing in Community Creations, and a pinned listing shows first in its section.** Pinned cards carry a **Pinned** mark. The newest pin leads, ahead of every sort and filter.
   - **Browser Review:**
     - **Mods and admins can compare a pending update in a listing's details.** The Pending Update section and **Compare** show for staff. **Discard Update** stays with the author.
-    - **Mods and admins see listings that wait for review pinned above Community Creations' results, oldest first.** New listings, resubmitted listings and pending updates show there and follow your kind, search and filters. Turn off **Show Pending** to see the browser as players see it.
-    - **Pinned update cards in Community Creations show the pending name and thumbnail.** Search finds the pending name. **Show Pending** off keeps the live name and thumbnail.
+    - **Mods and admins see listings that wait for review pinned above Community Creations' results, oldest first.** They follow your kind, search and filters. Update cards show the pending name and thumbnail. Turn off **Show Pending** to see the browser as players see it.
+    - **Mods and admins can approve or reject a pinned listing from its card in Community Creations.** The check approves it. The X rejects it and opens a message to the author.
 
 #### 🔧 Fixed
 
