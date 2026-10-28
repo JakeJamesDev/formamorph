@@ -69,6 +69,7 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q36 | The gated route processes every `data:image/…;base64` string in the content. Each becomes `{ dataUrl, seed, version, sourceWidth, sourceHeight }` in the same JSON position, encoded as lossless PNG. One seed per account, listing and revision, from an HMAC with a fixed purpose label. Results are cached per account, listing and revision; the staff review route processes without caching. |
 | Q37 | The hardened watermark keeps the 40 dB invisibility bar. A copy shifted 1–3 px, halved and saved WebP q50 then reads about 5 times in 6; a stronger mark at about 38 dB was declined. User ruling on new evidence. |
 | Q38 | Ticket 04's mark misses the plain round-trip for about 1 random mark and layer pair in 312. Ticket 10 proves the route by exact equality with `embed(source, mark)`, without its own read-back. Ticket 14 must show zero misses across at least 10,000 random marks. User ruling on new evidence. |
+| Q39 | Cached Supporter content carries its account id. While another account is signed in it is never returned or drawn, and that account's first good check deletes it. Offline, `qualifies` reports the last good check inside the 7-day window and false after. A higher revision of an installed item re-fetches at once; on failure the old copy stays. Install refuses an item the last good check didn't list. The module exposes a `useSyncExternalStore` store with `check`, `install` and `readItem`, plus pure `unscramble` and `unscrambleToCanvas`. |
 
 ## User Stories
 
