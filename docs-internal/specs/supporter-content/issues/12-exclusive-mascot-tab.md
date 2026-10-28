@@ -9,7 +9,7 @@ Model rationale: a new image reference kind through the mascot rendering path, p
 
 ## Parent
 
-[spec.md](../spec.md) — Supporter Content and Mascot Listings.
+[spec.md](../spec.md) — Supporter Content and Mascot Listings. Builds on ticket 06's shared Mascot preset store (one state for every `useHelpSettings` instance) and its source-tracking fields.
 
 ## What to build
 
