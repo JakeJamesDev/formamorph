@@ -125,6 +125,27 @@ describe('publishing from the Mascot tab', () => {
     expect(vi.mocked(WorldStorageService.publishItem).mock.calls[0][1]).toBe('old1');
   });
 
+  it('preselects its own linked listing on the next publish', async () => {
+    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue(null);
+    await mount(ownRig());
+    await openPublish();
+    await screen.findByText('Publish Mascot');
+    await userEvent.click(screen.getAllByRole('button', { name: 'Publish' }).at(-1)!);
+    await waitFor(() => expect(current.mascotPresets.mascots[0].sourceId).toBe('listing-1'));
+    await waitFor(() => expect(screen.queryByText('Publish Mascot')).toBeNull());
+
+    vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([{ _id: 'listing-1', name: 'Mine', downloads: 0 }]);
+    await openPublish();
+    const linked = await screen.findByLabelText('Mine (listi, 0 downloads)');
+    await waitFor(() => expect(linked).toHaveAttribute('data-state', 'checked'));
+    const submit = screen.getAllByRole('button', { name: 'Publish' }).at(-1)!;
+    await waitFor(() => expect(submit).toBeEnabled());
+    await userEvent.click(submit);
+
+    await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(WorldStorageService.publishItem).mock.calls[1][1]).toBe('listing-1');
+  });
+
   it('shows the measured size of an over-cap Mascot and sends nothing', async () => {
     await mount(ownRig(new Uint8Array(11 * MB)));
     await openPublish();

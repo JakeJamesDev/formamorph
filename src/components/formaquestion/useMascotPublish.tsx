@@ -22,16 +22,18 @@ export function useMascotPublish(control: MascotDraftControl) {
   const [refusal, setRefusal] = useState<string | null>(null);
   // The Mascot being published, fixed at the start so a selection change mid-publish links the right one.
   const [mascotId, setMascotId] = useState<string | null>(null);
+  const [linkedListingId, setLinkedListingId] = useState<string | undefined>(undefined);
   const opener = useRef<Element | null>(null);
 
   const start = () => {
     opener.current = document.activeElement;
     control.guard(() => {
-      const { id, name, rig } = control.selected();
+      const { id, name, rig, sourceId } = control.selected();
       void buildMascotPublish(name, rig).then((attempt) => {
         if (!mounted.current) return;
         if (!attempt.allowed) { setRefusal(attempt.message); return; }
         setMascotId(id);
+        setLinkedListingId(sourceId);
         setPayload(attempt.payload);
         setOpen(true);
       }).catch((cause: unknown) => toastError(cause, 'Could not prepare the Mascot to publish.'));
@@ -65,6 +67,7 @@ export function useMascotPublish(control: MascotDraftControl) {
         isAuthenticated={AuthService.isAuthenticated()}
         payload={payload}
         localId={mascotId ?? undefined}
+        linkedListingId={linkedListingId}
         onPublished={(listing) => {
           if (!mascotId) return;
           const author = AuthService.getCurrentUser();

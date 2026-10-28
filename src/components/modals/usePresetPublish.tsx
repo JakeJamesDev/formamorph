@@ -17,7 +17,7 @@ import { APP_VERSION } from '@/lib/version';
  * @param openModels - Opens the Overview on its Models field
  */
 export function usePresetPublish(openModels: () => void) {
-  const { presetOverview, activePresetId, exportActivePreset, linkPresetToListing } = useSettings();
+  const { presetOverview, activePresetId, exportActivePreset, linkPresetToListing, userPromptPresets } = useSettings();
   const [payload, setPayload] = useState<PublishPayload | null>(null);
   const [open, setOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -71,6 +71,7 @@ export function usePresetPublish(openModels: () => void) {
         isAuthenticated={AuthService.isAuthenticated()}
         payload={payload}
         localId={presetId ?? undefined}
+        linkedListingId={userPromptPresets.find((preset) => preset.id === presetId)?.sourceId}
         onPublished={(listing) => {
           if (!presetId) return;
           const author = AuthService.getCurrentUser();
