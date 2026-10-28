@@ -43,7 +43,7 @@ Status: draft, 2026-10-28. Willow is the first Supporter Mascot. The client rele
 
 - No new env keys. The watermark seed comes from `JWT_SECRET`.
 - All three schema steps only add columns, so a code rollback needs no database restore.
-- ⚠️ A rollback serves Supporter-only listings on the public route again: old code ignores the `supporter_only` column.
+- ⚠️ A rollback leaves Willow unreachable, not public: old code reads only `worlds/`, and Willow's content sits in `supporter-private/`. Old code also skips that folder in backups and on delete.
 
 ### 3. Upload Willow on the server
 
@@ -70,6 +70,6 @@ Post the Discord message after steps 2–4 are all live.
 
 | Problem | Do |
 |---|---|
-| Server won't start | Read the journal; `git checkout a0c0689`, `npm ci`, restart. Unpublish Willow first (see the ⚠️ above). |
+| Server won't start | Read the journal. Copy `supporter-private/` aside, then `git checkout a0c0689`, `npm ci`, restart. Never delete Willow: a re-upload is a new listing, and every installed copy is removed at the next check. |
 | Willow leaks | `npm run read-leak -- <file>` names the account; revoke its Supporter content access. |
 | Client build fails | The server stays up. 3.5.0 clients keep working (pending check 2). |
