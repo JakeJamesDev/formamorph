@@ -1,5 +1,7 @@
 import { memo } from "react";
-import { EyeOff, Download, MessageSquare, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
+import { EyeOff, Download, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
+import { PinnedMark } from "@/components/community/PinnedMark";
+import { isPinned } from "@/lib/pinning";
 import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
 import { Tip } from "@/components/ui/tooltip";
@@ -61,6 +63,8 @@ interface RemoteWorldCardProps {
   onQuarantine?: (world: WorldRecord) => void;
   /** Lifts a quarantine. Admin surfaces only. */
   onRelease?: (world: WorldRecord) => void;
+  /** Pins the listing, or unpins it when it is pinned. Staff surfaces only. */
+  onTogglePin?: (world: WorldRecord) => void;
   /** Where this listing placed — the badge travels with the world, not with the tab it was won in. */
   placements?: ContestPlacement[];
   /** Opens a contest this listing placed in, from its place chip. */
@@ -80,7 +84,7 @@ interface RemoteWorldCardProps {
  *  Memoized: a catalog refresh that keeps a row's object skips its card. */
 export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
@@ -103,6 +107,9 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   // Staff moderate the room, not each other: whether these controls do anything depends on who published
   // it, so the decision is per listing rather than per viewer.
   const mayModerate = viewerIsStaff && canModerate(currentUser, world.author);
+  // A pin is not a moderation of its author, so every staff account may pin any listing.
+  const canPin = viewerIsStaff && Boolean(onTogglePin);
+  const pinned = isPinned(world);
 
   const isOwnedByUser = isAuthenticated &&
     world.author &&
@@ -276,10 +283,22 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
         <CardTags tags={world.tags || []} onHide={onHideTag} omitEmpty={isAvatar} />
       </div>
 
+      <PinnedMark listing={world} className="mb-2" />
       <ModerationMarker listing={world} className="mb-2" />
 
-      {(manageAddons || (onDelete && (isOwnedByUser || mayModerate))) && (
+      {(manageAddons || canPin || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
+          {canPin && onTogglePin && (
+            <Tip tip={pinned ? "Remove it from the top of its section" : "Keep it at the top of its section"}>
+              <button
+                className="p-1 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); onTogglePin(world); }}
+                aria-label={`${pinned ? 'Unpin' : 'Pin'} ${world.name || noun}`}
+              >
+                {pinned ? <PinOff className="h-5 w-5" /> : <Pin className="h-5 w-5" />}
+              </button>
+            </Tip>
+          )}
           {/* First, because it is the only one of these that is not a removal. */}
           {manageAddons && (
             <Tip tip="Review the add-ons other authors offer for this world">
