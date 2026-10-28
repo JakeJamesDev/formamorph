@@ -21,7 +21,7 @@ Ticket 04's mark survives every case in its bar, but a copy shifted by an offset
 
 - [x] On base and on the full composite, the mark reads back after an offset of 1, 2 and 3 px on each axis followed by WebP q50, and followed by JPEG q75. Test `reads after every 1-3 px offset and then …` (both codecs, both subjects); scratch sweep of 6 marks × 3 rigs × 3 backgrounds, 72 of 72 each.
 - [ ] It reads back after a 50% downscale combined with WebP q50.
-- [ ] `read(embed(layer, mark))` returns `mark` for every Morphie layer across at least 10,000 random marks, with zero misses (Q38; ticket 04's mark missed about 1 pair in 312).
+- [x] `read(embed(layer, mark))` returns `mark` for every Morphie layer across at least 10,000 random marks, with zero misses (Q38; ticket 04's mark missed about 1 pair in 312). Run 2026-10-28 after close: 10,000 random marks × 26 layers, 0 misses (20 workers, 1,563 s).
 - [ ] Every case ticket 04 passes still passes, with no false reads and at least 40 dB per layer.
 - [x] Copies marked by ticket 04's version no longer read; none were served (Q35). Landed says why.
 - [x] The server docs state the new robustness bar. `docs-internal/server.md`, watermark section: attack table, floor, exact copies, losses, cost.
