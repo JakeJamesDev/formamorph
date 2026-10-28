@@ -44,6 +44,17 @@ import type { ServerEvent } from "@/types";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { ImageUpload } from "@/lib/UtilityComponents";
 import { blobToDataUrl } from "@/lib/imageSource";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+/** The Expression select's value for the Initial pick's own expression. */
+const INITIAL_EXPRESSION = '__initial__';
+
+/** A Mascot's expression layers, and a renderer for its Initial look with one of them in place. */
+export interface MascotThumbnailLooks {
+  expressions: readonly { id: string; name: string }[];
+  /** A WebP data URL; null draws the Initial pick's own expression. */
+  render: (expression: string | null) => Promise<string>;
+}
 
 interface PublishModalProps {
   open: boolean;
@@ -66,6 +77,8 @@ interface PublishModalProps {
   onLinked?: () => void;
   /** Called after any successful publish with the listing it became, for a caller that links its own copy. */
   onPublished?: (listing: { id: string; updatedAt?: string }) => void;
+  /** A Mascot's expressions for the thumbnail picker. */
+  mascotLooks?: MascotThumbnailLooks;
 }
 
 /**
@@ -76,7 +89,7 @@ interface PublishModalProps {
  * The overwrite list is fetched per kind: your characters are never offered as targets for a world.
  */
 export function PublishModal({
-  open, onOpenChange, isAuthenticated, payload, events = [], localId, linkedListingId, onLinked, onPublished,
+  open, onOpenChange, isAuthenticated, payload, events = [], localId, linkedListingId, onLinked, onPublished, mascotLooks,
 }: PublishModalProps) {
   const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
@@ -89,6 +102,10 @@ export function PublishModal({
   const [supporterOnly, setSupporterOnly] = useState(false);
   // A Mascot's own thumbnail, replacing the Initial render the payload carries.
   const [thumbnailOverride, setThumbnailOverride] = useState<string | null>(null);
+  // The expression drawn into the Initial look for the thumbnail, and that render. An upload wins over both.
+  const [thumbnailExpression, setThumbnailExpression] = useState<string | null>(null);
+  const [expressionThumbnail, setExpressionThumbnail] = useState<string | null>(null);
+  const expressionRequest = useRef(0);
 
   // The optional note about what changed. Held here until the update-publish succeeds, so a refused
   // upload costs nothing that was written. `changelogSupported` stays false against a server that has
@@ -104,6 +121,21 @@ export function PublishModal({
   const changelogReqRef = useRef(0);
   // The request id still matches after an unmount, so it alone cannot stop a late answer.
   const mountedRef = useMountedRef();
+
+  /** Draw the thumbnail with `expression`, dropping any upload. A later pick wins over a slower render. */
+  const chooseExpression = async (expression: string | null) => {
+    if (!mascotLooks) return;
+    const request = ++expressionRequest.current;
+    setThumbnailExpression(expression);
+    setThumbnailOverride(null);
+    if (expression === null) { setExpressionThumbnail(null); return; }
+    try {
+      const rendered = await mascotLooks.render(expression);
+      if (mountedRef.current && request === expressionRequest.current) setExpressionThumbnail(rendered);
+    } catch (error) {
+      if (mountedRef.current) toastError(error, "Couldn't draw that expression.");
+    }
+  };
   /** The answer, once one listing has given it. Null until then, and again on the next opening. */
   const changelogSupportRef = useRef<boolean | null>(null);
 
@@ -238,9 +270,10 @@ export function PublishModal({
       }
 
       const declared = links.declarePayload(payload);
+      const mascotThumbnail = thumbnailOverride ?? expressionThumbnail;
       const created = await WorldStorageService.publishItem({
         ...declared,
-        ...(kind === 'mascot' && thumbnailOverride ? { thumbnail: thumbnailOverride } : {}),
+        ...(kind === 'mascot' && mascotThumbnail ? { thumbnail: mascotThumbnail } : {}),
         ...(!targetId && publishesSupporterOnly ? { supporterOnly: true } : {}),
       }, targetId, entering);
 
@@ -418,6 +451,9 @@ export function PublishModal({
     setContestError('');
     setSupporterOnly(false);
     setThumbnailOverride(null);
+    setThumbnailExpression(null);
+    setExpressionThumbnail(null);
+    expressionRequest.current += 1;
     // Asked again on the next opening rather than held for the app's lifetime: this dialog is mounted for
     // the whole session, and one refused request must not hide the feature until a restart.
     changelogSupportRef.current = null;
@@ -557,11 +593,28 @@ export function PublishModal({
               <div className="mt-4 space-y-2" data-testid="mascot-publish-thumbnail">
                 <p className="text-label font-medium">Thumbnail</p>
                 <p className="text-meta text-muted-foreground">
-                  Shows the Initial Look. Upload an image to replace it.
+                  Shows the Initial Look. Pick an expression or upload an image to replace it.
                 </p>
+                {mascotLooks && mascotLooks.expressions.length > 0 && (
+                  <div className="space-y-1">
+                    <Label htmlFor="publish-mascot-expression" className="text-label">Expression</Label>
+                    <Select
+                      value={thumbnailExpression ?? INITIAL_EXPRESSION}
+                      onValueChange={(value) => { void chooseExpression(value === INITIAL_EXPRESSION ? null : value); }}
+                    >
+                      <SelectTrigger id="publish-mascot-expression" className="w-56"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={INITIAL_EXPRESSION}>Initial Look&apos;s Own</SelectItem>
+                        {mascotLooks.expressions.map((expression) => (
+                          <SelectItem key={expression.id} value={expression.id}>{expression.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <ImageUpload
                   id="publish-mascot-thumbnail"
-                  value={thumbnailOverride ?? payload?.thumbnail ?? null}
+                  value={thumbnailOverride ?? expressionThumbnail ?? payload?.thumbnail ?? null}
                   onFile={(file) => { void blobToDataUrl(file).then((data) => { if (mountedRef.current) setThumbnailOverride(data); }); }}
                   onChange={(value) => { if (value === '') setThumbnailOverride(null); }}
                 />
