@@ -12,6 +12,8 @@ export type { SupporterItemRef } from './cache';
 
 export const OFFLINE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
+const DEFAULT_TIMEOUT_MS = { check: 15_000, install: 60_000 };
+
 export interface SupporterSession {
   accountId: string;
   token: string;
@@ -25,6 +27,8 @@ export interface SupporterContentDeps {
   session: () => SupporterSession | null;
   apiBase: string;
   cache?: SupporterCache;
+  /** Time limits in milliseconds: the entitlement check, and each content download. */
+  timeoutMs?: { check?: number; install?: number };
 }
 
 export interface SupporterContentSnapshot {
@@ -114,14 +118,43 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     return loaded;
   };
 
-  const authorized = (session: SupporterSession) => ({ headers: { Authorization: `Bearer ${session.token}` } });
+  const timeouts = {
+    check: deps.timeoutMs?.check ?? DEFAULT_TIMEOUT_MS.check,
+    install: deps.timeoutMs?.install ?? DEFAULT_TIMEOUT_MS.install,
+  };
+
+  /** GET a gated route as JSON. Aborts the request and rejects when the answer takes longer than `ms`. */
+  const getJson = async (session: SupporterSession, path: string, ms: number): Promise<{ status: number; ok: boolean; body: unknown }> => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expired = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new Error('The Supporter content request timed out'));
+      }, ms);
+    });
+    try {
+      return await Promise.race([
+        (async () => {
+          const response = await deps.fetch(`${deps.apiBase}${path}`, {
+            headers: { Authorization: `Bearer ${session.token}` },
+            signal: controller.signal,
+          });
+          return { status: response.status, ok: response.ok, body: response.ok ? await response.json() : null };
+        })(),
+        expired,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   /** The entitlement route's answer, or null when the check failed in any way. */
   const fetchEntitlement = async (session: SupporterSession): Promise<Entitlement | null> => {
     try {
-      const response = await deps.fetch(`${deps.apiBase}/supporter-content/entitlement`, authorized(session));
+      const response = await getJson(session, '/supporter-content/entitlement', timeouts.check);
       if (!response.ok) return null;
-      const data = asObject(asObject(await response.json())?.data);
+      const data = asObject(asObject(response.body)?.data);
       if (!data || typeof data.qualifies !== 'boolean' || !Array.isArray(data.items)) return null;
       const listed = data.items.map(asItemRef);
       if (listed.some((item) => !item)) return null;
@@ -133,9 +166,9 @@ export function createSupporterContent(deps: SupporterContentDeps) {
 
   /** Fetch one listing from the gated route and store it in place of any other revision. */
   const fetchAndStore = async (session: SupporterSession, id: string): Promise<void> => {
-    const response = await deps.fetch(`${deps.apiBase}/worlds/${encodeURIComponent(id)}/supporter-content`, authorized(session));
+    const response = await getJson(session, `/worlds/${encodeURIComponent(id)}/supporter-content`, timeouts.install);
     if (!response.ok) throw new Error(`The Supporter content download failed with status ${response.status}`);
-    const data = asObject(asObject(await response.json())?.data);
+    const data = asObject(asObject(response.body)?.data);
     const ref = asItemRef({ id, kind: data?.kind, revision: data?.revision });
     if (!data || !ref || data.contentData === undefined) throw new Error('The Supporter content download returned no content');
     const record = { ...ref, accountId: session.accountId, content: data.contentData };

@@ -164,6 +164,167 @@ describe('the start check', () => {
   });
 });
 
+describe('request time limits', () => {
+  /** A fetch that never answers the routes matching `route` while `hang` is on; it rejects only when aborted. */
+  const stalling = (route: RegExp) => {
+    const state = { hang: false, started: 0, aborted: 0 };
+    const fetchImpl = ((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!state.hang || !route.test(String(input))) return server.fetch(input, init);
+      state.started += 1;
+      return new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          state.aborted += 1;
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      });
+    }) as typeof fetch;
+    return { state, fetchImpl };
+  };
+
+  const appWith = (fetchImpl: typeof fetch) =>
+    createSupporterContent({ fetch: fetchImpl, now: () => now, session: () => session, apiBase: API });
+
+  const untilStarted = async (state: { started: number }) => {
+    for (let spins = 0; !state.started; spins += 1) {
+      if (spins > 1000) throw new Error('The stalled request never started');
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('ends a check with no answer as a failed check that keeps the cache inside the 7-day window', async () => {
+    server.list(['excl', 1]);
+    await (await startAndCheck()).install('excl');
+    const { state, fetchImpl } = stalling(/\/entitlement$/);
+    state.hang = true;
+    const app = appWith(fetchImpl);
+
+    now = START + DAY;
+    const checking = app.check();
+    await untilStarted(state);
+    expect(app.getSnapshot().status).toBe('checking');
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(app.getSnapshot().status).toBe('checking');
+    await vi.advanceTimersByTimeAsync(1);
+    await checking;
+
+    expect(app.getSnapshot()).toMatchObject({ status: 'ready', qualifies: true });
+    expect(installedIds(app)).toEqual(['excl@1']);
+    expect(state.aborted).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('removes the cache when a check with no answer comes after the window', async () => {
+    server.list(['excl', 1]);
+    await (await startAndCheck()).install('excl');
+    const { state, fetchImpl } = stalling(/\/entitlement$/);
+    state.hang = true;
+    const app = appWith(fetchImpl);
+
+    now = START + OFFLINE_WINDOW_MS;
+    const checking = app.check();
+    await untilStarted(state);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await checking;
+
+    expect(app.getSnapshot()).toMatchObject({ status: 'ready', qualifies: false, installed: [] });
+    expect(await storedKeys()).toEqual([]);
+  });
+
+  it('fails an install with no answer and runs the next install', async () => {
+    server.list(['one', 1], ['two', 1]);
+    const { state, fetchImpl } = stalling(/\/worlds\/one\/supporter-content$/);
+    const app = appWith(fetchImpl);
+    await app.check();
+
+    state.hang = true;
+    const stuck = app.install('one');
+    const rejected = expect(stuck).rejects.toThrow('timed out');
+    const next = app.install('two');
+    await untilStarted(state);
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(state.aborted).toBe(0);
+    await vi.advanceTimersByTimeAsync(1);
+    await rejected;
+    await next;
+
+    expect(state.aborted).toBe(1);
+    expect(installedIds(app)).toEqual(['two@1']);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('ends a stalled update download and keeps the installed copy', async () => {
+    server.list(['excl', 1]);
+    await (await startAndCheck()).install('excl');
+    server.list(['excl', 2]);
+    const { state, fetchImpl } = stalling(/\/worlds\/excl\/supporter-content$/);
+    state.hang = true;
+    const app = appWith(fetchImpl);
+
+    const checking = app.check();
+    await untilStarted(state);
+    await vi.advanceTimersByTimeAsync(60_000);
+    await checking;
+
+    expect(app.getSnapshot().status).toBe('ready');
+    expect(installedIds(app)).toEqual(['excl@1']);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('honors a time limit passed in deps', async () => {
+    server.list(['excl', 1]);
+    const { state, fetchImpl } = stalling(/\/entitlement$/);
+    state.hang = true;
+    const app = createSupporterContent({
+      fetch: fetchImpl, now: () => now, session: () => session, apiBase: API, timeoutMs: { check: 500 },
+    });
+
+    const checking = app.check();
+    await untilStarted(state);
+    await vi.advanceTimersByTimeAsync(500);
+    await checking;
+
+    expect(app.getSnapshot().status).toBe('ready');
+    expect(state.aborted).toBe(1);
+  });
+
+  it('ends a request whose fetch ignores the abort signal', async () => {
+    const state = { started: 0 };
+    const app = appWith((() => {
+      state.started += 1;
+      return new Promise<Response>(() => {});
+    }) as typeof fetch);
+
+    const checking = app.check();
+    await untilStarted(state);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await checking;
+
+    expect(app.getSnapshot().status).toBe('ready');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('leaves no timer behind after requests that settle', async () => {
+    server.list(['excl', 1]);
+    const app = await startAndCheck();
+    await app.install('excl');
+    server.entitlementStatus = 500;
+    await app.check();
+    server.offline = true;
+    await app.check();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
 describe('failed checks', () => {
   const installThenFail = async (fail: () => void) => {
     server.list(['excl', 1]);

@@ -1,6 +1,6 @@
 # 16: Client: Supporter content requests time out
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,7 +17,13 @@ The Supporter content module's entitlement check and install fetch have no timeo
 
 ## Acceptance criteria
 
-- [ ] A check that gets no answer within the time limit counts as a failed check and follows the 7-day rule.
-- [ ] An install that gets no answer within the time limit fails, and the next install runs.
-- [ ] The request is aborted when it times out, and no timer outlives it.
-- [ ] Tests drive both cases with the injected fetch and clock.
+- [x] A check that gets no answer within the time limit counts as a failed check and follows the 7-day rule. (tests: "ends a check with no answer…", "removes the cache when a check with no answer comes after the window")
+- [x] An install that gets no answer within the time limit fails, and the next install runs. ("fails an install with no answer and runs the next install")
+- [x] The request is aborted when it times out, and no timer outlives it. (abort count and `vi.getTimerCount() === 0`; mutation-tested: dropping `controller.abort()` or `clearTimeout` fails them)
+- [x] Tests drive both cases with the injected fetch and clock. (injected fetch, `now`, fake `setTimeout`; limits 15 s check, 60 s install and update, Q43)
+
+## Landed
+
+**Not verified**: none. The race that ends a fetch which ignores the signal is covered by a test but was not mutation-tested.
+
+**For you**: nothing to judge in the UI. A stalled check now ends in at most 15 s, so **Checking…** clears.
