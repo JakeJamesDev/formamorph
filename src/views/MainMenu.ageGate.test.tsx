@@ -115,7 +115,7 @@ beforeEach(() => {
       });
     }
     if (url.startsWith(`${AuthService.API_URL}/events/active`)) return answer({ data: running });
-    if (url.includes('/worlds?page=1&limit=1000&kind=all')) return answer({ data: catalog });
+    if (url.includes('/worlds?page=1&limit=1000&kind=')) return answer({ data: catalog });
     return answer({ data: [] });
   }));
   vi.spyOn(console, 'error').mockImplementation(() => {});

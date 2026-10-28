@@ -80,7 +80,7 @@ describe('fetchRemoteWorlds', () => {
   it('asks for the whole catalog when given `all`', async () => {
     vi.mocked(fetch).mockResolvedValue(res({ data: [], total: 0 }));
     await WorldStorageService.fetchRemoteWorlds(1, 1000, '', false, false, '', 'desc', 'all');
-    expect(vi.mocked(fetch).mock.calls[0][0] as string).toContain('kind=all');
+    expect(vi.mocked(fetch).mock.calls[0][0] as string).toContain(`kind=${encodeURIComponent('world,entity,dictionary,model,prompt,mascot')}`);
   });
 });
 
@@ -1019,7 +1019,7 @@ describe('fetchCatalog', () => {
 
     const url = vi.mocked(fetch).mock.calls[0][0] as string;
     expect(url).toContain('limit=1000');
-    expect(url).toContain('kind=all');
+    expect(url).toContain(`kind=${encodeURIComponent('world,entity,dictionary,model,prompt,mascot')}`);
   });
 
   it('answers with the error rather than throwing when the request fails', async () => {

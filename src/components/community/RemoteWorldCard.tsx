@@ -30,7 +30,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
 import { SupporterBadge } from "@/components/SupporterBadge";
 import { SUPPORTER_NAME_STYLES, flairTier } from "@/lib/supporterFlair";
-import { canModerate, isStaff } from "@/lib/roles";
+import { canModerate, isAdmin, isStaff } from "@/lib/roles";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import type { TutorialEntry, TutorialNav } from "@/lib/tutorials";
@@ -126,7 +126,8 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   const canPin = viewerIsStaff && Boolean(onTogglePin);
   const pinned = isPinned(world);
   const supporterOnly = isSupporterOnly(world);
-  const canMarkSupporterOnly = viewerIsStaff && Boolean(onToggleSupporterOnly);
+  // Clearing Supporter-only makes the clean files public, so only an admin may change it.
+  const canMarkSupporterOnly = isAdmin(currentUser) && Boolean(onToggleSupporterOnly);
 
   const isOwnedByUser = isAuthenticated &&
     world.author &&

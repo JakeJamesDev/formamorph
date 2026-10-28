@@ -9,13 +9,16 @@ const store = vi.hoisted(() => {
     snap: { status: 'ready', qualifies: false, entitled: [], installed: [] },
     install: async () => {},
   };
+  const refresh = vi.fn(async () => {});
   return {
     state,
+    refresh,
     set(next: Snap) { state.snap = next; listeners.forEach((l) => l()); },
     module: {
       subscribe: (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; },
       getSnapshot: () => state.snap,
       install: (id: string) => state.install(id),
+      refresh: () => refresh(),
     },
   };
 });
@@ -39,6 +42,7 @@ const button = (over: { signedIn?: boolean; kind?: string; onSignIn?: () => void
 
 beforeEach(() => {
   store.state.install = async () => {};
+  store.refresh.mockClear();
   store.set({ status: 'ready', qualifies: false, entitled: [], installed: [] });
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -54,12 +58,13 @@ describe('the Supporter-only button', () => {
     expect(screen.queryByRole('button', { name: 'Install' })).toBeNull();
   });
 
-  it('reads Patreon for a signed-in account that does not qualify, and opens the Patreon page', () => {
+  it('reads Patreon for a signed-in account that does not qualify, opens the Patreon page and refreshes the check', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     button();
     fireEvent.click(screen.getByRole('button', { name: 'Patreon' }));
 
     expect(open).toHaveBeenCalledWith(expect.stringContaining('patreon.com'), '_blank', 'noopener');
+    expect(store.refresh).toHaveBeenCalledTimes(1);
   });
 
   it('shows a disabled Checking button, not Patreon, until the first check ends', () => {
@@ -153,15 +158,18 @@ describe('a Supporter-only card', () => {
     expect(onLike).toHaveBeenCalledTimes(1);
   });
 
-  it('offers the Supporter-only toggle to staff only', () => {
+  it('offers the Supporter-only toggle to admins only', () => {
     const onToggleSupporterOnly = vi.fn();
     const { unmount } = card(world(), staff, { onToggleSupporterOnly });
     fireEvent.click(screen.getByRole('button', { name: 'Remove Supporter-only from Aster' }));
     expect(onToggleSupporterOnly).toHaveBeenCalledTimes(1);
     unmount();
 
-    card(world(), player, { onToggleSupporterOnly });
-    expect(screen.queryByRole('button', { name: /Supporter-only/ })).toBeNull();
+    for (const viewer of [player, { id: 'm1', username: 'a-mod', accountType: 'mod' } as unknown as WorldRecord]) {
+      const shown = card(world(), viewer, { onToggleSupporterOnly });
+      expect(screen.queryByRole('button', { name: /Supporter-only/ })).toBeNull();
+      shown.unmount();
+    }
   });
 
   it('offers to mark a listing that is not Supporter-only', () => {

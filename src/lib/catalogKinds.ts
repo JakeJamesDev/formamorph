@@ -22,6 +22,12 @@ export type CatalogKind = (typeof CATALOG_KINDS)[number];
  */
 export type CatalogKindQuery = CatalogKind | 'all';
 
+/**
+ * The `kind` value a request sends. `'all'` goes out as this build's kinds by name: the server's own `all`
+ * covers only the kinds older clients know.
+ */
+export const kindParam = (kind: CatalogKindQuery): string => (kind === 'all' ? CATALOG_KINDS.join(',') : kind);
+
 /** A kind the local library has a tab for. Prompt and Mascot presets live in Settings instead. */
 export type LibraryCatalogKind = Exclude<CatalogKind, 'prompt' | 'mascot'>;
 

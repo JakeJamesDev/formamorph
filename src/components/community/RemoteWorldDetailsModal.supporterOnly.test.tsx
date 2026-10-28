@@ -12,7 +12,7 @@ vi.mock('@/lib/supporterContent', () => {
   // One stable object, like the real store: a fresh one per read would loop useSyncExternalStore.
   const snapshot = { status: 'ready', qualifies: false, entitled: [], installed: [] };
   return {
-    supporterContent: { subscribe: () => () => {}, getSnapshot: () => snapshot, install: async () => {} },
+    supporterContent: { subscribe: () => () => {}, getSnapshot: () => snapshot, install: async () => {}, refresh: async () => {} },
   };
 });
 
@@ -59,13 +59,17 @@ describe('the details window of a Supporter-only listing', () => {
     expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy();
   });
 
-  it('shows the Supporter-only toggle to staff only', async () => {
-    const { unmount } = show(staff, { onToggleSupporterOnly: () => {}, capabilities: { localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true } });
+  it('shows the Supporter-only toggle to admins only', async () => {
+    const capabilities = { localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true };
+    const { unmount } = show(staff, { onToggleSupporterOnly: () => {}, capabilities });
     expect(await screen.findByRole('button', { name: /Let everyone download it/ })).toBeTruthy();
     unmount();
 
-    show(player, { onToggleSupporterOnly: () => {}, capabilities: { localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true } });
-    await screen.findByRole('button', { name: 'Patreon' });
-    expect(screen.queryByRole('button', { name: /Let everyone download it|Limit the download to Supporters/ })).toBeNull();
+    for (const reader of [player, { id: 'm1', username: 'a-mod', accountType: 'mod' } as unknown as WorldRecord]) {
+      const shown = show(reader, { onToggleSupporterOnly: () => {}, capabilities });
+      await screen.findByRole('button', { name: 'Patreon' });
+      expect(screen.queryByRole('button', { name: /Let everyone download it|Limit the download to Supporters/ })).toBeNull();
+      shown.unmount();
+    }
   });
 });

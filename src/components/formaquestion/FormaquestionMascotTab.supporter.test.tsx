@@ -23,12 +23,14 @@ const fake = vi.hoisted(() => ({
   served: new Map<string, unknown>(),
   listeners: new Set<() => void>(),
   install: null as unknown as ReturnType<typeof vi.fn>,
+  refresh: null as unknown as ReturnType<typeof vi.fn>,
   listings: [] as SupporterMascotListing[],
 }));
 
 vi.mock('@/lib/supporterContent', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/lib/supporterContent')>();
   fake.install = vi.fn();
+  fake.refresh = vi.fn();
   return {
     ...real,
     supporterContent: {
@@ -36,6 +38,7 @@ vi.mock('@/lib/supporterContent', async (importOriginal) => {
       getSnapshot: () => fake.snapshot,
       readItem: async (id: string) => fake.served.get(id) ?? null,
       install: (id: string) => fake.install(id),
+      refresh: () => fake.refresh(),
       check: async () => undefined,
     },
     unscrambleToCanvas: (await import('@/test/supporterLayers')).fakeUnscramble,
@@ -106,6 +109,7 @@ beforeEach(() => {
   fake.served.clear();
   fake.listings = [];
   fake.install.mockReset();
+  fake.refresh.mockReset().mockResolvedValue(undefined);
   recordLayerCopies();
 });
 afterEach(() => {
@@ -163,16 +167,31 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
   it('opens its listing for a signed-in account that does not qualify, and keeps the selection', async () => {
     mountWith();
     await pick('Nova (Locked)');
-    expect(openListing).toHaveBeenCalledWith('nova');
+    await waitFor(() => expect(openListing).toHaveBeenCalledWith('nova'));
+    expect(fake.refresh).toHaveBeenCalledTimes(1);
     expect(fake.install).not.toHaveBeenCalled();
     expect(presetSelect()).toHaveTextContent('Morphie');
+  });
+
+  it('installs instead when the refresh finds a pledge made since the last check', async () => {
+    fake.refresh.mockImplementation(async () => {
+      publish({ qualifies: true, entitled: [{ id: 'nova', kind: 'mascot', revision: 1 }] });
+    });
+    fake.install.mockImplementation(async () => {
+      fake.served.set('nova', content);
+      publish({ installed: [{ id: 'nova', kind: 'mascot', revision: 1 }] });
+    });
+    mountWith();
+    await pick('Nova (Locked)');
+    await waitFor(() => expect(fake.install).toHaveBeenCalledWith('nova'));
+    expect(openListing).not.toHaveBeenCalled();
   });
 
   it('opens its listing when signed out, where the module lists nothing', async () => {
     fake.snapshot = { status: 'ready', qualifies: false, entitled: [], installed: [] };
     mountWith();
     await pick('Nova (Locked)');
-    expect(openListing).toHaveBeenCalledWith('nova');
+    await waitFor(() => expect(openListing).toHaveBeenCalledWith('nova'));
   });
 
   it.each(['idle', 'checking'] as const)('shows Checking and opens nothing while the check is %s, then installs once ready', async (status) => {

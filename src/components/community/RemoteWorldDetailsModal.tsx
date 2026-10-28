@@ -17,7 +17,7 @@ import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
-import { canModerate, isStaff } from "@/lib/roles";
+import { canModerate, isAdmin, isStaff } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DetailTags, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
@@ -615,7 +615,7 @@ export function RemoteWorldDetailsModal({
                 </Button>
               </Tip>
             )}
-            {world && onToggleSupporterOnly && capabilities.moderation && isStaff(currentUser) && (
+            {world && onToggleSupporterOnly && capabilities.moderation && isAdmin(currentUser) && (
               <Tip tip={isSupporterOnly(world) ? "Let everyone download it" : "Limit the download to Supporters"}>
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onToggleSupporterOnly(world)}>
                   {isSupporterOnly(world) ? <HeartOff className="h-4 w-4" /> : <Heart className="h-4 w-4" />}

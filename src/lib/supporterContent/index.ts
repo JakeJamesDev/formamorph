@@ -12,6 +12,8 @@ const authSession = (): SupporterSession | null => {
   return token && (typeof id === 'string' || typeof id === 'number') ? { accountId: String(id), token } : null;
 };
 
+const RETRY_FAILED_MS = 60 * 1000;
+
 export const supporterContent = createSupporterContent({
   fetch: (...args) => fetch(...args),
   now: () => Date.now(),
@@ -20,7 +22,8 @@ export const supporterContent = createSupporterContent({
 });
 
 /**
- * Run the start check now, and again whenever the signed-in account changes.
+ * Run the start check now, and again whenever the signed-in account changes. Refresh when the app comes back
+ * into view, so a pledge made in the browser counts without a restart.
  *
  * @returns The unsubscribe
  */
@@ -32,6 +35,19 @@ export function watchSupporterContent(): () => void {
     checkedFor = account;
     void supporterContent.check();
   };
+  const refresh = () => {
+    if (document.visibilityState === 'visible') void supporterContent.refresh();
+  };
   run();
-  return AuthService.onSessionChanged(run);
+  const stopSession = AuthService.onSessionChanged(run);
+  window.addEventListener('focus', refresh);
+  document.addEventListener('visibilitychange', refresh);
+  // A check that failed, such as on a busy server, tries again without waiting for the player.
+  const retry = setInterval(() => { void supporterContent.refresh({ failedOnly: true }); }, RETRY_FAILED_MS);
+  return () => {
+    clearInterval(retry);
+    stopSession();
+    window.removeEventListener('focus', refresh);
+    document.removeEventListener('visibilitychange', refresh);
+  };
 }

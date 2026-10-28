@@ -826,7 +826,13 @@ const CommunityCreationsBrowser = ({
   };
 
   const markingSupporterOnly = useRef(new Set<string>());
-  const handleToggleSupporterOnly = async (world: WorldRecord) => {
+  // Opening a listing to all makes its clean files public, and a copy taken then can't be taken back.
+  const [openingToAll, setOpeningToAll] = useState<WorldRecord | null>(null);
+  const handleToggleSupporterOnly = (world: WorldRecord) => {
+    if (isSupporterOnly(world)) setOpeningToAll(world);
+    else void applySupporterOnly(world);
+  };
+  const applySupporterOnly = async (world: WorldRecord) => {
     const worldId = String(world._id || world.id);
     const noun = KIND_LABELS[kindOf(world)].one;
     if (markingSupporterOnly.current.has(worldId)) return;
@@ -1315,6 +1321,20 @@ const CommunityCreationsBrowser = ({
         title="Replace your edited Mascot?"
         description={`You've edited your copy of "${mascotDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
         onConfirm={mascotDownload.confirmDirtyDownload}
+      />
+
+      <ConfirmDialog
+        open={!!openingToAll}
+        onOpenChange={(v) => { if (!v) setOpeningToAll(null); }}
+        title="Open to everyone?"
+        description={`Anyone can download "${openingToAll?.name ?? ''}", without a watermark. You can't take back a copy someone downloads.`}
+        confirmLabel="Open to All"
+        destructive
+        onConfirm={() => {
+          const world = openingToAll;
+          setOpeningToAll(null);
+          if (world) void applySupporterOnly(world);
+        }}
       />
       {/* Community Creations browser, in whichever shell the host asked for */}
       <BrowserShell presentation={presentation} open={open} onOpenChange={onOpenChange}>
