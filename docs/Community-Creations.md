@@ -221,7 +221,7 @@ Staff can limit a listing's download to Patreon Supporters. Everyone can still o
 
 The button reads **Checking…** while the app checks your Supporter status at start. Only Mascots can be installed so far. On a Supporter-only listing of another kind, a Supporter sees **Not Supported Yet**.
 
-Staff see a **Supporter-Only** button beside **Pin** in the details window, and a heart on the card. Select it to limit the download to Supporters, and select it again to open the download to everyone.
+Staff see **Limit to Supporters** beside **Pin** in the details window, and a heart on the card. Select it to limit the download to Supporters. Select **Open to All** to open the download to everyone again.
 
 ### When an Update Is Available
 
