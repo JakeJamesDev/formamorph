@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.5.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.5.0** — the latest released version.
+> ✅ **3.0.0 – 3.5.1 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.5.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.5.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.5.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.5.1 — Released 2026-10-28</strong> — Mascots in Community Creations — Supporter Mascots for Patreon Supporters — Publish updates your linked listing — feedback statuses that show Pending Release (click to expand)</summary>
 
 ### Minor Changes
 
@@ -18,8 +23,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Mascots:**
-    - **Community Creations has a Mascots section, and you can download a Mascot as your own.** A download becomes a custom Mascot that you can select, edit, duplicate and export. Downloading again replaces the copy, and the card shows Update Available after a new version.
     - **Publish a custom Mascot from the Mascot tab to share it in Community Creations.** The thumbnail shows the Initial Look, or an image you upload. A Mascot over 10 MB is refused with its size.
+    - **Community Creations has a Mascots section, and you can download a Mascot as your own.** A download becomes a custom Mascot that you can select, edit, duplicate and export. Downloading again replaces the copy, and the card shows Update Available after a new version.
     - **The Mascot tab lists Supporter Mascots, which Patreon Supporters install and select in one step.** Others see a locked entry that opens its Community Creations listing. A Supporter Mascot is read-only, and Morphie returns when the pledge ends.
   - **The Publish dialog selects the listing your copy is linked to, so publishing again updates it.** This works only when the listing is yours. Select Publish as new to make a separate listing.
   - **Feedback bugs and suggestions show Pending Release when the change is done but not yet in an update.** Bugs can also be marked Duplicate. Resolved now reads Fixed, Done reads Added, and Need Info reads Needs Info.
@@ -28,6 +33,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Saving a world works again after the browser closes its storage connection.** Before, every save failed with "The database connection is closing" until you reloaded the page.
+
+</details>
 
 ---
 
