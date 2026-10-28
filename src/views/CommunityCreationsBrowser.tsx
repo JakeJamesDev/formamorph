@@ -59,6 +59,7 @@ import {
   isQuarantined, quarantineTargetFor, quarantineTemplate, type QuarantineTarget,
 } from "@/lib/quarantine";
 import { isStaff } from "@/lib/roles";
+import { isPinned } from "@/lib/pinning";
 import { ManageAddonsDialog } from "@/components/community/ManageAddonsDialog";
 import { WorldUpdateReviewDialog } from "@/components/modals/WorldUpdateReviewDialog";
 import { QuarantineDialog } from "@/components/community/QuarantineDialog";
@@ -755,6 +756,29 @@ const CommunityCreationsBrowser = ({
     }
   };
 
+  // Patched in place on both copies, like a quarantine: the grid re-sorts from the patched row, so the
+  // order changes at once without re-fetching the catalog.
+  const pinning = useRef(new Set<string>());
+  const handleTogglePin = async (world: WorldRecord) => {
+    const worldId = String(world._id || world.id);
+    const noun = KIND_LABELS[kindOf(world)].one;
+    const pin = !isPinned(world);
+    if (pinning.current.has(worldId)) return; // a second press waits for the first answer
+    pinning.current.add(worldId);
+
+    try {
+      const pinnedAt = await WorldStorageService.setRemoteWorldPinned(worldId, pin);
+      const patch = (w: WorldRecord) => ({ ...w, pinned_at: pinnedAt });
+      setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? patch(w) : w)));
+      setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? patch(prev) : prev));
+      toast.success(`${noun} ${pin ? 'pinned' : 'unpinned'}`);
+    } catch (error) {
+      toastError(error, `Failed to ${pin ? 'pin' : 'unpin'} the ${noun.toLowerCase()}`);
+    } finally {
+      pinning.current.delete(worldId);
+    }
+  };
+
   // Handle viewing remote world details
   const handleViewRemoteWorldDetails = (world: WorldRecord) => {
     setSelectedRemoteWorld(world);
@@ -1094,6 +1118,7 @@ const CommunityCreationsBrowser = ({
   const likeCard = useStableCallback(handleLike);
   const guestLikeCard = useStableCallback((world: WorldRecord) => onGuestLike?.(world));
   const releaseCard = useStableCallback(handleRelease);
+  const pinCard = useStableCallback(handleTogglePin);
   const withdrawCard = useStableCallback((entry: WorldRecord) => withdrawal.ask({
     id: String(entry._id || entry.id),
     name: String(entry.name ?? 'That world'),
@@ -1320,6 +1345,7 @@ const CommunityCreationsBrowser = ({
                       serverTakesLikes={anonymousLikes}
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
                       onRelease={capabilities.moderation ? releaseCard : undefined}
+                      onTogglePin={capabilities.moderation ? pinCard : undefined}
                       placements={placementsOf(world)}
                       onOpenContest={openContest}
                       // Only where the entry is the subject, and only while it is still an entry: a
@@ -1384,6 +1410,7 @@ const CommunityCreationsBrowser = ({
         onAnonymousLikes={setAnonymousLikes}
         onLikesChanged={handleLikesChanged}
         onPendingUpdateChange={handlePendingUpdateChange}
+        onTogglePin={handleTogglePin}
         openLikersOnMount={openLikersOnMount}
         contests={contests}
         capabilities={capabilities}

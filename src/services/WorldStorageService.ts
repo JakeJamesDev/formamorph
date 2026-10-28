@@ -863,6 +863,29 @@ class WorldStorageService {
     if (!response.ok) throw await responseError(response, 'Failed to release this');
   }
 
+  /**
+   * Pin a listing so it shows first in its section, or unpin it. Staff only.
+   *
+   * @param worldId - The listing's server id
+   * @param pinned - True to pin, false to unpin
+   * @returns When the listing was pinned, or null once unpinned
+   */
+  async setRemoteWorldPinned(worldId: string, pinned: boolean): Promise<string | null> {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/pin`, {
+      method: pinned ? 'PUT' : 'DELETE',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) throw await responseError(response, pinned ? 'Failed to pin this' : 'Failed to unpin this');
+    const body = await response.json().catch(() => ({}));
+    const pinnedAt = (body.data ?? body)?.pinnedAt;
+
+    if (!pinned) return null;
+    if (typeof pinnedAt !== 'string') throw new Error('The server did not say when it was pinned');
+
+    return pinnedAt;
+  }
+
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
    *  a `{success:false}` shape. */
   async fetchComments(worldId: string, page = 1, limit = 20, signal?: AbortSignal) {

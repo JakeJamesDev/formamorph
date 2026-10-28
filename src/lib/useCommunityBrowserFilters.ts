@@ -3,6 +3,7 @@ import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { type DownloadState } from "@/lib/downloadState";
 import { toEpoch } from "@/lib/thumbnailCache";
 import { likesForSort } from "@/lib/likeCount";
+import { comparePinned } from "@/lib/pinning";
 import { kindOf, listingModels } from "@/lib/catalogKinds";
 import { BROWSE_TABS, catalogKindOfTab, type BrowseTab } from "@/lib/browseTabs";
 import { asStatusFacet, matchesStatusFacets, type StatusFacet } from "@/lib/communityStatusFacets";
@@ -351,6 +352,8 @@ export function useCommunityBrowserFilters(
     if (order) return order(list);
     const dir = sortOrder === 'asc' ? 1 : -1;
     return [...list].sort((a, b) => {
+      const pinned = comparePinned(a, b); // pins lead under every sort, as on the server
+      if (pinned !== 0) return pinned;
       if (sortUpdatesFirst) {
         const au = downloadStateOf(a) === 'update' ? 1 : 0;
         const bu = downloadStateOf(b) === 'update' ? 1 : 0;

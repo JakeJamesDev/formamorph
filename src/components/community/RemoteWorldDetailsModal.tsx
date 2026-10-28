@@ -4,7 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
+import { Columns2, RectangleVertical, Pencil, Pin, PinOff, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
+import { PinnedMark } from "@/components/community/PinnedMark";
+import { isPinned } from "@/lib/pinning";
 import { WorldIcon } from '@/lib/elementIcons';
 import { ActionIcon } from "@/lib/actionIcons";
 import { THUMB_FRAME, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
@@ -91,6 +93,8 @@ interface RemoteWorldDetailsModalProps {
   onLikesChanged?: (world: WorldRecord, likes: number) => void;
   /** Called when this reader's write starts or drops the listing's pending update. */
   onPendingUpdateChange?: (world: WorldRecord, pending: boolean) => void;
+  /** Pins the listing, or unpins it when it is pinned. Staff only. */
+  onTogglePin?: (world: WorldRecord) => void;
   /** DEV only: raise the likers dialog as soon as the modal opens, for the dev route. */
   openLikersOnMount?: boolean;
   /** A read-only action supplied by the surface that opened this listing. */
@@ -126,7 +130,7 @@ export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onAnonymousLikes,
-  contests = [], onOpenContest, onLikesChanged, onPendingUpdateChange, openLikersOnMount = false,
+  contests = [], onOpenContest, onLikesChanged, onPendingUpdateChange, onTogglePin, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
@@ -593,6 +597,14 @@ export function RemoteWorldDetailsModal({
               <span className="truncate leading-normal">{world?.name || `${KIND_LABELS[world ? kindOf(world) : 'world'].one} Details`}</span>
             </DialogTitle>
             {detailsAction && <div className="shrink-0">{detailsAction}</div>}
+            {world && onTogglePin && capabilities.moderation && isStaff(currentUser) && (
+              <Tip tip={isPinned(world) ? "Remove it from the top of its section" : "Keep it at the top of its section"}>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onTogglePin(world)}>
+                  {isPinned(world) ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                  {isPinned(world) ? 'Unpin' : 'Pin'}
+                </Button>
+              </Tip>
+            )}
             <Tip tip={collapsed ? "Expand to two columns" : "Collapse to single column"}>
               <Button
                 variant="ghost"
@@ -606,6 +618,7 @@ export function RemoteWorldDetailsModal({
           </div>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
           {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine onSelect={onOpenContest} />}
+          {world && <PinnedMark listing={world} className="mr-8" />}
           {markedListing && <ModerationMarker listing={markedListing} showStaffQuarantine={false} className="mr-8" />}
         </DialogHeader>
 
