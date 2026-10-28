@@ -22,6 +22,7 @@ Spec: Q34, Q63, Q67; stories 85–88.
 - [ ] An owner-less Condition in an item image rule reads the Item Copy's owner
 - [ ] Item Conditions export with the world and rebind by name in entity files
 - [ ] CONTEXT.md's Condition entry lists the Item kind; the traits docs page describes it; changelog fragment written
+- [ ] An owner-less stat Condition in an item rule targets the Item Copy's owner; the editor stops offering Global stats as its own section there (from ticket 01's landing)
 
 ## Blocked by
 

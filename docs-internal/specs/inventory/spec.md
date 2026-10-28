@@ -93,6 +93,17 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q67 | On an item, a Condition with no owner and the script `owner` mean the Item Copy's owner. Both are empty while it lies at a location |
 | Q68 | An item in play is an **Item Copy**, always written in full, distinct from a placeholder Copy |
 | Q69 | An Item Copy's possessor is its **Owner**. A location is not an owner: an Item Copy there lies at it |
+| Q70 | (ticket 01) The slot list edits in a **Slots** section in the Overview's left column, below Starts On, beside the other world play settings. It uses existing list-row parts. No new pinned-row pattern |
+| Q71 | (ticket 01) The Items list is flat with drag to reorder, no folders, like Tools |
+| Q72 | (ticket 01) Items are a scoped placeholder home `{kind:'item'}` beside entity and dictionary, with an item Placeholders tab and `Item › Name` labels. Placeholders travel on duplicate and delete |
+| Q73 | (ticket 01) The item rule host shows rows and targets like an entity host. The Persona is an explicit owner choice; an owner-less Condition reads the Item Copy's owner (Q67). State dots stay neutral until 02 and 10 supply copies |
+| Q74 | (ticket 01) 01 defines the effect, timing, duration and placement types in full, so 04, 05 and 06 add only editors and runtime. Durations are Permanent or a story-clock length stored in the clock's own elapsed unit |
+| Q75 | (ticket 01) The value unit's stat picker lists Global Stats and the Persona's stats, per Q32's "a global or player stat" |
+| Q76 | (ticket 01) Setting charges turns Stackable off and disables it. Clearing charges leaves Stackable off for the author to turn back on |
+| Q77 | (ticket 01) Slot Size shows only when a slot is picked, from 1 to that slot's capacity |
+| Q78 | (ticket 01) Deleting a slot that items use asks for confirmation with the count, then clears those items' slot |
+| Q79 | (ticket 01) The Items tab shows in Simple and Advanced. AI Summary and item Placeholders are Advanced only, as on entities |
+| Q80 | (ticket 01) Item editor tabs: Profile, Descriptions, Properties, Placeholders. 04, 05 and 11 add Effects, Requirements and Scripts |
 
 ## User Stories
 
@@ -330,4 +341,5 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 - ⚠️ **Export shape.** World `.json` gains items, the slot list, placements, the `item` Requirement Condition kind, item script homes and the five item `ScriptTiming` values. Save `.json` gains Item Copies, runtime items, the applied-effect ledger, timed effects and First Obtain records. Settings export gains the Inventory pass prompt-preset keys.
 - The Inventory tab, slot display and timed-effect rows are a new visual pattern. They need the user's approval through the `design-system` flow before they are built.
 - CONTEXT.md needs entries for Item, Item Copy, Placement, Slot, Inventory pass, Item Condition and the five item timings. The Owner entry gains items; the script-home and Timing entries gain Items. Its curse example already reads "an Automatic trait that requires the cursed item".
+- Item images use the `character` tag guidance for now (ticket 01). An item image subject is a prompt change and needs probe numbers first.
 - The stat pass changes only by Q53's prompt line (R1).
