@@ -633,3 +633,58 @@ describe('review entries', () => {
     expect(screen.queryByRole('button', { name: 'View' })).toBeNull();
   });
 });
+
+describe('pin, Supporter, Anonymous Like and rename entries', () => {
+  const onListing = (action: AuditEntry['action'], over: Partial<AuditEntry> = {}) => entry({
+    action,
+    targetUser: { id: 'u1', username: 'wren_hallow' },
+    target: { kind: 'world', name: 'Sedge Landing', id: 'w1' },
+    ...over,
+  });
+
+  it('says what a pin did to a listing', () => {
+    expect(describeAuditEntry(onListing('listing_pinned'))).toBe('root-admin pinned the world “Sedge Landing” by wren_hallow');
+    expect(describeAuditEntry(onListing('listing_unpinned', { targetUser: null })))
+      .toBe('root-admin unpinned the world “Sedge Landing”');
+  });
+
+  it('says what the Supporter-only mark did to a listing', () => {
+    expect(describeAuditEntry(onListing('listing_supporter_only')))
+      .toBe('root-admin made the world “Sedge Landing” by wren_hallow Supporter-only');
+    expect(describeAuditEntry(onListing('listing_supporter_only_cleared')))
+      .toBe('root-admin opened the world “Sedge Landing” by wren_hallow to everyone');
+  });
+
+  it('names whose Supporter content was taken away or given back', () => {
+    const access = (action: AuditEntry['action']) => entry({
+      action,
+      targetUser: { id: 'u1', username: 'wren_hallow' },
+      target: { kind: 'account', name: 'wren_hallow', id: 'u1' },
+    });
+
+    expect(describeAuditEntry(access('supporter_access_revoked'))).toBe('root-admin took Supporter content away from wren_hallow');
+    expect(describeAuditEntry(access('supporter_access_restored'))).toBe('root-admin gave Supporter content back to wren_hallow');
+  });
+
+  it('says which listing lost its Anonymous Likes, and never an address', () => {
+    const snippet = 'Removed 3 Anonymous Likes from one address';
+
+    expect(describeAuditEntry(onListing('anonymous_likes_removed', { snippet })))
+      .toBe('root-admin removed the Anonymous Likes from one address on “Sedge Landing”');
+    expect(describeAuditEntry(onListing('anonymous_likes_cleared', { snippet: 'Removed 9 Anonymous Likes' })))
+      .toBe('root-admin cleared every Anonymous Like on “Sedge Landing”');
+  });
+
+  it('reads a rename under the old name, with the new one from the snippet', () => {
+    const renamed = (snippet: string | null) => entry({
+      action: 'username_changed',
+      actor: { id: 'u1', username: 'old_name', wasAdmin: false },
+      targetUser: { id: 'u1', username: 'old_name' },
+      target: { kind: 'account', name: 'old_name' },
+      snippet,
+    });
+
+    expect(describeAuditEntry(renamed('new_name'))).toBe('old_name changed their username to new_name');
+    expect(describeAuditEntry(renamed(null))).toBe('old_name changed their username');
+  });
+});
