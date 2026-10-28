@@ -39,6 +39,8 @@ import { offersCompatibility, usePublishLinks } from "@/lib/usePublishLinks";
 import { AlertTriangle, ScrollText, Trophy } from "lucide-react";
 import type { ServerEvent } from "@/types";
 import { useMountedRef } from "@/lib/useMountedRef";
+import { ImageUpload } from "@/lib/UtilityComponents";
+import { blobToDataUrl } from "@/lib/imageSource";
 
 interface PublishModalProps {
   open: boolean;
@@ -78,6 +80,8 @@ export function PublishModal({
   // Whether this upload is also a contest entry, and what the server said if it refused to take it.
   const [enterContest, setEnterContest] = useState(false);
   const [contestError, setContestError] = useState('');
+  // A Mascot's own thumbnail, replacing the Initial render the payload carries.
+  const [thumbnailOverride, setThumbnailOverride] = useState<string | null>(null);
 
   // The optional note about what changed. Held here until the update-publish succeeds, so a refused
   // upload costs nothing that was written. `changelogSupported` stays false against a server that has
@@ -218,7 +222,10 @@ export function PublishModal({
         if (!ready) return;
       }
 
-      const created = await WorldStorageService.publishItem(links.declarePayload(payload), targetId, entering);
+      const declared = links.declarePayload(payload);
+      const created = await WorldStorageService.publishItem(
+        kind === 'mascot' && thumbnailOverride ? { ...declared, thumbnail: thumbnailOverride } : declared, targetId, entering,
+      );
 
       // The author's copy becomes a copy of the listing it just became, the way a downloaded one is —
       // which is what carries a later contest win back to the library they actually work in. The listing's
@@ -392,6 +399,7 @@ export function PublishModal({
     setPublishError('');
     setEnterContest(false);
     setContestError('');
+    setThumbnailOverride(null);
     // Asked again on the next opening rather than held for the app's lifetime: this dialog is mounted for
     // the whole session, and one refused request must not hide the feature until a restart.
     changelogSupportRef.current = null;
@@ -523,6 +531,24 @@ export function PublishModal({
                   <Button size="sm" variant="outline" onClick={() => setEntryOpen(true)}>
                     Describe What Changed
                   </Button>
+                )}
+              </div>
+            )}
+
+            {kind === 'mascot' && (
+              <div className="mt-4 space-y-2" data-testid="mascot-publish-thumbnail">
+                <p className="text-label font-medium">Thumbnail</p>
+                <p className="text-meta text-muted-foreground">
+                  Shows the Initial Look. Upload an image to replace it.
+                </p>
+                <ImageUpload
+                  id="publish-mascot-thumbnail"
+                  value={thumbnailOverride ?? payload?.thumbnail ?? null}
+                  onFile={(file) => { void blobToDataUrl(file).then((data) => { if (mountedRef.current) setThumbnailOverride(data); }); }}
+                  onChange={(value) => { if (value === '') setThumbnailOverride(null); }}
+                />
+                {thumbnailOverride && (
+                  <Button size="sm" variant="ghost" onClick={() => setThumbnailOverride(null)}>Use Initial Look</Button>
                 )}
               </div>
             )}

@@ -1,4 +1,5 @@
 import { KIND_LABELS, type CatalogKind } from '@/lib/catalogKinds';
+import { dataUrlBytes } from '@/lib/imageBytes';
 
 /**
  * The one place the client states a publish limit. Mirrors the server's per-kind content caps, so the
@@ -17,6 +18,13 @@ export const PUBLISH_LIMITS: Record<CatalogKind, number> = {
 /** The server's own measure: the UTF-8 byte length of the content's compact JSON serialization. */
 export function measurePublishBytes(content: unknown): number {
   return new TextEncoder().encode(JSON.stringify(content)).length;
+}
+
+/** A Mascot's measure: the decoded bytes of every data-URL image in its card, not the JSON length. */
+export function measureMascotBytes(content: unknown): number {
+  const images = (content as { images?: unknown } | null)?.images;
+  if (!Array.isArray(images)) return 0;
+  return images.reduce<number>((sum, image) => sum + (typeof image === 'string' ? dataUrlBytes(image) : 0), 0);
 }
 
 export type PublishSizeBand = 'green' | 'amber' | 'red';

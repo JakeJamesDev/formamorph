@@ -7,7 +7,7 @@ import { clearDeletedDefaultWorlds, readDeletedDefaultWorlds } from '@/lib/defau
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import AuthService from './AuthService';
 import { getDownloadState } from '@/lib/downloadState';
-import { PUBLISH_LIMITS } from '@/lib/publishLimits';
+import { PUBLISH_LIMITS, measureMascotBytes } from '@/lib/publishLimits';
 import { KIND_LABELS } from '@/lib/catalogKinds';
 import { openWorldLibrary, putWorldRecords } from '@/lib/worldLibrary';
 import { Blob as NodeBlob } from 'node:buffer';
@@ -258,8 +258,18 @@ describe('publishItem', () => {
 
   // A raw string as `contentData` serializes to `"xxx…"`: length + 2 quote characters, all single-byte —
   // so its byte count is exactly controllable without building a real world/entity/dictionary fixture.
-  const overLimit = (kind: keyof typeof PUBLISH_LIMITS) => 'x'.repeat(PUBLISH_LIMITS[kind] + 1);
-  const atLimit = (kind: keyof typeof PUBLISH_LIMITS) => 'x'.repeat(PUBLISH_LIMITS[kind] - 2);
+  // A Mascot is measured in decoded image bytes: one image whose base64 body decodes to exactly `bytes`.
+  const mascotBytes = (bytes: number) => {
+    const body = 'A'.repeat(Math.ceil(bytes / 3) * 4);
+    const trim = (3 - (bytes % 3)) % 3;
+    const images = [`data:image/webp;base64,${body.slice(0, body.length - trim)}${'='.repeat(trim)}`];
+    expect(measureMascotBytes({ images })).toBe(bytes);
+    return { images };
+  };
+  const overLimit = (kind: keyof typeof PUBLISH_LIMITS) =>
+    (kind === 'mascot' ? mascotBytes(PUBLISH_LIMITS.mascot + 1) : 'x'.repeat(PUBLISH_LIMITS[kind] + 1));
+  const atLimit = (kind: keyof typeof PUBLISH_LIMITS) =>
+    (kind === 'mascot' ? mascotBytes(PUBLISH_LIMITS.mascot) : 'x'.repeat(PUBLISH_LIMITS[kind] - 2));
 
   it.each(Object.keys(PUBLISH_LIMITS) as (keyof typeof PUBLISH_LIMITS)[])(
     'refuses over-limit %s content before any request is sent, even unauthenticated',

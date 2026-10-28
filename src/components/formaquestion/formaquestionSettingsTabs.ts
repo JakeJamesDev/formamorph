@@ -117,6 +117,7 @@ export const MASCOT_COPY = {
       delete: 'Delete this mascot and its images',
       import: 'Add a mascot from a card',
       export: 'Save this mascot as a card',
+      publish: 'Share this mascot in Community Creations',
       reset: `Put this mascot back to ${DEFAULT_MASCOT_NAME}`,
     },
     deleteTitle: 'Delete Mascot',

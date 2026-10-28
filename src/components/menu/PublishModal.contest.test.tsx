@@ -78,6 +78,14 @@ describe('when the contest opt-in is offered', () => {
     expect(theSwitch()).toBeNull();
   });
 
+  it('is absent for a Mascot while a contest is running', async () => {
+    view({ payload: { kind: 'mascot', name: 'Captain', description: '', contentData: { images: [] } } });
+
+    await screen.findByText('Publish Mascot');
+    expect(screen.queryByText('Summer Isles Contest')).toBeNull();
+    expect(theSwitch()).toBeNull();
+  });
+
   it('is absent when no event is running', async () => {
     view({ events: [] });
 
