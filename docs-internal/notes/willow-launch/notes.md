@@ -13,7 +13,7 @@ Status: draft, 2026-10-28. Willow is the first Supporter Mascot. The client rele
 
 ## ⚠️ Open checks (before launch day)
 
-1. **Publish window → server script (ruled 2026-10-28).** A staff publish from the app goes live at once, public and unwatermarked until the Supporter-only toggle. So Willow skips the app: a server script creates the listing already Supporter-only (step 3). No UI surface for now. The script is not built yet.
+1. **Publish window → server script (ruled 2026-10-28).** A staff publish from the app goes live at once, public and unwatermarked until the Supporter-only toggle. So Willow skips the app: a server script creates the listing already Supporter-only (step 3). No UI surface for now. Built: `npm run publish-supporter` (FormamorphServer `src/utils/publishSupporter.js`, `docs-internal/server.md` "Publishing a Supporter Mascot").
 2. **3.5.0 clients on the new server.** UNVERIFIED: whether a 3.5.0 client lists a Mascot listing in **All**, and what its Download does. This decides whether Willow can be published before the client release.
 3. **Client build time.** UNVERIFIED: minutes from the GitHub release to live web and desktop builds. This sets the gap between the server deploy and the announcement.
 
@@ -23,7 +23,7 @@ Status: draft, 2026-10-28. Willow is the first Supporter Mascot. The client rele
 
 - Willow's art: every layer is original. Publish refuses a Mascot that holds a Morphie layer (Q29).
 - Listing thumbnail ready. The art never goes in a repo.
-- Build and test the upload script in FormamorphServer. It ships in the same server deploy.
+- The upload script is built and tested in FormamorphServer. It ships in the same server deploy.
 - Server tests green on `main`. Note the count and wall time for the deploy log.
 - Run the release skill's fingerprint step. It copies `bundledFingerprints.json` to the server repo. Commit that with the server batch.
 
@@ -48,7 +48,8 @@ Status: draft, 2026-10-28. Willow is the first Supporter Mascot. The client rele
 ### 3. Upload Willow on the server
 
 1. Export Willow from the Mascot tab of a dev build. Copy the file and the thumbnail to the server. Never commit them.
-2. Run the upload script on the server (to build; working name `npm run publish-supporter`). It takes the Mascot file, thumbnail, name, description and the author's username. It creates the listing with Supporter-only already set, the content in `supporter-private`, and pinned. It refuses a Mascot that holds a Morphie layer, as the app does (Q29).
+2. Run `npm run publish-supporter -- /tmp/willow.webp --author <your staff username>` on the server. It creates the listing Supporter-only, pinned and approved in one transaction, with the content in `supporter-private`. Then delete the copied `.webp`: it holds every layer unwatermarked.
+   - ⚠️ The script does not check for Morphie layers, as the app's publish does (Q29). Confirm Willow uses only original art.
 3. Check three accounts:
    - Signed out → **Sign In**.
    - Signed-in non-supporter → **Patreon**, and a locked entry in the Mascot tab.
