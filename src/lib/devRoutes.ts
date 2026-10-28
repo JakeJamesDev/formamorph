@@ -140,7 +140,8 @@ export const DEV_MODAL_TABS = {
   worldEditor: ['overview', 'media', 'entities', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts', 'tools'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
-  // tab is reachable whether or not one is really running.
+  // tab is reachable whether or not one is really running. `fixture=review` shows the viewer as an admin
+  // with the review queue's listings pinned above the results (`#dev?modal=community&fixture=review`).
   community: ['world', 'entity', 'dictionary', 'model', 'prompt', 'mascot', 'contest'],
   // The publish dialog's canned payload: a world by default, or a prompt with `tab=prompt`.
   publish: ['world', 'prompt'],
