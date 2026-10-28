@@ -9,6 +9,7 @@ import { BROWSE_TABS, catalogKindOfTab, type BrowseTab } from "@/lib/browseTabs"
 import { asStatusFacet, isViewersListing, matchesStatusFacets, type StatusFacet } from "@/lib/communityStatusFacets";
 import { extractFilterPrefixes } from "@/lib/filterPrefixes";
 import { awaitsFirstReview, awaitsReview, pendingFaceOf, reviewQueuedTime } from "@/lib/listingModeration";
+import { listingIdOf } from "@/lib/reviewRows";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 /**
@@ -21,7 +22,7 @@ const NO_PINNED: WorldRecord[] = [];
 
 /** Oldest-queued first, then id, whatever the browser's sort. */
 const byQueueTime = (a: WorldRecord, b: WorldRecord): number =>
-  reviewQueuedTime(a) - reviewQueuedTime(b) || String(a._id || a.id).localeCompare(String(b._id || b.id));
+  reviewQueuedTime(a) - reviewQueuedTime(b) || listingIdOf(a).localeCompare(listingIdOf(b));
 
 const DEFAULT_PAGE_SIZE = 12;
 const ROWS_PER_PAGE = 3; // the grid shows this many full rows per page…
@@ -130,15 +131,20 @@ function readStoredFilters(storageKey: string, defaultSortField: string): Record
  * `review` splits listings that await review out of the paged rows. Pinned rows pass the same filters,
  * show on page 1 only, and do not count toward the page size.
  */
+export interface CommunityBrowserFilterOptions {
+  tab?: BrowseTab;
+  viewerId?: string;
+  /** Replaces the sort, for a list with its own order. */
+  order?: (list: WorldRecord[]) => WorldRecord[];
+  preferences?: CommunityFilterPreferences;
+  review?: ReviewPinning;
+}
+
 export function useCommunityBrowserFilters(
   remoteWorlds: WorldRecord[],
   downloadStateOf: (record: WorldRecord) => DownloadState,
   open: boolean,
-  tab: BrowseTab = 'world',
-  viewerId?: string,
-  order?: (list: WorldRecord[]) => WorldRecord[],
-  preferences?: CommunityFilterPreferences,
-  review: ReviewPinning = 'none',
+  { tab = 'world', viewerId, order, preferences, review = 'none' }: CommunityBrowserFilterOptions = {},
 ) {
   const storageKey = preferences?.storageKey ?? FILTERS_KEY;
   const defaultSortField = preferences?.defaultSortField ?? 'updated_at';

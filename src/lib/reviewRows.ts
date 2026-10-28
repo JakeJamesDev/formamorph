@@ -3,12 +3,15 @@ import { kindOf } from "@/lib/catalogKinds";
 import { moderationStatus } from "@/lib/listingModeration";
 import type { ReviewOutcome, ReviewRejection, ReviewSubject } from "@/services/ReviewService";
 
+/** A catalog row's listing id, whichever key the server filled. */
+export const listingIdOf = (world: WorldRecord): string => String(world._id || world.id);
+
 /** A catalog row as the review decision names it. */
 export const reviewSubjectOf = (world: WorldRecord): ReviewSubject => {
   const status = moderationStatus(world);
   const author = world.author as { id?: unknown; username?: unknown; avatarUrl?: unknown; role?: unknown } | null | undefined;
   return {
-    id: String(world._id || world.id),
+    id: listingIdOf(world),
     kind: kindOf(world),
     name: String(world.name ?? ''),
     type: status === 'updatePending' ? 'update' : status === 'resubmitted' ? 'resubmitted' : 'new',

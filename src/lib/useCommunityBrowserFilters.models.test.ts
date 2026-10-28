@@ -21,7 +21,7 @@ const catalog: WorldRecord[] = [
 const downloadStateOf = () => 'none' as const;
 
 const render = (tab: BrowseTab = 'prompt') =>
-  renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, tab));
+  renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, { tab }));
 
 const names = (list: WorldRecord[]) => list.map((w) => w.name).sort();
 

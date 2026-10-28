@@ -56,7 +56,8 @@ import { useCommunityBrowserFilters, type CommunityFilterPreferences, type Revie
 import { useDevReviewViewer } from "@/lib/dev/devReviewViewer";
 import { PinnedReviewGroup } from "@/components/community/PinnedReviewGroup";
 import { useReviewDecision } from "@/components/community/useReviewDecision";
-import { decidedRow, reviewSubjectOf } from "@/lib/reviewRows";
+import { decidedRow, listingIdOf, reviewSubjectOf } from "@/lib/reviewRows";
+import type { ReviewOutcome, ReviewRejection, ReviewSubject } from "@/services/ReviewService";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
 import { takedownTargetFor, takedownTemplate, type TakedownTarget } from "@/lib/takedownNotice";
 import {
@@ -186,6 +187,28 @@ const BrowserShell = ({ presentation, open, onOpenChange, children }: {
 /** The page shell's title: Radix's `DialogTitle` only resolves inside a dialog, so the page brings its own. */
 const PageHeading = ({ className, children }: { className?: string; children: React.ReactNode }) => (
   <h1 className={className}>{children}</h1>
+);
+
+/** A staff view toggle in the filter row: outline when off, filled when on. */
+const StaffToggle = ({ tip, icon: Icon, pressed, onToggle, children }: {
+  tip: string;
+  icon: LucideIcon;
+  pressed: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) => (
+  <Tip tip={tip} labelsChild={false}>
+    <Button
+      variant={pressed ? 'default' : 'outline'}
+      size="sm"
+      className="shrink-0 gap-1"
+      aria-pressed={pressed}
+      onClick={onToggle}
+    >
+      <Icon className="h-4 w-4" />
+      {children}
+    </Button>
+  </Tip>
 );
 
 interface CommunityCreationsBrowserProps {
@@ -533,11 +556,13 @@ const CommunityCreationsBrowser = ({
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, allModels, filteredRemoteWorlds, totalPages, pagedRemoteWorlds, pinnedRemoteWorlds,
   } = useCommunityBrowserFilters(
-    catalogInView, downloadStateForRecord, open, browseTab,
-    currentUser?.id ? String(currentUser.id) : undefined,
-    browseTab === 'contest' ? contestOrder : undefined,
-    filterPreferences,
-    reviewPinning,
+    catalogInView, downloadStateForRecord, open, {
+      tab: browseTab,
+      viewerId: currentUser?.id ? String(currentUser.id) : undefined,
+      order: browseTab === 'contest' ? contestOrder : undefined,
+      preferences: filterPreferences,
+      review: reviewPinning,
+    },
   );
 
   // One read for the whole page's stored thumbnails, so a page of seen cards paints together rather
@@ -568,33 +593,25 @@ const CommunityCreationsBrowser = ({
   // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
   // empty list is a control that teaches nothing.
   const quarantineControl = capabilities.moderation && viewerIsStaff && quarantinedCount > 0 && browseTab !== 'contest' ? (
-    <Tip tip="Show only what is hidden pending changes" labelsChild={false}>
-      <Button
-        variant={quarantinedOnly ? 'default' : 'outline'}
-        size="sm"
-        className="shrink-0 gap-1"
-        aria-pressed={quarantinedOnly}
-        onClick={() => setQuarantinedOnly((prev) => !prev)}
-      >
-        <ShieldAlert className="h-4 w-4" />
-        Quarantined ({quarantinedCount})
-      </Button>
-    </Tip>
+    <StaffToggle
+      tip="Show only what is hidden pending changes"
+      icon={ShieldAlert}
+      pressed={quarantinedOnly}
+      onToggle={() => setQuarantinedOnly((prev) => !prev)}
+    >
+      Quarantined ({quarantinedCount})
+    </StaffToggle>
   ) : null;
 
   const showPendingControl = reviewsHere ? (
-    <Tip tip="Show listings that wait for review" labelsChild={false}>
-      <Button
-        variant={showPending ? 'default' : 'outline'}
-        size="sm"
-        className="shrink-0 gap-1"
-        aria-pressed={showPending}
-        onClick={() => setShowPending((prev) => !prev)}
-      >
-        <Eye className="h-4 w-4" />
-        Show Pending
-      </Button>
-    </Tip>
+    <StaffToggle
+      tip="Show listings that wait for review"
+      icon={Eye}
+      pressed={showPending}
+      onToggle={() => setShowPending((prev) => !prev)}
+    >
+      Show Pending
+    </StaffToggle>
   ) : null;
 
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
@@ -808,24 +825,21 @@ const CommunityCreationsBrowser = ({
   };
 
   // A decision patches the row at once, so the card moves now; the re-sync then takes the server's rows.
-  const openRef = useRef(open);
-  openRef.current = open;
-  const review = useReviewDecision({
-    viewer: currentUser,
-    onOutcome: (subject, outcome, rejection) => {
-      const isSubject = (w: WorldRecord) => String(w._id || w.id) === subject.id;
-      if (outcome === 'dropped') {
-        // Its real state is unknown here; the re-sync brings it back where it belongs.
-        setRemoteWorlds((prev) => prev.filter((w) => !isSubject(w)));
-      } else if (outcome !== 'kept') {
-        const patch = (w: WorldRecord) => decidedRow(w, subject, outcome, rejection);
-        setRemoteWorlds((prev) => prev.map((w) => (isSubject(w) ? patch(w) : w)));
-        setSelectedRemoteWorld((prev) => (prev && isSubject(prev) ? patch(prev) : prev));
-      }
-      // Closed, the next open asks anyway, and it must settle for itself.
-      if (openRef.current) void resyncCatalog();
-    },
+  // Stable, so a decision that settles after a close reads the current `open`.
+  const onReviewOutcome = useStableCallback((subject: ReviewSubject, outcome: ReviewOutcome, rejection?: ReviewRejection) => {
+    const isSubject = (w: WorldRecord) => listingIdOf(w) === subject.id;
+    if (outcome === 'dropped') {
+      // Its real state is unknown here; the re-sync brings it back where it belongs.
+      setRemoteWorlds((prev) => prev.filter((w) => !isSubject(w)));
+    } else if (outcome !== 'kept') {
+      const patch = (w: WorldRecord) => decidedRow(w, subject, outcome, rejection);
+      setRemoteWorlds((prev) => prev.map((w) => (isSubject(w) ? patch(w) : w)));
+      setSelectedRemoteWorld((prev) => (prev && isSubject(prev) ? patch(prev) : prev));
+    }
+    // Closed, the next open asks anyway, and it must settle for itself.
+    if (open) void resyncCatalog();
   });
+  const review = useReviewDecision({ viewer: currentUser, onOutcome: onReviewOutcome });
   const approveCard = useStableCallback((world: WorldRecord) => { void review.approve(reviewSubjectOf(world)); });
   const rejectCard = useStableCallback((world: WorldRecord) => review.startReject(reviewSubjectOf(world)));
 

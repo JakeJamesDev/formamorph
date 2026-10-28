@@ -21,7 +21,7 @@ const catalog: WorldRecord[] = [
 ] as unknown as WorldRecord[];
 
 const order = (field: string, direction: 'asc' | 'desc', rows = catalog) => {
-  const { result } = renderHook(() => useCommunityBrowserFilters(rows, () => 'none', true, 'world'));
+  const { result } = renderHook(() => useCommunityBrowserFilters(rows, () => 'none', true, { tab: 'world' }));
   act(() => {
     result.current.setSortField(field);
     result.current.setSortOrder(direction);
@@ -58,7 +58,7 @@ describe('sorting by likes', () => {
     const savedApp = localStorage.getItem('FORMAMORPH_communityFilters');
     app.unmount();
     const preferences = { storageKey: 'website-filters', defaultSortField: 'likes' as const };
-    const useWebsite = () => useCommunityBrowserFilters(catalog, () => 'none', true, 'world', undefined, undefined, preferences);
+    const useWebsite = () => useCommunityBrowserFilters(catalog, () => 'none', true, { tab: 'world', preferences });
     const first = renderHook(useWebsite);
     expect(first.result.current.filteredRemoteWorlds.map(w => w.name)).toEqual(['Loved', 'Liked', 'Quiet']);
     act(() => first.result.current.setSortField('updated_at'));

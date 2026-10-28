@@ -119,6 +119,18 @@ describe('the Pending Update section', () => {
     expect(within(row).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['Sedge Landing', 'Sedge Harbor']);
   });
 
+  it('is not offered to staff where moderation is not available', async () => {
+    serve(nameChange);
+    show({
+      currentUser: mod,
+      capabilities: { localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: false, reports: true },
+    });
+
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
+    await screen.findByText(/no comments yet/i);
+    expect(screen.queryByRole('region', { name: 'Pending Update' })).toBeNull();
+  });
+
   it('keeps Discard Update for the author', async () => {
     serve(nameChange);
     show();
