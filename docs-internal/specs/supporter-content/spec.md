@@ -61,6 +61,7 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q28 | Every layer must round-trip its mark. The attack list (re-encode, downscale, crop, composite) must pass on the full composite and on every layer at or above a measured opaque-area floor. Smaller layers need only the round-trip. A leaked rig is traced through its base layer. |
 | Q29 | Publish refuses a Mascot that holds any bundled (Morphie) layer and names the layers to replace, like Avatar publish refuses the default Avatar. Export is unchanged. |
 | Q30 | After a publish, the author's own Mascot links to the new listing, as prompts and worlds do. |
+| Q31 | The public content routes refuse a Supporter-only listing for everyone. The gated route also serves the listing's author and staff whatever their tier, through the same per-account processing. The entitlement route stays tier-based. |
 
 ## User Stories
 
