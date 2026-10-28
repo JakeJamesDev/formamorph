@@ -1,6 +1,6 @@
 # 16: Client: Supporter content requests time out
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
