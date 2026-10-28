@@ -29,6 +29,7 @@ Spec: R1, R2, Q18, Q22, Q23, Q24, Q36, Q37, Q38, Q53, Q55, Q56, Q62; stories 25,
 - [ ] Preset keys, sampler pins, Native Reasoning and endpoint routing exist for the pass and export with settings
 - [ ] Probe numbers on the cloud default and Cydonia with in-batch controls: operation accuracy on a fixed scene set, and the stat pass no longer double-adds a drunk potion's effect
 - [ ] The guide pages for the turn and for items describe the pass; changelog fragment written
+- [ ] Discarding an unpaired user turn and the stats-only re-roll restore Item Copies the pass wrote (from ticket 02's landing)
 
 For you: play a few turns that pick up, give and drink items and check the panel follows the story.
 

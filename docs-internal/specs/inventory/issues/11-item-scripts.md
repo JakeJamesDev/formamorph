@@ -25,6 +25,7 @@ Spec: Q33, Q41, Q58, Q59, Q66, Q67; stories 6, 43, 45, 89–92.
 - [ ] An item script's `owner` reads the Item Copy's owner
 - [ ] CONTEXT.md's Timing and script-home entries list items; the Scripts guide describes the timings and writes; changelog fragment written
 - [ ] The `items` script global reaches item placeholder code paths (`items["Name"].placeholders…`) that ticket 01 already names
+- [ ] The play-time stat-code sandbox state carries Item Copies, and discarding an unpaired user turn restores Item Copies that before-box scripts wrote (from ticket 02's landing)
 
 ## Blocked by
 
