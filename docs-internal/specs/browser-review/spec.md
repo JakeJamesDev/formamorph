@@ -1,6 +1,7 @@
 # Spec: Browser review (client)
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-28. Tickets 01–06 done, last landing b68daa517 (server 6349237). Review: spec text corrected. Gates green on 2026-10-28.
 Spec session: browser-review — spec
 
 Server side: the FormamorphServer repo, `docs-internal/specs/browser-review/spec.md`. It adds the pending preview to catalog rows. This spec follows the Listing Review rulings (`docs-internal/specs/listing-review/`).
@@ -81,7 +82,7 @@ Mods and admins review listings only from **Admin Panel → Moderation → Revie
 - **Review decision hook.** The approve and reject orchestration moves out of the Review tab into one shared hook. It owns the busy state, the 409 conflict handling (`CONTEST_LOCKED` keeps the item; any other conflict drops it with "Another mod already handled this item"), the quarantine-days dialog for a new listing, the confirm for an update or a resubmitted listing, and the composer with the right template. It also owns the "may decide" check: not the viewer's own listing, and `canModerate` against the author. The Review tab and the browser both use it. It reports each outcome (approved, rejected, dropped by conflict, kept by contest lock) so each caller updates its own list.
   - Shape (ticket 02 ruling): it takes a `ReviewSubject` (the queue item's id, kind, name, type and author) and returns `busyId` (the subject in flight, or null), `mayDecide`, `approve`, `startReject` and `dialogs`, which the caller renders. Toasts stay inside the hook. The browser maps a catalog row to a `ReviewSubject`. The item dialog, download and queue list stay in the Review tab.
 - **Browser pipeline.** The filter hook splits its sorted result into the pinned group and the normal rows when the viewer is staff and Show Pending is on.
-  - Membership uses the existing `awaitsReview` predicate (pending, resubmitted, updatePending).
+  - Membership uses the existing `awaitsReview` predicate (pending, resubmitted, updatePending). `awaitsFirstReview` (pending, resubmitted) picks the rows the player view drops. `reviewQueuedTime` gives the sort key, and `pendingFaceOf` holds the pending-face rule for the card and search.
   - The pinned group sorts by queue time ascending, then id, ignoring the browser's sort. A new or resubmitted row uses `moderation_queued_at`. An update row uses `pending_preview.queued_at`, falling back to `updated_at` (ticket 03 ruling).
   - Hide preferences (hidden listings, tags, authors) apply to the pinned group like any filter.
   - Search matches the name the card shows: a pinned update card's `pending_preview.name`, otherwise the live name (ticket 05 ruling).
@@ -89,12 +90,12 @@ Mods and admins review listings only from **Admin Panel → Moderation → Revie
   - With Show Pending off, staff get the player view: new pending and resubmitted listings by other authors are dropped. Update Pending rows stay in their normal slot with their live face. The viewer's own pending listings stay in their normal slot with their badge.
   - A non-staff viewer sees what the server sends today: their own pending listings with the Listing Review badges, no pinned group.
   - The Quarantined view and the contest tab show no pinned group and no Show Pending control. The contest tab is unchanged (Q11).
-- **Show Pending.** A `usePersistentState` boolean under `FORMAMORPH_communityShowPending`, default true. An outline toggle beside the staff-only Quarantined toggle: label "Show Pending", Eye icon, tip "Show listings that wait for review". It shows for staff when moderation is available, regardless of count.
-- **Card.** `RemoteWorldCard` takes optional `onApprove` and `onReject` callbacks and a busy flag. The browser passes them only for pinned cards the viewer may decide. The buttons sit in the existing staff action row. A pinned update card reads its name and thumbnail from the row's pending preview. The thumbnail loads through `usePendingThumbnail`. It falls back to the live thumbnail while loading or on error.
-- **After a decision.** The browser patches the row at once. Approve sets the row approved and clears the pending update, taking the pending name. Approve on a resubmitted listing also clears its quarantine. Reject on a new listing sets it rejected and quarantined. Reject on a resubmitted listing keeps its quarantine and deadline. Reject on an update clears the pending update. A conflict drop removes the row. Then the catalog re-syncs through its ETag, after every outcome, without the cache read or the skeleton (ticket 04 rulings).
+- **Show Pending.** A `usePersistentState` boolean under `FORMAMORPH_communityShowPending`, default true. A toggle beside the staff-only Quarantined toggle, styled like it (outline when off, filled when on): label "Show Pending", Eye icon, tip "Show listings that wait for review". It shows for staff when moderation is available, regardless of count.
+- **Card.** `RemoteWorldCard` takes `inReviewGroup`, which drives the pending face and the title-only badge (Q15), plus optional `onApprove` and `onReject` callbacks and `reviewBusy`. The browser passes the callbacks only for pinned cards the viewer may decide. The hook decides one subject at a time, so every pinned card's check and X disable while any decision is in flight. The buttons sit in the existing staff action row. A pinned update card reads its name and thumbnail from the row's pending preview. The thumbnail loads through `usePendingThumbnail`. It falls back to the live thumbnail while loading or on error.
+- **After a decision.** The browser patches the row at once. Approve sets the row approved and clears the pending update, taking the pending name. Approve on a resubmitted listing also clears its quarantine. Reject on a new listing sets it rejected and quarantined. Reject on a resubmitted listing keeps its quarantine and deadline. Reject on an update clears the pending update. A conflict drop removes the row. Then the catalog re-syncs with its stored ETag, after every outcome, without applying the cached rows or showing the skeleton (ticket 04 rulings).
 - **Card buttons.** The check (tip "Approve and show it to players") and the X (tip "Reject and message the author") lead the staff action row.
-- **Details modal.** The Pending Update section shows for the author or for staff. A new prop hides Discard Update when the viewer is not the author.
-- **Catalog row shape.** The listing service passes through the server's new `pending_preview` field on catalog rows: `{ name, queued_at, thumbnail_url? }`, present only when the row has a pending update and the viewer is staff or the author. See the server spec for the contract.
+- **Details modal.** The Pending Update section shows for the author or for staff. `canDiscard` (default true) hides Discard Update when the viewer is not the author, and words the description for a staff reader.
+- **Catalog row shape.** The listing service passes through the server's new `pending_preview` field on catalog rows: `{ name, queued_at, thumbnail_url? }`, present only when the row has a pending update and the viewer is staff or the author. See the server spec for the contract. The client type keeps `queued_at` optional and falls back to `updated_at`.
 - **Dev route.** The browser's staff view with a pinned group gets a `devRoutes` entry backed by the existing dev review stub. In DEV and for that fixture only, it prepends canned pending catalog rows built from the review fixtures and presents the viewer as staff.
 
 ## Testing Decisions
@@ -116,4 +117,4 @@ Mods and admins review listings only from **Admin Panel → Moderation → Revie
 ## Further Notes
 
 - The server ticket must land and deploy before the pending face (Q12) works. Without `pending_preview`, an update card falls back to its live face.
-- Changelog: one entry under 👤 User-facing → Added, as the Listing Review entries did.
+- Changelog: a **Browser Review** group under 👤 User-facing → Added, one entry per capability (staff Compare, the pinned group, approve and reject on the card).

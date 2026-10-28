@@ -1,6 +1,6 @@
 # 05: Pending Face On Update Cards
 
-Status: ready-for-human
+Status: done
 Blocked by: 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Model note: one row field, one card branch, existing thumbnail hook

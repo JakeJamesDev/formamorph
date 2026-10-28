@@ -1,6 +1,6 @@
 # 04: Decide On The Card
 
-Status: ready-for-human
+Status: done
 Blocked by: 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Model note: wires the hook into the browser with row patching and re-sync
@@ -19,7 +19,7 @@ A pinned card has a check that approves in one click and an X that rejects throu
 - [x] The check and X are disabled while a decision is in flight. ("disables the check and X…", `RemoteWorldCard.review` test)
 - [x] A conflict drops the card with the toast; a contest lock keeps it pinned with the toast. ("drops the card…", "keeps a contest-locked update…")
 - [x] The catalog re-syncs after each decision. (re-sync count in each `decideOnCard` case; `useCatalogSync` "a re-sync after a change made here")
-- [ ] The changelog fragment from 03 covers approve and reject on the card. Folded by the spec session after landing.
+- [x] The changelog fragment from 03 covers approve and reject on the card. Its own entry in the Browser Review group, 51bbeccae.
 - [x] Frames: `.scratch/frames/card-decide-light.png` and `.scratch/frames/card-decide-dark.png` at 1280px wide. (1280px viewport; the pane saves them scaled to 800px)
 
 For you: approve and reject one listing each from the browser against a live server.
