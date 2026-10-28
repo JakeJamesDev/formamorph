@@ -1,6 +1,7 @@
 # 14: Server: harden the watermark against shifted lossy copies
 
-Status: ready-for-agent
+Status: in-progress
+Base: c8420be
 Repo: FormamorphServer
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -20,6 +21,7 @@ Ticket 04's mark survives every case in its bar, but a copy shifted by an offset
 
 - [ ] On base and on the full composite, the mark reads back after an offset of 1, 2 and 3 px on each axis followed by WebP q50, and followed by JPEG q75.
 - [ ] It reads back after a 50% downscale combined with WebP q50.
+- [ ] `read(embed(layer, mark))` returns `mark` for every Morphie layer across at least 10,000 random marks, with zero misses (Q38; ticket 04's mark missed about 1 pair in 312).
 - [ ] Every case ticket 04 passes still passes, with no false reads and at least 40 dB per layer.
 - [ ] Copies marked by ticket 04's version still read, or the Landed section states that they don't and why.
 - [ ] The server docs state the new robustness bar.
