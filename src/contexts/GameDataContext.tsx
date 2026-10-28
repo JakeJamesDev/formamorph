@@ -40,9 +40,12 @@ import { worldAllowedPersonas, worldStartPersona } from '@/lib/personaPick';
 import { CodeRenameContext } from '@/lib/useCodeRename';
 import { CodeCardNavigationContext } from '@/lib/codeCardNavigation';
 import { parseWorldTools } from '@/lib/tools/worldTools';
+import {
+  parseItems, parsePlacements, parseSlots, slotCapacity, withSlotCapacity, withoutItemPlacements, withoutSlotRefs,
+} from '@/lib/items';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
-import type { SliceName } from '@/lib/editorHistory';
+import type { SliceName, WorldSlices } from '@/lib/editorHistory';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -56,6 +59,9 @@ import type {
   StatUpdate,
   Connection,
   Dictionary,
+  Item,
+  Placement,
+  Slot,
   Placeholder,
   PlaceholderGroup,
   Script,
@@ -72,28 +78,17 @@ type WorldData = Omit<World, 'id' | 'version'>;
 const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });
 
 // The canonical world payload: the single field list every serialize/save/export path shares. Add a new
-// world field here and it flows to dirty-detection, save, and download at once.
-function buildWorldData(
-  overview: WorldOverview,
-  stats: Stat[],
-  statGroups: StatGroup[],
-  locations: GameLocation[],
-  connections: Connection[],
-  entities: Entity[],
-  entityGroups: EntityGroup[],
-  traits: Trait[],
-  traitGroups: TraitGroup[],
-  statUpdates: StatUpdate[],
-  dictionaries: Dictionary[],
-  placeholders: Placeholder[],
-  placeholderGroups: PlaceholderGroup[],
-  scripts: Script[],
-  tools: Tool[],
-): WorldData {
+// world field to the slices and it flows to dirty-detection, save, and download at once. An empty optional
+// list stays absent, so a world without it reads unchanged.
+function buildWorldData(slices: WorldSlices): WorldData {
+  const { scripts, tools, items, slots, placements, ...rest } = slices;
   return {
-    worldOverview: overview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups,
+    ...rest,
     ...(scripts.length ? { scripts } : {}),
     ...(tools.length ? { tools } : {}),
+    ...(items.length ? { items } : {}),
+    ...(slots.length ? { slots } : {}),
+    ...(placements.length ? { placements } : {}),
   };
 }
 
@@ -123,6 +118,9 @@ function useProvideGameData() {
   const [worldScripts, setWorldScripts] = useState<Script[]>([]);
   // The world's own Tools, in Tools-tab order.
   const [worldTools, setWorldTools] = useState<Tool[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [placements, setPlacements] = useState<Placement[]>([]);
   // The world's own shared placeholders. Entities and books carry lists of their own; `placeholders` below
   // is the combined view every reader takes.
   const [worldPlaceholders, setWorldPlaceholders] = useState<Placeholder[]>([]);
@@ -168,15 +166,19 @@ function useProvideGameData() {
     setWorldChangedElsewhere(change);
   }), []);
 
-  const slices = useMemo(() => ({
+  const slices = useMemo<WorldSlices>(() => ({
     worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
-    placeholders: worldPlaceholders, placeholderGroups, scripts: worldScripts, tools: worldTools,
-  }), [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, worldScripts, worldTools]);
+    placeholders: worldPlaceholders, placeholderGroups, scripts: worldScripts, tools: worldTools, items, slots, placements,
+  }), [
+    worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
+    worldPlaceholders, placeholderGroups, worldScripts, worldTools, items, slots, placements,
+  ]);
   const sliceSetters = useMemo(() => ({
     worldOverview: setWorldOverview, stats: setStats, statGroups: setStatGroups, locations: setLocations, connections: setConnections,
     entities: setEntities, entityGroups: setEntityGroups, traits: setTraits, traitGroups: setTraitGroups,
     statUpdates: setStatUpdates, dictionaries: setDictionaries, placeholders: setWorldPlaceholders,
     placeholderGroups: setPlaceholderGroups, scripts: setWorldScripts, tools: setWorldTools,
+    items: setItems, slots: setSlots, placements: setPlacements,
   }), [setDictionaries]);
   const { intent: writeIntent, controls: history, disarm: disarmHistory, beginSave: beginHistorySave } = useWorldRecorder(
     slices, worldId, sliceSetters, savedWorld,
@@ -225,13 +227,19 @@ function useProvideGameData() {
       // A folder's delete goes through the placeholder store (`setLists`), beside the drops that move folders.
       updatePlaceholderGroup: keyedTo('placeholderGroups', replaceIn(setPlaceholderGroups)),
       updateWorldScript: keyedTo('scripts', replaceIn(setWorldScripts)),
+      updateItem: keyedTo('items', replaceIn(setItems)),
+      // A lowered capacity cuts the slot sizes of the items in that slot down with it (Q77).
+      updateSlot: keyedTo('slots', (next: Slot) => {
+        setSlots((prev) => prev.map((slot) => (slot.id === next.id ? next : slot)));
+        setItems((prev) => withSlotCapacity(prev, next.id, slotCapacity(next)));
+      }),
       updateWorldOverview: keyedTo('worldOverview', (updates: Partial<WorldOverview>) =>
         setWorldOverview((prev) => ({ ...prev, ...updates }))),
     };
   }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed]);
   const {
     keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
-    updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript,
+    updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript, updateItem, updateSlot,
   } = keyed;
   const dictStore = useMemo(() => ({
     dictionaries, setDictionaries, addDictionary, updateDictionary, removeDictionary,
@@ -354,6 +362,18 @@ function useProvideGameData() {
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, []);
 
+  // An item's placements place nothing once it is gone.
+  const removeItem = useCallback((itemId: string) => {
+    setItems(prev => prev.filter(item => item.id !== itemId));
+    setPlacements(prev => withoutItemPlacements(prev, itemId));
+  }, []);
+
+  // Items equipping into a removed slot lose the slot, and their slot size with it.
+  const removeSlot = useCallback((slotId: string) => {
+    setSlots(prev => prev.filter(slot => slot.id !== slotId));
+    setItems(prev => withoutSlotRefs(prev, slotId));
+  }, []);
+
   const loadWorldMetadata = useCallback(async () => {
     try {
       const metadata = await WorldStorageService.getWorldMetadata();
@@ -433,6 +453,9 @@ function useProvideGameData() {
     const nextPlaceholderGroups = Array.isArray(worldData.placeholderGroups) ? worldData.placeholderGroups : [];
     const nextScripts = Array.isArray(worldData.scripts) ? worldData.scripts : [];
     const nextTools = parseWorldTools(worldData.tools);
+    const nextItems = parseItems(worldData.items);
+    const nextSlots = parseSlots(worldData.slots);
+    const nextPlacements = parsePlacements(worldData.placements);
     // Every owner holds the copies its traits need before the baseline is taken, so a world that arrives
     // without them opens clean.
     const nextEntities = syncBlueprintCopies({
@@ -462,11 +485,17 @@ function useProvideGameData() {
     setPlaceholderGroups(nextPlaceholderGroups);
     setWorldScripts(nextScripts);
     setWorldTools(nextTools);
+    setItems(nextItems);
+    setSlots(nextSlots);
+    setPlacements(nextPlacements);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
-    setSavedWorld(buildWorldData(
-      normalizedOverview, nextStats, nextStatGroups, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups, nextScripts, nextTools,
-    ));
+    setSavedWorld(buildWorldData({
+      worldOverview: normalizedOverview, stats: nextStats, statGroups: nextStatGroups, locations: nextLocations, connections: nextConnections,
+      entities: nextEntities, entityGroups: nextEntityGroups, traits: nextTraits, traitGroups: nextTraitGroups, statUpdates: nextStatUpdates,
+      dictionaries: nextDictionaries, placeholders: nextPlaceholders, placeholderGroups: nextPlaceholderGroups, scripts: nextScripts,
+      tools: nextTools, items: nextItems, slots: nextSlots, placements: nextPlacements,
+    }));
     setWorldStored(stored);
 
     return { world: worldData, isDefault };
@@ -487,17 +516,14 @@ function useProvideGameData() {
   );
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
-  const getWorldData = useCallback(
-    () => buildWorldData(worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, worldScripts, worldTools),
-    [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, worldScripts, worldTools],
-  );
+  const getWorldData = useCallback(() => buildWorldData(slices), [slices]);
 
   // Every reader takes one list: the world's shared placeholders, then each entity's own in tree order,
   // then each book's. Kept by identity while no placeholder object changed, so a keystroke in an entity's
   // description does not rebuild every chip field's vocabulary.
   const lists = useMemo(
-    () => ({ placeholders: worldPlaceholders, entities, entityGroups, dictionaries, placeholderGroups }),
-    [worldPlaceholders, entities, entityGroups, dictionaries, placeholderGroups],
+    () => ({ placeholders: worldPlaceholders, entities, entityGroups, items, dictionaries, placeholderGroups }),
+    [worldPlaceholders, entities, entityGroups, items, dictionaries, placeholderGroups],
   );
   const combined = useMemo(() => allPlaceholders(lists), [lists]);
   const combinedRef = useRef(combined);
@@ -524,13 +550,16 @@ function useProvideGameData() {
     }
     const append = <T extends { id: string; placeholders?: Placeholder[] }>(prev: T[]) =>
       prev.map(o => (o.id === target.ownerId ? { ...o, placeholders: [...(o.placeholders ?? []), newPlaceholder] } : o));
-    if (target.kind === 'entity') setEntities(append); else setDictionaries(append);
+    if (target.kind === 'entity') setEntities(append);
+    else if (target.kind === 'item') setItems(append);
+    else setDictionaries(append);
   }, [setDictionaries]);
 
   // A write to one placeholder goes to the list holding its id: every setter bails out when its list does not.
   const writeListHolding = useCallback((id: string, change: (list: Placeholder[]) => Placeholder[]) => {
     setWorldPlaceholders(prev => (prev.some(p => p.id === id) ? change(prev) : prev));
     setEntities(prev => mapListHolding(prev, id, change));
+    setItems(prev => mapListHolding(prev, id, change));
     setDictionaries(prev => mapListHolding(prev, id, change));
   }, [setDictionaries]);
 
@@ -557,6 +586,8 @@ function useProvideGameData() {
     const world = latest.current.getWorldData();
     if (next.placeholders !== world.placeholders) setWorldPlaceholders(next.placeholders);
     if (next.entities !== world.entities) setEntities(next.entities);
+    // The payload leaves an empty item list out, so the list compares by contents.
+    setItems(prev => (sameElements(prev, next.items) ? prev : next.items));
     if (next.dictionaries !== world.dictionaries) setDictionaries(next.dictionaries);
     if (next.placeholderGroups && next.placeholderGroups !== world.placeholderGroups) setPlaceholderGroups(next.placeholderGroups);
   }, [setDictionaries]);
@@ -591,8 +622,8 @@ function useProvideGameData() {
   // The document's placement letters, rewalked on every edit and kept by identity while nothing changed,
   // so a keystroke that adds no chip leaves every chip field's vocabulary alone.
   const placementLetters = useStablePlacementLetters(useMemo(
-    () => worldPlacementLetters({ entities, entityGroups, locations, connections, traits, traitGroups, stats, dictionaries, worldOverview, placeholders: worldPlaceholders }),
-    [entities, entityGroups, locations, connections, traits, traitGroups, stats, dictionaries, worldOverview, worldPlaceholders],
+    () => worldPlacementLetters({ entities, entityGroups, items, locations, connections, traits, traitGroups, stats, dictionaries, worldOverview, placeholders: worldPlaceholders }),
+    [entities, entityGroups, items, locations, connections, traits, traitGroups, stats, dictionaries, worldOverview, worldPlaceholders],
   ));
 
   // Per-keystroke and canonical: unedited records match by identity, and key order or emptied fields don't count.
@@ -739,6 +770,7 @@ function useProvideGameData() {
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
     setDictionaries, setWorldPlaceholders, setWorldScripts, updateWorldScript, setWorldTools,
+    setItems, updateItem, removeItem, setSlots, updateSlot, removeSlot, setPlacements,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
     updateWorldOverview, loadWorldMetadata,
@@ -753,7 +785,7 @@ function useProvideGameData() {
     addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
-    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript,
+    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateItem, removeItem, updateSlot, removeSlot,
     setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   ]);
 
@@ -779,6 +811,9 @@ function useProvideGameData() {
     dictionaries,
     worldScripts,
     worldTools,
+    items,
+    slots,
+    placements,
     // The combined view: shared placeholders, then every entity's and book's own.
     placeholders,
     worldPlaceholders,
@@ -798,11 +833,11 @@ function useProvideGameData() {
     phStore,
     // Placement id → letter for every Unique chip in the world, for the surfaces that print a name as text.
     placementLetters,
-    // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly › Eyes`.
+    // Placeholder id → the entity, item or book that owns it, for the surfaces that read a chip as `Molly › Eyes`.
     placeholderOwners: placeholderOwnerIndex,
   }), [
     actions, worldMetadata, worldOverview, stats, statGroups, locations, connections, entities, entityGroups, playWorld, traits, traitGroups,
-    statUpdates, dictionaries, worldScripts, worldTools, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
+    statUpdates, dictionaries, worldScripts, worldTools, items, slots, placements, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
     isWorldDirty, worldStored, worldChangedElsewhere, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);
 

@@ -26,6 +26,7 @@ export const SURFACE_TARGETS = {
   'worldEditor.media': ['list-toolbar'],
   'worldEditor.stats': ['list-toolbar'],
   'worldEditor.entities': ['list-toolbar'],
+  'worldEditor.items': ['list-toolbar'],
   'worldEditor.locations': ['list-toolbar'],
   'worldEditor.traits': ['list-toolbar'],
   'worldEditor.dictionary': ['list-toolbar'],

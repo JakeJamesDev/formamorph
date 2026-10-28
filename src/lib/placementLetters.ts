@@ -1,6 +1,7 @@
 import type {
-  Connection, Dictionary, DictionaryEntry, Entity, EntityGroup, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview,
+  Connection, Dictionary, DictionaryEntry, Entity, EntityGroup, GameLocation, Item, Placeholder, Stat, Trait, TraitGroup, WorldOverview,
 } from '@/types';
+import { itemTexts } from './itemTexts';
 import { entitiesInTreeOrder } from './entityGroupTree';
 import { locationRows } from './locationTree';
 import { connectionHints } from './connectionEditing';
@@ -103,6 +104,7 @@ const present = (texts: Array<string | undefined>): string[] => texts.filter((t)
 export interface PlacementWorld {
   entities?: Entity[];
   entityGroups?: EntityGroup[];
+  items?: Item[];
   locations?: GameLocation[];
   connections?: Connection[];
   traits?: Trait[];
@@ -114,6 +116,7 @@ export interface PlacementWorld {
 }
 
 const entityTexts = (e: Entity) => present(entityTextFields(e));
+const itemFieldTexts = (i: Item) => present(itemTexts(i));
 const locationTexts = (l: GameLocation) => present([l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags, ...openingTexts(l)]);
 const traitTexts = (t: Trait | TraitGroup) => present([t.name, t.playerDescription, t.aiDescription]);
 /** Bands run by threshold, the order the player meets them in, whatever order the author listed them. */
@@ -123,7 +126,7 @@ const entryTexts = (b: Dictionary) => (b.entries ?? []).flatMap(entryFieldTexts)
 const valueTexts = (placeholders: Placeholder[] | undefined) => (placeholders ?? []).flatMap((p) => (p.values ?? []).map((v) => v.text));
 
 /**
- * Every chip-bearing text of a world in document order: entities and locations as their trees list them,
+ * Every chip-bearing text of a world in document order: entities as their tree lists them, items, locations,
  * the connections' Travel Hints, traits as their tree lists them, then trait groups, stats, dictionaries,
  * the overview's prompt fields, and last the placeholders' own values. The same fields the gameplay priming pass rolls across, so every chip that can roll in play
  * can carry a letter — and the letters run down the editor's lists, so `(A)` is always above `(B)`.
@@ -133,6 +136,7 @@ export function worldPlacementTexts(world: PlacementWorld): string[] {
   const traits = world.traits ?? [];
   return [
     ...entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? []).flatMap(entityTexts),
+    ...(world.items ?? []).flatMap(itemFieldTexts),
     ...locationRows(world.locations ?? []).flatMap((row) => locationTexts(row.location)),
     ...(world.connections ?? []).flatMap(connectionHints),
     ...inAuthoredOrder(traits, traitOrderIndex(traits, world.traitGroups ?? [])).flatMap(traitTexts),
@@ -155,6 +159,7 @@ export function dictionaryPlacementTexts(book: Dictionary): string[] {
 }
 
 const entityPlacements = cachedPlacements(entityTexts);
+const itemPlacements = cachedPlacements(itemFieldTexts);
 const locationPlacements = cachedPlacements(locationTexts);
 const connectionPlacements = cachedPlacements(connectionHints);
 const traitPlacements = cachedPlacements(traitTexts);
@@ -170,6 +175,7 @@ export function worldPlacementLetters(world: PlacementWorld): PlacementLetters {
   const traits = world.traits ?? [];
   return lettersOf([
     ...entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? []).map(entityPlacements),
+    ...(world.items ?? []).map(itemPlacements),
     ...locationRows(world.locations ?? []).map((row) => locationPlacements(row.location)),
     ...(world.connections ?? []).map(connectionPlacements),
     ...inAuthoredOrder(traits, traitOrderIndex(traits, world.traitGroups ?? [])).map(traitPlacements),

@@ -218,7 +218,7 @@ export const memberStep = (name: string): string => (isIdentifier(name) ? `.${na
 export type PlaceholderPathRoot = PlaceholderOwnerRef['kind'] | 'persona' | 'owner';
 
 /** The global each kind of owner's entry hangs off. */
-export const OWNER_GLOBAL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'entities', dictionary: 'dictionaries' };
+export const OWNER_GLOBAL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'entities', item: 'items', dictionary: 'dictionaries' };
 
 /** A path as the whole expression: `placeholders.Hair`, `entities["Old Molly"].placeholders["Eye Color"]`.
  *  Under an owner, the first segment is the owner's name, or `persona` or `owner`. */

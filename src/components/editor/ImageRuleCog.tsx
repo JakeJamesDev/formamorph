@@ -16,9 +16,9 @@ import { shownWhileLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { TraitRequirementRow } from '@/types';
 
-/** Whose images a rule shows: an entity's, read from that entity, or a location's, read from the played
- *  persona (Q48). */
-export type RuleHost = { kind: 'entity'; id: string } | { kind: 'location' };
+/** Whose images a rule shows: an entity's, read from that entity; a location's, read from the played persona
+ *  (Q48); or an item's, read from its Item Copy's owner. */
+export type RuleHost = { kind: 'entity'; id: string } | { kind: 'location' } | { kind: 'item'; id: string };
 
 /** Every location's rule host, one object so a memo keyed on it holds. */
 export const LOCATION_RULE_HOST: RuleHost = { kind: 'location' };
@@ -27,9 +27,18 @@ export const LOCATION_RULE_HOST: RuleHost = { kind: 'location' };
 export const useEntityRuleHost = (id: string | undefined): RuleHost | undefined =>
   useMemo(() => (id ? { kind: 'entity', id } : undefined), [id]);
 
-/** Each row's state of an image rule on `host`. */
-const hostRuleStates = (input: GateInput, host: RuleHost, rows: readonly TraitRequirementRow[]) =>
-  (host.kind === 'entity' ? ruleStates(input, host.id, rows) : locationRuleStates(input, rows));
+/** An item's rule host, the same object while the id holds. */
+export const useItemRuleHost = (id: string): RuleHost => useMemo(() => ({ kind: 'item', id }), [id]);
+
+/** Each row's state of an image rule on `host`. The editor has no Item Copy, so an item's rows resolve their text
+ *  against the global scope and hold for no one. */
+const hostRuleStates = (input: GateInput, host: RuleHost, rows: readonly TraitRequirementRow[]) => {
+  if (host.kind === 'location') return locationRuleStates(input, rows);
+  if (host.kind === 'entity') return ruleStates(input, host.id, rows);
+  return ruleStates(input, null, rows).map((row) => ({
+    holds: false, conditions: row.conditions.map((c) => ({ ...c, holds: false })),
+  }));
+};
 
 /** A location rule's owner-less Condition already reads the persona, so no target offers Persona again. */
 const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions => {
@@ -37,6 +46,9 @@ const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions =>
     targets.map((target) => ({ ...target, owners: target.owners.filter((choice) => choice.owner.kind !== 'you') }));
   return { ...options, traits: dropPersona(options.traits), groups: dropPersona(options.groups) };
 };
+
+/** What an owner-less Condition reads, where it is not the host itself. */
+const HOST_NAMES: Partial<Record<RuleHost['kind'], string>> = { location: 'Persona', item: 'Item Owner' };
 
 /** A rule target has nowhere to open in the gallery. */
 const noop = () => {};
@@ -62,9 +74,9 @@ function ImageRuleRows({ host, rows, onChange }: {
     // No trait is the host, so nothing is left out of the targets.
     const options = requirementOptions(source.gateInput, '');
     const states = hostRuleStates(source.gateInput, host, rows);
-    return host.kind === 'entity'
-      ? { states, options, statSections: requirementStatSections(source.gateInput, host.id) }
-      : { states, options: withoutPersonaOwner(options), statSections: personaHostStatSections(source.gateInput) };
+    if (host.kind === 'entity') return { states, options, statSections: requirementStatSections(source.gateInput, host.id) };
+    if (host.kind === 'item') return { states, options, statSections: requirementStatSections(source.gateInput, null) };
+    return { states, options: withoutPersonaOwner(options), statSections: personaHostStatSections(source.gateInput) };
   }, [source, host, rows]);
   const textOf = useMemo(() => source && conditionTexts(source.gateInput), [source]);
   if (!source || !read || !textOf) return null;
@@ -76,7 +88,7 @@ function ImageRuleRows({ host, rows, onChange }: {
       options={read.options}
       statSections={read.statSections}
       textOf={textOf}
-      hostName={host.kind === 'location' ? 'Persona' : undefined}
+      hostName={HOST_NAMES[host.kind]}
       placeholders={source.placeholders}
       offWorld={source.offWorld}
       onChange={onChange}

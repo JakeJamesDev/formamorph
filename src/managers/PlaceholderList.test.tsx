@@ -214,7 +214,7 @@ function WorldHarness({ initial, groups, entities = [], copiesInUse, onRemove }:
   /** Takes the store's delete, which here reaches only the world list; the app routes it to the owner's. */
   onRemove?: (id: string) => void;
 }) {
-  const [lists, setLists] = useState<PlaceholderSlices>({ placeholders: initial, entities, dictionaries: [], placeholderGroups: groups });
+  const [lists, setLists] = useState<PlaceholderSlices>({ placeholders: initial, entities, items: [], dictionaries: [], placeholderGroups: groups });
   stored = lists.placeholders;
   storedGroups = lists.placeholderGroups ?? [];
   const store = useMemo(() => ({

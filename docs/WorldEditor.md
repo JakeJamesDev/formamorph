@@ -4,7 +4,7 @@
 
 A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
-On desktop, pick a tab from the rail on the left side of the list. **Overview** and **Media** stand at the top. Lines split Entities, Locations, Traits and Stats from Dictionary and Placeholders.
+On desktop, pick a tab from the rail on the left side of the list. **Overview** and **Media** stand at the top. Lines split Entities, Items, Locations, Traits and Stats from Dictionary and Placeholders.
 
 - Select **Collapse** at the foot of the rail to show only icons. Point at an icon to see its tab's name. The editor remembers your choice on this device.
 - When the list is narrow, in a small window or after you drag the divider, the rail shows only icons until there's room again.
@@ -20,7 +20,7 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 
 **Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Autosave** checkbox, in both modes. The arrow works when **Save** is dim. **Optimize Images** lives in the header of the **Media** tab, in both modes. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right is the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
+On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Items, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right is the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
 
 Each tab has its own page.
 
@@ -31,6 +31,7 @@ Each tab has its own page.
 | [🎬 Openings](World-Editor-Openings) | The ways a playthrough can start, on the world, each location and each entity |
 | [📊 Stats](World-Editor-Stats) | The numbers that describe the player |
 | [🎭 Entities](World-Editor-Entities) | The people, creatures and things in your world |
+| [🎒 Items](World-Editor-Items) | The objects someone can own, and the world's equipment slots |
 | [🗺️ Locations](World-Editor-Locations) | The places, and how the story moves between them |
 | [🧬 Traits](World-Editor-Traits) | The choices a player makes before the story starts |
 | [📖 Dictionary](World-Editor-Dictionary) | Lore that reaches the AI only when a keyword brings it up |
@@ -285,6 +286,12 @@ The numbers that describe your player. The AI sees them on every turn.
 The people, creatures and things that populate your world.
 
 ➡️ [World Editor: Entities](World-Editor-Entities)
+
+## Items
+
+The objects someone can own: weapons, potions, keys. Set the world's equipment **Slots** on the Overview tab.
+
+➡️ [World Editor: Items](World-Editor-Items)
 
 ## Locations
 

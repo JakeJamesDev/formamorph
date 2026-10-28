@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useEntityRuleHost } from '@/components/editor/ImageRuleCog';
+import { useEntityRuleHost, type RuleHost } from '@/components/editor/ImageRuleCog';
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
@@ -31,9 +31,12 @@ import { fieldFrame } from '@/lib/historyField';
 import { useMountedRef } from '@/lib/useMountedRef';
 import ModelStorageService from '@/services/ModelStorageService';
 
-/** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
-export interface EntityFieldGroupProps {
-  value: Entity;
+/** The fields an entity shares with an item, which the description and image editors read. */
+export type DescribedRecord = Pick<Entity, 'id' | 'name' | 'playerDescription' | 'aiDescription' | 'aiSummary' | 'images' | 'imageTags'>;
+
+/** What a description or image editor needs: the record, a field writer, and the chip vocabulary to offer. */
+export interface DescribedFieldGroupProps<T extends DescribedRecord = DescribedRecord> {
+  value: T;
   onChange: (field: string, value: unknown) => void;
   /** The world's placeholders (World Editor only — a library character has no world to draw them from). */
   placeholders?: Placeholder[];
@@ -41,6 +44,9 @@ export interface EntityFieldGroupProps {
    *  in every insert menu (World Editor only — a library character owns everything it carries). */
   ownerId?: string;
 }
+
+/** What every entity field group needs. */
+export type EntityFieldGroupProps = DescribedFieldGroupProps<Entity>;
 
 /** Identity fields, with Advanced-only Aliases, Persona, and Type. */
 export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers, home, customPersonaEntityName }: EntityFieldGroupProps & {
@@ -201,7 +207,7 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
 };
 
 /** The three prose fields with their AI-generate controls. The summary is Advanced only. */
-export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ownerId }: EntityFieldGroupProps) => {
+export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ownerId }: DescribedFieldGroupProps) => {
   const { advanced } = useEditorMode();
   return (
     <>
@@ -294,18 +300,22 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
  * The entity's picture widget with neither piece placed: a host draws `ImageGallery` and `ImageTags` where
  * its own layout wants them and both still write this entity. `EntityGalleryField` is the one-box version.
  */
-export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}` }: EntityFieldGroupProps & {
+export const EntityImageWidget = ({
+  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost,
+}: DescribedFieldGroupProps & {
   children: ReactNode;
   /** A host that shows the framed image's details controls the frame. */
   frame?: GalleryFrameProps;
   /** The file inputs' id, unique per rendered widget. */
   imageId?: string;
+  /** Absent = the record is an entity, and its rules read it. */
+  ruleHost?: RuleHost;
 }) => {
-  const ruleHost = useEntityRuleHost(value.id);
+  const entityHost = useEntityRuleHost(value.id);
   return (
     <ImageWidget
       label="Image"
-      tourAnchor="entity-image"
+      tourAnchor={ruleHost ? undefined : 'entity-image'}
       images={entityImages(value)}
       onImagesChange={(list) => onChange('images', list)}
       slots={Infinity}
@@ -318,7 +328,7 @@ export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId,
       onTagsChange={(t) => onChange('imageTags', t)}
       placeholders={placeholders}
       ownerId={ownerId}
-      ruleHost={ruleHost}
+      ruleHost={ruleHost ?? entityHost}
       {...frame}
     >
       {children}

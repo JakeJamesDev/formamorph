@@ -497,6 +497,102 @@ export interface EntityGroup {
   order?: number;
 }
 
+/** When an item effect row acts: while its Item Copy is equipped, while it is owned, after it is consumed, or
+ *  once on the owner's first obtain. */
+export type ItemTiming = 'equipped' | 'owned' | 'consumed' | 'firstObtain';
+
+/** How long an After Consumed effect runs: for good, or a span of story-clock hours. */
+export type ItemEffectDuration = { kind: 'permanent' } | { kind: 'time'; hours: number };
+
+/** The part of a stat an item effect row moves. */
+export type ItemStatFacet = 'value' | 'min' | 'max' | 'regen';
+
+/** One stat effect row of an item. It acts on the owner's own stat of `statId`. */
+export interface ItemStatEffect {
+  id: string;
+  statId: string;
+  facet: ItemStatFacet;
+  timing: ItemTiming;
+  /** Read only under the `consumed` timing. */
+  duration?: ItemEffectDuration;
+  amount: number;
+  op: 'add';
+}
+
+/** One trait effect row of an item: the owner holds the trait while the timing holds. */
+export interface ItemTraitEffect {
+  id: string;
+  traitId: string;
+  timing: ItemTiming;
+  /** Read only under the `consumed` timing. */
+  duration?: ItemEffectDuration;
+}
+
+/** What an item's value counts in: a stat (such as Gold), or free text. */
+export type ItemValueUnit = { kind: 'stat'; statId: string } | { kind: 'text'; text: string };
+
+/** An authored item kind. In play the save holds Item Copies of it. */
+export interface Item {
+  id: string;
+  name: string;
+  /** Shown to the player in game. */
+  playerDescription?: string;
+  /** Full description sent to the AI. */
+  aiDescription?: string;
+  /** Short description sent to the AI where the full one is too long. */
+  aiSummary?: string;
+  /** The item's gallery, in author order. A rule's owner-less Condition reads the Item Copy's owner. */
+  images?: GalleryImage[];
+  /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
+  imageTags?: string;
+  /** Placeholders of this item's own, live beside the world's through the combined view. They resolve once
+   *  per playthrough, shared by every Item Copy. */
+  placeholders?: Placeholder[];
+  value?: number;
+  valueUnit?: ItemValueUnit;
+  /** Absent = stackable. Never read while `charges` is set. */
+  stackable?: boolean;
+  consumable?: boolean;
+  /** The charge count each Item Copy starts with. Absent = no charges. */
+  charges?: number;
+  /** The player cannot drop or give its Item Copies. */
+  bound?: boolean;
+  /** The world slot it equips into. Absent = not equippable. */
+  slotId?: string;
+  /** The slot capacity one Item Copy takes. Absent = 1. */
+  slotSize?: number;
+  statEffects: ItemStatEffect[];
+  traitEffects: ItemTraitEffect[];
+  /** Any one row that holds lets an owner equip it. Empty = always. */
+  equipRequires: TraitRequirementRow[];
+}
+
+/** One equipment slot of the world, shared by the Persona and every entity. */
+export interface Slot {
+  id: string;
+  name: string;
+  /** Absent = 1. */
+  capacity?: number;
+}
+
+/** Where a placement puts its Item Copies: on the played Persona, on an entity, or at a location. */
+export type PlacementWhere =
+  | { kind: 'you' }
+  | { kind: 'entity'; id: string }
+  | { kind: 'location'; id: string };
+
+/** What a placement makes Item Copies of. */
+export type PlacementSource = { kind: 'item'; itemId: string };
+
+/** An authored starting Item Copy. The new-game seed is its only reader. */
+export interface Placement {
+  id: string;
+  where: PlacementWhere;
+  quantity: number;
+  hidden?: boolean;
+  source: PlacementSource;
+}
+
 /** Named `GameLocation` to avoid clashing with the DOM `Location` global. */
 export interface GameLocation {
   id: string;
@@ -800,6 +896,12 @@ export interface World {
   scripts?: Script[];
   /** World Tools, in Tools-tab order: offered in every playthrough of this world. Absent = none. */
   tools?: Tool[];
+  /** Authored items, in Items-tab order. Absent = none. */
+  items?: Item[];
+  /** Equipment slots. Absent = none. */
+  slots?: Slot[];
+  /** Starting Item Copies. Absent = none. */
+  placements?: Placement[];
 }
 
 /** One authored value: a stable id and the author's text. The id is minted once and never changes, so a

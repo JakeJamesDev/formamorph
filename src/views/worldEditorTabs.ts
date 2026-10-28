@@ -27,6 +27,7 @@ export const WORLD_EDITOR_TABS = [
   { value: 'overview', label: 'Overview', icon: ELEMENT_ICONS.world },
   { value: 'media', label: 'Media', icon: Images },
   { value: 'entities', label: 'Entities', group: 'content', icon: ELEMENT_ICONS.entities },
+  { value: 'items', label: 'Items', group: 'content', icon: ELEMENT_ICONS.item },
   { value: 'locations', label: 'Locations', group: 'content', icon: ELEMENT_ICONS.location },
   { value: 'traits', label: 'Traits', group: 'content', icon: ELEMENT_ICONS.trait },
   { value: 'stats', label: 'Stats', group: 'content', icon: ELEMENT_ICONS.stat },

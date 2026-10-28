@@ -7,24 +7,29 @@ import {
 } from './placeholders';
 import { holderOf, ownedDescendants } from './placeholderTree';
 import type {
-  Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder, PlaceholderGroup, PlaceholderPin, TraitLink,
+  Dictionary, DictionaryEntry, Entity, EntityGroup, Item, Placeholder, PlaceholderGroup, PlaceholderPin, TraitLink,
 } from '@/types';
 
 /**
- * Where a placeholder lives. A world keeps three kinds of list: its own shared placeholders, and the ones
- * an entity or a dictionary book carries as its own. Every reader sees one combined view; a write goes to
+ * Where a placeholder lives. A world keeps four kinds of list: its own shared placeholders, and the ones
+ * an entity, an item or a dictionary book carries as its own. Every reader sees one combined view; a write goes to
  * the list that holds the id.
  */
 export type PlaceholderHome =
   | { kind: 'world' }
   | { kind: 'entity'; ownerId: string }
+  | { kind: 'item'; ownerId: string }
   | { kind: 'dictionary'; ownerId: string };
+
+/** The kinds of record that carry a placeholder list of their own. */
+export type PlaceholderOwnerKind = Exclude<PlaceholderHome['kind'], 'world'>;
 
 /** The world slices the combined view reads. Each is optional: world JSON is hand-editable. */
 export interface PlaceholderHomesWorld {
   placeholders?: Placeholder[];
   entities?: Entity[];
   entityGroups?: EntityGroup[];
+  items?: Item[];
   dictionaries?: Dictionary[];
   /** The folders the tab and the chip menus sort the shared placeholders by. */
   placeholderGroups?: PlaceholderGroup[];
@@ -32,19 +37,21 @@ export interface PlaceholderHomesWorld {
 
 /** A record that carries a placeholder list of its own. */
 type PlaceholderOwner = { id: string; placeholders?: Placeholder[] };
+type NamedOwner = PlaceholderOwner & { name: string };
 
-/** The three lists a write can land on, as the slices a caller writes back. A drop that moved a folder
+/** The lists a write can land on, as the slices a caller writes back. A drop that moved a folder
  *  carries the folders too; absent, they are untouched. */
 export interface PlaceholderSlices {
   placeholders: Placeholder[];
   entities: Entity[];
+  items: Item[];
   dictionaries: Dictionary[];
   placeholderGroups?: PlaceholderGroup[];
 }
 
-/** The entity or book a scoped placeholder belongs to, as a name surface reads it: `Molly › Eyes`. */
+/** The entity, item or book a scoped placeholder belongs to, as a name surface reads it: `Molly › Eyes`. */
 export interface PlaceholderOwnerRef {
-  kind: 'entity' | 'dictionary';
+  kind: PlaceholderOwnerKind;
   id: string;
   name: string;
 }
@@ -56,6 +63,11 @@ export const NO_OWNERS: PlaceholderOwners = new Map();
 
 const WORLD: PlaceholderHome = { kind: 'world' };
 const EMPTY: Placeholder[] = [];
+const OWNER_KINDS: readonly PlaceholderOwnerKind[] = ['entity', 'item', 'dictionary'];
+
+/** The records of one owner kind. */
+const ownersOf = (world: PlaceholderHomesWorld, kind: PlaceholderOwnerKind): readonly NamedOwner[] =>
+  (kind === 'entity' ? world.entities : kind === 'item' ? world.items : world.dictionaries) ?? [];
 
 /** True when two homes name the same list. */
 export const sameHome = (a: PlaceholderHome, b: PlaceholderHome): boolean =>
@@ -76,17 +88,18 @@ const entitiesInTreeOrder = (groups: EntityGroup[], entities: Entity[]): Entity[
 
 /**
  * Every placeholder a world can resolve: the world's own list, then each entity's in tree order, then each
- * book's in book order. The same world object answers with the same array while its slices are unchanged,
+ * item's, then each book's in book order. The same world object answers with the same array while its slices are unchanged,
  * and a world where nothing but the world list carries placeholders answers with that list itself.
  */
 export function allPlaceholders(world: PlaceholderHomesWorld): Placeholder[] {
-  const deps = [world.placeholders, world.entities, world.entityGroups, world.dictionaries];
+  const deps = [world.placeholders, world.entities, world.entityGroups, world.items, world.dictionaries];
   const hit = cache.get(world);
   if (hit && hit.deps.every((d, i) => d === deps[i])) return hit.result;
   const carries = (owners: readonly PlaceholderOwner[] = []) => owners.some((o) => o.placeholders?.length);
   // The tree walk is only worth building once something outside the world list carries a placeholder.
-  const scoped = !carries(world.entities) && !carries(world.dictionaries) ? [] : [
+  const scoped = !carries(world.entities) && !carries(world.items) && !carries(world.dictionaries) ? [] : [
     ...entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? []).flatMap((e) => e.placeholders ?? []),
+    ...(world.items ?? []).flatMap((i) => i.placeholders ?? []),
     ...(world.dictionaries ?? []).flatMap((b) => b.placeholders ?? []),
   ];
   const result = scoped.length ? [...(world.placeholders ?? []), ...scoped] : world.placeholders ?? EMPTY;
@@ -95,16 +108,17 @@ export function allPlaceholders(world: PlaceholderHomesWorld): Placeholder[] {
 }
 
 /**
- * Who owns each scoped placeholder. The same world object answers with the same map while its entities and
- * books are unchanged, and a world with nothing scoped answers with the one shared empty map.
+ * Who owns each scoped placeholder. The same world object answers with the same map while its entities,
+ * items and books are unchanged, and a world with nothing scoped answers with the one shared empty map.
  */
 export function placeholderOwners(world: PlaceholderHomesWorld): PlaceholderOwners {
-  const deps = [world.entities, world.dictionaries];
+  const deps = [world.entities, world.items, world.dictionaries];
   const hit = ownersCache.get(world);
   if (hit && hit.deps.every((d, i) => d === deps[i])) return hit.result;
   const map = new Map<string, PlaceholderOwnerRef>();
-  for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) map.set(p.id, { kind: 'entity', id: e.id, name: e.name });
-  for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) map.set(p.id, { kind: 'dictionary', id: b.id, name: b.name });
+  for (const kind of OWNER_KINDS) {
+    for (const o of ownersOf(world, kind)) for (const p of o.placeholders ?? []) map.set(p.id, { kind, id: o.id, name: o.name });
+  }
   const result = map.size ? map : NO_OWNERS;
   ownersCache.set(world, { deps, result });
   return result;
@@ -124,8 +138,7 @@ export function sameOwners(a: PlaceholderOwners, b: PlaceholderOwners): boolean 
 /** The list a home names; empty for an owner the world does not have. */
 export function placeholderList(world: PlaceholderHomesWorld, home: PlaceholderHome): Placeholder[] {
   if (home.kind === 'world') return world.placeholders ?? EMPTY;
-  const owners: readonly PlaceholderOwner[] | undefined = home.kind === 'entity' ? world.entities : world.dictionaries;
-  return owners?.find((o) => o.id === home.ownerId)?.placeholders ?? EMPTY;
+  return ownersOf(world, home.kind).find((o) => o.id === home.ownerId)?.placeholders ?? EMPTY;
 }
 
 /** Joined pools by owned list, then shared list — so a pool keeps its identity across a keystroke. */
@@ -148,17 +161,19 @@ export function carriedPlaceholders(item: { placeholders?: Placeholder[]; shared
 export function placeholderHomeIndex(world: PlaceholderHomesWorld): ReadonlyMap<string, PlaceholderHome> {
   const out = new Map<string, PlaceholderHome>();
   for (const p of world.placeholders ?? []) out.set(p.id, WORLD);
-  for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) out.set(p.id, { kind: 'entity', ownerId: e.id });
-  for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) out.set(p.id, { kind: 'dictionary', ownerId: b.id });
+  for (const kind of OWNER_KINDS) {
+    for (const o of ownersOf(world, kind)) for (const p of o.placeholders ?? []) out.set(p.id, { kind, ownerId: o.id });
+  }
   return out;
 }
 
-/** The entity or book `id` names, as an owner reference; undefined when the world has neither. */
+/** The entity, item or book `id` names, as an owner reference; undefined when the world has none. */
 export function placeholderOwnerRef(world: PlaceholderHomesWorld, id: string): PlaceholderOwnerRef | undefined {
-  const entity = world.entities?.find((e) => e.id === id);
-  if (entity) return { kind: 'entity', id: entity.id, name: entity.name };
-  const book = world.dictionaries?.find((b) => b.id === id);
-  return book ? { kind: 'dictionary', id: book.id, name: book.name } : undefined;
+  for (const kind of OWNER_KINDS) {
+    const owner = ownersOf(world, kind).find((o) => o.id === id);
+    if (owner) return { kind, id: owner.id, name: owner.name };
+  }
+  return undefined;
 }
 
 /** Split a whole pool written back to an off-world item into the lists it was read from: an id the item
@@ -194,10 +209,10 @@ export function sharedPlaceholdersUsed(texts: string[], owned: readonly Placehol
 /** The list holding `id`, or null when no list does. */
 export function placeholderHome(world: PlaceholderHomesWorld, id: string): PlaceholderHome | null {
   if ((world.placeholders ?? []).some((p) => p.id === id)) return WORLD;
-  const entity = (world.entities ?? []).find((e) => (e.placeholders ?? []).some((p) => p.id === id));
-  if (entity) return { kind: 'entity', ownerId: entity.id };
-  const book = (world.dictionaries ?? []).find((b) => (b.placeholders ?? []).some((p) => p.id === id));
-  if (book) return { kind: 'dictionary', ownerId: book.id };
+  for (const kind of OWNER_KINDS) {
+    const owner = ownersOf(world, kind).find((o) => (o.placeholders ?? []).some((p) => p.id === id));
+    if (owner) return { kind, ownerId: owner.id };
+  }
   return null;
 }
 
@@ -232,8 +247,7 @@ function mapOwnerLists<T extends PlaceholderOwner>(
 export function placeholderHomeFor(
   world: PlaceholderHomesWorld, placeholder: Placeholder, home?: PlaceholderHome,
 ): PlaceholderHome {
-  const known = (h: PlaceholderHome) => h.kind === 'world'
-    || (h.kind === 'entity' ? world.entities : world.dictionaries)?.some((o) => o.id === h.ownerId);
+  const known = (h: PlaceholderHome) => h.kind === 'world' || ownersOf(world, h.kind).some((o) => o.id === h.ownerId);
   if (home && known(home)) return home;
   return (placeholder.ownerId && placeholderHome(world, placeholder.ownerId)) || WORLD;
 }
@@ -246,10 +260,7 @@ export function placeholderHomeFor(
  * moves it beside the parent placeholder. Every unchanged slice keeps its identity.
  */
 export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: readonly Placeholder[]): PlaceholderSlices {
-  const homeOf = new Map<string, PlaceholderHome>();
-  for (const p of world.placeholders ?? []) homeOf.set(p.id, WORLD);
-  for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) homeOf.set(p.id, { kind: 'entity', ownerId: e.id });
-  for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) homeOf.set(p.id, { kind: 'dictionary', ownerId: b.id });
+  const homeOf = placeholderHomeIndex(world);
   const byId = new Map(combined.map((p) => [p.id, p]));
   const resolve = (p: Placeholder, fallback: PlaceholderHome): PlaceholderHome => {
     const top = ancestors(p.id, (id) => holderOf(combined, byId.get(id)!)).pop() ?? p.id;
@@ -257,25 +268,23 @@ export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: read
   };
 
   const worldList: Placeholder[] = [];
-  const entityLists = new Map<string, Placeholder[]>();
-  const bookLists = new Map<string, Placeholder[]>();
-  const push = (lists: Map<string, Placeholder[]>, ownerId: string, p: Placeholder) => {
-    const list = lists.get(ownerId);
-    if (list) list.push(p); else lists.set(ownerId, [p]);
-  };
+  // Owner ids are unique across kinds, so one map holds every owner's list.
+  const ownerLists = new Map<string, Placeholder[]>();
   let previous: PlaceholderHome = WORLD;
   for (const p of combined) {
     const home = resolve(p, previous);
     previous = home;
-    if (home.kind === 'world') worldList.push(p);
-    else if (home.kind === 'entity') push(entityLists, home.ownerId, p);
-    else push(bookLists, home.ownerId, p);
+    if (home.kind === 'world') { worldList.push(p); continue; }
+    const list = ownerLists.get(home.ownerId);
+    if (list) list.push(p); else ownerLists.set(home.ownerId, [p]);
   }
   const current = world.placeholders ?? EMPTY;
+  const owned = (o: PlaceholderOwner) => ownerLists.get(o.id) ?? EMPTY;
   return {
     placeholders: sameElements(current, worldList) ? current : worldList,
-    entities: mapOwnerLists(world.entities ?? [], (e) => entityLists.get(e.id) ?? EMPTY),
-    dictionaries: mapOwnerLists(world.dictionaries ?? [], (b) => bookLists.get(b.id) ?? EMPTY),
+    entities: mapOwnerLists(world.entities ?? [], owned),
+    items: mapOwnerLists(world.items ?? [], owned),
+    dictionaries: mapOwnerLists(world.dictionaries ?? [], owned),
   };
 }
 
@@ -304,6 +313,7 @@ export function mapAllPlaceholders(world: PlaceholderHomesWorld, change: (placeh
   return {
     placeholders: mapList(world.placeholders ?? EMPTY),
     entities: mapOwnerLists(world.entities ?? [], (_o, list) => mapList(list)),
+    items: mapOwnerLists(world.items ?? [], (_o, list) => mapList(list)),
     dictionaries: mapOwnerLists(world.dictionaries ?? [], (_o, list) => mapList(list)),
   };
 }
@@ -314,8 +324,24 @@ export function withoutPlaceholders(world: PlaceholderHomesWorld, ids: ReadonlyS
   return {
     placeholders: keep(world.placeholders ?? EMPTY),
     entities: mapOwnerLists(world.entities ?? [], (_o, list) => keep(list)),
+    items: mapOwnerLists(world.items ?? [], (_o, list) => keep(list)),
     dictionaries: mapOwnerLists(world.dictionaries ?? [], (_o, list) => keep(list)),
   };
+}
+
+/** The world's slices as they stand. */
+const currentSlices = (world: PlaceholderHomesWorld): PlaceholderSlices => ({
+  placeholders: world.placeholders ?? EMPTY, entities: world.entities ?? [], items: world.items ?? [], dictionaries: world.dictionaries ?? [],
+});
+
+/** `slices` with `change` over the list of the owner `home` names. */
+function withOwnerList(
+  slices: PlaceholderSlices, home: Exclude<PlaceholderHome, { kind: 'world' }>, change: (list: Placeholder[]) => Placeholder[],
+): PlaceholderSlices {
+  const swap = <T extends PlaceholderOwner>(owners: T[]) => mapOwnerLists(owners, (o, list) => (o.id === home.ownerId ? change(list) : list));
+  if (home.kind === 'entity') return { ...slices, entities: swap(slices.entities) };
+  if (home.kind === 'item') return { ...slices, items: swap(slices.items) };
+  return { ...slices, dictionaries: swap(slices.dictionaries) };
 }
 
 /**
@@ -325,13 +351,10 @@ export function withoutPlaceholders(world: PlaceholderHomesWorld, ids: ReadonlyS
  * id no list holds, or to an owner the world lacks changes nothing; unchanged slices keep identity.
  */
 export function movePlaceholderHome(world: PlaceholderHomesWorld, id: string, home: PlaceholderHome): PlaceholderSlices {
-  const current: PlaceholderSlices = {
-    placeholders: world.placeholders ?? EMPTY, entities: world.entities ?? [], dictionaries: world.dictionaries ?? [],
-  };
+  const current = currentSlices(world);
   const from = placeholderHome(world, id);
   if (!from || sameHome(from, home)) return current;
-  const known = home.kind === 'world'
-    || (home.kind === 'entity' ? current.entities : current.dictionaries).some((o) => o.id === home.ownerId);
+  const known = home.kind === 'world' || ownersOf(world, home.kind).some((o) => o.id === home.ownerId);
   if (!known) return current;
   const all = allPlaceholders(world);
   const record = all.find((p) => p.id === id);
@@ -341,23 +364,14 @@ export function movePlaceholderHome(world: PlaceholderHomesWorld, id: string, ho
   const moving = [root, ...ownedDescendants(all, id)];
   const stripped = withoutPlaceholders(world, new Set(moving.map((p) => p.id)));
   if (home.kind === 'world') return { ...stripped, placeholders: [...stripped.placeholders, ...moving] };
-  const append = <T extends PlaceholderOwner>(owners: T[]) =>
-    mapOwnerLists(owners, (o, list) => (o.id === home.ownerId ? [...list, ...moving] : list));
-  return home.kind === 'entity'
-    ? { ...stripped, entities: append(stripped.entities) }
-    : { ...stripped, dictionaries: append(stripped.dictionaries) };
+  return withOwnerList(stripped, home, (list) => [...list, ...moving]);
 }
 
 /** Every slice with the list `home` names replaced by `list`. Unchanged slices keep identity. */
 export function withPlaceholderList(world: PlaceholderHomesWorld, home: PlaceholderHome, list: Placeholder[]): PlaceholderSlices {
-  const current: PlaceholderSlices = {
-    placeholders: world.placeholders ?? EMPTY, entities: world.entities ?? [], dictionaries: world.dictionaries ?? [],
-  };
+  const current = currentSlices(world);
   if (home.kind === 'world') return sameElements(current.placeholders, list) ? current : { ...current, placeholders: list };
-  const swap = <T extends PlaceholderOwner>(owners: T[]) => mapOwnerLists(owners, (o, before) => (o.id === home.ownerId ? list : before));
-  return home.kind === 'entity'
-    ? { ...current, entities: swap(current.entities) }
-    : { ...current, dictionaries: swap(current.dictionaries) };
+  return withOwnerList(current, home, () => list);
 }
 
 /** The def with every reference in it re-aimed through `idMap`: a chip in a value, its `ownerId`, and the

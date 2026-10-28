@@ -19,6 +19,7 @@ import { PLACEHOLDER_PANEL_TABS } from '@/views/placeholderPanelTabs';
 import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
+import { ITEM_PANEL_TABS } from '@/views/itemPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
@@ -103,6 +104,7 @@ const ENTRIES: [string, string][] = [
   ...tabsOf('worldEditor', WORLD_EDITOR_TABS),
   ...tabsOf('worldEditorLocations', [{ value: 'list', label: 'List' }, { value: 'canvas', label: 'Canvas' }]),
   ...tabsOf('worldEditorEntity', ENTITY_PANEL_TABS),
+  ...tabsOf('worldEditorItem', ITEM_PANEL_TABS),
   ...tabsOf('worldEditorLocation', LOCATION_PANEL_TABS),
   ...tabsOf('worldEditorStat', STAT_PANEL_TABS),
   ...tabsOf('worldEditorTrait', TRAIT_PANEL_TABS),
