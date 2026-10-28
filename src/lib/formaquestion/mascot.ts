@@ -126,9 +126,19 @@ export const DEFAULT_MASCOT_RIG: MascotRig = {
 export function composeMascot(rig: MascotRig, phase: MascotPhase, aiExpression: string | null): readonly MascotImageRef[] {
   const pick = rig.picks[phase === 'answering' ? 'idle' : phase];
   const expression = phase === 'answering' && aiExpression !== null ? aiExpression : pick.expression;
-  const active = new Set([expression, pick.state]);
-  return [rig.base, ...rig.layers.filter((row) => row.enabled && active.has(row.id)).flatMap((row) => row.images)];
+  return drawLayers(rig, [expression, pick.state]);
 }
+
+/** The Initial look with `expression` in place of the Initial pick's own; null keeps the pick's. */
+export function composeInitialWith(rig: MascotRig, expression: string | null): readonly MascotImageRef[] {
+  const pick = rig.picks.initial;
+  return drawLayers(rig, [expression ?? pick.expression, pick.state]);
+}
+
+const drawLayers = (rig: MascotRig, activeIds: readonly (string | null)[]): readonly MascotImageRef[] => {
+  const active = new Set(activeIds);
+  return [rig.base, ...rig.layers.filter((row) => row.enabled && active.has(row.id)).flatMap((row) => row.images)];
+};
 
 export interface MascotPickWarning {
   readonly pick: MascotPickName;

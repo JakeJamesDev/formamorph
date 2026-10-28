@@ -27,8 +27,15 @@ vi.mock('@/lib/formaquestion/mascotCardFile', async (importOriginal) => {
   const { tinyWebp: stand } = await import('@/test/webpFixture');
   return {
     ...real,
-    buildMascotCardWithLook: (name: string, rig: MascotRig) =>
-      real.buildMascotCardWithLook(name, rig, { render: async () => ({ bytes: stand(), width: 1, height: 1 }) }),
+    // A render for a picked expression stamps its layer count into the stand-in, so a test can tell what was drawn.
+    buildMascotCardWithLook: (name: string, rig: MascotRig, _deps: unknown, look?: { expression?: string | null }) =>
+      real.buildMascotCardWithLook(name, rig, {
+        render: async (layers) => {
+          const bytes = stand();
+          if (look?.expression) bytes[23] = 100 + layers.length;
+          return { bytes, width: 1, height: 1 };
+        },
+      }, look),
   };
 });
 
@@ -99,6 +106,33 @@ describe('publishing from the Mascot tab', () => {
 
     await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalledTimes(1));
     expect(vi.mocked(WorldStorageService.publishItem).mock.calls[0][0].thumbnail).toBe(bytesToDataUrl(cover, 'image/webp'));
+  });
+
+  it('draws a picked expression into the Initial look and sends it as the thumbnail', async () => {
+    const withHappy = ownRig().then(async (rig) => {
+      const id = await addMascotImage(new NodeBlob([tinyWebp()], { type: 'image/webp' }) as unknown as Blob);
+      const happy: MascotLayer = { id: 'happy', name: 'Happy', kind: 'expression', enabled: true, images: [{ kind: 'stored', id }] };
+      return { ...rig, layers: [...rig.layers, happy] };
+    });
+    await mount(withHappy);
+    await openPublish();
+    await screen.findByText('Publish Mascot');
+    await userEvent.click(screen.getByRole('combobox', { name: 'Expression' }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Happy' }));
+    const drawn = tinyWebp();
+    drawn[23] = 103; // base, Wave and Happy
+    await waitFor(() => expect(document.querySelector('[data-testid="mascot-publish-thumbnail"] img')?.getAttribute('src')).toBe(bytesToDataUrl(drawn, 'image/webp')));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Publish' }).at(-1)!);
+
+    await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(WorldStorageService.publishItem).mock.calls[0][0].thumbnail).toBe(bytesToDataUrl(drawn, 'image/webp'));
+  });
+
+  it('offers no Expression picker for a Mascot with no expression layer', async () => {
+    await mount(ownRig());
+    await openPublish();
+    await screen.findByText('Publish Mascot');
+    expect(screen.queryByRole('combobox', { name: 'Expression' })).toBeNull();
   });
 
   it('links the Mascot to its new listing', async () => {

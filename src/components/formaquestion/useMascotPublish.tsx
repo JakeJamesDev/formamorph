@@ -7,6 +7,9 @@ import AuthService from '@/services/AuthService';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { toastError } from '@/lib/linkToast';
 import { buildMascotPublish } from '@/lib/formaquestion/mascotPublish';
+import { buildMascotCardWithLook } from '@/lib/formaquestion/mascotCardFile';
+import { bytesToDataUrl } from '@/lib/imageBytes';
+import type { MascotThumbnailLooks } from '@/components/menu/PublishModal';
 import type { PublishPayload } from '@/lib/publishPayload';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { MascotDraftControl } from './useMascotDraft';
@@ -23,6 +26,7 @@ export function useMascotPublish(control: MascotDraftControl) {
   // The Mascot being published, fixed at the start so a selection change mid-publish links the right one.
   const [mascotId, setMascotId] = useState<string | null>(null);
   const [linkedListingId, setLinkedListingId] = useState<string | undefined>(undefined);
+  const [looks, setLooks] = useState<MascotThumbnailLooks | undefined>(undefined);
   const opener = useRef<Element | null>(null);
 
   const start = () => {
@@ -34,6 +38,13 @@ export function useMascotPublish(control: MascotDraftControl) {
         if (!attempt.allowed) { setRefusal(attempt.message); return; }
         setMascotId(id);
         setLinkedListingId(sourceId);
+        setLooks({
+          expressions: rig.layers.filter((layer) => layer.kind === 'expression' && layer.enabled).map(({ id: layerId, name: layerName }) => ({ id: layerId, name: layerName })),
+          render: async (expression) => {
+            const { look } = await buildMascotCardWithLook(name, rig, {}, { expression });
+            return bytesToDataUrl(look.bytes, 'image/webp');
+          },
+        });
         setPayload(attempt.payload);
         setOpen(true);
       }).catch((cause: unknown) => toastError(cause, 'Could not prepare the Mascot to publish.'));
@@ -68,6 +79,7 @@ export function useMascotPublish(control: MascotDraftControl) {
         payload={payload}
         localId={mascotId ?? undefined}
         linkedListingId={linkedListingId}
+        mascotLooks={looks}
         onPublished={(listing) => {
           if (!mascotId) return;
           const author = AuthService.getCurrentUser();

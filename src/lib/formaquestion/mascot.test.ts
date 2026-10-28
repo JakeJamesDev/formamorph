@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  composeMascot, DEFAULT_MASCOT_RIG, MASCOT_ASSET_NAMES, mascotPickWarnings, parseMascotRig,
+  composeInitialWith, composeMascot, DEFAULT_MASCOT_RIG, MASCOT_ASSET_NAMES, mascotPickWarnings, parseMascotRig,
   type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotRig,
 } from './mascot';
 import { bundledMascotFiles, mascotAssetUrl } from './mascotAssets';
@@ -36,6 +36,20 @@ const ids = (images: readonly MascotImageRef[]): string[] => images.map((image) 
 
 const disable = (target: MascotRig, layerId: string): MascotRig =>
   ({ ...target, layers: target.layers.map((layer) => (layer.id === layerId ? { ...layer, enabled: false } : layer)) });
+
+describe('composeInitialWith', () => {
+  it('draws the Initial look with another expression in place of its own, keeping its state', () => {
+    expect(ids(composeInitialWith(rig(), 'sad'))).toEqual(['base', 'wave-arm', 'still-arm', 'sad-eyes']);
+  });
+
+  it('draws the Initial look itself for null', () => {
+    expect(ids(composeInitialWith(rig(), null))).toEqual(ids(composeMascot(rig(), 'initial', null)));
+  });
+
+  it('draws nothing for a disabled expression', () => {
+    expect(ids(composeInitialWith(disable(rig(), 'sad'), 'sad'))).toEqual(['base', 'wave-arm', 'still-arm']);
+  });
+});
 
 describe('composeMascot', () => {
   it('draws the Initial pick over the base, in list order', () => {
