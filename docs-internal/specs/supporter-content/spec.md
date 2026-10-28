@@ -66,6 +66,9 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q33 | The client has no All tab, so "in All" (Q16) applies to the server's all-kinds read only. In the app, pinned listings sort first inside each kind's tab, ahead of Updates First and the chosen sort. The Contest tab keeps its own order. |
 | Q34 | Scramble format version 1: pad each layer with transparent pixels to a multiple of 8 per axis, cut a fixed 8×8 grid, and permute the tiles with a single-cycle (Sattolo) shuffle seeded by a 32-bit seed through mulberry32, so no tile stays in place. The route returns seed, version and original size beside the file; the client crops after unscrambling. Scrambled layers travel losslessly. |
 | Q35 | The hardened watermark (ticket 14) need not read ticket 04's marks, since none were served. Budget: embedding a Morphie-sized rig under about 3 s cold, `read-leak` under about 1 min. Two lossy saves in a row are measured, not required. |
+| Q36 | The gated route processes every `data:image/…;base64` string in the content. Each becomes `{ dataUrl, seed, version, sourceWidth, sourceHeight }` in the same JSON position, encoded as lossless PNG. One seed per account, listing and revision, from an HMAC with a fixed purpose label. Results are cached per account, listing and revision; the staff review route processes without caching. |
+| Q37 | The hardened watermark keeps the 40 dB invisibility bar. A copy shifted 1–3 px, halved and saved WebP q50 then reads about 5 times in 6; a stronger mark at about 38 dB was declined. User ruling on new evidence. |
+| Q38 | Ticket 04's mark misses the plain round-trip for about 1 random mark and layer pair in 312. Ticket 10 proves the route by exact equality with `embed(source, mark)`, without its own read-back. Ticket 14 must show zero misses across at least 10,000 random marks. User ruling on new evidence. |
 
 ## User Stories
 
