@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef } from 'react';
-import type { MascotImageRef } from '@/lib/formaquestion/mascot';
+import { mascotImageKey, type MascotImageRef } from '@/lib/formaquestion/mascot';
 import { cn } from '@/lib/utils';
 import type { MascotFrame, MascotSize } from '@/lib/formaquestion/mascotMask';
 import type { MascotTransition } from '@/lib/formaquestion/mascotTransition';
-import { useMascotImageUrls } from './useMascotImageUrls';
+import { MascotImage } from './MascotImage';
+import { naturalSizeOf, useMascotImageSources, type MascotImageElement } from './useMascotImageSources';
 import type { DragHandlers } from './usePointerDrag';
 import { useMascotMotion, type MascotReplay } from './useMascotMotion';
 
@@ -33,18 +34,18 @@ export function MascotPiece({ images, hold = [], size, frame, view = 'full', tra
   onBase: (size: MascotSize) => void;
 }) {
   const { shown, pieceRef, lookRef } = useMascotMotion(images, transition, replay);
-  const urlOf = useMascotImageUrls([...hold, ...shown.flatMap((look) => look.images)]);
-  const baseRef = useRef<HTMLImageElement>(null);
+  const sourceOf = useMascotImageSources([...hold, ...shown.flatMap((look) => look.images)]);
+  const baseRef = useRef<MascotImageElement>(null);
   const reported = useRef('');
   const report = () => {
-    const base = baseRef.current;
-    if (!base || base.naturalWidth <= 0 || base.naturalHeight <= 0) return;
-    const key = `${base.naturalWidth}x${base.naturalHeight}`;
+    const base = baseRef.current && naturalSizeOf(baseRef.current);
+    if (!base || base.width <= 0 || base.height <= 0) return;
+    const key = `${base.width}x${base.height}`;
     if (key === reported.current) return;
     reported.current = key;
-    onBase({ width: base.naturalWidth, height: base.naturalHeight });
+    onBase(base);
   };
-  // A cached base can finish loading before the load handler attaches.
+  // A cached base can finish loading before the load handler attaches, and a drawn layer has no load event.
   useLayoutEffect(report);
   return (
     <div
@@ -69,17 +70,15 @@ export function MascotPiece({ images, hold = [], size, frame, view = 'full', tra
           return (
             <div key={look.id} ref={lookRef(look.id)} data-fq-look={top ? 'new' : 'old'} className={cn('absolute inset-0', shown.length > 1 && 'mix-blend-plus-lighter')}>
               {look.images.map((ref, index) => {
-                const url = urlOf(ref);
-                if (url === null) return null;
+                const source = sourceOf(ref);
+                if (source === null) return null;
                 const base = top && index === 0;
                 return (
-                  <img
+                  <MascotImage
                     // The same image can draw twice, so the place in the list is part of the key.
-                    key={`${index}-${url}`}
+                    key={`${index}-${source.kind === 'url' ? source.url : mascotImageKey(ref)}`}
                     ref={base ? baseRef : undefined}
-                    src={url}
-                    alt=""
-                    draggable={false}
+                    source={source}
                     onLoad={base ? report : undefined}
                     className="absolute inset-0 h-full w-full select-none"
                   />

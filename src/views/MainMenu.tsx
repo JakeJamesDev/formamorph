@@ -152,6 +152,7 @@ import {
   consumeCommunityListingHandoff,
   readCommunityListingHandoff,
 } from '@/lib/communityListingHandoff';
+import { clearCommunityListingRequest, useCommunityListingRequest } from '@/lib/communityListingRequest';
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BundledContentChoice } from "@/components/BundledContentChoice";
@@ -1599,6 +1600,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       onDecline: () => setExternalListing(null),
     });
   }, [externalListing, requireAttestation]);
+
+  // A listing another part of the app asks for, such as the Mascot tab's locked Supporter Mascot.
+  const requestedListing = useCommunityListingRequest();
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !requestedListing) return;
+    clearCommunityListingRequest(requestedListing.nonce);
+    const { id, kind } = requestedListing;
+    requireAttestation({
+      onAccept: () => {
+        setCommunityTab(kind);
+        setPendingListing({ id, kind });
+        setShowCommunityBrowser(true);
+      },
+    });
+  }, [requestedListing, requireAttestation]);
 
   /** Take the player to where an event's content lives — the contest tab, for a contest. */
   const openEvent = useCallback((event: ServerEvent) => {

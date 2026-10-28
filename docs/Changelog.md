@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Mascots:**
     - **Community Creations has a Mascots section, and you can download a Mascot as your own.** A download becomes a custom Mascot that you can select, edit, duplicate and export. Downloading again replaces the copy, and the card shows Update Available after a new version.
     - **Publish a custom Mascot from the Mascot tab to share it in Community Creations.** The thumbnail shows the Initial Look, or an image you upload. A Mascot over 10 MB is refused with its size.
+    - **The Mascot tab lists Supporter Mascots, which Patreon Supporters install and select in one step.** Others see a locked entry that opens its Community Creations listing. A Supporter Mascot is read-only, and Morphie returns when the pledge ends.
   - **Community Creations:**
     - **Staff can pin a listing in Community Creations, and a pinned listing shows first in its section.** Pinned cards carry a **Pinned** mark. The newest pin leads, ahead of every sort and filter.
   - **Supporter Content:**

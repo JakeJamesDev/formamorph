@@ -26,7 +26,7 @@ const rig: MascotRig = {
 };
 
 /** Each image's pixels as a data URL; `mouth` and `grin-mouth` would be equal art under two ids. */
-const dataOf = (ref: MascotImageRef): string => `data:image/png;base64,${btoa(ref.kind === 'stored' ? ref.id : ref.name)}`;
+const dataOf = (ref: MascotImageRef): string => `data:image/png;base64,${btoa(ref.kind === 'bundled' ? ref.name : ref.id)}`;
 
 const build = (from: MascotRig = rig) => buildMascotCardData('Captain', from, dataOf, '3.0.1');
 

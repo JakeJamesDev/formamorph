@@ -20,6 +20,8 @@ const MB = 1024 * 1024;
 const look = tinyWebp();
 
 // jsdom decodes no image, so the card's look is a stand-in WebP; the card data is the real build's.
+// The tab reads the Mascot catalog for locked Supporter Mascots; these suites have none.
+vi.mock('./useSupporterMascotListings', () => ({ useSupporterMascotListings: () => [] }));
 vi.mock('@/lib/formaquestion/mascotCardFile', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/lib/formaquestion/mascotCardFile')>();
   const { tinyWebp: stand } = await import('@/test/webpFixture');

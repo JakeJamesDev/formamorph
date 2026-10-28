@@ -646,7 +646,7 @@ A Tool that's on reads the world you have open, so text from that world can go t
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ### Mascot
-<!-- keywords: morphie, mascot name, who is the mascot, character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen -->
+<!-- keywords: morphie, mascot name, who is the mascot, character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen, supporter mascot, exclusive mascot, locked mascot, patreon mascot -->
 <!-- route: formaquestionSettings.mascot -->
 
 The **Mascot** tab edits the mascot's rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions. The mascot's name is its preset's name. Your AI answers as that name, and a screen reader reads it on the mascot. The **Mascot** switch is in the **Window** group on the **General** tab. With the mascot off, this tab disables every control and shows "The Mascot is off. Select “General” to turn it on." Select **General** in that line to open the **General** tab.
@@ -664,7 +664,9 @@ You can keep more than one mascot. The **Preset** list at the top of the tab pic
 | **Publish** | Shares this mascot in Community Creations. It shows when you're signed in, and never on Morphie. See [Publish a Mascot](#publish-a-mascot). |
 | **View full screen** | Opens the whole tab full screen. **Exit full screen** or Escape returns it. |
 
-Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Morphie** is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
+Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Morphie** is selected. Only **Import** and **View full screen** show while a Supporter Mascot is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
+
+**Supporter Mascots** are for Patreon Supporter and Supporter+ accounts. One you don't have shows in the **Preset** list with its thumbnail and a lock. Select it to open its listing in Community Creations. If your account is a Supporter, selecting it installs it and selects it. A Supporter Mascot is read-only: you can't edit, duplicate, export or publish it. When your pledge ends, the app removes it and Formaquestion shows Morphie again.
 
 Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 

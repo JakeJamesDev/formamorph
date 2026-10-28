@@ -5,6 +5,7 @@ import { AndroidBackHandler } from './components/AndroidBackHandler';
 import { recordView } from './lib/backAction';
 import { watchSessionForClaim } from './lib/anonymousLikeClaim';
 import { watchSupporterContent } from './lib/supporterContent';
+import { watchSupporterMascots } from './components/formaquestion/supporterMascots';
 import { COMMUNITY_ENABLED } from './lib/featureFlags';
 import { useDevRoute, installDevRouter, registerDevHook } from './lib/devRouter';
 import { installViewportHeightVar, APP_HEIGHT_VAR } from './lib/viewportHeight';
@@ -96,7 +97,9 @@ function AppViews() {
   // The Supporter content check runs at each start and again when the signed-in account changes.
   useEffect(() => {
     if (!COMMUNITY_ENABLED) return;
-    return watchSupporterContent();
+    const stopMascots = watchSupporterMascots();
+    const stopContent = watchSupporterContent();
+    return () => { stopContent(); stopMascots(); };
   }, []);
 
   // Track the visual viewport into `--app-h` so full-height screens shrink for the on-screen keyboard

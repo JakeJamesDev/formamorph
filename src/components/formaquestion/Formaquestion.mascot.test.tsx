@@ -16,6 +16,8 @@ import { mascotStoreOf, openHelpSettings, stubHelpStream, storeFramedWindow, sto
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
+// The tab reads the Mascot catalog for locked Supporter Mascots; these suites have none.
+vi.mock('./useSupporterMascotListings', () => ({ useSupporterMascotListings: () => [] }));
 vi.mock('./useHelpAi', () => ({ useHelpAi: () => ai.current }));
 vi.mock('@/components/theme-provider', () => ({ useTheme: () => ({ resolvedTheme: 'dark' }) }));
 import { Formaquestion } from './Formaquestion';

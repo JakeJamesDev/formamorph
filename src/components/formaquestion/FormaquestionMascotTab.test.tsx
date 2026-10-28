@@ -33,6 +33,8 @@ const uploaded = vi.hoisted(() => [] as string[]);
 /** Holds an upload's store step until a test lets it go. */
 const uploadGate = vi.hoisted(() => ({ wait: Promise.resolve() }));
 
+// The tab reads the Mascot catalog for locked Supporter Mascots; these suites have none.
+vi.mock('./useSupporterMascotListings', () => ({ useSupporterMascotListings: () => [] }));
 vi.mock('@/lib/formaquestion/mascotImageStore', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/lib/formaquestion/mascotImageStore')>();
   return {
@@ -955,7 +957,7 @@ describe('the Voice', () => {
 describe('the mascot card', () => {
   /** A card file whose images are the given texts standing in for pixels. */
   function cardFile(rig: MascotRig, edit: (json: string) => string = (json) => json): File {
-    const data = buildMascotCardData('Captain', rig, (ref) => `data:image/png;base64,${btoa(ref.kind === 'stored' ? ref.id : ref.name)}`, '3.0.1');
+    const data = buildMascotCardData('Captain', rig, (ref) => `data:image/png;base64,${btoa(ref.kind === 'bundled' ? ref.name : ref.id)}`, '3.0.1');
     return new File([embedEntityCard(webp(), edit(JSON.stringify(data)), { w: 1, h: 1 })], 'friend.webp', { type: 'image/webp' });
   }
 
