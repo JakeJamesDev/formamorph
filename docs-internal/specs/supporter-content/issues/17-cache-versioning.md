@@ -1,6 +1,7 @@
 # 17: Server: version the per-account cache and clear it on erasure
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4f1788b
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -18,7 +19,16 @@ Per-account cache files are named by listing, revision and account only. A chang
 
 ## Acceptance criteria
 
-- [ ] The cache key includes a processing version that changes whenever the watermark or scramble output changes; an old-version file is never served.
-- [ ] Erasing an account deletes its cache files.
-- [ ] Deleting a listing deletes its cache files (ticket 10 For-you).
-- [ ] Route tests cover each case.
+- [x] The cache key includes a processing version that changes whenever the watermark or scramble output changes; an old-version file is never served. (Hash of `watermark.js`, `scramble.js` and the seed label; test "never serves a copy made under another processing version")
+- [x] Erasing an account deletes its cache files. (Test "deletes only the erased account's files when a Supporter is erased")
+- [x] Deleting a listing deletes its cache files (ticket 10 For-you). (Tests for owner delete, author erasure with content, quarantine expiry, and clearing the Supporter-only flag, per Q43)
+- [x] Route tests cover each case. (Six tests in "the cache lifecycle"; each failed when its clear call or the version was removed)
+
+## Landed
+
+**Not verified**
+- A processing-version change from an edit to `supporterProcessing.js` itself (PNG encoding) does not bump the version. The hash covers only the watermark, the scramble and the seed label, per Q43.
+- A request that writes a cache file while its listing is being deleted can leave one file behind. Not tested.
+
+**For you**
+- None.
