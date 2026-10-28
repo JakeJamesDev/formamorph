@@ -64,6 +64,7 @@ import { WidgetLabel, WidgetRow } from './WidgetRow';
 import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
 import { useMascotImageUrls } from './useMascotImageUrls';
+import { useMascotPublish } from './useMascotPublish';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 import { dropMascotImages, type MascotDraftControl } from './useMascotDraft';
 
@@ -669,6 +670,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
     else control.undo();
   };
 
+  const publish = useMascotPublish(control);
   const copy = MASCOT_COPY.preset;
   const tips: Partial<Record<PresetHeaderAction['key'], string>> = copy.tips;
   const presetActions = presetHeaderActions(readOnly, {
@@ -676,6 +678,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
     rename: () => setRenaming(true),
     import: () => cardInput.current?.click(),
     export: () => void exportCard(),
+    ...(publish.canPublish ? { publish: publish.start } : {}),
     fullscreen: { active: morph.contentInOverlay, toggle: morph.toggle },
     reset: () => { setSelection(null); control.reset(); },
     delete: { run: control.remove, title: copy.deleteTitle, description: copy.deleteBody(selected.name) },
@@ -923,6 +926,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
         onOpenChange={setRenaming}
         onSubmit={control.rename}
       />
+      {publish.dialogs}
       </div>
       </PanelShell>
     </div>

@@ -9,8 +9,9 @@ import {
 } from '@/lib/formaquestion/mascotHistory';
 import { deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import {
-  activeMascotPreset, addMascotPreset, deleteMascotPreset, duplicateMascotPreset, isDefaultMascot, mascotPresetOf, renameMascotPreset,
-  selectMascotPreset, uniqueMascotName, unreferencedMascotImages, type MascotPreset, type MascotPresetStore,
+  activeMascotPreset, addMascotPreset, deleteMascotPreset, duplicateMascotPreset, isDefaultMascot, linkMascotPreset, mascotPresetOf,
+  renameMascotPreset, selectMascotPreset, uniqueMascotName, unreferencedMascotImages, type MascotListingLink, type MascotPreset,
+  type MascotPresetStore,
 } from '@/lib/formaquestion/mascotPresets';
 import { randomUUID } from '@/lib/uuid';
 
@@ -58,6 +59,10 @@ export interface MascotDraftControl {
   readonly remove: () => void;
   /** Adds an imported mascot under a free name and selects it. */
   readonly add: (name: string, rig: MascotRig) => void;
+  /** The selected mascot as the store holds it now, for a guarded action that runs after a Save. */
+  readonly selected: () => MascotPreset;
+  /** Links the mascot `id` to the listing it was just published as. */
+  readonly link: (id: string, link: MascotListingLink) => void;
 }
 
 /** Deletes images from the mascot image store, logging a failure. */
@@ -202,6 +207,8 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     }),
     rename: (name) => writeStore(renameMascotPreset(storeRef.current, heldRef.current.mascotId, name)),
     remove: () => switchTo(deleteMascotPreset(storeRef.current, heldRef.current.mascotId)),
+    selected: () => mascotPresetOf(storeRef.current, heldRef.current.mascotId),
+    link: (id, link) => writeStore(linkMascotPreset(storeRef.current, id, link)),
     add: (name, rig) => switchTo(addMascotPreset(storeRef.current, { id: randomUUID(), name: uniqueMascotName(storeRef.current, name), rig })),
   };
 }

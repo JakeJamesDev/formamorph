@@ -74,10 +74,16 @@ export function mascotRigFromCard(card: MascotCardData, ids: readonly string[]):
 
 const refusal = (field: string) => new Error(`This mascot card has a missing or bad field: ${field}.`);
 
-const IMAGE_DATA = /^data:image\/[a-z0-9.+-]+;base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const IMAGE_DATA = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*={0,2})$/;
 
-/** True for a base64 data URL of an image, the one form the card's image table holds. */
-export const isMascotCardImage = (data: string): boolean => IMAGE_DATA.test(data);
+/**
+ * True for a base64 data URL of an image, the one form the card's image table holds. The body is a flat
+ * character class with a length check: a grouped pattern overflows the regex stack on a multi-megabyte image.
+ */
+export const isMascotCardImage = (data: string): boolean => {
+  const body = IMAGE_DATA.exec(data)?.[1];
+  return body !== undefined && body.length % 4 === 0;
+};
 
 const isMode = (value: unknown): value is MascotTransitionMode => (MASCOT_TRANSITION_MODES as readonly unknown[]).includes(value);
 

@@ -1,8 +1,9 @@
 import type { PublishPayload } from '@/lib/publishPayload';
+import { measureMascotBytes } from '@/lib/publishLimits';
 
 /** A publish request's body and the size the publish limit is checked against. */
 export interface PublishBody {
-  /** The UTF-8 byte length of the content's compact JSON: the server's own measure. */
+  /** The UTF-8 byte length of the content's compact JSON: the server's own measure. A Mascot counts decoded image bytes. */
   bytes: number;
   body: Blob;
 }
@@ -34,5 +35,6 @@ export function buildPublishBody(payload: PublishPayload, contestEventId: string
   });
   // `head` ends with `}` and `tail` starts with `{`; both always hold a field.
   const parts = content ? [head.slice(0, -1), ',"contentData":', content, ',', tail.slice(1)] : [head.slice(0, -1), ',', tail.slice(1)];
-  return { bytes: content?.size ?? 0, body: new Blob(parts, { type: 'application/json' }) };
+  const bytes = payload.kind === 'mascot' ? measureMascotBytes(payload.contentData) : content?.size ?? 0;
+  return { bytes, body: new Blob(parts, { type: 'application/json' }) };
 }

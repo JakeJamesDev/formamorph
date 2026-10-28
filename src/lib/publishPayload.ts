@@ -151,6 +151,11 @@ export function promptPublishPayload(shared: SharedPreset): PublishPayload {
   };
 }
 
+/** A Mascot publishes its card data. It has no blurb or tags; the thumbnail is the Initial render or the author's own. */
+export function mascotPublishPayload(name: string, card: unknown, thumbnail: string): PublishPayload {
+  return { kind: 'mascot', name: name.trim() || 'Untitled Mascot', description: '', thumbnail, contentData: card, tags: [] };
+}
+
 /** Why a preset can't be published yet: `models` while its Overview names no model, else null. */
 export function promptPublishBlock(overview: PresetOverview | null | undefined): 'models' | null {
   return overview?.models.length ? null : 'models';

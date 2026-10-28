@@ -661,6 +661,7 @@ You can keep more than one mascot. The **Preset** list at the top of the tab pic
 | **Reset** | Puts Morphie's rig in place of this mascot's. **Cancel** takes it back. |
 | **Import** | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
 | **Export** | Saves this mascot as a card |
+| **Publish** | Shares this mascot in Community Creations. It shows when you're signed in, and never on Morphie. See [Publish a Mascot](#publish-a-mascot). |
 | **View full screen** | Opens the whole tab full screen. **Exit full screen** or Escape returns it. |
 
 Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Morphie** is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
@@ -743,6 +744,22 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 
 - A card with a bad field, or one from a different version, is refused. The error names the field, and your mascot stays as it was.
 - The card is an image file with your art inside it. Share it only with people you want to see that art.
+
+#### Publish a Mascot
+<!-- keywords: publish mascot, share mascot, upload mascot, mascot listing, mascot thumbnail, mascot too big, mascot size limit, 10 MB, update my mascot listing, delete my mascot listing, mascot changelog, community mascot -->
+
+**Publish** puts your mascot in the **Mascots** section of Community Creations, where other players download it as their own mascot. Sign in first.
+
+1. Open the **Mascot** tab and select your mascot.
+2. Select **Publish**. If you have unsaved changes, the app asks you to save or discard them first.
+3. Choose **Publish as new mascot**, or pick one of your listings to update it.
+4. Select **Publish**.
+
+- The thumbnail shows the Initial Look. To use your own image, upload it in **Thumbnail**. **Use Initial Look** puts the default back.
+- To update a listing, pick it in step 3. You can add a **Changelog Entry** for players who hold a copy. To delete a listing, select the trash button on your card in the **Mascots** section of Community Creations.
+- A mascot can hold up to 10 MB of images. If yours is larger, the app shows its size and sends nothing. Compress the layers, then publish again.
+- A mascot that uses art that comes with Formamorph can't be published. The message names the layers to replace. Morphie has no **Publish**.
+- After you publish, your mascot follows its listing, as your other published items do.
 
 ## AI Context
 <!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->

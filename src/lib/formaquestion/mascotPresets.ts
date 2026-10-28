@@ -75,6 +75,16 @@ export const putDownloadedMascot = (store: MascotPresetStore, mascot: MascotPres
     ? { ...store, mascots: [...store.mascots, mascot] }
     : { ...store, mascots: store.mascots.map((held) => (held.id === mascot.id ? mascot : held)) });
 
+/** The listing a published mascot links to. */
+export type MascotListingLink = Required<Pick<CommunityLink, 'sourceId'>> & Pick<CommunityLink, 'sourceUpdatedAt' | 'sourceAuthorId' | 'sourceAuthorName'>;
+
+/** Links a mascot to the listing it was just published as. Any older link is replaced whole, and the copy is clean. */
+export const linkMascotPreset = (store: MascotPresetStore, id: string, link: MascotListingLink): MascotPresetStore =>
+  withCustom(store, id, (mascot) => {
+    const { sourceUpdatedAt: _s, sourceAuthorId: _a, sourceAuthorName: _n, downloadedAt: _d, dirty: _x, ...content } = mascot;
+    return { ...content, ...link };
+  });
+
 /** Removes a custom mascot. When it was active, the Default becomes active. */
 export function deleteMascotPreset(store: MascotPresetStore, id: string): MascotPresetStore {
   if (customOf(store, id) === undefined) return store;
