@@ -1,6 +1,6 @@
 # 15: Server: no raw Supporter content in the update reply
 
-Status: needs-triage
+Status: ready-for-agent
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
