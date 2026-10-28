@@ -59,6 +59,8 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q26 | A Mascot listing can't enter a contest. |
 | Q27 | The watermark carries a random 32-bit mark number, one per account and stable across listings and revisions. A server table maps it to the account. The full account id would cost robustness on small layers. |
 | Q28 | Every layer must round-trip its mark. The attack list (re-encode, downscale, crop, composite) must pass on the full composite and on every layer at or above a measured opaque-area floor. Smaller layers need only the round-trip. A leaked rig is traced through its base layer. |
+| Q29 | Publish refuses a Mascot that holds any bundled (Morphie) layer and names the layers to replace, like Avatar publish refuses the default Avatar. Export is unchanged. |
+| Q30 | After a publish, the author's own Mascot links to the new listing, as prompts and worlds do. |
 
 ## User Stories
 
