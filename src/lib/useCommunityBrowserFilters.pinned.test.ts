@@ -15,7 +15,7 @@ const catalog = [
 
 const names = (setup: (r: ReturnType<typeof useCommunityBrowserFilters>) => void, update?: (id: string) => boolean) => {
   const { result } = renderHook(() =>
-    useCommunityBrowserFilters(catalog, (w) => (update?.(String(w.id)) ? 'update' : 'none'), true, 'world'));
+    useCommunityBrowserFilters(catalog, (w) => (update?.(String(w.id)) ? 'update' : 'none'), true, { tab: 'world' }));
   act(() => setup(result.current));
 
   return result.current.filteredRemoteWorlds.map((w) => w.name);

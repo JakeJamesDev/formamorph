@@ -30,7 +30,7 @@ const downloadStateOf = (w: WorldRecord): DownloadState => downloadStates[String
 // `viewerId` takes null for signed out rather than undefined: an undefined argument would take the
 // signed-in default and quietly test the wrong reader.
 const render = (kind: 'world' | 'dictionary' = 'world', viewerId: string | null = ME) =>
-  renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, kind, viewerId ?? undefined));
+  renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, { tab: kind, viewerId: viewerId ?? undefined }));
 
 /**
  * Names left after applying `facets`, with the update float off so the facet is what's under test.
@@ -108,7 +108,7 @@ describe('status facets', () => {
 describe('per-kind filter state', () => {
   it('does not carry one tab’s status filter onto another', () => {
     const { result, rerender } = renderHook(
-      ({ kind }) => useCommunityBrowserFilters(catalog, downloadStateOf, true, kind, ME),
+      ({ kind }) => useCommunityBrowserFilters(catalog, downloadStateOf, true, { tab: kind, viewerId: ME }),
       { initialProps: { kind: 'world' as 'world' | 'dictionary' } },
     );
 
@@ -126,7 +126,7 @@ describe('per-kind filter state', () => {
 
   it('keeps the Prompts section’s filters apart from the Worlds section’s, across a restart', () => {
     const first = renderHook(
-      ({ kind }) => useCommunityBrowserFilters(catalog, downloadStateOf, true, kind, ME),
+      ({ kind }) => useCommunityBrowserFilters(catalog, downloadStateOf, true, { tab: kind, viewerId: ME }),
       { initialProps: { kind: 'prompt' as 'world' | 'prompt' } },
     );
     act(() => { first.result.current.setTagFilter(['slow burn']); });
@@ -134,7 +134,7 @@ describe('per-kind filter state', () => {
     expect(first.result.current.tagFilter).toEqual([]);
     first.unmount();
 
-    const second = renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, 'prompt', ME));
+    const second = renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, { tab: 'prompt', viewerId: ME }));
     expect(second.result.current.tagFilter).toEqual(['slow burn']);
   });
 });

@@ -22,10 +22,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Publish a custom Mascot from the Mascot tab to share it in Community Creations.** The thumbnail shows the Initial Look, or an image you upload. A Mascot over 10 MB is refused with its size.
   - **Community Creations:**
     - **Staff can pin a listing in Community Creations, and a pinned listing shows first in its section.** Pinned cards carry a **Pinned** mark. The newest pin leads, ahead of every sort and filter.
-  - **Browser Review:**
-    - **Mods and admins can compare a pending update in a listing's details.** The Pending Update section and **Compare** show for staff. **Discard Update** stays with the author.
-    - **Mods and admins see listings that wait for review pinned above Community Creations' results, oldest first.** They follow your kind, search and filters. Update cards show the pending name and thumbnail. Turn off **Show Pending** to see the browser as players see it.
-    - **Mods and admins can approve or reject a pinned listing from its card in Community Creations.** The check approves it. The X rejects it and opens a message to the author.
 
 #### 🔧 Fixed
 

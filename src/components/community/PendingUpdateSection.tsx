@@ -22,15 +22,15 @@ interface PendingUpdateSectionProps {
   approvedChangelog?: ChangelogEntry[] | null;
   /** Called once the server dropped the update. */
   onDiscarded: () => void;
-  /** Shows Discard Update. Staff who are not the author compare only. */
-  canDiscard?: boolean;
+  /** The viewer wrote the listing: shows Discard Update and words the compare for the author. */
+  viewerIsAuthor?: boolean;
   /** Opens the compare view on mount, for the dev route. */
   initialCompareOpen?: boolean;
 }
 
 /** A waiting update's compare view, and for its author a way to withdraw it. */
 export function PendingUpdateSection({
-  listingId, name, update, liveThumbnail, approvedChangelog, onDiscarded, canDiscard = true, initialCompareOpen = false,
+  listingId, name, update, liveThumbnail, approvedChangelog, onDiscarded, viewerIsAuthor = true, initialCompareOpen = false,
 }: PendingUpdateSectionProps) {
   const [comparing, setComparing] = useState(initialCompareOpen);
   const [confirming, setConfirming] = useState(false);
@@ -56,7 +56,7 @@ export function PendingUpdateSection({
     <section className="space-y-1" aria-labelledby="pending-update-heading">
       <h3 id="pending-update-heading" className="text-helper font-semibold text-muted-foreground">Pending Update</h3>
       <div className="flex flex-wrap gap-2">
-        {canDiscard && (
+        {viewerIsAuthor && (
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setConfirming(true)} disabled={busy}>
             <Trash2 className="h-3.5 w-3.5" /> Discard Update
           </Button>
@@ -70,7 +70,7 @@ export function PendingUpdateSection({
         <DialogContent className="sm:max-w-[720px] max-h-[85dvh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle className="truncate">Compare: {name}</DialogTitle>
-            <DialogDescription>{canDiscard ? 'What players see now, beside what your update changes' : 'What players see now, beside what the update changes'}</DialogDescription>
+            <DialogDescription>{viewerIsAuthor ? 'What players see now, beside what your update changes' : 'What players see now, beside what the update changes'}</DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 min-h-0">
             <PendingUpdateTable update={update} liveThumbnail={liveThumbnail} approvedChangelog={approvedChangelog} />
