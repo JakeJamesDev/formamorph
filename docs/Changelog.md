@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Publish a custom Mascot from the Mascot tab to share it in Community Creations.** The thumbnail shows the Initial Look, or an image you upload. A Mascot over 10 MB is refused with its size.
   - **Community Creations:**
     - **Staff can pin a listing in Community Creations, and a pinned listing shows first in its section.** Pinned cards carry a **Pinned** mark. The newest pin leads, ahead of every sort and filter.
+  - **Feedback bugs and suggestions show Pending Release when the change is done but not yet in an update.** Bugs can also be marked Duplicate. Resolved now reads Fixed, Done reads Added, and Need Info reads Needs Info.
 
 #### 🔧 Fixed
 

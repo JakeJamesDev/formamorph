@@ -477,7 +477,7 @@ You can also read the **Suggestions** and **Questions** boards at [formamorph.ai
 
 A bug report includes your app version and platform. Nothing about your worlds or saves goes with it. The form keeps an unsent draft.
 
-Staff set each item's status. A bug is **Open**, **Need Info**, **Confirmed**, **Resolved** or **Won't Fix**. A suggestion is **Open**, **Considering**, **Planned**, **Declined** or **Done**. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.
+Staff set each item's status. A bug is **Open**, **Needs Info**, **Confirmed**, **Pending Release**, **Fixed**, **Won't Fix** or **Duplicate**. A suggestion is **Open**, **Considering**, **Planned**, **Pending Release**, **Declined** or **Added**. **Pending Release** means the change is done and comes in the next update. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.
 
 ### Accepted Answers
 

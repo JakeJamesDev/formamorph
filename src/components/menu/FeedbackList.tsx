@@ -6,7 +6,7 @@ import { UnreadDot } from "@/components/UnreadDot";
 import { UnreadEdge } from "@/components/UnreadEdge";
 import { RoleBadge } from "@/components/RoleBadge";
 import {
-  FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, formatFeedbackDate,
+  FEEDBACK_CATEGORY_LABELS, formatFeedbackDate, statusStyle,
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { cn } from "@/lib/utils";
@@ -198,7 +198,7 @@ export function FeedbackList({
           <p className="py-8 text-center text-helper text-muted-foreground">{emptyLabel}</p>
         ) : (
           threads.map((thread) => {
-            const style = FEEDBACK_STATUS_STYLES[thread.status];
+            const style = statusStyle(thread.status);
             // Absent from a server that predates the count, which is not the same as a thread with none.
             const replies = thread.commentCount ?? 0;
             const unread = capabilities.unreadBadge && thread.unread;

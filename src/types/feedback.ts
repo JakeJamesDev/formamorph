@@ -19,12 +19,13 @@ export type QuestionCategory = (typeof QUESTION_CATEGORIES)[number];
 export type FeedbackCategory = BugCategory | SuggestionCategory | QuestionCategory;
 
 /** Where a bug sits in triage. Mirrors the server's per-type `CHECK`. */
-export const BUG_STATUSES = ['open', 'need_info', 'confirmed', 'resolved', 'wontfix'] as const;
+export const BUG_STATUSES = ['open', 'need_info', 'confirmed', 'pending_release', 'resolved', 'wontfix', 'duplicate'] as const;
 export type BugStatus = (typeof BUG_STATUSES)[number];
 
 /** Where a suggestion sits. A bug is triaged towards a fix; a suggestion is weighed, then committed to
- *  or turned down, so 'confirmed' and 'planned' are different promises. */
-export const SUGGESTION_STATUSES = ['open', 'considering', 'planned', 'declined', 'done'] as const;
+ *  or turned down, so 'confirmed' and 'planned' are different promises. Both branches share
+ *  'pending_release': the work is in, but no release has it yet. */
+export const SUGGESTION_STATUSES = ['open', 'considering', 'planned', 'pending_release', 'declined', 'done'] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
 
 /** Where a question sits. `answered` comes only from accepting a reply, never from the status route. */

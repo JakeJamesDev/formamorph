@@ -15,7 +15,7 @@ import { FeedbackEditDialog } from "@/components/menu/FeedbackEditDialog";
 import { mayEditProse, mayRefile } from "@/lib/feedbackEditing";
 import { badgeRole, isStaff } from "@/lib/roles";
 import {
-  FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, SET_STATUS_OPTIONS, STATUS_OPTIONS, formatFeedbackDate,
+  FEEDBACK_CATEGORY_LABELS, SET_STATUS_OPTIONS, STATUS_OPTIONS, formatFeedbackDate, statusStyle,
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
@@ -356,7 +356,7 @@ function ThreadPane({
   }
 
   const { thread, comments } = detail;
-  const status = FEEDBACK_STATUS_STYLES[thread.status];
+  const status = statusStyle(thread.status);
   const votable = isVotableBoard(thread.type);
   // Who owns which part of a report: a bug's words are the team's to make useful, a suggestion's stay
   // its author's, and the filing is triage either way. The server decides the same thing again.

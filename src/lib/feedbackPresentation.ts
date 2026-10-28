@@ -32,19 +32,35 @@ export const FEEDBACK_CATEGORY_LABELS: Record<FeedbackCategory, string> = {
 export const FEEDBACK_STATUS_STYLES: Record<FeedbackStatus, { label: string; badge: string; dot: string }> = {
   // Bugs
   open: { label: 'Open', badge: 'bg-primary/10 text-primary', dot: 'bg-primary' },
-  need_info: { label: 'Need Info', badge: 'bg-warning/10 text-warning', dot: 'bg-warning' },
+  need_info: { label: 'Needs Info', badge: 'bg-warning/10 text-warning', dot: 'bg-warning' },
   confirmed: { label: 'Confirmed', badge: 'bg-info/10 text-info', dot: 'bg-info' },
-  resolved: { label: 'Resolved', badge: 'bg-success/10 text-success', dot: 'bg-success' },
+  pending_release: { label: 'Pending Release', badge: 'bg-info/10 text-info', dot: 'bg-info' },
+  resolved: { label: 'Fixed', badge: 'bg-success/10 text-success', dot: 'bg-success' },
   wontfix: { label: "Won't Fix", badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
-  // Suggestions — `open` is shared with the list above.
+  duplicate: { label: 'Duplicate', badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
+  // Suggestions — `open` and `pending_release` are shared with the list above.
   considering: { label: 'Considering', badge: 'bg-warning/10 text-warning', dot: 'bg-warning' },
   planned: { label: 'Planned', badge: 'bg-info/10 text-info', dot: 'bg-info' },
-  done: { label: 'Done', badge: 'bg-success/10 text-success', dot: 'bg-success' },
+  done: { label: 'Added', badge: 'bg-success/10 text-success', dot: 'bg-success' },
   declined: { label: 'Declined', badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
   // Questions — `open` is shared with the lists above.
   answered: { label: 'Answered', badge: 'bg-success/10 text-success', dot: 'bg-success' },
   closed: { label: 'Closed', badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
 };
+
+/**
+ * The style for a thread's status, with a muted fallback for a status a newer server added after this build.
+ *
+ * @param status - The status as the server sent it
+ * @returns The status's style, or a muted badge that names the raw value
+ */
+export function statusStyle(status: FeedbackStatus): { label: string; badge: string; dot: string } {
+  const known = (FEEDBACK_STATUS_STYLES as Partial<Record<string, { label: string; badge: string; dot: string }>>)[status];
+  if (known) return known;
+
+  const label = String(status).split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  return { label, badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' };
+}
 
 /** The categories each branch offers, in the order the server declares them. */
 export const CATEGORY_OPTIONS: Record<FeedbackType, { value: FeedbackCategory; label: string }[]> = {
@@ -82,11 +98,11 @@ export const UNRESOLVED_STATUS = 'unresolved';
 
 /**
  * The states that still want attention, per branch: everything a thread can sit in short of being
- * closed. A bug is closed by being fixed or turned down; a suggestion by being built or turned down; a
- * question by being answered or closed.
+ * closed. A bug is closed by being fixed, turned down or marked a duplicate; a suggestion by being built
+ * or turned down; a question by being answered or closed. Pending Release stays open until it ships.
  */
 export const UNRESOLVED_STATUSES: Record<FeedbackType, FeedbackStatus[]> = {
-  bug: BUG_STATUSES.filter((value) => value !== 'resolved' && value !== 'wontfix'),
+  bug: BUG_STATUSES.filter((value) => value !== 'resolved' && value !== 'wontfix' && value !== 'duplicate'),
   suggestion: SUGGESTION_STATUSES.filter((value) => value !== 'done' && value !== 'declined'),
   question: QUESTION_STATUSES.filter((value) => value !== 'answered' && value !== 'closed'),
 };
