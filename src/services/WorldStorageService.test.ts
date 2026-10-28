@@ -995,6 +995,15 @@ describe('fetchCatalog', () => {
     });
   });
 
+  it('keeps a row\'s pending_preview as the server sent it', async () => {
+    const pending_preview = { name: 'Sedge Landing Reborn', queued_at: '2026-10-01T00:00:00.000Z', thumbnail_url: '/api/reviews/w1/thumbnail' };
+    vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1', pending_preview }] }, 200, 'W/"new"'));
+
+    const answer = await WorldStorageService.fetchCatalog();
+
+    expect(answer.status === 'fresh' && (answer.data[0] as { pending_preview?: unknown }).pending_preview).toEqual(pending_preview);
+  });
+
   it('answers fresh with no tag when the server exposes none', async () => {
     vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1' }] }));
 

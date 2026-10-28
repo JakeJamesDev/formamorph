@@ -20,6 +20,8 @@ import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { isQuarantined } from "@/lib/quarantine";
 import { ModerationMarker } from "@/components/community/ModerationMarker";
+import { pendingFaceOf } from "@/lib/listingModeration";
+import { usePendingThumbnail } from "@/lib/usePendingThumbnail";
 import WorldStorageService from "@/services/WorldStorageService";
 import { useListingPrefetch } from "@/lib/useListingPrefetch";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -127,6 +129,11 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
 
   const open = () => onView(world);
 
+  // A pinned update shows the change under review; a row without a preview keeps its live face.
+  const preview = pendingFaceOf(world, inReviewGroup);
+  const pendingThumb = usePendingThumbnail(preview?.thumbnail_url);
+  const shownName = preview?.name || world.name;
+
   const likeControl = (
     <LikeButton
       count={likeCountOf(world)}
@@ -154,7 +161,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       onOpen={open}
       {...prefetch}
       layout={layout}
-      name={world.name}
+      name={shownName}
       description={world.description}
       // An Avatar's description is its generated credit line, so a file crediting nobody has none to show.
       omitEmptyDescription={isAvatar}
@@ -213,6 +220,8 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
         <KindArt kind={kindOf(world)} />
       ) : showsMorphArt(world) ? (
         <EntityPlaceholderArt id={worldId} name={world.name ?? ''} />
+      ) : pendingThumb.status === 'ready' ? (
+        <img src={pendingThumb.src} alt={shownName} className={thumbClass} />
       ) : world.thumbnail_file ? (
         <CachedThumbnail
           file={world.thumbnail_file}
