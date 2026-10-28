@@ -22,6 +22,7 @@ import { toolsSupported } from '@/lib/reasoningEffort';
 import { useSettingsOptional } from '@/contexts/SettingsContext';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { MascotTab } from './FormaquestionMascotTab';
+import { requestCommunityListing } from '@/lib/communityListingRequest';
 import { PromptsTab } from './FormaquestionPromptsTab';
 import { ToolsTab } from './FormaquestionToolsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
@@ -233,6 +234,11 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
     onTabChange('general');
     land(routeText('formaquestionSettings.general', 'mascot-switch'));
   });
+  // The Mascot tab guards its draft first; the dialog closes so the listing shows.
+  const openListing = (id: string) => {
+    requestCommunityListing({ id, kind: 'mascot' });
+    onOpenChange(false);
+  };
   return (
     <>
       {/* A close drops the draft, so an upload a clean draft no longer holds goes with it. */}
@@ -278,7 +284,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
               <ToolsTab settings={settings} onChange={onChange} toolsSupported={toolsSupported(answerTarget.reasoning)} />
             </TabsContent>
             <TabsContent value="mascot" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-              <MascotTab settings={settings} control={mascotDraft} onOpenGeneral={openGeneralAtMascot} />
+              <MascotTab settings={settings} control={mascotDraft} onOpenGeneral={openGeneralAtMascot} onOpenListing={openListing} />
             </TabsContent>
           </Tabs>
         </DialogContent>

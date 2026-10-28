@@ -1,9 +1,9 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { Info, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
+import { Info, Lock, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
@@ -35,7 +35,7 @@ import { randomUUID } from '@/lib/uuid';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { cn } from '@/lib/utils';
 import {
-  MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
+  MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotImageKey, mascotPickWarnings, type MascotImageRef, type MascotLayer,
   type MascotLayerKind, type MascotMask, type MascotPickName, type MascotPickWarning, type MascotRig,
 } from '@/lib/formaquestion/mascot';
 import {
@@ -49,7 +49,9 @@ import {
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import { mascotCardName } from '@/lib/formaquestion/mascotCard';
-import { DEFAULT_MASCOT_ID, DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
+import { DEFAULT_MASCOT_ID, DEFAULT_MASCOT_NAME, mascotAllows, supporterMascotId, type MascotPresetAction } from '@/lib/formaquestion/mascotPresets';
+import { supporterContent } from '@/lib/supporterContent';
+import { useSupporterContent } from '@/lib/supporterContent/useSupporterContent';
 import { MASCOT_CARD_FILE_NAME, exportMascotCard, readMascotCard, storeMascotCard } from '@/lib/formaquestion/mascotCardFile';
 import {
   addMascotLayer, addMascotOverlays, mascotImageIds, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay,
@@ -63,7 +65,10 @@ import { MascotPiece } from './MascotPiece';
 import { WidgetLabel, WidgetRow } from './WidgetRow';
 import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
-import { useMascotImageUrls } from './useMascotImageUrls';
+import { MascotImage } from './MascotImage';
+import { useMascotImageSources, type MascotImageSource } from './useMascotImageSources';
+import { supporterMascotSync } from './supporterMascots';
+import { useSupporterMascotListings } from './useSupporterMascotListings';
 import { useMascotPublish } from './useMascotPublish';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 import { dropMascotImages, type MascotDraftControl } from './useMascotDraft';
@@ -178,12 +183,14 @@ const basePoint = (event: { clientX: number; clientY: number }, rect: DOMRect, b
   y: ((event.clientY - rect.top) / rect.height) * base.height,
 });
 
+const storedUrl = (source: MascotImageSource | null): string | null => (source?.kind === 'url' ? source.url : null);
+
 const KIND_OPTIONS: readonly { value: MascotLayerKind; label: string }[] = [
   { value: 'expression', label: MASCOT_COPY.kind.expression },
   { value: 'state', label: MASCOT_COPY.kind.state },
 ];
 
-type UrlOf = (ref: MascotImageRef) => string | null;
+type SourceOf = (ref: MascotImageRef) => MascotImageSource | null;
 
 /** A sortable row's drag style: a translate, never a scale, dimmed while it drags. */
 const dragStyle = ({ transform, transition, isDragging }: Pick<ReturnType<typeof useSortable>, 'transform' | 'transition' | 'isDragging'>) =>
@@ -193,7 +200,7 @@ const dragStyle = ({ transform, transition, isDragging }: Pick<ReturnType<typeof
 function overlayIds(images: readonly MascotImageRef[]): string[] {
   const seen = new Map<string, number>();
   return images.map((image) => {
-    const key = image.kind === 'bundled' ? `bundled:${image.name}` : `stored:${image.id}`;
+    const key = mascotImageKey(image);
     const count = seen.get(key) ?? 0;
     seen.set(key, count + 1);
     return `${key}#${count}`;
@@ -203,20 +210,26 @@ function overlayIds(images: readonly MascotImageRef[]): string[] {
 // An overlay list is its own drag boundary, so a row never leaves its layer.
 const OVERLAY_LIST_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
 
-function Thumb({ url }: { url: string | null }) {
+function Thumb({ source }: { source: MascotImageSource | null }) {
   return (
     <span className="inline-block h-8 w-8 shrink-0 overflow-hidden rounded-sm border border-border bg-muted/40">
-      {url && <img src={url} alt="" draggable={false} className="h-full w-full object-contain" />}
+      {source && <MascotImage source={source} className="h-full w-full object-contain" />}
     </span>
   );
 }
 
-function SortableOverlay({ id, index, image, urlOf, selected, readOnly, onSelect, onRemove }: {
+/** The label and meta of an overlay row, by where its image lives. */
+const overlayText = (image: MascotImageRef): { label: string; meta?: string } => {
+  if (image.kind === 'bundled') return { label: image.name, meta: MASCOT_COPY.bundledOverlay };
+  return { label: image.kind === 'supporter' ? MASCOT_COPY.supporterOverlay : MASCOT_COPY.storedOverlay };
+};
+
+function SortableOverlay({ id, index, image, sourceOf, selected, readOnly, onSelect, onRemove }: {
   id: string;
   index: number;
   readOnly: boolean;
   image: MascotImageRef;
-  urlOf: UrlOf;
+  sourceOf: SourceOf;
   selected: boolean;
   onSelect: () => void;
   onRemove: () => void;
@@ -231,19 +244,18 @@ function SortableOverlay({ id, index, image, urlOf, selected, readOnly, onSelect
       selected={selected}
       onSelect={onSelect}
       selectionLabel={MASCOT_COPY.showOverlay(index + 1)}
-      icon={<Thumb url={urlOf(image)} />}
-      label={image.kind === 'bundled' ? image.name : MASCOT_COPY.storedOverlay}
-      meta={image.kind === 'bundled' ? MASCOT_COPY.bundledOverlay : undefined}
+      icon={<Thumb source={sourceOf(image)} />}
+      {...overlayText(image)}
       actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, destructive: true, title: MASCOT_COPY.removeOverlay, onClick: onRemove }]}
     />
   );
 }
 
 /** The expanded body of a layer row: its name, its kind, and its overlays in draw order. */
-function LayerBody({ layer, urlOf, readOnly, selectedOverlay, onSelectOverlay, onPatch, onAddFiles, onRemoveOverlay, onMoveOverlay }: {
+function LayerBody({ layer, sourceOf, readOnly, selectedOverlay, onSelectOverlay, onPatch, onAddFiles, onRemoveOverlay, onMoveOverlay }: {
   layer: MascotLayer;
   readOnly: boolean;
-  urlOf: UrlOf;
+  sourceOf: SourceOf;
   selectedOverlay: number | null;
   onSelectOverlay: (index: number) => void;
   onPatch: (patch: MascotLayerPatch) => void;
@@ -278,7 +290,7 @@ function LayerBody({ layer, urlOf, readOnly, selectedOverlay, onSelectOverlay, o
                     id={ids[index]}
                     index={index}
                     image={image}
-                    urlOf={urlOf}
+                    sourceOf={sourceOf}
                     selected={selectedOverlay === index}
                     readOnly={readOnly}
                     onSelect={() => onSelectOverlay(index)}
@@ -295,13 +307,13 @@ function LayerBody({ layer, urlOf, readOnly, selectedOverlay, onSelectOverlay, o
   );
 }
 
-function SortableLayer({ layer, expanded, selected, urlOf, readOnly, onSelect, onToggle, onSelectOverlay, onPatch, onRemove, children }: {
+function SortableLayer({ layer, expanded, selected, sourceOf, readOnly, onSelect, onToggle, onSelectOverlay, onPatch, onRemove, children }: {
   layer: MascotLayer;
   readOnly: boolean;
   expanded: boolean;
   /** The layer itself is selected, not one of its overlays. */
   selected: boolean;
-  urlOf: UrlOf;
+  sourceOf: SourceOf;
   onSelect: () => void;
   onToggle: () => void;
   onSelectOverlay: (index: number) => void;
@@ -341,7 +353,7 @@ function SortableLayer({ layer, expanded, selected, urlOf, readOnly, onSelect, o
                   onClick={(event) => { event.stopPropagation(); onSelectOverlay(index); }}
                   className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
-                  <Thumb url={urlOf(image)} />
+                  <Thumb source={sourceOf(image)} />
                 </button>
               ))}
             </span>
@@ -510,17 +522,53 @@ function RowAction({ copy, onClick, disabled, children }: {
   );
 }
 
+/** The Select value of a locked Supporter Mascot, which no stored mascot holds. */
+const LOCKED_PREFIX = 'locked:';
+
+/**
+ * The Supporter-only Mascots not installed here, and what picking one does: a Supporter installs it, then it
+ * is selected once the sync stores it; anyone else is sent to its listing.
+ */
+function useLockedMascots(control: MascotDraftControl, openListing: ((listingId: string) => void) | undefined) {
+  const mounted = useMountedRef();
+  const supporter = useSupporterContent();
+  const listings = useSupporterMascotListings();
+  const [installing, setInstalling] = useState<string | null>(null);
+  const [selectOnArrival, setSelectOnArrival] = useState<string | null>(null);
+  const installed = new Set(control.store.mascots.flatMap((mascot) => (mascot.supporter ? [mascot.supporter.listingId] : [])));
+  useEffect(() => {
+    if (selectOnArrival === null || !control.store.mascots.some((mascot) => mascot.id === selectOnArrival)) return;
+    setSelectOnArrival(null);
+    control.select(selectOnArrival);
+  }, [selectOnArrival, control]);
+  const pick = (listingId: string) => control.guard(() => {
+    if (!supporter.qualifies || !supporter.entitled.some((item) => item.id === listingId)) {
+      openListing?.(listingId);
+      return;
+    }
+    setInstalling(listingId);
+    void supporterContent.install(listingId)
+      .then(() => supporterMascotSync.sync())
+      .then(() => { if (mounted.current) setSelectOnArrival(supporterMascotId(listingId)); })
+      .catch((cause: unknown) => toastError(cause, MASCOT_COPY.locked.installFailed))
+      .finally(() => { if (mounted.current) setInstalling(null); });
+  });
+  return { locked: listings.filter((listing) => !installed.has(listing.id)), installing: installing !== null, pick };
+}
+
 /**
  * The Mascot tab of Formaquestion Settings: the preset header and the editor of the selected mascot's draft.
  * Player images go to the mascot image store; the draft drops them at Save or Cancel. With the Mascot off,
  * the tab keeps every row mounted and disabled under a status line that links to the switch on General.
  * Full screen lifts the whole tab, footer included.
  */
-export function MascotTab({ settings, control, onOpenGeneral }: {
+export function MascotTab({ settings, control, onOpenGeneral, onOpenListing }: {
   settings: HelpSettings;
   control: MascotDraftControl;
   /** Opens the General tab, where the Mascot switch lives. */
   onOpenGeneral: () => void;
+  /** Opens a listing in Community Creations. Without it, a locked Supporter Mascot opens nothing. */
+  onOpenListing?: (listingId: string) => void;
 }) {
   const off = !settings.mascot;
   const { rig } = control.draft;
@@ -547,7 +595,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
   /** The last Play: its run, whether it went to the Thinking look, and the selection it played over. */
   const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> & { thinking: boolean; over: MascotSelection | null } | null>(null);
   const refs = mascotImageRefs(rig);
-  const urlOf = useMascotImageUrls(refs);
+  const sourceOf = useMascotImageSources(refs);
 
   const edit = control.edit;
   // The draft at the moment of a call, for a Mask drag or nudge that reads before it edits.
@@ -671,17 +719,19 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
   };
 
   const publish = useMascotPublish(control);
+  const lockedMascots = useLockedMascots(control, onOpenListing);
   const copy = MASCOT_COPY.preset;
   const tips: Partial<Record<PresetHeaderAction['key'], string>> = copy.tips;
+  const allows = (action: MascotPresetAction) => mascotAllows(control.kind, action);
   const presetActions = presetHeaderActions(readOnly, {
-    duplicate: control.duplicate,
-    rename: () => setRenaming(true),
+    ...(allows('duplicate') ? { duplicate: control.duplicate } : {}),
+    ...(allows('rename') ? { rename: () => setRenaming(true) } : {}),
     import: () => cardInput.current?.click(),
-    export: () => void exportCard(),
-    ...(publish.canPublish ? { publish: publish.start } : {}),
+    ...(allows('export') ? { export: () => void exportCard() } : {}),
+    ...(publish.canPublish && allows('publish') ? { publish: publish.start } : {}),
     fullscreen: { active: morph.contentInOverlay, toggle: morph.toggle },
-    reset: () => { setSelection(null); control.reset(); },
-    delete: { run: control.remove, title: copy.deleteTitle, description: copy.deleteBody(selected.name) },
+    ...(allows('edit') ? { reset: () => { setSelection(null); control.reset(); } } : {}),
+    ...(allows('delete') ? { delete: { run: control.remove, title: copy.deleteTitle, description: copy.deleteBody(selected.name) } } : {}),
   }).map((action) => ({ ...action, tip: tips[action.key] }));
   const previewWidget = (
     <section
@@ -731,7 +781,12 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
   );
   const controlsColumn = (
     <div data-fq-mascot-controls="" className="grid content-start gap-6 py-4">
-      {readOnly && <ReadOnlyNotice reason={copy.readOnly(selected.name)} onRequestEdit={control.duplicate} />}
+      {readOnly && (
+        <ReadOnlyNotice
+          reason={control.kind === 'supporter' ? copy.supporterReadOnly(selected.name) : copy.readOnly(selected.name)}
+          onRequestEdit={allows('duplicate') ? control.duplicate : undefined}
+        />
+      )}
       <Section title="Mascot">
         <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
           <Textarea
@@ -745,11 +800,11 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
       </Section>
       {/* Base Image and Layers drop the label column, so a layer row has the whole column for its name. */}
       <Section title={MASCOT_COPY.base.label} hint={MASCOT_COPY.base.hint}>
-        {readOnly ? <Meta>{MASCOT_COPY.bundledOverlay}</Meta> : (
+        {readOnly ? <Meta>{control.kind === 'supporter' ? MASCOT_COPY.supporterOverlay : MASCOT_COPY.bundledOverlay}</Meta> : (
           <ImageUpload
             id="fq-mascot-base"
             // The bundled base leaves the slot empty, so a click or a drop uploads yours.
-            value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
+            value={rig.base.kind === 'stored' ? storedUrl(sourceOf(rig.base)) : null}
             onFile={(file) => void uploadImages([file], (current, [ref]) => setMascotBase(current, ref))}
             onChange={(value) => { if (value === '') edit(removeMascotBase); }}
           />
@@ -770,7 +825,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
                       layer={layer}
                       expanded={own !== null}
                       selected={own?.overlay === null}
-                      urlOf={urlOf}
+                      sourceOf={sourceOf}
                       readOnly={readOnly}
                       onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
                       onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
@@ -783,7 +838,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
                     >
                       <LayerBody
                         layer={layer}
-                        urlOf={urlOf}
+                        sourceOf={sourceOf}
                         readOnly={readOnly}
                         selectedOverlay={own?.overlay ?? null}
                         onSelectOverlay={pickOverlay}
@@ -857,13 +912,27 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
         testId="mascot-preset-row"
         className={morph.contentInOverlay ? FULLSCREEN_CORNER_CLEAR : undefined}
         select={(
-          <Select value={selected.id} onValueChange={control.select}>
+          <Select
+            value={selected.id}
+            disabled={lockedMascots.installing}
+            onValueChange={(value) => (value.startsWith(LOCKED_PREFIX) ? lockedMascots.pick(value.slice(LOCKED_PREFIX.length)) : control.select(value))}
+          >
             <SelectTrigger aria-label={copy.label} className="min-w-0 flex-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={DEFAULT_MASCOT_ID}>{DEFAULT_MASCOT_NAME}</SelectItem>
               {control.store.mascots.map((mascot) => <SelectItem key={mascot.id} value={mascot.id}>{mascot.name}</SelectItem>)}
+              {lockedMascots.locked.map((listing) => (
+                <SelectItem key={listing.id} value={`${LOCKED_PREFIX}${listing.id}`} data-fq-locked-mascot={listing.id}>
+                  <span className="flex items-center gap-2">
+                    {listing.thumbnailUrl && <img src={listing.thumbnailUrl} alt="" draggable={false} className="h-5 w-5 shrink-0 rounded-sm object-cover" />}
+                    {listing.name}
+                    <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="sr-only">{` ${MASCOT_COPY.locked.label}`}</span>
+                  </span>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}

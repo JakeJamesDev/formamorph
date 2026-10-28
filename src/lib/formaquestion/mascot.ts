@@ -17,10 +17,21 @@ export const MASCOT_ASSET_NAMES = [
 
 export type MascotAssetName = (typeof MASCOT_ASSET_NAMES)[number];
 
-/** An image of the rig: a bundled asset of the default rig, or a player image by its id in the mascot image store. */
+/**
+ * An image of the rig: a bundled asset of the default rig, a player image by its id in the mascot image store,
+ * or a layer of installed Supporter content by its listing, revision and place in the card's image table.
+ */
 export type MascotImageRef =
   | { readonly kind: 'bundled'; readonly name: MascotAssetName }
-  | { readonly kind: 'stored'; readonly id: string };
+  | { readonly kind: 'stored'; readonly id: string }
+  | { readonly kind: 'supporter'; readonly id: string; readonly revision: number; readonly index: number };
+
+/** One key per distinct image, for lists and caches that follow images. */
+export function mascotImageKey(ref: MascotImageRef): string {
+  if (ref.kind === 'bundled') return `bundled:${ref.name}`;
+  if (ref.kind === 'stored') return `stored:${ref.id}`;
+  return `supporter:${ref.id}@${ref.revision}#${ref.index}`;
+}
 
 /** An expression is the AI's to pick, one at a time; a state stacks with others and belongs to the player and the app. */
 export const MASCOT_LAYER_KINDS = ['expression', 'state'] as const;
@@ -149,6 +160,10 @@ function parseImageRef(stored: unknown): MascotImageRef | null {
   if (!isRecord(stored)) return null;
   if (stored.kind === 'bundled' && isAssetName(stored.name)) return bundled(stored.name);
   if (stored.kind === 'stored' && isId(stored.id)) return { kind: 'stored', id: stored.id };
+  const { id, revision, index } = stored;
+  if (stored.kind === 'supporter' && isId(id) && Number.isInteger(revision) && Number.isInteger(index) && (index as number) >= 0) {
+    return { kind: 'supporter', id, revision: revision as number, index: index as number };
+  }
   return null;
 }
 

@@ -70,6 +70,9 @@ function subscribe(listener: () => void): () => void {
 /** The settings as they are now, for a handler that must not read a stale render. */
 export const currentHelpSettings = snapshot;
 
+/** A change from outside React, as the hook's own change makes it. */
+export const changeHelpSettings = change;
+
 /** The Formaquestion settings on this device, shared by every user of the hook, and a change to them. */
 export function useHelpSettings() {
   return [useSyncExternalStore(subscribe, snapshot), change] as const;

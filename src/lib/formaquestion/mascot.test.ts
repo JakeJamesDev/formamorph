@@ -32,7 +32,7 @@ const rig = (change: Partial<MascotRig> = {}): MascotRig => ({
   ...change,
 });
 
-const ids = (images: readonly MascotImageRef[]): string[] => images.map((image) => (image.kind === 'stored' ? image.id : image.name));
+const ids = (images: readonly MascotImageRef[]): string[] => images.map((image) => (image.kind === 'bundled' ? image.name : image.id));
 
 const disable = (target: MascotRig, layerId: string): MascotRig =>
   ({ ...target, layers: target.layers.map((layer) => (layer.id === layerId ? { ...layer, enabled: false } : layer)) });

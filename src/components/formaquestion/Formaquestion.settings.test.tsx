@@ -16,6 +16,8 @@ import type { HelpAi } from './useHelpAi';
 
 // The AI settings and the reachability check come from the app's providers. Each test sets them here.
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
+// The tab reads the Mascot catalog for locked Supporter Mascots; these suites have none.
+vi.mock('./useSupporterMascotListings', () => ({ useSupporterMascotListings: () => [] }));
 vi.mock('./useHelpAi', () => ({ useHelpAi: () => ai.current }));
 import { Formaquestion } from './Formaquestion';
 

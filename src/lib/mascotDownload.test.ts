@@ -23,7 +23,7 @@ const rigOf = (...ids: string[]): MascotRig => ({
 
 /** A card as the listing serves it: images as data URLs, named by the pixels they carry. */
 const card = (name: string | undefined, ...ids: string[]) => ({
-  ...buildMascotCardData(name ?? '', rigOf(...ids), (ref) => `data:image/png;base64,${btoa(ref.kind === 'stored' ? ref.id : ref.name)}`, '3.0.1'),
+  ...buildMascotCardData(name ?? '', rigOf(...ids), (ref) => `data:image/png;base64,${btoa(ref.kind === 'bundled' ? ref.name : ref.id)}`, '3.0.1'),
   ...(name === undefined ? { name: undefined } : {}),
 });
 

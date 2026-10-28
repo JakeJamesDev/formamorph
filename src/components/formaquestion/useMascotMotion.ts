@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { MascotImageRef } from '@/lib/formaquestion/mascot';
+import { mascotImageKey, type MascotImageRef } from '@/lib/formaquestion/mascot';
 import { mascotTransitionAt, type MascotTransition } from '@/lib/formaquestion/mascotTransition';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 
@@ -17,7 +17,7 @@ export interface MascotReplay {
 }
 
 const lookKey = (images: readonly MascotImageRef[]): string =>
-  images.map((ref) => (ref.kind === 'bundled' ? `b:${ref.name}` : `s:${ref.id}`)).join('\n');
+  images.map(mascotImageKey).join('\n');
 
 /**
  * The looks a Mascot piece draws while its composition changes, and the refs that paint each frame. A change

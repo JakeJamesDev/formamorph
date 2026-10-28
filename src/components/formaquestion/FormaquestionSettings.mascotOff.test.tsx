@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { useState } from 'react';
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
@@ -15,6 +15,8 @@ import { renderReporting } from '@/test/surfaceReporter';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import type { FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { IDLE_SEMANTIC_SEARCH } from './useSemanticSearch';
+// The tab reads the Mascot catalog for locked Supporter Mascots; these suites have none.
+vi.mock('./useSupporterMascotListings', () => ({ useSupporterMascotListings: () => [] }));
 
 const SEMANTIC = IDLE_SEMANTIC_SEARCH;
 const OFF_LINE = 'The Mascot is off. Enable it in “General” to customize it.';

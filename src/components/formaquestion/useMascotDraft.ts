@@ -9,9 +9,9 @@ import {
 } from '@/lib/formaquestion/mascotHistory';
 import { deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import {
-  activeMascotPreset, addMascotPreset, deleteMascotPreset, duplicateMascotPreset, isDefaultMascot, linkMascotPreset, mascotPresetOf,
+  activeMascotPreset, addMascotPreset, deleteMascotPreset, duplicateMascotPreset, linkMascotPreset, mascotAllows, mascotPresetKind, mascotPresetOf,
   renameMascotPreset, selectMascotPreset, uniqueMascotName, unreferencedMascotImages, type MascotListingLink, type MascotPreset,
-  type MascotPresetStore,
+  type MascotPresetKind, type MascotPresetStore,
 } from '@/lib/formaquestion/mascotPresets';
 import { randomUUID } from '@/lib/uuid';
 
@@ -29,7 +29,9 @@ export interface MascotDraftControl {
   readonly mascot: MascotPreset;
   readonly store: MascotPresetStore;
   readonly dirty: boolean;
-  /** The Default mascot is selected, which refuses edits. */
+  /** The selected mascot's kind, which decides the preset actions it takes. */
+  readonly kind: MascotPresetKind;
+  /** The selected mascot refuses edits: the Default or a Supporter mascot. */
   readonly readOnly: boolean;
   /** Bumped when the draft is dropped or reset, so an upload that started before it lands nowhere. */
   readonly generation: MutableRefObject<number>;
@@ -148,9 +150,11 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     dropMascotImages(unreferencedMascotImages(dropped, next));
   };
 
-  const readOnly = isDefaultMascot(storeRef.current, draft.mascotId);
+  const kind = mascotPresetKind(storeRef.current, draft.mascotId);
+  const readOnly = !mascotAllows(kind, 'edit');
+  const editable = () => mascotAllows(mascotPresetKind(storeRef.current, heldRef.current.mascotId), 'edit');
   const edit = (apply: (rig: MascotRig) => MascotRig, group?: string) => {
-    if (isDefaultMascot(storeRef.current, heldRef.current.mascotId)) return;
+    if (!editable()) return;
     recordEdit(apply(heldRef.current.rig), group ?? null);
   };
   const save = () => {
@@ -177,6 +181,7 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     mascot: mascotPresetOf(storeRef.current, draft.mascotId),
     store: storeRef.current,
     dirty: isMascotDraftDirty(draft),
+    kind,
     readOnly,
     generation,
     edit,
@@ -187,7 +192,7 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     canUndo: canUndo(historyOf(draft)),
     canRedo: canRedo(historyOf(draft)),
     reset: () => {
-      if (isDefaultMascot(storeRef.current, heldRef.current.mascotId)) return;
+      if (!editable()) return;
       generation.current += 1;
       recordEdit(resetMascotDraft(heldRef.current).rig, null);
     },
@@ -203,6 +208,7 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     select: (id) => guard(() => switchTo(selectMascotPreset(storeRef.current, id))),
     duplicate: () => guard(() => {
       const source = activeMascotPreset(storeRef.current);
+      if (!mascotAllows(mascotPresetKind(storeRef.current, source.id), 'duplicate')) return;
       switchTo(duplicateMascotPreset(storeRef.current, source.id, randomUUID(), uniqueMascotName(storeRef.current, source.name)));
     }),
     rename: (name) => writeStore(renameMascotPreset(storeRef.current, heldRef.current.mascotId, name)),
