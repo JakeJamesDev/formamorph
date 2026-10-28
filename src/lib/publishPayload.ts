@@ -38,6 +38,8 @@ export interface PublishPayload {
   compatibleWorlds?: string[];
   /** The models a prompt works with. Prompts only; the server refuses a prompt with none. */
   models?: string[];
+  /** Create the listing Supporter-only and pinned. New listings only; the server takes it from an admin alone. */
+  supporterOnly?: boolean;
 }
 
 /**
