@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
@@ -173,6 +173,27 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
     mountWith();
     await pick('Nova (Locked)');
     expect(openListing).toHaveBeenCalledWith('nova');
+  });
+
+  it.each(['idle', 'checking'] as const)('shows Checking and opens nothing while the check is %s, then installs once ready', async (status) => {
+    fake.snapshot = { status, qualifies: false, entitled: [], installed: [] };
+    fake.install.mockImplementation(async () => {
+      fake.served.set('nova', content);
+      publish({ installed: [{ id: 'nova', kind: 'mascot', revision: 1 }] });
+    });
+    mountWith();
+    const user = userEvent.setup();
+    await user.click(presetSelect());
+    const option = await screen.findByRole('option', { name: 'Nova (Checking…)' });
+    expect(option).toHaveAttribute('aria-disabled', 'true');
+    await user.click(option);
+    expect(openListing).not.toHaveBeenCalled();
+    expect(fake.install).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    act(() => publish({ status: 'ready', qualifies: true, entitled: [{ id: 'nova', kind: 'mascot', revision: 1 }] }));
+    await pick('Nova (Locked)');
+    expect(fake.install).toHaveBeenCalledWith('nova');
+    expect(openListing).not.toHaveBeenCalled();
   });
 
   it('installs and then selects it for a Supporter', async () => {

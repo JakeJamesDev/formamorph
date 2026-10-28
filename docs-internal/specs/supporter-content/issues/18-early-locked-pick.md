@@ -1,6 +1,6 @@
 # 18: Client: a locked Mascot picked during the first check waits for it
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -17,6 +17,14 @@ In the Mascot tab, picking a locked Supporter Mascot while the module's first ch
 
 ## Acceptance criteria
 
-- [ ] While the check is idle or running, the locked entry shows a checking state and a pick does not open the listing.
-- [ ] Once the check ends, a Supporter's pick installs and selects, and anyone else's opens the listing.
-- [ ] A component test covers the checking state.
+- [x] While the check is idle or running, the locked entry shows a checking state and a pick does not open the listing. (Disabled "Nova (Checking…)" option; `it.each` idle/checking test.)
+- [x] Once the check ends, a Supporter's pick installs and selects, and anyone else's opens the listing. (Same test installs after ready; the existing non-Supporter listing test still passes.)
+- [x] A component test covers the checking state. (`FormaquestionMascotTab.supporter.test.tsx`, 10 pass.)
+
+## Landed
+
+**Not verified**
+- None. Only the supporter test file ran; prepare runs the full gates.
+
+**For you**
+- Open the Preset list in Formaquestion Settings > Mascot right after sign-in: a locked Supporter Mascot should read "Checking…" and be greyed out, then "Locked".
