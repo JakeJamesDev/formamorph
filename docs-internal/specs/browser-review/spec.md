@@ -73,6 +73,8 @@ Mods and admins review listings only from **Admin Panel → Moderation → Revie
 - Q11. Community Creations browser only.
 - Q12. A pinned update card shows the pending name and thumbnail.
 - Q13. One pinned group, oldest-queued first.
+- Q14. The pinned group is an "Awaiting Review" heading above the same card grid, with a divider before the normal results. No tinted panel.
+- Q15. Pinned cards show the moderation badge as its title only ("Pending Review", "Update Pending"), without the description. Every other card keeps the full badge.
 
 **Modules**
 

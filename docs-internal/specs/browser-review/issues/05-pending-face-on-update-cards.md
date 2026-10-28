@@ -15,6 +15,7 @@ A pinned Update Pending card shows the pending name and the pending thumbnail, s
 - [ ] The listing service passes `pending_preview` through on catalog rows.
 - [ ] A pinned update card shows `pending_preview.name` and the Update Pending badge.
 - [ ] A pinned update card loads `pending_preview.thumbnail_url` through `usePendingThumbnail`, and shows the live thumbnail while loading, on error, or when there is no URL.
+- [ ] Browser search matches a pinned update by `pending_preview.name` as well as its live name, so a mod finds the name the card shows (ticket 03 review finding).
 - [ ] With **Show Pending** off, an update card shows its live face.
 - [ ] A row without `pending_preview` shows its live face.
 - [ ] Frames: `.scratch/frames/pending-face-light.png` at 1280px wide.
