@@ -23,6 +23,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Community Creations:**
     - **Staff can pin a listing in Community Creations, and a pinned listing shows first in its section.** Pinned cards carry a **Pinned** mark. The newest pin leads, ahead of every sort and filter.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Saving a world works again after the browser closes its storage connection.** Before, every save failed with "The database connection is closing" until you reloaded the page.
+
 ---
 
 <details>
