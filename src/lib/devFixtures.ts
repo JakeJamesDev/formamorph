@@ -4,11 +4,11 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Entity, EntityStatValues, GameLocation, World, SaveObject } from '@/types';
+import type { Entity, EntityStatValues, GameLocation, Item, Slot, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'entityPresence', 'entityFollowers', 'mapBackground'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'entityPresence', 'entityFollowers', 'mapBackground', 'items'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -46,6 +46,24 @@ const ENTITY_STATS_CAST = [
   // The played persona, for the You mark on the persona row, its stat heading and the picker.
   { id: 'dev-sable', name: 'Sable', persona: true, stats: [devStat('Poise', 65)] },
 ] as unknown as Entity[];
+
+/** The `items` fixture's slots and items. */
+const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand', capacity: 2 }, { id: 'dev-slot-ring', name: 'Ring' }];
+const devItems = (valueStatId: string | undefined): Item[] => [
+  {
+    id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', consumable: true,
+    value: 5, valueUnit: { kind: 'text', text: 'silver' }, statEffects: [], traitEffects: [], equipRequires: [],
+  },
+  {
+    id: 'dev-item-wand', name: 'Ash Wand', playerDescription: 'A wand of pale ash wood.', charges: 3, stackable: false, bound: true,
+    slotId: 'dev-slot-hand', statEffects: [], traitEffects: [], equipRequires: [],
+  },
+  {
+    id: 'dev-item-sword', name: 'Greatsword', playerDescription: 'A long two-handed blade.', slotId: 'dev-slot-hand', slotSize: 2,
+    ...(valueStatId ? { value: 40, valueUnit: { kind: 'stat' as const, statId: valueStatId } } : {}),
+    statEffects: [], traitEffects: [], equipRequires: [],
+  },
+];
 
 /** The `entityMorphs` fixture's entity: the bundled avatar as an entity model, its Bulk stat bound to a face
  *  shape key, since the avatar's face meshes are the ones that carry shape keys. */
@@ -214,6 +232,12 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       const locations = world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, parentId: DEV_KEEP.id } : l));
       return { world: { ...world, locations: [DEV_KEEP, ...locations], entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
+    }
+    case 'items': {
+      // The white room with three items and two slots: a stacked consumable, a bound charged wand in Hand, and
+      // a two-handed sword valued in the world's first stat.
+      const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
+      return { world: { ...world, slots: DEV_SLOTS, items: devItems(world.stats[0]?.id) } };
     }
     case 'entityFollowers': {
       // A save mid-game: the Scout follows the player, the Archivist is met but untracked, the Sentry was met

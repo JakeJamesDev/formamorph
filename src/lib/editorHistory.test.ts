@@ -20,7 +20,7 @@ const baseWorld = (): WorldSlices => ({
   stats: [stat("hunger", "Hunger"), stat("thirst", "Thirst"), stat("mood", "Mood")],
   locations: [location("docks", "Docks"), location("market", "Market")],
   statGroups: [], connections: [], entities: [], entityGroups: [], traits: [], traitGroups: [], statUpdates: [],
-  dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [], tools: [],
+  dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [], tools: [], items: [], slots: [], placements: [],
 });
 
 /**

@@ -1,16 +1,19 @@
-import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
+import { DictionaryIcon, EntityIcon, ItemIcon } from '@/lib/elementIcons';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 
 /** What each owner kind is called where the icon needs a name of its own. */
-const OWNER_LABEL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'Entity', dictionary: 'Dictionary' };
+export const OWNER_LABEL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'Entity', item: 'Item', dictionary: 'Dictionary' };
+
+/** The icon each owner kind wears. */
+export const OWNER_ICONS = { entity: EntityIcon, item: ItemIcon, dictionary: DictionaryIcon } as const;
 
 /** The mark that says which kind of owner a name belongs to — on a section's heading, and on the closed
  *  trigger of a picker that settled on one of that owner's placeholders. */
 export const OwnerIcon = ({ kind, className }: { kind: PlaceholderOwnerRef['kind']; className?: string }) => {
-  const Icon = kind === 'entity' ? EntityIcon : DictionaryIcon;
+  const Icon = OWNER_ICONS[kind];
   return <Icon role="img" aria-label={OWNER_LABEL[kind]} className={cn('h-3 w-3 shrink-0', className)} />;
 };
 

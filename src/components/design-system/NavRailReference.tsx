@@ -14,6 +14,7 @@ const BODY: Record<(typeof WORLD_EDITOR_TABS)[number]['value'], string> = {
   media: 'Every image, sound, 3D Model and Avatar in the world.',
   stats: 'The stat list beside the selected stat\'s details.',
   entities: 'The entity tree beside the selected entity\'s details.',
+  items: 'The item list beside the selected item\'s details.',
   locations: 'The location tree or the canvas.',
   traits: 'The trait tree beside the selected trait\'s details.',
   dictionary: 'The dictionaries and their entries.',

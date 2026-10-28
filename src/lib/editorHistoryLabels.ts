@@ -19,6 +19,9 @@ export const SLICE_TYPE_NAMES: Record<SliceName, [string, string]> = {
   placeholderGroups: ["Placeholder Group", "Placeholder Groups"],
   scripts: ["Script", "Scripts"],
   tools: ["Tool", "Tools"],
+  items: ["Item", "Items"],
+  slots: ["Slot", "Slots"],
+  placements: ["Placement", "Placements"],
 };
 
 /** Field labels as the editor shows them. A field missing here reads as its name in title case. */

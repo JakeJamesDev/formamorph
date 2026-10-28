@@ -17,6 +17,7 @@ import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import SlotsSection from './SlotsSection';
 
 const ALLOWED_PERSONAS_LABELS: Record<AllowedPersonas, string> = { any: 'Any', world: 'World Only' };
 
@@ -149,6 +150,7 @@ const WorldOverviewManager = () => {
         </div>
       </div>
       {advanced && <PersonaRulesFields />}
+      <SlotsSection />
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>
         {/* The world stores a bare data URL where a location stores a media record, so the shared widget

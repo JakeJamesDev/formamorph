@@ -52,6 +52,7 @@ import { formatBytes, type ImageCap } from '@/lib/imageOptim';
 import { worldImageItems, type MediaItem } from '@/lib/mediaIndex';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
+import { itemTexts } from '@/lib/itemTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
 import {
   broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, resolveOwners, type GlobalTree, type Owner,
@@ -91,7 +92,7 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'] as c
 
 /** The editor tab that owns a finding's items — where Open navigates to. */
 export type FindingSection =
-  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools' | 'media';
+  | 'overview' | 'stats' | 'entities' | 'items' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools' | 'media';
 
 /** One item a finding names, labeled as the editor's own lists label it. */
 export interface FindingItem {
@@ -815,6 +816,10 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
   ...(world.entities ?? []).map((e) => ({
     item: { ...asItem(e, world), section: 'entities' as const },
     texts: entityTexts(e),
+  })),
+  ...(world.items ?? []).map((i) => ({
+    item: namedItem(i.id, i.name, world, 'items'),
+    texts: itemTexts(i),
   })),
   ...(world.locations ?? []).map((l) => ({
     item: namedItem(l.id, l.name, world, 'locations'),

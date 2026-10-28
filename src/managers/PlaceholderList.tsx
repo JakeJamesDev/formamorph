@@ -1,6 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { createElement, useMemo, useState, type ReactNode } from 'react';
 import { Link2, ArrowUpFromLine, CornerDownRight } from 'lucide-react';
-import { BlueprintIcon, DictionaryIcon, EntityIcon, GroupIcon } from '@/lib/elementIcons';
+import { BlueprintIcon, GroupIcon } from '@/lib/elementIcons';
+import { OWNER_ICONS } from '@/components/prompt/OwnerHeading';
 import { removePlaceholderGroup } from '@/lib/placeholderGroups';
 import { blueprintMoveRefusal, copyName, type BlueprintRefusal } from '@/lib/placeholderBlueprints';
 import { allPlaceholders, placeholderList, withPlaceholderList } from '@/lib/placeholderHomes';
@@ -126,7 +127,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
           remove: () => {
             if (!lists) return;
             const next = removePlaceholderGroup(lists.placeholderGroups ?? [], lists.placeholders ?? [], node.id);
-            commitLists({ placeholders: next.placeholders, entities: lists.entities ?? [], dictionaries: lists.dictionaries ?? [], placeholderGroups: next.groups }, true);
+            commitLists({ placeholders: next.placeholders, entities: lists.entities ?? [], items: lists.items ?? [], dictionaries: lists.dictionaries ?? [], placeholderGroups: next.groups }, true);
             if (selectedId === node.id) onSelect(null);
           },
         };
@@ -143,7 +144,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
           remove: () => {
             if (!lists || !setLists) return;
             const next = removePlaceholderGroup(lists.placeholderGroups ?? [], lists.placeholders ?? [], node.id);
-            setLists({ placeholders: next.placeholders, entities: lists.entities ?? [], dictionaries: lists.dictionaries ?? [], placeholderGroups: next.groups });
+            setLists({ placeholders: next.placeholders, entities: lists.entities ?? [], items: lists.items ?? [], dictionaries: lists.dictionaries ?? [], placeholderGroups: next.groups });
             if (selectedId === node.id) onSelect(null);
           },
         };
@@ -154,9 +155,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
         return {
           lead: 'chevron',
           collapseLabels: [`Expand ${node.owner.name}`, `Collapse ${node.owner.name}`],
-          icon: node.owner.kind === 'entity'
-            ? <EntityIcon className="h-4 w-4 shrink-0" />
-            : <DictionaryIcon className="h-4 w-4 shrink-0" />,
+          icon: createElement(OWNER_ICONS[node.owner.kind], { className: 'h-4 w-4 shrink-0' }),
           label: <PlaceholderText text={node.owner.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
           fixed: true,

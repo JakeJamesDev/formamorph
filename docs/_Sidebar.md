@@ -29,6 +29,7 @@
   - [🎬 Openings](World-Editor-Openings)
   - [📊 Stats](World-Editor-Stats)
   - [🎭 Entities](World-Editor-Entities)
+  - [🎒 Items](World-Editor-Items)
   - [🗺️ Locations](World-Editor-Locations)
   - [🧬 Traits](World-Editor-Traits)
   - [📖 Dictionary](World-Editor-Dictionary)

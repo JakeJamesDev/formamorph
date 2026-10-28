@@ -94,6 +94,27 @@ describe('Gallery Visibility rules on a location', () => {
   });
 });
 
+describe('Gallery Visibility rules on an item', () => {
+  const LAMP_HOST: RuleHost = { kind: 'item', id: 'lamp' };
+
+  it('names the Item Owner as the owner of a Condition with no owner, and offers Persona and each entity by name', async () => {
+    render(<Harness initial={[{ data: A }, { data: B }]} host={LAMP_HOST} />);
+    fireEvent.click(cogOf('Image 2'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
+
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Item Owner', 'Persona', 'Wren']);
+    fireEvent.click(screen.getByRole('option', { name: 'Item Owner' }));
+    expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
+  });
+
+  it('reads the rule under the framed thumbnail', () => {
+    render(<Harness initial={[{ data: A }, { data: B, requires: notHealed }]} host={LAMP_HOST} />);
+    fireEvent.click(tile(/^Image 2/));
+    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while not Healed');
+  });
+});
+
 describe('Gallery Visibility rules', () => {
   it('opens the rows editor from a tile’s cog and stores the rule on that image only', async () => {
     render(<Harness initial={[{ data: A }, { data: B }, { data: C }]} />);

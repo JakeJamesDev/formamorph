@@ -49,6 +49,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🎬 **[World Editor: Openings](World-Editor-Openings)** | The ways a game can start, their weights, and Self openings for personas |
 | 📊 **[World Editor: Stats](World-Editor-Stats)** | The player's numbers, their descriptors, and their scripts |
 | 🎭 **[World Editor: Entities](World-Editor-Entities)** | The people, creatures and things in a world, their names and aliases, and SillyTavern cards |
+| 🎒 **[World Editor: Items](World-Editor-Items)** | The objects someone can own, their properties, and the world's equipment slots |
 | 🗺️ **[World Editor: Locations](World-Editor-Locations)** | The places, nesting, Connections and Travel Hints, and starting locations |
 | 🧬 **[World Editor: Traits](World-Editor-Traits)** | Trait modes, Pick Counts, requirements, entity traits, Blueprints and links |
 | 📖 **[World Editor: Dictionary](World-Editor-Dictionary)** | Lore entries, what gets scanned, keyword matching, and books |

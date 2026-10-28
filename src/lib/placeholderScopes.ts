@@ -105,6 +105,7 @@ export function placeholderTreeNodes(world: PlaceholderHomesWorld): PlaceholderT
   for (const e of entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? [])) {
     section({ kind: 'entity', id: e.id, name: e.name }, e.placeholders, !!e.customPersona);
   }
+  for (const i of world.items ?? []) section({ kind: 'item', id: i.id, name: i.name }, i.placeholders);
   for (const b of world.dictionaries ?? []) section({ kind: 'dictionary', id: b.id, name: b.name }, b.placeholders);
   return out;
 }
@@ -171,7 +172,7 @@ export function applyScopedPlaceholderDrop(
     const groups = world.placeholderGroups ?? [];
     const order = new Map(moved.flatMap((n) => (n.kind === 'group' && n.parentId === parentId ? [n.id] : [])).map((id, i) => [id, i]));
     return {
-      placeholders: world.placeholders ?? [], entities: world.entities ?? [], dictionaries: world.dictionaries ?? [],
+      placeholders: world.placeholders ?? [], entities: world.entities ?? [], items: world.items ?? [], dictionaries: world.dictionaries ?? [],
       placeholderGroups: groups.map((g) => (order.has(g.id)
         ? { ...g, parentId: g.id === activeId ? parentId : g.parentId, order: order.get(g.id) }
         : g)),

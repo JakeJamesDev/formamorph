@@ -14,7 +14,7 @@ const wire = (id: string): Connection => ({ id } as unknown as Connection);
 const world = (over: Partial<WorldSlices> = {}): WorldSlices => ({
   worldOverview: { name: 'Sedge Landing' } as WorldSlices['worldOverview'], stats: [], statGroups: [], locations: [], connections: [],
   entities: [], entityGroups: [], traits: [], traitGroups: [], statUpdates: [], dictionaries: [], placeholders: [],
-  placeholderGroups: [], scripts: [], tools: [], ...over,
+  placeholderGroups: [], scripts: [], tools: [], items: [], slots: [], placements: [], ...over,
 });
 
 /** A move over the Step that added `after[0]` to an empty slice, leaving the world as `left` says. */

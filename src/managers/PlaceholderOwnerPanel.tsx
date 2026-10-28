@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react';
-import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
+import { OWNER_ICONS, OWNER_LABEL } from '@/components/prompt/OwnerHeading';
 import { Button } from '@/components/ui/button';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
@@ -17,11 +17,12 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
   placeholders: Placeholder[];
   onOpen: () => void;
 }) => {
+  const Icon = OWNER_ICONS[owner.kind];
   return (
     <div className="space-y-3">
       <ListDetailFirstRow align="center">
         <div className="flex items-center gap-2 text-label font-medium">
-          {owner.kind === 'entity' ? <EntityIcon className="h-4 w-4 shrink-0" /> : <DictionaryIcon className="h-4 w-4 shrink-0" />}
+          <Icon className="h-4 w-4 shrink-0" />
           <PlaceholderText text={owner.name} placeholders={placeholders} />
         </div>
       </ListDetailFirstRow>
@@ -32,7 +33,7 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
       </p>
       <Button variant="outline" size="sm" onClick={onOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
-        Open {owner.kind === 'entity' ? 'Entity' : 'Dictionary'}
+        Open {OWNER_LABEL[owner.kind]}
       </Button>
     </div>
   );

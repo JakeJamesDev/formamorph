@@ -4,7 +4,7 @@ import { PlaceholderStoreProvider, usePlaceholderStore, usePlaceholderStoreOptio
 import { useEditorMode } from '@/lib/editorMode';
 import { OWNER_NAME_SEPARATOR, labelPlaceholders } from '@/lib/placementLetters';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { placeholderList, placeholderOwnerRef, type PlaceholderHome } from '@/lib/placeholderHomes';
+import { placeholderList, placeholderOwnerRef, type PlaceholderHome, type PlaceholderOwnerKind } from '@/lib/placeholderHomes';
 import { ownerPlaceholderNodes } from '@/lib/placeholderScopes';
 import PlaceholderList from './PlaceholderList';
 import { usePlaceholderDetail } from './PlaceholderDetail';
@@ -61,13 +61,13 @@ const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlace
 };
 
 /**
- * The Placeholders tab of an entity or dictionary panel: the same editor as the top-level tab, bound to this
+ * The Placeholders tab of an entity, item or dictionary panel: the same editor as the top-level tab, bound to this
  * one owner's list. A placeholder made here belongs to the owner and reads `Owner › Name` everywhere else in
  * the world. Advanced mode only, like the tab itself. It binds only to a store that carries the world's
  * lists, so a library modal's own store renders nothing here.
  */
 const ScopedPlaceholdersSection = ({ kind, ownerId, ...selection }: ScopedSelection & {
-  kind: 'entity' | 'dictionary';
+  kind: PlaceholderOwnerKind;
   ownerId: string;
 }) => {
   const { advanced } = useEditorMode();

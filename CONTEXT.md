@@ -88,6 +88,22 @@ _Avoid_: auto layout (as a live behavior), nudge
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
 
+**Item**:
+An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Consumable, Charges, Bound and Slot. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
+_Avoid_: object, thing, entity (for an item)
+
+**Item Copy**:
+One item in play, kept in the save. It has an Owner or lies at a location, a quantity, an equipped state and a visibility. Always written in full.
+_Avoid_: copy (that is a placeholder Copy), instance
+
+**Placement**:
+An authored starting Item Copy: where it goes (the Persona, an entity or a location), a quantity, Hidden, and a source. The source is one item. A new game's seed turns each Placement into Item Copies.
+_Avoid_: spawn, starting item
+
+**Slot**:
+A named place in the world's slot list where an item is equipped, such as Hand or Ring. Its capacity sets how many item units fit; an item's slot size says how many it takes. The Persona and every entity share one list.
+_Avoid_: equipment slot list per entity
+
 **Persona**:
 The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.
 _Avoid_: player character, user, the Mascot's Voice

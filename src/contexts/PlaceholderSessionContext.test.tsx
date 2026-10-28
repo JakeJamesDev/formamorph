@@ -135,6 +135,23 @@ describe('PlaceholderSessionProvider', () => {
     expect(TOWN.values).toContain(h.rolls().unique?.['band-1']);
   });
 
+  it('rolls an item’s own Wildcard once for the playthrough, from its name and descriptions (Q42)', () => {
+    const GLOW = { id: 'ph-glow', name: 'Glow', values: [{ id: 'g1', text: 'amber' }, { id: 'g2', text: 'green' }] };
+    const w = world();
+    w.items = [{
+      id: 'lamp', name: `${tok(GLOW.id, 'item-name')} Lamp`, playerDescription: `It burns ${tok(GLOW.id, 'item-desc')}.`,
+      placeholders: [GLOW], statEffects: [], traitEffects: [], equipRequires: [],
+    }];
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    const rolled = h.rolls().world?.[GLOW.id];
+    expect(['g1', 'g2', 'amber', 'green']).toContain(rolled);
+    // A world chip has one roll per playthrough, so every Item Copy reads the same value.
+    h.begin();
+    expect(h.rolls().world?.[GLOW.id]).toBe(rolled);
+  });
+
   it('keeps its rolls when the session is reopened on the way into the game view', () => {
     const h = mount();
     h.loadWorld();

@@ -62,6 +62,8 @@
     { "id": "stats-b3", "page": "World-Editor-Stats", "question": "how do I show a word like 'starving' instead of a number?", "section": "World-Editor-Stats#how-to-add-a-stat-descriptor", "otherSections": ["World-Editor-Stats#stat-descriptors"] },
     { "id": "editor-entities-b1", "page": "World-Editor-Entities", "question": "I have a character card from another chat app, can I bring it in?", "section": "World-Editor-Entities#how-to-import-a-sillytavern-card", "otherSections": ["World-Editor-Entities#sillytavern-cards", "Library#how-to-import-an-entity"] },
     { "id": "editor-entities-b2", "page": "World-Editor-Entities", "question": "my character also goes by a nickname, how do I make the game know both?", "section": "World-Editor-Entities#names-and-aliases" },
+    { "id": "editor-items-b1", "page": "World-Editor-Items", "question": "can I stop the player from throwing away a quest key?", "section": "World-Editor-Items#properties" },
+    { "id": "editor-items-b2", "page": "World-Editor-Items", "question": "where do I set up equipment spots like hands and head?", "section": "World-Editor-Items#slots" },
     { "id": "locations-b1", "page": "World-Editor-Locations", "question": "how do I put a room inside a building?", "section": "World-Editor-Locations#how-to-nest-a-location" },
     { "id": "locations-b2", "page": "World-Editor-Locations", "question": "how do I make it so you can walk from the village to the forest?", "section": "World-Editor-Locations#how-to-connect-two-locations", "otherSections": ["World-Editor-Locations#connections"] },
     { "id": "locations-b3", "page": "World-Editor-Locations", "question": "how do I get rid of a place I no longer need?", "section": "World-Editor-Locations#delete-a-location" },

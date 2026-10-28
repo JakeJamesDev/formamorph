@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.5.1** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Inventory:**
+    - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Consumable, Charges, Bound and an equipment slot. Set the world's slots on the Overview tab.
+
 ---
 
 <details>
