@@ -22,6 +22,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Publish a custom Mascot from the Mascot tab to share it in Community Creations.** The thumbnail shows the Initial Look, or an image you upload. A Mascot over 10 MB is refused with its size.
   - **Community Creations:**
     - **Staff can pin a listing in Community Creations, and a pinned listing shows first in its section.** Pinned cards carry a **Pinned** mark. The newest pin leads, ahead of every sort and filter.
+  - **Browser Review:**
+    - **Mods and admins can compare a pending update in a listing's details.** The Pending Update section and **Compare** show for staff. **Discard Update** stays with the author.
 
 #### 🔧 Fixed
 

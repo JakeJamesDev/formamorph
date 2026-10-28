@@ -659,9 +659,10 @@ export function RemoteWorldDetailsModal({
                       </div>
                     )}
 
-                    {isOwnListing && pendingUpdate && (
+                    {(isOwnListing || isStaff(currentUser)) && pendingUpdate && (
                       <div className="col-span-2">
                         <PendingUpdateSection
+                          canDiscard={isOwnListing}
                           listingId={String(world._id || world.id)}
                           name={world.name}
                           update={pendingUpdate}
