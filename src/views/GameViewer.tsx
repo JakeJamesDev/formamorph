@@ -485,6 +485,7 @@ const GameViewer = ({
     stats: worldStats,
     traitGroups: worldTraitGroups,
     worldTools,
+    items: worldItems,
     worldOverview,
     worldId,
     worldLoaded,
@@ -672,6 +673,7 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    setItemCopies,
     statDeltas,
     addLogEntry,
     addSystemLogEntry,
@@ -1221,9 +1223,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore);
+      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems);
     })();
-  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore]);
+  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore, worldItems]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -5007,7 +5009,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore);
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems);
         return;
       }
 
@@ -5025,6 +5027,7 @@ const GameViewer = ({
         for (const line of startingTraitLog([trait], (t) => resolveTraitText(t, t.name, ownerEntity(ownerId)))) addLogEntry(line);
       }
       commitTraitState(opening.traitState);
+      setItemCopies(opening.state.itemCopies ?? []);
       // The seeded entity stats are also the baseline their first changes read from.
       resetEntityStats(opening.entityStats);
       // A new game starts with no entity picked in the stat panel or the entity view.
@@ -5452,6 +5455,7 @@ const GameViewer = ({
         return await loadGame(
           id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
           Array.isArray(migrated.entities) ? migrated.entities : [], migrated.worldOverview?.vrmStore,
+          Array.isArray(migrated.items) ? migrated.items : [],
         );
       } catch (error) {
         console.error('Cross-world load failed:', error);
@@ -5459,7 +5463,7 @@ const GameViewer = ({
         return false;
       }
     }
-    return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore);
+    return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems);
   };
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal

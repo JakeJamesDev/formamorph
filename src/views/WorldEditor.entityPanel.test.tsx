@@ -76,17 +76,17 @@ const selectEntity = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor entity panel tabs', () => {
-  it('offers six tabs in Advanced mode and opens on Profile', () => {
+  it('offers seven tabs in Advanced mode and opens on Profile', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Traits', 'Stats', 'Placeholders', 'Openings']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('offers two tabs in Simple mode', () => {
+  it('offers three tabs in Simple mode', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
   });
 
   it('puts the identity fields, the picture and its tags on Profile, and no description', () => {
@@ -139,7 +139,7 @@ describe('the World Editor entity panel tabs', () => {
     selectEntity('Wren');
     openPanelTab('Placeholders');
     pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Image', 'Name', 'Locations']);
   });

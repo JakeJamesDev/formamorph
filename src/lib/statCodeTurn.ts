@@ -1,6 +1,6 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, LoreToggles, OwnedTraitStates,
-  Placeholder, PlayerStat, Script, Trait,
+  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, ItemCopy, LoreToggles,
+  OwnedTraitStates, Placeholder, PlayerStat, Script, Trait,
 } from '@/types';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import {
@@ -90,6 +90,8 @@ export interface SandboxState {
   turn?: SandboxTurn;
   /** What scripts switched on the books' entries in play. Absent ⇒ none. */
   loreToggles?: LoreToggles;
+  /** Every Item Copy in play. Absent ⇒ none. */
+  itemCopies?: readonly ItemCopy[];
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */

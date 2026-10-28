@@ -41,7 +41,7 @@ import { CodeRenameContext } from '@/lib/useCodeRename';
 import { CodeCardNavigationContext } from '@/lib/codeCardNavigation';
 import { parseWorldTools } from '@/lib/tools/worldTools';
 import {
-  parseItems, parsePlacements, parseSlots, slotCapacity, withSlotCapacity, withoutItemPlacements, withoutSlotRefs,
+  parseItems, parsePlacements, parseSlots, slotCapacity, withSlotCapacity, withoutItemPlacements, withoutPlacementsAt, withoutSlotRefs,
 } from '@/lib/items';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
@@ -299,6 +299,7 @@ function useProvideGameData() {
     // Same for its Connections: a record with one dead endpoint links nothing and can never be edited away,
     // since neither the list nor the canvas has an end to select it by.
     setConnections(prevConnections => dropLocationFromConnections(locationId, prevConnections));
+    setPlacements(prev => withoutPlacementsAt(prev, { kind: 'location', id: locationId }));
   }, []);
 
   const addConnection = useCallback((newConnection: Connection) => {
@@ -317,6 +318,7 @@ function useProvideGameData() {
   // that target it ride on other entities, so they go in the same pass.
   const removeEntity = useCallback((entityId: string) => {
     setEntities(prevEntities => dropRelationshipsTo(entityId, prevEntities.filter(entity => entity.id !== entityId)));
+    setPlacements(prev => withoutPlacementsAt(prev, { kind: 'entity', id: entityId }));
   }, []);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {

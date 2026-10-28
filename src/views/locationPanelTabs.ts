@@ -11,6 +11,7 @@ import { tabForField } from './findFocus';
 export const LOCATION_PANEL_TABS = [
   { value: 'details', label: 'Details', icon: ELEMENT_ICONS.location },
   { value: 'presence', label: 'Presence', icon: ELEMENT_ICONS.entities },
+  { value: 'items', label: 'Items', icon: ELEMENT_ICONS.item },
   { value: 'media', label: 'Media', icon: ImageIcon },
   { value: 'pins', label: 'Pins', icon: Pin, advancedOnly: true },
   { value: 'openings', label: 'Openings', icon: ELEMENT_ICONS.opening, advancedOnly: true },

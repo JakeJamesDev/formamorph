@@ -17,6 +17,8 @@ import {
   seedNewGameStats, statTraitsInForce, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { PersonaPick } from './persona';
+import { seedItemCopies, type NewId } from './inventory';
+import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
 import type { Entity, EntityStatValues, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
@@ -24,7 +26,7 @@ import type { Entity, EntityStatValues, OwnedTraitPicks, Placeholder, Trait, Wor
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
   'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries' | 'locations'
-  | 'connections' | 'worldOverview'
+  | 'connections' | 'worldOverview' | 'items' | 'placements'
 >>;
 
 /** What the player picked at the entry step: the global trait ids and each owner's trait ids. */
@@ -56,8 +58,11 @@ function turnOneText(placeholders: Placeholder[]): ResolveText {
   return (text, owner) => resolveEntityText(owner, text, { placeholders, rolls, setRoll });
 }
 
-/** The state a new game opens with. Pure: the same inputs give the same state, its unrolled chips aside. */
-export function openingFold(world: OpeningFoldWorld, picks: OpeningPicks = NO_OPENING_PICKS, persona?: OpeningPersona): OpeningFold {
+/** The state a new game opens with. Pure: the same inputs give the same state, its unrolled chips and its
+ *  Item Copy ids aside. */
+export function openingFold(
+  world: OpeningFoldWorld, picks: OpeningPicks = NO_OPENING_PICKS, persona?: OpeningPersona, newId: NewId = randomUUID,
+): OpeningFold {
   const ref = persona?.ref ?? { source: 'none' as const };
   const traits = world.traits ?? [];
   const traitGroups = world.traitGroups ?? [];
@@ -102,6 +107,7 @@ export function openingFold(world: OpeningFoldWorld, picks: OpeningPicks = NO_OP
     places: { locations, location: start && { id: start.id, name: start.name }, connections: world.connections ?? [] },
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
+    itemCopies: seedItemCopies(world, ref, newId),
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
   return { state, entityStats, startingTraits, traitState };

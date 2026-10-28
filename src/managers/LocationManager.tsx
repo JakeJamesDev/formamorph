@@ -23,6 +23,7 @@ import { HelpButton } from '@/components/HelpButton';
 import { HintInfo } from '@/components/SettingsRows';
 import { Hint } from '@/components/ui/typography';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import PlacementsSection from './PlacementsSection';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 import { fieldFrame } from '@/lib/historyField';
@@ -213,6 +214,14 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           </div>
           <Hint>Adds entities one Connection away to what the AI receives as nearby</Hint>
         </LocationConnections>
+      </PanelTabContent>
+
+      <PanelTabContent value="items">
+        <PlacementsSection
+          where={{ kind: 'location', id: editingLocation.id }}
+          label="Starting Items"
+          hint="Places items here when a game starts"
+        />
       </PanelTabContent>
 
       <PanelTabContent value="media">

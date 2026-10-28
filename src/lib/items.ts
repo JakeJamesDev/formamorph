@@ -1,7 +1,7 @@
 import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
-import type { Item, Placement, Slot } from '@/types';
+import type { Item, Placement, PlacementWhere, Slot } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -103,3 +103,17 @@ export function withoutSlotRefs(items: Item[], slotId: string): Item[] {
 /** `placements` without the ones that place the item. */
 export const withoutItemPlacements = (placements: Placement[], itemId: string): Placement[] =>
   (placements.some((p) => p.source.itemId === itemId) ? placements.filter((p) => p.source.itemId !== itemId) : placements);
+
+/** Whether two places are the same: the played Persona, one entity, or one location. */
+export const sameWhere = (a: PlacementWhere, b: PlacementWhere): boolean =>
+  (a.kind === 'you' || b.kind === 'you' ? a.kind === b.kind : a.kind === b.kind && a.id === b.id);
+
+const placesAt = (p: Placement, where: PlacementWhere): boolean => sameWhere(p.where, where);
+
+/** `placements` without the ones at `where`. */
+export const withoutPlacementsAt = (placements: Placement[], where: PlacementWhere): Placement[] =>
+  (placements.some((p) => placesAt(p, where)) ? placements.filter((p) => !placesAt(p, where)) : placements);
+
+/** The placements at `where`, in authored order. */
+export const placementsAt = (placements: readonly Placement[], where: PlacementWhere): Placement[] =>
+  placements.filter((p) => placesAt(p, where));
