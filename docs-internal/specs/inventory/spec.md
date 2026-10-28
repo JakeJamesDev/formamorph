@@ -104,6 +104,13 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q78 | (ticket 01) Deleting a slot that items use asks for confirmation with the count, then clears those items' slot |
 | Q79 | (ticket 01) The Items tab shows in Simple and Advanced. AI Summary and item Placeholders are Advanced only, as on entities |
 | Q80 | (ticket 01) Item editor tabs: Profile, Descriptions, Properties, Placeholders. 04, 05 and 11 add Effects, Requirements and Scripts |
+| Q81 | (ticket 02) Placements on `you` edit in a **Persona Items** section in the Overview's left column, below Slots, and land on whoever is played. A played Persona-marked entity's own placements also land on `you` (Q54); so do the Custom Persona entity's under None and a library persona |
+| Q82 | (ticket 02) The seed skips placements on a persona-only entity that is not played, and on the Custom Persona entity when a world persona is played |
+| Q83 | (ticket 02) World entities and locations get an **Items** tab in Simple and Advanced: item, Quantity, Hidden, remove, from existing list-row parts. The library entity editor gets none. Deleting an entity or location drops its placements |
+| Q84 | (ticket 02) An Item Copy's item is a tagged union: an authored item or a runtime item. 09 adds runtime items and their orphan rule |
+| Q85 | (ticket 02) The orphan drop (Q60) runs on the current state and every history snapshot. Its diagnostic is one system log line per load with the count; no toast |
+| Q86 | (ticket 02) The seed stacks by item, owner and visibility. A non-stackable placement of quantity N makes N Item Copies of 1. A charged Item Copy starts full. Seeded Item Copies start unequipped |
+| Q87 | (ticket 02) 02 seeds without effects. 04 adds effect apply to the seed (Q59) and effect reversal to the orphan drop |
 
 ## User Stories
 
