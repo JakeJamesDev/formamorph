@@ -497,3 +497,41 @@ describe('a setting the catalog carries', () => {
     await waitFor(() => expect(server.calls).toBe(1));
   });
 });
+
+describe('a re-sync after a change made here', () => {
+  /** Opens with the cached row, settles, then patches the row the way a decision does. */
+  const openAndPatch = async () => {
+    cache.items = [world];
+    cache.tag = { tag: 'W/"before"', reader: guest() };
+    const view = renderHook(() => useCatalogSync(true));
+    await waitFor(() => expect(server.resolve).not.toBeNull());
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+    act(() => view.result.current.setRemoteWorlds([{ ...world, name: 'Patched' }]));
+    server.resolve = null;
+    return view;
+  };
+
+  it('keeps the patched rows on screen and sends the stored tag', async () => {
+    const { result } = await openAndPatch();
+
+    act(() => { void result.current.resyncCatalog(); });
+    await waitFor(() => expect(server.calls).toBe(2));
+
+    expect(server.sentTag).toBe('W/"before"');
+    expect(result.current.remoteWorlds).toEqual([{ ...world, name: 'Patched' }]);
+    expect(result.current.isLoadingRemoteWorlds).toBe(false);
+  });
+
+  it('takes the server\'s rows and tag when it answers fresh', async () => {
+    const { result } = await openAndPatch();
+    const fresh = { id: 'w1', name: 'From the server' };
+
+    act(() => { void result.current.resyncCatalog(); });
+    await waitFor(() => expect(server.resolve).not.toBeNull());
+    await act(async () => server.resolve?.({ status: 'fresh', data: [fresh], tag: 'W/"after"', anonymousLikes: false }));
+
+    expect(result.current.remoteWorlds).toEqual([fresh]);
+    expect(result.current.isSyncingCatalog).toBe(false);
+    expect(cache.replace).toHaveBeenCalledWith([fresh], { tag: 'W/"after"', reader: guest() }, false);
+  });
+});

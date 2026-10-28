@@ -55,6 +55,8 @@ import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters, type CommunityFilterPreferences, type ReviewPinning } from "@/lib/useCommunityBrowserFilters";
 import { useDevReviewViewer } from "@/lib/dev/devReviewViewer";
 import { PinnedReviewGroup } from "@/components/community/PinnedReviewGroup";
+import { useReviewDecision } from "@/components/community/useReviewDecision";
+import { decidedRow, reviewSubjectOf } from "@/lib/reviewRows";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
 import { takedownTargetFor, takedownTemplate, type TakedownTarget } from "@/lib/takedownNotice";
 import {
@@ -264,7 +266,7 @@ const CommunityCreationsBrowser = ({
   const catalogReader = readerKey(isAuthenticated, currentUser?.id ?? AuthService.token);
   const {
     remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
-    anonymousLikes, setAnonymousLikes,
+    resyncCatalog, anonymousLikes, setAnonymousLikes,
   } = useCatalogSync(open, catalogReader);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   // Set once someone else's item has been deleted, offering to tell its author why. The takedown itself
@@ -805,6 +807,28 @@ const CommunityCreationsBrowser = ({
     }
   };
 
+  // A decision patches the row at once, so the card moves now; the re-sync then takes the server's rows.
+  const openRef = useRef(open);
+  openRef.current = open;
+  const review = useReviewDecision({
+    viewer: currentUser,
+    onOutcome: (subject, outcome, rejection) => {
+      const isSubject = (w: WorldRecord) => String(w._id || w.id) === subject.id;
+      if (outcome === 'dropped') {
+        // Its real state is unknown here; the re-sync brings it back where it belongs.
+        setRemoteWorlds((prev) => prev.filter((w) => !isSubject(w)));
+      } else if (outcome !== 'kept') {
+        const patch = (w: WorldRecord) => decidedRow(w, subject, outcome, rejection);
+        setRemoteWorlds((prev) => prev.map((w) => (isSubject(w) ? patch(w) : w)));
+        setSelectedRemoteWorld((prev) => (prev && isSubject(prev) ? patch(prev) : prev));
+      }
+      // Closed, the next open asks anyway, and it must settle for itself.
+      if (openRef.current) void resyncCatalog();
+    },
+  });
+  const approveCard = useStableCallback((world: WorldRecord) => { void review.approve(reviewSubjectOf(world)); });
+  const rejectCard = useStableCallback((world: WorldRecord) => review.startReject(reviewSubjectOf(world)));
+
   // Handle viewing remote world details
   const handleViewRemoteWorldDetails = (world: WorldRecord) => {
     setSelectedRemoteWorld(world);
@@ -1167,6 +1191,8 @@ const CommunityCreationsBrowser = ({
   const renderCard = (world: WorldRecord, inReviewGroup = false) => {
     const worldId = world._id || world.id;
     const likeTutorial = tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null;
+    // Decided from the pinned group only.
+    const decides = inReviewGroup && review.mayDecide(reviewSubjectOf(world));
     return (
       <RemoteWorldCard
         key={worldId}
@@ -1200,6 +1226,9 @@ const CommunityCreationsBrowser = ({
         likeTutorial={likeTutorial}
         likeTutorialNav={likeTutorial ? tutorialNav : undefined}
         inReviewGroup={inReviewGroup}
+        onApprove={decides ? approveCard : undefined}
+        onReject={decides ? rejectCard : undefined}
+        reviewBusy={decides && review.busyId !== null}
       />
     );
   };
@@ -1214,6 +1243,7 @@ const CommunityCreationsBrowser = ({
   return (
     <>
       {downscaleDialog}
+      {review.dialogs}
 
       {/* Updating an entity, dictionary or preset replaces the single local copy, so an edited one asks first —
           there's no second copy for the edits to survive in (unlike worlds). ConfirmDialog holds its text

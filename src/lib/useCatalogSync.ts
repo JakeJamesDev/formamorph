@@ -62,14 +62,18 @@ export function useCatalogSync(
     return () => { mountedRef.current = false; };
   }, []);
 
-  const loadCatalog = async (force = false) => {
+  /**
+   * One catalog request. `force` asks for the whole list again. `resync` follows a change made here: the
+   * rows in hand stay on screen, since the cache still holds them as they were before the change.
+   */
+  const sync = async (mode: 'load' | 'force' | 'resync') => {
     const request = ++requestGeneration.current;
     const reader = currentReader();
     // Unmounted counts as superseded: the generation and the reader both still match a browser that
     // has closed, so a late answer would pass the guard and set state on a tree that is gone.
     const isCurrent = () => mountedRef.current
       && requestGeneration.current === request && currentReader() === reader;
-    // Success or failure, an attempt finished: misses may now be trusted.
+    // Success or failure, an attempt finished: misses may now be trusted. It settles a load it superseded too.
     const settle = () => {
       setIsLoadingRemoteWorlds(false);
       setIsSyncingCatalog(false);
@@ -86,17 +90,16 @@ export function useCatalogSync(
       // may see them. Untagged rows have no known reader and wait for the fetch.
       const stored = cached.length ? storedTag : null;
       const ownRows = stored?.reader === reader;
-      setAnonymousLikes(cachedAnonymousLikes);
-      if (ownRows && !force) {
-        setRemoteWorlds(cached);
-      } else {
-        setIsLoadingRemoteWorlds(true);
+      if (mode !== 'resync') {
+        setAnonymousLikes(cachedAnonymousLikes);
+        if (ownRows && mode === 'load') setRemoteWorlds(cached);
+        else setIsLoadingRemoteWorlds(true);
       }
       setIsSyncingCatalog(true);
 
       // The tag is only worth sending back while the same reader is asking: another reader's tag would
       // name another reader's catalog. A forced refresh sends none — it asks for the list again on purpose.
-      const tag = !force && ownRows && stored ? stored.tag : null;
+      const tag = mode !== 'force' && ownRows && stored ? stored.tag : null;
 
       // A sign-in changes the reader and starts a Claim in the same breath, and this refresh is the one
       // the change asked for. Ask before the marks have moved and the answer is missing the hearts the
@@ -135,6 +138,10 @@ export function useCatalogSync(
     }
   };
 
+  const loadCatalog = (force = false) => sync(force ? 'force' : 'load');
+  /** Asks the server again after a change made here, keeping the rows in hand on screen. */
+  const resyncCatalog = () => sync('resync');
+
   // Load the world catalog when the community browser opens (never in the hosted build — no remote server,
   // and never before the age gate is answered — the catalog is the listing of what other players wrote).
   useEffect(() => {
@@ -152,7 +159,7 @@ export function useCatalogSync(
       // A liked mark belongs to its reader. Do not show the old reader's catalog while the forced
       // request that replaces it is in flight.
       if (readerChanged) setRemoteWorlds([]);
-      void loadCatalog(readerChanged || claimLanded || wentStale);
+      void sync(readerChanged || claimLanded || wentStale ? 'force' : 'load');
     } else if (!open) {
       // The next open must wait for its own refresh before a lookup miss means anything.
       setCatalogSettled(false);
@@ -161,6 +168,6 @@ export function useCatalogSync(
 
   return {
     remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
-    anonymousLikes, setAnonymousLikes,
+    resyncCatalog, anonymousLikes, setAnonymousLikes,
   };
 }
