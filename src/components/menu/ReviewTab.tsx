@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ClipboardCheck, Trophy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
-import { nounOf, useReviewDecision, type ReviewSubject } from "@/components/community/useReviewDecision";
+import { nounOf, useReviewDecision } from "@/components/community/useReviewDecision";
 import { ReviewItemDialog } from "@/components/menu/ReviewItemDialog";
 import { downloadBlob } from "@/lib/downloadBlob";
 import { REVIEW_TYPE_LABELS, waitedFor } from "@/lib/listingModeration";
@@ -10,7 +10,7 @@ import { toastError } from "@/lib/linkToast";
 import { quarantineDeadline } from "@/lib/quarantine";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { cn } from "@/lib/utils";
-import ReviewService, { type ReviewQueueItem } from "@/services/ReviewService";
+import ReviewService, { type ReviewQueueItem, type ReviewSubject } from "@/services/ReviewService";
 
 interface ReviewTabProps {
   /** Whether the tab is visible; the queue only fetches while it is. */

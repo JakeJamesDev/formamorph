@@ -4,8 +4,7 @@ import type { ChangelogEntry } from '@/lib/listingChangelog';
 import type { PendingUpdate } from '@/lib/listingModeration';
 import ReviewService, { ReviewConflictError, type AutoApproval, type ReviewQueueItem } from '@/services/ReviewService';
 import WorldStorageService, { type CatalogFetch, type ListingDetailsRead } from '@/services/WorldStorageService';
-import { type CatalogWorld } from '@/lib/worldCatalog';
-
+import type { CatalogWorld } from '@/lib/worldCatalog';
 import { DEV_REVIEW_FIXTURE } from '@/lib/dev/devReviewViewer';
 
 const STUBBED_KEYS = [

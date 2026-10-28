@@ -1,8 +1,8 @@
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
-import { useReviewDecision, type ReviewOutcome, type ReviewSubject } from './useReviewDecision';
-import ReviewService, { ReviewConflictError, type ReviewRejection } from '@/services/ReviewService';
+import { useReviewDecision } from './useReviewDecision';
+import ReviewService, { ReviewConflictError, type ReviewOutcome, type ReviewRejection, type ReviewSubject } from '@/services/ReviewService';
 import AuthService from '@/services/AuthService';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
