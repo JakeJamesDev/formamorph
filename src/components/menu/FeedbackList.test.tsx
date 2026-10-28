@@ -214,7 +214,7 @@ describe('the admin queue', () => {
     render(<FeedbackQueueTab type="bug" active />);
 
     await waitFor(() => expect(list).toHaveBeenCalledWith(
-      expect.objectContaining({ scope: 'all', status: ['open', 'need_info', 'confirmed'] })
+      expect.objectContaining({ scope: 'all', status: ['open', 'need_info', 'confirmed', 'pending_release'] })
     ));
   });
 
@@ -228,8 +228,8 @@ describe('the admin queue', () => {
   it('asks for every state short of closed when Unresolved is chosen', () => {
     // The closed pair differs per branch: a bug is fixed or turned down, a suggestion built or turned
     // down. Naming them here means a new status added later is treated as open until somebody says so.
-    expect(statusFilterValue(UNRESOLVED_STATUS, 'bug')).toEqual(['open', 'need_info', 'confirmed']);
-    expect(statusFilterValue(UNRESOLVED_STATUS, 'suggestion')).toEqual(['open', 'considering', 'planned']);
+    expect(statusFilterValue(UNRESOLVED_STATUS, 'bug')).toEqual(['open', 'need_info', 'confirmed', 'pending_release']);
+    expect(statusFilterValue(UNRESOLVED_STATUS, 'suggestion')).toEqual(['open', 'considering', 'planned', 'pending_release']);
   });
 
   it('passes a chosen status straight through to the list', async () => {

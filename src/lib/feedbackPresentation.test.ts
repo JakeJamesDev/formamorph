@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_STATUS_STYLES, FEEDBACK_TYPE_LABELS, FILTERED_EMPTY_LABELS,
   SCOPE_LABELS, SEARCH_LABELS, SET_STATUS_OPTIONS, STATUS_OPTIONS, UNRESOLVED_LABELS, UNRESOLVED_STATUSES,
-  staffFilterDefaults, userFilterDefaults,
+  staffFilterDefaults, statusStyle, userFilterDefaults,
 } from './feedbackPresentation';
-import { isVotableBoard } from '@/types';
+import { isVotableBoard, type FeedbackStatus } from '@/types';
 
 describe('the question branch', () => {
   it('names itself', () => {
@@ -56,5 +56,29 @@ describe('the votable board', () => {
     expect(isVotableBoard('suggestion')).toBe(true);
     expect(isVotableBoard('question')).toBe(true);
     expect(isVotableBoard('bug')).toBe(false);
+  });
+});
+
+describe('the release statuses', () => {
+  it('keeps Pending Release unresolved and closes a duplicate bug', () => {
+    expect(UNRESOLVED_STATUSES.bug).toEqual(['open', 'need_info', 'confirmed', 'pending_release']);
+    expect(UNRESOLVED_STATUSES.suggestion).toEqual(['open', 'considering', 'planned', 'pending_release']);
+  });
+
+  it('labels the suggestion chain in triage order', () => {
+    expect(STATUS_OPTIONS.suggestion.map((option) => option.label)).toEqual([
+      'Open', 'Considering', 'Planned', 'Pending Release', 'Declined', 'Added',
+    ]);
+  });
+
+  it('badges Duplicate as turned down', () => {
+    expect(FEEDBACK_STATUS_STYLES.duplicate.badge).toBe(FEEDBACK_STATUS_STYLES.wontfix.badge);
+  });
+
+  it('falls back to a muted badge for a status this build does not know', () => {
+    const style = statusStyle('needs_triage' as FeedbackStatus);
+
+    expect(style).toEqual({ label: 'Needs Triage', badge: FEEDBACK_STATUS_STYLES.closed.badge, dot: FEEDBACK_STATUS_STYLES.closed.dot });
+    expect(statusStyle('planned')).toBe(FEEDBACK_STATUS_STYLES.planned);
   });
 });

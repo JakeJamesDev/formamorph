@@ -200,13 +200,13 @@ describe('the status filter', () => {
   it('opens a bug tab on what is unresolved, before any filter is picked', async () => {
     stubList();
     render(<MyFeedbackTab notify={toastFeedbackNotify} active type="bug" />);
-    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed'] }));
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed', 'pending_release'] }));
   });
 
   it('opens a suggestion tab on what is still open, before any filter is picked', async () => {
     stubList();
     render(<MyFeedbackTab notify={toastFeedbackNotify} active type="suggestion" />);
-    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'considering', 'planned'] }));
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'considering', 'planned', 'pending_release'] }));
   });
 
   it('offers the staff options and sends the pick with the request', async () => {
@@ -218,7 +218,7 @@ describe('the status filter', () => {
 
     fireEvent.keyDown(screen.getByLabelText('Filter by status'), { key: 'Enter' });
     const labels = (await screen.findAllByRole('option')).map((o) => o.textContent);
-    expect(labels).toEqual(['All statuses', 'Unresolved', 'Open', 'Need Info', 'Confirmed', 'Resolved', "Won't Fix"]);
+    expect(labels).toEqual(['All statuses', 'Unresolved', 'Open', 'Needs Info', 'Confirmed', 'Pending Release', 'Fixed', "Won't Fix", 'Duplicate']);
 
     const all = screen.getByRole('option', { name: 'All statuses' });
     fireEvent.pointerDown(all, { pointerType: 'mouse' });

@@ -106,13 +106,13 @@ describe('what each queue opens on', () => {
     // on its reporter, or one already reproduced. Both are still somebody's to finish.
     render(<FeedbackQueueTab active type="bug" />);
 
-    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed'] }));
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed', 'pending_release'] }));
   });
 
   it('shows the suggestion queue what is still open, ranked', async () => {
     // Closed suggestions would fill the first pages; most-wanted still orders what is left.
     render(<FeedbackQueueTab active type="suggestion" />);
 
-    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'considering', 'planned'], sort: 'votes' }));
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'considering', 'planned', 'pending_release'], sort: 'votes' }));
   });
 });

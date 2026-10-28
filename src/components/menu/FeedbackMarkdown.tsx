@@ -8,7 +8,7 @@ import { API_BASE_URL } from '@/lib/apiBase';
 import { KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf } from '@/lib/catalogKinds';
 import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref, type FeedbackLinkKind } from '@/lib/feedbackLinks';
 import { serverAssetSrc } from '@/lib/serverAssets';
-import { FEEDBACK_STATUS_STYLES } from '@/lib/feedbackPresentation';
+import { statusStyle } from '@/lib/feedbackPresentation';
 import { remarkFeedbackLinks } from '@/lib/remarkFeedbackLinks';
 import { cn } from '@/lib/utils';
 import type { FeedbackLinkTarget, FeedbackType } from '@/types';
@@ -66,7 +66,7 @@ function ThreadChip({ linkRef, target }: FeedbackChipProps) {
   }
 
   const Icon = TYPE_ICONS[target.type];
-  const status = FEEDBACK_STATUS_STYLES[target.status];
+  const status = statusStyle(target.status);
   const { openThread } = place;
   const href = place.threadHref(target.number, target.type);
   const content = (

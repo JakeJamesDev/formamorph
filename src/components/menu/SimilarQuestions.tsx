@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronUp } from "lucide-react";
 import { FEEDBACK_SEARCH_DELAY_MS } from "@/components/menu/FeedbackSearchInput";
-import { FEEDBACK_STATUS_STYLES } from "@/lib/feedbackPresentation";
+import { statusStyle } from "@/lib/feedbackPresentation";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { cn } from "@/lib/utils";
 import FeedbackService from "@/services/FeedbackService";
@@ -55,7 +55,7 @@ export function SimilarQuestions({ title, onOpen, refreshKey = 0 }: SimilarQuest
       <h3 id="similarQuestionsHeading" className="text-meta font-medium text-muted-foreground">Similar Questions</h3>
       <ul className="divide-y rounded-md border">
         {matches.map((thread) => {
-          const style = FEEDBACK_STATUS_STYLES[thread.status];
+          const style = statusStyle(thread.status);
           return (
             <li key={thread.id}>
               <button
