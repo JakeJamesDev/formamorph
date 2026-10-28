@@ -4,8 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Columns2, RectangleVertical, Pencil, Pin, PinOff, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
+import { Columns2, RectangleVertical, Pencil, Heart, HeartOff, Pin, PinOff, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
 import { PinnedMark } from "@/components/community/PinnedMark";
+import { SupporterListingButton } from "@/components/community/SupporterListingButton";
+import { isSupporterOnly } from "@/lib/supporterListingAction";
 import { isPinned } from "@/lib/pinning";
 import { WorldIcon } from '@/lib/elementIcons';
 import { ActionIcon } from "@/lib/actionIcons";
@@ -95,6 +97,8 @@ interface RemoteWorldDetailsModalProps {
   onPendingUpdateChange?: (world: WorldRecord, pending: boolean) => void;
   /** Pins the listing, or unpins it when it is pinned. Staff only. */
   onTogglePin?: (world: WorldRecord) => void;
+  /** Marks the listing Supporter-only, or clears the mark. Staff only. */
+  onToggleSupporterOnly?: (world: WorldRecord) => void;
   /** DEV only: raise the likers dialog as soon as the modal opens, for the dev route. */
   openLikersOnMount?: boolean;
   /** A read-only action supplied by the surface that opened this listing. */
@@ -130,7 +134,7 @@ export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onAnonymousLikes,
-  contests = [], onOpenContest, onLikesChanged, onPendingUpdateChange, onTogglePin, openLikersOnMount = false,
+  contests = [], onOpenContest, onLikesChanged, onPendingUpdateChange, onTogglePin, onToggleSupporterOnly, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
@@ -492,6 +496,12 @@ export function RemoteWorldDetailsModal({
   );
 
   const actions = world && (() => {
+    // A Supporter-only listing has no plain download; the in-app shell gets Install, Patreon or Sign In.
+    if (isSupporterOnly(world)) {
+      return capabilities.localLibrary && onContextualDownload
+        ? <SupporterListingButton world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="details" />
+        : null;
+    }
     // Mirror the contextual card button (none/refresh/update), icon and all.
     const dlState = downloadStateForWorld(world);
     const progress = downloadProgress[world._id || world.id];
@@ -602,6 +612,14 @@ export function RemoteWorldDetailsModal({
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onTogglePin(world)}>
                   {isPinned(world) ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                   {isPinned(world) ? 'Unpin' : 'Pin'}
+                </Button>
+              </Tip>
+            )}
+            {world && onToggleSupporterOnly && capabilities.moderation && isStaff(currentUser) && (
+              <Tip tip={isSupporterOnly(world) ? "Let everyone download it" : "Limit the download to Supporters"}>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onToggleSupporterOnly(world)}>
+                  {isSupporterOnly(world) ? <HeartOff className="h-4 w-4" /> : <Heart className="h-4 w-4" />}
+                  {isSupporterOnly(world) ? 'Open to All' : 'Limit to Supporters'}
                 </Button>
               </Tip>
             )}

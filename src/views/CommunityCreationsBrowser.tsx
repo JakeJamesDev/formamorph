@@ -2,6 +2,7 @@ import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, use
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
+import { isSupporterOnly } from '@/lib/supporterListingAction';
 import { responseError } from '@/services/responseError';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -824,6 +825,26 @@ const CommunityCreationsBrowser = ({
     }
   };
 
+  const markingSupporterOnly = useRef(new Set<string>());
+  const handleToggleSupporterOnly = async (world: WorldRecord) => {
+    const worldId = String(world._id || world.id);
+    const noun = KIND_LABELS[kindOf(world)].one;
+    if (markingSupporterOnly.current.has(worldId)) return;
+    markingSupporterOnly.current.add(worldId);
+
+    try {
+      const held = await WorldStorageService.setRemoteWorldSupporterOnly(worldId, !isSupporterOnly(world));
+      const patch = (w: WorldRecord) => ({ ...w, supporter_only: held });
+      setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? patch(w) : w)));
+      setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? patch(prev) : prev));
+      toast.success(`${noun} ${held ? 'limited to Supporters' : 'open to everyone'}`);
+    } catch (error) {
+      toastError(error, `Failed to change who can download the ${noun.toLowerCase()}`);
+    } finally {
+      markingSupporterOnly.current.delete(worldId);
+    }
+  };
+
   // A decision patches the row at once, so the card moves now; the re-sync then takes the server's rows.
   // Stable, so a decision that settles after a close reads the current `open`.
   const onReviewOutcome = useStableCallback((subject: ReviewSubject, outcome: ReviewOutcome, rejection?: ReviewRejection) => {
@@ -1183,6 +1204,7 @@ const CommunityCreationsBrowser = ({
   const guestLikeCard = useStableCallback((world: WorldRecord) => onGuestLike?.(world));
   const releaseCard = useStableCallback(handleRelease);
   const pinCard = useStableCallback(handleTogglePin);
+  const supporterOnlyCard = useStableCallback(handleToggleSupporterOnly);
   const withdrawCard = useStableCallback((entry: WorldRecord) => withdrawal.ask({
     id: String(entry._id || entry.id),
     name: String(entry.name ?? 'That world'),
@@ -1229,6 +1251,7 @@ const CommunityCreationsBrowser = ({
         onQuarantine={capabilities.moderation ? setQuarantining : undefined}
         onRelease={capabilities.moderation ? releaseCard : undefined}
         onTogglePin={capabilities.moderation ? pinCard : undefined}
+        onToggleSupporterOnly={capabilities.moderation ? supporterOnlyCard : undefined}
         placements={placementsOf(world)}
         onOpenContest={openContest}
         // Only where the entry is the subject, and only while it is still an entry: a
@@ -1494,6 +1517,7 @@ const CommunityCreationsBrowser = ({
         onLikesChanged={handleLikesChanged}
         onPendingUpdateChange={handlePendingUpdateChange}
         onTogglePin={handleTogglePin}
+        onToggleSupporterOnly={handleToggleSupporterOnly}
         openLikersOnMount={openLikersOnMount}
         contests={contests}
         capabilities={capabilities}
