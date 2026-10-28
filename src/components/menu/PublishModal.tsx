@@ -24,6 +24,9 @@ import { publishTags, type PublishPayload } from "@/lib/publishPayload";
 import { remoteImagesInContent } from "@/lib/embedRemoteImages";
 import { isExpiringImageHost } from "@/lib/imageBytes";
 import { ContestEntryCard } from "@/components/menu/ContestEntryCard";
+import { SupporterOnlyCard } from "@/components/menu/SupporterOnlyCard";
+import AuthService from "@/services/AuthService";
+import { isAdmin } from "@/lib/roles";
 import { activeContestOf, entriesOf } from "@/lib/contests";
 import { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from "@/services/WorldStorageService";
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
@@ -80,6 +83,8 @@ export function PublishModal({
   // Whether this upload is also a contest entry, and what the server said if it refused to take it.
   const [enterContest, setEnterContest] = useState(false);
   const [contestError, setContestError] = useState('');
+  // An admin's new Mascot listing, created Supporter-only and pinned.
+  const [supporterOnly, setSupporterOnly] = useState(false);
   // A Mascot's own thumbnail, replacing the Initial render the payload carries.
   const [thumbnailOverride, setThumbnailOverride] = useState<string | null>(null);
 
@@ -159,6 +164,9 @@ export function PublishModal({
   const updatingEntry = Boolean(enteredId) && selectedWorldToOverride === enteredId;
   const showContestCard = Boolean(contest) && kind === 'world'
     && (selectedWorldToOverride === 'new' || updatingEntry);
+  // Only Mascots have a Supporter install today (Q40). An update keeps the listing's flag.
+  const showSupporterCard = kind === 'mascot' && selectedWorldToOverride === 'new' && isAdmin(AuthService.getCurrentUser());
+  const publishesSupporterOnly = showSupporterCard && supporterOnly;
   // What's open right now, readable from inside an async callback that captured an older `kind`.
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -223,9 +231,11 @@ export function PublishModal({
       }
 
       const declared = links.declarePayload(payload);
-      const created = await WorldStorageService.publishItem(
-        kind === 'mascot' && thumbnailOverride ? { ...declared, thumbnail: thumbnailOverride } : declared, targetId, entering,
-      );
+      const created = await WorldStorageService.publishItem({
+        ...declared,
+        ...(kind === 'mascot' && thumbnailOverride ? { thumbnail: thumbnailOverride } : {}),
+        ...(!targetId && publishesSupporterOnly ? { supporterOnly: true } : {}),
+      }, targetId, entering);
 
       // The author's copy becomes a copy of the listing it just became, the way a downloaded one is —
       // which is what carries a later contest win back to the library they actually work in. The listing's
@@ -399,6 +409,7 @@ export function PublishModal({
     setPublishError('');
     setEnterContest(false);
     setContestError('');
+    setSupporterOnly(false);
     setThumbnailOverride(null);
     // Asked again on the next opening rather than held for the app's lifetime: this dialog is mounted for
     // the whole session, and one refused request must not hide the feature until a restart.
@@ -594,6 +605,8 @@ export function PublishModal({
           />
         )}
 
+        {showSupporterCard && <SupporterOnlyCard checked={supporterOnly} onCheckedChange={setSupporterOnly} />}
+
         {/* The world is still unpublished: every source it requires has to exist first. Pinned below the
             scrolling list, because the button beside it is what acts on this. */}
         {links.sourceFailures.length > 0 && (
@@ -639,7 +652,8 @@ export function PublishModal({
               ? 'Publishing...'
               : links.sourceFailures.length > 0
                 ? 'Retry'
-                : showContestCard && enterContest ? 'Publish & Enter' : 'Publish'}
+                : showContestCard && enterContest ? 'Publish & Enter'
+                  : publishesSupporterOnly ? 'Publish Supporter-Only' : 'Publish'}
           </Button>
         </DialogFooter>
       </DialogContent>

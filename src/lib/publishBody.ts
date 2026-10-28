@@ -32,6 +32,7 @@ export function buildPublishBody(payload: PublishPayload, contestEventId: string
     ...(payload.requiredDependencies ? { requiredDependencies: payload.requiredDependencies } : {}),
     ...(payload.compatibleWorlds ? { compatibleWorlds: payload.compatibleWorlds } : {}),
     ...(payload.models ? { models: payload.models } : {}),
+    ...(payload.supporterOnly ? { supporterOnly: true } : {}),
   });
   // `head` ends with `}` and `tail` starts with `{`; both always hold a field.
   const parts = content ? [head.slice(0, -1), ',"contentData":', content, ',', tail.slice(1)] : [head.slice(0, -1), ',', tail.slice(1)];
