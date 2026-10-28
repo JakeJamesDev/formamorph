@@ -70,6 +70,8 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q37 | The hardened watermark keeps the 40 dB invisibility bar. A copy shifted 1–3 px, halved and saved WebP q50 then reads about 5 times in 6; a stronger mark at about 38 dB was declined. User ruling on new evidence. |
 | Q38 | Ticket 04's mark misses the plain round-trip for about 1 random mark and layer pair in 312. Ticket 10 proves the route by exact equality with `embed(source, mark)`, without its own read-back. Ticket 14 must show zero misses across at least 10,000 random marks. User ruling on new evidence. |
 | Q39 | Cached Supporter content carries its account id. While another account is signed in it is never returned or drawn, and that account's first good check deletes it. Offline, `qualifies` reports the last good check inside the 7-day window and false after. A higher revision of an installed item re-fetches at once; on failure the old copy stays. Install refuses an item the last good check didn't list. The module exposes a `useSyncExternalStore` store with `check`, `install` and `readItem`, plus pure `unscramble` and `unscrambleToCanvas`. |
+| Q40 | On a Supporter-only listing the app offers Install only for kinds that have a consumer, Mascot today. Another kind shows a disabled button for a qualifying account. A signed-in account shows Checking until the first check ends, then Install or Installed if entitled, else Patreon. Author and staff get no special case in the app. |
+| Q41 | The installed exclusive's rig (layer names, picks, Voice, transition, Mask) is stored in help settings as a read-only entry tagged with its account id, with `{ kind: 'supporter', id, index }` image refs; pixels stay in the module's cache and draw only as canvases. A sync step writes the entry on install or update and removes it when the module no longer lists it. Any export or import of help settings skips it. Revised on evidence: the face call, Voice chip and speaker read the rig synchronously. The Mascot tab finds Supporter-only Mascots from the Mascot catalog, for every account state. A pick from the help window opens the listing through a request the main menu consumes. Fallback to Morphie happens only once the module's check is ready. No Rename, Delete or Reset either. |
 
 ## User Stories
 
@@ -140,7 +142,7 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 ### Export shape
 
 - The mascot card format is unchanged.
-- Help settings gain the `supporter` image reference kind, used only by installed Supporter content. That is stored settings, not a world or save export. Mascot listing content is the existing card data.
+- Help settings gain a read-only Supporter Mascot entry with `supporter` image references, and may store its id as the active Mascot (Q41). That is stored settings, not a world or save export. Mascot listing content is the existing card data.
 
 ## Testing Decisions
 
