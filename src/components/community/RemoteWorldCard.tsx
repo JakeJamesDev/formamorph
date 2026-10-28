@@ -1,6 +1,8 @@
 import { memo } from "react";
-import { Check, EyeOff, Download, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX, X } from "lucide-react";
+import { Check, EyeOff, Download, Heart, HeartOff, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX, X } from "lucide-react";
 import { PinnedMark } from "@/components/community/PinnedMark";
+import { SupporterListingButton } from "@/components/community/SupporterListingButton";
+import { isSupporterOnly } from "@/lib/supporterListingAction";
 import { isPinned } from "@/lib/pinning";
 import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
@@ -67,6 +69,8 @@ interface RemoteWorldCardProps {
   onRelease?: (world: WorldRecord) => void;
   /** Pins the listing, or unpins it when it is pinned. Staff surfaces only. */
   onTogglePin?: (world: WorldRecord) => void;
+  /** Marks the listing Supporter-only, or clears the mark. Staff surfaces only. */
+  onToggleSupporterOnly?: (world: WorldRecord) => void;
   /** Where this listing placed — the badge travels with the world, not with the tab it was won in. */
   placements?: ContestPlacement[];
   /** Opens a contest this listing placed in, from its place chip. */
@@ -94,7 +98,7 @@ interface RemoteWorldCardProps {
  *  Memoized: a catalog refresh that keeps a row's object skips its card. */
 export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin, onToggleSupporterOnly,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav, inReviewGroup = false,
   onApprove, onReject, reviewBusy = false,
 }: RemoteWorldCardProps) {
@@ -121,6 +125,8 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   // A pin is not a moderation of its author, so every staff account may pin any listing.
   const canPin = viewerIsStaff && Boolean(onTogglePin);
   const pinned = isPinned(world);
+  const supporterOnly = isSupporterOnly(world);
+  const canMarkSupporterOnly = viewerIsStaff && Boolean(onToggleSupporterOnly);
 
   const isOwnedByUser = isAuthenticated &&
     world.author &&
@@ -197,7 +203,10 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
               <EyeOff className="h-5 w-5" />
             </button>
           </Tip>}
-          {onContextualDownload && <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
+          {supporterOnly && onContextualDownload && (
+            <SupporterListingButton world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="card" />
+          )}
+          {!supporterOnly && onContextualDownload && <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onContextualDownload?.(world, dlState); }}
               className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -212,7 +221,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
               )}
             </button>
           </Tip>}
-          {!onContextualDownload && onDeviceDownload && <Tip tip={`Download this ${noun}`}>
+          {!supporterOnly && !onContextualDownload && onDeviceDownload && <Tip tip={`Download this ${noun}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onDeviceDownload(world); }}
               className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -304,7 +313,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       <PinnedMark listing={world} className="mb-2" />
       <ModerationMarker listing={world} titleOnly={inReviewGroup} className="mb-2" />
 
-      {(onApprove || onReject || manageAddons || canPin || (onDelete && (isOwnedByUser || mayModerate))) && (
+      {(onApprove || onReject || manageAddons || canPin || canMarkSupporterOnly || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
           {onApprove && (
             <Tip tip="Approve and show it to players">
@@ -338,6 +347,17 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
                 aria-label={`${pinned ? 'Unpin' : 'Pin'} ${world.name || noun}`}
               >
                 {pinned ? <PinOff className="h-5 w-5" /> : <Pin className="h-5 w-5" />}
+              </button>
+            </Tip>
+          )}
+          {canMarkSupporterOnly && onToggleSupporterOnly && (
+            <Tip tip={supporterOnly ? "Let everyone download it" : "Limit the download to Supporters"}>
+              <button
+                className="p-1 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); onToggleSupporterOnly(world); }}
+                aria-label={`${supporterOnly ? 'Remove Supporter-only from' : 'Make Supporter-only'} ${world.name || noun}`}
+              >
+                {supporterOnly ? <HeartOff className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
               </button>
             </Tip>
           )}

@@ -889,6 +889,28 @@ class WorldStorageService {
     return pinnedAt;
   }
 
+  /**
+   * Mark a listing Supporter-only, or clear the mark. Staff only.
+   *
+   * @param worldId - The listing's server id
+   * @param supporterOnly - True to limit the download to Supporters
+   * @returns The flag the server now holds
+   */
+  async setRemoteWorldSupporterOnly(worldId: string, supporterOnly: boolean): Promise<boolean> {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/supporter-only`, {
+      method: 'PUT',
+      headers: authHeaders(true),
+      body: JSON.stringify({ supporterOnly }),
+    });
+
+    if (!response.ok) throw await responseError(response, 'Failed to change who can download this');
+    const body = await response.json().catch(() => ({}));
+    const held = (body.data ?? body)?.supporterOnly;
+    if (typeof held !== 'boolean') throw new Error('The server did not say what it saved');
+
+    return held;
+  }
+
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
    *  a `{success:false}` shape. */
   async fetchComments(worldId: string, page = 1, limit = 20, signal?: AbortSignal) {

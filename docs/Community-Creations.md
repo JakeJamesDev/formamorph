@@ -209,6 +209,20 @@ A toast says when the download is done. A prompt preset that adds a script Tool 
 
 On formamorph.ai, the download button saves the file to your device instead. Prompt presets and Mascots download only in the app. The website has no **Hidden** list and no Reports.
 
+### Supporter-Only Listings
+
+Staff can limit a listing's download to Patreon Supporters. Everyone can still open it, like it and comment on it. The main button on its card and in its details window changes with your account:
+
+| You are | The button reads | What it does |
+|---|---|---|
+| Signed out | **Sign In** | Opens the login dialog. |
+| Signed in, not a Supporter | **Patreon** | Opens the project's Patreon page. |
+| A Supporter or Supporter+ | **Install** | Installs the listing. The button then reads **Installed**. |
+
+The button reads **Checking…** while the app checks your Supporter status at start. Only Mascots can be installed so far. On a Supporter-only listing of another kind, a Supporter sees **Not Supported Yet**.
+
+Staff see a **Supporter-Only** button beside **Pin** in the details window, and a heart on the card. Select it to limit the download to Supporters, and select it again to open the download to everyone.
+
 ### When an Update Is Available
 
 A listing has an update when the author published a newer version after your download. Its card gets a colored border, and the main button reads **Update Available**. The **Has Update** filter finds them all.
