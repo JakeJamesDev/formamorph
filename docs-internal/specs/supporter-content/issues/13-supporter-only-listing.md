@@ -1,6 +1,6 @@
 # 13: Client: Supporter-only listing in Community Creations
 
-Status: ready-for-human
+Status: done
 Blocked by: 08, 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

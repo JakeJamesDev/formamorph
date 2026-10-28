@@ -1,6 +1,7 @@
 # Spec: Supporter Content and Mascot Listings
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-28; tickets 01–18; last landing b6ff088b1. Review: four gaps fixed in tickets 15–18, spec text corrected. Gates green on 2026-10-28.
 Spec session: supporter-content — spec
 
 Make Mascots a Community Creations listing kind, add a staff Pin, and add Supporter-only listings whose downloads are watermarked and scrambled per account. The first Supporter-only listing is an exclusive Mascot. Spans both repos: the Formamorph client and FormamorphServer.

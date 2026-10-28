@@ -1,6 +1,6 @@
 # 15: Server: no raw Supporter content in the update reply
 
-Status: ready-for-human
+Status: done
 Base: 4f1788b
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
