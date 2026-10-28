@@ -76,19 +76,22 @@ Mods and admins review listings only from **Admin Panel → Moderation → Revie
 
 **Modules**
 
-- **Review decision hook.** The approve and reject orchestration moves out of the Review tab into one shared hook. It owns the busy state, the 409 conflict handling (`CONTEST_LOCKED` keeps the item; any other conflict drops it with "Another mod already handled this"), the quarantine-days dialog for a new listing, the confirm for an update or a resubmitted listing, and the composer with the right template. It also owns the "may decide" check: not the viewer's own listing, and `canModerate` against the author. The Review tab and the browser both use it. It reports each outcome (approved, rejected, dropped by conflict, kept by contest lock) so each caller updates its own list.
+- **Review decision hook.** The approve and reject orchestration moves out of the Review tab into one shared hook. It owns the busy state, the 409 conflict handling (`CONTEST_LOCKED` keeps the item; any other conflict drops it with "Another mod already handled this item"), the quarantine-days dialog for a new listing, the confirm for an update or a resubmitted listing, and the composer with the right template. It also owns the "may decide" check: not the viewer's own listing, and `canModerate` against the author. The Review tab and the browser both use it. It reports each outcome (approved, rejected, dropped by conflict, kept by contest lock) so each caller updates its own list.
+  - Shape (ticket 02 ruling): it takes a `ReviewSubject` (the queue item's id, kind, name, type and author) and returns `busyId` (the subject in flight, or null), `mayDecide`, `approve`, `startReject` and `dialogs`, which the caller renders. Toasts stay inside the hook. The browser maps a catalog row to a `ReviewSubject`. The item dialog, download and queue list stay in the Review tab.
 - **Browser pipeline.** The filter hook splits its sorted result into the pinned group and the normal rows when the viewer is staff and Show Pending is on.
   - Membership uses the existing `awaitsReview` predicate (pending, resubmitted, updatePending).
-  - The pinned group sorts by `moderation_queued_at` ascending, then id. It ignores the browser's sort.
+  - The pinned group sorts by queue time ascending, then id, ignoring the browser's sort. A new or resubmitted row uses `moderation_queued_at`. An update row uses `pending_preview.queued_at`, falling back to `updated_at` (ticket 03 ruling).
+  - Hide preferences (hidden listings, tags, authors) apply to the pinned group like any filter.
   - The paged slice comes from the normal rows only. The pinned group renders above the page 1 grid as its own section and does not count toward page size.
-  - With Show Pending off, or for a non-staff viewer, new pending and resubmitted listings are dropped. Update Pending rows stay in their normal slot with their live face.
-  - The Quarantined view shows no pinned group.
-- **Show Pending.** A `usePersistentState` boolean, default true. The control sits beside the existing staff-only Quarantined toggle and shows only for staff.
+  - With Show Pending off, staff get the player view: new pending and resubmitted listings by other authors are dropped. Update Pending rows stay in their normal slot with their live face. The viewer's own pending listings stay in their normal slot with their badge.
+  - A non-staff viewer sees what the server sends today: their own pending listings with the Listing Review badges, no pinned group.
+  - The Quarantined view and the contest tab show no pinned group and no Show Pending control. The contest tab is unchanged (Q11).
+- **Show Pending.** A `usePersistentState` boolean under `FORMAMORPH_communityShowPending`, default true. An outline toggle beside the staff-only Quarantined toggle: label "Show Pending", Eye icon, tip "Show listings that wait for review". It shows for staff when moderation is available, regardless of count.
 - **Card.** `RemoteWorldCard` takes optional `onApprove` and `onReject` callbacks and a busy flag. The browser passes them only for pinned cards the viewer may decide. The buttons sit in the existing staff action row. A pinned update card reads its name and thumbnail from the row's pending preview. The thumbnail loads through `usePendingThumbnail`. It falls back to the live thumbnail while loading or on error.
 - **After a decision.** The browser patches the row at once. Approve sets the row approved and clears the pending update, taking the pending name. Reject on a new listing sets it rejected and quarantined. Reject on an update clears the pending update. Then the catalog re-syncs through its ETag.
 - **Details modal.** The Pending Update section shows for the author or for staff. A new prop hides Discard Update when the viewer is not the author.
-- **Catalog row shape.** The listing service passes through the server's new `pending_preview` field on catalog rows: `{ name, thumbnail_url? }`, present only when the row has a pending update and the viewer is staff or the author. See the server spec for the contract.
-- **Dev route.** The browser's staff view with a pinned group gets a `devRoutes` entry backed by the existing dev review stub.
+- **Catalog row shape.** The listing service passes through the server's new `pending_preview` field on catalog rows: `{ name, queued_at, thumbnail_url? }`, present only when the row has a pending update and the viewer is staff or the author. See the server spec for the contract.
+- **Dev route.** The browser's staff view with a pinned group gets a `devRoutes` entry backed by the existing dev review stub. In DEV and for that fixture only, it prepends canned pending catalog rows built from the review fixtures and presents the viewer as staff.
 
 ## Testing Decisions
 
@@ -97,7 +100,7 @@ Mods and admins review listings only from **Admin Panel → Moderation → Revie
 - **Card** (`RemoteWorldCard.quarantine.test.tsx` pattern): check and X show only when the callbacks are passed; they disable while busy; a pinned update card shows the pending name and thumbnail and falls back to the live one on a failed load.
 - **Review decision hook:** one test file covers approve, reject of a new listing with days, reject of an update, both conflict cases and the composer template. The existing `ReviewTab` tests stay green with no weakened assertions; they prove the extraction kept behavior.
 - **Details modal** (`RemoteWorldDetailsModal.pendingUpdate.test.tsx`): staff see the section and Compare, without Discard Update; the author still sees Discard Update.
-- Each guard gets one check that fails when its condition is removed (for example, a non-staff viewer must never see a pending row).
+- Each guard gets one check that fails when its condition is removed (for example, a non-staff viewer must never see another author's pending row).
 
 ## Out of Scope
 
