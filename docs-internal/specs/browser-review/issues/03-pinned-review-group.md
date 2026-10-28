@@ -1,6 +1,6 @@
 # 03: Pinned Review Group
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Model note: splits the browser's client-side filter, sort and page pipeline

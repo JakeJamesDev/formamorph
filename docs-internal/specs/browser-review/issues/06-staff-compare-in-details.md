@@ -1,6 +1,6 @@
 # 06: Staff Compare In Details
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Model note: one visibility condition and one prop
