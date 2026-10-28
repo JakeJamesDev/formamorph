@@ -11,6 +11,10 @@ import { createSupporterCache, itemKey, type CheckRecord, type ItemRecord, type 
 export type { SupporterItemRef } from './cache';
 
 export const OFFLINE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** A good check older than this is stale enough to re-run when the player acts or returns to the app. */
+export const REFRESH_AFTER_MS = 5 * 60 * 1000;
+/** The least time between two refreshes, so focus changes can't flood the server. */
+export const REFRESH_MIN_GAP_MS = 30 * 1000;
 
 const DEFAULT_TIMEOUT_MS = { check: 15_000, install: 60_000 };
 
@@ -74,6 +78,8 @@ export function createSupporterContent(deps: SupporterContentDeps) {
   let status: SupporterContentSnapshot['status'] = 'idle';
   let snapshot: SupporterContentSnapshot = { status, qualifies: false, entitled: [], installed: [] };
   let queue: Promise<unknown> = Promise.resolve();
+  let lastAttemptAt = Number.NEGATIVE_INFINITY;
+  let lastAttemptFailed = false;
 
   const withinWindow = (record: CheckRecord | null): record is CheckRecord =>
     !!record && deps.now() < record.checkedAt + OFFLINE_WINDOW_MS;
@@ -208,12 +214,15 @@ export function createSupporterContent(deps: SupporterContentDeps) {
   const runCheck = async () => {
     status = 'checking';
     publish();
+    lastAttemptAt = deps.now();
+    lastAttemptFailed = true;
     try {
       await load();
       const session = deps.session();
       const entitlement = session ? await fetchEntitlement(session) : null;
       if (session && entitlement) await applyGoodCheck(session, entitlement);
       else await applyOfflineWindow();
+      lastAttemptFailed = !!session && !entitlement;
     } catch (error) {
       console.error('The Supporter content check failed:', error);
     } finally {
@@ -222,12 +231,30 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     }
   };
 
+  /** Whether the check the app holds may be out of date: none usable, a failed last try, or an old answer. */
+  const needsRefresh = (): boolean => {
+    const usable = usableCheck();
+    return lastAttemptFailed || !usable || deps.now() - usable.checkedAt > REFRESH_AFTER_MS;
+  };
+
   return {
     /** Run the start check. Never rejects. */
     check: (): Promise<void> => serial(runCheck),
 
     /**
-     * Install one listing the last good check listed.
+     * Run the check again when the one held may be out of date, such as after a pledge in another window.
+     * With `failedOnly`, only when the last try failed. Does nothing while signed out or within
+     * `REFRESH_MIN_GAP_MS` of the last try. Never rejects.
+     */
+    refresh: ({ failedOnly = false }: { failedOnly?: boolean } = {}): Promise<void> => serial(async () => {
+      await load();
+      if (!deps.session() || deps.now() - lastAttemptAt < REFRESH_MIN_GAP_MS) return;
+      if (failedOnly ? !lastAttemptFailed : !needsRefresh()) return;
+      await runCheck();
+    }),
+
+    /**
+     * Install one listing the last good check listed. When that check doesn't list it, checks again first.
      *
      * @throws SupporterContentError when signed out or the listing is not entitled; Error when the download fails
      */
@@ -235,8 +262,12 @@ export function createSupporterContent(deps: SupporterContentDeps) {
       await load();
       const session = deps.session();
       if (!session) throw new SupporterContentError('signed-out', 'Sign in to install Supporter content');
-      const usable = usableCheck();
-      if (!usable?.qualifies || !usable.entitled.some((item) => item.id === id)) {
+      const listedNow = () => {
+        const usable = usableCheck();
+        return !!usable?.qualifies && usable.entitled.some((item) => item.id === id);
+      };
+      if (!listedNow()) await runCheck();
+      if (!listedNow()) {
         throw new SupporterContentError('not-entitled', 'This account cannot install that Supporter content');
       }
       await fetchAndStore(session, id);

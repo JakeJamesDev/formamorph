@@ -542,19 +542,31 @@ function useLockedMascots(control: MascotDraftControl, openListing: ((listingId:
     control.select(selectOnArrival);
   }, [selectOnArrival, control]);
   const checking = supporter.status !== 'ready';
+  const entitledNow = (listingId: string) => {
+    const latest = supporterContent.getSnapshot();
+    return latest.qualifies && latest.entitled.some((item) => item.id === listingId);
+  };
   const pick = (listingId: string) => control.guard(() => {
     if (checking) return;
-    if (!supporter.qualifies || !supporter.entitled.some((item) => item.id === listingId)) {
-      openListing?.(listingId);
+    if (entitledNow(listingId)) {
+      install(listingId);
       return;
     }
+    // The check may predate a pledge, so ask again before sending the player to the listing.
+    void supporterContent.refresh().then(() => {
+      if (!mounted.current) return;
+      if (entitledNow(listingId)) install(listingId);
+      else openListing?.(listingId);
+    });
+  });
+  const install = (listingId: string) => {
     setInstalling(listingId);
     void supporterContent.install(listingId)
       .then(() => supporterMascotSync.sync())
       .then(() => { if (mounted.current) setSelectOnArrival(supporterMascotId(listingId)); })
       .catch((cause: unknown) => toastError(cause, MASCOT_COPY.locked.installFailed))
       .finally(() => { if (mounted.current) setInstalling(null); });
-  });
+  };
   return { locked: listings.filter((listing) => !installed.has(listing.id)), installing: installing !== null, checking, pick };
 }
 

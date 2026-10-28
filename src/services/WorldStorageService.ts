@@ -1,7 +1,7 @@
 import AuthService from './AuthService';
 import { authHeaders } from './authRequest';
 import { codedResponseError, readFailure, responseError } from './responseError';
-import type { CatalogKindQuery } from '@/lib/catalogKinds';
+import { kindParam, type CatalogKindQuery } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
 import { PUBLISH_LIMITS, publishLimitRefusal } from '@/lib/publishLimits';
@@ -633,7 +633,7 @@ class WorldStorageService {
         ? { headers: { ...headers, 'If-None-Match': tag }, cache: 'no-store' as RequestCache }
         : { headers };
 
-      const response = await this.installFallbackFetch(`${this.API_URL}/worlds?page=1&limit=1000&kind=all`, init);
+      const response = await this.installFallbackFetch(`${this.API_URL}/worlds?page=1&limit=1000&kind=${encodeURIComponent(kindParam('all'))}`, init);
       if (response.status === 304) return { status: 'unchanged' };
       if (!response.ok) throw await responseError(response, 'Failed to fetch worlds');
 
@@ -662,7 +662,7 @@ class WorldStorageService {
       if (searchByAuthor) url += `&searchByAuthor=true`;
       if (sort) url += `&sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}`;
       // Omitted entirely for 'world' so the request stays byte-identical to what shipped before kinds.
-      if (kind !== 'world') url += `&kind=${encodeURIComponent(kind)}`;
+      if (kind !== 'world') url += `&kind=${encodeURIComponent(kindParam(kind))}`;
 
       const headers = authHeaders();
 
@@ -1232,7 +1232,7 @@ class WorldStorageService {
     if (!AuthService.isAuthenticated()) return [];
 
     // Omitted for 'world' so the request stays byte-identical to what shipped before kinds.
-    const query = kind === 'world' ? '' : `?kind=${encodeURIComponent(kind)}`;
+    const query = kind === 'world' ? '' : `?kind=${encodeURIComponent(kindParam(kind))}`;
     try {
       const response = await fetch(`${this.API_URL}/users/me/worlds${query}`, {
         headers: authHeaders()

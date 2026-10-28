@@ -58,7 +58,11 @@ export function SupporterListingButton({ world, kind, signedIn, onSignIn, varian
 
   const press = async () => {
     if (action === 'sign-in') onSignIn?.(world);
-    else if (action === 'patreon') window.open(PATREON_PAGE_URL, '_blank', 'noopener');
+    else if (action === 'patreon') {
+      window.open(PATREON_PAGE_URL, '_blank', 'noopener');
+      // A stale check may hide a pledge already made; this one lands by the time the player is back.
+      void supporterContent.refresh();
+    }
     else if (action === 'install') {
       setInstalling(true);
       try {

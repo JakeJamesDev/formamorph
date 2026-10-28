@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import {
-  OFFLINE_WINDOW_MS, SupporterContentError, createSupporterContent,
+  OFFLINE_WINDOW_MS, REFRESH_AFTER_MS, REFRESH_MIN_GAP_MS, SupporterContentError, createSupporterContent,
   type SupporterItemRef, type SupporterSession,
 } from './supporterContent';
 import { createSupporterCache } from './cache';
@@ -432,6 +432,72 @@ describe('another account', () => {
   });
 });
 
+describe('refresh', () => {
+  it('grants a pledge made after a failed start check', async () => {
+    server.offline = true;
+    const app = await startAndCheck();
+    expect(app.getSnapshot().qualifies).toBe(false);
+
+    server.offline = false;
+    server.list(['excl', 1]);
+    now += REFRESH_MIN_GAP_MS;
+    await app.refresh();
+
+    expect(app.getSnapshot()).toMatchObject({ qualifies: true, entitled: [{ id: 'excl', revision: 1 }] });
+  });
+
+  it('checks again once a good check is older than the refresh age', async () => {
+    server.qualifies = false;
+    const app = await startAndCheck();
+    server.qualifies = true;
+    server.list(['excl', 1]);
+
+    now += REFRESH_AFTER_MS - 1;
+    await app.refresh();
+    expect(server.entitlementCalls()).toBe(1);
+
+    now += 2;
+    await app.refresh();
+    expect(server.entitlementCalls()).toBe(2);
+    expect(app.getSnapshot().qualifies).toBe(true);
+  });
+
+  it('waits the minimum gap after any try', async () => {
+    server.offline = true;
+    const app = await startAndCheck();
+    now += REFRESH_MIN_GAP_MS - 1;
+
+    await app.refresh();
+
+    expect(server.entitlementCalls()).toBe(1);
+  });
+
+  it('with failedOnly, skips an old good check and retries a failed one', async () => {
+    server.list(['excl', 1]);
+    const app = await startAndCheck();
+    now += REFRESH_AFTER_MS + 1;
+    await app.refresh({ failedOnly: true });
+    expect(server.entitlementCalls()).toBe(1);
+
+    server.offline = true;
+    await app.check();
+    server.offline = false;
+    now += REFRESH_MIN_GAP_MS;
+    await app.refresh({ failedOnly: true });
+    expect(server.entitlementCalls()).toBe(3);
+  });
+
+  it('does nothing while signed out', async () => {
+    session = null;
+    const app = await startAndCheck();
+    now += REFRESH_AFTER_MS + 1;
+
+    await app.refresh();
+
+    expect(server.entitlementCalls()).toBe(0);
+  });
+});
+
 describe('install', () => {
   it('downloads one listing from the gated route with the session token', async () => {
     server.list(['excl', 3], ['other', 1]);
@@ -454,8 +520,29 @@ describe('install', () => {
     await expect(refusal).rejects.toMatchObject({ reason: 'not-entitled' });
   });
 
-  it('refuses before any good check', async () => {
+  it('checks first when no good check has run, then installs', async () => {
     server.list(['excl', 1]);
+    const app = startApp();
+
+    await app.install('excl');
+
+    expect(server.entitlementCalls()).toBe(1);
+    expect(installedIds(app)).toEqual(['excl@1']);
+  });
+
+  it('checks again when the held check predates a pledge, then installs', async () => {
+    server.qualifies = false;
+    const app = await startAndCheck();
+    server.qualifies = true;
+    server.list(['excl', 2]);
+
+    await app.install('excl');
+
+    expect(installedIds(app)).toEqual(['excl@2']);
+  });
+
+  it('refuses before any good check when the check still does not list it', async () => {
+    server.qualifies = false;
     await expect(startApp().install('excl')).rejects.toMatchObject({ reason: 'not-entitled' });
   });
 
