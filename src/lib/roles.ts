@@ -32,7 +32,7 @@ export const ROLE_BADGE_STYLES: Record<Role, string> = {
 };
 
 /** An account as the client holds it — every shape the server hands back carries `accountType`. */
-interface AccountLike {
+export interface AccountLike {
   accountType?: unknown;
   id?: unknown;
   [key: string]: unknown;

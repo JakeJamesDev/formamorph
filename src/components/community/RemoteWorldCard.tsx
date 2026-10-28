@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { EyeOff, Download, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
+import { Check, EyeOff, Download, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX, X } from "lucide-react";
 import { PinnedMark } from "@/components/community/PinnedMark";
 import { isPinned } from "@/lib/pinning";
 import { ActionIcon } from "@/lib/actionIcons";
@@ -81,6 +81,12 @@ interface RemoteWorldCardProps {
   likeTutorialNav?: TutorialNav;
   /** Whether the card sits in the staff's pinned review group, where its review badge shows its title only. */
   inReviewGroup?: boolean;
+  /** Approves the waiting listing. Passed only when the viewer may decide it. */
+  onApprove?: (world: WorldRecord) => void;
+  /** Starts the rejection of the waiting listing. Passed only when the viewer may decide it. */
+  onReject?: (world: WorldRecord) => void;
+  /** Whether a review decision is in flight. */
+  reviewBusy?: boolean;
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
@@ -90,6 +96,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav, inReviewGroup = false,
+  onApprove, onReject, reviewBusy = false,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -297,8 +304,32 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       <PinnedMark listing={world} className="mb-2" />
       <ModerationMarker listing={world} titleOnly={inReviewGroup} className="mb-2" />
 
-      {(manageAddons || canPin || (onDelete && (isOwnedByUser || mayModerate))) && (
+      {(onApprove || onReject || manageAddons || canPin || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
+          {onApprove && (
+            <Tip tip="Approve and show it to players">
+              <button
+                className="p-1 text-success hover:text-success/80 disabled:opacity-50 disabled:pointer-events-none"
+                disabled={reviewBusy}
+                onClick={(e) => { e.stopPropagation(); onApprove(world); }}
+                aria-label={`Approve ${shownName || noun}`}
+              >
+                <Check className="h-5 w-5" />
+              </button>
+            </Tip>
+          )}
+          {onReject && (
+            <Tip tip="Reject and message the author">
+              <button
+                className="p-1 text-destructive hover:text-destructive/80 disabled:opacity-50 disabled:pointer-events-none"
+                disabled={reviewBusy}
+                onClick={(e) => { e.stopPropagation(); onReject(world); }}
+                aria-label={`Reject ${shownName || noun}`}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </Tip>
+          )}
           {canPin && onTogglePin && (
             <Tip tip={pinned ? "Remove it from the top of its section" : "Keep it at the top of its section"}>
               <button
@@ -310,7 +341,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
               </button>
             </Tip>
           )}
-          {/* First, because it is the only one of these that is not a removal. */}
+          {/* Ahead of the removals, because it is not one. */}
           {manageAddons && (
             <Tip tip="Review the add-ons other authors offer for this world">
               <button

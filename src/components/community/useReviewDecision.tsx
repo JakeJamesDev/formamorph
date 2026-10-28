@@ -7,10 +7,10 @@ import { KIND_LABELS } from "@/lib/catalogKinds";
 import { JUDGING_APPROVAL_TOAST, rejectedUpdateTemplate } from "@/lib/listingModeration";
 import { toastError } from "@/lib/linkToast";
 import { quarantineTargetFor, quarantineTemplate, type QuarantineTarget } from "@/lib/quarantine";
-import { canModerate } from "@/lib/roles";
+import { canModerate, type AccountLike } from "@/lib/roles";
 import { useMountedRef } from "@/lib/useMountedRef";
 import AuthService from "@/services/AuthService";
-import ReviewService, { CONTEST_LOCKED, ReviewConflictError, type ReviewQueueItem } from "@/services/ReviewService";
+import ReviewService, { CONTEST_LOCKED, ReviewConflictError, type ReviewQueueItem, type ReviewRejection } from "@/services/ReviewService";
 
 /** What a decision needs to know about the item it decides on. */
 export type ReviewSubject = Pick<ReviewQueueItem, 'id' | 'kind' | 'name' | 'type' | 'author'>;
@@ -22,8 +22,11 @@ export type ReviewSubject = Pick<ReviewQueueItem, 'id' | 'kind' | 'name' | 'type
 export type ReviewOutcome = 'approved' | 'rejected' | 'dropped' | 'kept';
 
 interface ReviewDecisionOptions {
-  /** Called once per decision that settles where the item goes, before the composer opens. */
-  onOutcome: (subject: ReviewSubject, outcome: ReviewOutcome) => void;
+  /** Called once per decision that settles where the item goes, before the composer opens. A rejection
+   *  passes the server's answer. */
+  onOutcome: (subject: ReviewSubject, outcome: ReviewOutcome, rejection?: ReviewRejection) => void;
+  /** Who decides. Defaults to the signed-in account. */
+  viewer?: AccountLike | null;
 }
 
 /** The noun an item's kind reads as, capitalized. */
@@ -33,7 +36,7 @@ export const nounOf =(subject: ReviewSubject) => (KIND_LABELS[subject.kind]?.one
  * Approve and reject a waiting listing: the quarantine length for a new listing, the confirm for anything
  * else, the 409 conflicts, and the composer to the author afterwards. Render `dialogs` once.
  */
-export function useReviewDecision({ onOutcome }: ReviewDecisionOptions) {
+export function useReviewDecision({ onOutcome, viewer }: ReviewDecisionOptions) {
   const [busyId, setBusyId] = useState<string | null>(null);
   // A new listing picks its quarantine length; anything else confirms first.
   const [quarantining, setQuarantining] = useState<ReviewSubject | null>(null);
@@ -42,27 +45,28 @@ export function useReviewDecision({ onOutcome }: ReviewDecisionOptions) {
   const [notice, setNotice] = useState<{ author: QuarantineTarget['author']; subject: string; body: string } | null>(null);
   const mounted = useMountedRef();
 
-  const me = AuthService.getCurrentUser();
+  const me = viewer === undefined ? AuthService.getCurrentUser() : viewer;
 
   // The server's ladder, plus its one extra rule: staff never review their own work.
   const mayDecide = (subject: ReviewSubject) => subject.author?.id !== me?.id && canModerate(me, subject.author
     ? { id: subject.author.id, accountType: subject.author.role ?? 'normal' }
     : null);
 
-  const report = (subject: ReviewSubject, outcome: ReviewOutcome) => {
+  const report = (subject: ReviewSubject, outcome: ReviewOutcome, rejection?: ReviewRejection) => {
     if (outcome !== 'kept') setQuarantining((prev) => (prev?.id === subject.id ? null : prev));
-    onOutcome(subject, outcome);
+    onOutcome(subject, outcome, rejection);
   };
 
   /** Runs a decision and sorts its `409`s: a contest lock keeps the item, any other conflict drops it. */
   const decide = async <T,>(
     subject: ReviewSubject, run: () => Promise<T>, outcome: ReviewOutcome, failure: string,
+    rejectionOf?: (result: T) => ReviewRejection,
   ): Promise<T | null> => {
     setBusyId(subject.id);
     try {
       const result = await run();
       if (!mounted.current) return null;
-      report(subject, outcome);
+      report(subject, outcome, rejectionOf?.(result));
       return result;
     } catch (error) {
       if (!mounted.current) return null;
@@ -87,7 +91,7 @@ export function useReviewDecision({ onOutcome }: ReviewDecisionOptions) {
   };
 
   const reject = async (subject: ReviewSubject, days?: number) => {
-    const result = await decide(subject, () => ReviewService.reject(subject.id, days), 'rejected', 'Failed to reject this');
+    const result = await decide(subject, () => ReviewService.reject(subject.id, days), 'rejected', 'Failed to reject this', (answer) => answer);
     if (!result) return;
 
     toast.success(subject.type === 'update' ? 'Update rejected' : `${nounOf(subject)} rejected`);

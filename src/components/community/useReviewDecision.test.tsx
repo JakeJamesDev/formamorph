@@ -42,7 +42,7 @@ const signedInAs = (accountType: string) =>
 /** A caller with one Approve and one Reject button for each subject, the way a list or a card wires the hook. */
 function Harness({ subjects, onOutcome }: {
   subjects: ReviewSubject[];
-  onOutcome: (subject: ReviewSubject, outcome: ReviewOutcome) => void;
+  onOutcome: (subject: ReviewSubject, outcome: ReviewOutcome, rejection?: ReviewRejection) => void;
 }) {
   const { busyId, mayDecide, approve, startReject, dialogs } = useReviewDecision({ onOutcome });
   return (
@@ -85,7 +85,7 @@ describe('approving', () => {
 
     press('Sedge Landing', 'Approve');
 
-    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'approved'));
+    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'approved', undefined));
     expect(approve).toHaveBeenCalledWith('w1');
     expect(onOutcome).toHaveBeenCalledTimes(1);
     expect(toast.success).toHaveBeenCalledWith('World approved');
@@ -138,7 +138,7 @@ describe('the 409 conflicts', () => {
 
     press('Sedge Landing', 'Approve');
 
-    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'dropped'));
+    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'dropped', undefined));
     expect(toast.info).toHaveBeenCalledWith('Another mod already handled this item');
     expect(toast.success).not.toHaveBeenCalled();
   });
@@ -151,7 +151,7 @@ describe('the 409 conflicts', () => {
 
     press('Sedge Landing', 'Approve');
 
-    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'kept'));
+    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'kept', undefined));
     expect(toast.info).toHaveBeenCalledWith("This update waits for the contest results. Approve it after they're announced.");
     expect(toast.info).not.toHaveBeenCalledWith('Another mod already handled this item');
   });
@@ -163,7 +163,7 @@ describe('the 409 conflicts', () => {
     press('Sedge Landing', 'Reject');
     fireEvent.click(await screen.findByRole('button', { name: 'Quarantine' }));
 
-    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'dropped'));
+    await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'dropped', undefined));
     expect(screen.queryByTestId('composer')).toBeNull();
     await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Quarantine length' })).toBeNull());
   });
@@ -180,7 +180,7 @@ describe('rejecting', () => {
 
     const composer = await screen.findByTestId('composer');
     expect(reject).toHaveBeenCalledWith('w1', 7);
-    expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'rejected');
+    expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'rejected', rejection());
     expect(composer.dataset.to).toBe('wren_hallow');
     expect(composer.dataset.subject).toBe('Your world "Sedge Landing" needs changes');
     expect(composer.textContent).toContain(new Date('2026-11-01T12:00:00.000Z').toLocaleDateString());
@@ -201,7 +201,7 @@ describe('rejecting', () => {
 
     const composer = await screen.findByTestId('composer');
     expect(reject).toHaveBeenCalledWith('w1', undefined);
-    expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'rejected');
+    expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'rejected', { id: 'w1', author: { id: 'a1', username: 'wren_hallow' } });
     expect(composer.dataset.subject).toBe('Your update to the world "Sedge Landing" was not approved');
     expect(composer.textContent).toMatch(/players still see the live version/);
     expect(toast.success).toHaveBeenCalledWith('Update rejected');
