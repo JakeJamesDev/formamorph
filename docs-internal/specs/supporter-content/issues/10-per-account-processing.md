@@ -23,4 +23,5 @@ The gated route's processing hook watermarks each image layer with the account's
 - [ ] A second request for the same revision is served from the cache; a new revision drops the old cache.
 - [ ] The response carries the seed and format version.
 - [ ] Non-image content passes through unchanged.
+- [ ] The staff review content route serves a flagged listing marked for the reviewing account, as ticket 09 wired it through the hook.
 - [ ] Route tests cover each case above, and time the cold and cached request on Morphie-sized content.

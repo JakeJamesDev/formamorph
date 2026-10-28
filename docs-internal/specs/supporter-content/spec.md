@@ -62,6 +62,7 @@ Settled in the grill on 2026-10-27. A ruling reopens on new evidence, never on a
 | Q29 | Publish refuses a Mascot that holds any bundled (Morphie) layer and names the layers to replace, like Avatar publish refuses the default Avatar. Export is unchanged. |
 | Q30 | After a publish, the author's own Mascot links to the new listing, as prompts and worlds do. |
 | Q31 | The public content routes refuse a Supporter-only listing for everyone. The gated route also serves the listing's author and staff whatever their tier, through the same per-account processing. The entitlement route stays tier-based. |
+| Q32 | Ticket 04 lands with a known gap: a copy shifted off the 4 px grid and then saved lossy mostly loses the mark. Ticket 14 hardens it behind the same `embed`/`read` interface. User ruling on new evidence, narrowing Q7 until ticket 14 lands. |
 
 ## User Stories
 
