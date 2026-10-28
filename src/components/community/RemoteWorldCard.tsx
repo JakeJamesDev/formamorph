@@ -77,6 +77,8 @@ interface RemoteWorldCardProps {
   /** The like tutorial, when this is the card chosen to anchor it. */
   likeTutorial?: TutorialEntry | null;
   likeTutorialNav?: TutorialNav;
+  /** Whether the card sits in the staff's pinned review group, where its review badge shows its title only. */
+  inReviewGroup?: boolean;
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
@@ -85,7 +87,7 @@ interface RemoteWorldCardProps {
 export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin,
-  placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
+  placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav, inReviewGroup = false,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -284,7 +286,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       </div>
 
       <PinnedMark listing={world} className="mb-2" />
-      <ModerationMarker listing={world} className="mb-2" />
+      <ModerationMarker listing={world} titleOnly={inReviewGroup} className="mb-2" />
 
       {(manageAddons || canPin || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">

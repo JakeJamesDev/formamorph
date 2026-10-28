@@ -203,6 +203,25 @@ describe('whether the Contest tab is there at all', () => {
   });
 });
 
+describe('staff review on the contest tab', () => {
+  it('pins nothing and offers no Show Pending, leaving a pending entry in the grid', async () => {
+    const admin = { id: 'a1', username: 'root-admin', accountType: 'admin' } as unknown as WorldRecord;
+    server.events = [contest()];
+    catalog.items = [
+      listing('Saltmarsh', { contest_event_id: 'e1' }),
+      listing('Thawline', { contest_event_id: 'e1', moderation_state: 'pending', moderation_queued_at: at(-1) }),
+    ];
+    renderBrowser({ currentUser: admin });
+    expect(await screen.findByRole('region', { name: 'Awaiting Review' })).toBeInTheDocument();
+
+    await openContestTab();
+
+    await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
+    expect(screen.queryByRole('region', { name: 'Awaiting Review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show Pending' })).not.toBeInTheDocument();
+  });
+});
+
 describe('what the contest grid shows in each of its three states', () => {
   it('shows every entry while the contest runs, and no podium', async () => {
     server.events = [contest()];

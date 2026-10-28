@@ -36,11 +36,22 @@ export interface PendingUpdate {
   thumbnail_url?: string;
 }
 
-/** A listing as a view holds it. Every field is optional: a player and an old server get none of them. */
+/** A catalog row's summary of its pending update, sent to staff and the author. */
+export interface PendingPreview {
+  name: string;
+  thumbnail_url?: string;
+  /** When the update joined the review queue. */
+  queued_at?: string;
+}
+
+/** A listing as a view holds it. Every field is optional: a player and an old server get no review fields. */
 interface ModeratedListing {
   moderation_state?: unknown;
+  moderation_queued_at?: unknown;
   has_pending_update?: unknown;
   pending_update?: PendingUpdate | null;
+  pending_preview?: PendingPreview | null;
+  updated_at?: unknown;
   quarantined_at?: unknown;
   quarantine_expires_at?: unknown;
 }
@@ -122,9 +133,25 @@ export function changedFields(update: PendingUpdate | null | undefined): string[
 export const fieldLabel = (name: string): string => FIELD_LABELS[name] ?? name;
 
 /** Whether a listing waits for a mod: a new or resubmitted listing, or an update. */
-export const awaitsReview = (listing: ModeratedListing): boolean => {
+export const awaitsReview = (listing: ModeratedListing): boolean =>
+  awaitsFirstReview(listing) || moderationStatus(listing) === 'updatePending';
+
+/**
+ * When a listing joined the review queue, in epoch ms, 0 when unknown: an update's own queue time, else its
+ * last edit; a new or resubmitted listing's submission.
+ */
+export function reviewQueuedTime(listing: ModeratedListing): number {
+  const at = moderationStatus(listing) === 'updatePending'
+    ? listing.pending_preview?.queued_at ?? listing.updated_at
+    : listing.moderation_queued_at;
+
+  return typeof at === 'string' ? parseServerDate(at)?.getTime() ?? 0 : 0;
+}
+
+/** Whether a listing waits for its first approval: a new or resubmitted listing, not an update. */
+export const awaitsFirstReview = (listing: ModeratedListing): boolean => {
   const status = moderationStatus(listing);
-  return status === 'pending' || status === 'resubmitted' || status === 'updatePending';
+  return status === 'pending' || status === 'resubmitted';
 };
 
 /** How a queue row names why the item waits. */

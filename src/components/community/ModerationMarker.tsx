@@ -8,6 +8,8 @@ interface ModerationMarkerProps {
   listing: WorldRecord;
   /** Whether a staff quarantine of an approved listing shows too, beside the review states. */
   showStaffQuarantine?: boolean;
+  /** Whether the box shows its title alone, without the hint or the deadline under it. */
+  titleOnly?: boolean;
   className?: string;
 }
 
@@ -17,7 +19,7 @@ interface ModerationMarkerProps {
  *
  * Only the author and the staff receive these listings, so the deadline is stated plainly.
  */
-export function ModerationMarker({ listing, showStaffQuarantine = true, className }: ModerationMarkerProps) {
+export function ModerationMarker({ listing, showStaffQuarantine = true, titleOnly = false, className }: ModerationMarkerProps) {
   const status = moderationStatus(listing);
 
   if (status === 'pending' || status === 'updatePending') {
@@ -26,7 +28,9 @@ export function ModerationMarker({ listing, showStaffQuarantine = true, classNam
         <p className="flex items-center gap-1 font-medium">
           <Clock className="h-3 w-3 shrink-0" aria-hidden /> {MODERATION_LABELS[status]}
         </p>
-        <p className="text-muted-foreground">{status === 'pending' ? PENDING_REVIEW_HINT : UPDATE_PENDING_HINT}</p>
+        {!titleOnly && (
+          <p className="text-muted-foreground">{status === 'pending' ? PENDING_REVIEW_HINT : UPDATE_PENDING_HINT}</p>
+        )}
       </div>
     );
   }
@@ -43,7 +47,7 @@ export function ModerationMarker({ listing, showStaffQuarantine = true, classNam
       <p className="flex items-center gap-1 font-medium text-warning">
         <Icon className="h-3 w-3 shrink-0" aria-hidden /> {MODERATION_LABELS[resubmitted ? 'resubmitted' : 'rejected']}
       </p>
-      {deadline && (
+      {deadline && !titleOnly && (
         <p className="text-muted-foreground">
           Deleted on {deadline}{daysLeft !== null && ` — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
         </p>

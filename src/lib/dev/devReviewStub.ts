@@ -3,9 +3,10 @@ import { getDevRoute } from '@/lib/devRouter';
 import type { ChangelogEntry } from '@/lib/listingChangelog';
 import type { PendingUpdate } from '@/lib/listingModeration';
 import ReviewService, { ReviewConflictError, type AutoApproval, type ReviewQueueItem } from '@/services/ReviewService';
-import WorldStorageService, { type ListingDetailsRead } from '@/services/WorldStorageService';
+import WorldStorageService, { type CatalogFetch, type ListingDetailsRead } from '@/services/WorldStorageService';
+import { type CatalogWorld } from '@/lib/worldCatalog';
 
-export const DEV_REVIEW_FIXTURE = 'review';
+import { DEV_REVIEW_FIXTURE } from '@/lib/dev/devReviewViewer';
 
 const STUBBED_KEYS = [
   'fetchMeta', 'fetchQueue', 'fetchCount', 'fetchContent', 'approve', 'reject', 'fetchAutoApproved', 'setTrusted',
@@ -98,6 +99,39 @@ export function devReviewFixtures(): ReviewQueueItem[] {
   ];
 }
 
+/** The queue as catalog rows, so the browser's pinned group has cards. The contest tie is left off. */
+export function devReviewCatalogRows(): CatalogWorld[] {
+  return devReviewFixtures().map((item) => {
+    const update = item.type === 'update';
+    return {
+      id: item.id, kind: item.kind, name: item.name, description: '', tags: [], downloads: 0,
+      author: item.author ? { id: item.author.id, username: item.author.username } : null,
+      created_at: item.createdAt, updated_at: item.queuedAt,
+      moderation_state: update ? 'approved' : 'pending',
+      moderation_queued_at: update ? item.createdAt : item.queuedAt,
+      quarantined_at: item.quarantineExpiresAt ? item.queuedAt : null,
+      quarantine_expires_at: item.quarantineExpiresAt ?? null,
+      has_pending_update: update,
+      ...(update ? {
+        thumbnail_file: DEV_LIVE_FILE,
+        pending_preview: { name: 'Lanterns Over the Fen', thumbnail_url: devPendingUpdate().thumbnail_url, queued_at: item.queuedAt },
+      } : {}),
+    };
+  });
+}
+
+/** The server's catalog with the canned rows in front. A failed read still serves them. */
+async function fetchDevCatalog(): Promise<CatalogFetch> {
+  const live: CatalogFetch = await Object.getPrototypeOf(WorldStorageService).fetchCatalog.call(WorldStorageService, null);
+  const rows = devReviewCatalogRows();
+  const ids = new Set<unknown>(rows.map((row) => row.id));
+  const served = live.status === 'fresh'
+    ? live.data.filter((row) => !ids.has((row as { id?: unknown } | null)?.id))
+    : [];
+
+  return { status: 'fresh', data: [...rows, ...served], tag: null, anonymousLikes: live.status === 'fresh' && live.anonymousLikes };
+}
+
 /** Recent auto-approvals, newest first: a trusted author's upload and a staff upload. */
 export function devAutoApprovals(): AutoApproval[] {
   const entry = (id: number, name: string, kind: string, username: string, role: string | null, hours: number): AutoApproval => ({
@@ -177,9 +211,12 @@ function sync(): void {
   if (wanted === stubbed) return;
   if (wanted) {
     Object.assign(ReviewService, devReviewMethods(devReviewFixtures()));
-    Object.assign(WorldStorageService, { readListingDetails: readDevListing, thumbnailUrl: devThumbnailUrl });
+    Object.assign(WorldStorageService, {
+      readListingDetails: readDevListing, thumbnailUrl: devThumbnailUrl, fetchCatalog: fetchDevCatalog,
+    });
   } else {
     for (const key of STUBBED_KEYS) delete (ReviewService as Partial<Stubbed>)[key];
+    delete (WorldStorageService as Partial<typeof WorldStorageService>).fetchCatalog;
     delete (WorldStorageService as Partial<typeof WorldStorageService>).readListingDetails;
     delete (WorldStorageService as Partial<typeof WorldStorageService>).thumbnailUrl;
   }

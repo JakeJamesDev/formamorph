@@ -34,6 +34,10 @@ export function availableFacets(signedIn: boolean): StatusFacet[] {
   return STATUS_FACETS.filter((f) => signedIn || !SIGNED_IN_FACETS.includes(f));
 }
 
+/** Whether the signed-in viewer wrote this listing. No viewer owns nothing. */
+export const isViewersListing = (world: WorldRecord, viewerId: string | undefined): boolean =>
+  Boolean(viewerId) && String(world.author?.id ?? '') === String(viewerId);
+
 /**
  * Whether a listing satisfies every active facet.
  *
@@ -52,7 +56,7 @@ export function matchesStatusFacets(
       case 'downloaded': return downloadState !== 'none';
       case 'undownloaded': return downloadState === 'none';
       case 'update': return downloadState === 'update';
-      case 'mine': return Boolean(viewerId) && String(world.author?.id ?? '') === String(viewerId);
+      case 'mine': return isViewersListing(world, viewerId);
       default: return true;
     }
   });
