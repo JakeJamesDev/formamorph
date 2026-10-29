@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseTimeDelta,
   splitTurnHours,
+  formatTimeLeft,
   joinTurnHours,
   hoursByPosition,
   MAX_TURN_HOURS,
@@ -317,5 +318,15 @@ describe('joinTurnHours', () => {
       const { amount, unit } = splitTurnHours(hours);
       expect(joinTurnHours(amount, unit)).toBeCloseTo(hours, 9);
     }
+  });
+});
+
+describe('formatTimeLeft', () => {
+  it('shows the two largest parts, rounded up to the minute', () => {
+    expect(formatTimeLeft(4 / 3)).toBe('1 h 20 min');
+    expect(formatTimeLeft(2)).toBe('2 h');
+    expect(formatTimeLeft(51)).toBe('2 d 3 h');
+    expect(formatTimeLeft(24.5)).toBe('1 d');
+    expect(formatTimeLeft(0.001)).toBe('1 min');
   });
 });

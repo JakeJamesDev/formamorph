@@ -11,6 +11,13 @@ export const blankItem = (id: string, name = 'New Item'): Item =>
 /** Charges rule stacking out (Q47); otherwise stacking is on unless switched off. */
 export const itemStackable = (item: Item): boolean => item.charges === undefined && item.stackable !== false;
 
+/** Use applies to it: it is Consumable or has charges (Q16, Q57). */
+export const itemUsable = (item: Item): boolean => !!item.consumable || item.charges !== undefined;
+
+/** The charges an Item Copy of `item` has left: full when it records none. Undefined when the item has none. */
+export const chargesLeft = (copy: Pick<ItemCopy, 'state'>, item: Item | undefined): number | undefined =>
+  (item?.charges === undefined ? undefined : copy.state?.charges ?? item.charges);
+
 export const slotCapacity = (slot: Slot): number => slot.capacity ?? 1;
 
 /** The slot capacity one Item Copy of `item` takes. A runtime item, which has no item, takes 1. */

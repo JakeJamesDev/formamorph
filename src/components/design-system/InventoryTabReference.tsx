@@ -6,7 +6,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { Meta } from '@/components/ui/typography';
 import { InventoryTab } from '@/components/game/InventoryTab';
 import { PanelTab, PanelTabList } from '@/components/game/PanelTabList';
-import { applyInventoryOps, type InventoryOp } from '@/lib/inventory';
+import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { randomUUID } from '@/lib/uuid';
 import type { Item, ItemCopy, Slot } from '@/types';
@@ -27,6 +27,11 @@ const START: ItemCopy[] = [
   { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { charges: 2 } },
   { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible' },
   { id: 'l', item: { kind: 'item', itemId: 'tonic' }, where: { kind: 'location', id: 'sample-room' }, quantity: 2, visibility: 'visible' },
+];
+const TIMED: TimedEffectView[] = [
+  { key: 'tonic-strength', itemName: 'Healing Tonic', effect: 'Strength +2', hoursLeft: 4 / 3 },
+  { key: 'tonic-ward', itemName: 'Healing Tonic', effect: 'Warded', hoursLeft: 26 },
+  { key: 'hidden', itemName: null, effect: 'Max Health -5', hoursLeft: 0.25 },
 ];
 const PRESENT = [{ id: 'courier', name: 'Courier' }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
@@ -60,11 +65,11 @@ export function InventoryTabReference() {
       <CardHeader>
         <CardTitle>Inventory Tab</CardTitle>
         <CardDescription>
-          Equip, Unequip, Drop and Give act at once. Drop and Give on a stack ask how many. The Ash Wand is Bound. Here lists the visible items lying at the location.
+          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand charge, and turns off at zero charges. The Ash Wand is Bound. Effects lists the After Consumed effects running, with time left. Here lists the visible items lying at the location.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-start gap-6">
-        <div className="h-[28rem] w-full max-w-[19rem] space-y-2">
+        <div className="h-[36rem] w-full max-w-[19rem] space-y-2">
           <div className="flex items-center gap-2">
             <Checkbox id="inventory-busy" checked={busy} onCheckedChange={(v) => setBusy(v === true)} />
             <Label htmlFor="inventory-busy">Turn Running</Label>
@@ -79,6 +84,7 @@ export function InventoryTabReference() {
             locationId={HERE}
             disabled={busy}
             resolveText={(text) => text}
+            timed={TIMED}
             onOps={onOps}
           />
         </div>

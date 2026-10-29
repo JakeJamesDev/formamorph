@@ -19,7 +19,7 @@ import { restoreTells, type TellMap } from '../lib/scriptTells';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
-import { settleItemEffects, withoutOrphanCopies, type OwnerStatTraits } from '../lib/inventory';
+import { settleItemEffects, withoutOrphanCopies, withoutOrphanTimedTraits, type OwnerStatTraits } from '../lib/inventory';
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
@@ -568,21 +568,26 @@ function useProvideGameplay() {
     /** The state without Item Copies whose item, owner entity or location the world no longer has, and its
      *  item effects settled, the dropped ones reversed (Q60). */
     const withoutOrphans = (state: GameState, persona?: PersonaRef): GameState => {
-      if (!items || !worldEntities || (!state.itemCopies?.length && !state.itemEffects?.applied)) return state;
+      if (!items || !worldEntities || (!state.itemCopies?.length && !state.itemEffects?.applied && !state.itemEffects?.timed)) return state;
+      const entityIds = new Set([...worldEntities.map((e) => e.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]);
       const { copies, dropped } = withoutOrphanCopies(state.itemCopies ?? [], {
-        itemIds: new Set(items.map((item) => item.id)),
-        entityIds: new Set([...worldEntities.map((e) => e.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]),
-        locationIds: new Set(locationIds),
+        itemIds: new Set(items.map((item) => item.id)), entityIds, locationIds: new Set(locationIds),
       });
       for (const copy of dropped) orphanIds.add(copy.id);
+      const traits = withoutOrphanTimedTraits(state.itemEffects ?? {}, { entityIds }, items);
+      for (const key of traits.dropped) orphanIds.add(`timed:${key}`);
       // Without the owners' traits the bounds can't derive; the ledger keeps the entries, and the next settle reverses them.
-      if (!ownerStatTraits) return dropped.length ? { ...state, itemCopies: [...copies] } : state;
+      if (!ownerStatTraits) {
+        return dropped.length || traits.dropped.length
+          ? { ...state, itemCopies: [...copies], ...(traits.dropped.length && { itemEffects: traits.ledger }) } : state;
+      }
       // Settled on every load, so the item bounds follow the world's current rows.
       const settled = settleItemEffects(
-        { copies, entityStats: state.entityStats ?? {}, ledger: state.itemEffects },
+        { copies, entityStats: state.entityStats ?? {}, ledger: traits.ledger },
         { items, entities: worldEntities, ...(persona && { persona }) },
         ownerStatTraits(state, persona),
       );
+      for (const key of settled.orphaned) orphanIds.add(`timed:${key}`);
       return {
         ...state, ...(dropped.length && { itemCopies: [...copies] }), entityStats: settled.entityStats, itemEffects: settled.ledger,
       };

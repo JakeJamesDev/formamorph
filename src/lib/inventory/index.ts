@@ -2,12 +2,14 @@
  * The Inventory module: every change to Item Copies goes through here. Pure: no React, no AI, no storage. Ids
  * come from an injected maker, as the turn commit's do.
  */
-import { byEquipOrder, itemStackable, sameWhere, slotCapacity, slotSizeOf } from '@/lib/items';
+import { byEquipOrder, chargesLeft, itemStackable, itemUsable, sameWhere, slotCapacity, slotSizeOf } from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
-import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemRef, PersonaRef, Placement, Slot } from '@/types';
+import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemRef, PersonaRef, Placement, Slot } from '@/types';
+import { timedTraitRow, type Dose } from './effects';
 
 export {
-  itemEffectLine, itemEffectLog, settleItemEffects, type ItemEffectChange, type ItemEffectResult, type ItemEffectWorld, type OwnerStatTraits,
+  itemEffectLine, itemEffectLog, settleItemEffects, timedEffectViews, timedKey, type Dose, type ItemEffectChange,
+  type TimedEffectNames, type TimedEffectView, type ItemEffectResult, type ItemEffectWorld, type OwnerStatTraits,
 } from './effects';
 export {
   equipRequirement, settleInventory, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
@@ -86,6 +88,7 @@ export type InventoryOp =
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
   | { kind: 'equip'; copyId: string }
   | { kind: 'unequip'; copyId: string }
+  | { kind: 'consume'; copyId: string }
   | { kind: 'reveal'; copyId: string; quantity?: number };
 
 /** The authored slice the operations read. An absent slice reads as empty. */
@@ -111,6 +114,8 @@ export interface InventoryCall {
 
 export interface InventoryResult {
   copies: ItemCopy[];
+  /** One per consume of an authored item, in order: what starts its After Consumed effects. */
+  doses: Dose[];
   /** One line per skipped operation (Q22). */
   diagnostics: string[];
 }
@@ -150,6 +155,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   const slots = new Map((call.world.slots ?? []).map((slot) => [slot.id, slot]));
   let list: ItemCopy[] = [...copies];
   const diagnostics: string[] = [];
+  const doses: Dose[] = [];
   let order = Math.max(0, ...list.map((c) => c.equipped?.order ?? 0));
 
   /** `next` with `copy` in its row (a new one goes last), or merged into a matching carried stack when its
@@ -224,6 +230,22 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         }
         return null;
       }
+      case 'consume': {
+        if (copy.where.kind === 'location') return `consume: Item Copy ${copy.id} has no owner`;
+        // Runtime items are Consumable (Q56).
+        if (item && !itemUsable(item)) return `consume: Item Copy ${copy.id} is not Consumable`;
+        const charges = chargesLeft(copy, item);
+        if (charges !== undefined && !(charges > 0)) return `consume: Item Copy ${copy.id} has no charges`;
+        // A charge spends first; a Consumable copy goes once its quantity or last charge does (Q57).
+        const spent = charges === undefined ? copy
+          : { ...copy, state: { ...copy.state, charges: charges - 1 } };
+        const gone = charges === undefined || (charges === 1 && !!item?.consumable);
+        if (!gone) list = list.map((c) => (c === copy ? spent : c));
+        else if (copy.quantity > 1) list = list.map((c) => (c === copy ? { ...copy, quantity: copy.quantity - 1 } : c));
+        else list = list.filter((c) => c !== copy);
+        if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden' });
+        return null;
+      }
       case 'unequip': {
         if (!copy.equipped) return `unequip: Item Copy ${copy.id} is not equipped`;
         list = put(list, unequipped(copy));
@@ -271,7 +293,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
     const skipped = one(op);
     if (skipped) diagnostics.push(`Inventory (${call.source}) skipped ${skipped}`);
   }
-  return { copies: list, diagnostics };
+  return { copies: list, doses, diagnostics };
 }
 
 /** What still exists for Item Copies to point at. */
@@ -290,6 +312,21 @@ const isOrphan = (copy: ItemCopy, targets: CopyTargets): boolean => {
     case 'location': return !targets.locationIds.has(copy.where.id);
   }
 };
+
+/** `ledger` without the timed trait rows whose item, row or owner entity no longer exists, and their keys. Timed
+ *  stat rows drop in the stat settle, which reverses what they moved. */
+export function withoutOrphanTimedTraits(
+  ledger: ItemEffectLedger, targets: Pick<CopyTargets, 'entityIds'>, items: readonly Item[],
+): { ledger: ItemEffectLedger; dropped: string[] } {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const dropped = Object.entries(ledger.timed ?? {})
+    .filter(([, e]) => e.row === 'trait' && (!timedTraitRow(e, byId) || !targets.entityIds.has(e.ownerId)))
+    .map(([key]) => key);
+  if (!dropped.length) return { ledger, dropped };
+  const timed = Object.fromEntries(Object.entries(ledger.timed ?? {}).filter(([key]) => !dropped.includes(key)));
+  const { timed: _old, ...rest } = ledger;
+  return { ledger: Object.keys(timed).length ? { ...rest, timed } : rest, dropped };
+}
 
 /** `copies` without the ones whose item, owner entity or location no longer exists (Q60), and the dropped ones.
  *  The same array when none is dropped. */

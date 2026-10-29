@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingStateOf } from '@/lib/openingState';
-import { equipRequirement, settleInventory } from '@/lib/inventory';
+import { equipRequirement, settleInventory, timedEffectViews } from '@/lib/inventory';
+import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle } from '@/components/game/useInventoryPanel';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
@@ -4921,18 +4922,20 @@ const GameViewer = ({
   /** Item grants, item effects, trait gates and equip requirements settled together over `state` (Q48, Q123).
    *  The same state, and no `items`, when nothing moves. */
   const settleWorldOf = useCallback(
-    (world: TraitWorld, nameOf: (trait: Trait) => string = traitName) => ({ items: worldItems, traits: world, entities, nameOf, resolve: resolvePH }),
-    [worldItems, entities, traitName, resolvePH],
+    // Every world entity, so a `you` owner finds the Custom Persona, which is never in the cast.
+    (world: TraitWorld, nameOf: (trait: Trait) => string = traitName) => ({ items: worldItems, traits: world, entities: traitEntities, nameOf, resolve: resolvePH }),
+    [worldItems, traitEntities, traitName, resolvePH],
   );
   const settleWithItems = useCallback<TraitSettle>((state, world, nameOf) => {
-    const settled = settleInventory({ copies: itemCopies, traits: state, ledger: itemEffects }, settleWorldOf(world, nameOf));
+    // The turn's settle runs after the clock advances, so this is where timed effects end (Q40).
+    const settled = settleInventory({ copies: itemCopies, traits: state, ledger: itemEffects, now: gameTime }, settleWorldOf(world, nameOf));
     const itemsMoved = settled.copies !== itemCopies || JSON.stringify(settled.ledger) !== JSON.stringify(itemEffects ?? {});
     if (settled.traits === state && !itemsMoved) return { state, log: settled.log, cascade: [], cascadeNames: [] };
     return {
       state: settled.traits === state ? { ...state } : settled.traits, log: settled.log, cascade: settled.cascade, cascadeNames: settled.cascadeNames,
       items: { copies: settled.copies, ledger: settled.ledger },
     };
-  }, [itemCopies, itemEffects, settleWorldOf]);
+  }, [itemCopies, itemEffects, gameTime, settleWorldOf]);
   const commitSettledItems = useCallback((result: GatedTraitResult) => {
     if (!result.items) return;
     if (result.items.copies !== itemCopies) setItemCopies([...result.items.copies]);
@@ -4995,17 +4998,21 @@ const GameViewer = ({
     const world = gatedWorld();
     const settleWorld = settleWorldOf(world);
     return {
-      requirement: equipRequirement({ traits: traitState, ledger: itemEffects }, settleWorld),
-      commit: (copies, previous, lines) => {
-        const settled = settleInventory({ copies, previous, traits: traitState, ledger: itemEffects }, settleWorld);
+      requirement: equipRequirement({ traits: traitState, ledger: itemEffects, now: gameTime }, settleWorld),
+      commit: (copies, previous, lines, doses) => {
+        const settled = settleInventory({ copies, previous, traits: traitState, ledger: itemEffects, doses, now: gameTime }, settleWorld);
         commitGatedTraits({
           state: settled.traits, log: [...lines, ...settled.log], cascade: settled.cascade, cascadeNames: settled.cascadeNames,
           items: { copies: settled.copies, ledger: settled.ledger },
         }, 'an item change');
         void fireSwitchScripts(traitState, settled.traits, world);
       },
+      timed: personaRef ? timedEffectViews(itemEffects, worldItems, playedEntityIds(personaRef, traitEntities), gameTime, {
+        stat: (ownerId, statId) => traitState.entityStats?.[ownerId]?.find((s) => s.id === statId)?.name ?? statId,
+        trait: (ownerId, traitId) => traitNameIn(world, traitId, traitName, ownerId) ?? traitId,
+      }) : [],
     };
-  }, [gatedWorld, settleWorldOf, traitState, itemEffects, commitGatedTraits, fireSwitchScripts]);
+  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitGatedTraits, fireSwitchScripts]);
 
   /** Move the stats onto a new persona, whose linked stat traits replace the old one's, then settle the traits
    *  under it, which can open or close "playing as" gates. */

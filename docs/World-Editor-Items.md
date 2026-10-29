@@ -59,7 +59,7 @@ An item's placeholders roll once per playthrough. Every Item Copy shows the same
 > ⚠️ An item with **Charges** never stacks. Setting charges turns **Stackable** off. Clearing them leaves it off until you turn it on.
 
 ## Effects
-<!-- keywords: stat effects, bonus, buff, equip bonus, raise strength, max health, regen, while equipped, while owned, first obtain -->
+<!-- keywords: stat effects, bonus, buff, equip bonus, raise strength, max health, regen, while equipped, while owned, first obtain, after consumed, potion, duration, timed effect -->
 <!-- route: worldEditorItem.effects -->
 
 An effect row changes one of the owner's own stats. Each row picks a stat, a facet, a timing and an amount.
@@ -74,6 +74,7 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 |---|---|
 | ⚔️ **While Equipped** | While the item is equipped. Two equipped copies apply twice. |
 | 🎒 **While Owned** | While the owner has the item. Three copies still count once. |
+| 🧪 **After Consumed** | When the owner uses the item, for a set time or for good. Shows only for a **Consumable** item or one with **Charges**. |
 | ✨ **On First Obtain** | Once, the first time the owner gets the item. It stays after the item is gone. |
 
 - When an effect ends, it gives back exactly what it gave. A +2 that only fit +1 under the maximum takes back 1.
@@ -81,6 +82,18 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 - Starting items apply their effects when the game starts.
 - An owner without the stat skips the row, and the log says so. The player's own stats come from the persona, not the Global Stats.
 - The log names the item for each change. A hidden item shows as "An item".
+
+### After Consumed effects
+<!-- keywords: consume, use item, drink, potion, buff duration, timed effect, permanent, second dose, refresh, charges, wand, recharge -->
+
+An **After Consumed** row also picks a **Duration**: **Permanent**, or an amount of story time in minutes, hours, days or weeks.
+
+- 🧪 **Use** lowers a stack by one. On an item with **Charges**, it spends one charge instead.
+- 🔋 At zero charges, a **Consumable** item is gone. Any other item stays, with **Use** off.
+- ⏳ A timed effect ends once the story clock passes its duration, and gives back exactly what it gave.
+- 🔁 A second dose while the effect runs restarts its timer. The effect doesn't stack.
+- ♾️ A **Permanent** effect never ends, and each dose applies it again.
+- 🎲 Each Item Copy keeps its own charges. Giving one wand away moves only its own count.
 
 ### Trait effects
 <!-- keywords: trait effects, grant trait, cursed ring, give trait, item trait -->
@@ -93,6 +106,7 @@ A trait effect row gives the owner a trait while its timing holds. Each row pick
 - ⏳ The trait's own requirements still apply. A granted trait whose requirement fails turns on once it holds.
 - ✋ The player cannot switch off a trait an item holds on.
 - ✨ **On First Obtain** grants the trait for good.
+- 🧪 **After Consumed** grants the trait for its duration, or for good when **Permanent**.
 - ⚙️ Automatic traits are not offered: they turn on by their own rules.
 
 ## Requirements

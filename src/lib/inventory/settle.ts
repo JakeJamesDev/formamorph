@@ -11,8 +11,8 @@ import {
   type TraitRuntimeState, type TraitWorld,
 } from '@/lib/traitRuntime';
 import type { RowState } from '@/lib/traitGates';
-import type { Item, ItemCopy, ItemEffectLedger, PersonaRef, Trait } from '@/types';
-import { itemEffectLog, settleItemEffects } from './effects';
+import type { Item, ItemCopy, ItemEffectLedger, PersonaRef, TimedItemEffect, Trait } from '@/types';
+import { itemEffectLog, settleItemEffects, type Dose } from './effects';
 import { grantKey, wantedGrants } from './grants';
 
 /** How many passes a settle runs before it stops (Q66). */
@@ -24,6 +24,10 @@ export interface InventorySettleState {
   previous?: readonly ItemCopy[];
   traits: TraitRuntimeState;
   ledger: ItemEffectLedger | undefined;
+  /** The consumes this settle starts, from the validator's result. */
+  doses?: readonly Dose[];
+  /** The story clock's `gameTime`, which timed effects end by and start from. Absent: none ends. */
+  now?: number;
 }
 
 export interface InventorySettleWorld {
@@ -69,10 +73,13 @@ function reader(world: InventorySettleWorld) {
   const traitWorld = (copies: readonly ItemCopy[]): TraitWorld => ({ ...world.traits, itemCopies: copies });
   // A grant that leaves takes its item along, so its switch-off names the item it last read.
   const lastSources = new Map<string, { item: Item; hidden: boolean }>();
-  const grantsOf = (effectCopies: readonly ItemCopy[], tw: TraitWorld, ledger?: ItemEffectLedger) =>
-    wantedGrants(effectCopies, { items, owners: tw.owners ?? [], persona, entities: world.entities }, ledger?.firstObtainTraits);
-  const remember = (copies: readonly ItemCopy[]) => {
-    for (const [key, source] of grantsOf(copies, traitWorld(copies)).sources) lastSources.set(key, source);
+  const grantsOf = (effectCopies: readonly ItemCopy[], tw: TraitWorld, ledger?: ItemEffectLedger, doses?: readonly Dose[], now?: number) =>
+    wantedGrants(
+      effectCopies, { items, owners: tw.owners ?? [], persona, entities: world.entities }, ledger?.firstObtainTraits,
+      { entries: ledger?.timed, doses, now },
+    );
+  const remember = (copies: readonly ItemCopy[], ledger: ItemEffectLedger | undefined) => {
+    for (const [key, source] of grantsOf(copies, traitWorld(copies), ledger).sources) lastSources.set(key, source);
   };
   const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
   /** A copy as the log names it: "An item" when it is hidden (Q63). */
@@ -81,10 +88,13 @@ function reader(world: InventorySettleWorld) {
     return copy.visibility === 'hidden' || !item ? 'An item' : resolve(item.name);
   };
 
-  /** One pass: grants and stat effects from `effectCopies`, then the trait gates, which read `copies`. */
-  const pass = (state: Omit<InventorySettleState, 'copies'>, effectCopies: readonly ItemCopy[], copies: readonly ItemCopy[]): Pass => {
+  /** One pass: grants and stat effects from `effectCopies`, then the trait gates, which read `copies`. `doses` start
+   *  their After Consumed rows, so only one pass gets them. */
+  const pass = (
+    state: Omit<InventorySettleState, 'copies'>, effectCopies: readonly ItemCopy[], copies: readonly ItemCopy[], doses?: readonly Dose[],
+  ): Pass => {
     const tw = traitWorld(copies);
-    const grants = grantsOf(effectCopies, tw, state.ledger);
+    const grants = grantsOf(effectCopies, tw, state.ledger, doses, state.now);
     const granted = setGrantedTraits(state.traits, grants.held, tw);
     const log: string[] = [];
     for (const { ownerId, trait, on } of granted.switched) {
@@ -94,8 +104,14 @@ function reader(world: InventorySettleWorld) {
       log.push(...traitSwitchLog(traitNameIn(tw, trait.id, nameOf, ownerId) ?? trait.name, on ? 'on' : 'off', [], by));
     }
     for (const [key, source] of grants.sources) lastSources.set(key, source);
+    // The grants own the timed trait rows; the stat settle owns the timed stat rows.
+    const timedStats = Object.entries(state.ledger?.timed ?? {}).filter(([, entry]) => entry.row === 'stat');
+    const timed: Record<string, TimedItemEffect> = { ...Object.fromEntries(timedStats), ...grants.timedTraits };
     const effects = settleItemEffects(
-      { copies: effectCopies, entityStats: granted.state.entityStats ?? {}, ledger: state.ledger },
+      {
+        copies: effectCopies, entityStats: granted.state.entityStats ?? {}, ledger: { ...state.ledger, timed }, doses,
+        ...(state.now !== undefined && { now: state.now }),
+      },
       { items: world.items, entities: world.entities, ...(persona && { persona }) },
       (id) => entityStatTraitsInForce(granted.state.ownedTraits, tw, id),
     );
@@ -142,15 +158,15 @@ const unequipped = (copy: ItemCopy): ItemCopy => {
 export function settleInventory(state: InventorySettleState, world: InventorySettleWorld): InventorySettleResult {
   const read = reader(world);
   const cap = world.cap ?? SETTLE_CAP;
-  if (state.previous) read.remember(state.previous);
+  if (state.previous) read.remember(state.previous, state.ledger);
   let copies = state.copies;
   let current: Omit<InventorySettleState, 'copies'> = state;
   const log: string[] = [];
   const cascade: Trait[] = [];
   const cascadeNames: string[] = [];
   for (let n = 1; ; n += 1) {
-    const done = read.pass(current, copies, copies);
-    current = done;
+    const done = read.pass(current, copies, copies, n === 1 ? state.doses : undefined);
+    current = { ...done, ...(state.now !== undefined && { now: state.now }) };
     log.push(...done.log);
     cascade.push(...done.cascade);
     cascadeNames.push(...done.cascadeNames);
