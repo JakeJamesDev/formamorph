@@ -86,11 +86,11 @@ function write(state: TraitRuntimeState, { ownerId, traitId }: Slot, to: SlotSta
     };
   }
   appliedValues = withRecord(appliedValues, ownStatsRecordKey(ownerId, traitId), to.ownRecord);
-  const owned = state.ownedTraits?.[ownerId] ?? { chosen: [] };
-  const disabled = withId(owned.disabled ?? [], traitId, to.off);
+  const { disabled: was, ...owned } = state.ownedTraits?.[ownerId] ?? { chosen: [] };
+  const disabled = withId(was ?? [], traitId, to.off);
   const ownedTraits: OwnedTraitStates = {
     ...state.ownedTraits,
-    [ownerId]: { chosen: withId(owned.chosen, traitId, to.held), ...(disabled.length ? { disabled } : {}) },
+    [ownerId]: { ...owned, chosen: withId(owned.chosen, traitId, to.held), ...(disabled.length ? { disabled } : {}) },
   };
   const cascadeOff = withId(cascade.owners?.[ownerId] ?? [], traitId, to.cascadeOff);
   const owners = cascadeOff.length || cascade.owners?.[ownerId] ? { ...cascade.owners, [ownerId]: cascadeOff } : cascade.owners;

@@ -11,13 +11,13 @@
 //   that trait reverses it, rather than the authored number.
 
 import type {
-  CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemCopy, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
+  CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemCopy, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
   PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
 import { statStartValue } from './statDescriptorGeometry';
 import { ownedTraitStatesFrom, ownStatsRecordKey, recordKey } from './ownedTraitState';
-import { activeOwnedTraitIds } from './ownedTraitsInPlay';
+import { activeOwnedTraitIds, grantOnlyIds } from './ownedTraitsInPlay';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits, type StatRow } from './traitTree';
 import {
@@ -480,21 +480,28 @@ function moveOwnStats(state: TraitRuntimeState, ownerId: string, ownerTrait: Tra
 
 /** Move a trait's switch in its scope's lists and settle the stats around it: a global trait in the
  *  disabled list, an entity's in its owned lists. */
-function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world: TraitWorld, ownerId: OwnerId = null): TraitRuntimeState {
+function switchTrait(
+  state: TraitRuntimeState, trait: Trait, on: boolean, world: TraitWorld, ownerId: OwnerId = null, relist?: Relist,
+): TraitRuntimeState {
   const listed = ownerId === null
     ? { ...state, disabledTraitIds: withDisabled(state.disabledTraitIds, on ? null : trait.id, on ? trait.id : null) }
-    : withOwnedSwitch(state, ownerId, trait.id, on);
+    : (relist ?? ((s) => withOwnedSwitch(s, ownerId, trait.id, on)))(state);
   return moveStats(listed, trait, on, recordKey(ownerId, trait.id), statTraitsInForce(listed, world));
 }
 
+/** Moves one owner trait's switch in its lists. */
+type Relist = (state: TraitRuntimeState) => TraitRuntimeState;
+
 /** Switch an owner's trait in its lists and move the stats it changes: the world's traits and any entity
- *  owner's global rows move global stats, and an entity's own rows move its own stats. */
-function flipOwnerTrait(state: TraitRuntimeState, ownerId: OwnerId, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+ *  owner's global rows move global stats, and an entity's own rows move its own stats. `relist` replaces the
+ *  pick lists' switch, as a grant's does. */
+function flipOwnerTrait(state: TraitRuntimeState, ownerId: OwnerId, trait: Trait, on: boolean, world: TraitWorld, relist?: Relist): TraitRuntimeState {
   if (ownerId === null) return switchTrait(state, trait, on, world);
+  const lists = relist ?? ((s: TraitRuntimeState) => withOwnedSwitch(s, ownerId, trait.id, on));
   const globalRows = withoutOwnStatRows(trait, ownStatIds(state, ownerId));
   const switched = hasStatEffects(globalRows)
-    ? switchTrait(state, globalRows, on, world, ownerId)
-    : withOwnedSwitch(state, ownerId, trait.id, on);
+    ? switchTrait(state, globalRows, on, world, ownerId, lists)
+    : lists(state);
   return moveOwnStats(switched, ownerId, trait, on, world);
 }
 
@@ -706,11 +713,24 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   ...(world.daypart ? { daypart: world.daypart } : {}),
   ...(world.items ? { worldItems: world.items } : {}),
   ...(world.itemCopies ? { itemCopies: world.itemCopies } : {}),
+  ...grantInput(state.ownedTraits),
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },
   originals: { traits: world.traits, groups: world.groups },
   reader: 'player',
 });
+
+/** The grant lists as the gate module reads them; nothing when no owner holds a grant. */
+function grantInput(states: OwnedTraitStates | undefined): Pick<GateInput, 'grants'> {
+  const held = Object.entries(states ?? {}).filter(([, s]) => s.granted?.length);
+  if (!held.length) return {};
+  return {
+    grants: {
+      only: scoped([], Object.fromEntries(held.map(([id, s]) => [id, grantOnlyIds(s)]))),
+      waiting: scoped([], Object.fromEntries(held.map(([id, s]) => [id, s.grantedOff ?? []]))),
+    },
+  };
+}
 
 /** Every owner's gate on each of its traits, for one read of the state. */
 export const traitGates = (state: GateStatState, world: TraitWorld): GateStates => gateStates(traitGateInput(state, world));
@@ -795,15 +815,108 @@ const ownedOn = (state: TraitRuntimeState, ownerId: string, traitId: string): bo
   return !!owned?.chosen.includes(traitId) && !owned.disabled?.includes(traitId);
 };
 
+/** A picked sibling a switch-on retires. A granted one keeps its stats and stays on; only its pick goes (Q120). */
+const retireSibling = (state: TraitRuntimeState, ownerId: string, sibling: Trait, world: TraitWorld): TraitRuntimeState =>
+  (isGranted(state, ownerId, sibling.id) && !state.ownedTraits?.[ownerId]?.grantedOff?.includes(sibling.id)
+    ? withOwnedSwitch(state, ownerId, sibling.id, false)
+    : flipOwnerTrait(state, ownerId, sibling, false, world));
+
+/** Whether an owner trait is in force: picked on, or held on by a grant alone. */
+const inForceOwned = (state: TraitRuntimeState, ownerId: string, traitId: string): boolean =>
+  ownedOn(state, ownerId, traitId) || grantOnly(state, ownerId, traitId);
+
 /** `state` with one owned trait switched: on joins the chosen list and leaves the switched-off one. */
 function withOwnedSwitch(state: TraitRuntimeState, ownerId: string, traitId: string, on: boolean): TraitRuntimeState {
-  const current = state.ownedTraits?.[ownerId] ?? { chosen: [] };
+  const { disabled: was, ...current } = state.ownedTraits?.[ownerId] ?? { chosen: [] };
   const chosen = on && !current.chosen.includes(traitId) ? [...current.chosen, traitId] : current.chosen;
-  const disabled = withDisabled(current.disabled ?? [], on ? null : traitId, on ? traitId : null);
+  const disabled = withDisabled(was ?? [], on ? null : traitId, on ? traitId : null);
   return {
     ...state,
-    ownedTraits: { ...state.ownedTraits, [ownerId]: { chosen, ...(disabled.length ? { disabled } : {}) } },
+    ownedTraits: { ...state.ownedTraits, [ownerId]: { ...current, chosen, ...(disabled.length ? { disabled } : {}) } },
   };
+}
+
+/** `state` with one owner's granted lists replaced; an empty list is dropped. */
+function withGrantLists(state: TraitRuntimeState, ownerId: string, granted: readonly string[], grantedOff: readonly string[]): TraitRuntimeState {
+  const { granted: _g, grantedOff: _o, ...rest } = state.ownedTraits?.[ownerId] ?? { chosen: [] };
+  const off = grantedOff.filter((id) => granted.includes(id));
+  return {
+    ...state,
+    ownedTraits: {
+      ...state.ownedTraits,
+      [ownerId]: { ...rest, ...(granted.length ? { granted: [...granted] } : {}), ...(off.length ? { grantedOff: off } : {}) },
+    },
+  };
+}
+
+/** `state` with a granted trait's gate wait moved: off joins the waiting list, on leaves it. */
+const withGrantWait = (state: TraitRuntimeState, ownerId: string, traitId: string, on: boolean): TraitRuntimeState => {
+  const owned = state.ownedTraits?.[ownerId];
+  return withGrantLists(state, ownerId, owned?.granted ?? [], withDisabled(owned?.grantedOff ?? [], on ? null : traitId, on ? traitId : null));
+};
+
+const isGranted = (state: TraitRuntimeState, ownerId: string, traitId: string): boolean =>
+  !!state.ownedTraits?.[ownerId]?.granted?.includes(traitId);
+
+/** Whether the trait is in force by an item grant alone. */
+const grantOnly = (state: TraitRuntimeState, ownerId: string, traitId: string): boolean =>
+  grantOnlyIds(state.ownedTraits?.[ownerId]).includes(traitId);
+
+/** One owner trait an item grant switched, for the caller's log. */
+export interface GrantSwitch {
+  ownerId: string;
+  trait: Trait;
+  on: boolean;
+}
+
+/**
+ * Sets the traits item grants hold for each owner (Q52): an extra source beside the picks. A newly held trait
+ * that is not already on switches on when its gate holds, else waits for it (Q119). A trait no longer held
+ * switches off only when the grant alone held it on. Owners absent from `held` hold none. Grants retire no
+ * sibling and count toward no Pick Count. `switched` lists the traits whose in-force state moved.
+ */
+export function setGrantedTraits(
+  state: TraitRuntimeState, held: Readonly<Record<string, readonly string[]>>, world: TraitWorld,
+): { state: TraitRuntimeState; switched: GrantSwitch[] } {
+  let next = state;
+  const switched: GrantSwitch[] = [];
+  const ownerIds = new Set([...Object.keys(held), ...Object.entries(state.ownedTraits ?? {}).filter(([, s]) => s.granted?.length).map(([id]) => id)]);
+  for (const ownerId of ownerIds) {
+    const now = held[ownerId] ?? [];
+    const was = next.ownedTraits?.[ownerId]?.granted ?? [];
+    for (const traitId of was.filter((id) => !now.includes(id))) {
+      const found = ownedTrait(world, traitId, ownerId);
+      const on = grantOnly(next, ownerId, traitId);
+      // An owner out of play keeps the grant and its stats until its tree is back to reverse them.
+      if (on && !found) continue;
+      const owned = next.ownedTraits?.[ownerId];
+      const listed = withGrantLists(next, ownerId, (owned?.granted ?? []).filter((id) => id !== traitId), owned?.grantedOff ?? []);
+      if (on && found) {
+        next = moveGrantStats(listed, ownerId, found.trait, false, world);
+        switched.push({ ownerId, trait: found.trait, on: false });
+      } else next = listed;
+    }
+    for (const traitId of now.filter((id) => !was.includes(id))) {
+      const found = ownedTrait(world, traitId, ownerId);
+      if (!found) continue;
+      const owned = next.ownedTraits?.[ownerId];
+      const granted = [...owned?.granted ?? [], traitId];
+      if (ownedOn(next, ownerId, traitId)) {
+        next = withGrantLists(next, ownerId, granted, owned?.grantedOff ?? []);
+      } else if (isLocked(next, world, ownerId, traitId)) {
+        next = withGrantLists(next, ownerId, granted, [...owned?.grantedOff ?? [], traitId]);
+      } else {
+        next = moveGrantStats(withGrantLists(next, ownerId, granted, owned?.grantedOff ?? []), ownerId, found.trait, true, world);
+        switched.push({ ownerId, trait: found.trait, on: true });
+      }
+    }
+  }
+  return { state: next, switched };
+}
+
+/** Moves the stats of an owner trait whose grant alone switched it, its lists already moved. */
+function moveGrantStats(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+  return flipOwnerTrait(state, ownerId, trait, on, world, (s) => s);
 }
 
 /** A trait as the log and the banner name it: an NPC's owned trait carries its owner's name. Global traits
@@ -831,7 +944,12 @@ export interface GatedTraitResult {
   log: string[];
   cascade: Trait[];
   cascadeNames: string[];
+  /** The Item Copies and item ledger a settle that ran the inventory settle left. Absent ⇒ unchanged. */
+  items?: { copies: readonly ItemCopy[]; ledger: ItemEffectLedger };
 }
+
+/** A settle of every owner's traits: {@link settleTraits}, or one that also settles the inventory. */
+export type TraitSettle = (state: TraitRuntimeState, world: TraitWorld, nameOf: (trait: Trait) => string) => GatedTraitResult;
 
 /**
  * Settle every owner's traits against every gate: traits whose gate stopped holding switch off, dependents
@@ -859,8 +977,24 @@ export function settleTraits(
     return { state, log: [], cascade: [], cascadeNames: [] };
   }
   let next = state;
-  for (const { ownerId, trait } of off) next = flipOwnerTrait(next, ownerId, trait, false, world);
+  // A granted trait waits on its gate in its own list, never the cascade-off one (Q119).
+  for (const { ownerId, trait } of off) {
+    if (ownerId !== null && isGranted(next, ownerId, trait.id)) {
+      const only = grantOnly(next, ownerId, trait.id);
+      const waiting = withGrantWait(next, ownerId, trait.id, false);
+      next = only ? flipOwnerTrait(waiting, ownerId, trait, false, world, (s) => s) : flipOwnerTrait(waiting, ownerId, trait, false, world);
+    } else next = flipOwnerTrait(next, ownerId, trait, false, world);
+  }
   for (const { ownerId, trait } of back) {
+    if (ownerId !== null && next.ownedTraits?.[ownerId]?.grantedOff?.includes(trait.id)) {
+      // A pick the cascade turned off returns with it.
+      const pick = !!state.cascadeOffTraitIds?.owners?.[ownerId]?.includes(trait.id);
+      next = flipOwnerTrait(next, ownerId, trait, true, world, (s) => {
+        const ready = withGrantWait(s, ownerId, trait.id, true);
+        return pick ? withOwnedSwitch(ready, ownerId, trait.id, true) : ready;
+      });
+      continue;
+    }
     if (ownerId === null && !next.traits.some((t) => t.id === trait.id)) next = { ...next, traits: [...next.traits, trait] };
     next = flipOwnerTrait(next, ownerId, trait, true, world);
   }
@@ -891,7 +1025,8 @@ function switchOwned(
   nameOf: (trait: Trait) => string,
 ): GatedTraitResult | null {
   const chosen = !!state.ownedTraits?.[owner.id]?.chosen.includes(trait.id);
-  if (ownedOn(state, owner.id, trait.id) === enabled) return null;
+  // A grant holds the trait on until it leaves (Q120).
+  if (inForceOwned(state, owner.id, trait.id) === enabled || (!enabled && isGranted(state, owner.id, trait.id))) return null;
   if (enabled && (refusesOn(state, world, owner.id, trait.id) || (!chosen && !trait.playerToggle))) return null;
   if (!enabled && refusesOff(state, world, owner.id, trait.id)) return null;
   const retired = enabled
@@ -900,7 +1035,7 @@ function switchOwned(
       .flatMap((id) => owner.traits.filter((t) => t.id === id))
     : [];
   let switched = state;
-  for (const sibling of retired) switched = flipOwnerTrait(switched, owner.id, sibling, false, world);
+  for (const sibling of retired) switched = retireSibling(switched, owner.id, sibling, world);
   switched = flipOwnerTrait(switched, owner.id, trait, enabled, world);
   const label = labeler(world, nameOf);
   const kind: TraitSwitchKind = !chosen ? 'acquired' : enabled ? 'on' : 'off';
@@ -1004,7 +1139,13 @@ function codeSwitchOwned(
 ): { state: TraitRuntimeState; log: string[]; logTraits: (string | null)[] } {
   const owned = ownedTrait(world, traitId, ownerId);
   if (!owned || isAlwaysOn(owned.trait)) return { state, log: [], logTraits: [] };
-  if (ownedOn(state, ownerId, traitId) === enabled) {
+  // A grant holds the trait on, so code moves only its pick (Q52).
+  if (isGranted(state, ownerId, traitId) && inForceOwned(state, ownerId, traitId)) {
+    const picked = ownedOn(state, ownerId, traitId);
+    if (picked === enabled) return { state: enabled ? state : withoutCascadeOff(state, traitId, ownerId), log: [], logTraits: [] };
+    return { state: withOwnedSwitch(state, ownerId, traitId, enabled), log: [], logTraits: [] };
+  }
+  if (inForceOwned(state, ownerId, traitId) === enabled) {
     return { state: enabled ? state : withoutCascadeOff(state, traitId, ownerId), log: [], logTraits: [] };
   }
   const { owner, trait } = owned;
@@ -1015,7 +1156,7 @@ function codeSwitchOwned(
       .flatMap((id) => owner.traits.filter((t) => t.id === id))
     : [];
   let switched = state;
-  for (const sibling of retired) switched = flipOwnerTrait(switched, ownerId, sibling, false, world);
+  for (const sibling of retired) switched = retireSibling(switched, ownerId, sibling, world);
   switched = flipOwnerTrait(switched, ownerId, trait, enabled, world);
   const label = labeler(world, nameOf);
   const kind: TraitSwitchKind = !chosen ? 'acquired' : enabled ? 'on' : 'off';

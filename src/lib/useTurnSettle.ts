@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { settleTraits, type GatedTraitResult, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
+import { settleTraits, type GatedTraitResult, type TraitRuntimeState, type TraitSettle, type TraitWorld } from './traitRuntime';
 import type { GateStats } from './traitGates';
 import { useMountedRef } from './useMountedRef';
 import type { Trait } from '@/types';
@@ -27,6 +27,7 @@ export function useTurnSettle(
   world: () => TraitWorld,
   nameOf: (trait: Trait) => string,
   commit: (result: GatedTraitResult) => void | Promise<void>,
+  settle: TraitSettle = settleTraits,
 ): (gateStats: GateStats | null) => Promise<void> {
   const pending = useRef<PendingSettle | null>(null);
   const [nonce, setNonce] = useState(0);
@@ -47,7 +48,7 @@ export function useTurnSettle(
       return;
     }
     const live = world();
-    const result = settleTraits(state, at.gateStats ? { ...live, gateStats: at.gateStats } : live, nameOf);
+    const result = settle(state, at.gateStats ? { ...live, gateStats: at.gateStats } : live, nameOf);
     if (result.state === state) {
       pending.current = null;
       at.resolve();
@@ -55,7 +56,7 @@ export function useTurnSettle(
     }
     const landing = commit(result);
     pending.current = { ...at, committed: true, nonce: bump(), ...(landing ? { landing } : {}) };
-  }, [nonce, state, world, nameOf, commit]);
+  }, [nonce, state, world, nameOf, commit, settle]);
 
   const mounted = useMountedRef();
   useEffect(() => () => {

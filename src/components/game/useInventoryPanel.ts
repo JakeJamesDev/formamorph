@@ -2,27 +2,31 @@ import { useCallback, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { presentEntityIds } from '@/lib/entityPresence';
-import { applyInventoryOps, copiesAt, itemEffectLog, settleItemEffects, type InventoryOp, type OwnerStatTraits } from '@/lib/inventory';
+import { applyInventoryOps, copiesAt, type InventoryOp } from '@/lib/inventory';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { randomUUID } from '@/lib/uuid';
+import type { ItemCopy } from '@/types';
 import type { InventoryTabProps } from './InventoryTab';
 
 const YOU = { kind: 'you' } as const;
 const NONE: never[] = [];
 
+/** The live game's half of a panel write: the equip check (Q49), and the inventory settle that commits the
+ *  new Item Copies with their effects, grants and requirements (Q48). */
+export interface InventoryPanelSettle {
+  requirement: (copy: ItemCopy, copies: readonly ItemCopy[]) => string | null;
+  commit: (copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[]) => void;
+}
+
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
- *  item effects they change. `ownerStatTraits` is each entity's stat traits in force, which bounds derive from. */
-export function useInventoryPanel(ownerStatTraits: OwnerStatTraits, imageOf?: InventoryTabProps['imageOf']): InventoryTabProps {
+ *  settle. Without `settle`, the operations alone land. */
+export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: InventoryTabProps['imageOf']): InventoryTabProps {
   const data = useGameDataOptional();
   const items = data?.items ?? NONE;
   const slots = data?.slots ?? NONE;
-  const worldEntities = data?.entities ?? NONE;
-  const {
-    itemCopies, setItemCopies, itemEffects, setItemEffects, entityStats, setEntityStats, personaRef,
-    entityPositions, discoveredEntities, addLogEntry, isWaitingForAI, isViewingPast,
-  } = useGameplay();
+  const { itemCopies, setItemCopies, entityPositions, discoveredEntities, addLogEntry, isWaitingForAI, isViewingPast } = useGameplay();
   const { entities, currentLocation, persona } = useResolvedWorld();
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
@@ -38,18 +42,15 @@ export function useInventoryPanel(ownerStatTraits: OwnerStatTraits, imageOf?: In
     const result = applyInventoryOps(itemCopies, ops, {
       world: { items, slots }, source: 'panel', newId: randomUUID,
       presence: { locationId, entityIds: new Set(present.map((e) => e.id)) },
+      ...(settle && { requirement: settle.requirement }),
     });
-    const effects = settleItemEffects(
-      { copies: result.copies, entityStats, ledger: itemEffects },
-      { items, entities: worldEntities, ...(personaRef && { persona: personaRef }) },
-      ownerStatTraits,
-    );
+    if (settle) {
+      settle.commit(result.copies, itemCopies, result.diagnostics);
+      return;
+    }
     setItemCopies(result.copies);
-    setItemEffects(effects.ledger);
-    if (effects.entityStats !== entityStats) setEntityStats(effects.entityStats);
-    for (const line of [...result.diagnostics, ...itemEffectLog(effects, resolveText)]) addLogEntry(line);
-  }, [itemCopies, items, slots, locationId, present, entityStats, itemEffects, worldEntities, personaRef, ownerStatTraits,
-    setItemCopies, setItemEffects, setEntityStats, addLogEntry, resolveText]);
+    for (const line of result.diagnostics) addLogEntry(line);
+  }, [itemCopies, items, slots, locationId, present, settle, setItemCopies, addLogEntry]);
 
   return {
     ownerName: persona?.entity.name ?? null,

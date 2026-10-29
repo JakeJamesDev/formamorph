@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import {
   codeBoundsToDeltas, settleTraits, statTraitsInForce, type GatedTraitResult, type TraitForceState, type TraitRuntimeState,
-  type TraitWorld,
+  type TraitSettle, type TraitWorld,
 } from './traitRuntime';
 import type { GameState, PlayerStat, Trait } from '@/types';
 
@@ -39,6 +39,7 @@ export function useSettleOnSaveLoad(
   nameOf: (trait: Trait) => string,
   commit: (result: GatedTraitResult) => void,
   history?: SettleHistory,
+  settle: TraitSettle = settleTraits,
 ): void {
   const settledLoads = useRef(loads);
   useEffect(() => {
@@ -46,10 +47,10 @@ export function useSettleOnSaveLoad(
     settledLoads.current = loads;
     const at = world();
     const stats = statsWithCodeDeltas(state.stats, state, at);
-    const result = settleTraits(stats === state.stats ? state : { ...state, stats }, at, nameOf);
+    const result = settle(stats === state.stats ? state : { ...state, stats }, at, nameOf);
     if (result.state !== state) commit(result);
     if (!history) return;
     const states = history.states.map((snapshot) => snapshotWithCodeDeltas(snapshot, at));
     if (states.some((snapshot, i) => snapshot !== history.states[i])) history.commit(states);
-  }, [loads, ready, state, world, nameOf, commit, history]);
+  }, [loads, ready, state, world, nameOf, commit, history, settle]);
 }

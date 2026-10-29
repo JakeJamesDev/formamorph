@@ -189,6 +189,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditorItem.descriptions': { page: 'World-Editor-Items', anchor: 'the-panel' },
   'worldEditorItem.properties': { page: 'World-Editor-Items', anchor: 'properties' },
   'worldEditorItem.effects': { page: 'World-Editor-Items', anchor: 'effects' },
+  'worldEditorItem.requirements': { page: 'World-Editor-Items', anchor: 'requirements' },
   'worldEditorItem.placeholders': { page: 'World-Editor-Items', anchor: 'the-panel' },
   'worldEditorLocation.details': { page: 'World-Editor-Locations', anchor: 'the-panel' },
   'worldEditorLocation.presence': { page: 'World-Editor-Locations', anchor: 'entities' },

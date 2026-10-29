@@ -1,6 +1,6 @@
 // Owned traits during play: which are active, and the pins each owner's traits lay.
 
-import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
+import type { DiscoveredEntity, Entity, OwnedTraitState, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
 import { resolveOwners, type Owner, type OwnerWorld } from './owners';
 import { copyLookup, customPersonaEntity, readerFor, type CopyLookup, type CopyReader } from './blueprints';
 import { characterAsPlayer } from './builtinPlaceholders';
@@ -18,12 +18,24 @@ import { mapPreservingIdentity } from './utils';
 export const playedEntityId = (ref: PersonaRef | undefined): string | null =>
   (ref && ref.source !== 'none' ? ref.entityId : null);
 
-/** Entity id → its active owned trait ids: the chosen ones less those switched off. */
+/** One owner's picks in force: the chosen ids less those switched off. */
+const pickedOn = (s: OwnedTraitState): string[] => {
+  const off = new Set(s.disabled ?? []);
+  return s.chosen.filter((t) => !off.has(t));
+};
+
+/** One owner's traits in force by an item grant alone (Q52): granted, gate open, and not picked on. */
+export const grantOnlyIds = (s: OwnedTraitState | undefined): string[] => {
+  if (!s?.granted?.length) return [];
+  const picked = new Set(pickedOn(s));
+  const waiting = new Set(s.grantedOff ?? []);
+  return s.granted.filter((t) => !picked.has(t) && !waiting.has(t));
+};
+
+/** Entity id → its active owned trait ids: the chosen ones less those switched off, then the ones only an
+ *  item grant holds. */
 export function activeOwnedTraitIds(states: Readonly<OwnedTraitStates>): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(states).map(([id, s]) => {
-    const off = new Set(s.disabled ?? []);
-    return [id, s.chosen.filter((t) => !off.has(t))];
-  }));
+  return Object.fromEntries(Object.entries(states).map(([id, s]) => [id, [...pickedOn(s), ...grantOnlyIds(s)]]));
 }
 
 

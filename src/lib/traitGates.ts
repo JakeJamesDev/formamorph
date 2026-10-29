@@ -111,6 +111,9 @@ export interface GateInput {
   itemCopies?: readonly ItemCopy[];
   /** Every authored item an item Condition can name. Absent, every item Condition is unresolved. */
   worldItems?: readonly GateItem[];
+  /** The traits item grants hold (Q52): `only` the active ones no pick holds, which count toward no Pick
+   *  Count; `waiting` the ones whose gate fails, which join when it holds. Absent, none. */
+  grants?: { only: GateActive; waiting: GateActive };
   /** Who reads the Condition text. The author reads the persona owner as "Persona"; the player reads the
    *  played persona's name, which the line marks (Q7, Q11). Absent, the author. */
   reader?: 'author' | 'player';
@@ -618,11 +621,14 @@ export function settle(input: GateInput, cascadeOff: GateActive = NO_ACTIVE): Se
   const rank = authoredRank(input);
   const proposed = locate(idx, input.active);
   const proposedKeys = new Set(proposed.map(keyOf));
+  // A granted trait waits on its gate like an Always On one, and never on the cascade-off list (Q119).
+  const grantKeys = new Set(input.grants ? locate(idx, input.grants.only).map(keyOf) : []);
+  const grantWaiting = new Set(input.grants ? locate(idx, input.grants.waiting).map(keyOf) : []);
   const automatic = byRank([...idx.owners.values()].flatMap((o) => [...o.traits.values()])
-    .filter((t) => isAlwaysOn(t.item) && !proposedKeys.has(keyOf(t))), rank);
+    .filter((t) => (isAlwaysOn(t.item) || grantWaiting.has(keyOf(t))) && !proposedKeys.has(keyOf(t))), rank);
   const rivalIn = (t: Located<Trait>, keys: ReadonlySet<string>) =>
-    [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => keys.has(key(t.owner.id, id)));
-  const waiting = locate(idx, cascadeOff).filter((t) => !proposedKeys.has(keyOf(t)) && !isAlwaysOn(t.item));
+    [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => keys.has(key(t.owner.id, id)) && !grantKeys.has(key(t.owner.id, id)));
+  const waiting = locate(idx, cascadeOff).filter((t) => !proposedKeys.has(keyOf(t)) && !isAlwaysOn(t.item) && !grantKeys.has(keyOf(t)));
   const candidates = byRank(waiting.filter((t) => !rivalIn(t, proposedKeys)), rank);
 
   // Proposal order: picks, then Automatic traits, then cascade-off returners. A later one loses a tie (Q8).
@@ -695,7 +701,7 @@ export function settle(input: GateInput, cascadeOff: GateActive = NO_ACTIVE): Se
     ...returned.filter((t) => t.owner === owner).map((t) => t.item.id),
   ], []);
   const nextCascadeOff = perScopeOf(scopes, (owner) =>
-    [...off, ...stillWaiting].filter((t) => t.owner === owner && !isAlwaysOn(t.item)).map((t) => t.item.id), []);
+    [...off, ...stillWaiting].filter((t) => t.owner === owner && !isAlwaysOn(t.item) && !grantKeys.has(keyOf(t))).map((t) => t.item.id), []);
   const ref = (t: Located<Trait>): GateTraitRef => ({ ownerId: t.owner.id, traitId: t.item.id });
   return { active, turnedOff: off.map(ref), returned: returned.map(ref), cascadeOff: nextCascadeOff };
 }
@@ -721,17 +727,24 @@ export function groupPickState(group: TraitGroup, traits: readonly Trait[], acti
   return { count, min, max, short: count < min, full: max !== null && count >= max };
 }
 
+/** One owner's active traits that count as picks: those only a grant holds count toward no Pick Count (Q52). */
+const picksOf = (input: SwitchInput, ownerId: OwnerId): readonly string[] => {
+  const active = activeOf(input.active, ownerId);
+  const only = input.grants ? activeOf(input.grants.only, ownerId) : [];
+  return only.length ? active.filter((id) => !only.includes(id)) : active;
+};
+
 /** Group id → each scope's pick state, for every group in every scope's tree. */
-export function groupPickStates(input: Pick<GateInput, 'global' | 'owners' | 'active'>): Scoped<Map<string, GroupPickState>> {
+export function groupPickStates(input: Pick<GateInput, 'global' | 'owners' | 'active' | 'grants'>): Scoped<Map<string, GroupPickState>> {
   const of = (tree: GateTree, ownerId: OwnerId) => {
-    const active = activeOf(input.active, ownerId);
+    const active = picksOf(input, ownerId);
     return new Map(tree.groups.map((g) => [g.id, groupPickState(g, tree.traits, active)]));
   };
   return scoped(of(input.global, null), Object.fromEntries(input.owners.map((owner) => [owner.id, of(owner, owner.id)])));
 }
 
-/** The input the switch checks read: the trees and the active sets. */
-type SwitchInput = Pick<GateInput, 'global' | 'owners' | 'active'>;
+/** The input the switch checks read: the trees, the active sets and the grants. */
+type SwitchInput = Pick<GateInput, 'global' | 'owners' | 'active' | 'grants'>;
 
 /** Whether switching `traitId` on would overfill its group in `ownerId`: the group is full at a max above
  *  one. A max-one group swaps its pick instead. */
@@ -739,8 +752,8 @@ export function overfills(input: SwitchInput, ownerId: OwnerId, traitId: string)
   const owner = gateTreeOf(input, ownerId);
   const groupId = owner?.traits.find((t) => t.id === traitId)?.groupId ?? null;
   const group = owner?.groups.find((g) => g.id === groupId);
-  const active = activeOf(input.active, ownerId);
-  return !!owner && !!group && group.maxPicks !== 1 && !active.includes(traitId)
+  const active = picksOf(input, ownerId);
+  return !!owner && !!group && group.maxPicks !== 1 && !activeOf(input.active, ownerId).includes(traitId)
     && groupPickState(group, owner.traits, active).full;
 }
 
@@ -753,7 +766,7 @@ export function underfills(input: SwitchInput, ownerId: OwnerId, traitId: string
   const owner = gateTreeOf(input, ownerId);
   const groupId = owner?.traits.find((t) => t.id === traitId)?.groupId ?? null;
   const group = owner?.groups.find((g) => g.id === groupId);
-  const active = activeOf(input.active, ownerId);
+  const active = picksOf(input, ownerId);
   return !!owner && !!group && active.includes(traitId) && leavesShort(groupPickState(group, owner.traits, active));
 }
 

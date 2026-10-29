@@ -46,6 +46,10 @@ export interface OwnedTraitState {
   chosen: string[];
   /** Absent ⇒ none. */
   disabled?: string[];
+  /** The traits an item grant holds, an extra source beside the picks (Q52). Absent ⇒ none. */
+  granted?: string[];
+  /** The granted traits whose gate fails, waiting for it to hold (Q119). Absent ⇒ none. */
+  grantedOff?: string[];
 }
 
 /** Entity id → its owned trait state. Absent entity ⇒ nothing chosen. */
@@ -267,6 +271,8 @@ export interface ItemEffectLedger {
   applied?: Record<string, AppliedItemEffect>;
   /** Stat owner id → the items whose On First Obtain effects it got. */
   firstObtained?: Record<string, string[]>;
+  /** Trait owner id → the traits On First Obtain rows grant it for good (Q121). */
+  firstObtainTraits?: Record<string, string[]>;
 }
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */

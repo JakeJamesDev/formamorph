@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blankItem, duplicateItem, itemStackable, itemsInSlot, parseItems, parsePlacements, wholeCount, withSlotCapacity,
+  blankItem, duplicateItem, itemStackable, itemTraitOptions, itemsInSlot, parseItems, parsePlacements, wholeCount, withSlotCapacity,
   withoutItemPlacements, withoutSlotRefs,
 } from './items';
 import type { Item, Placement } from '@/types';
@@ -129,5 +129,17 @@ describe('wholeCount', () => {
     expect(wholeCount('3.7')).toBe(3);
     expect(wholeCount(' ')).toBeUndefined();
     expect(wholeCount('abc')).toBeUndefined();
+  });
+});
+
+describe('itemTraitOptions', () => {
+  it('lists each owner trait once under its owner and leaves out Automatic traits', () => {
+    const t = (id: string, mode?: 'alwaysOn' | 'hidden') => ({ id, name: id, statChanges: [], ...(mode && { mode }) });
+    const options = itemTraitOptions([
+      { id: 'bram', name: 'Bram', traits: [t('brave'), t('fated', 'alwaysOn'), t('veiled', 'hidden')] },
+      { id: 'mira', name: 'Mira', traits: [t('brave'), t('sly')] },
+      { id: 'tom', name: 'Tom', traits: [t('fated', 'alwaysOn')] },
+    ]);
+    expect(options.map((o) => [o.name, o.traits.map((x) => x.id)])).toEqual([['Bram', ['brave']], ['Mira', ['sly']]]);
   });
 });
