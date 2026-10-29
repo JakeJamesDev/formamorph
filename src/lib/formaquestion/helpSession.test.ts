@@ -10,6 +10,7 @@ import { languageDirective } from '@/lib/languages';
 import {
   askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_SCORE_FLOOR, type EarlierExchange, type HelpEvent, type HelpQuestion,
 } from './helpSession';
+import { docSectionsOf } from './helpWorldSource';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from './helpSettings';
 
@@ -91,7 +92,7 @@ describe('a help question', () => {
       const fetchImpl = replyWith(sseReply('Done.'));
       const events = await collect(ask(question, fetchImpl));
       const done = events.at(-1);
-      const sources = done?.type === 'done' ? done.sources : [];
+      const sources = done?.type === 'done' ? docSectionsOf(done.sources) : [];
       const body = bodyOf(fetchImpl);
       const frame = sources
         .reduce((text, section) => text.replace(section.markdown, ''), body.messages[1].content)

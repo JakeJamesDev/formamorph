@@ -6,6 +6,7 @@ import { helpFocus } from '@/lib/formaquestion/helpFocus';
 import { askHelp, type HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import type { HelpTrace } from '@/lib/formaquestion/helpTrace';
+import type { AnswerSource } from '@/lib/formaquestion/helpWorldSource';
 import { helpWorld } from '@/lib/formaquestion/helpWorld';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
@@ -38,7 +39,7 @@ export interface HelpExchange {
   reasoningMs?: number;
   status: HelpStatus;
   /** The docs sections that reached the model. */
-  sources: readonly DocSection[];
+  sources: readonly AnswerSource[];
   /** The open screen's section among the sources. */
   lead?: DocSection;
   /** The answer did not come from the guide. */
