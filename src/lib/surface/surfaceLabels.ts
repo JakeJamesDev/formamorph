@@ -140,6 +140,10 @@ const ENTRIES: [string, string][] = [
   ['gameViewer.notes', 'Notes'],
   ['gameViewer.memory', 'Memory'],
   ['gameViewer.logs', 'Logs'],
+  ['gameViewer.stats', 'Stats'],
+  ['gameViewer.traits', 'Traits'],
+  ['gameViewer.inventory', 'Inventory'],
+  ['gameViewer.location', 'Location'],
 ];
 
 /** The label for each surface id the player can have open. */

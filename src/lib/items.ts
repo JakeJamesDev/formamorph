@@ -1,7 +1,7 @@
 import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
-import type { Item, Placement, PlacementWhere, Slot } from '@/types';
+import type { Item, ItemCopy, Placement, PlacementWhere, Slot } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -11,6 +11,12 @@ export const blankItem = (id: string, name = 'New Item'): Item =>
 export const itemStackable = (item: Item): boolean => item.charges === undefined && item.stackable !== false;
 
 export const slotCapacity = (slot: Slot): number => slot.capacity ?? 1;
+
+/** The slot capacity one Item Copy of `item` takes. A runtime item, which has no item, takes 1. */
+export const slotSizeOf = (item: Item | undefined): number => item?.slotSize ?? 1;
+
+/** Sorts equipped Item Copies longest equipped first. */
+export const byEquipOrder = (a: ItemCopy, b: ItemCopy): number => (a.equipped?.order ?? 0) - (b.equipped?.order ?? 0);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 const hasId = (value: unknown): value is { id: string } => isRecord(value) && typeof value.id === 'string';
