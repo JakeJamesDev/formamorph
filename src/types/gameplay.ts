@@ -248,6 +248,12 @@ export interface InventoryPassOp {
   to: string;
 }
 
+/** An entity the Inventory pass can name as an owner. */
+export interface InventoryOwner {
+  id: string;
+  name: string;
+}
+
 /** Where an Item Copy is: owned by the played Persona or an entity, or lying at a location. */
 export type ItemCopyWhere = PlacementWhere;
 

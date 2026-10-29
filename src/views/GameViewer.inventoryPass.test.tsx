@@ -4,7 +4,7 @@ import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { parseTurnContent } from '@/lib/turnDigest';
-import type { Item, ItemCopy, PlayerStat, Script, World } from '@/types';
+import type { Entity, Item, ItemCopy, PlayerStat, Script, World } from '@/types';
 
 /** The Inventory pass on a mounted game: its item timings, and the stats re-roll that replays it. */
 
@@ -39,15 +39,18 @@ const held = (copies: readonly ItemCopy[]) => copies
   .map((c) => `${c.item.kind === 'item' ? c.item.itemId : 'runtime'}@${c.where.kind}`).sort();
 const vigorNow = () => gameplay().globalStats.find((s) => s.id === 'vigor')?.value;
 
-function stubEndpoint() {
-  const calls = { inventory: 0, stats: 0 };
+/** A test can change `inventoryReply` (the pass's answer) and `route` (the location router's) between turns. */
+function stubEndpoint(inventoryReply = GAIN_KEY) {
+  const calls = { inventory: 0, stats: 0, inventoryReply, route: 'NONE' };
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     const { messages } = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
     const system = messages.find((m) => m.role === 'system')?.content ?? '';
+    if (system.includes('location router')) return sseResponse(sseReply(calls.route));
+    if (system.includes('You track where one character goes')) return sseResponse(sseReply('Stay'));
     if (system.includes('inventory keeper')) {
       calls.inventory += 1;
-      return sseResponse(sseReply(GAIN_KEY));
+      return sseResponse(sseReply(calls.inventoryReply));
     }
     if (system.includes('stat tracker')) {
       calls.stats += 1;
@@ -67,15 +70,28 @@ beforeEach(() => {
   localStorage.setItem('FORMAMORPH_concurrentTurnRequests', 'true');
 });
 
-async function playOneTurn() {
-  renderGameViewer(WORLD, { inGameplay: <Probe /> });
+async function playOneTurn(world: World = WORLD, inventoryReply?: string) {
+  renderGameViewer(world, { inGameplay: <Probe /> });
   const box = await screen.findByPlaceholderText(/Type your action/);
-  const calls = stubEndpoint();
+  const calls = stubEndpoint(inventoryReply);
   fireEvent.change(box, { target: { value: 'I look under the mat.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
   return calls;
 }
+
+/** A harbor and a pier, with a Before the AI script of `code`. */
+const presenceWorld = (code: string, entities: Entity[] = []): World => ({
+  ...harborWorld({ stats: [vigor], entities }),
+  locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }, { id: 'pier', name: 'Pier' }],
+  connections: [{ id: 'c-walk', a: 'harbor', b: 'pier', aToB: {}, bToA: {} }],
+  items: [key, lantern],
+  scripts: [{ id: 'arrive', timing: 'before', code }],
+} as World);
+const ferrymanAt = (locationId: string) =>
+  ({ id: 'ferryman', name: 'Ferryman', description: 'A gruff ferryman.', locations: [locationId] }) as Entity;
+const GIVE_KEY = JSON.stringify({ operations: [{ op: 'gain', item: 'Brass Key', quantity: 1, owner: '', to: 'Ferryman' }] });
+const placeOf = (itemId: string) => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)?.where;
 
 describe('the Inventory pass in a turn', () => {
   it("lands the story's item, fires its When Gained script, and stores the operations on the turn", async () => {
@@ -85,6 +101,13 @@ describe('the Inventory pass in a turn', () => {
     await waitFor(() => expect(vigorNow()).toBe(55));
     const turn = parseTurnContent(gameplay().fullMessageHistory.findLast((m) => m.role === 'assistant')?.content ?? '');
     expect(turn?.inventoryOps).toEqual([{ op: 'gain', item: 'Brass Key', quantity: 1, owner: '', to: 'you' }]);
+    expect(turn?.inventoryOwners).toEqual([]);
+    expect(turn?.inventoryLocationId).toBe('harbor');
+  });
+
+  it('skips a give to an entity elsewhere', async () => {
+    await playOneTurn(presenceWorld('', [ferrymanAt('pier')]), GIVE_KEY);
+    expect(placeOf('key')).toBeUndefined();
   });
 });
 
@@ -99,5 +122,50 @@ describe('the stats re-roll', () => {
     expect(held(gameplay().itemCopies)).toEqual(['key@you', 'lantern@location']);
     // The re-roll replays the saved operations; it sends no second Inventory request.
     expect(calls.inventory).toBe(1);
+  });
+
+  async function rerollAndSettle(calls: { stats: number }) {
+    const asked = calls.stats;
+    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    await waitFor(() => expect(calls.stats).toBe(asked + 1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+  }
+
+  it('lands a give to an entity the turn discovered, as the live turn did', async () => {
+    const calls = await playOneTurn(presenceWorld('discover("Ferryman", "A gruff ferryman.");'), GIVE_KEY);
+    const ferryman = () => gameplay().discoveredEntities.find((d) => d.entity.name === 'Ferryman')?.entity.id;
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: ferryman() }));
+    await rerollAndSettle(calls);
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: ferryman() }));
+  });
+
+  it('lands the pass where the turn stood after the player takes a suggested move with Go', async () => {
+    const ops = JSON.stringify({ operations: [
+      { op: 'gain', item: 'Brass Key', quantity: 1, owner: '', to: 'Ferryman' },
+      { op: 'gain', item: 'Lantern', quantity: 1, owner: '', to: 'Harbor' },
+    ] });
+    // The opening turn has no router, so the move is offered on the second turn.
+    const calls = await playOneTurn(presenceWorld('', [ferrymanAt('harbor')]), JSON.stringify({ operations: [] }));
+    calls.inventoryReply = ops;
+    calls.route = 'Pier';
+    fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I hand over my things and head for the pier.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(calls.stats).toBe(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
+    expect(placeOf('lantern')).toEqual({ kind: 'location', id: 'harbor' });
+    // The Ferryman stays at the Harbor while the player walks to the Pier.
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }));
+    await waitFor(() => expect(gameplay().currentLocation?.id).toBe('pier'));
+    await rerollAndSettle(calls);
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
+    expect(placeOf('lantern')).toEqual({ kind: 'location', id: 'harbor' });
+  });
+
+  it('lands a give to an entity that moved in this turn, as the live turn did', async () => {
+    const calls = await playOneTurn(presenceWorld('entities.Ferryman.move("Harbor");', [ferrymanAt('pier')]), GIVE_KEY);
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
+    await rerollAndSettle(calls);
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
   });
 });
