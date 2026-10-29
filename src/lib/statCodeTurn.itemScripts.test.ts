@@ -62,15 +62,17 @@ describe('runItemScripts', () => {
     const worn: ItemCopy = { ...copy('c-ring', 'i-ring', { kind: 'you' }), equipped: { slotId: 'finger', order: 1 } };
     const unequip = (copies: readonly ItemCopy[]) => {
       const held = copies.find((c) => c.id === 'c-ring');
-      if (!held?.equipped) return { copies, events: [] };
+      if (!held?.equipped) return { copies, events: [], log: [] };
       return {
         copies: copies.map((c) => (c === held ? copy('c-ring', 'i-ring', { kind: 'you' }) : c)),
         events: [event('unequipped', 'i-ring', 'c-ring', { kind: 'you' })],
+        log: [unequipLine],
       };
     };
+    const unequipLine = 'Unequipped Ring: requirement no longer holds';
     /** A settle whose Ring requirement fails once `boxes` Gift Boxes exist. */
     const settleAt = (boxes: number): SettleCopies => (copies) =>
-      (copies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'i-box').length < boxes ? { copies, events: [] } : unequip(copies));
+      (copies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'i-box').length < boxes ? { copies, events: [], log: [] } : unequip(copies));
     const runWith = (settle: SettleCopies) => runItemScripts(
       turnOf([box, ring], [copy('c-0', 'i-box', { kind: 'location', id: 'loc-vault' }), worn]),
       [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box, ring], applyWith([box, ring]), (i) => i.name, { settle },
@@ -83,12 +85,12 @@ describe('runItemScripts', () => {
       expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(ITEM_EVENT_DEPTH + 10);
       expect(out.copies.find((c) => c.id === 'c-ring')?.equipped).toBeUndefined();
       expect(out.ops.filter((op) => op.kind === 'unequip')).toEqual([unequipOp]);
-      expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Gift Box did not run']);
+      expect(out.diagnostics).toEqual([unequipLine, 'Item scripts nested past 3 levels; When Gained of Gift Box did not run']);
     });
 
     it('settles over the stats the runs so far wrote', async () => {
       // Gold reaches 2 in the depth-2 run, so its write unequips the Ring.
-      const out = await runWith((copies, _doses, so) => ((so.stats.find((s) => s.id === 'gold')?.value ?? 0) < 2 ? { copies, events: [] } : unequip(copies)));
+      const out = await runWith((copies, _doses, so) => ((so.stats.find((s) => s.id === 'gold')?.value ?? 0) < 2 ? { copies, events: [], log: [] } : unequip(copies)));
       expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(ITEM_EVENT_DEPTH + 10);
     });
 
@@ -98,6 +100,7 @@ describe('runItemScripts', () => {
       expect(out.copies.find((c) => c.id === 'c-ring')?.equipped).toBeUndefined();
       expect(out.ops.filter((op) => op.kind === 'unequip')).toEqual([unequipOp]);
       expect(out.diagnostics).toEqual([
+        unequipLine,
         'Item scripts nested past 3 levels; When Gained of Gift Box did not run',
         'Item scripts nested past 3 levels; When Unequipped of Ring did not run',
       ]);
