@@ -14,7 +14,7 @@ const NONE: never[] = [];
 
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
  *  item effects they change. `ownerStatTraits` is each entity's stat traits in force, which bounds derive from. */
-export function useInventoryPanel(ownerStatTraits: OwnerStatTraits): InventoryTabProps {
+export function useInventoryPanel(ownerStatTraits: OwnerStatTraits, imageOf?: InventoryTabProps['imageOf']): InventoryTabProps {
   const data = useGameDataOptional();
   const items = data?.items ?? NONE;
   const slots = data?.slots ?? NONE;
@@ -54,6 +54,7 @@ export function useInventoryPanel(ownerStatTraits: OwnerStatTraits): InventoryTa
   return {
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
-    items, slots, present, locationId, disabled, resolveText, onOps,
+    lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
+    items, slots, present, locationId, disabled, resolveText, ...(imageOf && { imageOf }), onOps,
   };
 }

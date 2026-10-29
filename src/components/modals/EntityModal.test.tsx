@@ -9,6 +9,8 @@ vi.mock('../game/EntityVisual', () => ({
   EntityVisual: () => null,
 }));
 vi.mock('../game/AudioPlayer', () => ({ default: () => null }));
+// The Equipped list reads game state this suite doesn't mount; GamePanels.inventoryHere.test covers it.
+vi.mock('../game/EntityEquipped', () => ({ EntityEquipped: () => null }));
 vi.mock('@/lib/usePlaceholderResolver', () => ({ useEntityTextResolver: () => (_entity: unknown, t: string) => t }));
 vi.mock('@/lib/useEntityVisualPreference', () => ({
   useEntityVisualPreference: () => ({ preference: 'image', onPreferenceChange: () => {} }),

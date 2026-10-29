@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Pencil, RefreshCw, Loader2, X } from "lucide-react";
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
 import { EntityAvatar } from '../game/EntityAvatar';
+import { EntityEquipped } from '../game/EntityEquipped';
 import { usePlayAvatars } from '@/lib/usePlayAvatars';
 import { useEntityTextResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
@@ -189,6 +190,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                   )}
                 </EntityDescription>
               )}
+              <EntityEquipped entity={entity} />
         </EntityCardBody>
       </DialogContent>
     </Dialog>

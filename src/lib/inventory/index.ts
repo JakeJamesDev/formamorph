@@ -82,7 +82,8 @@ export type InventoryOp =
   | { kind: 'lose'; copyId: string; quantity?: number }
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
   | { kind: 'equip'; copyId: string }
-  | { kind: 'unequip'; copyId: string };
+  | { kind: 'unequip'; copyId: string }
+  | { kind: 'reveal'; copyId: string; quantity?: number };
 
 /** The authored slice the operations read. An absent slice reads as empty. */
 export interface InventoryWorld {
@@ -202,6 +203,19 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         if (op.kind === 'transfer') {
           const moved = { ...unequipped(copy), where: op.to, quantity, ...(left > 0 && { id: call.newId() }) };
           list = put(list, moved);
+        }
+        return null;
+      }
+      case 'reveal': {
+        if (copy.visibility !== 'hidden') return `reveal: Item Copy ${copy.id} is not hidden`;
+        const quantity = op.quantity === undefined ? copy.quantity : Math.floor(op.quantity);
+        if (!(quantity > 0) || quantity > copy.quantity) return `reveal: quantity ${op.quantity} does not fit ${copy.quantity}`;
+        // A revealed row merges into a carried visible stack of the same item and place (Q65, Q94).
+        if (quantity === copy.quantity) {
+          list = put(list, { ...copy, visibility: 'visible' });
+        } else {
+          list = list.map((c) => (c === copy ? { ...c, quantity: copy.quantity - quantity } : c));
+          list = put(list, { ...unequipped(copy), id: call.newId(), quantity, visibility: 'visible' });
         }
         return null;
       }

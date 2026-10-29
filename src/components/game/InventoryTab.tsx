@@ -7,6 +7,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { byEquipOrder, slotCapacity, slotSizeOf, wholeCount } from '@/lib/items';
+import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
+import { cn } from '@/lib/utils';
 import type { InventoryOp } from '@/lib/inventory';
 import type { Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
@@ -16,6 +18,8 @@ export interface InventoryTabProps {
   ownerName: string | null;
   /** The played Persona's Item Copies. */
   copies: readonly ItemCopy[];
+  /** The Item Copies lying at the player's location. Hidden ones are filtered out here. */
+  lying: readonly ItemCopy[];
   items: readonly Item[];
   slots: readonly Slot[];
   /** The entities Give can pick (Q20). */
@@ -24,6 +28,8 @@ export interface InventoryTabProps {
   /** Off while a turn runs (Q61) and on a past page. */
   disabled: boolean;
   resolveText: (text: string) => string;
+  /** The image an Item Copy shows now, through its item's rules (Q113). Absent = no thumbnails. */
+  imageOf?: (copy: ItemCopy) => string | undefined;
   onOps: (ops: InventoryOp[]) => void;
 }
 
@@ -132,7 +138,7 @@ const lineFor = (copy: ItemCopy, item: Item | undefined): string | null => {
 
 /** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items. */
 export function InventoryTab({
-  ownerName, copies, items, slots, present, locationId, disabled, resolveText, onOps,
+  ownerName, copies, lying, items, slots, present, locationId, disabled, resolveText, imageOf, onOps,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   // Hidden Item Copies never show in the panel (story 79).
@@ -141,14 +147,22 @@ export function InventoryTab({
   const nameOf = (copy: ItemCopy) => resolveText(itemOf(copy)?.name ?? '') || 'Unknown Item';
   const equipped = shown.filter((c) => c.equipped).sort(byEquipOrder);
   const carried = shown.filter((c) => !c.equipped);
+  const lyingHere = lying.filter((c) => c.visibility === 'visible');
   const here: ItemCopyWhere | null = locationId ? { kind: 'location', id: locationId } : null;
 
   const row = (copy: ItemCopy, actions: ReactNode) => {
     const item = itemOf(copy);
     const name = nameOf(copy);
     const line = lineFor(copy, item);
+    const image = imageOf?.(copy);
     return (
-      <li key={copy.id} className="flex min-h-9 items-center gap-1 rounded-md px-2 py-1 hover:bg-secondary/60">
+      <li key={copy.id} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
+        {image && (
+          <img
+            src={image} alt="" {...THUMB_INTRINSIC.portrait}
+            className={cn('w-6 shrink-0 rounded', THUMB_FRAME.portrait, thumbFit('portrait'))}
+          />
+        )}
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
             <span className="truncate">{name}</span>
@@ -179,8 +193,8 @@ export function InventoryTab({
             <ul className="space-y-0.5">
               {slots.map((slot) => {
                 const inSlot = equipped.filter((c) => c.equipped?.slotId === slot.id);
-                // A hidden item still fills its slot, so the count stays true to what the next equip swaps.
-                const used = copies.filter((c) => c.equipped?.slotId === slot.id)
+                // The count shows visible items only: a hidden equipped one takes capacity unseen (Q112).
+                const used = equipped.filter((c) => c.equipped?.slotId === slot.id)
                   .reduce((sum, c) => sum + slotSizeOf(itemOf(c)), 0);
                 const capacity = slotCapacity(slot);
                 return (
@@ -246,6 +260,12 @@ export function InventoryTab({
               ));
             })}
           </ul>
+        )}
+        <PanelSubheader>Here</PanelSubheader>
+        {lyingHere.length === 0 ? (
+          <p role="status" className="px-2 py-2 text-label text-muted-foreground">Nothing lies here.</p>
+        ) : (
+          <ul aria-label="Here">{lyingHere.map((copy) => row(copy, null))}</ul>
         )}
       </PanelOwnerCard>
     </ScrollArea>

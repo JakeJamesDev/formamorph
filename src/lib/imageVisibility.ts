@@ -1,6 +1,6 @@
 // Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, ItemCopy, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
+import type { Base64Data, Entity, GalleryImage, Item, ItemCopy, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { entityImages } from './entityImages';
 import { locationImages, type LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
@@ -64,6 +64,10 @@ export function itemRuleStates(input: GateInput, copy: Pick<ItemCopy, 'where'>, 
     return { holds: conditions.every((c) => c.holds), conditions };
   });
 }
+
+/** The item's first image visible for one Item Copy in play, or undefined when none shows. */
+export const visibleItemImage = (item: Pick<Item, 'images'>, copy: Pick<ItemCopy, 'where'>, input: GateInput): Base64Data | undefined =>
+  visibleBy(item.images ?? [], (rows) => itemRuleStates(input, copy, rows))[0]?.data;
 
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
 export const visibleLocationImages = (location: LocationImageBearing, input: GateInput): VisibleImage[] =>

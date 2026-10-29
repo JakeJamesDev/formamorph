@@ -76,7 +76,8 @@ import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
-import type { Entity, PersonaRef, SceneEntity, Stat, StatGroup, Trait } from '@/types';
+import { visibleItemImage } from '@/lib/imageVisibility';
+import type { Entity, ItemCopy, PersonaRef, SceneEntity, Stat, StatGroup, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
@@ -1334,16 +1335,22 @@ export const RightPanel = ({
     [globalStats, viewTraitState, viewEntityStats, gateWorld],
   );
   // Stat Conditions read the viewed turn's stats.
-  const traitGates = React.useMemo(
-    () => gateStates(traitGateInput({ ...viewTraitState, stats: globalStats, entityStats: viewEntityStats }, gateWorld)),
+  const gateInput = React.useMemo(
+    () => traitGateInput({ ...viewTraitState, stats: globalStats, entityStats: viewEntityStats }, gateWorld),
     [viewTraitState, globalStats, viewEntityStats, gateWorld],
   );
+  const traitGates = React.useMemo(() => gateStates(gateInput), [gateInput]);
   // Each entity's own traits switch its stats on and off, on the viewed turn.
   const entityInForce = React.useCallback(
     (ownerId: string) => entityStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
     [viewOwnedTraits, gateWorld],
   );
-  const inventory = useInventoryPanel(entityInForce);
+  const itemImageOf = React.useCallback((copy: ItemCopy) => {
+    const ref = copy.item;
+    const item = ref.kind === 'item' ? worldItems?.find((i) => i.id === ref.itemId) : undefined;
+    return item && visibleItemImage(item, copy, gateInput);
+  }, [worldItems, gateInput]);
+  const inventory = useInventoryPanel(entityInForce, itemImageOf);
   // A world without items keeps its three tabs.
   const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0;
   const {
