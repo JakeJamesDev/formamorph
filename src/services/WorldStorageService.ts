@@ -107,6 +107,8 @@ export type ListingDetailsRead =
 /** The toast shown while another tab on an older build holds the library upgrade back. */
 const LIBRARY_BLOCKED_TOAST = 'world-library-upgrade-blocked';
 export const LIBRARY_BLOCKED_MESSAGE = 'Your world library is waiting to update. Close other Formamorph tabs to finish.';
+const UNREADABLE_WORLDS_TOAST = 'world-library-unreadable';
+export const UNREADABLE_WORLDS_MESSAGE = 'A world in your library can\'t be read, so it is hidden. Your other worlds still load.';
 
 /** The publish refused because this author already has an entry in the contest. */
 export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
@@ -285,7 +287,12 @@ class WorldStorageService {
   /** Every metadata record, read from the metadata store alone. */
   private async readMeta(): Promise<WorldMetaRecord[]> {
     await this.ensureInitialized();
-    return readAllWorldMeta(this.db!);
+    const { meta, unreadable } = await readAllWorldMeta(this.db!);
+    if (unreadable.length > 0) {
+      console.error('Unreadable worlds in the library:', unreadable);
+      toast.error(UNREADABLE_WORLDS_MESSAGE, { toastId: UNREADABLE_WORLDS_TOAST });
+    }
+    return meta;
   }
 
   /** One world's metadata record, or undefined when it is not stored. */
@@ -518,10 +525,16 @@ class WorldStorageService {
     const deleted = readDeletedDefaultWorlds();
     defaultWorlds = defaultWorlds.filter((w) => !deleted.has(w.id));
     // Metadata by id: only the bundled defaults are compared, and only their `sourceHash` and `dirty`.
-    const stored = await Promise.all(defaultWorlds.map((w) => readWorldMeta(this.db!, w.id)));
+    const [stored, worldIds] = await Promise.all([
+      Promise.all(defaultWorlds.map((w) => readWorldMeta(this.db!, w.id))),
+      this.getWorldIds(),
+    ]);
     const byId = new Map<string, { dirty?: boolean; sourceHash?: string }>(
       stored.filter((w): w is WorldMetaRecord => !!w).map((w) => [w.id, w]),
     );
+    // A stored world without readable metadata may hold edits, so a reseed could overwrite them.
+    const unknown = new Set(worldIds.filter((id) => !byId.has(id)));
+    defaultWorlds = defaultWorlds.filter((w) => !unknown.has(w.id));
 
     const failed: string[] = [];
     const errors: Error[] = [];

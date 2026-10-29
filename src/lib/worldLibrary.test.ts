@@ -3,15 +3,17 @@ import 'fake-indexeddb/auto';
 import { IDBFactory, forceCloseDatabase } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('react-toastify', () => ({ toast: { info: vi.fn(), dismiss: vi.fn() } }));
+vi.mock('react-toastify', () => ({ toast: { info: vi.fn(), error: vi.fn(), dismiss: vi.fn() } }));
 
 import { toast } from 'react-toastify';
-import WorldStorageService, { LIBRARY_BLOCKED_MESSAGE, type StoredWorldRecord } from '@/services/WorldStorageService';
+import WorldStorageService, {
+  LIBRARY_BLOCKED_MESSAGE, UNREADABLE_WORLDS_MESSAGE, type StoredWorldRecord,
+} from '@/services/WorldStorageService';
 import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { promisifyRequest } from '@/lib/idb';
 import {
-  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, worldMetaOf, type WorldMetaRecord,
+  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, putWorldRecords, worldMetaOf, type WorldMetaRecord,
 } from './worldLibrary';
 import { readBundledWorld } from '@/lib/bundledWorldText';
 
@@ -61,6 +63,7 @@ beforeEach(() => {
   clearDeletedDefaultWorlds();
   vi.mocked(toast.info).mockClear();
   vi.mocked(toast.dismiss).mockClear();
+  vi.mocked(toast.error).mockClear();
 });
 
 afterEach(() => {
@@ -266,5 +269,85 @@ describe('the list reads', () => {
 
     expect(wholeReads.length).toBeGreaterThan(0);
     expect(wholeReads).not.toContain(WORLD_STORE);
+  });
+});
+
+describe('a library with unreadable rows', () => {
+  /** Store `worlds` through the real write path, then drop the metadata rows of `noMeta`. */
+  async function seedLibrary(worlds: StoredWorldRecord[], noMeta: string[] = []): Promise<void> {
+    const db = await openWorldLibrary();
+    try {
+      await putWorldRecords(db, worlds);
+      const tx = db.transaction([WORLD_META_STORE], 'readwrite');
+      for (const id of noMeta) tx.objectStore(WORLD_META_STORE).delete(id);
+      await new Promise((resolve) => { tx.oncomplete = resolve; });
+    } finally {
+      db.close();
+    }
+  }
+
+  /** Have the browser read `ids` in `store` back as null, the way it reports a value it can't read. */
+  function unreadable(store: string, ids: string[]): () => void {
+    const lost = new Set(ids);
+    const blank = (request: IDBRequest, map: (value: unknown) => unknown) => {
+      let value: unknown;
+      Object.defineProperty(request, 'result', { get: () => map(value), set: (next) => { value = next; } });
+      return request;
+    };
+    const get = IDBObjectStore.prototype.get;
+    const getAll = IDBObjectStore.prototype.getAll;
+    const spies = [
+      vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
+        const request = get.call(this, key);
+        return this.name === store && lost.has(String(key)) ? blank(request, () => null) : request;
+      }),
+      vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (this: IDBObjectStore, ...args) {
+        const request = getAll.apply(this, args);
+        if (this.name !== store) return request;
+        return blank(request, (rows) => (rows as { id: string }[] | undefined)
+          ?.map((row) => (lost.has(row.id) ? null : row)));
+      }),
+    ];
+    return () => spies.forEach((spy) => spy.mockRestore());
+  }
+
+  it('lists every world and rebuilds the unreadable metadata row from its world', async () => {
+    await seedLibrary([world('a'), world('b')]);
+    const restore = unreadable(WORLD_META_STORE, ['a']);
+
+    const meta = await WorldStorageService.getWorldMetadata();
+
+    restore();
+    expect(meta.map((m) => m.id)).toEqual(['a', 'b']);
+    await expectMetaInSync();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds a metadata row that is missing', async () => {
+    await seedLibrary([world('a'), world('b')], ['a']);
+
+    expect((await WorldStorageService.getWorldMetadata()).map((m) => m.id)).toEqual(['a', 'b']);
+    await expectMetaInSync();
+  });
+
+  it('hides a world that can not be read at all and tells the player, but lists the rest', async () => {
+    await seedLibrary([world('lost'), world('b')]);
+    unreadable(WORLD_META_STORE, ['lost']);
+    unreadable(WORLD_STORE, ['lost']);
+
+    expect((await WorldStorageService.getWorldMetadata()).map((m) => m.id)).toEqual(['b']);
+    expect(await WorldStorageService.worldsLinking('lib-1')).toEqual([]);
+    expect(toast.error).toHaveBeenCalledWith(UNREADABLE_WORLDS_MESSAGE, expect.anything());
+  });
+
+  it.each(['unreadable', 'missing'])('does not reseed a default whose metadata is %s, so its edits survive', async (state) => {
+    const edited = world('rampage', { name: 'MY EDIT', dirty: true });
+    await seedLibrary([edited], state === 'missing' ? ['rampage'] : []);
+    const restore = state === 'unreadable' ? unreadable(WORLD_META_STORE, ['rampage']) : () => {};
+
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
+
+    restore();
+    expect(await readStore<StoredWorldRecord>(WORLD_STORE)).toEqual([edited]);
   });
 });
