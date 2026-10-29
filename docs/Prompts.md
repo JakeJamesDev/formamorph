@@ -282,7 +282,7 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 | **Content** | **Location**, **Entities**, **Persona** | Sends **Full** detail, a **Summary**, or the **Name** only |
 | **Include** | **Entities**, **Persona** | Sends each entity's **Traits** and **Stats**, each on or off |
 | **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
-| **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona** | Shapes the text as **Simple**, **Markdown** or **XML** |
+| **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona**, **Inventory** | Shapes the text as **Simple**, **Markdown** or **XML** |
 | **Mode** | **Dictionary** | Picks **Foreground** or **Background** lore |
 | **Label**, **Header**, **Prepend**, **Append** | Placement fields, below a rule | **Header** starts a section. **Prepend** and **Append** wrap the value. A chip with no value sends none of them. |
 
@@ -292,6 +292,21 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 - **A bare chip sends what it sent before.** Chips in saved presets and worlds keep working.
 
 > ⚠️ **An older version of Formamorph can't read the new picks.** A preset or world that uses **Only With**, **Include** or **Stat Detail** picks shows the raw chip text there, and the AI reads it as text.
+
+## The Inventory Chip
+<!-- keywords: inventory chip, items in the prompt, what the narrator knows about items, equipped items, carried items, hidden items, items here -->
+
+The **Inventory** chip tells the AI who has which items in the scene.
+
+| Who | What it sends |
+|---|---|
+| 🧍 You, and each entity at your location | Each equipped item with its **AI Summary** (or its **AI Description** when there is no summary), then the carried items by name |
+| 📍 The current location | The items that lie there, by name |
+
+- **Hidden items are marked hidden.** The AI knows where they are, so it can reveal one when you search.
+- **A stack shows its count**, such as ×3.
+- **The chip sends nothing when nobody here has an item.** Its **Header** and **Prepend** text go too.
+- **The built-in presets hold it in the narration prompt.** A preset you made keeps its prompts as you saved them. To add the chip, select **Inventory** in the bar above the editor.
 
 ## How to Send Only Entities With Stats
 <!-- keywords: only entities with stats, only npcs with stats, filter entities by stats, skip entities without stats, send only characters that own stats, entities that have traits, keep cast short, trim the entity list, stat pass cast -->

@@ -1,4 +1,4 @@
-import type { Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Entity, GameLocation, Item, ItemCopy, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { ownerStatParts } from '../statContext';
@@ -93,6 +93,13 @@ const ossery: Entity = {
   stats: [stat('ossery-temper', 'Temper', 35, 'How close she is to closing the gate.', [[30, 'Calm'], [70, 'Short'], [100, 'Furious']])],
 };
 
+const item = (id: string, name: string, aiSummary?: string): Item => ({
+  id, name, ...(aiSummary && { aiSummary }), statEffects: [], traitEffects: [], equipRequires: [],
+});
+const compass = item('brass-compass', 'Brass Compass', 'Swings toward the nearest wreck, not north.');
+// Wren carries a stack, and a charm lies hidden at the Landing, so the Inventory chip shows each kind of row.
+const ITEMS = [compass, item('rope', 'Coil of Rope'), item('lamp-oil', 'Flask of Lamp Oil'), item('nails', 'Bent Nail'), item('charm', 'Salt Glass Charm')];
+
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {
   worldOverview: overview,
@@ -120,6 +127,12 @@ const SAMPLE_WORLD: AuthoredWorld = {
     ],
   }],
   placeholders: [fixed('weather', 'Weather', 'a thin gray drizzle'), fixed('tide', 'Tide', 'far out and turning')],
+  items: ITEMS,
+  placements: [
+    { id: 'p-oil', where: { kind: 'entity', id: 'wren' }, quantity: 2, source: { kind: 'item', itemId: 'lamp-oil' } },
+    { id: 'p-nails', where: { kind: 'location', id: 'landing' }, quantity: 5, source: { kind: 'item', itemId: 'nails' } },
+    { id: 'p-charm', where: { kind: 'location', id: 'landing' }, quantity: 1, hidden: true, source: { kind: 'item', itemId: 'charm' } },
+  ],
 };
 
 /** The sample world's dictionaries, for a reader that takes them beside the scene. */
@@ -143,6 +156,12 @@ const persona: ResolvedPersona = {
   },
 };
 
+/** What the traveler has: the compass in hand, a rope at the belt. */
+const travelerItems: ItemCopy[] = [
+  { id: 'c-compass', item: { kind: 'item', itemId: compass.id }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
+  { id: 'c-rope', item: { kind: 'item', itemId: 'rope' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' },
+];
+
 /** The library persona the sample plays. */
 export const samplePersona = (): Entity => persona.entity;
 
@@ -161,6 +180,7 @@ export function sampleChipScene(): ChipScene {
     ownedStats: { ...authored.ownedStats, [persona.entity.id]: travelerStats },
     playedStats: ownerStatParts([persona.entity], { [persona.entity.id]: travelerStats }),
     inSceneIds: [wren.id],
+    itemCopies: [...travelerItems, ...(authored.itemCopies ?? [])],
     notes: 'Traveler is looking for the person who sold them a false map.',
     // Day 3, evening on the default calendar.
     time: { elapsed: 58 },

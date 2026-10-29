@@ -1,0 +1,49 @@
+{
+  "items": [
+    { "id": "lantern", "name": "Hooded Lantern", "aiSummary": "A brass lantern whose shutter only half closes, so it always leaks a stripe of light." },
+    { "id": "knife", "name": "Gutting Knife" },
+    { "id": "pouch", "name": "Coin Pouch" },
+    { "id": "hook", "name": "Bone Hook", "aiSummary": "A hook carved from a pike's jaw, worn on a cord at the wrist." },
+    { "id": "eel", "name": "Smoked Eel" },
+    { "id": "oar", "name": "Broken Oar" },
+    { "id": "token", "name": "Silver Ferry Token" }
+  ],
+  "copies": {
+    "base": [
+      { "item": "lantern", "where": "you", "equipped": true },
+      { "item": "knife", "where": "you" },
+      { "item": "pouch", "where": "you" },
+      { "item": "hook", "where": "ent-odette", "equipped": true },
+      { "item": "eel", "where": "ent-odette", "quantity": 3 },
+      { "item": "oar", "where": "loc-sedge" },
+      { "item": "token", "where": "loc-sedge", "hidden": true }
+    ],
+    "gave": [
+      { "item": "lantern", "where": "you", "equipped": true },
+      { "item": "pouch", "where": "you" },
+      { "item": "hook", "where": "ent-odette", "equipped": true },
+      { "item": "eel", "where": "ent-odette", "quantity": 3 },
+      { "item": "knife", "where": "ent-odette" },
+      { "item": "oar", "where": "loc-sedge" },
+      { "item": "token", "where": "loc-sedge", "hidden": true }
+    ]
+  },
+  "cases": [
+    { "id": "carry", "action": "I check my belt and pockets before the crossing.", "checks": ["names-own", "invented", "hidden-leak"] },
+    { "id": "light", "action": "I lift my light toward the water.", "checks": ["lantern", "lantern-summary", "hidden-leak"] },
+    { "id": "odette", "action": "I ask Odette what she is bringing across.", "checks": ["names-odette", "hidden-leak"] },
+    { "id": "look", "action": "I look around the dock.", "checks": ["hidden-leak"] },
+    { "id": "wait", "action": "I wait by the ferry post.", "checks": ["hidden-leak"] },
+    { "id": "search", "action": "I kneel and search between the dock planks.", "checks": ["reveal"] },
+    {
+      "id": "gave", "copies": "gave", "arms": ["none", "chip", "event"],
+      "history": [
+        { "role": "user", "content": "I step onto the dock." },
+        { "role": "assistant", "content": "Mist lies on the black water. Your gutting knife knocks against your hip as you walk the planks, and your lantern throws its broken stripe of light ahead. Odette sits on a crate by the ferry post, watching you come." }
+      ],
+      "event": "Since the last turn, I gave Odette my Gutting Knife.",
+      "action": "I reach for my knife to cut a length of rope.",
+      "checks": ["odette-has-knife", "player-has-knife"]
+    }
+  ]
+}

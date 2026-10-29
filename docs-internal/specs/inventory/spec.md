@@ -304,6 +304,8 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 
 - The inventory block is a prompt chip: each present owner's equipped items with their AI Summary, carried items by name, and the location's items, with hidden ones marked. Built-in presets gain the chip. User presets are never migrated silently; their authors add the chip from the picker. The block follows the prompt-writing guide: positive contract, no example values.
 - A read-only `get_item` lookup is a candidate catalog Tool. It is not required by this effort.
+- **Q19 settled by probe (ticket 08): no event line.** Narration handles a panel change from state alone. `inventory-chip-probe.cli.ts`, case `gave`: the player gave away a knife in the panel, then reaches for it. Narration that still hands the player the knife: cloud (12 runs per arm) no chip 12/12, chip 6/12, chip + event line 6/12 (Δ 0.00 [−0.40, 0.40]); Cydonia (3 per arm) 2/3, 2/3, 1/3. The chip carries the gain; the line adds nothing measurable.
+- **Chip probe numbers (ticket 08), no chip → chip.** Names at least two carried items: cloud 0/12 → 5/12 and 0/12 → 6/12 in two batches, Cydonia 1/3 → 3/3. Uses an equipped item's AI Summary: cloud 0/12 → 6/12, Cydonia 0/3 → 0/3. Hidden item named unprompted (carry, look, wait, light, odette): cloud 0/60 → 0/60, Cydonia 1/15 → 0/15. Search finds the hidden item: cloud 0/12 → 1/12, Cydonia 0/3 → 3/3. On the cloud model, reveal on search rests on the Inventory pass and scripts, not the narrator.
 
 ### Requirement Rows
 

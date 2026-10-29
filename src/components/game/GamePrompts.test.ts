@@ -49,6 +49,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',
       '<ENTITIES|markdown>',
+      '<INVENTORY|markdown>',
       '<ENTITIES|sublocations.markdown>',
       '<ENTITIES|reachable.summary.markdown>',
       '<ENTITIES|known.summary.markdown>',

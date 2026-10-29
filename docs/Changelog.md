@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Inventory:**
     - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Consumable, Charges, Bound and an equipment slot. Set the world's slots on the Overview tab.
     - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items on the Overview tab, or on an entity's or location's Items tab. A new game starts with them; saved games never gain them.
+    - **The narrator now knows what you and the people near you carry, through a new Inventory prompt chip.** It sends equipped items with their AI Summary, carried items by name, and the items lying here, with hidden ones marked. Built-in presets hold it; add it to your own from the chip bar.
 
 ### Minor Changes
 
@@ -28,6 +29,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Inventory:**
     - **Requirement Rows can require an item.** Traits and image rules can check that an owner has an item, owned or equipped, with Not.
+- **🛠️ Developer tooling**
+  - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
 
 ---
 
