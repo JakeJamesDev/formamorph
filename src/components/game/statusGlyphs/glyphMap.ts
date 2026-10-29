@@ -40,6 +40,7 @@ export const REQUEST_STATUS: Record<AIRequestType, RequestStatus> = {
   timePassed: { name: 'Clock', glyph: 'hourglass' },
   openingTime: { name: 'Opening', glyph: 'hourglass' },
   sceneTags: { name: 'Scene Tags', glyph: 'sparkles' },
+  inventory: { name: 'Inventory', glyph: 'sparkles' },
   descriptionSummary: { name: 'Response', glyph: 'sparkles' },
   descriptionBridge: { name: 'Response', glyph: 'sparkles' },
   imageTags: { name: 'Response', glyph: 'sparkles' },

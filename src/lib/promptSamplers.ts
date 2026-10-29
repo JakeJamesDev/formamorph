@@ -12,6 +12,8 @@ export type PromptSampler = 'temperature' | 'repetitionPenalty';
 // dropping characters and driving invented ones). A sampler absent for a kind follows the global fallback.
 export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<PromptSampler, number>>>> = {
   statUpdates: { temperature: 0.2 },
+  // An extraction: it lists what the narration did to items, and a penalty would reword the item names it echoes.
+  inventory: { temperature: 0.1, repetitionPenalty: 1 },
   locationChange: { temperature: 0.15 },
   entityLocation: { temperature: 0.15 },
   summary: { temperature: 0 },

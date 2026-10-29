@@ -1,4 +1,4 @@
-import type { AITurnResult, Entity, TurnToolCall } from '@/types';
+import type { AITurnResult, Entity, InventoryPassOp, TurnToolCall } from '@/types';
 import type { StatClock, WorldWrites } from '@/lib/statCodeExecutor';
 import { mergeWorldWrites } from '@/lib/worldWrites';
 import type { WorldCalendar } from '@/lib/gameClock';
@@ -101,6 +101,8 @@ export interface TurnCommit {
   codeWrites: WorldWrites | null;
   /** What the entity location requests answered, by entity id. */
   entityMoves: EntityMoveIntents;
+  /** What the Inventory pass returned, which lands before the stat deltas (Q53). Empty when it changed nothing. */
+  inventoryOps: InventoryPassOp[];
 }
 
 /** Every outcome one pass produced, in dispatch order. A failed request is left out — it answered nothing. */
@@ -179,6 +181,8 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
 
   const entityMoves = peelIntents(entityMovesOf(passes), context.peel);
 
+  const inventoryOps = answerOf<InventoryPassOp[]>(passes, 'inventory') ?? [];
+
   const turn: AITurnResult = {
     narration,
     choices,
@@ -195,6 +199,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     ...(measuredHours !== null || turnHours !== FLAT_HOURS_PER_TURN ? { timeDelta: turnHours } : {}),
     ...(Object.keys(diaries).length ? { diaries } : {}),
     ...(context.toolCalls?.length ? { toolCalls: [...context.toolCalls] } : {}),
+    ...(inventoryOps.length ? { inventoryOps } : {}),
   };
 
   return withCodeWrites({
@@ -218,6 +223,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     codeMove: null,
     codeWrites: null,
     entityMoves,
+    inventoryOps,
   }, context.codeWrites, context);
 }
 

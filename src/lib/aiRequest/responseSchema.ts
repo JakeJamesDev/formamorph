@@ -3,6 +3,8 @@ import { AiStreamError } from './aiStream';
 /** The JSON Schema subset a response format may use. It names no `uniqueItems`, which the cloud server rejects. */
 export type ResponseSchemaNode =
   | { type: 'integer'; minimum?: number; maximum?: number }
+  | { type: 'string'; enum?: string[] }
+  | { type: 'array'; items: ResponseSchemaNode }
   | { type: 'object'; properties: Record<string, ResponseSchemaNode>; required: string[]; additionalProperties: false };
 
 /** A schema the reply must follow, and the name the request gives it. */
@@ -25,6 +27,8 @@ function followsNode(value: unknown, node: ResponseSchemaNode): boolean {
     return Number.isInteger(value) && (node.minimum === undefined || (value as number) >= node.minimum)
       && (node.maximum === undefined || (value as number) <= node.maximum);
   }
+  if (node.type === 'string') return typeof value === 'string' && (!node.enum || node.enum.includes(value));
+  if (node.type === 'array') return Array.isArray(value) && value.every((entry) => followsNode(entry, node.items));
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const keys = Object.keys(value);
   return node.required.every((key) => keys.includes(key))

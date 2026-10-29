@@ -1,4 +1,5 @@
 import type { WorldMetadata } from './world';
+import type { InventoryPassOp } from './gameplay';
 import type { SavedScriptWrites } from '@/lib/statCodeTurn';
 
 /** Sender role of a chat message, matching the OpenAI chat-completion roles. */
@@ -90,6 +91,7 @@ export type AIRequestType =
   | 'timePassed'
   | 'openingTime'
   | 'sceneTags'
+  | 'inventory'
   | EditorRequestType;
 
 /** The World Editor's generate buttons and the Formaquestion help prompt. No preset rows: they follow the
@@ -227,6 +229,8 @@ export interface AITurnResult {
   /** The turn's Script World Tool calls, in call order, which a stat re-roll replays (Q39). Absent when the
    *  AI called none. */
   toolCalls?: TurnToolCall[];
+  /** What the Inventory pass returned, which a stat re-roll replays. Absent when it changed nothing. */
+  inventoryOps?: InventoryPassOp[];
 }
 
 /** One Script World Tool call a turn made. */

@@ -276,6 +276,15 @@ Items with art show a small image on their row. **Here** shows items you can see
 > [!NOTE]
 > The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but the story can still take it.
 
+### When the story changes your items
+<!-- keywords: pick up, picked up, found an item, item appeared, item vanished, stolen, story took my item, inventory pass, new item -->
+
+After each turn's narration, the **Inventory** prompt reads what happened and updates the inventory. Pick up a key in the story and it lands in **Carried**. Hand a knife over and it leaves. Drink a potion and it's used up, with its effects. Search a room and a hidden item can show up under **Here**.
+
+- An item the world doesn't define gets a plain entry with no effects. You can still **Use** it.
+- The item's own effects come from the item, so the stat changes never count a potion twice.
+- Worlds with no items skip this step.
+
 ## The Entity Dialog
 <!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->
 <!-- route: entity -->

@@ -252,6 +252,17 @@ describe('the concurrency knob', () => {
     expect(peakInFlight).toBe(postNarration.length);
   });
 
+  it('dispatches the Inventory pass in the post-narration batch, and parses its reply', async () => {
+    const reply = JSON.stringify({ operations: [{ op: 'gain', item: 'Rusty Key', quantity: 1, owner: '', to: 'you' }] });
+    const { result, seen } = await run({ settings: { inventoryDue: true }, answers: { inventory: reply } });
+    ok(result);
+    const postNarration = seen.slice(seen.findIndex((s) => s.type === 'narration') + 1);
+    expect(postNarration.map((s) => s.type)).toContain('inventory');
+    expect(postNarration.map((s) => s.inFlight)).toEqual(postNarration.map((_, i) => i + 1));
+    expect(result.run.passes.find((p) => p.id === 'inventory')?.parsed)
+      .toEqual([{ op: 'gain', item: 'Rusty Key', quantity: 1, owner: '', to: 'you' }]);
+  });
+
   it('dispatches one request at a time when serial, in the same order', async () => {
     const { result, types, peakInFlight } = await run({ settings: { concurrentTurnRequests: false } });
     ok(result);

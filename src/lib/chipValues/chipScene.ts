@@ -1,5 +1,5 @@
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { OwnedStatsInForce, OwnedTraitsInForce } from '../locationContext';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
@@ -56,6 +56,8 @@ export interface ChipScene {
   items?: readonly Item[];
   /** Every Item Copy in play. None when absent. */
   itemCopies?: readonly ItemCopy[];
+  /** The runtime items the Inventory pass made. None when absent. */
+  runtimeItems?: readonly RuntimeItem[];
   /** The lore entries to render, each carrying its position. */
   lore: DictionaryEntry[];
   /** The player's notes; blank when there are none. */

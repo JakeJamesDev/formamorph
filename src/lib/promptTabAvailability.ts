@@ -40,5 +40,7 @@ export function computePromptTabAvailability(flags: PromptTabFlags): Record<stri
     timepassed: aiClock,
     timeopening: aiClock,
     scenetags: sceneImages,
+    // Due in any world with items, so no setting hides it.
+    inventory: true,
   };
 }

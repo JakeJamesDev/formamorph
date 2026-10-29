@@ -86,6 +86,45 @@ describe('Item Copies in a save', () => {
     expect(live().gameplay.itemCopies).toEqual(held);
   });
 
+  it("bring back the turn's running timed effects and runtime items when a re-roll restores its snapshot", async () => {
+    const live = mount();
+    await loadWorld(live);
+    const timed = { 'bram:lamp:row': { row: 'stat' as const, ownerId: 'bram', itemId: 'lamp', rowId: 'row', endsAt: 12, values: { vigor: 2 } } };
+    const key = { id: 'r1', name: 'Rusty Key' };
+    await act(async () => {
+      live().gameplay.setItemCopies(held);
+      live().gameplay.setItemEffects({ timed });
+      live().gameplay.setRuntimeItems([key]);
+    });
+    const turnStart = live().gameplay.saveCurrentGameState();
+    // The turn consumed the lamp's dose, made another runtime item and ended the timed effect.
+    await act(async () => {
+      live().gameplay.setItemCopies([copy('later')]);
+      live().gameplay.setItemEffects({});
+      live().gameplay.setRuntimeItems([key, { id: 'r2', name: 'Moonleaf' }]);
+    });
+    await act(async () => { live().gameplay.loadGameState(turnStart, [cellar], { keepLiveHistory: true }); });
+    expect(live().gameplay.itemEffects).toEqual({ timed });
+    expect(live().gameplay.runtimeItems).toEqual([key]);
+    expect(live().gameplay.itemCopies).toEqual(held);
+  });
+
+  it('keep runtime items through a save, and drop a runtime Item Copy whose runtime item is gone', async () => {
+    const live = mount();
+    await loadWorld(live);
+    const runtime = (id: string, runtimeItemId: string): ItemCopy =>
+      copy(id, { item: { kind: 'runtime', runtimeItemId } });
+    await act(async () => {
+      live().gameplay.setRuntimeItems([{ id: 'r1', name: 'Rusty Key' }]);
+      live().gameplay.setItemCopies([runtime('k', 'r1'), runtime('ghost', 'gone')]);
+    });
+    await act(async () => { await live().gameplay.saveGame('slot', 'World', 'w1', 'runtime-out'); });
+    await act(async () => { live().gameplay.setRuntimeItems([]); live().gameplay.setItemCopies([]); });
+    await load(live, 'runtime-out');
+    expect(live().gameplay.runtimeItems).toEqual([{ id: 'r1', name: 'Rusty Key' }]);
+    expect(live().gameplay.itemCopies).toEqual([runtime('k', 'r1')]);
+  });
+
   it('never come from placements the world gained after an older save was written', async () => {
     const live = mount();
     await loadWorld(live);

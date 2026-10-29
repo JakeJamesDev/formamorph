@@ -229,6 +229,25 @@ export interface AvatarListingContent {
 /** What an Item Copy is a copy of: an authored item, or a runtime item the Inventory pass made. */
 export type ItemRef = { kind: 'item'; itemId: string } | { kind: 'runtime'; runtimeItemId: string };
 
+/** An item the Inventory pass named that the world does not define: Stackable and Consumable, no slot, no
+ *  effects (Q56). */
+export interface RuntimeItem {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'consume' | 'reveal';
+
+/** One operation as the Inventory pass names it. `owner` holds the item now; `to` receives it (gain, transfer). */
+export interface InventoryPassOp {
+  op: InventoryPassOpKind;
+  item: string;
+  quantity: number;
+  owner: string;
+  to: string;
+}
+
 /** Where an Item Copy is: owned by the played Persona or an entity, or lying at a location. */
 export type ItemCopyWhere = PlacementWhere;
 
@@ -321,6 +340,8 @@ export interface GameState {
   entityStatChanges?: EntityStatChanges;
   /** Every Item Copy in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
   itemCopies?: ItemCopy[];
+  /** The runtime items the Inventory pass made. Absent ⇒ none. */
+  runtimeItems?: RuntimeItem[];
   /** What item effects have applied. Absent ⇒ none. */
   itemEffects?: ItemEffectLedger;
   /** Absent ⇒ none. */

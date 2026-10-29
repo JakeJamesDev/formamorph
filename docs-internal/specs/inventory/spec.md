@@ -336,6 +336,8 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 ### Stat pass change
 
 - The stat pass prompt gains a line listing the turn's item effects as already applied (Q53). It ships with probe numbers.
+- **Probe numbers (ticket 09), `inventory-pass-probe.cli.ts`.** The line names the present items with stat effects, only while the pass is due. Vigor gain, no line → line: cloud (12 per arm) potion double-add 11/12 → 0/12 (an earlier batch 12/12 → 0/12); runtime honey cake 11/12 → 12/12, not suppressed. Cydonia (3 per arm, seeded) potion 3/3 → 3/3 and honey cake 3/3 → 3/3: the line does nothing there, and the same line at the end of the user message also stays 3/3. A stronger wording ("…so that change gets 0") stayed 3/3 on Cydonia and suppressed the honey cake on cloud (0/12), so it was reverted.
+- **Pass accuracy (ticket 09).** Nine Sedge Landing cases, two of them no-change guards; right = every row of the named items ends as expected and nothing else moved. Shipped prompt: cloud (12 per arm) schema 73/84 changes and 24/24 guard, text 84/84 and 24/24; Cydonia (3 per arm) schema 18/21 and 6/6, text 14/21 and 6/6. Most schema misses are one ambiguous case: Odette hands her hook over and lays it down, and schema replies equip it again (cloud 1/12, Cydonia 0/3). Before the schema reply rider ("an empty operations list when no item changed"), the cloud schema guard was 0/24. In the shipped prompt's batch, the cloud stat line held: potion 12/12 → 0/12, honey cake 2/12 → 10/12 (the control drifted low that batch).
 
 ### Narration context
 

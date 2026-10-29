@@ -920,7 +920,7 @@ function useProvideSettings() {
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, entityLocationPrompt, entityLocationUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
-    milestoneSelectPrompt, milestoneSelectUserPrompt,
+    milestoneSelectPrompt, milestoneSelectUserPrompt, inventoryPrompt, inventoryUserPrompt,
   } = promptValues;
   const setSystemPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'systemPrompt', v));
   const setNarrationUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
@@ -954,6 +954,8 @@ function useProvideSettings() {
   const setSceneTagsUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'sceneTagsUserPrompt', v));
   const setDiscoverEntityPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'discoverEntityPrompt', v));
   const setDiscoverEntityUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'discoverEntityUserPrompt', v));
+  const setInventoryPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'inventoryPrompt', v));
+  const setInventoryUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'inventoryUserPrompt', v));
 
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
@@ -1996,6 +1998,10 @@ function useProvideSettings() {
     setDiscoverEntityPrompt,
     discoverEntityUserPrompt,
     setDiscoverEntityUserPrompt,
+    inventoryPrompt,
+    setInventoryPrompt,
+    inventoryUserPrompt,
+    setInventoryUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,

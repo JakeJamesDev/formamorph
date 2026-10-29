@@ -172,3 +172,15 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 - A persona-only entity that nobody plays gets no items.
 
 > ⚠️ Starting items appear only in a new game. A saved game never gains the items you add later.
+
+## Items in the story
+<!-- keywords: inventory pass, ai gives items, story picks up item, invented item, runtime item, item names, narrator item changes -->
+
+After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use up an item, and reveal a hidden one. It sees the items of the player, of the people here, and of the location.
+
+- 🔤 A name in the story matches your item when it's the same name, ignoring case and spaces. "iron sword" is your **Iron Sword**. "iron swords" is not.
+- ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used up, and it has no slot and no effects. The same name later reuses it.
+- 🎒 The step runs only while the world has items or the game holds any. A world with no items never sends it.
+- ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
+
+The step's prompt is on the **Prompts** tab in Settings, under **Inventory**.

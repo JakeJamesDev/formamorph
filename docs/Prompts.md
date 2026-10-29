@@ -173,6 +173,7 @@ The list on the left groups the prompts by the job they do. A prompt shows only 
 | **Storyboard** | Story | Merges the intentions of every staged entity into one plan, before narration | **Thinking** is **Staged** |
 | **Choices** | Story | Writes your choices for the next turn, after narration | **Choices** is on |
 | **Stat Updates** | Trackers | Reads the turn after narration and records which stats changed | **Stat Updates** is on |
+| **Inventory** | Trackers | Reads the turn after narration and records who gained, lost, moved, equipped, used or found an item | The world has items, or the game holds any |
 | **Location Change** | Trackers | Decides after narration if your action takes you to a new location | **Location Change** is on |
 | **Clock** | Trackers | Measures how much story time the turn took. Runs after narration. | **Measured Clock** is on |
 | **Opening** | Trackers | Reads the opening scene once, at the start, to set the time of day | **Measured Clock** is on |
@@ -193,7 +194,7 @@ Select a prompt to open its **Anatomy**. The rows under the prompt open its othe
 |---|---|---|
 | **Anatomy** | The request this prompt sends, built from your current settings | Every prompt |
 | **System Prompt** | The instructions the AI reads first | Every prompt |
-| **User Message** | The message that asks for the reply, such as your action | **Narration** with **Thinking** set to **Native**, **Choices**, **Stat Updates**, **Location Change**, **Clock**, **Opening**, **Summaries**, **Milestone Select**, **Director**, **Discover Entity**, **Scene Tags** |
+| **User Message** | The message that asks for the reply, such as your action | **Narration** with **Thinking** set to **Native**, **Choices**, **Stat Updates**, **Inventory**, **Location Change**, **Clock**, **Opening**, **Summaries**, **Milestone Select**, **Director**, **Discover Entity**, **Scene Tags** |
 | **Messages** | Extra lines in the narration history | **Narration**, while one of its messages is live |
 | **Options** | Per-prompt settings | Every prompt |
 

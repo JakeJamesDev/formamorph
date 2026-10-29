@@ -67,7 +67,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → Output → Turn Extras toggles). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover' | 'inventory';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -315,6 +315,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   timeopening: [...CONTEXT_VARS],
   scenetags: [...CONTEXT_VARS],
   discover: [...CONTEXT_VARS],
+  inventory: [...CONTEXT_VARS],
 };
 
 /** Variables offered by the editable user-message templates (the per-turn runtime values the code
@@ -337,6 +338,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   // deliberately absent: what was attempted is not what the picture shows.
   scenetags: [NARRATION, IN_FRAME],
   discover: [CHARACTER, FIRST_PASSAGE, LATER_MATERIAL],
+  inventory: [PLAYER_ACTION, NARRATION],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));
