@@ -174,7 +174,7 @@ export function InventoryTab({
   const row = (copy: ItemCopy, actions: ReactNode) => {
     const item = itemOf(copy);
     const name = nameOf(copy);
-    const line = lineFor(copy, item);
+    const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : lineFor(copy, item);
     const image = imageOf?.(copy);
     return (
       <li key={copy.id} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">

@@ -69,4 +69,5 @@ export const BACKGROUND_PASS_STATUS: Record<BackgroundPassKind, { label: string;
   milestone: { label: 'Selecting memories…', glyph: REQUEST_STATUS.milestoneSelect.glyph },
   diary: { label: 'Writing diary…', glyph: REQUEST_STATUS.diary.glyph },
   discover: { label: 'Describing character…', glyph: REQUEST_STATUS.discoverEntity.glyph },
+  describeItem: { label: 'Describing item…', glyph: REQUEST_STATUS.inventory.glyph },
 };

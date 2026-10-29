@@ -199,6 +199,20 @@ describe('RightPanel — Inventory tab', () => {
     expect(mine(h.gameplay()).map((c) => c.quantity)).toEqual([1]);
   });
 
+  it('shows a runtime item’s description under its name (Q146)', async () => {
+    const runtime: ItemCopy = { id: 'k', item: { kind: 'runtime', runtimeItemId: 'r1' }, where: you, quantity: 1, visibility: 'visible' };
+    renderRightPanel({}, {
+      ...stage([runtime]),
+      seed: (g: Gameplay) => {
+        g.setCurrentLocation(yard);
+        g.setRuntimeItems([{ id: 'r1', name: 'Moonleaf', description: 'A pale leaf.' }]);
+        g.setItemCopies([runtime]);
+        g.setActiveTab('inventory');
+      },
+    });
+    expect(await within(carried()).findByText('A pale leaf.')).toBeInTheDocument();
+  });
+
   it('has no Inventory tab in a world without items', async () => {
     renderRightPanel({}, { world: { entities, locations: [yard] }, turns });
     await screen.findByRole('tab', { name: 'Traits' });

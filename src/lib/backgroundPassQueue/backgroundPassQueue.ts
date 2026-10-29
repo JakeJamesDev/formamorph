@@ -1,8 +1,9 @@
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, RuntimeItem } from '@/types';
 import type { TransportRequest } from '@/lib/aiRequest/requestTransport';
 import { applyDiary, applyDigest, applyImportance, parseTurnContent } from '@/lib/turnDigest';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { cleanDiscoveredDescription } from '@/lib/runtimeCharacters';
+import { cleanItemDescription, dueItemDescriptions, type DescribeItemTarget } from '@/lib/inventory/describe';
 import type { BandTurn } from '@/lib/turnBanding';
 import {
   applyIncrementalVerdict, milestoneCandidates, resolveMilestoneKeep,
@@ -15,7 +16,7 @@ import {
  * through a session guard, and sets a failed pass aside for the rest of the idle window.
  */
 
-export type BackgroundPassKind = 'discover' | 'digest' | 'diary' | 'milestone';
+export type BackgroundPassKind = 'discover' | 'describeItem' | 'digest' | 'diary' | 'milestone';
 
 /** The selector's verdict as the save stores it. */
 export interface StoredMilestoneSelection {
@@ -41,6 +42,8 @@ export interface QueueSnapshot {
   entityNames: readonly string[];
   /** Deleted characters, never described again. */
   suppressedNames: readonly string[];
+  /** The save's runtime items; one with no description is due for one. Absent ⇒ none. */
+  runtimeItems?: readonly RuntimeItem[];
 }
 
 /** What every pass target names: a stored turn and the narration the pass reads. */
@@ -75,6 +78,7 @@ export interface QueueEnv {
   send(request: TransportRequest): Promise<string>;
   digestRequest(target: DigestTarget): TransportRequest;
   discoverRequest(target: DiscoverTarget): TransportRequest;
+  describeItemRequest(target: DescribeItemTarget): TransportRequest;
   /** Built when the pass starts, so it reads the entity text a discover just wrote. */
   diaryRequest(target: DiaryTarget): TransportRequest;
   milestoneRequest(kept: string[], fresh: string[], attachTurnId: string): MilestoneRequest;
@@ -82,6 +86,8 @@ export interface QueueEnv {
   setMilestoneSelection(selection: StoredMilestoneSelection | null): void;
   /** Adds the described character to the save's discovered entities. */
   addDiscovered(target: DiscoverTarget, description: string): void;
+  /** Sets the runtime item's description unless it already has one (Q144). */
+  describeItem(target: DescribeItemTarget, description: string): void;
   /** The view's session counter, bumped on load and on new game. */
   session(): number;
 }
@@ -109,6 +115,7 @@ interface PassWriter {
   history(update: (prev: ChatMessage[]) => ChatMessage[]): void;
   selection(selection: StoredMilestoneSelection | null): void;
   discovered(target: DiscoverTarget, description: string): void;
+  itemDescribed(target: DescribeItemTarget, description: string): void;
   /** Whether `history` still holds the narration the pass read. */
   isCurrent(history: ChatMessage[]): boolean;
 }
@@ -251,7 +258,7 @@ export function dueDiaries(history: ChatMessage[]): DiaryTarget[] {
 }
 
 /**
- * The due passes in serial priority order: discover, digest, diary, then the milestone once no digest is due.
+ * The due passes in serial priority order: discover, describeItem, digest, diary, then the milestone once no digest is due.
  * `prune` is the selection without verdicts on turns that left, when nothing fresh carries it.
  */
 function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; prune: StoredMilestoneSelection | null } {
@@ -277,6 +284,24 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
         }),
       });
     }
+  }
+  for (const target of dueItemDescriptions(snapshot.history, snapshot.runtimeItems ?? [])) {
+    items.push({
+      kind: 'describeItem',
+      key: `describeItem:${target.runtimeItemId}`,
+      turnId: target.turnId,
+      narration: target.narration,
+      signature: target.narration,
+      prepare: () => ({
+        request: env.describeItemRequest(target),
+        apply: (reply, write) => {
+          const description = cleanItemDescription(reply, target.name);
+          if (!description) return false;
+          write.itemDescribed(target, description);
+          return true;
+        },
+      }),
+    });
   }
   const digests = snapshot.memoryDigests ? dueDigests(snapshot.history) : [];
   for (const target of digests) {
@@ -408,7 +433,8 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
         else if (!snapshot || !isCurrent(snapshot.history)) outcome = 'dropped';
         else {
           const write: PassWriter = {
-            history: writeHistory, selection: env.setMilestoneSelection, discovered: env.addDiscovered, isCurrent,
+            history: writeHistory, selection: env.setMilestoneSelection, discovered: env.addDiscovered,
+            itemDescribed: env.describeItem, isCurrent,
           };
           outcome = prepared.apply((reply ?? '').trim(), write) ? 'applied' : 'setAside';
         }
