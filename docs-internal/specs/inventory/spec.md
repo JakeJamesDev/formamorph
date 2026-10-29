@@ -129,6 +129,12 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q103 | (ticket 08) 08 renders authored items only and skips runtime Item Copies. 09 adds runtime names to the chip |
 | Q104 | (ticket 08) The hidden-item contract lives in the built-in preset's pre-text as a positive statement, not in the renderer, so authors can reword it |
 | Q105 | (ticket 08) 08 records the Q19 probe numbers only. If the event line helps, the spec session adds it to ticket 09 |
+| Q106 | (ticket 04, user ruling) The player sees an item's stat change as a turn log line, "Iron Sword: Strength +2", when an effect applies or reverses. A hidden Item Copy shows as "An item". No stat-row tooltip |
+| Q107 | (ticket 04) A `you` Item Copy's stat effects resolve on the played entity's own stats only. No Global Stat fallback, for `you` either (Q50) |
+| Q108 | (ticket 04) The editor's stat picker lists each owner's stats under headings, deduped by id, with no Global Stats section |
+| Q109 | (ticket 04) While Equipped applies once per equipped Item Copy: two equipped rings apply twice. Q11's once-per-owner covers While Owned only |
+| Q110 | (ticket 04) A max raise on a value resting at its cap carries the value up, as trait max raises do. That carry goes on the value ledger and reverses exactly |
+| Q111 | (ticket 04) The orphan drop reverses While Equipped and While Owned value changes only. On First Obtain changes and their record stay |
 
 ## User Stories
 
