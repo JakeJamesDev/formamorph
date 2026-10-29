@@ -23,6 +23,8 @@ Spec: Q26, Q28, Q30, Q31, Q63, Q65; stories 78–82.
 - [ ] The entity panel shows an entity's equipped items and none of its carried items
 - [ ] Frames: `.scratch/frames/inventory-here-light.png` and `-dark.png` at 1280 wide
 - [ ] The player guide describes the Here section; changelog fragment written
+- [ ] Item images shown in play resolve their rules through `itemRuleStates` with the Item Copy (from ticket 10's landing: it has no play-time caller yet)
+- [ ] A locked trait's gate line never names a hidden Item Copy's item to the player (Q63; from ticket 10's landing)
 
 ## Blocked by
 
