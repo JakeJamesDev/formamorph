@@ -498,11 +498,11 @@ export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly Invento
 
 /**
  * The inventory settle over `copies`, as if the runs had stopped there: `doses` are every consume so far, and
- * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, and
- * their events.
+ * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, their
+ * events, and the settle's log lines.
  */
 export type SettleCopies = (copies: readonly ItemCopy[], doses: readonly Dose[], so: StatCodeTurnResult) =>
-  { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[] };
+  { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[]; log: readonly string[] };
 
 /** Where a batch of item events starts, and how it settles after each write. */
 export interface ItemRunOptions {
@@ -518,7 +518,7 @@ export interface ItemRunsResult {
   result: StatCodeTurnResult | null;
   /** The Item Copies after every run's inventory writes. */
   copies: readonly ItemCopy[];
-  /** The module's skips, and one line per event past the depth cap. */
+  /** The module's skips, the settles' log lines, and one line per event past the depth cap. */
   diagnostics: string[];
   /** The consumes the runs' writes made, which start their After Consumed effects. */
   doses: Dose[];
@@ -562,7 +562,8 @@ export async function runItemScripts(
       landedOps.push(...ops);
       diagnostics.push(...landed.diagnostics);
       doses.push(...landed.doses);
-      const settled = settle?.(landed.copies, doses, chainedResult(turn, steps, now)) ?? { copies: landed.copies, events: [] };
+      const settled = settle?.(landed.copies, doses, chainedResult(turn, steps, now)) ?? { copies: landed.copies, events: [], log: [] };
+      diagnostics.push(...settled.log);
       landedOps.push(...settled.events.map((e): InventoryOp => ({ kind: 'unequip', copyId: e.copyId })));
       now = { ...now, state: { ...now.state, itemCopies: settled.copies } };
       now = await level(now, [...landed.events, ...settled.events], depth + 1);
