@@ -110,7 +110,15 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - **Items:** an item is met once the player held it, or once a visible copy was at a met place. Hidden copies stay out until revealed. Runtime items use their description, which counts as player text (Q25).
 - **Stats and traits:** visible stats and the player's own traits. Hidden stats, disabled stats, hidden traits and AI-only group headings are skipped.
 - **Never in the Player View:** AI descriptions, AI summaries, diaries, script memory lines, unmet entities, places and items, and entity "known in" or persona-only data beyond what the met rules allow.
-- The view reads the current snapshot, so undo and rewind move it with the story.
+- The view reads the current snapshot, the history sliced to it and the earlier snapshots of its chain, so undo and rewind move it with the story.
+- **Shape (ticket 01):** a narrow `PlayerView` type with id, name and player text per row and no AI field. Rows are keyed by the ticket 02 kinds (entity, location, item, stat, trait). Ticket 06 adapts it to the Tool Snapshot and the authored world.
+- An item seen at a met place means a visible copy at the location the player stood at in that snapshot.
+- An unrevealed entity shows its alias name only, with no description.
+- Q25 applies only to AI-invented discovered records: no world entity id, and a source turn that is not the opening. Discovered records of authored entities (Enter World picks, bring-over visitors) use their player description.
+- Stats show name, value, bounds and the band text the panel shows; a stat's description stays out. The player's stats are the global stats plus the played persona's own. Other entities' stats stay out.
+- The player's traits are the active global traits plus the played persona's owned traits. Switched-off traits stay out.
+- The played persona appears as the player. Persona-only entities not being played stay out.
+- The builder takes a `resolve(text)` input, so text reads with the values the player sees.
 - The Tool Snapshot and the authored world that the game registers with the open-world registry become Player View-based. The World Editor keeps registering the full authored world. This revises ADR-0011's "authored world, no playthrough" in game; a new ADR records it.
 
 ### Story so far (Q15, Q21)
@@ -134,19 +142,24 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 
 - The lean comes from the open-world registry: the newest registered world is either an editor world or a game world. The in-game World Editor registers over the game, so it gets the editor lean. No registered world means docs-only, as today.
 - The request carries a world block beside the docs block. Game requests carry the docs too (Q6).
-- A new **world rules** prompt joins the help preset. It holds the lean rules: how-it-works in the editor; lore so far, opinion-not-solution and no speculation about unshown plot in game. The existing guide-only rule allows facts from the world block.
+- The world rules join the help preset as two prompt keys, `worldEditor` and `worldGame`, each a plain rider like the code rider (ticket 03). `worldEditor` holds how-it-works; `worldGame` holds lore so far, opinion-not-solution and no speculation about unshown plot. The request sends only the key that matches its lean: ticket 04 sends `worldEditor`, ticket 05 sends `worldGame`. No probe ships with ticket 03; ticket 07's baseline measures both texts.
+- Ticket 04 relaxes the answer prompt's guide-only rule so that facts may come from the world block.
+- The preset file carries the switch as a top-level `readWorld` boolean, applied to the device setting on import. A stored custom preset that lacks the new texts gets the built-in defaults, the same rule as the file.
 - ⚠️ **Export shape:** the help preset file gains the world-rules prompt and the world-reading switch. The file has been in released builds since v3.2.0. The parser accepts a file without them and fills the built-in defaults; today it refuses a file that lacks any expected entry, so that rule changes for these two keys.
 - The AI Language directive keeps world names as the world writes them.
 
 ### Sources and follow-ups (Q17)
 
-- Sources gain a world-item kind beside guide sections: kind, id and display name.
+- Sources gain a world-item kind beside guide sections: kind, id and display name. One union `sources` list holds both, with no separate world field (ticket 02).
+- World-item kinds: entity, location, item, trait, stat, script, tool (a World Tool), dictionary, prompt. Later tickets may add kinds.
+- The follow-up topic rule takes either kind. Docs-page favoring applies only when the topic is a guide section.
+- The AI Context trace lists a world source as "<kind> · <name>", not clickable. Search rankings stay guide-only until ticket 04.
 - In the editor, a world source opens its item, like Take Me There opens a docs target. In game, it is a plain name.
 - Follow-up history, its topic rule and the AI Context trace carry world sources the same way they carry guide sections.
 
 ### Settings (Q7)
 
-- A **Read the World** switch (working label) in Formaquestion's settings, on by default, stored per device with the other help settings. Its help line says that world text goes to the connected endpoint.
+- A **Read the World** switch on Formaquestion's General tab, next to **Open Screen**, on by default, stored per device with the other help settings. Help line: "Sends the open world's text to your endpoint with each question".
 
 ### Docs and glossary
 
