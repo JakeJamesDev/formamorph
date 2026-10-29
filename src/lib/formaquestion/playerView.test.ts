@@ -69,6 +69,16 @@ describe('buildPlayerView entities', () => {
     expect(names(shown.entities)).toEqual(['Veiled Figure']);
   });
 
+  it('keeps the scene aliases the player saw beside the revealed name', () => {
+    const chain = [
+      state({ visibleEntities: [{ name: 'Veiled Figure', alias: 'the hooded one', revealed: false }] }),
+      state({ metEntities: ['veiled'], visibleEntities: [{ name: 'Veiled Figure', alias: 'the hooded one', revealed: true }] }),
+    ];
+    expect(view({ chain }).entities).toEqual([{
+      kind: 'entity', id: 'veiled', name: 'Veiled Figure', description: 'Veiled Figure player text.', seenAliases: ['the hooded one'],
+    }]);
+  });
+
   it('holds a discovered entity, and drops one the player deleted', () => {
     const invented: DiscoveredEntity = { entity: { id: 'rt-1', name: 'Ferryman', aiDescription: 'An old ferryman.' }, sourceTurnId: 't1' };
     const kept = view({ chain: [state({ metEntities: ['rt-1'], discoveredEntities: [invented] })] });

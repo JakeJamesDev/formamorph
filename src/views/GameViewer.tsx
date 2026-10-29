@@ -135,6 +135,10 @@ import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
 import { openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from "../lib/tools/worldToolTurn";
 import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
+import { buildPlayerView } from "../lib/formaquestion/playerView";
+import {
+  playerViewMemory, playerViewScene, playerViewScript, playerViewWorld, type PlayerViewReach,
+} from "../lib/formaquestion/playerViewWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { useLocationBackdrop, useMapBackdrop } from "@/lib/useLocationBackdrop";
@@ -2432,15 +2436,37 @@ const GameViewer = ({
     (): SandboxTurn => (turnReadRef.current ? underChoicesSetting(turnReadRef.current, choicesEnabledRef.current) : betweenTurnsRead()),
     [betweenTurnsRead],
   );
-  // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
-  const toolWorld = useCallback(() => {
+  // A call outside the turn's requests reads between turns, even while a turn runs.
+  const betweenTurnsScript = useCallback((): ToolScriptSource | undefined => {
     const source = toolScriptSourceRef.current?.(null);
-    // A call outside the turn's requests reads between turns, even while a turn runs.
-    const between = source?.state ? { ...source, state: { ...source.state, turn: betweenTurnsRead() } } : source;
-    return buildToolSnapshot(liveScene(), withLoreToggles(playthroughDictionaries, loreToggles), toolMemorySource(), between);
-  }, [liveScene, playthroughDictionaries, loreToggles, toolMemorySource, betweenTurnsRead]);
-  // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
-  useHelpWorldSource(toolWorld, getWorldData);
+    return source?.state ? { ...source, state: { ...source.state, turn: betweenTurnsRead() } } : source;
+  }, [betweenTurnsRead]);
+  // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
+  const toolWorld = useCallback(
+    () => buildToolSnapshot(liveScene(), withLoreToggles(playthroughDictionaries, loreToggles), toolMemorySource(), betweenTurnsScript()),
+    [liveScene, playthroughDictionaries, loreToggles, toolMemorySource, betweenTurnsScript],
+  );
+  /** The Player View of the current snapshot, with its chain of the turns up to it. */
+  const playerViewReach = useCallback((): PlayerViewReach => {
+    const current = saveCurrentGameState();
+    const chain = [...gameStates.slice(0, closedTurns(fullMessageHistory)), current];
+    const view = buildPlayerView({
+      world: getWorldData(), chain, history: fullMessageHistory, persona: persona?.entity ?? null, resolve: resolvePH,
+    });
+    return { view, current };
+  }, [saveCurrentGameState, gameStates, fullMessageHistory, getWorldData, persona, resolvePH]);
+  // A Formaquestion Tool and the code test read the Player View while the game shows (Q20).
+  const helpToolWorld = useCallback(() => {
+    const reach = playerViewReach();
+    const memory = toolMemorySource();
+    const script = betweenTurnsScript();
+    return buildToolSnapshot(
+      playerViewScene(liveScene(), reach), withLoreToggles(playthroughDictionaries, loreToggles),
+      memory && playerViewMemory(memory), script && playerViewScript(script, reach),
+    );
+  }, [playerViewReach, toolMemorySource, betweenTurnsScript, liveScene, playthroughDictionaries, loreToggles]);
+  const helpAuthoredWorld = useCallback(() => playerViewWorld(getWorldData(), playerViewReach()), [getWorldData, playerViewReach]);
+  useHelpWorldSource(helpToolWorld, helpAuthoredWorld);
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
   const [toolLookups, setToolLookups] = useState<readonly (readonly string[])[]>([]);
 
