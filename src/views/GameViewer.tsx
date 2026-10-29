@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingStateOf } from '@/lib/openingState';
+import { itemEffectLog, settleItemEffects } from '@/lib/inventory';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
 import { metFromScene, metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
@@ -87,7 +88,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -675,6 +676,8 @@ const GameViewer = ({
     setLoreToggles,
     itemCopies,
     setItemCopies,
+    itemEffects,
+    setItemEffects,
     statDeltas,
     addLogEntry,
     addSystemLogEntry,
@@ -2112,6 +2115,11 @@ const GameViewer = ({
   const entityInForceUnder = useCallback(
     (owned: OwnedTraitStates, world: TraitWorld = gatedWorld()) => (ownerId: string) => entityStatTraitsInForce(owned, world, ownerId),
     [gatedWorld],
+  );
+  /** A loading save's entity stat traits in force, which its orphan drop re-derives bounds under. */
+  const savedOwnerTraits = useCallback(
+    (state: GameState, persona?: PersonaRef) => entityInForceUnder(state.ownedTraits ?? {}, gatedWorld(persona)),
+    [entityInForceUnder, gatedWorld],
   );
   const statEntities = useMemo(() => statOwnerEntities(codeEntities), [codeEntities]);
   /** The library in play under `world`'s persona, which a persona change's run reads before its render. */
@@ -4960,10 +4968,18 @@ const GameViewer = ({
       const to = gatedWorld(ref);
       const moved = switchPersonaStats(traitState, from, to, traitName);
       const settled = settleTraits(moved.state, to, traitName);
-      commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change');
-      void fireSwitchScripts(traitState, settled.state, to, from);
+      // The `you` Item Copies' effects move onto the new played entity (Q107).
+      const items = settleItemEffects(
+        { copies: itemCopies, entityStats: settled.state.entityStats ?? {}, ledger: itemEffects },
+        { items: worldItems, entities, persona: ref },
+        (id) => entityStatTraitsInForce(settled.state.ownedTraits, to, id),
+      );
+      const state = { ...settled.state, entityStats: items.entityStats };
+      commitGatedTraits({ ...settled, state, log: [...moved.log, ...settled.log, ...itemEffectLog(items, resolvePH)] }, name ?? 'the persona change');
+      setItemEffects(items.ledger);
+      void fireSwitchScripts(traitState, state, to, from);
     },
-    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts],
+    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, itemCopies, itemEffects, worldItems, entities, resolvePH, setItemEffects],
   );
   // A library persona settles once its entity loads, so the settle and the run read it (Q15). `from` is the
   // world the traits still hold under.
@@ -5014,7 +5030,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems);
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
         return;
       }
 
@@ -5033,6 +5049,8 @@ const GameViewer = ({
       }
       commitTraitState(opening.traitState);
       setItemCopies(opening.state.itemCopies ?? []);
+      setItemEffects(opening.itemEffects.ledger);
+      for (const line of itemEffectLog(opening.itemEffects, resolvePH)) addLogEntry(line);
       // The seeded entity stats are also the baseline their first changes read from.
       resetEntityStats(opening.entityStats);
       // A new game starts with no entity picked in the stat panel or the entity view.
@@ -5468,7 +5486,7 @@ const GameViewer = ({
         return false;
       }
     }
-    return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems);
+    return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
   };
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal

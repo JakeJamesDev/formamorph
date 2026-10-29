@@ -213,10 +213,11 @@ const CODE_BOUND_KEYS = ['min', 'max', 'regen'] as const satisfies readonly (key
 function boundsUnderCode(stat: PlayerStat, active: readonly Trait[]): Required<CodeBoundDeltas> {
   const base = bases(stat);
   const contrib = traitContributions(stat.id, active);
+  const item = stat.itemDelta;
   return {
-    min: base.min + contrib.min,
-    max: base.max + contrib.max + (stat.aiMaxDelta ?? 0),
-    regen: base.regen + contrib.regen,
+    min: base.min + contrib.min + (item?.min ?? 0),
+    max: base.max + contrib.max + (stat.aiMaxDelta ?? 0) + (item?.max ?? 0),
+    regen: base.regen + contrib.regen + (item?.regen ?? 0),
   };
 }
 
@@ -380,7 +381,7 @@ function valueDeltas(changes: readonly StatChange[] | undefined): Map<string, nu
  * recorded movement never follows — the record already describes the whole movement, cap clamp included, so
  * following as well would hand the same points back twice.
  */
-function settleValues(
+export function settleValues(
   before: readonly PlayerStat[],
   derived: PlayerStat[],
   deltas: Map<string, number>,
@@ -398,14 +399,14 @@ function settleValues(
 }
 
 /** The negation of a set of movements, as the delta map `settleValues` takes. */
-function negated(movements: Iterable<[string, number]>): Map<string, number> {
+export function negated(movements: Iterable<[string, number]>): Map<string, number> {
   const out = new Map<string, number>();
   for (const [statId, delta] of movements) out.set(statId, -delta);
   return out;
 }
 
 /** What actually moved between two same-ordered stat arrays, keyed by stat id, omitting the unmoved. */
-function movement(before: readonly PlayerStat[], after: readonly PlayerStat[]): Record<string, number> {
+export function movement(before: readonly PlayerStat[], after: readonly PlayerStat[]): Record<string, number> {
   const out: Record<string, number> = {};
   after.forEach((stat, i) => {
     const delta = stat.value - (before[i]?.value ?? stat.value);

@@ -8,6 +8,7 @@ export const ITEM_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: ELEMENT_ICONS.item },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
   { value: 'properties', label: 'Properties', icon: SlidersHorizontal },
+  { value: 'effects', label: 'Effects', icon: ELEMENT_ICONS.stat },
   { value: 'placeholders', label: 'Placeholders', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
 ] as const;
 

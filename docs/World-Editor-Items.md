@@ -35,6 +35,7 @@ The item panel works like the entity panel.
 | **Profile** | The name, the images with their rules, and the image tags |
 | **Descriptions** | The player-facing and AI-facing descriptions, and in Advanced mode the **AI-Facing Summary** |
 | **Properties** | Value, Stackable, Consumable, Charges, Bound, Slot and Slot Size |
+| **Effects** | The stat effect rows: what the item does to its owner's stats |
 | **Placeholders** | The item's own placeholders (Advanced mode only) |
 
 An image's **Visibility Rule** reads whoever owns the item. A Condition with no owner reads as **Item Owner**.
@@ -56,6 +57,30 @@ An item's placeholders roll once per playthrough. Every Item Copy shows the same
 | **Slot Size** | How much of the slot's capacity the item takes, such as 2 for a two-handed sword. |
 
 > ⚠️ An item with **Charges** never stacks. Setting charges turns **Stackable** off. Clearing them leaves it off until you turn it on.
+
+## Effects
+<!-- keywords: stat effects, bonus, buff, equip bonus, raise strength, max health, regen, while equipped, while owned, first obtain -->
+<!-- route: worldEditorItem.effects -->
+
+An effect row changes one of the owner's own stats. Each row picks a stat, a facet, a timing and an amount.
+
+| Facet | What it changes |
+|---|---|
+| **Value** | The stat's current value |
+| **Min** / **Max** | The stat's lowest or highest value |
+| **Regen** | How much the stat recovers over time |
+
+| Timing | When it applies |
+|---|---|
+| ⚔️ **While Equipped** | While the item is equipped. Two equipped copies apply twice. |
+| 🎒 **While Owned** | While the owner has the item. Three copies still count once. |
+| ✨ **On First Obtain** | Once, the first time the owner gets the item. It stays after the item is gone. |
+
+- When an effect ends, it gives back exactly what it gave. A +2 that only fit +1 under the maximum takes back 1.
+- A stat resting at its maximum rises with a **Max** effect, as it does with a trait.
+- Starting items apply their effects when the game starts.
+- An owner without the stat skips the row, and the log says so. The player's own stats come from the persona, not the Global Stats.
+- The log names the item for each change. A hidden item shows as "An item".
 
 ## Slots
 <!-- keywords: equipment slots, hand, ring, head, armor slot, capacity, two handed -->

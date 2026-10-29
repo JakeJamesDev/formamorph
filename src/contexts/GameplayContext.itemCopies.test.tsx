@@ -133,4 +133,25 @@ describe('Item Copies in a save', () => {
     await load(live, 'discovered');
     expect(live().gameplay.itemCopies).toEqual([found]);
   });
+  it("reverse a dropped Item Copy's effects, in the state and its history (Q60)", async () => {
+    const live = mount();
+    await loadWorld(live);
+    const base = live().gameplay.saveCurrentGameState();
+    const vigor = { id: 'vigor', name: 'Vigor', type: 'number', description: '', descriptors: [], value: 7, min: 0, max: 10, regen: 0, baseMin: 0, baseMax: 10, baseRegen: 0, aiMaxDelta: 0 };
+    const sword = copy('s', { item: { kind: 'item', itemId: 'gone' }, where: { kind: 'entity', id: 'bram' }, equipped: { slotId: 'hand', order: 1 } });
+    const state = {
+      ...base, fullMessageHistory: undefined, itemCopies: [sword],
+      entityStats: { bram: [vigor] },
+      itemEffects: { applied: { 'equipped:bram:s': { ownerId: 'bram', itemId: 'gone', timing: 'equipped', values: { vigor: 2 } } } },
+    };
+    await putSaveRecord({ id: 'effects', name: 'effects', version: '3.0.1', currentState: state, stateHistory: [state] } as unknown as SaveRecord);
+
+    await act(async () => {
+      await live().gameplay.loadGame('effects', [cellar], [], [{ ...bram, stats: [vigor] }] as Entity[], undefined, [lamp], () => () => []);
+    });
+    expect(live().gameplay.itemCopies).toEqual([]);
+    expect(live().gameplay.entityStats.bram.find((s) => s.id === 'vigor')?.value).toBe(5);
+    expect(live().gameplay.itemEffects).toEqual({});
+    expect(live().gameplay.gameStates[0].entityStats?.bram.find((s) => s.id === 'vigor')?.value).toBe(5);
+  });
 });

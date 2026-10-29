@@ -17,7 +17,7 @@ import {
   seedNewGameStats, statTraitsInForce, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { PersonaPick } from './persona';
-import { seedItemCopies, type NewId } from './inventory';
+import { seedItemCopies, settleItemEffects, type ItemEffectResult, type NewId } from './inventory';
 import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
@@ -49,6 +49,8 @@ export interface OpeningFold {
   startingTraits: { trait: Trait; ownerId: OwnerId }[];
   /** The trait slice as play's trait state holds it. */
   traitState: TraitRuntimeState;
+  /** What the seeded Item Copies' effects applied, for the ledger and the start log. */
+  itemEffects: Omit<ItemEffectResult, 'entityStats'>;
 }
 
 /** Authored text resolved as turn one would: an unrolled chip draws once, and every text after it reads that roll. */
@@ -88,6 +90,13 @@ export function openingFold(
     ...traitState, ownedTraits: ownedTraitStatesFrom(picks.owned), entityStats: seedEntityStats(statEntities),
   }, traitWorld);
   traitState = applyOwnedStatTraits(rows.state, traitWorld);
+  // Seeded Item Copies apply their effects, On First Obtain included (Q59).
+  const items = settleItemEffects(
+    { copies: itemCopies, entityStats: traitState.entityStats ?? {}, ledger: undefined },
+    { items: world.items ?? [], persona: ref, entities },
+    (id) => entityStatTraitsInForce(traitState.ownedTraits, traitWorld, id),
+  );
+  traitState = { ...traitState, entityStats: items.entityStats };
   const entityStats = traitState.entityStats ?? {};
   const ownedTraits = traitState.ownedTraits ?? {};
 
@@ -112,7 +121,8 @@ export function openingFold(
     itemCopies,
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
-  return { state, entityStats, startingTraits, traitState };
+  const { entityStats: _settled, ...itemEffects } = items;
+  return { state, entityStats, startingTraits, traitState, itemEffects };
 }
 
 /** The `SandboxState` of turn one. */
