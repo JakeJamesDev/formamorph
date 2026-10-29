@@ -1,6 +1,6 @@
 # 14: Runtime Item Description
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: 09
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
