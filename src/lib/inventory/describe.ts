@@ -21,7 +21,7 @@ export interface DescribeItemTarget {
   narration: string;
 }
 
-const ITEM_DESCRIPTION_SYSTEM = `You describe one item from an interactive story. Reply with one short sentence that says what the item is and what it looks like, from what the passage shows. Write only that sentence.`;
+const ITEM_DESCRIPTION_SYSTEM = `You describe one item from an interactive story. Reply with one short sentence that says what the item is, what it is made of and what it looks like, from what the passage shows. Describe the object itself, apart from where it lies and who holds it. Write only that sentence.`;
 
 /** The request for one item. It runs as the Inventory pass's type, so it follows that prompt's endpoint and pinned samplers. */
 export function describeItemRequest(target: DescribeItemTarget): TransportRequest {

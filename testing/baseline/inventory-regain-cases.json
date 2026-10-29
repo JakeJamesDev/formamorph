@@ -1,0 +1,238 @@
+{
+  "replays": [
+    {
+      "id": "cloud-t13",
+      "system": "You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.\n\n## Player Character\n- **Albus**\n  - **pronouns:** he/him\n  - **summary:** The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.\n  - **type:** Person\n  - **relationship:** Albus is Sylvie Thornwhistle's favorite mark, whom she needles and likes more than she admits\n  - **relationship:** Albus is Corvin Vale's rival for the captain's bounty\n  - **traits:** Human, Paladin, Stubborn Heart\n  - **stats:**\n    - **Health:** 100/100 (Hale. Whole and ready.) — The body's condition. Wounds, poison and cold take it away; rest and healing return it.\n    - **Mana:** 100/100 (Brimming. Power hums under the skin.) — Arcane power for spells. Casting drains it; rest and study restore it.\n    - **Faith:** 89/140 (Steady. The Ember listens.) — Favor with the Ember. Prayer, mercy and courage feed it; cruelty and doubt spend it.\n    - **Gold:** 30/300 (Scraping by. Enough for bread and a cot.) — Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.\n    - **Renown:** 15/100 (Noticed. The keep's people know the name and watch what it does.) — How widely Emberwatch knows the name. Deeds raise it; failures and cruelty lower it.\nEveryone in this world already knows Albus. Wherever the world's text names Albus, it means the player character.\n\n## Items Here\n- **Albus**\n  - **carried:** Healing Draught, Hooded Lantern\n  - **carried:** small, worn object: The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.\n  - **carried:** Founder's records: The founder's records are a pile of brittle, scattered parchment on the desk.\n\n## Operations\n- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.\n- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.\n- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.\n- equip: an owner wields or wears an item they carry.\n- unequip: an owner puts away or takes off an item they had equipped.\n- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.\n- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.\n\n## Fields\n- op: one operation from the list above.\n- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.\n- quantity: how many, a whole number from 1.\n- owner: who holds the item before the change. \"you\" for the player character, a person's name as Items Here shows it, or \"here\" for this place. Empty for gain.\n- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.\n\nRecord each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.",
+      "user": "\n## The Player Character's Action\nI remove my hand, letting the tension drain slowly from the fragile depiction.\n\n## What Happened\nYou draw your hand away from the junction point, and the focused pressure lifts. The image of the ambitious shortcut, once fiercely detailed under your touch, seems to relax, the lines losing their dangerous tautness as the required magical tension begins its slow, worrying bleed.\n\nThe immediate crisis eases, replaced by the cold, slow realization of what has been undone. The founders had not just created a path; they had keyed a lock, and you had just proven the combination was imperfect. The silence that follows the removal of your touch is vast, filled only with the *sound* of the thing they summoned still being there.\n\nBlackwell lets out a long, controlled exhale, the sound like air slowly leaking from a wineskin. He knows you feel the difference, the shift from focused energy to ambient pressure. He watched you master the pattern, and now you were forced to contend with the *aftermath*.\n\nHe didn't need to say it was over, or that it was merely worse. He knew what the founders feared most—not the things outside the door, but the things they could no longer silence inside. He reached out, not to the map this time, but to the small, tarnished silver locket tucked under the pile of scrolls.\n\nHe pressed it into your line of sight, the metal cold and dull beneath the meager lamplight. \"The thing sleeps,\" he stated flatly, his eyes fixed on the locket rather than on you. \"But it waits for the lull. The lull is always the riskiest part of the equation, Albus. You know that.\"\n\nRecord the item changes this turn made.\n\nReply with one operation per change. Reply with an empty operations list when no item changed.",
+      "held": [
+        "small, worn object"
+      ],
+      "objectOnly": [
+        [
+          "The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.",
+          "A small, worn locket of tarnished silver."
+        ],
+        [
+          "The founder's records are a pile of brittle, scattered parchment on the desk.",
+          "Brittle sheets of old parchment, loose and unbound."
+        ]
+      ]
+    },
+    {
+      "id": "cloud-t15",
+      "system": "You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.\n\n## Player Character\n- **Albus**\n  - **pronouns:** he/him\n  - **summary:** The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.\n  - **type:** Person\n  - **relationship:** Albus is Sylvie Thornwhistle's favorite mark, whom she needles and likes more than she admits\n  - **relationship:** Albus is Corvin Vale's rival for the captain's bounty\n  - **traits:** Human, Paladin, Stubborn Heart\n  - **stats:**\n    - **Health:** 100/100 (Hale. Whole and ready.) — The body's condition. Wounds, poison and cold take it away; rest and healing return it.\n    - **Mana:** 100/100 (Brimming. Power hums under the skin.) — Arcane power for spells. Casting drains it; rest and study restore it.\n    - **Faith:** 95/140 (Steady. The Ember listens.) — Favor with the Ember. Prayer, mercy and courage feed it; cruelty and doubt spend it.\n    - **Gold:** 30/300 (Scraping by. Enough for bread and a cot.) — Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.\n    - **Renown:** 15/100 (Noticed. The keep's people know the name and watch what it does.) — How widely Emberwatch knows the name. Deeds raise it; failures and cruelty lower it.\nEveryone in this world already knows Albus. Wherever the world's text names Albus, it means the player character.\n\n## Items Here\n- **Albus**\n  - **carried:** Healing Draught, Hooded Lantern\n  - **carried:** small, worn object (×2): The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.\n  - **carried:** Founder's records: The founder's records are a pile of brittle, scattered parchment on the desk.\n\n## Operations\n- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.\n- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.\n- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.\n- equip: an owner wields or wears an item they carry.\n- unequip: an owner puts away or takes off an item they had equipped.\n- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.\n- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.\n\n## Fields\n- op: one operation from the list above.\n- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.\n- quantity: how many, a whole number from 1.\n- owner: who holds the item before the change. \"you\" for the player character, a person's name as Items Here shows it, or \"here\" for this place. Empty for gain.\n- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.\n\nRecord each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.",
+      "user": "\n## The Player Character's Action\nI open the book to examine the inlaid circlet design closely.\n\n## What Happened\nYou open the book to examine the inlaid circlet design closely. The leather binding yields with a dry, ancient sound, and the pages within, brittle with age, are secured around a delicate, inlaid depiction of the Iron Crown.\n\nUnder the flickering lamplight, the detail arrests your attention. This is not mere ornamentation; it is a perfect map of the necessary unity. You trace the lines of the crown, realizing the founders sought not just to bind the chaos, but to convince it of its own flawless integrity before the necessary fracture.\n\nThe pattern demanded perfection, not the hopeful surge of potential, but the cold, absolute fact of a complete circuit. You see how the design mirrors the hopeful ambitions of the ambitious shortcut—a perfect dialogue between the two paths, a necessary but ultimately insufficient compromise.\n\nBlackwell watches your study of the diagram, his face impassive, a veteran assessing a ship nearing the inevitable iceberg. He has seen this before, the hopeful excess always outweighing the practical application. He knows the founders tried to pull a miracle from raw material.\n\nHe reached out, his long fingers brushing the back of the page to hold it steady under your inspection of the pattern. He didn't need to discuss the founders' ambition; they knew the flaw lay in the execution, the final, unforgiving detail.\n\n\"They accounted for the *unbroken* thing,\" he conceded, his voice raspy, \"but not for the *inert*. The thing you coaxed from the earth pushes back when coaxing ceases. It demands a counterweight equal to its own gravity.\"\n\nRecord the item changes this turn made.\n\nReply with one operation per change. Reply with an empty operations list when no item changed.",
+      "held": [
+        "small, worn object",
+        "Founder's records"
+      ],
+      "objectOnly": [
+        [
+          "The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.",
+          "A small, worn locket of tarnished silver."
+        ],
+        [
+          "The founder's records are a pile of brittle, scattered parchment on the desk.",
+          "Brittle sheets of old parchment, loose and unbound."
+        ]
+      ]
+    },
+    {
+      "id": "cloud-t17",
+      "system": "You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.\n\n## Player Character\n- **Albus**\n  - **pronouns:** he/him\n  - **summary:** The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.\n  - **type:** Person\n  - **relationship:** Albus is Sylvie Thornwhistle's favorite mark, whom she needles and likes more than she admits\n  - **relationship:** Albus is Corvin Vale's rival for the captain's bounty\n  - **traits:** Human, Paladin, Stubborn Heart\n  - **stats:**\n    - **Health:** 100/100 (Hale. Whole and ready.) — The body's condition. Wounds, poison and cold take it away; rest and healing return it.\n    - **Mana:** 100/100 (Brimming. Power hums under the skin.) — Arcane power for spells. Casting drains it; rest and study restore it.\n    - **Faith:** 101/140 (Radiant. Warmth answers before the prayer is finished.) — Favor with the Ember. Prayer, mercy and courage feed it; cruelty and doubt spend it.\n    - **Gold:** 30/300 (Scraping by. Enough for bread and a cot.) — Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.\n    - **Renown:** 15/100 (Noticed. The keep's people know the name and watch what it does.) — How widely Emberwatch knows the name. Deeds raise it; failures and cruelty lower it.\nEveryone in this world already knows Albus. Wherever the world's text names Albus, it means the player character.\n\n## Items Here\n- **Albus**\n  - **carried:** Healing Draught, Hooded Lantern\n  - **carried:** small, worn object (×2): The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.\n  - **carried:** Founder's records (×2): The founder's records are a pile of brittle, scattered parchment on the desk.\n\n## Operations\n- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.\n- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.\n- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.\n- equip: an owner wields or wears an item they carry.\n- unequip: an owner puts away or takes off an item they had equipped.\n- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.\n- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.\n\n## Fields\n- op: one operation from the list above.\n- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.\n- quantity: how many, a whole number from 1.\n- owner: who holds the item before the change. \"you\" for the player character, a person's name as Items Here shows it, or \"here\" for this place. Empty for gain.\n- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.\n\nRecord each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.",
+      "user": "\n## The Player Character's Action\nI study the spot he indicated on the circlet image closely.\n\n## What Happened\nYou study the spot he indicated on the circlet image closely. It is a pinprick detail, a tiny, almost arrogant detail in the otherwise flawless representation of the crown's circuit.\n\nYou concentrate on that minuscule point, allowing your own steady will to settle into the focus, testing the structural integrity of the inlay. It is less a weakness in the design and more a deliberate point of equilibrium—a perfect balance point that, once disturbed, demanded constant, precise energy input.\n\nBlackwell watched your focused concentration, the lines around his eyes deepening with the grim resignation of a man who has seen hubris up close. He knew you understood what that spot represented: the founders' desperate bargain with the chaos.\n\nHe shifted, gathering a small, heavy leather-bound text that had been lying beneath the schematic book. He did not look at you, instead tracing a pattern on the spine of the volume. \"That was the key to the *initial* containment,\" he admitted, his voice rough. \"It drew the thing in, like a net thrown into a deep pool.\"\n\nHe paused, the weight of the unspoken pressing between you. \"But the containment was meant to be a process, not a single object. They needed the *fuel* to sustain the balance, Albus. The circlet was only the diagram of the house; the power needed to run it was never detailed in the plans.\"\n\nRecord the item changes this turn made.\n\nReply with one operation per change. Reply with an empty operations list when no item changed.",
+      "held": [
+        "small, worn object",
+        "Founder's records"
+      ],
+      "objectOnly": [
+        [
+          "The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.",
+          "A small, worn locket of tarnished silver."
+        ],
+        [
+          "The founder's records are a pile of brittle, scattered parchment on the desk.",
+          "Brittle sheets of old parchment, loose and unbound."
+        ]
+      ]
+    },
+    {
+      "id": "cloud-t20",
+      "system": "You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.\n\n## Player Character\n- **Albus**\n  - **pronouns:** he/him\n  - **summary:** The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.\n  - **type:** Person\n  - **relationship:** Albus is Sylvie Thornwhistle's favorite mark, whom she needles and likes more than she admits\n  - **relationship:** Albus is Corvin Vale's rival for the captain's bounty\n  - **traits:** Human, Paladin, Stubborn Heart\n  - **stats:**\n    - **Health:** 100/100 (Hale. Whole and ready.) — The body's condition. Wounds, poison and cold take it away; rest and healing return it.\n    - **Mana:** 100/100 (Brimming. Power hums under the skin.) — Arcane power for spells. Casting drains it; rest and study restore it.\n    - **Faith:** 110/140 (Radiant. Warmth answers before the prayer is finished.) — Favor with the Ember. Prayer, mercy and courage feed it; cruelty and doubt spend it.\n    - **Gold:** 30/300 (Scraping by. Enough for bread and a cot.) — Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.\n    - **Renown:** 15/100 (Noticed. The keep's people know the name and watch what it does.) — How widely Emberwatch knows the name. Deeds raise it; failures and cruelty lower it.\nEveryone in this world already knows Albus. Wherever the world's text names Albus, it means the player character.\n\n## Items Here\n- **Albus**\n  - **carried:** Healing Draught, Hooded Lantern\n  - **carried:** small, worn object (×3): The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.\n  - **carried:** Founder's records (×2): The founder's records are a pile of brittle, scattered parchment on the desk.\n  - **carried:** viscous, faintly glowing liquid: The item is a slender, dark vial containing a viscous, faintly glowing liquid.\n- **Captain Orrin Blackwell**\n  - **carried:** slender, dark vial: The slender, dark vial contains a viscous, faintly glowing liquid.\n\n## Operations\n- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.\n- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.\n- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.\n- equip: an owner wields or wears an item they carry.\n- unequip: an owner puts away or takes off an item they had equipped.\n- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.\n- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.\n\n## Fields\n- op: one operation from the list above.\n- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.\n- quantity: how many, a whole number from 1.\n- owner: who holds the item before the change. \"you\" for the player character, a person's name as Items Here shows it, or \"here\" for this place. Empty for gain.\n- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.\n\nRecord each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.",
+      "user": "\n## The Player Character's Action\nI study the vial again, searching for the missing piece in the balance.\n\n## What Happened\nYou study the vial again, searching for the missing piece in the balance. Your gaze moves from the glowing liquid to the diagram of the circlet, then back to the vial itself, piecing together the intended sequence.\n\nThe missing piece is not chemical or volumetric; it is conceptual. The founders accounted for the *thing* they wanted to compel—the quiet, the order, the submission to the original purpose. They had the means (the liquid) and the map (the diagram), but the final command, the convincing authority, was absent.\n\nBlackwell watched this slow dawning, the quiet frustration of genius encountering the absolute unknown. He knew you were finding the lacuna, the place where technical mastery gave way to sheer will. He felt the weight of the bounty, the mountain of unanswered questions that had been promised in exchange for a singular solution.\n\nHe shifted his weight, the small sound of leather creaking beneath the pile of scrolls announcing the transition of his focus. He leaned forward just enough so his shared intention was palpable, asking you to bridge the gap between what *was* and what *should have been*.\n\n\"The convincer,\" he said softly, his gaze dropping to the Founder's records, as if they held the answer themselves. \"They wanted the process to feel inevitable. They needed the *conviction* of the successful act to override the structural warnings. They needed belief in the object.\"\n\nRecord the item changes this turn made.\n\nReply with one operation per change. Reply with an empty operations list when no item changed.",
+      "held": [
+        "small, worn object",
+        "Founder's records"
+      ],
+      "objectOnly": [
+        [
+          "The small, worn object is a tarnished silver locket tucked beneath a leather-bound book.",
+          "A small, worn locket of tarnished silver."
+        ],
+        [
+          "The founder's records are a pile of brittle, scattered parchment on the desk.",
+          "Brittle sheets of old parchment, loose and unbound."
+        ]
+      ]
+    },
+    {
+      "id": "meromero-t1",
+      "system": "You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.\n\n## Player Character\n- **Albus**\n  - **pronouns:** he/him\n  - **summary:** The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.\n  - **type:** Person\n  - **relationship:** Albus is Sylvie Thornwhistle's favorite mark, whom she needles and likes more than she admits\n  - **relationship:** Albus is Corvin Vale's rival for the captain's bounty\n  - **traits:** Human, Paladin, Stubborn Heart\n  - **stats:**\n    - **Health:** 100/100 (Hale. Whole and ready.) — The body's condition. Wounds, poison and cold take it away; rest and healing return it.\n    - **Mana:** 55/100 (Steady. Enough power for a fight's worth of magic.) — Arcane power for spells. Casting drains it; rest and study restore it.\n    - **Faith:** 55/140 (Shaken. The light answers slowly and dimly.) — Favor with the Ember. Prayer, mercy and courage feed it; cruelty and doubt spend it.\n    - **Gold:** 30/300 (Scraping by. Enough for bread and a cot.) — Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.\n    - **Renown:** 15/100 (Noticed. The keep's people know the name and watch what it does.) — How widely Emberwatch knows the name. Deeds raise it; failures and cruelty lower it.\nEveryone in this world already knows Albus. Wherever the world's text names Albus, it means the player character.\n\n## Items Here\n- **Albus**\n  - **carried:** Healing Draught, Hooded Lantern, Rusted Iron Nail\n\n## Operations\n- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.\n- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.\n- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.\n- equip: an owner wields or wears an item they carry.\n- unequip: an owner puts away or takes off an item they had equipped.\n- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.\n- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.\n\n## Fields\n- op: one operation from the list above.\n- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.\n- quantity: how many, a whole number from 1.\n- owner: who holds the item before the change. \"you\" for the player character, a person's name as Items Here shows it, or \"here\" for this place. Empty for gain.\n- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.\n\nRecord each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.",
+      "user": "\n## The Player Character's Action\nI take the rusted nail and ask what it means for our defenses.\n\n## What Happened\nYou reach out and take the rusted nail, its surface rough and unnaturally cold against your palm. You look Blackwell in the eye, your voice low but firm: \"The frost is here before nightfall. What does that mean for our defenses?\"\n\nBlackwell lets out a long, weary sigh and leans his weight on the map table, creases deepening around his eyes. \"It means the Barrow Wight is reaching further than before,\" he says, gesturing to the mound marked on the parchment. \"Frost in the sunlight isn't weather; it's a sign of strength. If the dead can chill the morning air, they can certainly test our walls by midnight.\"\n\nThe captain’s hand trembles slightly as he adjusts a marker on the map—a soldier's nerve fraying under the weight of failure. He knows his garrison is thin and tired, and that every degree the temperature drops brings them closer to another lost sentry.\n\nThe heavy oak door creaks open, and a woman in scarred leather armor steps inside. She carries a dented helmet tucked under one arm, her face set in a grim mask of exhaustion. This is the sergeant who commands the night watch on the boundary wall; she looks as though she hasn't slept since the barrow opened.\n\nShe doesn't wait for an introduction, marching straight to the table and slamming the helmet down beside the map with a loud *clack*. \"The men are spooked, Captain,\" she says, her voice sharp and brittle. \"They’re seeing shapes in the mist that aren't there—or worse, they are. I need more torches at the sally gate, or we'll lose another man before the sun sets.\"\n\nBlackwell looks from the sergeant to you, his gaze lingering on the cold iron nail now gripped in your hand. \"We have no one else who can go out there and stop this,\" he says quietly. \"Not without more preparation.\"\n\nRecord the item changes this turn made.\n\nReply with one operation per change. Reply with an empty operations list when no item changed.",
+      "held": [
+        "Rusted Iron Nail"
+      ],
+      "objectOnly": []
+    }
+  ],
+  "runtime": [
+    {
+      "id": "letter",
+      "name": "Sealed Letter",
+      "place": "A folded letter sealed with red wax, left on the crate by the ferry post.",
+      "object": "A folded letter of thick paper, sealed with red wax."
+    },
+    {
+      "id": "whistle",
+      "name": "Bone Whistle",
+      "place": "A small whistle of yellowed bone that hung from a nail on the ferry post.",
+      "object": "A small whistle carved from yellowed bone."
+    },
+    {
+      "id": "compass",
+      "name": "Tin Compass",
+      "place": "A dented tin compass resting on the coil of rope at the end of the dock.",
+      "object": "A dented tin compass with a cracked glass face."
+    },
+    {
+      "id": "pebble",
+      "name": "River Pebble",
+      "place": "A smooth gray pebble from the mud under the dock.",
+      "object": "A smooth gray pebble that fits the palm."
+    }
+  ],
+  "cases": [
+    {
+      "id": "retouch-read",
+      "copies": [
+        {
+          "runtime": "letter",
+          "where": "you"
+        }
+      ],
+      "action": "I read the sealed letter again.",
+      "narration": "You turn the sealed letter over in your hands and break the red wax at last. The paper is thick and damp at the corners. The message is short: the ferryman will not cross after the second bell. You fold the letter along its old creases and tuck it back inside your coat.",
+      "expect": []
+    },
+    {
+      "id": "retouch-shown",
+      "copies": [
+        {
+          "runtime": "whistle",
+          "where": "you"
+        }
+      ],
+      "action": "I ask Odette about the whistle.",
+      "narration": "You hold up the bone whistle. Odette leans in and squints at it. \"The ferryman made those,\" she says. \"Blow it twice at the water and he comes. Blow it three times and he stays away.\" She sits back on her crate and pulls her shawl tighter.",
+      "expect": []
+    },
+    {
+      "id": "described-held",
+      "copies": [
+        {
+          "runtime": "compass",
+          "where": "you"
+        }
+      ],
+      "action": "I check my compass.",
+      "narration": "You flip open the tin compass. The needle shivers, then swings toward the far bank. Odette reaches over, taps the cracked glass with one finger, and hands it back to you. \"That thing lies in the mist,\" she says. The coil of rope at the end of the dock creaks as the water moves.",
+      "expect": []
+    },
+    {
+      "id": "take-another",
+      "guard": true,
+      "copies": [
+        {
+          "runtime": "pebble",
+          "where": "you",
+          "quantity": 2
+        }
+      ],
+      "action": "I pick up one more pebble to throw.",
+      "narration": "You crouch at the edge of the dock and dig your fingers into the mud between the pilings. They close on a smooth gray pebble. You rinse it in the river and drop it into your pocket with the other two.",
+      "expect": [
+        {
+          "name": "River Pebble",
+          "where": "you",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "second-eel",
+      "guard": true,
+      "copies": [
+        {
+          "item": "eel",
+          "where": "you"
+        }
+      ],
+      "action": "I ask Odette for another smoked eel.",
+      "narration": "Odette laughs and pulls a second smoked eel from the bundle at her feet. She presses it into your hand. \"One for the crossing, one for the wait,\" she says. You now hold two of them.",
+      "expect": [
+        {
+          "name": "Smoked Eel",
+          "where": "you",
+          "quantity": 2
+        },
+        {
+          "name": "Smoked Eel",
+          "where": "ent-odette",
+          "quantity": 2
+        }
+      ]
+    }
+  ],
+  "describe": [
+    {
+      "id": "cloud-t3-small-worn-object",
+      "name": "small, worn object",
+      "narration": "You hold his gaze, neither flinching nor softening the line of your mouth. The solemnity you carry is not of defiance, but of deep, shared understanding—the unspoken acknowledgement of burdens too heavy for any single man to bear alone. Your answer is offered not through the strength of your stare, but through the absolute steadiness of your own presence.\n\nThe Captain seemed to read this quiet resolve in you. He shifted his focus from the parchment to the room itself, a slow, heavy intake of breath before he let the issue settle again. The silence stretched, suddenly thick with the unsaid protocols of command and the unspoken history of the Keep.\n\nHe pushed the Founder’s records aside with a decisive *thump*, the sound echoing too loudly in the suddenly small room. The aide, who had been fading into the shadows by the door, offered a single, nearly invisible nod of acknowledgment, understanding that this was now between the two of you.\n\nBlackwell leaned forward slightly, resting his weight on the desk blotter, bringing the matter of the barrow into sharp, dangerous focus. He did not waste his breath on pleasantries; the matter was grave, and his tone matched the weight of the consequences.\n\n\"The necromancy of it,\" he conceded quietly, the word tasting like ash on his tongue. He tapped a long, impatient finger on the desk surface, not at the maps, but at a small, worn object tucked beneath a leather-bound book. \"It was not meant to be woken simply by the season turning.\"\n\nHe nudged the object forward slightly, across the worn wood toward the center of the table, a subtle summons for you to draw nearer."
+    },
+    {
+      "id": "cloud-t7-founder-s-records",
+      "name": "Founder's records",
+      "narration": "You absorb the challenge thrown out by the Captain, the quiet admission of failure layered beneath the boast of purpose. The need to find a counterpart resonates with the core of your sworn duty—the incomplete oath against the unfinished business of the Ember. You meet his gaze again, this time not merely accepting, but accepting the weight of the task.\n\n\"I accept the challenge to find its matching focus point,\" you confirm, the words steady and low, leaving no room for retreat. The unspoken question of whether you *could* handle such a thing was dismissed before it left your lips.\n\nBlackwell visibly deflates, the tension draining out of him as if a long-held vice has been consciously loosened. He studied your face, searching for any waver that might suggest the hubris of the doomed. When he found only the steady refusal of the uncertain, he nodded once, a sharp, decisive jerk of the head.\n\nHe gestured toward the Founder’s records sprawling on the desk, the brittle parchment suddenly seeming less like history and more like a complicated floor plan. \"The plans for the founders' venture,\" he conceded, his voice regaining its rough command, \"are within those records. But they are incomplete. You will need to piece together what they deliberately scattered.\"\n\nHe pushed the heavy records toward you again, conceding the initiation of the search. \"The question is not if it exists, but whose intention it served. What do you think they were trying to appease?\""
+    },
+    {
+      "id": "cloud-t18-slender-dark-vial",
+      "name": "slender, dark vial",
+      "narration": "You press your fingertips into the cold, heavy diagram instead. You are no longer interested in the theory of the flaws; you are testing the physical reality of the design, willing the diagram to *do* what it was meant to do.\n\nUnder the pressure of your concerted focus, the inlay beneath your touch does not resist but rather yields fractionally, a microscopic click echoing the immense strain the founders placed upon this model. The diagram is not meant to be admired; it is meant to be engaged with, a flawed machine you are now trying to coax back into operation.\n\nBlackwell watches the small, almost involuntary hitch in your breath, the slight hardening around your jaw that betrays your total immersion. He sees the shift: you are moving past admiration and into the dangerous realm of sympathetic application.\n\nHe leaned closer, studying the way the light caught the inlay at the precise pressure point you were holding. He did not pull away, allowing you the focus, but his own focus narrowed on the larger context. \"It required a constant, low-grade transference,\" he murmured, more to himself than to you. \"The diagram was the blueprint, yes. But the binders believed the *process* was the fuel. They never sourced the requisite current.\"\n\nHe reached to a small, locked compartment beneath the desk, his movements economical and deliberate. He withdrew a slender, dark vial from the shadows beneath the Founder's records. It contained a viscous, faintly glowing liquid.\n\n\"They didn't just build a cage, Albus. They built a slow burn,\" he said, offering the vial toward your inspection. \"This,\" he nodded toward the liquid, \"was the needed medium. The quiet fire that feeds the perfection.\""
+    },
+    {
+      "id": "cloud-t18-viscous-faintly-glowing-liquid",
+      "name": "viscous, faintly glowing liquid",
+      "narration": "You press your fingertips into the cold, heavy diagram instead. You are no longer interested in the theory of the flaws; you are testing the physical reality of the design, willing the diagram to *do* what it was meant to do.\n\nUnder the pressure of your concerted focus, the inlay beneath your touch does not resist but rather yields fractionally, a microscopic click echoing the immense strain the founders placed upon this model. The diagram is not meant to be admired; it is meant to be engaged with, a flawed machine you are now trying to coax back into operation.\n\nBlackwell watches the small, almost involuntary hitch in your breath, the slight hardening around your jaw that betrays your total immersion. He sees the shift: you are moving past admiration and into the dangerous realm of sympathetic application.\n\nHe leaned closer, studying the way the light caught the inlay at the precise pressure point you were holding. He did not pull away, allowing you the focus, but his own focus narrowed on the larger context. \"It required a constant, low-grade transference,\" he murmured, more to himself than to you. \"The diagram was the blueprint, yes. But the binders believed the *process* was the fuel. They never sourced the requisite current.\"\n\nHe reached to a small, locked compartment beneath the desk, his movements economical and deliberate. He withdrew a slender, dark vial from the shadows beneath the Founder's records. It contained a viscous, faintly glowing liquid.\n\n\"They didn't just build a cage, Albus. They built a slow burn,\" he said, offering the vial toward your inspection. \"This,\" he nodded toward the liquid, \"was the needed medium. The quiet fire that feeds the perfection.\""
+    },
+    {
+      "id": "meromero-t0-rusted-iron-nail",
+      "name": "Rusted Iron Nail",
+      "narration": "You kneel before the small shrine, your forehead resting against the cool stone. The Ember’s flame flickers low in its brazier, casting dancing shadows across the gate yard. You speak softly, the words steady but tasting of a faith that has grown thin from waiting: \"The barrow has been open a month, and the dead still walk. The Ember has waited long enough.\"\n\nYou rise with a grunt of effort, your joints stiff in the morning chill. Your fingers fumble slightly with the leather straps as you buckle your shield to your forearm—a small tremor that betrays how much the uncertainty of the last few weeks has worn on you. Around you, the gate yard is alive with the rhythmic thud of boots; guards drill in tight formations, their breaths frosting in the air. The scent of horse manure and woodsmoke hangs thick, mixed with the sharp, metallic tang drifting from Bram Oakes's smithy.\n\nYou make your way across the uneven cobbles toward the Captain’s Hall above the gate. As you climb the stairs, a sudden, unnatural gust of wind whistles through the ramparts, carrying a faint smell of damp earth and ancient rot that makes the hair on your neck bristle. It is too early for nightfall, but the air has grown noticeably colder since you finished your prayer.\n\nInside the hall, Captain Orrin Blackwell stands hunched over the heavy oak map table, his gray temples catching the light from a high window. He doesn't look up as you enter; he is staring intently at the markings of the boundary wall and the great mound beyond it. A single, rusted iron nail sits on the table beside him—a piece of cold iron reclaimed from the barrow field.\n\n\"You’ve finished your devotions, then,\" Blackwell says, his voice raspy with fatigue as he finally looks up. He taps the map where the sally gate marks the only exit to the hills. \"I hope your god gave you a plan, because my scouts report new frost on the stones near the mound this morning, even in the sunlight.\"\n\nHe pushes the iron nail toward you across the wood, his eyes narrow and expectant."
+    },
+    {
+      "id": "meromero-t1-dented-helmet",
+      "name": "Dented Helmet",
+      "narration": "You reach out and take the rusted nail, its surface rough and unnaturally cold against your palm. You look Blackwell in the eye, your voice low but firm: \"The frost is here before nightfall. What does that mean for our defenses?\"\n\nBlackwell lets out a long, weary sigh and leans his weight on the map table, creases deepening around his eyes. \"It means the Barrow Wight is reaching further than before,\" he says, gesturing to the mound marked on the parchment. \"Frost in the sunlight isn't weather; it's a sign of strength. If the dead can chill the morning air, they can certainly test our walls by midnight.\"\n\nThe captain’s hand trembles slightly as he adjusts a marker on the map—a soldier's nerve fraying under the weight of failure. He knows his garrison is thin and tired, and that every degree the temperature drops brings them closer to another lost sentry.\n\nThe heavy oak door creaks open, and a woman in scarred leather armor steps inside. She carries a dented helmet tucked under one arm, her face set in a grim mask of exhaustion. This is the sergeant who commands the night watch on the boundary wall; she looks as though she hasn't slept since the barrow opened.\n\nShe doesn't wait for an introduction, marching straight to the table and slamming the helmet down beside the map with a loud *clack*. \"The men are spooked, Captain,\" she says, her voice sharp and brittle. \"They’re seeing shapes in the mist that aren't there—or worse, they are. I need more torches at the sally gate, or we'll lose another man before the sun sets.\"\n\nBlackwell looks from the sergeant to you, his gaze lingering on the cold iron nail now gripped in your hand. \"We have no one else who can go out there and stop this,\" he says quietly. \"Not without more preparation.\""
+    },
+    {
+      "id": "meromero-t9-cold-iron-pouch",
+      "name": "Cold Iron Pouch",
+      "narration": "You turn toward the sally gate, your hand resting on the pommel of your sword as you glance back at Sylvie with a steady look. \"You can keep your cold iron,\" you say calmly. \"Follow me.\"\n\nSylvie lets out a soft huff and reaches into her cloak, pulling out a small pouch that clinks with metallic weight. She doesn't put it away, instead weighing the bag in her palm with a smirk. \"My, my, such confidence. Your faith must be very heavy tonight to carry you through without any real teeth,\" she teases, though she slips easily into your shadow as you step closer to the reinforced oak door.\n\nThe scratching on the other side grows louder—a wet, frantic sound of bone scraping against wood. Sergeant Marr's knuckles are white around her torch, and her eyes dart from the door to you with a mixture of respect and pity. \"Confidence won't stop what's out there,\" she warns, stepping toward the lock.\n\nShe jams the heavy iron key into the hole, the metal grinding against rusted tumblers. The sound echoes in the narrow passageway, cutting through the silence like a blade. Marr leans in close to you, her voice dropping to a harsh whisper. \"Once this door opens, there is no coming back until the dawn watch. If you see Tam Harrow out there... if he doesn't look like himself... don't hesitate.\"\n\nThe lock clicks open with a heavy thud. The scratching stops instantly, replaced by an oppressive silence that feels heavier than the noise. Marr puts her shoulder to the door and pushes it just wide enough for two people to squeeze through.\n\nA blast of freezing air hits you, smelling of wet earth and old rot, as the torchlight reveals the mist outside—and the pale, milk-eyed faces waiting just beyond the threshold."
+    },
+    {
+      "id": "meromero-t17-cold-iron-knives",
+      "name": "Cold Iron Knives",
+      "narration": "You drive your blade downward with every ounce of your strength, \"**Yield to the light!**\" The flaming steel shears through his braced guard, slamming into the knight’s chest plate and buckling the rusted metal inward. The force shatters his posture, driving him onto one knee as a burst of holy fire erupts from the point of impact, searing through his armor and charring the dead flesh beneath.\n\nThe necrotic purple glow in the banner-pole flickers violently, like a dying candle fighting a gale. The knight lets out a hollow, rattling wheeze, his head lolling back as the heat of your blade boils the frost on his shoulders into thick, white steam. \n\nSylvie doesn't miss the opening. \"*Got you!*\" she shouts, launching herself forward and driving both cold iron knives deep into the exposed joints of his neck and shoulder. The blades sink in with a sickening crunch, and for a moment, the knight freezes, pinned between your searing light and her biting steel.\n\nBut as he falters, the purple energy doesn't vanish—it pulses outward in a sudden, violent shockwave. The burst knocks Sylvie back several feet and sends a ripple of necrotic frost through the ground, turning the earth beneath your boots into slick, black ice that threatens to pull you off balance.\n\nFrom the darkness beyond the circle of light, a long, mournful horn blast echoes across the barrow field. It isn't the keep's bell; it is deeper, older, and carries a weight of absolute cold that makes the air crystallize around your breath. \n\nThe knight’s head snaps forward, his empty sockets locking onto yours as he begins to pull himself up from one knee despite Sylvie's blades still embedded in him. \"**The master wakes,**\" he rasps, \"and you have rung the dinner bell.\""
+    }
+  ]
+}
