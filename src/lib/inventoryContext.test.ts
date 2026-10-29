@@ -79,6 +79,22 @@ describe('the Inventory chip', () => {
     expect(chipValues(withRuntime)('<INVENTORY|markdown>')).toBe('- **Traveler**\n  - **carried:** Rusty Key\n');
   });
 
+  it('gives a described runtime item a line of its own after the name line, carried or lying here (Q145)', () => {
+    const runtime = (id: string, where: ItemCopyWhere): ItemCopy => ({ ...copy('coin', where), item: { kind: 'runtime', runtimeItemId: id } });
+    const described = {
+      ...scene([copy('coin', { kind: 'you' }), runtime('r1', { kind: 'you' }), runtime('r1', { kind: 'location', id: 'landing' })]),
+      runtimeItems: [{ id: 'r1', name: 'Odd Stone', description: 'A smooth black pebble.' }],
+    };
+    expect(chipValues(described)('<INVENTORY|markdown>')).toBe([
+      '- **Traveler**',
+      '  - **carried:** Copper Coin',
+      '  - **carried:** Odd Stone: A smooth black pebble.',
+      '- **The Landing**',
+      '  - **lying here:** Odd Stone: A smooth black pebble.',
+      '',
+    ].join('\n'));
+  });
+
   it('reads N/A when nobody here has an item', () => {
     expect(render([])).toBe('N/A');
     expect(chipValues({ ...sampleChipScene(), items: undefined, itemCopies: undefined })('<INVENTORY>')).toBe('N/A');

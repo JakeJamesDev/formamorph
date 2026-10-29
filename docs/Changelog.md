@@ -36,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Requirement Rows can require an item.** Traits and image rules can check that an owner has an item, owned or equipped, with Not.
     - **The Inventory tab lists items lying at your location, and the story can reveal hidden items.** Hidden items stay out of every panel. Entity dialogs list what the entity wears.
     - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice.
+    - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

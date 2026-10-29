@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, InventoryPassOp, RuntimeItem } from '@/types';
 import type { TransportRequest } from '@/lib/aiRequest/requestTransport';
 import { parseTurns } from '@/lib/turnBanding';
 import { parseIncrementalMilestoneReply } from '@/lib/milestoneMemory';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
+import { withItemDescription } from '@/lib/inventory/describe';
 import {
   createBackgroundPassQueue, dueDiaries, dueDiscoveries, type QueueEnv, type QueueSnapshot, type StoredMilestoneSelection,
 } from './backgroundPassQueue';
@@ -15,9 +16,10 @@ import {
 
 interface Turn {
   id: string; narration?: string; summary?: string; entities?: string[]; diaries?: Record<string, string>; locationId?: string;
+  inventoryOps?: InventoryPassOp[];
 }
 
-const turn = ({ id, narration = `Narration of ${id}.`, summary, entities, diaries, locationId }: Turn): ChatMessage[] => [
+const turn = ({ id, narration = `Narration of ${id}.`, summary, entities, diaries, locationId, inventoryOps }: Turn): ChatMessage[] => [
   { role: 'user', content: `Action for ${id}` },
   {
     role: 'assistant',
@@ -27,6 +29,7 @@ const turn = ({ id, narration = `Narration of ${id}.`, summary, entities, diarie
       ...(entities ? { entities } : {}),
       ...(diaries ? { diaries } : {}),
       ...(locationId ? { locationId } : {}),
+      ...(inventoryOps ? { inventoryOps } : {}),
     }),
   },
 ];
@@ -53,6 +56,7 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
   const gate = {
     busy: false, concurrent: false, memoryDigests: true,
     describeCharacters: false, characterDiaries: false, entityNames: [] as string[], suppressedNames: [] as string[],
+    runtimeItems: [] as readonly RuntimeItem[],
     ...over,
   };
   const sent: Sent[] = [];
@@ -108,6 +112,14 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
     addDiscovered: (target, description) => {
       discovered.push({ name: target.name, turnId: target.turnId, description, locationId: target.locationId });
       uncommitted.push({ name: target.name, description });
+      dirty = true;
+    },
+    describeItemRequest: (target) => ({
+      type: 'inventory', systemPrompt: 'ITEM', silent: true, attachTurnId: target.turnId,
+      messages: [{ role: 'user', content: `${target.name} | ${target.narration}` }],
+    }),
+    describeItem: (target, description) => {
+      gate.runtimeItems = withItemDescription(gate.runtimeItems, target.runtimeItemId, description);
       dirty = true;
     },
     milestoneRequest: (kept, fresh, attachTurnId) => ({
@@ -635,7 +647,68 @@ describe('one discover per name', () => {
   });
 });
 
-describe('priority across the four kinds', () => {
+describe('describe item (Q148)', () => {
+  const gain = (item: string): InventoryPassOp => ({ op: 'gain', item, quantity: 1, owner: '', to: 'you' });
+  const stone: RuntimeItem = { id: 'r1', name: 'Odd Stone' };
+  const found = historyOf(
+    { id: 't1', narration: 'You find a smooth black pebble.', inventoryOps: [gain('odd stone')] },
+    { id: 't2', inventoryOps: [gain('Odd Stone')] },
+  );
+
+  it('describes a runtime item from the oldest turn that named it, writes it, and asks no more', async () => {
+    const h = host(found, { memoryDigests: false, runtimeItems: [stone] });
+    h.render();
+    expect(h.names()).toEqual(['inventory:t1:Odd Stone']);
+    expect(h.sent[0].request.messages[0].content).toContain('smooth black pebble');
+    await h.sent[0].answer('A smooth black pebble.');
+    expect(h.gate.runtimeItems).toEqual([{ ...stone, description: 'A smooth black pebble.' }]);
+    expect(h.sent).toHaveLength(1);
+  });
+
+  it('leaves a described runtime item alone, and one no stored turn names', () => {
+    const h = host(found, { memoryDigests: false, runtimeItems: [{ ...stone, description: 'A rock.' }, { id: 'r2', name: 'Lost Coin' }] });
+    h.render();
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it('sets aside an unusable reply and writes nothing', async () => {
+    const h = host(found, { memoryDigests: false, runtimeItems: [stone] });
+    h.render();
+    await h.sent[0].answer('None.');
+    expect(h.gate.runtimeItems).toEqual([stone]);
+    expect(h.sent).toHaveLength(1);
+  });
+
+  it('writes nothing when the turn it read was rolled back while it ran', async () => {
+    const h = host(found, { memoryDigests: false, runtimeItems: [stone] });
+    h.render();
+    h.replaceHistory(historyOf({ id: 't1', narration: 'Rewritten.', inventoryOps: [gain('Odd Stone')] }));
+    await h.sent[0].answer('A smooth black pebble.');
+    expect(h.gate.runtimeItems[0].description).not.toBe('A smooth black pebble.');
+  });
+
+  it('reports a running item description', async () => {
+    const h = host(found, { memoryDigests: false, runtimeItems: [stone] });
+    const seen: string[][] = [];
+    h.queue.subscribe(() => seen.push([...h.queue.running()]));
+    h.render();
+    await h.sent[0].answer('A smooth black pebble.');
+    expect(seen).toEqual([['describeItem'], []]);
+  });
+});
+
+describe('priority across the kinds', () => {
+  it('describes an item after the discover and before the digest', async () => {
+    const h = host(
+      historyOf({ id: 't1', entities: ['Mira'], inventoryOps: [{ op: 'gain', item: 'Odd Stone', quantity: 1, owner: '', to: 'you' }] }),
+      { ...cast, memoryDigests: true, runtimeItems: [{ id: 'r1', name: 'Odd Stone' }] },
+    );
+    h.render();
+    await h.sent[0].answer(FERRY_HAND);
+    await h.sent[1].answer('A smooth black pebble.');
+    expect(h.sent.map((s) => s.request.type)).toEqual(['discoverEntity', 'inventory', 'summary']);
+  });
+
   it('runs discover, digest, diary, then milestone, one at a time', async () => {
     const h = host(
       historyOf({ id: 't1', entities: ['Mira', 'Odette'] }),

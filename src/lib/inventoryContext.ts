@@ -17,8 +17,8 @@ export interface InventoryScene {
   location: { id: string; name: string } | null;
 }
 
-/** What the block reads of an item: an authored item, or a runtime item's name. */
-type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription'>;
+/** What the block reads of an item: an authored item, or a runtime item's name and description. */
+type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription'> & { runtimeDescription?: string };
 
 /** The name an Item Copy goes by in the block, its quantity and hidden state after it. */
 function copyName(item: Named, copy: ItemCopy): string {
@@ -29,11 +29,12 @@ function copyName(item: Named, copy: ItemCopy): string {
 /**
  * The `<INVENTORY>` chip's value: each present owner's equipped items with their AI Summary (the AI
  * Description where there is none) and carried items by name, then the Item Copies lying at the location,
- * hidden ones marked. A runtime item goes by its name. N/A when nobody present has an item.
+ * hidden ones marked. A runtime item goes by its name; one with a description gets a line of its own (Q145).
+ * N/A when nobody present has an item.
  */
 export function buildInventoryContext(scene: InventoryScene, format: ContextFormat): string {
   const items = new Map(scene.items.map((item) => [item.id, item]));
-  const runtime = new Map((scene.runtimeItems ?? []).map((item) => [item.id, item]));
+  const runtime = new Map((scene.runtimeItems ?? []).map((item) => [item.id, { name: item.name, runtimeDescription: item.description?.trim() }]));
   const named = (where: ItemCopyWhere) => copiesAt(scene.copies, where).flatMap((copy) => {
     const item: Named | undefined = copy.item.kind === 'item' ? items.get(copy.item.itemId) : runtime.get(copy.item.runtimeItemId);
     return item ? [{ item, copy }] : [];
@@ -49,6 +50,14 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
     : md ? `- **${name}**\n${fields}`
     : `${name}\n${fields}`
   );
+  type Held = { item: Named; copy: ItemCopy };
+  /** One comma line of names, then a line for each described runtime item. */
+  const listed = (key: string, held: readonly Held[]) => {
+    const plain = held.filter(({ item }) => !item.runtimeDescription).map(({ item, copy }) => copyName(item, copy));
+    const described = held.filter(({ item }) => item.runtimeDescription)
+      .map(({ item, copy }) => field(key, `${copyName(item, copy)}: ${item.runtimeDescription}`));
+    return (plain.length ? field(key, plain.join(', ')) : '') + described.join('');
+  };
   const ownerBlock = (name: string, where: ItemCopyWhere) => {
     const held = named(where);
     if (!held.length) return '';
@@ -56,16 +65,13 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
       const text = (item.aiSummary?.trim() || item.aiDescription?.trim()) ?? '';
       return field('equipped', text ? `${copyName(item, copy)}: ${text}` : copyName(item, copy));
     });
-    const carried = held.filter(({ copy }) => !copy.equipped).map(({ item, copy }) => copyName(item, copy));
-    return block('owner', name, equipped.join('') + (carried.length ? field('carried', carried.join(', ')) : ''));
+    return block('owner', name, equipped.join('') + listed('carried', held.filter(({ copy }) => !copy.equipped)));
   };
   const here = scene.location && named({ kind: 'location', id: scene.location.id });
   const out = [
     ownerBlock(scene.playerName, { kind: 'you' }),
     ...scene.owners.map((owner) => ownerBlock(owner.name, { kind: 'entity', id: owner.id })),
-    scene.location && here?.length
-      ? block('location', scene.location.name, field('lying here', here.map(({ item, copy }) => copyName(item, copy)).join(', ')))
-      : '',
+    scene.location && here?.length ? block('location', scene.location.name, listed('lying here', here)) : '',
   ].join('');
   return out || NONE_PLACEHOLDER;
 }

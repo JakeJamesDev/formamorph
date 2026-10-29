@@ -162,6 +162,7 @@ import {
   createBackgroundPassQueue, digestTarget,
   type BackgroundPassKind, type BackgroundPassQueue, type DiaryTarget, type DigestTarget,
 } from "../lib/backgroundPassQueue/backgroundPassQueue";
+import { describeItemRequest, withItemDescription } from "@/lib/inventory/describe";
 import { BackgroundPassStatus } from "../components/game/BackgroundPassStatus";
 import { RequestStatusRow } from "../components/game/RequestStatusRow";
 import { TOOL_GLYPH, requestLabel, requestStatus } from "../components/game/statusGlyphs/glyphMap";
@@ -4730,6 +4731,8 @@ const GameViewer = ({
       discoverRequest: (target) => buildDiscoverRequestRef.current({
         name: target.name, turnId: target.turnId, firstPassage: target.narration,
       }),
+      describeItemRequest,
+      describeItem: (target, description) => setRuntimeItems((prev) => withItemDescription(prev, target.runtimeItemId, description)),
       diaryRequest: (target) => buildDiaryRequestRef.current(target),
       milestoneRequest: (kept, fresh, attachTurnId) => buildMilestoneSelectRef.current(kept, fresh, attachTurnId),
       setHistory: setFullMessageHistory,
@@ -4748,7 +4751,7 @@ const GameViewer = ({
     });
     setPassQueue(queue);
     return () => queue.dispose();
-  }, [setFullMessageHistory, setMilestoneSelection, setDiscoveredEntities]);
+  }, [setFullMessageHistory, setMilestoneSelection, setDiscoveredEntities, setRuntimeItems]);
   const subscribePasses = useCallback(
     (listener: () => void) => passQueue?.subscribe(listener) ?? (() => {}),
     [passQueue],
@@ -4774,8 +4777,9 @@ const GameViewer = ({
       characterDiaries: characterDiaries && thinkingMode === "staged",
       entityNames: allEntities.map((e) => e.name),
       suppressedNames: suppressedCharacterNames,
+      runtimeItems,
     });
-  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames]);
+  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames, runtimeItems]);
 
   const fullMessageHistoryRef = useRef(fullMessageHistory);
   fullMessageHistoryRef.current = fullMessageHistory;

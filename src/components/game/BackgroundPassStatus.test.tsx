@@ -36,6 +36,13 @@ describe('BackgroundPassStatus', () => {
     expect(screen.getByText('Writing diary…')).toBeTruthy();
   });
 
+  it('shows an item description alone, under the discover', () => {
+    statusFor('describeItem');
+    expect(screen.getByText('Describing item…')).toBeTruthy();
+    statusFor('discover', 'describeItem');
+    expect(screen.getByText('Describing character…')).toBeTruthy();
+  });
+
   it('renders nothing when no pass runs', () => {
     const { container } = statusFor();
     expect(container.innerHTML).toBe('');
