@@ -7,7 +7,7 @@ import raw from '@/defaultworlds/emberwatch.json?raw';
 import { migrateWorld } from './version';
 import { playStatWorld } from './statLinks';
 import { settleDefaults } from './traitGates';
-import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { runItemScripts, runStatCodeTurn, type ApplyInventory, type StatCodeTurn } from './statCodeTurn';
 import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { bundledWorldHarness, valueOf, withValues, type StatValues } from '@/test/bundledWorldHarness';
 import { readWorldTools } from './tools/worldTools';
@@ -16,7 +16,7 @@ import { onCallRunner } from './tools/onCallRunner';
 import { clockReading } from './gameClock';
 import type { StatCodeTurnResult } from './statCodeTurn';
 import type { SandboxMemory } from './statCodeExecutor';
-import type { LoreToggles } from '@/types';
+import type { Item, ItemCopy, ItemCopyWhere, LoreToggles } from '@/types';
 
 // The world as play reads it: each persona owns its copy of the Blueprint stats it links.
 const authored = migrateWorld(JSON.parse(raw));
@@ -154,5 +154,51 @@ describe('the offer_prayer World Tool', () => {
     expect(sameDay.reply).toContain('already answered');
     const nextDay = await pray('Chapel of the Ember', { memories: earlier, hours: DAY_TWO_HOURS });
     expect(nextDay.faith).toBe(60);
+  });
+});
+
+describe("Haldren's Crown scripts", () => {
+  const book = world.dictionaries.find((dictionary) => dictionary.name === 'Emberwatch')!;
+  const restored = book.entries.find((entry) => entry.name === 'The Crown Restored')!;
+  const items = world.items ?? [];
+  const itemNamed = (name: string) => items.find((item) => item.name === name)!;
+  const lower = itemNamed("Haldren's Crown, Lower Half");
+  const upper = itemNamed("Haldren's Crown, Upper Half");
+  const bier: ItemCopyWhere = { kind: 'location', id: locationNamed('The Bier Chamber').id };
+  const carried: ItemCopyWhere = { kind: 'you' };
+  const copyOf = (item: Item, where: ItemCopyWhere): ItemCopy =>
+    ({ id: `copy-${item.id}`, item: { kind: 'item', itemId: item.id }, where, quantity: 1, visibility: 'visible' });
+  // The crown scripts write no inventory, so no operation ever reaches this.
+  const applyNothing: ApplyInventory = (copies) => ({ copies: [...copies], diagnostics: [], events: [], doses: [] });
+
+  /** The lore writes after `arrived` lands at `where`, with the other half at `otherAt`. */
+  const crownWrites = async (arrived: Item, where: ItemCopyWhere, otherAt: ItemCopyWhere) => {
+    const other = arrived === lower ? upper : lower;
+    const copies = [copyOf(arrived, where), copyOf(other, otherAt)];
+    const base = turnAt('The Bier Chamber', {});
+    const out = await runItemScripts(
+      { ...base, state: { ...base.state, items, itemCopies: copies } },
+      [{ timing: 'gained', itemId: arrived.id, copyId: copies[0].id, where, quantity: 1 }],
+      items, applyNothing, (item) => item.name,
+    );
+    return out.result?.loreWrites ?? [];
+  };
+  const switchedOn = [{ book: book.id, entry: restored.id, field: 'enabled', value: true }];
+
+  it('ships the entry off', () => {
+    expect(restored.enabled).toBe(false);
+  });
+
+  it('switches the entry on when either half joins the other on the bier', async () => {
+    expect(await crownWrites(lower, bier, bier)).toEqual(switchedOn);
+    expect(await crownWrites(upper, bier, bier)).toEqual(switchedOn);
+  });
+
+  it('leaves the entry off while the other half is still carried', async () => {
+    expect(await crownWrites(lower, bier, carried)).toEqual([]);
+  });
+
+  it('leaves the entry off when a half is picked up, even with both halves in hand', async () => {
+    expect(await crownWrites(upper, carried, carried)).toEqual([]);
   });
 });

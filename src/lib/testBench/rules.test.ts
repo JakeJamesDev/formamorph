@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Daypart, Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
-  GalleryImage, Script, StatRequirement, Tool, TraitRequirement, TraitRequirementRow, WorldOverview,
+  GalleryImage, Item, Script, StatRequirement, Tool, TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -4590,6 +4590,14 @@ describe('dictionary visibility rules', () => {
   it('leaves every book’s entry of that name alone when the book is not named in the write', () => {
     const aliased = 'const lore = dictionaries.Book;\nlore.entries.Herbs.enabled = true;';
     expect(flaggedIds(base({ dictionaries: [herbs()], tools: [scriptTool(aliased)] }))).toEqual([]);
+  });
+
+  it('leaves a disabled entry alone when an item script switches it on', () => {
+    const relic: Item = {
+      id: 'i1', name: 'Relic', statEffects: [], traitEffects: [], equipRequires: [],
+      scripts: [{ id: 'is1', timing: 'gained', code: 'dictionaries.Book.entries.Herbs.enabled = true;' }],
+    };
+    expect(flaggedIds(base({ dictionaries: [herbs()], items: [relic] }))).toEqual([]);
   });
 
   it('still flags an entry a script only reads or compares', () => {
