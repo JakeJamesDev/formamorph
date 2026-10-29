@@ -3,8 +3,9 @@ import { languageDirective } from '@/lib/languages';
 import { DOCS_LOOKUP, sectionBlock } from './docsLookup';
 import { HELP_CHIP, renderHelpPrompt } from './helpChips';
 import { DEFAULT_CODE_RIDER } from './helpCodeRider';
+import { DEFAULT_WORLD_EDITOR_RULES, DEFAULT_WORLD_GAME_RULES } from './helpWorldRules';
 
-/** The four texts a help preset holds, as stored: chips in place. */
+/** The texts a help preset holds, as stored: chips in place. */
 export interface HelpPromptTexts {
   /** The system prompt of the answer request. */
   readonly answer: string;
@@ -14,18 +15,27 @@ export interface HelpPromptTexts {
   readonly lookup: string;
   /** The rider a code turn adds to the user message, sent verbatim. */
   readonly code: string;
+  /** The world rules a request asked in the World Editor adds, sent verbatim. */
+  readonly worldEditor: string;
+  /** The world rules a request asked in the game adds, sent verbatim. */
+  readonly worldGame: string;
 }
 
 export type HelpPromptKey = keyof HelpPromptTexts;
 
-/** The prompts that run a request of their own, each with its option block. */
-export type HelpRequestKey = Exclude<HelpPromptKey, 'code'>;
+const HELP_REQUEST_KEYS = ['answer', 'pick', 'lookup'] as const;
+
+/** The prompts that run a request of their own, each with its option block. The others ride the answer request. */
+export type HelpRequestKey = (typeof HELP_REQUEST_KEYS)[number];
+
+/** The prompts a stored preset or a preset file may lack: each reads as its default text. */
+export const HELP_OPTIONAL_PROMPT_KEYS = ['worldEditor', 'worldGame'] as const satisfies readonly HelpPromptKey[];
 
 /** The prompts in rail order. */
-export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = ['answer', 'pick', 'lookup', 'code'];
+export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = [...HELP_REQUEST_KEYS, 'code', ...HELP_OPTIONAL_PROMPT_KEYS];
 
 /** True for a prompt that runs a request of its own, so it has an option block. */
-export const isHelpRequestKey = (key: HelpPromptKey): key is HelpRequestKey => key !== 'code';
+export const isHelpRequestKey = (key: HelpPromptKey): key is HelpRequestKey => (HELP_REQUEST_KEYS as readonly HelpPromptKey[]).includes(key);
 
 /** The answer rules both help prompts share. */
 const ANSWER_RULES = [
@@ -67,7 +77,21 @@ export const DEFAULT_HELP_PROMPTS: HelpPromptTexts = {
     ...ANSWER_RULES,
   ].join('\n'),
   code: DEFAULT_CODE_RIDER,
+  worldEditor: DEFAULT_WORLD_EDITOR_RULES,
+  worldGame: DEFAULT_WORLD_GAME_RULES,
 };
+
+/** The texts of a stored record, an absent optional prompt as its default; else the first prompt that is not text. */
+export function readHelpPromptTexts(stored: Record<string, unknown>): { texts: HelpPromptTexts } | { bad: HelpPromptKey } {
+  const optional: readonly HelpPromptKey[] = HELP_OPTIONAL_PROMPT_KEYS;
+  const texts: Partial<Record<HelpPromptKey, string>> = {};
+  for (const key of HELP_PROMPT_KEYS) {
+    const value = stored[key] === undefined && optional.includes(key) ? DEFAULT_HELP_PROMPTS[key] : stored[key];
+    if (typeof value !== 'string') return { bad: key };
+    texts[key] = value;
+  }
+  return { texts: texts as HelpPromptTexts };
+}
 
 /** The chips each prompt reads back, in palette order. */
 export const HELP_PROMPT_CHIPS = {
@@ -75,6 +99,8 @@ export const HELP_PROMPT_CHIPS = {
   pick: [HELP_CHIP.pickLimit, HELP_CHIP.replyFormat],
   lookup: [HELP_CHIP.marker, HELP_CHIP.lookupFunction, HELP_CHIP.voice],
   code: [],
+  worldEditor: [],
+  worldGame: [],
 } as const satisfies Record<HelpPromptKey, readonly string[]>;
 
 /** The default help prompt as the request carries it with no Voice. */

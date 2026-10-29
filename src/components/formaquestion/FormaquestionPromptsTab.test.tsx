@@ -140,7 +140,7 @@ describe('the Code rider in the Prompts tab', () => {
   it('sits in the rail after Lookup with no Options row, and shows the Default rider read-only', async () => {
     renderTab();
     const rows = within(rail()).getAllByRole('button').map((row) => row.getAttribute('aria-label') ?? row.textContent);
-    expect(rows).toEqual(['Answer', 'Answer Options', 'Search', 'Search Options', 'Lookup', 'Lookup Options', 'Code']);
+    expect(rows).toEqual(['Answer', 'Answer Options', 'Search', 'Search Options', 'Lookup', 'Lookup Options', 'Code', 'Editor World', 'Game World']);
     await userEvent.setup().click(within(rail()).getByRole('button', { name: 'Code' }));
     expect(editor('Code Prompt')).toHaveAttribute('contenteditable', 'false');
     expect(editor('Code Prompt')).toHaveTextContent('Before the AI');
@@ -159,6 +159,25 @@ describe('the Code rider in the Prompts tab', () => {
     await user.click(await screen.findByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(texts().code).toBe(DEFAULT_HELP_PROMPTS.code));
     expect(texts().answer).toBe('Be brief.');
+  });
+});
+
+describe('the world rules in the Prompts tab', () => {
+  const rail = () => screen.getByRole('navigation', { name: 'Prompts' });
+
+  it.each([['Editor World', 'worldEditor'], ['Game World', 'worldGame']] as const)('shows the %s rules with no Options row, stores an edit, and Reset returns the built-in text', async (label, key) => {
+    renderTab({ presets: withMine() });
+    const user = userEvent.setup();
+    expect(within(rail()).queryByRole('button', { name: `${label} Options` })).toBeNull();
+    await user.click(within(rail()).getByRole('button', { name: label }));
+    expect(screen.getByText(PROMPTS_COPY.prompts[key].hint)).toBeInTheDocument();
+    expect(resetButton(label)).toBeDisabled();
+    await user.click(editor(`${label} Prompt`));
+    await user.keyboard('Be kind. ');
+    await waitFor(() => expect(texts()[key]).toBe(`Be kind. ${DEFAULT_HELP_PROMPTS[key]}`));
+    await user.click(resetButton(label));
+    await user.click(await screen.findByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(texts()[key]).toBe(DEFAULT_HELP_PROMPTS[key]));
   });
 });
 

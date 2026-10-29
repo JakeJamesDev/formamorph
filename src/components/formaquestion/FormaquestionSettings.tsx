@@ -195,6 +195,12 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
           onChange={(openScreen) => onChange({ openScreen })}
           {...GENERAL_COPY.openScreen}
         />
+        <CheckRow
+          htmlFor="fq-read-world"
+          checked={settings.readWorld}
+          onChange={(readWorld) => onChange({ readWorld })}
+          {...GENERAL_COPY.readWorld}
+        />
         <Row htmlFor="fq-history-length" {...GENERAL_COPY.historyLength}>
           <Input
             id="fq-history-length"

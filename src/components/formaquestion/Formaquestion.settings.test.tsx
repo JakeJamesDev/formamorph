@@ -84,8 +84,9 @@ describe('Formaquestion Settings', () => {
 
     expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools', 'Mascot']);
     expect(within(dialog).getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
-    // Mascot, Confirm Before Opening the Wiki, Reasoning, Keyword Search, AI Search, Semantic Search, Use the Open Screen.
-    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'true', 'true', 'false', 'true']);
+    // Mascot, Confirm Before Opening the Wiki, Reasoning, Keyword Search, AI Search, Semantic Search, Use the Open Screen, Read the World.
+    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'true', 'true', 'false', 'true', 'true']);
+    expect(within(dialog).getByText(GENERAL_COPY.readWorld.hint)).toBeInTheDocument();
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
     // The closed window leaves the DOM once its close animation's timed backstop runs.
@@ -119,7 +120,7 @@ describe('Formaquestion Settings', () => {
 
   it('keeps each setting on the device through a remount', async () => {
     const { view } = await openAsk();
-    await setChecks({ 'Keyword Search': false, 'Use the Open Screen': false });
+    await setChecks({ 'Keyword Search': false, 'Use the Open Screen': false, 'Read the World': false });
     const dialog = await openSettings();
     fireEvent.change(within(dialog).getByRole('spinbutton', { name: 'History Length' }), { target: { value: '7' } });
     view.unmount();
@@ -129,6 +130,7 @@ describe('Formaquestion Settings', () => {
     expect(within(again).getByRole('checkbox', { name: 'Keyword Search' })).toHaveAttribute('aria-checked', 'false');
     expect(within(again).getByRole('checkbox', { name: 'AI Search' })).toHaveAttribute('aria-checked', 'true');
     expect(within(again).getByRole('checkbox', { name: 'Use the Open Screen' })).toHaveAttribute('aria-checked', 'false');
+    expect(within(again).getByRole('checkbox', { name: 'Read the World' })).toHaveAttribute('aria-checked', 'false');
     expect(within(again).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(7);
   });
 
