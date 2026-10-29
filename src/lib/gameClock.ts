@@ -239,6 +239,14 @@ export const TURN_TIME_UNIT_HOURS: Record<TurnTimeUnit, number> = { minutes: 1 /
 
 const isWhole = (n: number) => Math.abs(n - Math.round(n)) < 1e-6;
 
+/** A span of story hours as its two largest parts, rounded up to the minute: "1 h 20 min", "2 d 3 h". */
+export function formatTimeLeft(hours: number): string {
+  const minutes = Math.max(1, Math.ceil(hours * 60 - 1e-6));
+  const parts: [number, string][] = [[Math.floor(minutes / 1440), 'd'], [Math.floor((minutes % 1440) / 60), 'h'], [minutes % 60, 'min']];
+  const first = parts.findIndex(([n]) => n > 0);
+  return parts.slice(first, first + 2).filter(([n]) => n > 0).map(([n, unit]) => `${n} ${unit}`).join(' ');
+}
+
 /** Hours as an amount in the largest unit that holds it whole. Zero reads as hours. */
 export function splitTurnHours(hours: number): { amount: string; unit: TurnTimeUnit } {
   if (hours === 0) return { amount: '0', unit: 'hours' };

@@ -265,14 +265,32 @@ export interface AppliedItemEffect {
   hidden?: boolean;
 }
 
+/** One running After Consumed row on an owner, which ends at a story-clock hour (Q40). */
+export interface TimedItemEffect {
+  /** A stat row moves the owner's stats; a trait row grants a trait. */
+  row: 'stat' | 'trait';
+  /** The entity whose own stats or trait tree it acts on. */
+  ownerId: string;
+  itemId: string;
+  rowId: string;
+  /** The `gameTime` it ends at. A second dose moves it (Q64). */
+  endsAt: number;
+  /** Stat rows: stat id → value delta. Expiry negates this. */
+  values?: Record<string, number>;
+  /** The dose came from a hidden Item Copy, so its lines name no item. */
+  hidden?: boolean;
+}
+
 /** The item effects in force. Bound facets are derived from the Item Copies and recorded nowhere. */
 export interface ItemEffectLedger {
   /** Source key → what it applied. */
   applied?: Record<string, AppliedItemEffect>;
   /** Stat owner id → the items whose On First Obtain effects it got. */
   firstObtained?: Record<string, string[]>;
-  /** Trait owner id → the traits On First Obtain rows grant it for good (Q121). */
+  /** Trait owner id → the traits On First Obtain and Permanent After Consumed rows grant it for good (Q121). */
   firstObtainTraits?: Record<string, string[]>;
+  /** `<owner id>:<item id>:<row id>` → the After Consumed row running there. */
+  timed?: Record<string, TimedItemEffect>;
 }
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */

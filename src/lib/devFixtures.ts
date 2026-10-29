@@ -54,7 +54,8 @@ const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand', capacity: 2 }, {
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', consumable: true,
-    value: 5, valueUnit: { kind: 'text', text: 'silver' }, statEffects: [], traitEffects: [], equipRequires: [],
+    value: 5, valueUnit: { kind: 'text', text: 'silver' }, traitEffects: [], equipRequires: [],
+    statEffects: [{ id: 'dev-effect-tonic', statId: 'dev-vigor', facet: 'value', timing: 'consumed', duration: { kind: 'time', hours: 2 }, amount: 2, op: 'add' }],
   },
   {
     id: 'dev-item-wand', name: 'Ash Wand', playerDescription: 'A wand of pale ash wood.', charges: 3, stackable: false, bound: true,
@@ -76,8 +77,11 @@ const DEV_PLACEMENTS = ([
 ] as [string, number][]).map(([itemId, quantity]): Placement => ({
   id: `dev-placement-${itemId}`, where: { kind: 'you' }, quantity, source: { kind: 'item', itemId },
 }));
-/** The `items` fixture's Give targets: two at the White Room and one away, who never shows. */
+/** The `items` fixture's Give targets: two at the White Room and one away, who never shows. The Custom Persona
+ *  holds the Vigor stat the Healing Tonic raises for two hours. */
 const DEV_ITEM_CAST: Entity[] = [
+  // `devStat` lists only the fields play reads, hence the cast.
+  { id: 'dev-you', name: 'You', customPersona: true, stats: [devStat('Vigor', 10)] } as Entity,
   { id: 'dev-courier', name: 'Courier', locations: [WHITE_ROOM_ID] },
   { id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID] },
   { id: 'dev-sentry', name: 'Sentry', locations: ['dev-corridor'] },

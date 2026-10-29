@@ -1,15 +1,16 @@
 import { forwardRef, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { ArrowDownToLine, Gift, Lock, Shirt, Undo2 } from 'lucide-react';
+import { ArrowDownToLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
-import { byEquipOrder, slotCapacity, slotSizeOf, wholeCount } from '@/lib/items';
+import { formatTimeLeft } from '@/lib/gameClock';
+import { byEquipOrder, chargesLeft, itemUsable, slotCapacity, slotSizeOf, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
-import type { InventoryOp } from '@/lib/inventory';
+import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
@@ -30,6 +31,8 @@ export interface InventoryTabProps {
   resolveText: (text: string) => string;
   /** The image an Item Copy shows now, through its item's rules (Q113). Absent = no thumbnails. */
   imageOf?: (copy: ItemCopy) => string | undefined;
+  /** The After Consumed effects running on the played Persona (Q40). */
+  timed?: readonly TimedEffectView[];
   onOps: (ops: InventoryOp[]) => void;
 }
 
@@ -132,13 +135,27 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
 }
 
 const lineFor = (copy: ItemCopy, item: Item | undefined): string | null => {
-  const charges = copy.state?.charges;
+  const charges = chargesLeft(copy, item);
   return charges !== undefined && item?.charges !== undefined ? `${charges} of ${item.charges} charges` : null;
 };
 
+/** Use, for a Consumable or charged item (Q16, Q57). Off at zero charges. */
+function UseButton({ copy, item, name, disabled, onOps }: {
+  copy: ItemCopy; item: Item | undefined; name: string; disabled: boolean; onOps: InventoryTabProps['onOps'];
+}) {
+  if (!item || !itemUsable(item)) return null;
+  const empty = chargesLeft(copy, item) === 0;
+  return (
+    <ItemRowButton
+      label={empty ? `Use ${name}: no charges left` : `Use ${name}`} icon={Sparkles} disabled={disabled || empty}
+      onClick={() => onOps([{ kind: 'consume', copyId: copy.id }])}
+    />
+  );
+}
+
 /** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items. */
 export function InventoryTab({
-  ownerName, copies, lying, items, slots, present, locationId, disabled, resolveText, imageOf, onOps,
+  ownerName, copies, lying, items, slots, present, locationId, disabled, resolveText, imageOf, timed = [], onOps,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   // Hidden Item Copies never show in the panel (story 79).
@@ -208,10 +225,13 @@ export function InventoryTab({
                     ) : (
                       <ul className="min-w-0 flex-1">
                         {inSlot.map((copy) => row(copy, (
-                          <ItemRowButton
-                            label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
-                            onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
-                          />
+                          <div className="flex shrink-0 items-center">
+                            <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
+                            <ItemRowButton
+                              label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
+                              onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
+                            />
+                          </div>
                         )))}
                       </ul>
                     )}
@@ -233,6 +253,7 @@ export function InventoryTab({
               const equippable = !!item?.slotId && slots.some((s) => s.id === item.slotId);
               return row(copy, (
                 <div className="flex shrink-0 items-center">
+                  <UseButton copy={copy} item={item} name={name} disabled={disabled} onOps={onOps} />
                   {equippable && (
                     <ItemRowButton
                       label={`Equip ${name}`} icon={Shirt} disabled={disabled}
@@ -260,6 +281,22 @@ export function InventoryTab({
               ));
             })}
           </ul>
+        )}
+        {timed.length > 0 && (
+          <>
+            <PanelSubheader>Effects</PanelSubheader>
+            <ul aria-label="Effects">
+              {timed.map((view) => (
+                <li key={view.key} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-label">{view.itemName === null ? 'An item' : resolveText(view.itemName)}</p>
+                    <p className="text-meta text-muted-foreground">{resolveText(view.effect)}</p>
+                  </div>
+                  <span className="shrink-0 text-meta text-muted-foreground">{formatTimeLeft(view.hoursLeft)} left</span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
         <PanelSubheader>Here</PanelSubheader>
         {lyingHere.length === 0 ? (

@@ -15,6 +15,8 @@ const items = [
   item('helm', 'Iron Helm', { stackable: false, slotId: 'head' }),
   item('crown', 'Old Crown', { stackable: false, slotId: 'head', bound: true }),
   item('coin', 'Coin'),
+  item('tonic', 'Tonic', { consumable: true }),
+  item('wand', 'Ash Wand', { charges: 3, stackable: false, slotId: 'hand' }),
 ];
 const yard = { id: 'yard', name: 'Yard' } as GameLocation;
 const hall = { id: 'hall', name: 'Hall' } as GameLocation;
@@ -148,6 +150,37 @@ describe('RightPanel — Inventory tab', () => {
     renderRightPanel({}, stage([copy('c', 'coin'), copy('x', 'helm', { visibility: 'hidden' })]));
     await screen.findByRole('button', { name: 'Drop Coin' });
     expect(within(carried()).queryByText('Iron Helm')).not.toBeInTheDocument();
+  });
+
+  it('uses one Tonic from a stack of three, and sends the dose to the settle', async () => {
+    const commit = vi.fn();
+    renderRightPanel({ inventorySettle: { requirement: () => null, commit } }, stage([copy('t', 'tonic', { quantity: 3 })]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Use Tonic' }));
+    const [copies, , , doses] = commit.mock.calls[0];
+    expect(copies.map((c: ItemCopy) => c.quantity)).toEqual([2]);
+    expect(doses).toEqual([{ itemId: 'tonic', where: you, hidden: false }]);
+  });
+
+  it('spends a charge on an equipped wand, and turns Use off at zero charges', async () => {
+    const h = renderRightPanel({}, stage([copy('w', 'wand', { state: { charges: 1 }, equipped: { slotId: 'hand', order: 1 } })]));
+    expect(await screen.findByText('1 of 3 charges')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Use Ash Wand' }));
+    expect(mine(h.gameplay())[0].state).toEqual({ charges: 0 });
+    expect(await screen.findByRole('button', { name: 'Use Ash Wand: no charges left' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Use Coin' })).not.toBeInTheDocument();
+  });
+
+  it('lists the running timed effects with the time left', async () => {
+    renderRightPanel({
+      inventorySettle: {
+        requirement: () => null, commit: vi.fn(),
+        timed: [{ key: 'k', itemName: 'Tonic', effect: 'Strength +2', hoursLeft: 4 / 3 }, { key: 'h', itemName: null, effect: 'Warded', hoursLeft: 26 }],
+      },
+    }, stage([copy('c', 'coin')]));
+    const effects = await screen.findByRole('list', { name: 'Effects' });
+    expect(within(effects).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'TonicStrength +21 h 20 min left', 'An itemWarded1 d 2 h left',
+    ]);
   });
 
   it('has no Inventory tab in a world without items', async () => {

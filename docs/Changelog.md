@@ -24,6 +24,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The game's right panel has an Inventory tab to equip, unequip, drop and give your items.** Changes apply at once and are off while a turn runs. Drop and Give on a stack ask how many. Side panel tabs show icons alone when their labels don't fit.
     - **Items can now change their owner's stats, through effect rows on the item's new Effects tab.** Each row raises or lowers a value, minimum, maximum or regen While Equipped, While Owned or On First Obtain. Ending an effect gives back exactly what it gave, and the log names the item.
     - **Items can now grant traits, and an item's Requirements tab sets what its owner needs to equip it.** A granted trait comes from the owner's own list and leaves the owner's own picks alone. An item unequips on its own once its requirement stops holding; its own bonus never counts.
+    - **Items can now be used up: the Inventory tab has a Use button for Consumable and charged items.** After Consumed effects last a set story time or for good, and the tab lists them with time left. A second dose restarts the timer.
 
 ### Minor Changes
 
