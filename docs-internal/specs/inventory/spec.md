@@ -174,6 +174,10 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q145 | (ticket 14) The chip shows a runtime item with a description as `Name: description` on its own carried or lying-here line, like an equipped line |
 | Q146 | (ticket 14) The panel row's second line shows the description, trimmed to 200 characters at parse time |
 | Q147 | (ticket 13) The re-roll replays the pass at the location the live pass used (`inventoryLocationId`; a later code move can change the turn's `locationId`), not where the player stands now: a Go taken after the turn must not move the replay. The stored turn keeps the owners the live pass validated against and its location (`inventoryOwners`, `inventoryLocationId`, beside `inventoryOps`, additive save shape), and every re-roll replays against them |
+| Q150 | (play test, 2026-10-29, user; amends Q20 and Q62) Give lists the In Scene entities first, then a divider, then everyone else at the location. In Scene reads the chip scene's source: recent participants, minus authored entities who are not here |
+| Q151 | (play test, user; narrows Q62) The Inventory pass and the narration block keep location presence. Only Give's order follows Q150, so the story can still bring a bystander in |
+| Q152 | (play test, user) What lies at the location shows in its own card, titled with the location's name, below the player's card. A location is not an owner (Q69) |
+| Q153 | (play test, user; extends Q17) Each item lying here has **Pick Up**, a transfer to `you` through the one validator, with a count for a stack. Bound (Q58) blocks letting go only, so a Bound Item Copy can be picked up |
 
 ## User Stories
 

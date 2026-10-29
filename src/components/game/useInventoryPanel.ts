@@ -3,6 +3,7 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { presentEntityIds } from '@/lib/entityPresence';
 import { applyInventoryOps, copiesAt, type Dose, type InventoryOp, type ItemScriptEvent, type TimedEffectView } from '@/lib/inventory';
+import { entityNamed, scenePresentHere } from '@/lib/locationContext';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -22,6 +23,8 @@ export interface InventoryPanelSettle {
     copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], doses: readonly Dose[], events: readonly ItemScriptEvent[],
   ) => void;
   timed?: readonly TimedEffectView[];
+  /** The names who took part in recent turns, the chip scene's In Scene source. Absent = nobody in scene. */
+  participants?: readonly string[];
 }
 
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
@@ -37,12 +40,15 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
   const disabled = isWaitingForAI || isViewingPast;
-  // Q62: the cast as it stands in play, runtime characters included.
+  const participants = settle?.participants ?? NONE;
+  // Q62: the cast as it stands in play, runtime characters included, each marked when it is In Scene.
   const present = useMemo(() => {
     const cast = [...entities, ...discoveredAsEntities(discoveredEntities)];
-    const ids = new Set(presentEntityIds(cast, entityPositions, locationId));
-    return cast.filter((e) => ids.has(e.id)).map((e) => ({ id: e.id, name: e.name }));
-  }, [entities, discoveredEntities, entityPositions, locationId]);
+    const hereIds = presentEntityIds(cast, entityPositions, locationId);
+    const here = new Set(hereIds);
+    const inScene = new Set(scenePresentHere([...participants], cast, hereIds).flatMap((name) => entityNamed(cast, name)?.id ?? []));
+    return cast.filter((e) => here.has(e.id)).map((e) => ({ id: e.id, name: e.name, inScene: inScene.has(e.id) }));
+  }, [entities, discoveredEntities, entityPositions, locationId, participants]);
 
   const onOps = useCallback((ops: InventoryOp[]) => {
     const result = applyInventoryOps(itemCopies, ops, {
@@ -62,6 +68,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
     lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
-    items, ...(runtimeItems?.length && { runtimeItems }), slots, present, locationId, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
+    items, ...(runtimeItems?.length && { runtimeItems }), slots, present, locationId,
+    locationName: currentLocation ? resolveText(currentLocation.name) : null, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
   };
 }

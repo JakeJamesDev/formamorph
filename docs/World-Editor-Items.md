@@ -52,7 +52,7 @@ An item's placeholders roll once per playthrough. Every Item Copy shows the same
 | **Stackable** | Item Copies group into one row with a quantity. On by default. |
 | **Consumable** | The owner can use the item up. |
 | **Charges** | How many uses each Item Copy starts with. Leave it blank for none. |
-| **Bound** | The player can't drop the item or give it away. The story still can. |
+| **Bound** | The player can't drop the item or give it away. The player can still pick it up, and the story can still move it. |
 | **Slot** | The slot the item equips into. **Not Equippable** means it can't be worn or held. |
 | **Slot Size** | How much of the slot's capacity the item takes, such as 2 for a two-handed sword. |
 

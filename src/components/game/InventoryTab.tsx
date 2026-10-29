@@ -1,10 +1,11 @@
 import { forwardRef, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { ArrowDownToLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { formatTimeLeft } from '@/lib/gameClock';
 import { byEquipOrder, chargesLeft, itemUsable, slotCapacity, slotSizeOf, wholeCount } from '@/lib/items';
@@ -25,9 +26,11 @@ export interface InventoryTabProps {
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
   slots: readonly Slot[];
-  /** The entities Give can pick (Q20). */
-  present: readonly { id: string; name: string }[];
+  /** The entities Give can pick (Q20). Give lists the In Scene ones first. */
+  present: readonly { id: string; name: string; inScene?: boolean }[];
   locationId: string | null | undefined;
+  /** The current location's name for the Here card's header. Null or absent reads Here. */
+  locationName?: string | null;
   /** Off while a turn runs (Q61) and on a past page. */
   disabled: boolean;
   resolveText: (text: string) => string;
@@ -37,6 +40,8 @@ export interface InventoryTabProps {
   timed?: readonly TimedEffectView[];
   onOps: (ops: InventoryOp[]) => void;
 }
+
+const YOU: ItemCopyWhere = { kind: 'you' };
 
 /** One small labeled icon button on an item row. */
 const ItemRowButton = forwardRef<HTMLButtonElement, ComponentProps<typeof Button> & { label: string; icon: typeof Shirt }>(
@@ -84,34 +89,42 @@ function useCountPopover(disabled: boolean) {
   return { open, onOpenChange, close: () => setOpen(false), text, setText };
 }
 
-/** Drop: at once for one Item Copy, through a count for a stack. */
-function DropButton({ copy, name, disabled, onDrop }: {
-  copy: ItemCopy; name: string; disabled: boolean; onDrop: (quantity: number) => void;
+/** Drop or Pick Up: at once for one Item Copy, through a count for a stack. */
+function MoveButton({ verb, icon, copy, name, disabled, onMove }: {
+  verb: 'Drop' | 'Pick Up'; icon: typeof Shirt; copy: ItemCopy; name: string; disabled: boolean; onMove: (quantity: number) => void;
 }) {
   const { open, onOpenChange, close, text, setText } = useCountPopover(disabled);
-  if (copy.quantity === 1) return <ItemRowButton label={`Drop ${name}`} icon={ArrowDownToLine} disabled={disabled} onClick={() => onDrop(1)} />;
+  const label = `${verb} ${name}`;
+  if (copy.quantity === 1) return <ItemRowButton label={label} icon={icon} disabled={disabled} onClick={() => onMove(1)} />;
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <ItemRowButton label={`Drop ${name}`} icon={ArrowDownToLine} disabled={disabled} />
+        <ItemRowButton label={label} icon={icon} disabled={disabled} />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-3 p-3">
-        <p className="text-label font-medium">Drop {name}</p>
+        <p className="text-label font-medium">{label}</p>
         <CountField max={copy.quantity} text={text} onChange={setText} />
         <div className="flex justify-end">
-          <Button size="xs" onClick={() => { onDrop(countOf(text, copy.quantity)); close(); }}>Drop</Button>
+          <Button size="xs" onClick={() => { onMove(countOf(text, copy.quantity)); close(); }}>{verb}</Button>
         </div>
       </PopoverContent>
     </Popover>
   );
 }
 
-/** Give: pick a present entity, and a count for a stack. */
+/** Give: pick a present entity, and a count for a stack. A divider sets the In Scene entities above the rest. */
 function GiveButton({ copy, name, present, disabled, onGive }: {
   copy: ItemCopy; name: string; present: InventoryTabProps['present']; disabled: boolean;
   onGive: (entityId: string, quantity: number) => void;
 }) {
   const { open, onOpenChange, close, text, setText } = useCountPopover(disabled);
+  const inScene = present.filter((entity) => entity.inScene);
+  const rest = present.filter((entity) => !entity.inScene);
+  const rows = (entities: InventoryTabProps['present']) => entities.map((entity) => (
+    <CompactSelectionRow key={entity.id} onClick={() => { onGive(entity.id, countOf(text, copy.quantity)); close(); }}>
+      {entity.name}
+    </CompactSelectionRow>
+  ));
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
@@ -124,11 +137,9 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
           <p role="status" className="text-meta text-muted-foreground">Nobody is here.</p>
         ) : (
           <div role="list" aria-label="Give to">
-            {present.map((entity) => (
-              <CompactSelectionRow key={entity.id} onClick={() => { onGive(entity.id, countOf(text, copy.quantity)); close(); }}>
-                {entity.name}
-              </CompactSelectionRow>
-            ))}
+            {rows(inScene)}
+            {inScene.length > 0 && rest.length > 0 && <Separator className="my-1" />}
+            {rows(rest)}
           </div>
         )}
       </PopoverContent>
@@ -155,9 +166,10 @@ function UseButton({ copy, item, name, disabled, onOps }: {
   );
 }
 
-/** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items. */
+/** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items,
+ *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, runtimeItems = [], slots, present, locationId, disabled, resolveText, imageOf, timed = [], onOps,
+  ownerName, copies, lying, items, runtimeItems = [], slots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
@@ -271,9 +283,9 @@ export function InventoryTab({
                     </>
                   ) : (
                     <>
-                      <DropButton
-                        copy={copy} name={name} disabled={disabled || !here}
-                        onDrop={(quantity) => here && onOps([{ kind: 'transfer', copyId: copy.id, to: here, quantity }])}
+                      <MoveButton
+                        verb="Drop" icon={ArrowDownToLine} copy={copy} name={name} disabled={disabled || !here}
+                        onMove={(quantity) => here && onOps([{ kind: 'transfer', copyId: copy.id, to: here, quantity }])}
                       />
                       <GiveButton
                         copy={copy} name={name} present={present} disabled={disabled}
@@ -302,11 +314,20 @@ export function InventoryTab({
             </ul>
           </>
         )}
-        <PanelSubheader>Here</PanelSubheader>
+      </PanelOwnerCard>
+      {/* A location is not an owner (Q69), so what lies here gets its own card. */}
+      <PanelOwnerCard role="region" aria-label="Here" name={locationName || 'Here'} className="mt-2">
         {lyingHere.length === 0 ? (
           <p role="status" className="px-2 py-2 text-label text-muted-foreground">Nothing lies here.</p>
         ) : (
-          <ul aria-label="Here">{lyingHere.map((copy) => row(copy, null))}</ul>
+          <ul aria-label="Lying here">
+            {lyingHere.map((copy) => row(copy, (
+              <MoveButton
+                verb="Pick Up" icon={ArrowUpFromLine} copy={copy} name={nameOf(copy)} disabled={disabled}
+                onMove={(quantity) => onOps([{ kind: 'transfer', copyId: copy.id, to: YOU, quantity }])}
+              />
+            )))}
+          </ul>
         )}
       </PanelOwnerCard>
     </ScrollArea>

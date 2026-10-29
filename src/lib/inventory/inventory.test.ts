@@ -249,6 +249,13 @@ describe('applyInventoryOps', () => {
     expect(applyInventoryOps(start, [{ kind: 'equip', copyId: 'k' }], call()).copies[0].equipped).toBeDefined();
   });
 
+  it('lets the panel pick up a Bound copy lying here', () => {
+    const lying = [of('crown', 'k', { where: cellar })];
+    const { copies, diagnostics } = applyInventoryOps(lying, [{ kind: 'transfer', copyId: 'k', to: { kind: 'you' } }], call({ presence }));
+    expect(diagnostics).toEqual([]);
+    expect(copies).toEqual([of('crown', 'k')]);
+  });
+
   it('refuses an owner or location that is not present', () => {
     const away = { locationId: 'hall', entityIds: new Set<string>() };
     const start = [copy('p'), copy('b', { where: bramWhere })];
