@@ -62,11 +62,12 @@ export function useHasRuleSource(): boolean {
   return !!(build ?? store ?? world);
 }
 
-/** The Requirement Rows editor over one image's rule, with the host as the default owner. */
-function ImageRuleRows({ host, rows, onChange }: {
+/** The Requirement Rows editor over one rule of `host`, such as an image's, with the host as the default owner. */
+export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule' }: {
   host: RuleHost;
   rows: TraitRequirementRow[];
   onChange: (rows: TraitRequirementRow[]) => void;
+  label?: string;
 }) {
   const source = useRuleSource();
   const read = useMemo(() => {
@@ -82,7 +83,7 @@ function ImageRuleRows({ host, rows, onChange }: {
   if (!source || !read || !textOf) return null;
   return (
     <RequirementRowsField
-      label="Visibility Rule"
+      label={label}
       rows={rows}
       states={read.states}
       options={read.options}
@@ -106,7 +107,7 @@ export function ImageRuleEditor(props: {
 }) {
   return (
     <div className="space-y-2">
-      <ImageRuleRows {...props} />
+      <HostRuleRows {...props} />
       <Hint>Shows this image in play while any row holds. With no rows, it always shows.</Hint>
     </div>
   );

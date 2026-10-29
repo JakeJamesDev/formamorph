@@ -1,7 +1,8 @@
 import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
-import type { Item, ItemCopy, Placement, PlacementWhere, Slot } from '@/types';
+import { isAlwaysOn } from '@/lib/traitEffects';
+import type { Item, ItemCopy, Placement, PlacementWhere, Slot, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -123,3 +124,13 @@ export const withoutPlacementsAt = (placements: Placement[], where: PlacementWhe
 /** The placements at `where`, in authored order. */
 export const placementsAt = (placements: readonly Placement[], where: PlacementWhere): Placement[] =>
   placements.filter((p) => placesAt(p, where));
+
+/** The traits an item's trait effect row can name: each owner's own, under the owner, every id once, Automatic
+ *  ones left out (Q117). An owner with none is dropped. */
+export function itemTraitOptions(owners: readonly { id: string; name: string; traits: readonly Trait[] }[]) {
+  const seen = new Set<string>();
+  return owners.flatMap((owner) => {
+    const traits = owner.traits.filter((t) => !isAlwaysOn(t) && !seen.has(t.id) && seen.add(t.id));
+    return traits.length ? [{ id: owner.id, name: owner.name, traits }] : [];
+  });
+}

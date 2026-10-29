@@ -9,7 +9,8 @@ import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { WorldInput } from '@/components/editor/WorldField';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
-import { ItemEffectsFields } from './ItemEffectsFields';
+import { ItemEffectsFields, ItemTraitEffectsFields } from './ItemEffectsFields';
+import { ItemRequirementsField } from './ItemRequirementsField';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
@@ -248,7 +249,14 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
       </PanelTabContent>
 
       <PanelTabContent value="effects">
-        <ItemEffectsFields item={draft} apply={apply} />
+        <div className="space-y-6">
+          <ItemEffectsFields item={draft} apply={apply} />
+          <ItemTraitEffectsFields item={draft} apply={apply} />
+        </div>
+      </PanelTabContent>
+
+      <PanelTabContent value="requirements">
+        <ItemRequirementsField item={draft} apply={apply} />
       </PanelTabContent>
 
       {advanced && (

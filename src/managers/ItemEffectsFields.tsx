@@ -10,7 +10,9 @@ import { fieldFrame } from '@/lib/historyField';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { resolvedEntityStats } from '@/lib/statLinks';
 import { randomUUID } from '@/lib/uuid';
-import type { Item, ItemStatEffect, ItemStatFacet, ItemTiming, Stat } from '@/types';
+import { itemTraitOptions } from '@/lib/items';
+import { useRuleSource } from '@/contexts/RuleSourceContext';
+import type { Item, ItemStatEffect, ItemStatFacet, ItemTiming, ItemTraitEffect, Stat, Trait } from '@/types';
 
 const FACETS: { value: ItemStatFacet; label: string }[] = [
   { value: 'value', label: 'Value' },
@@ -96,6 +98,55 @@ export const ItemEffectsFields = ({ item, apply }: { item: Item; apply: (patch: 
         </div>
       ))}
       <Button size="sm" onClick={add}>Add Stat Effect</Button>
+    </div>
+  );
+};
+
+/** The item's trait effect rows: a trait and a timing each. The picker lists each owner's own traits, every id
+ *  once, Automatic ones left out (Q117). */
+export const ItemTraitEffectsFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
+  const source = useRuleSource();
+  const label = (name: string) => (source ? labelPlaceholders(name, source.placeholders) : name);
+  const owners = useMemo(() => itemTraitOptions(source?.gateInput.owners ?? []), [source]);
+  const known = useMemo(() => new Map<string, Trait>(owners.flatMap((o) => o.traits.map((t) => [t.id, t]))), [owners]);
+  const rows = item.traitEffects;
+  const write = (next: ItemTraitEffect[]) => apply({ traitEffects: next });
+  const update = (index: number, patch: Partial<ItemTraitEffect>) => write(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const add = () => write([...rows, { id: randomUUID(), traitId: '', timing: 'equipped' }]);
+
+  return (
+    <div className="space-y-2">
+      <Label>Trait Effects</Label>
+      <Hint>Gives whoever owns it a trait from their own list</Hint>
+      {rows.map((row, index) => (
+        <div key={row.id} className="flex flex-wrap items-center gap-2">
+          <Select value={row.traitId || undefined} onValueChange={(traitId) => update(index, { traitId })}>
+            <SelectTrigger className="w-44" aria-label="Trait" {...fieldFrame('traitEffects', row.id, 'traitId')}>
+              <SelectValue placeholder="Select trait">{known.get(row.traitId) ? label(known.get(row.traitId)!.name) : row.traitId}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {owners.map((owner) => (
+                <SelectGroup key={owner.id}>
+                  <SelectLabel>{label(owner.name)}</SelectLabel>
+                  {owner.traits.map((t) => <SelectItem key={t.id} value={t.id}>{label(t.name)}</SelectItem>)}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={row.timing} onValueChange={(timing) => update(index, { timing: timing as ItemTiming })}>
+            <SelectTrigger className="w-40" aria-label="Timing" {...fieldFrame('traitEffects', row.id, 'timing')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIMINGS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" size="icon" aria-label="Remove Trait Effect" onClick={() => write(rows.filter((_, i) => i !== index))}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <Button size="sm" onClick={add}>Add Trait Effect</Button>
     </div>
   );
 };

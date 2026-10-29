@@ -9,6 +9,9 @@ import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemRef, Pers
 export {
   itemEffectLine, itemEffectLog, settleItemEffects, type ItemEffectChange, type ItemEffectResult, type ItemEffectWorld, type OwnerStatTraits,
 } from './effects';
+export {
+  equipRequirement, settleInventory, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
+} from './settle';
 
 /** Makes a fresh Item Copy id. */
 export type NewId = () => string;
@@ -102,6 +105,8 @@ export interface InventoryCall {
   source: InventorySource;
   newId: NewId;
   presence?: Presence;
+  /** Why the owner cannot equip `copy` under `copies` (Q49), or null. Absent ⇒ no requirement is checked. */
+  requirement?: (copy: ItemCopy, copies: readonly ItemCopy[]) => string | null;
 }
 
 export interface InventoryResult {
@@ -238,11 +243,16 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
           .sort(byEquipOrder);
         const sizeOf = (c: ItemCopy) => slotSizeOf(c.item.kind === 'item' ? items.get(c.item.itemId) : undefined);
         let used = worn.reduce((sum, c) => sum + sizeOf(c), 0);
+        let swapped = list;
         for (const out of worn) {
           if (used + size <= capacity) break;
-          list = put(list, unequipped(out));
+          swapped = put(swapped, unequipped(out));
           used -= sizeOf(out);
         }
+        // The requirement reads the slot after the swap-out, so an item leaving it never counts.
+        const refused = call.requirement?.(swapped.find((c) => c.id === copy.id) ?? copy, swapped);
+        if (refused) return `equip: ${refused}`;
+        list = swapped;
         order += 1;
         const equipped = { slotId: slot.id, order };
         // A swapped-out copy can merge into this stack, so read its quantity now. One splits off (Q65).

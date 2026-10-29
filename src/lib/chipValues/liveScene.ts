@@ -5,7 +5,7 @@ import type {
 import { entitiesInPlay, entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
 import type { GateTree } from '../traitGates';
-import { borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
+import { activeOwnedTraitIds, borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
 import { treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
@@ -154,13 +154,8 @@ export function liveChipScene(
   };
 }
 
-/** Each entity's chosen owned traits minus the ones switched off. */
-function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForce {
-  return Object.fromEntries(Object.entries(states ?? {}).map(([id, { chosen, disabled = [] }]) => {
-    const off = new Set(disabled);
-    return [id, chosen.filter((traitId) => !off.has(traitId))];
-  }));
-}
+/** Each entity's owned traits in force: its picks on, and the ones an item grant holds. */
+const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForce => activeOwnedTraitIds(states ?? {});
 
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {

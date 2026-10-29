@@ -82,6 +82,30 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 - An owner without the stat skips the row, and the log says so. The player's own stats come from the persona, not the Global Stats.
 - The log names the item for each change. A hidden item shows as "An item".
 
+### Trait effects
+<!-- keywords: trait effects, grant trait, cursed ring, give trait, item trait -->
+
+A trait effect row gives the owner a trait while its timing holds. Each row picks a trait and a timing.
+
+- 🧬 The trait comes from the owner's own list: an entity's traits, or the played persona's. An owner without that trait skips the row, and the log says so.
+- 🔒 The trait stays on while any source holds it. A trait the owner picked stays when the item leaves.
+- 🚫 An item grant counts toward no Pick Count and switches off no other trait in its group.
+- ⏳ The trait's own requirements still apply. A granted trait whose requirement fails turns on once it holds.
+- ✋ The player cannot switch off a trait an item holds on.
+- ✨ **On First Obtain** grants the trait for good.
+- ⚙️ Automatic traits are not offered: they turn on by their own rules.
+
+## Requirements
+<!-- keywords: equip requirements, strength needed, cannot equip, unequips, requirement -->
+<!-- route: worldEditorItem.requirements -->
+
+Requirement Rows on the **Requirements** tab set what an owner needs to equip the item. Any one row that holds is enough. With no rows, anyone can equip it.
+
+- 🧑 A Condition with no owner reads the item's owner.
+- 🗡️ The item's own effects never count, in either direction. A +2 Strength sword cannot meet its own Strength 5 requirement, and a cursed -2 Strength sword cannot fail it. Every copy of the same item on that owner is left out.
+- ⛔ Equipping fails, and the log names the requirement, when no row holds.
+- 🔄 An equipped item unequips on its own once no row holds, and its effects reverse. One unequip can set off another; the game settles them all, up to 10 rounds.
+
 ## Slots
 <!-- keywords: equipment slots, hand, ring, head, armor slot, capacity, two handed -->
 <!-- route: worldEditor.overview -->

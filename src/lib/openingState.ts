@@ -17,11 +17,11 @@ import {
   seedNewGameStats, statTraitsInForce, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { PersonaPick } from './persona';
-import { seedItemCopies, settleItemEffects, type ItemEffectResult, type NewId } from './inventory';
+import { seedItemCopies, settleInventory, type NewId } from './inventory';
 import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
-import type { Entity, EntityStatValues, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
+import type { Entity, EntityStatValues, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
 
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
@@ -49,8 +49,8 @@ export interface OpeningFold {
   startingTraits: { trait: Trait; ownerId: OwnerId }[];
   /** The trait slice as play's trait state holds it. */
   traitState: TraitRuntimeState;
-  /** What the seeded Item Copies' effects applied, for the ledger and the start log. */
-  itemEffects: Omit<ItemEffectResult, 'entityStats'>;
+  /** What the seeded Item Copies' effects applied, for the ledger, and the start log with names unresolved. */
+  itemEffects: { ledger: ItemEffectLedger; log: string[] };
 }
 
 /** Authored text resolved as turn one would: an unrolled chip draws once, and every text after it reads that roll. */
@@ -91,12 +91,11 @@ export function openingFold(
   }, traitWorld);
   traitState = applyOwnedStatTraits(rows.state, traitWorld);
   // Seeded Item Copies apply their effects, On First Obtain included (Q59).
-  const items = settleItemEffects(
-    { copies: itemCopies, entityStats: traitState.entityStats ?? {}, ledger: undefined },
-    { items: world.items ?? [], persona: ref, entities },
-    (id) => entityStatTraitsInForce(traitState.ownedTraits, traitWorld, id),
+  const items = settleInventory(
+    { copies: itemCopies, traits: traitState, ledger: undefined },
+    { items: world.items ?? [], traits: traitWorld, persona: ref, entities },
   );
-  traitState = { ...traitState, entityStats: items.entityStats };
+  traitState = items.traits;
   const entityStats = traitState.entityStats ?? {};
   const ownedTraits = traitState.ownedTraits ?? {};
 
@@ -121,8 +120,7 @@ export function openingFold(
     itemCopies,
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
-  const { entityStats: _settled, ...itemEffects } = items;
-  return { state, entityStats, startingTraits, traitState, itemEffects };
+  return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log } };
 }
 
 /** The `SandboxState` of turn one. */

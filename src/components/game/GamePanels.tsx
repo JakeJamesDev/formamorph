@@ -44,7 +44,7 @@ import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, Che
 import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { InventoryTab } from './InventoryTab';
 import { PanelTab, PanelTabList } from './PanelTabList';
-import { useInventoryPanel } from './useInventoryPanel';
+import { useInventoryPanel, type InventoryPanelSettle } from './useInventoryPanel';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
@@ -1212,9 +1212,11 @@ const entityItems = (options: StatPanelOption[]) =>
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
-  language, setLanguage,
+  language, setLanguage, inventorySettle,
 }: {
   onLocationClick: () => void;
+  /** The live game's equip check and inventory settle for a panel write. Absent ⇒ the operations alone land. */
+  inventorySettle?: InventoryPanelSettle;
   /** Switch an owner's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
   onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
@@ -1350,7 +1352,7 @@ export const RightPanel = ({
     const item = ref.kind === 'item' ? worldItems?.find((i) => i.id === ref.itemId) : undefined;
     return item && visibleItemImage(item, copy, gateInput);
   }, [worldItems, gateInput]);
-  const inventory = useInventoryPanel(entityInForce, itemImageOf);
+  const inventory = useInventoryPanel(inventorySettle, itemImageOf);
   // A world without items keeps its three tabs.
   const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0;
   const {
