@@ -215,6 +215,8 @@ const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: H
   PERSONA_ONLY_WITH_STATS_AXIS, PERSONA_ONLY_WITH_TRAITS_AXIS, PERSONA_CONTENT_AXIS, PERSONA_INCLUDE_TRAITS_AXIS, PERSONA_STATS_AXIS,
   ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
 ], affixable: true };
+// What each present owner has and what lies at the location (see lib/inventoryContext).
+const INVENTORY: PromptVariable = { token: '<INVENTORY>', label: 'Inventory', color: HIGHLIGHT_PALETTE[16], axes: [FORMAT_AXIS] };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], affixable: true };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = {
@@ -286,12 +288,12 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
+  WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, INVENTORY, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
   TIME, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS, MOVE_OPTIONS, MOVE_STATE,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
-const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, NOTES, TIME];
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, INVENTORY, NOTES, TIME];
 
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */

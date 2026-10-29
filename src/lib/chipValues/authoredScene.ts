@@ -17,9 +17,10 @@ import { resolveStartingLocation } from '../startingLocation';
 import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
+import { seedItemCopies } from '../inventory';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, StatGroup, Trait,
-  TraitGroup, WorldOverview,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Stat, StatGroup,
+  Trait, TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
 
@@ -36,6 +37,8 @@ export interface AuthoredWorld {
   traitGroups?: TraitGroup[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
+  items?: Item[];
+  placements?: Placement[];
 }
 
 /** Overrides for a scene scoped tighter than "the world's own opening" — the Test Bench's Opening
@@ -122,6 +125,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])])),
     treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
   ));
+  let copyCount = 0;
 
   return {
     overview: worldOverview?.systemPrompt || '',
@@ -158,5 +162,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     resolve,
     resolveEntity,
     placeholders: world.placeholders ?? [],
+    items: world.items ?? [],
+    // The Item Copies a new game would start with, ids numbered since nothing keeps them.
+    itemCopies: seedItemCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
   };
 }

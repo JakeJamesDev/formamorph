@@ -6,6 +6,7 @@ import {
   knownEntityIds, knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
 import { relatedIds, relationshipCast, relationshipLines } from '../entityRelationships';
+import { buildInventoryContext, type InventoryScene } from '../inventoryContext';
 import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
 import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
@@ -28,6 +29,7 @@ const NOTES = variableForToken('<NOTES>')!;
 const TIME = variableForToken('<TIME>')!;
 const DICTIONARY = variableForToken('<DICTIONARY>')!;
 const ENTITIES = variableForToken('<ENTITIES>')!;
+const INVENTORY = variableForToken('<INVENTORY>')!;
 // A Header is reference text, cased mid-sentence; its title-casing capitalizes the words that lead.
 const NO_PLAYER = PLAYER_NAME.resolve({ before: ' ' }, { kind: 'reference' });
 
@@ -120,6 +122,7 @@ export function chipValues(scene: ChipScene): ValueLookup {
       destinations: (opts) => buildDestinationsContext(location, locations, connections, opts),
     })],
     [ENTITIES, scopedChipRuns(ENTITIES.token, entityScopes(scene, cast))],
+    [INVENTORY, chipFamilyValues(INVENTORY.token, (sel) => buildInventoryContext(inventoryScene(scene), chipFormat(sel.format)))],
   ]);
   const familyOf = (key: string) => {
     const variable = variableForToken(key);
@@ -132,6 +135,22 @@ export function chipValues(scene: ChipScene): ValueLookup {
     const family = familyOf(key);
     return family ? readMarked(family, key) : undefined;
   }), (value) => scene.resolve(value));
+}
+
+/** The scene as the inventory block reads it; played entities own through the `you` owner (Q54). */
+function inventoryScene(scene: ChipScene): InventoryScene {
+  const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
+  const owners = scene.presentIds.flatMap((id) => {
+    const entity = played.has(id) ? undefined : scene.entities.find((e) => e.id === id);
+    return entity ? [{ id, name: entity.name }] : [];
+  });
+  return {
+    items: scene.items ?? [],
+    copies: scene.itemCopies ?? [],
+    playerName: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
+    owners,
+    location: scene.location,
+  };
 }
 
 /** The scene's relationship ends, the played persona first. */

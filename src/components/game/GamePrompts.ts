@@ -24,6 +24,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
 <ENTITIES|markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
+<INVENTORY|markdown|pre="What each person here has with them, and what lies in this place. An item marked hidden stays out of sight until someone searches where it lies; then it enters the story.\n\n"|header="Items Here">\
 <ENTITIES|sublocations.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
 <ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\

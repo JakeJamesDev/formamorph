@@ -673,6 +673,7 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    itemCopies,
     setItemCopies,
     statDeltas,
     addLogEntry,
@@ -2314,6 +2315,8 @@ const GameViewer = ({
     notes: playerNotes,
     time: chipTime,
     placeholders: sharedPlaceholders,
+    items: worldItems,
+    itemCopies,
   });
 
   const contextValues = useCallback((

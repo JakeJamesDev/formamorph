@@ -1,5 +1,5 @@
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { OwnedStatsInForce, OwnedTraitsInForce } from '../locationContext';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
@@ -52,6 +52,10 @@ export interface ChipScene {
   presentIds: string[];
   /** Who has taken part in the scene: the In Scene scope. */
   inSceneIds: string[];
+  /** The world's authored items. None when absent. */
+  items?: readonly Item[];
+  /** Every Item Copy in play. None when absent. */
+  itemCopies?: readonly ItemCopy[];
   /** The lore entries to render, each carrying its position. */
   lore: DictionaryEntry[];
   /** The player's notes; blank when there are none. */
