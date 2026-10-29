@@ -17,7 +17,9 @@ import { personaStartLocation } from './personaPick';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
-import type { Entity, PersonaRef, World } from '@/types';
+import { seedItemCopies } from './inventory';
+import { wantedGrants } from './inventory/grants';
+import type { Entity, ItemCopy, PersonaRef, World } from '@/types';
 
 // The stored text through the world migration, images included: the Test Bench pass below reads them.
 const raw = bundledWorldText('emberwatch');
@@ -323,5 +325,61 @@ describe('the Emberwatch Visibility rules', () => {
       visibleImages(hesk, statAt(NONE, hesk.id, { id: 'health', name: 'Health' }, health)).map((image) => image.slot);
     expect(slots(40)).toEqual([0]);
     expect(slots(39)).toEqual([1]);
+  });
+});
+
+describe('the Emberwatch items', () => {
+  const items = world.items ?? [];
+  const itemNamed = (name: string) => {
+    const found = items.find((item) => item.name === name);
+    if (!found) throw new Error(`no item ${name}`);
+    return found;
+  };
+  const seeded = (persona: PersonaRef) => {
+    let next = 0;
+    return seedItemCopies(world, persona, () => `copy-${(next += 1)}`);
+  };
+  const copiesOf = (copies: readonly ItemCopy[], name: string) => copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemNamed(name).id);
+
+  it('points every effect, requirement, slot and placement at something the world has', () => {
+    const slotIds = new Set((world.slots ?? []).map((slot) => slot.id));
+    const statIds = new Set(world.stats.map((stat) => stat.id));
+    const traitIds = new Set(world.traits.map((trait) => trait.id));
+    for (const item of items) {
+      if (item.slotId) expect(slotIds).toContain(item.slotId);
+      if (item.valueUnit?.kind === 'stat') expect(statIds).toContain(item.valueUnit.statId);
+      for (const row of item.statEffects) expect(statIds).toContain(row.statId);
+      for (const row of item.traitEffects) expect(traitIds).toContain(row.traitId);
+      for (const row of item.equipRequires) for (const condition of row.all) expect(traitIds).toContain(condition.id);
+    }
+    const placed = new Set([...world.entities, ...world.locations].map((owner) => owner.id));
+    for (const placement of world.placements ?? []) {
+      expect(items.map((item) => item.id)).toContain(placement.source.itemId);
+      if (placement.where.kind !== 'you') expect(placed).toContain(placement.where.id);
+    }
+  });
+
+  it('starts the played persona with a draught and a full lantern, and hides the barrow finds', () => {
+    const copies = seeded(asEntity(world, 'Albus'));
+    expect(copiesOf(copies, 'Healing Draught').find((copy) => copy.where.kind === 'you')?.quantity).toBe(1);
+    expect(copiesOf(copies, 'Hooded Lantern')).toMatchObject([{ where: { kind: 'you' }, state: { charges: 3 } }]);
+    expect(copiesOf(copies, 'Cold Iron Sword')).toHaveLength(2);
+    expect(copiesOf(copies, "Old King's Coin")).toMatchObject([{ quantity: 12, visibility: 'hidden' }]);
+    expect(copiesOf(copies, "Haldren's Crown, Lower Half")).toMatchObject([{ visibility: 'hidden' }]);
+    expect(copiesOf(copies, "Haldren's Crown, Upper Half")).toMatchObject([{ where: { kind: 'entity', id: entityNamed(world, 'The Barrow Wight').id } }]);
+  });
+
+  it('gives a human Paladin Darkvision only while the lantern is equipped', () => {
+    const persona = asEntity(world, 'Albus');
+    const lantern = copiesOf(seeded(persona), 'Hooded Lantern')[0];
+    const grantWorld = {
+      items: new Map(items.map((item) => [item.id, item])), owners: resolveOwners(ownerWorld(world), persona).gate.owners,
+      persona, entities: world.entities,
+    };
+    const darkvision = traitId(world, 'Darkvision');
+    const albus = entityNamed(world, 'Albus').id;
+    const equipped = { ...lantern, equipped: { slotId: itemNamed('Hooded Lantern').slotId!, order: 1 } };
+    expect(wantedGrants([lantern], grantWorld).held[albus] ?? []).not.toContain(darkvision);
+    expect(wantedGrants([equipped], grantWorld).held[albus]).toContain(darkvision);
   });
 });

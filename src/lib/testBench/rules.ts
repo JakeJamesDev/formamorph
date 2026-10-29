@@ -3557,9 +3557,10 @@ const entryEnabledWrites = (code: string): EntryEnabledWrite[] => [...code.match
   return [{ book: book ? book.slice(1).find((group) => group !== undefined) ?? '' : null, entry: key.name }];
 });
 
-/** Every filled script's code and every Tool script handler's code. */
+/** Every filled script's code, every item script's code and every Tool script handler's code. */
 const allScriptCode = (world: RuleWorld): string[] => [
   ...ruleScripts(world).map(({ listed }) => listed.box.code),
+  ...(world.items ?? []).flatMap((item) => (item.scripts ?? []).map((script) => script.code)),
   ...(world.tools ?? []).flatMap((tool) => (tool.handler.kind === 'script' ? [tool.handler.code] : [])),
 ];
 

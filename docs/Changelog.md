@@ -37,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Inventory tab lists items lying at your location, and the story can reveal hidden items.** Hidden items stay out of every panel. Entity dialogs list what the entity wears.
     - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice.
     - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets.
+    - **Emberwatch now has ten items: cold iron gear, remedies, grave goods and the two halves of the broken crown.** You start with a draught and a lantern. Lay both crown halves on the king's bier to end the Wight.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
