@@ -139,7 +139,7 @@ describe('editing a Tool', () => {
     await user.click(screen.getByRole('button', { name: 'What a Script Can Read' }));
     const readable = within(await screen.findByLabelText('What the script can read'));
     expect(readable.getAllByRole('term').map((t) => t.textContent)).toEqual([
-      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'console',
     ]);
     expect(readable.getAllByRole('definition')[0]).toHaveTextContent('{ place }');
     await user.keyboard('{Escape}');

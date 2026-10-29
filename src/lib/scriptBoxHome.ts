@@ -3,7 +3,7 @@
  * surface that edits a Script names its home with a `ScriptHomeRef`; this decides `self` and the Owner from it.
  */
 
-import type { Entity, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, Item, Placeholder, Stat, Trait, TraitGroup } from '@/types';
 import { statLinksBoundTo } from './portableStats';
 import type { UnitHome, UnitOwner } from './sandboxSnapshot';
 import { statCodeName, statCodeNamed } from './statCodeNames';
@@ -17,6 +17,8 @@ export interface ScriptBoxWorld extends StatLinkWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
+  /** Absent off world, where no item's box opens. */
+  items?: readonly Pick<Item, 'id' | 'name'>[];
 }
 
 /** The world a library entity's boxes read: the entity, its stat links bound to the lists they read, and those
@@ -81,6 +83,11 @@ export function scriptHomeOf(ref: ScriptHomeRef, world: ScriptBoxWorld, placehol
     }
     case 'traitLink':
       return { kind: 'trait', trait: codedTrait(world.traits.find((t) => t.id === ref.traitId), ref.traitId), entityId: ref.entityId };
+    // The editor knows no Item Copy, so the box runs as the persona's.
+    case 'item': {
+      const found = world.items?.find((item) => item.id === ref.itemId);
+      return { kind: 'item', item: { id: ref.itemId, name: statCodeName(found?.name, placeholders) }, where: { kind: 'you' } };
+    }
   }
 }
 

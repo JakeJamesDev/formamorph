@@ -1,4 +1,5 @@
-import type { CodeBounds, Stat } from '@/types';
+import type { CodeBounds, ItemCopyWhere, ItemScriptTiming, Stat } from '@/types';
+import type { InventoryOp } from './inventory';
 import { clamp } from './utils';
 import { activeDescriptor } from './statContext';
 import { runInSandbox, type SandboxEngine, type SandboxHostFunction } from './scriptSandbox';
@@ -211,6 +212,8 @@ export interface WorldWrites {
   entities?: EntityCodeWrite[];
   /** Every `pin`, `forget`, `edit` and `remove` on a `memories` entry, in call order. */
   memoryWrites?: MemoryWrite[];
+  /** Every verb on `items` and its Item Copy entries, in call order (Q41). */
+  inventory?: InventoryOp[];
 }
 
 /** One verb on a `memories` entry, by the row's id. An edit marks whether the row is a Custom line. */
@@ -898,7 +901,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
   'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
-  'move', 'follow', 'unfollow', 'diary',
+  'items', 'move', 'follow', 'unfollow', 'diary',
 ] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
@@ -1021,6 +1024,8 @@ const entitiesPrelude = (
     `  const blank = { id: '', type: '', pronouns: '', inScene: false, location: '', following: false, description: -1, summary: -1 };`,
     `  const aliases = Object.freeze([...(data.aliases || [])]);`,
     `  const values = { ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, traits, placeholders, stats, ...moves };`,
+    // The items prelude runs later; the getter reads it once code runs.
+    `  define(values, 'items', { enumerable: true, get: () => (who.unknown ? Object.freeze([]) : data.played ? ${ITEMS_AT}('you') : ${ITEMS_AT}('entity', who.id)) });`,
     `  return [lazy(values, ['description', 'summary'], '', ${NO_NOTE}), rows, who.played ? Object.keys(moves) : []];`,
     `});`,
     `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
@@ -1084,6 +1089,161 @@ const dictionariesPrelude = (
     `});`,
     `return [dictionaries, readWrites];`,
   ]);
+};
+
+/** One Item Copy as `items` reads it. */
+export interface SandboxItemCopy {
+  id: string;
+  where: ItemCopyWhere;
+  quantity: number;
+  equipped: boolean;
+  /** The slot's name; empty when carried. */
+  slot: string;
+  hidden: boolean;
+  /** Absent: the item has no charges. */
+  charges?: number;
+}
+
+/** One entry of the sandbox's `items`: an authored item, its owner node in the placeholder tree, and its Item
+ *  Copies in play. */
+export interface SandboxItem {
+  id: string;
+  name: string;
+  /** Absent, its `placeholders` holds no names. */
+  placeholders?: SandboxPlaceholderNode;
+  copies: readonly SandboxItemCopy[];
+}
+
+/** The Item Copy event an item script runs on (Q33). */
+export interface SandboxItemEvent {
+  itemId: string;
+  timing: ItemScriptTiming;
+  copyId: string;
+  quantity: number;
+  /** The Item Copy as it stood before the event, which `self.event.copy` reads once the copy is gone. */
+  was?: SandboxItemCopy;
+}
+
+/** The fields on an Item Copy entry; none takes a write. */
+const ITEM_COPY_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'charges'] as const;
+
+// The prelude's reader of the Item Copies at one owner or location, which entity and location entries call.
+const ITEMS_AT = '__formamorphItemsAt';
+// The entry of an event's Item Copy that is gone, which `self.event.copy` reads.
+const GONE_COPY = '__formamorphGoneCopy';
+
+/** The `items` prelude, after the entity, location and dictionary preludes. Each Item Copy has one entry, which
+ *  `items[x].copies`, an entity's `items` and a location's `items` share. A verb lists an inventory write; a
+ *  target names an entity, the persona or a location by entry or by name. An unknown target is listed and thrown,
+ *  as `location.move` does. With `event`, `self` takes the event's item entry and its `event`. */
+const itemsPrelude = (
+  items: readonly SandboxItem[], { byName, persona }: KeyedEntities, { locations }: SandboxPlaces, { indexOf }: FlatPlaceholderMap,
+  event: SandboxItemEvent | undefined,
+): string => {
+  const you: ItemCopyWhere = { kind: 'you' };
+  const whereOf = (entity: SandboxEntity): ItemCopyWhere | null =>
+    (isPlayed(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
+  const nameById = new Map([...byName].flatMap(([name, entity]) => (entity.id && !isPlayed(entity, persona) ? [[entity.id, name]] : [])));
+  const personaName = hasEntityKey(persona.name) && byName.get(persona.name) === persona ? persona.name : '';
+  const placeName = new Map(locations.map((place) => [place.id, place.name]));
+  const ownerName = (where: ItemCopyWhere) =>
+    (where.kind === 'you' ? personaName : where.kind === 'entity' ? nameById.get(where.id) ?? '' : '');
+  const named = [...new Map(items.map((item) => [item.name, item]))];
+  const copyData = (item: SandboxItem, copy: SandboxItemCopy) => ({
+    id: copy.id, item: item.name, owner: ownerName(copy.where), location: copy.where.kind === 'location' ? placeName.get(copy.where.id) ?? '' : '',
+    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, hidden: copy.hidden, charges: copy.charges ?? null,
+    at: copy.where.kind === 'you' ? 'you' : `${copy.where.kind}:${copy.where.id}`,
+  });
+  const targets: [string, ItemCopyWhere][] = [
+    ...[...byName].flatMap(([name, entity]) => { const where = whereOf(entity); return where ? [[name, where] as [string, ItemCopyWhere]] : []; }),
+    ...locations.map((place): [string, ItemCopyWhere] => [place.name, { kind: 'location', id: place.id }]),
+  ];
+  const spec = {
+    items: named.map(([name, item]) => [name, {
+      id: item.id, ph: ownerIndex(indexOf, item.placeholders), copies: item.copies.map((copy) => copyData(item, copy)),
+    }]),
+    // By id first: an entry names its target by id. By name for a target written as text.
+    ids: Object.fromEntries([
+      ...(persona.id ? [[persona.id, you]] : []),
+      ...[...byName.values()].flatMap((entity) => { const where = whereOf(entity); return where && entity.id ? [[entity.id, where]] : []; }),
+      ...locations.map((place) => [place.id, { kind: 'location', id: place.id }]),
+    ]),
+    names: Object.fromEntries(targets),
+    event: event ? {
+      ...event, name: named.find(([, item]) => item.id === event.itemId)?.[0] ?? null,
+      was: event.was && copyData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', copies: [] }, event.was),
+    } : null,
+  };
+  return [
+    `const [items, ${ITEMS_AT}, ${GONE_COPY}] = ((spec, lock, note, writes, view) => {`,
+    `  const fail = (message) => {`,
+    `    writes.unknown.push(message);`,
+    `    throw new Error(message);`,
+    `  };`,
+    `  const verb = (target, path, name, call) => Object.defineProperty(target, name, { get: () => call, set: () => note(path + name) });`,
+    `  const whereOf = (to, call) => {`,
+    `    const id = to && typeof to === 'object' && typeof to.id === 'string' ? to.id : '';`,
+    `    const hit = id ? spec.ids[id] : typeof to === 'string' ? spec.names[to] : undefined;`,
+    `    return hit || fail(call + ' needs an entity, the persona or a location the game has, not ' + (typeof to === 'string' ? '"' + to + '"' : String(to && to.name !== undefined ? '"' + to.name + '"' : to)));`,
+    `  };`,
+    `  const count = (value, call) => {`,
+    `    if (value === undefined) return {};`,
+    `    if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) throw new TypeError(call + ' needs a whole number above 0');`,
+    `    return { quantity: value };`,
+    `  };`,
+    `  const byPlace = Object.create(null);`,
+    `  const copyEntry = (data, path, listed = true) => {`,
+    `    const out = lock({ ${ITEM_COPY_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_COPY_KEYS)}, path, note);`,
+    `    const copyId = data.id;`,
+    `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, copyId, ...extra }); };`,
+    `    verb(out, path, 'lose', (quantity) => op('lose', count(quantity, path + 'lose')));`,
+    `    verb(out, path, 'moveTo', (to, quantity) => op('transfer', { to: whereOf(to, path + 'moveTo'), ...count(quantity, path + 'moveTo') }));`,
+    `    verb(out, path, 'equip', () => op('equip'));`,
+    `    verb(out, path, 'unequip', () => op('unequip'));`,
+    `    verb(out, path, 'consume', () => op('consume'));`,
+    `    verb(out, path, 'reveal', (quantity) => op('reveal', count(quantity, path + 'reveal')));`,
+    `    verb(out, path, 'setCharges', (charges) => {`,
+    `      if (typeof charges !== 'number' || !Number.isFinite(charges) || charges < 0) throw new TypeError(path + 'setCharges needs a number, 0 or more');`,
+    `      op('setCharges', { charges });`,
+    `    });`,
+    `    Object.freeze(out);`,
+    `    if (listed) (byPlace[data.at] || (byPlace[data.at] = [])).push(out);`,
+    `    return out;`,
+    `  };`,
+    `  const map = Object.create(null);`,
+    // An unknown name reads as a blank entry, whose give stops the script.
+    `  const entry = (key, data, unknown) => {`,
+    `    const path = (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'items.' + key : 'items[' + JSON.stringify(key) + ']') + '.';`,
+    `    const copies = Object.freeze(data.copies.map((copy, at) => copyEntry(copy, path + 'copies[' + at + '].')));`,
+    `    const out = lock({ id: data.id, name: unknown ? '' : key, placeholders: view(data.ph, ['item', key], unknown), copies }, ['id', 'name', 'placeholders', 'copies'], path, note);`,
+    `    verb(out, path, 'give', (to, quantity) => {`,
+    `      if (unknown) fail('The world has no item named "' + key + '"');`,
+    `      writes.inventory.push({ kind: 'gain', itemId: data.id, to: whereOf(to, path + 'give'), quantity: count(quantity, path + 'give').quantity || 1 });`,
+    `    });`,
+    `    return Object.freeze(out);`,
+    `  };`,
+    `  for (const [key, data] of spec.items) map[key] = entry(key, data, false);`,
+    `  for (const list of Object.values(byPlace)) Object.freeze(list);`,
+    `  const strays = Object.create(null);`,
+    `  const items = new Proxy(Object.freeze(map), {`,
+    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
+    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, copies: [] }, true)),`,
+    `  });`,
+    `  const none = Object.freeze([]);`,
+    `  const at = (kind, id) => byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,
+    `  const gone = spec.event && spec.event.was ? copyEntry(spec.event.was, 'self.event.copy.', false) : null;`,
+    `  return [items, at, gone];`,
+    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, ${OWNER_VIEW});`,
+    ...(spec.event ? [
+      // `self` is declared before the entries exist, so it takes the item entry's fields here.
+      `((self, entry, event, define, gone) => {`,
+      `  if (entry) for (const key of Reflect.ownKeys(entry)) define(self, key, Object.getOwnPropertyDescriptor(entry, key));`,
+      `  const copy = (entry && entry.copies.find((c) => c.id === event.copyId)) || gone;`,
+      `  define(self, 'event', { enumerable: true, value: Object.freeze({ timing: event.timing, quantity: event.quantity, copy }) });`,
+      `  Object.freeze(self);`,
+      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ timing: event?.timing, quantity: event?.quantity, copyId: event?.copyId })}, Object.defineProperty, ${GONE_COPY});`,
+    ] : []),
+  ].join('\n');
 };
 
 /** One row of a read-only entry map's reader: the name code used, whether no entry has it, what the entry's
@@ -1235,7 +1395,7 @@ function readEntityWrites(
 
 /** The root a prelude path leads with: '' for the world's own map. */
 const pathRoot = (root: string): PlaceholderPathRoot | undefined =>
-  (root === 'entity' || root === 'dictionary' || root === 'persona' || root === 'owner' ? root : undefined);
+  (root === 'entity' || root === 'item' || root === 'dictionary' || root === 'persona' || root === 'owner' ? root : undefined);
 
 /** The paths in a reader's list: each a list of names; anything else is skipped. */
 const pathsIn = (rows: unknown): string[][] =>
@@ -1439,6 +1599,10 @@ export interface StatCodeRunOptions {
   /** A user Tool's run: the surface without writes (Q24, Q44). Every field is read-only, a write is listed in
    *  `readOnlyWrites`, and no verb, `self`, `owner`, `discover` or `player` exists. */
   readOnly?: boolean;
+  /** The world's items with their Item Copies in play. Absent, `items` is empty. */
+  items?: readonly SandboxItem[];
+  /** An item script's event: `self` reads the item's entry and the event. */
+  itemEvent?: SandboxItemEvent;
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
@@ -1448,7 +1612,7 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 const MOVE_TURN = '__formamorphMoveTurn';
 
 /** The globals a read-only run reads through its view, the surface of a user Tool (Q24). */
-const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries'] as const;
+const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries', 'items'] as const;
 
 const READ_ONLY_VIEW_OF = '__formamorphReadOnlyView';
 
@@ -1531,7 +1695,7 @@ const worldPrelude = (
   { locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean, memories: readonly SandboxMemory[], reads: HostReads,
 ): string => [
   `const [${MOVE_TURN}, discover, memories, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, rows, lockEntry, note) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], memoryWrites: [], unknown: [], maybe: [] };`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], memoryWrites: [], inventory: [], unknown: [], maybe: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
   `    throw new Error(message);`,
@@ -1703,6 +1867,7 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     `    const present = Object.freeze([...(data.persona ? [persona] : []), ...data.keys.map((key) => entities[key])]);`,
     `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present };`,
     `    const read = linked(lockEntry(out, ['description', 'summary'], data.prefix, note), data.links, data.prefix);`,
+    `    Object.defineProperty(read, 'items', { enumerable: true, get: () => ${ITEMS_AT}('location', data.id), set: () => note(data.prefix + 'items') });`,
     `    for (const [field, held] of Object.entries(extra)) {`,
     `      Object.defineProperty(read, field, { enumerable: true, get: () => held, set: () => note(data.prefix + field) });`,
     `    }`,
@@ -1724,9 +1889,9 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, diary, entities, memoryWrites, unknown, maybe } = parsed as {
+  const { location, minutes, advanced, discover, memory, pins, diary, entities, memoryWrites, inventory, unknown, maybe } = parsed as {
     location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[];
-    diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; unknown: string[]; maybe: string[];
+    diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; inventory: InventoryOp[]; unknown: string[]; maybe: string[];
   };
   if (unknown.length) return { error: unknown[0] };
   const writes: WorldWrites = {
@@ -1738,6 +1903,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
     ...(diary.length ? { diary } : {}),
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),
+    ...(inventory.length ? { inventory } : {}),
   };
   return {
     ...(Object.keys(writes).length ? { writes } : {}),
@@ -1813,7 +1979,7 @@ export const executeStatCode = async (
   {
     clock, readings, turn = NO_TURN, choicesWritable = false, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
     dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
-    openCast = false, memories = [], notes = '', readOnly = false,
+    openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1824,7 +1990,7 @@ export const executeStatCode = async (
   try {
     const placeholderMap = flattenPlaceholderMap(placeholders, [
       ...entities.map((entity) => entity.placeholders), persona.placeholders, owner?.placeholders,
-      ...dictionaries.map((book) => book.placeholders),
+      ...dictionaries.map((book) => book.placeholders), ...items.map((item) => item.placeholders),
     ]);
     const keyed = keyedEntities(entities, persona);
     const place = ownerPlace(keyed, owner);
@@ -1943,6 +2109,7 @@ export const executeStatCode = async (
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads),
       locationsPrelude(places, standing, reads),
       dictionariesPrelude(dictionaries, placeholderMap, reads, resolveEntryValue),
+      itemsPrelude(items, keyed, places, placeholderMap, itemEvent),
       // An accessor, so `notes = x` drops and lists the write as a locked field does.
       `Object.defineProperty(globalThis, 'notes', { enumerable: true, get: () => ${JSON.stringify(notes)}, set: () => ${LOOSE_NOTE}('notes') });`,
       ...(readOnly ? [`const ${READ_ONLY_VIEW_OF} = (${READ_ONLY_VIEW})(${LOOSE_NOTE});`] : []),

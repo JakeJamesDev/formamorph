@@ -18,7 +18,7 @@ import { ScriptBox, type ScriptBoxContext } from "./ScriptBox";
  * Editor's Scripts tab both draw this row, so an author edits the same box from either place. A change reports
  * only the field it edits; a cleared name reports the name absent, so the fallback shows and nothing exports.
  */
-export function ScriptRow({ script, ownerName, context, onChange, onRemove, reveal, autoFocus }: {
+export function ScriptRow({ script, ownerName, context, onChange, onRemove, reveal, autoFocus, timings = SCRIPT_TIMINGS }: {
   script: Script;
   /** The home's name as the author reads it, for a blank name's fallback. */
   ownerName: string;
@@ -28,6 +28,8 @@ export function ScriptRow({ script, ownerName, context, onChange, onRemove, reve
   /** A Find All Uses row bound for this script. */
   reveal?: CodeUseReveal | null;
   autoFocus?: boolean;
+  /** The timings the home's scripts run at. Absent, a stat's, a trait's or the world's. */
+  timings?: readonly ScriptTiming[];
 }) {
   const [removing, setRemoving] = useState(false);
   const label = scriptLabel(script, ownerName);
@@ -48,7 +50,7 @@ export function ScriptRow({ script, ownerName, context, onChange, onRemove, reve
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SCRIPT_TIMINGS.map((timing) => (
+            {timings.map((timing) => (
               <SelectItem key={timing} value={timing}>{SCRIPT_TIMING_LABEL[timing]}</SelectItem>
             ))}
           </SelectContent>
@@ -89,7 +91,7 @@ export function ScriptRow({ script, ownerName, context, onChange, onRemove, reve
  * A home's scripts as rows, then Add Script. The timing select is the only way to move a script between timings
  * (Q4). A blank name shows the owner and timing in its place (Q6).
  */
-export function ScriptsSection({ scripts, onChange, ownerName, context, reveal, addTarget, focusId }: {
+export function ScriptsSection({ scripts, onChange, ownerName, context, reveal, addTarget, focusId, timings }: {
   scripts: readonly Script[];
   /** Absent once the list is empty. */
   onChange: (next: Script[] | undefined) => void;
@@ -102,6 +104,8 @@ export function ScriptsSection({ scripts, onChange, ownerName, context, reveal, 
   addTarget?: TargetAttribute;
   /** A script added from outside, such as by the help window's Insert, whose editor takes the focus. */
   focusId?: string | null;
+  /** The timings the home's scripts run at; a new script takes the first. Absent, a stat's, a trait's or the world's. */
+  timings?: readonly ScriptTiming[];
 }) {
   const [added, setAdded] = useState<string | null>(null);
   const focused = added ?? focusId;
@@ -109,7 +113,7 @@ export function ScriptsSection({ scripts, onChange, ownerName, context, reveal, 
 
   const write = (next: Script[]) => onChange(next.length ? next : undefined);
   const add = () => {
-    const script = newScript();
+    const script = newScript(timings?.[0]);
     write([...scripts, script]);
     setAdded(script.id);
     landOn(script.id);
@@ -130,6 +134,7 @@ export function ScriptsSection({ scripts, onChange, ownerName, context, reveal, 
           onRemove={() => write(scripts.filter((entry) => entry.id !== script.id))}
           reveal={reveal?.scriptId === script.id ? reveal : null}
           autoFocus={script.id === focused}
+          timings={timings}
         />
       ))}
 

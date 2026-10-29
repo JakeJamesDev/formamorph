@@ -11,6 +11,7 @@ import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
 import { ItemEffectsFields, ItemTraitEffectsFields } from './ItemEffectsFields';
 import { ItemRequirementsField } from './ItemRequirementsField';
+import { ItemScripts } from './ItemScripts';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
@@ -258,6 +259,12 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
       <PanelTabContent value="requirements">
         <ItemRequirementsField item={draft} apply={apply} />
       </PanelTabContent>
+
+      {advanced && (
+        <PanelTabContent value="scripts">
+          <ItemScripts item={draft} ownerName={labelPlaceholders(draft.name, placeholders)} onChange={(scripts) => setField('scripts', scripts)} />
+        </PanelTabContent>
+      )}
 
       {advanced && (
         <PanelTabContent value="placeholders" fill>

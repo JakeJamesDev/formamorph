@@ -61,6 +61,7 @@ export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'parent', detail: 'string', info: 'Code name of the location this one is inside, or empty at the top level' },
   { name: 'children', detail: 'string[]', info: 'Code names of the locations inside this one, in the order the editor lists them' },
   { name: 'exits', detail: 'array', info: 'Where the AI can move the player from the location, each exit with a code name and travel hint' },
+  { name: 'items', detail: 'array', info: 'The Item Copies lying at the location, each with the fields of an items copy' },
 ]);
 
 /** The members of one entry in a location's `exits`. */
@@ -80,6 +81,7 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'parent', detail: 'string', info: 'Code name of the location the turn’s location is inside, or empty at the top level' },
   { name: 'children', detail: 'string[]', info: 'Code names of the locations inside the turn’s location, in the order the editor lists them' },
   { name: 'exits', detail: 'array', info: 'Where the AI can move the player this turn, each exit with a code name and travel hint' },
+  { name: 'items', detail: 'array', info: 'The Item Copies lying at the turn’s location, each with the fields of an items copy' },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 
@@ -134,6 +136,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },
   { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits, placeholders and stats. Empty when the player plays no entity.' },
   { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the game by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
+  { name: 'items', detail: 'object', info: 'Every item in the world by name, with its own placeholders and its Item Copies in play. Call items.Lamp.give to give one. Use items["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
 ];
 
@@ -245,6 +248,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name, or empty when the player plays no entity' },
   { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each a stats entry, or empty when the player plays no entity' },
+  { name: 'items', detail: 'array', info: 'The Item Copies the player owns, carried and equipped, each with the fields of an items copy' },
 ], OWNER_MAPS);
 
 /** The members of one entry in `entities`, and of `owner`. The members are read-only; a trait switches through
@@ -264,11 +268,42 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max, regen and hidden. Use entities.Mira.stats["Two Words"] for a name with a space.' },
+  { name: 'items', detail: 'array', info: 'The Item Copies the entity owns, carried and equipped, each with the fields of an items copy' },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the entity to a location of the world when the turn ends, and stops it following the player. A name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes the entity follow the player when the turn ends, at the player’s location' },
   { name: 'unfollow', detail: '() => void', info: 'Stops the entity following the player when the turn ends, and leaves it at the player’s location. An entity that isn’t following stays where it is.' },
   { name: 'diary', detail: '(line) => void', info: 'Adds a line to the entity’s diary for this turn, after the AI’s entry. An entity the game doesn’t have stops the script with an error.' },
 ], OWNER_MAPS);
+
+/** The members of one Item Copy, in `items[x].copies`, an entity's `items` or a location's `items`. The fields are
+ *  read-only; a verb lands its change when the script ends. */
+export const ITEM_COPY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'id', detail: 'string', info: 'Unique id of the Item Copy' },
+  { name: 'item', detail: 'string', info: 'Code name of its item, a key of items' },
+  { name: 'owner', detail: 'string', info: 'Code name of the entity that owns it, the persona included, or empty while it lies at a location' },
+  { name: 'location', detail: 'string', info: 'Code name of the location it lies at, or empty while an entity owns it' },
+  { name: 'quantity', detail: 'number', info: 'How many it holds' },
+  { name: 'equipped', detail: 'boolean', info: 'True when it’s equipped' },
+  { name: 'slot', detail: 'string', info: 'Name of the slot it’s equipped in, or empty when it’s carried' },
+  { name: 'hidden', detail: 'boolean', info: 'True when the player can’t see it' },
+  { name: 'charges', detail: 'number', info: 'Charges left, or null when its item has no charges' },
+  { name: 'lose', detail: '(quantity?) => void', info: 'Removes it, or the quantity you pass. Bound doesn’t stop a script.' },
+  { name: 'moveTo', detail: '(to, quantity?) => void', info: 'Moves it, or the quantity you pass, to an entity, the persona or a location, by entry or by name' },
+  { name: 'equip', detail: '() => void', info: 'Equips it in its item’s slot, unequipping the one equipped longest when the slot is full' },
+  { name: 'unequip', detail: '() => void', info: 'Unequips it. It stays owned.' },
+  { name: 'consume', detail: '() => void', info: 'Uses one dose or one charge, as Use does' },
+  { name: 'reveal', detail: '(quantity?) => void', info: 'Makes it visible to the player, or the quantity you pass' },
+  { name: 'setCharges', detail: '(charges) => void', info: 'Sets its charges, from 0 up to its item’s Charges' },
+]);
+
+/** The members of one entry in `items`, and of an item script's `self`. */
+export const ITEM_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'id', detail: 'string', info: 'Unique id of the item' },
+  { name: 'name', detail: 'string', info: 'Code name of the item' },
+  { name: 'placeholders', detail: 'object', info: 'The item’s own placeholders by name. Use items.Lamp.placeholders["Two Words"] for a name with a space.' },
+  { name: 'copies', detail: 'array', info: 'Its Item Copies in play, each with id, item, owner, location, quantity, equipped, slot, hidden and charges' },
+  { name: 'give', detail: '(to, quantity?) => void', info: 'Gives a new Item Copy to an entity, the persona or a location, by entry or by name' },
+], ['placeholders']);
 
 /** The members of one entry in a dictionary's `entries`. Only `enabled` and `constant` take a write. */
 export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
@@ -489,8 +524,26 @@ export const WORLD_SCRIPT_SURFACE: CodeSurface = {
   selfIs: 'empty',
 };
 
+/** What an item script's `self.event` holds. */
+export const ITEM_EVENT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'timing', detail: 'string', info: 'The timing that ran: gained, lost, equipped, unequipped or consumed' },
+  { name: 'quantity', detail: 'number', info: 'How many the event moved' },
+  { name: 'copy', detail: 'object', info: 'The Item Copy the event happened to, with the fields of an items copy. Once it’s gone, it reads as it stood before the event.' },
+]);
+
+/** An item script's surface: a world script's, with `self` as the item and `owner` as the Item Copy's owner (Q67). */
+export const ITEM_SCRIPT_SURFACE: CodeSurface = {
+  ...WORLD_SCRIPT_SURFACE,
+  label: 'item script',
+  globals: SANDBOX_GLOBALS.map((entry) => (entry.name === 'self'
+    ? { name: 'self', detail: shapeOf([...ITEM_FIELDS, { name: 'event', detail: shapeOf(ITEM_EVENT_FIELDS), info: '' }]), info: 'The item this script belongs to, as its items entry, with the event it runs on in self.event', access: 'readOnly' }
+    : entry.name === 'owner'
+      ? { ...entry, info: 'The entity that owns the Item Copy, with the fields of an entities entry. It’s empty while the Item Copy lies at a location.' }
+      : entry)),
+};
+
 /** Each home's surface, by the kind of home a script sits on. */
-export const SCRIPT_SURFACES = { stat: STAT_CODE_SURFACE, trait: TRAIT_SCRIPT_SURFACE, world: WORLD_SCRIPT_SURFACE } as const;
+export const SCRIPT_SURFACES = { stat: STAT_CODE_SURFACE, trait: TRAIT_SCRIPT_SURFACE, world: WORLD_SCRIPT_SURFACE, item: ITEM_SCRIPT_SURFACE } as const;
 
 /**
  * The stat-code name an unknown identifier was most likely meant to be, or null when nothing is close

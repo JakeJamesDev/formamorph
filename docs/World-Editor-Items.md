@@ -120,6 +120,26 @@ Requirement Rows on the **Requirements** tab set what an owner needs to equip th
 - ⛔ Equipping fails, and the log names the requirement, when no row holds.
 - 🔄 An equipped item unequips on its own once no row holds, and its effects reverse. One unequip can set off another; the game settles them all, up to 10 rounds.
 
+## Scripts
+<!-- keywords: item scripts, when gained, when lost, when equipped, when unequipped, when consumed, item code, item event -->
+<!-- route: worldEditorItem.scripts -->
+
+The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
+
+| Timing | Runs when |
+| --- | --- |
+| **When Gained** | An owner or a location gains an Item Copy |
+| **When Lost** | An owner or a location loses an Item Copy |
+| **When Equipped** | An Item Copy is equipped |
+| **When Unequipped** | An Item Copy is unequipped |
+| **When Consumed** | An Item Copy is used: one dose or one charge |
+
+- 🧑 `owner` is the Item Copy's owner, and empty while it lies at a location. `self` is the item.
+- 🔗 A script that gives or takes items runs those items' scripts too, 3 levels deep at most.
+- 🌱 Starting items run no script.
+
+The [Scripts Guide](ScriptsGuide#items) lists what an item script can read and write.
+
 ## Slots
 <!-- keywords: equipment slots, hand, ring, head, armor slot, capacity, two handed -->
 <!-- route: worldEditor.overview -->

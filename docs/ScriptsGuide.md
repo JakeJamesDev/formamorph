@@ -228,6 +228,7 @@ A script's home decides two things: what `self` is, and when the script is in fo
 | A stat | The stat | Always. A stat that a trait switched off pauses its scripts |
 | A trait | The trait's own entry. It is read-only, and a return value is ignored | While the trait is active. A global trait runs once with `owner` empty. An entity's trait runs once for each entity that holds it, with that entity as `owner` |
 | The world | An empty object. A return value and a write to `self` are ignored | Always |
+| An item | The item's entry in `items`, plus `event`. It is read-only, and a return value is ignored | On its Item Copies' events only. `owner` is the entity that owns the Item Copy, and empty while it lies at a location |
 
 A Blueprint stat's script runs once for each owner, in every timing.
 
@@ -288,6 +289,22 @@ The script runs once for each trait that turns on or off in play, whatever switc
 - A trait's own script also has `self`. It runs on its own switch-off too, which is the one time a trait's script runs while the trait is off.
 - Several switches from one action run one at a time, the ones that turned off first. Each run reads the state the one before left.
 - A switch that a script makes fires its own scripts, to a depth of 8. Past that, the switch applies, no script fires, and the browser console warns.
+
+#### Item Timings
+
+An item's scripts use five timings of their own. Each runs once for each event of one of the item's Item Copies, whatever caused it: the Inventory pass, the **Inventory** panel, or a script.
+
+| Timing | When it runs |
+| --- | --- |
+| **When Gained** | An owner or a location gains an Item Copy. A pickup, a gift and a drop each count |
+| **When Lost** | An owner or a location loses an Item Copy. A drop is When Lost for the owner, then When Gained at the location |
+| **When Equipped** | An Item Copy is equipped. Equipping one from a stack runs it once |
+| **When Unequipped** | An Item Copy is unequipped, by hand, by a full slot, or by a requirement that stops holding |
+| **When Consumed** | An Item Copy is used: one dose or one charge. The last dose runs this timing only, not When Lost |
+
+- `self.event` holds `timing`, `quantity`, the number the event moved, and `copy`, the Item Copy's entry. Once the Item Copy is gone, `copy` reads it as it stood before the event.
+- Revealing an Item Copy and setting its charges run no timing. Starting items run none either.
+- Their writes apply when each script ends, not at the end of the turn. A script's inventory write runs the item timings it causes, up to 3 levels deep. Past that, the write still applies, no timing runs, and the turn log says so.
 
 ### When Your Code Runs
 
@@ -353,19 +370,20 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
-| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits` | `locations.<Location>.present` | Read-only |
-| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `move()` | `location.name` | `location.move("<Location>")` |
+| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
+| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
+| `items` | `id`, `name`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds one name to those objects. A script reads only the name its own timing adds:
@@ -807,6 +825,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `traits` | The entity's own traits by name, owned or linked |
 | `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The entity's own stats by name. Entries take writes |
+| `items` | The Item Copies the entity owns. See [Items](#items). Read-only |
 | `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes the entity follow the player |
 | `unfollow()` | Stops the entity following the player |
@@ -935,6 +954,54 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **Keywords find a newly enabled entry at once.** Meaning-based recall can miss it until the game has indexed it, which starts at once and does not hold up the turn.
 - **Writing anything but `true` or `false` fails the run.**
 - **A user Tool can't write it.** The write is ignored and reported, as every user Tool write is.
+
+### Items
+<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set charges, consume from code, reveal item, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
+
+`items` holds every item of the world by code name. Each entry has `id`, `name`, its own `placeholders`, and `copies`: its Item Copies in play.
+
+Each Item Copy has these members. They are read-only.
+
+| Member | What it is |
+| --- | --- |
+| `id` | Unique identifier |
+| `item` | Code name of its item, a key of `items` |
+| `owner` | Code name of the entity that owns it, the persona included, or `''` while it lies at a location |
+| `location` | Code name of the location it lies at, or `''` while an entity owns it |
+| `quantity` | How many it holds |
+| `equipped` and `slot` | Whether it's equipped, and the slot's name |
+| `hidden` | True when the player can't see it |
+| `charges` | Charges left, or `null` when the item has no charges |
+
+An entity's entry, `persona` and a location's entry each have `items`: the Item Copies there.
+
+```javascript
+// The cellar door opens for whoever carries the key.
+const hasKey = persona.items.some((copy) => copy.item === 'Cellar Key');
+```
+
+Change the inventory through verbs. A target is an entity, the persona or a location, as an entry or by name.
+
+| Verb | What it does |
+| --- | --- |
+| `items.<Item>.give(to, n?)` | Gives `to` a new Item Copy, or `n` of them |
+| `copy.lose(n?)` | Removes the Item Copy, or `n` of it |
+| `copy.moveTo(to, n?)` | Moves the Item Copy, or `n` of it, to `to` |
+| `copy.equip()` and `copy.unequip()` | Equips or unequips it, as the panel does |
+| `copy.consume()` | Uses one dose or one charge, as Use does |
+| `copy.reveal(n?)` | Makes it visible to the player |
+| `copy.setCharges(n)` | Sets its charges, from 0 up to the item's **Charges** |
+
+- The writes apply when the script ends, in run order, through the same checks as the panel. A check that fails skips that write and logs why.
+- **Bound** stops the player only. A script can remove or move a Bound Item Copy.
+- A script can give to an entity that isn't present.
+- A target the game doesn't have stops the script with an error.
+
+```javascript
+// Resting at the shrine refills every wand the player carries.
+if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item === 'Wand') copy.setCharges(3);
+```
+
 ### Narration
 <!-- keywords: rewrite a sentence, sentence hook, during ai output, narration object, narration sentence, sent, buffered, full, index, filter narration, replace words in the story, narration is not defined, error underline on narration -->
 <!-- route: worldEditorStat.code -->
@@ -1126,6 +1193,7 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 | `parent` | The code name of the location that holds this one. Empty at the top level |
 | `children` | The code names of the locations inside this one, in the editor's order |
 | `exits` | The places the AI can move the player to from here, each with a `name` (a code name) and a `hint` (the Connection's travel hint, or empty). It's the same list the AI picks from |
+| `items` | The Item Copies lying at the location. See [Items](#items) |
 
 In a world with no location, `location.id` and `location.name` are empty and `location.present` is an empty list. A name the world has no location for reads as a blank entry.
 

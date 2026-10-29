@@ -28,7 +28,7 @@ describe('the Tool script surface matches the sandbox', () => {
   it('lists every global the script can reach, and each is really there', async () => {
     const globals = surface.globals.map((g) => g.name);
     expect(globals).toEqual([
-      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'console',
     ]);
     const probe = `return [${globals.map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, { name: 'Wren' }, snapshot);
@@ -46,7 +46,7 @@ describe('the Tool script surface matches the sandbox', () => {
 
 describe('no verb on the surface', () => {
   it('offers the fields of each world value and none of its calls', () => {
-    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits']);
+    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items']);
     expect(labelsAt('return clock.|')).toEqual(['day', 'daypart', 'hour', 'minute', 'deltaHours', 'elapsedHours', 'previous']);
     expect(labelsAt('return memories.|')).toEqual([]);
     expect(labelsAt('return entities.Mara.|', named)).not.toEqual(expect.arrayContaining(['move']));

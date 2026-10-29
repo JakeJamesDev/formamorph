@@ -4,7 +4,9 @@
  */
 import { byEquipOrder, chargesLeft, itemStackable, itemUsable, sameWhere, slotCapacity, slotSizeOf } from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
-import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemRef, PersonaRef, Placement, Slot } from '@/types';
+import type {
+  Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement, Slot,
+} from '@/types';
 import { timedTraitRow, type Dose } from './effects';
 
 export {
@@ -89,7 +91,20 @@ export type InventoryOp =
   | { kind: 'equip'; copyId: string }
   | { kind: 'unequip'; copyId: string }
   | { kind: 'consume'; copyId: string }
-  | { kind: 'reveal'; copyId: string; quantity?: number };
+  | { kind: 'reveal'; copyId: string; quantity?: number }
+  | { kind: 'setCharges'; copyId: string; charges: number };
+
+/** One Item Copy event an item's scripts of that timing run on (Q33). `where` is the owner or location it
+ *  happened at; `quantity` is how many it moved. */
+export interface ItemScriptEvent {
+  timing: ItemScriptTiming;
+  itemId: string;
+  copyId: string;
+  where: ItemCopyWhere;
+  quantity: number;
+  /** The Item Copy as it stood before a When Lost or When Consumed event, which can leave it gone. */
+  was?: ItemCopy;
+}
 
 /** The authored slice the operations read. An absent slice reads as empty. */
 export interface InventoryWorld {
@@ -118,6 +133,8 @@ export interface InventoryResult {
   doses: Dose[];
   /** One line per skipped operation (Q22). */
   diagnostics: string[];
+  /** The events of authored items, in order. Runtime items have no scripts. */
+  events: ItemScriptEvent[];
 }
 
 const isPresent = (where: ItemCopyWhere, presence: Presence | undefined): boolean => {
@@ -156,6 +173,14 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   let list: ItemCopy[] = [...copies];
   const diagnostics: string[] = [];
   const doses: Dose[] = [];
+  const events: ItemScriptEvent[] = [];
+  /** Records an event of `ref`'s item; none for a runtime item. */
+  const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy) => {
+    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }) });
+  };
+  /** The row `copy` ended in after a `put`: its own, or the stack it merged into. */
+  const rowOf = (copy: ItemCopy): string => (list.some((c) => c.id === copy.id) ? copy.id
+    : list.find((c) => !c.equipped && sameRef(c.item, copy.item) && c.visibility === copy.visibility && sameWhere(c.where, copy.where))?.id ?? copy.id);
   let order = Math.max(0, ...list.map((c) => c.equipped?.order ?? 0));
 
   /** `next` with `copy` in its row (a new one goes last), or merged into a matching carried stack when its
@@ -179,15 +204,19 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       if (!isPresent(op.to, call.presence)) return `gain: ${whereText(op.to)} is not present`;
       const ref = { kind: 'item', itemId: item.id } as const;
       if (itemStackable(item)) {
-        list = put(list, { id: call.newId(), item: ref, where: op.to, quantity, visibility: 'visible' });
+        const gained: ItemCopy = { id: call.newId(), item: ref, where: op.to, quantity, visibility: 'visible' };
+        list = put(list, gained);
+        fire('gained', ref, rowOf(gained), op.to, quantity);
         return null;
       }
+      const first = list.length;
       for (let i = 0; i < quantity; i += 1) {
         list.push({
           id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: 'visible',
           ...(item.charges !== undefined && { state: { charges: item.charges } }),
         });
       }
+      fire('gained', ref, list[first].id, op.to, quantity);
       return null;
     }
 
@@ -211,9 +240,12 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         list = left > 0
           ? list.map((c) => (c === copy ? { ...c, quantity: left } : c))
           : list.filter((c) => c !== copy);
+        if (copy.equipped) fire('unequipped', copy.item, copy.id, copy.where, copy.quantity);
+        fire('lost', copy.item, copy.id, copy.where, quantity, copy);
         if (op.kind === 'transfer') {
           const moved = { ...unequipped(copy), where: op.to, quantity, ...(left > 0 && { id: call.newId() }) };
           list = put(list, moved);
+          fire('gained', copy.item, rowOf(moved), op.to, quantity);
         }
         return null;
       }
@@ -244,11 +276,21 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         else if (copy.quantity > 1) list = list.map((c) => (c === copy ? { ...copy, quantity: copy.quantity - 1 } : c));
         else list = list.filter((c) => c !== copy);
         if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden' });
+        fire('consumed', copy.item, copy.id, copy.where, 1, copy);
+        return null;
+      }
+      case 'setCharges': {
+        const max = item?.charges;
+        if (max === undefined) return `setCharges: Item Copy ${copy.id} has no charges`;
+        if (!Number.isFinite(op.charges)) return `setCharges: ${op.charges} is not a number`;
+        const charges = Math.min(max, Math.max(0, Math.floor(op.charges)));
+        list = list.map((c) => (c === copy ? { ...c, state: { ...c.state, charges } } : c));
         return null;
       }
       case 'unequip': {
         if (!copy.equipped) return `unequip: Item Copy ${copy.id} is not equipped`;
         list = put(list, unequipped(copy));
+        fire('unequipped', copy.item, rowOf(copy), copy.where, copy.quantity);
         return null;
       }
       case 'equip': {
@@ -275,14 +317,21 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         const refused = call.requirement?.(swapped.find((c) => c.id === copy.id) ?? copy, swapped);
         if (refused) return `equip: ${refused}`;
         list = swapped;
+        for (const out of worn) {
+          if (list.some((c) => c.id === out.id && c.equipped)) continue;
+          fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity);
+        }
         order += 1;
         const equipped = { slotId: slot.id, order };
         // A swapped-out copy can merge into this stack, so read its quantity now. One splits off (Q65).
         if ((list.find((c) => c.id === copy.id)?.quantity ?? 1) > 1) {
+          const split = call.newId();
           list = list.map((c) => (c.id === copy.id ? { ...c, quantity: c.quantity - 1 } : c));
-          list.push({ ...copy, id: call.newId(), quantity: 1, equipped });
+          list.push({ ...copy, id: split, quantity: 1, equipped });
+          fire('equipped', copy.item, split, copy.where, 1);
         } else {
           list = list.map((c) => (c.id === copy.id ? { ...c, equipped } : c));
+          fire('equipped', copy.item, copy.id, copy.where, copy.quantity);
         }
         return null;
       }
@@ -293,7 +342,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
     const skipped = one(op);
     if (skipped) diagnostics.push(`Inventory (${call.source}) skipped ${skipped}`);
   }
-  return { copies: list, doses, diagnostics };
+  return { copies: list, doses, diagnostics, events };
 }
 
 /** What still exists for Item Copies to point at. */

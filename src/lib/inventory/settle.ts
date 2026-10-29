@@ -13,6 +13,7 @@ import {
 import type { RowState } from '@/lib/traitGates';
 import type { Item, ItemCopy, ItemEffectLedger, PersonaRef, TimedItemEffect, Trait } from '@/types';
 import { itemEffectLog, settleItemEffects, type Dose } from './effects';
+import type { ItemScriptEvent } from './index';
 import { grantKey, wantedGrants } from './grants';
 
 /** How many passes a settle runs before it stops (Q66). */
@@ -52,6 +53,8 @@ export interface InventorySettleResult {
   /** The traits a gate cascade turned off, and their names as the banner reads them. */
   cascade: Trait[];
   cascadeNames: string[];
+  /** One When Unequipped event per Item Copy a failed requirement unequipped. */
+  events: ItemScriptEvent[];
 }
 
 interface Pass {
@@ -164,6 +167,7 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   const log: string[] = [];
   const cascade: Trait[] = [];
   const cascadeNames: string[] = [];
+  const events: ItemScriptEvent[] = [];
   for (let n = 1; ; n += 1) {
     const done = read.pass(current, copies, copies, n === 1 ? state.doses : undefined);
     current = { ...done, ...(state.now !== undefined && { now: state.now }) };
@@ -181,9 +185,14 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
       break;
     }
     copies = copies.map((copy) => (failing.includes(copy) ? unequipped(copy) : copy));
-    for (const copy of failing) log.push(`Unequipped ${read.copyName(copy)}: requirement no longer holds`);
+    for (const copy of failing) {
+      log.push(`Unequipped ${read.copyName(copy)}: requirement no longer holds`);
+      if (copy.item.kind === 'item') {
+        events.push({ timing: 'unequipped', itemId: copy.item.itemId, copyId: copy.id, where: copy.where, quantity: copy.quantity });
+      }
+    }
   }
-  return { copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames };
+  return { copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events };
 }
 
 /** Why `copy` cannot be equipped under `copies` (Q49), or null when its requirement holds. For the validator's

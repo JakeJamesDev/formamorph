@@ -1,6 +1,6 @@
 /** The item panel's tabs, in order. `ItemManager` renders from these, and the dev-router ledger
  *  (`DEV_MODAL_TABS.worldEditorItem`) is guarded against them in `devRouter.test.ts`. */
-import { AlignLeft, ListChecks, SlidersHorizontal } from 'lucide-react';
+import { AlignLeft, Code, ListChecks, SlidersHorizontal } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 
@@ -10,6 +10,7 @@ export const ITEM_PANEL_TABS = [
   { value: 'properties', label: 'Properties', icon: SlidersHorizontal },
   { value: 'effects', label: 'Effects', icon: ELEMENT_ICONS.stat },
   { value: 'requirements', label: 'Requirements', icon: ListChecks },
+  { value: 'scripts', label: 'Scripts', icon: Code, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
 ] as const;
 

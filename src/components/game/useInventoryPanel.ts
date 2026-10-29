@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { presentEntityIds } from '@/lib/entityPresence';
-import { applyInventoryOps, copiesAt, type Dose, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
+import { applyInventoryOps, copiesAt, type Dose, type InventoryOp, type ItemScriptEvent, type TimedEffectView } from '@/lib/inventory';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -14,10 +14,13 @@ const YOU = { kind: 'you' } as const;
 const NONE: never[] = [];
 
 /** The live game's half of the panel: the equip check (Q49), the inventory settle that commits the new Item
- *  Copies with their effects, grants, requirements and doses (Q48), and the timed effects running. */
+ *  Copies with their effects, grants, requirements and doses (Q48) and runs their item scripts, and the timed
+ *  effects running. */
 export interface InventoryPanelSettle {
   requirement: (copy: ItemCopy, copies: readonly ItemCopy[]) => string | null;
-  commit: (copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], doses: readonly Dose[]) => void;
+  commit: (
+    copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], doses: readonly Dose[], events: readonly ItemScriptEvent[],
+  ) => void;
   timed?: readonly TimedEffectView[];
 }
 
@@ -46,7 +49,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
       ...(settle && { requirement: settle.requirement }),
     });
     if (settle) {
-      settle.commit(result.copies, itemCopies, result.diagnostics, result.doses);
+      settle.commit(result.copies, itemCopies, result.diagnostics, result.doses, result.events);
       return;
     }
     setItemCopies(result.copies);

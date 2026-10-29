@@ -4,10 +4,17 @@
  * the executor, so the editor, the readers and the migration can import it without pulling QuickJS in.
  */
 
-import type { Script, ScriptTiming } from '@/types';
+import type { ItemScriptTiming, Script, ScriptTiming } from '@/types';
 
-/** Every timing, in the order a playthrough first reaches them. */
+/** Every timing of a stat, a trait or the world, in the order a playthrough first reaches them. */
 export const SCRIPT_TIMINGS = ['before', 'after', 'output', 'start', 'switch'] as const satisfies readonly ScriptTiming[];
+
+/** The timings an item's scripts run at, one per Item Copy event (Q33). */
+export const ITEM_SCRIPT_TIMINGS = ['gained', 'lost', 'equipped', 'unequipped', 'consumed'] as const satisfies readonly ItemScriptTiming[];
+
+/** Whether `timing` is one of an item's. */
+export const isItemTiming = (timing: ScriptTiming): timing is ItemScriptTiming =>
+  (ITEM_SCRIPT_TIMINGS as readonly ScriptTiming[]).includes(timing);
 
 /** A timing's name wherever an author reads it. */
 export const SCRIPT_TIMING_LABEL: Record<ScriptTiming, string> = {
@@ -16,6 +23,11 @@ export const SCRIPT_TIMING_LABEL: Record<ScriptTiming, string> = {
   output: 'During AI Output',
   start: 'At Game Start',
   switch: 'When a Trait Switches',
+  gained: 'When Gained',
+  lost: 'When Lost',
+  equipped: 'When Equipped',
+  unequipped: 'When Unequipped',
+  consumed: 'When Consumed',
 };
 
 /** When a timing runs and what it is for, shown when an author selects the timing. */
@@ -25,9 +37,14 @@ export const SCRIPT_TIMING_DESCRIPTION: Record<ScriptTiming, string> = {
   output: 'Runs once for each narration sentence as it completes. Use it to rewrite or filter the narration.',
   start: 'Runs once on the opening turn of a new game, before Before the AI. Use it to roll starting values or pin placeholders.',
   switch: 'Runs each time a trait turns on or off in play. Use it to apply or undo what the trait changes.',
+  gained: 'Runs when an owner or a location gains one of its Item Copies. Use it to react to a pickup or a gift.',
+  lost: 'Runs when an owner or a location loses one of its Item Copies. Use it to undo what the item started.',
+  equipped: 'Runs when one of its Item Copies is equipped. Use it for effects the effect rows can’t express.',
+  unequipped: 'Runs when one of its Item Copies is unequipped, swapped out included. Use it to undo what equipping did.',
+  consumed: 'Runs when one of its Item Copies is used, one dose or one charge. Use it for what the use does.',
 };
 
-/** Anything that holds scripts: a stat, a trait, the world. */
+/** Anything that holds scripts: a stat, a trait, the world, an item. */
 export interface ScriptHome {
   scripts?: readonly Script[];
 }
