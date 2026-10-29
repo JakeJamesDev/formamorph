@@ -11,7 +11,7 @@
 //   that trait reverses it, rather than the authored number.
 
 import type {
-  CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
+  CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemCopy, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
   PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
@@ -56,6 +56,10 @@ export type TraitWorld = {
   gateStats?: GateStats;
   /** The story clock's daypart, which every time Condition reads. Absent ⇒ the opening hour's. */
   daypart?: Daypart;
+  /** The authored items an item Condition names. Absent ⇒ every item Condition is unresolved. */
+  items?: GateInput['worldItems'];
+  /** Every Item Copy in play, hidden ones included. Absent ⇒ no one owns anything. */
+  itemCopies?: readonly ItemCopy[];
 } & (
   | { entities?: readonly GateEntity[]; global?: undefined; owners?: undefined }
   /** Global scope's tree and every present entity owner as the gate module reads them (see lib/owners).
@@ -699,6 +703,8 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   ),
   stats: world.gateStats ?? gateStatsOf(state, world),
   ...(world.daypart ? { daypart: world.daypart } : {}),
+  ...(world.items ? { worldItems: world.items } : {}),
+  ...(world.itemCopies ? { itemCopies: world.itemCopies } : {}),
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },
   originals: { traits: world.traits, groups: world.groups },

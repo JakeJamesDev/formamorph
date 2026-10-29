@@ -69,8 +69,10 @@ export function openingFold(
   const { stats: authored, entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
   const ownerWorld = { traits, traitGroups, entities };
   const library = inPlayLibrary(ownerWorld, persona?.libraryEntity, persona?.characters ?? []);
+  const itemCopies = seedItemCopies(world, ref, newId);
   const traitWorld: TraitWorld = {
-    traits, groups: traitGroups, entities, persona: ref, ...inPlayOwners(ownerWorld, ref, library),
+    traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemCopies,
+    ...inPlayOwners(ownerWorld, ref, library),
   };
 
   // Authored order, not click order: two players with the same picks open with the same stats.
@@ -107,7 +109,7 @@ export function openingFold(
     places: { locations, location: start && { id: start.id, name: start.name }, connections: world.connections ?? [] },
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
-    itemCopies: seedItemCopies(world, ref, newId),
+    itemCopies,
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
   return { state, entityStats, startingTraits, traitState };

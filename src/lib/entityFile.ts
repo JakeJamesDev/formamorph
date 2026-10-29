@@ -234,6 +234,10 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
     if (!isStatComparison(operator) || typeof value !== 'number' || !Number.isFinite(value) || (unit !== 'raw' && unit !== 'percent')) return [];
     return [{ kind: 'stat', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), operator, value, unit, ...not }];
   }
+  if (raw.kind === 'item') {
+    if (raw.status !== 'owned' && raw.status !== 'equipped') return [];
+    return [{ kind: 'item', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), status: raw.status, ...not }];
+  }
   if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
   return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), ...not }];
 }

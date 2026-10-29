@@ -121,7 +121,7 @@ export function RequirementRowsField({
     heading,
     rows: list.map((option) => ({
       // One stat can sit under several owners.
-      key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}`,
+      key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
       value: option,
       name: option.label,
       breadcrumb: option.breadcrumb,
@@ -130,7 +130,8 @@ export function RequirementRowsField({
   });
   // Off-world only the entity's own stats exist to read.
   const shownStats = statSections.filter((s) => !offWorld || s.own);
-  const searchable = joinAnd(['traits', 'groups', ...(shownStats.length ? ['stats'] : []), 'time of day', ...(offWorld ? [] : ['personas'])]);
+  const shownItems = offWorld ? [] : options.items ?? [];
+  const searchable = joinAnd(['traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(offWorld ? [] : ['personas'])]);
   // One owner page per home, the world first and then in tree order; pages key on the owner's id, not its name.
   const ownerPages = (prefix: string, list: RequirementOption[]): BreadcrumbPickerNode<RequirementOption>[] => {
     const homes = new Map<string, { heading: string; list: RequirementOption[] }>();
@@ -152,6 +153,10 @@ export function RequirementRowsField({
     ...category('stats', 'Stats', shownStats.map((s, i): BreadcrumbPickerNode<RequirementOption> => ({
       kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options) }],
     }))),
+    ...category('items', 'Items', (['owned', 'equipped'] as const).flatMap((status) => {
+      const list = shownItems.filter((o) => o.requirement.kind === 'item' && o.requirement.status === status);
+      return list.length ? [{ kind: 'section' as const, ...targets(status === 'owned' ? 'Owned' : 'Equipped', list) }] : [];
+    })),
     ...category('time', 'Time of Day', [{ kind: 'section', ...targets('Time of Day', [TIME_OPTION]) }]),
     ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...targets('Playing As', options.personas) }])),
   ];
@@ -162,7 +167,7 @@ export function RequirementRowsField({
       key: requirementOwnerKey(choice?.owner),
       value: requirement,
       name: choice?.name ?? hostName ?? 'Same Owner',
-      hint: choice || hostName ? undefined : 'Whoever has the trait',
+      hint: choice || hostName ? undefined : option.requirement.kind === 'item' ? 'Whoever has the item' : 'Whoever has the trait',
       disabled: listed(requirement),
     };
   };
@@ -226,7 +231,7 @@ export function RequirementRowsField({
               />
             </span>
           </>
-        ) : unresolved || !opens(requirement) ? (
+        ) : unresolved || requirement.kind === 'item' || !opens(requirement) ? (
           <span className="min-w-0 truncate">{mark}{targetLabel}</span>
         ) : (
           <button

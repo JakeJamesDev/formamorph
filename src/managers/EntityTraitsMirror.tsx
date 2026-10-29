@@ -15,10 +15,10 @@ import EntityTraitsEditor, { type EntityTraitStore } from './EntityTraitsEditor'
  */
 function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
   const world = useGameData();
-  const { traits, traitGroups, entities, placeholders, stats, statGroups, placementLetters, placeholderOwners, editEntity } = world;
+  const { traits, traitGroups, entities, items, placeholders, stats, statGroups, placementLetters, placeholderOwners, editEntity } = world;
   const gateInput = useMemo(
-    () => editorGateInput({ traits, traitGroups, entities }, startingGateStats({ stats, statGroups, entities })),
-    [traits, traitGroups, entities, stats, statGroups],
+    () => editorGateInput({ traits, traitGroups, entities, items }, startingGateStats({ stats, statGroups, entities })),
+    [traits, traitGroups, entities, items, stats, statGroups],
   );
   return useMemo(() => {
     const edit = (change: (e: Entity) => Entity) => editEntity(entity.id, change);

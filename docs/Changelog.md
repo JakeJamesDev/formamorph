@@ -21,6 +21,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Consumable, Charges, Bound and an equipment slot. Set the world's slots on the Overview tab.
     - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items on the Overview tab, or on an entity's or location's Items tab. A new game starts with them; saved games never gain them.
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Inventory:**
+    - **Requirement Rows can require an item.** Traits and image rules can check that an owner has an item, owned or equipped, with Not.
+
 ---
 
 <details>
