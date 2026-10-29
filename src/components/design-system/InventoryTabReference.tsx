@@ -33,7 +33,7 @@ const TIMED: TimedEffectView[] = [
   { key: 'tonic-ward', itemName: 'Healing Tonic', effect: 'Warded', hoursLeft: 26 },
   { key: 'hidden', itemName: null, effect: 'Max Health -5', hoursLeft: 0.25 },
 ];
-const PRESENT = [{ id: 'courier', name: 'Courier' }, { id: 'archivist', name: 'Archivist' }];
+const PRESENT = [{ id: 'courier', name: 'Courier', inScene: true }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
 
 /** The side panel's tab strip at one width: labels while all four fit, icons alone below that. */
@@ -65,7 +65,7 @@ export function InventoryTabReference() {
       <CardHeader>
         <CardTitle>Inventory Tab</CardTitle>
         <CardDescription>
-          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand charge, and turns off at zero charges. The Ash Wand is Bound. Effects lists the After Consumed effects running, with time left. Here lists the visible items lying at the location.
+          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand charge, and turns off at zero charges. The Ash Wand is Bound. Effects lists the After Consumed effects running, with time left. Give lists the entities in the scene above the rest at the location. A card named for the location lists the visible items lying there, each with Pick Up.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-start gap-6">
@@ -82,6 +82,7 @@ export function InventoryTabReference() {
             slots={SLOTS}
             present={PRESENT}
             locationId={HERE}
+            locationName="Sample Room"
             disabled={busy}
             resolveText={(text) => text}
             timed={TIMED}

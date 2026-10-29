@@ -80,6 +80,18 @@ describe('RightPanel — Inventory tab', () => {
     expect(h.gameplay().itemCopies.map((c) => [c.where, c.quantity])).toEqual([[you, 3], [{ kind: 'entity', id: 'bram' }, 2]]);
   });
 
+  it('lists the entities in scene first, then the rest at the location', async () => {
+    const crowd = [...entities, { id: 'ilsa', name: 'Ilsa', locations: ['yard'] }, { id: 'odo', name: 'Odo', locations: ['hall'] }] as Entity[];
+    renderRightPanel(
+      { inventorySettle: { requirement: () => null, commit: vi.fn(), participants: ['Ilsa', 'Odo'] } },
+      { ...stage([copy('c', 'coin')]), world: { items, slots, entities: crowd, locations: [yard, hall] } },
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
+    const list = await screen.findByRole('list', { name: 'Give to' });
+    // Odo is named in the scene but stands in the hall, so Give never offers him.
+    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Ilsa', 'Bram']);
+  });
+
   it('gives a whole stack with All', async () => {
     const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 5 })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));

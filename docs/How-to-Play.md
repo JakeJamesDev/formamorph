@@ -254,11 +254,11 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 | **Location** | Where you are, its description and the places it connects to |
 
 ## How to Use Your Inventory
-<!-- keywords: items, equipment, gear, equip, wear, wield, unequip, take off, drop, give, hand over, bag, pack, backpack, slot, bound item, quest item, charges, use, drink, potion, consume, buff, timed effects, time left -->
+<!-- keywords: items, equipment, gear, equip, wear, wield, unequip, take off, drop, give, hand over, pick up, take item, loot, bag, pack, backpack, slot, bound item, quest item, charges, use, drink, potion, consume, buff, timed effects, time left -->
 <!-- route: gameViewer.inventory -->
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
-2. **Equipped** lists each slot with what you wear there. **Carried** lists the rest. **Here** lists the items lying at your location.
+2. **Equipped** lists each slot with what you wear there. **Carried** lists the rest. A second card, named for your location, lists the items lying there.
 3. Use the buttons on an item's row:
 
 | Button | What it does |
@@ -267,11 +267,12 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 | **Equip** | Wears the item in its slot. A full slot takes off the item you equipped there first. From a stack, you equip one. |
 | **Unequip** | Takes the item off. You keep it. |
 | **Drop** | Leaves the item here, at your location. |
-| **Give** | Hands the item to someone here. |
+| **Give** | Hands the item to someone here. People in the scene come first, then everyone else at your location. |
+| **Pick Up** | Takes an item lying at your location into your inventory. |
 
 **Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack. A charged item shows its charges under its name.
 
-Items with art show a small image on their row. **Here** shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop** and **Give** ask how many. Type a number or select **All**.
+Items with art show a small image on their row. The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
 
 > [!NOTE]
 > The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but the story can still take it.

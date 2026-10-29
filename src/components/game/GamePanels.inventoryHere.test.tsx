@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderRightPanel, renderInGame, type Gameplay } from '@/test/gamePanels';
 import { EntityEquipped } from './EntityEquipped';
 import type { Entity, GameLocation, Item, ItemCopy, Slot } from '@/types';
@@ -15,6 +16,7 @@ const slots: Slot[] = [{ id: 'hand', name: 'Hand' }];
 const items = [
   item('coin', 'Coin'),
   item('dagger', 'Dagger', { slotId: 'hand', stackable: false }),
+  item('crown', 'Old Crown', { stackable: false, bound: true }),
   // Shows the cursed art while the owner also owns the Coin.
   item('ring', 'Silver Ring', {
     images: [{ data: CURSED, requires: [{ all: [{ kind: 'item', id: 'coin', status: 'owned' }] }] }, { data: PLAIN }],
@@ -48,9 +50,34 @@ describe('Inventory tab — Here', () => {
       copy('c', 'dagger', { where: at('hall') }),
       copy('d', 'coin'),
     ]));
-    const here = await screen.findByRole('list', { name: 'Here' });
+    const here = await screen.findByRole('list', { name: 'Lying here' });
     expect(within(here).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Coin×4']);
     expect(within(region()).queryByText('Dagger')).not.toBeInTheDocument();
+  });
+
+  it("draws what lies here in its own card, named for the location, outside the player's card", async () => {
+    renderRightPanel({}, stage([copy('a', 'coin', { where: at('yard') })]));
+    const card = await screen.findByRole('region', { name: 'Here' });
+    expect(within(card).getByRole('button', { name: 'Yard' })).toBeInTheDocument();
+    expect(region()).not.toContainElement(card);
+    expect(within(region()).queryByText('Coin')).not.toBeInTheDocument();
+  });
+
+  it('picks up a single Item Copy at once, and one of a stack through its count', async () => {
+    const h = renderRightPanel({}, stage([copy('a', 'dagger', { where: at('yard') }), copy('b', 'coin', { where: at('yard'), quantity: 3 })]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Pick Up Dagger' }));
+    expect(h.gameplay().itemCopies.find((c) => c.id === 'a')?.where).toEqual(you);
+    await userEvent.click(screen.getByRole('button', { name: 'Pick Up Coin' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pick Up' }));
+    expect(h.gameplay().itemCopies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'coin').map((c) => [c.where.kind, c.quantity]))
+      .toEqual([['location', 2], ['you', 1]]);
+  });
+
+  it('picks up a Bound Item Copy, which then cannot be dropped', async () => {
+    const h = renderRightPanel({}, stage([copy('k', 'crown', { where: at('yard') })]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Pick Up Old Crown' }));
+    expect(h.gameplay().itemCopies).toEqual([copy('k', 'crown')]);
+    expect(await screen.findByRole('button', { name: 'Drop Old Crown: Bound' })).toBeDisabled();
   });
 
   it('says nothing lies here when only hidden Item Copies do', async () => {

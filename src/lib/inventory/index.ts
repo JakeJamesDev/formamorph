@@ -251,7 +251,8 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
     if (!copy) return `${op.kind}: no Item Copy ${op.copyId}`;
     if (!isPresent(copy.where, call.presence)) return `${op.kind}: Item Copy ${copy.id} is not present`;
     const item = copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined;
-    const bound = call.source === 'panel' && !!item?.bound;
+    // Bound stops the panel letting go of an Item Copy, never picking one up.
+    const bound = call.source === 'panel' && !!item?.bound && copy.where.kind !== 'location';
 
     switch (op.kind) {
       case 'lose':

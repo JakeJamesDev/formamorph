@@ -21,7 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Consumable, Charges, Bound and an equipment slot. Set the world's slots on the Overview tab.
     - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items on the Overview tab, or on an entity's or location's Items tab. A new game starts with them; saved games never gain them.
     - **The narrator now knows what you and the people near you carry, through a new Inventory prompt chip.** It sends equipped items with their AI Summary, carried items by name, and the items lying here, with hidden ones marked. Built-in presets hold it; add it to your own from the chip bar.
-    - **The game's right panel has an Inventory tab to equip, unequip, drop and give your items.** Changes apply at once and are off while a turn runs. Drop and Give on a stack ask how many. Side panel tabs show icons alone when their labels don't fit.
+    - **The game's right panel has an Inventory tab to equip, unequip, drop and give your items.** Changes apply at once and are off while a turn runs. Drop and Give on a stack ask how many. Give lists people in the scene first. Side panel tabs show icons alone when their labels don't fit.
     - **Items can now change their owner's stats, through effect rows on the item's new Effects tab.** Each row raises or lowers a value, minimum, maximum or regen While Equipped, While Owned or On First Obtain. Ending an effect gives back exactly what it gave, and the log names the item.
     - **Items can now grant traits, and an item's Requirements tab sets what its owner needs to equip it.** A granted trait comes from the owner's own list and leaves the owner's own picks alone. An item unequips on its own once its requirement stops holding; its own bonus never counts.
     - **Items can now be used up: the Inventory tab has a Use button for Consumable and charged items.** After Consumed effects last a set story time or for good, and the tab lists them with time left. A second dose restarts the timer.
@@ -34,7 +34,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Inventory:**
     - **Requirement Rows can require an item.** Traits and image rules can check that an owner has an item, owned or equipped, with Not.
-    - **The Inventory tab lists items lying at your location, and the story can reveal hidden items.** Hidden items stay out of every panel. Entity dialogs list what the entity wears.
+    - **The Inventory tab lists items lying at your location, and the story can reveal hidden items.** They show in a card named for the location. Hidden items stay out of every panel. Entity dialogs list what the entity wears.
+    - **The Inventory tab can pick up the items lying at your location.** Pick Up works on Bound items too, and on a stack it asks how many.
     - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice.
     - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets.
     - **Emberwatch now has ten items: cold iron gear, remedies, grave goods and the two halves of the broken crown.** You start with a draught and a lantern. Lay both crown halves on the king's bier to end the Wight.
