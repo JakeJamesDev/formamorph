@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Entity, EntityPositions, GameLocation, Item, ItemCopy, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Entity, EntityPositions, GameLocation, Item, ItemCopy, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { entitiesInPlay, entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
@@ -59,6 +59,8 @@ export interface LiveSceneSources {
   items?: readonly Item[];
   /** Every Item Copy in play. None when absent. */
   itemCopies?: readonly ItemCopy[];
+  /** The runtime items the Inventory pass made. None when absent. */
+  runtimeItems?: readonly RuntimeItem[];
 }
 
 /** The world under a running turn's code writes, which React has not rendered yet. Each absent field keeps
@@ -149,6 +151,7 @@ export function liveChipScene(
     placeholders: sources.placeholders,
     items: sources.items,
     itemCopies: sources.itemCopies,
+    runtimeItems: sources.runtimeItems,
     outerScopeEntities: ownText(placed(sources.entities)),
     inSceneNames,
   };
@@ -161,16 +164,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies,
+    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems,
     }, at, box),
     [
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems,
     ],
   );
 }

@@ -36,7 +36,8 @@ export type TurnPassId =
   | 'diary'
   | 'discoverEntity'
   | 'sceneTags'
-  | 'milestoneSelect';
+  | 'milestoneSelect'
+  | 'inventory';
 
 /** Where a pass sits relative to the narration. Passes run in stage order, then in plan order. */
 export type TurnStage = 'preNarration' | 'planning' | 'narration' | 'postNarration';
@@ -63,6 +64,10 @@ export interface TurnSettings {
   characterDiaries: boolean;
   /** The Describe New Characters setting, which governs the discovery pass. */
   describeCharacters: boolean;
+  /** The world has authored items or the game has Item Copies (Q37). */
+  inventoryDue: boolean;
+  /** The inventory endpoint refused a response schema before, so the pass sends its text request alone. */
+  inventoryTextPass: boolean;
   /** The Image Attachments setting. Off, no pass includes the action's images. */
   imageAttachments: boolean;
   /** The active preset's Include Attachments flags. An absent prompt takes its default. */
@@ -109,6 +114,8 @@ export interface TurnPrompts {
   discoverEntityUser: string;
   sceneTags: string;
   sceneTagsUser: string;
+  inventory: string;
+  inventoryUser: string;
 }
 
 /** Everything the planner decides from. Plain values only — no React, no clock, no globals. */
@@ -157,6 +164,8 @@ export interface TurnPassSubject {
  */
 export interface TurnMaterial {
   statRequest?: StatRequestSnapshot;
+  /** The present items whose stat effects the game applies, which the stat request names (Q53). */
+  statItemNames?: string[];
   /** The context values the stat pass renders from: `ctx` over a scene whose stats carry their request keys.
    *  The stat pass reads `ctx` when absent. */
   statCtx?: TokenValues;

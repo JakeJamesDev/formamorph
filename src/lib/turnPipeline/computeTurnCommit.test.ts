@@ -214,6 +214,24 @@ describe('computeTurnCommit — the stored turn', () => {
     expect(turn && parseTurnContent(serializeTurnContent(turn))?.toolCalls).toEqual(toolCalls);
   });
 
+  it('carries the Inventory pass operations, and the stored turn keeps them for a re-roll', () => {
+    const raw = 'transfer | Iron Sword | 1 | you | Maela';
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'inventory', raw }], {}, { inventoryDue: true });
+    const commit = computeTurnCommit({ result, plan, context: context() });
+    const ops = [{ op: 'transfer', item: 'Iron Sword', quantity: 1, owner: 'you', to: 'Maela' }];
+    expect(commit?.inventoryOps).toEqual(ops);
+    expect(commit && parseTurnContent(serializeTurnContent(commit.turn))?.inventoryOps).toEqual(ops);
+  });
+
+  it('stores no inventory operations when the pass changed nothing or failed', () => {
+    for (const answer of [{ id: 'inventory', raw: 'NONE' }, { id: 'inventory', failed: true }] as Answer[]) {
+      const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, answer], {}, { inventoryDue: true });
+      const commit = computeTurnCommit({ result, plan, context: context() });
+      expect(commit?.inventoryOps).toEqual([]);
+      expect(commit?.turn).not.toHaveProperty('inventoryOps');
+    }
+  });
+
   it('stores no Tool calls when the AI made none, and a turn saved without them loads unchanged', () => {
     const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
     expect(computeTurnCommit({ result, plan, context: context({ toolCalls: [] }) })?.turn).not.toHaveProperty('toolCalls');

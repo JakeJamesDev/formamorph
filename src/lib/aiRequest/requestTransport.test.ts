@@ -5,6 +5,8 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseResponse, sseTokens, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { AiStreamError } from './aiStream';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
+import { INVENTORY_TEXT_FORMAT, parseInventoryReply } from '@/lib/inventory/pass';
+import { inventoryRequest } from '@/lib/turnPipeline/turnPasses';
 import type { ResponseSchema } from './responseSchema';
 import type { ToolExecutor } from './toolLoop';
 import { narrationStream } from './narrationStream';
@@ -319,6 +321,30 @@ describe('a refused schema', () => {
     expect(noteSchemaRejected).toHaveBeenCalledWith(expect.objectContaining({ model: 'test-model' }));
     expect(types).not.toContain('failure');
     expect(types.filter((t) => t === 'requestCaptured')).toHaveLength(2);
+  });
+
+  it('sends the Inventory pass its text request and line format, whose reply the pass parser reads', async () => {
+    quietErrors();
+    const noteSchemaRejected = vi.fn();
+    const bodies: Record<string, unknown>[] = [];
+    const record = (respond: () => Response) => (init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return respond();
+    };
+    const refused = () => new Response(JSON.stringify({ error: { message: 'json_schema is not supported' } }), { status: 400 });
+    const ctx = context(scripted([
+      record(refused), record(() => sseResponse(sseTokens(['gain | Rusty Key | 1 |  | you']))),
+    ]), { noteSchemaRejected });
+    const pass = inventoryRequest(
+      { system: 'ITEMS', user: '<NARRATION>' }, { ctx: {}, action: 'I open the drawer.', narration: 'A key lies inside.' },
+      { textPass: false, quiet: false },
+    );
+    const { text } = await send(pass, ctx);
+    expect(bodies[0]).toHaveProperty('response_format');
+    expect(bodies[1]).not.toHaveProperty('response_format');
+    expect(JSON.stringify(bodies[1].messages)).toContain(JSON.stringify(INVENTORY_TEXT_FORMAT).slice(1, -1));
+    expect(parseInventoryReply(text)).toEqual([{ op: 'gain', item: 'Rusty Key', quantity: 1, owner: '', to: 'you' }]);
+    expect(noteSchemaRejected).toHaveBeenCalledWith(expect.objectContaining({ model: 'test-model' }));
   });
 });
 

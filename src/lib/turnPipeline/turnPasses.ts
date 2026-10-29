@@ -24,6 +24,8 @@ import {
 } from '@/lib/entityFollowing';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
+import { INVENTORY_JSON_FORMAT, INVENTORY_TEXT_FORMAT, inventoryPassSchema, parseInventoryReply } from '@/lib/inventory/pass';
+import type { InventoryPassOp } from '@/types';
 import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
@@ -68,6 +70,8 @@ export const TURN_PASS_CAPS = {
   choices: 256,
   /** Three short number lines. */
   milestoneSelect: 300,
+  /** A handful of item operations: a busy turn moves five or six. */
+  inventory: 320,
 } as const;
 
 /** One stat line (a name, a sign and a number) per live stat, plus slack for a stray word. */
@@ -510,6 +514,20 @@ export interface StatPrompts {
   text: StatText;
 }
 
+/** The stat request's item line (Q53): the items whose effects the game applies, so the tracker leaves them out. */
+export const statItemEffectsLine = (names: readonly string[]): string =>
+  `
+
+The game applies what these items do to stats when they are equipped, used or consumed: ${names.join(', ')}. The readings already hold those changes; record the other changes this turn made.`;
+
+/** A system prompt with the item line after it, when there are items to name. */
+const withItemLine = (system: TiledRuns, names: readonly string[] | undefined): TiledRuns => {
+  if (!names?.length) return system;
+  const line = statItemEffectsLine(names);
+  const end = system.content.length;
+  return { content: system.content + line, runs: [...system.runs, { start: end, end: end + line.length, contextLabel: 'mode-directive' }] };
+};
+
 /** The text pass's prompts. A side with no built-in text wording is sent as written. */
 const resolveStatText = ({ system, user, text }: StatPrompts): StatTextPrompts => ({
   system: text.system ?? system,
@@ -525,7 +543,7 @@ const resolveStatText = ({ system, user, text }: StatPrompts): StatTextPrompts =
 export function statUpdatesRequest(
   prompts: StatPrompts,
   values: { ctx: TokenValues; action: string; narration: string },
-  base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean },
+  base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean; itemNames?: readonly string[] },
 ): TurnPassRequest<ChatMessage> {
   const { statRequest } = base;
   const user = { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration };
@@ -534,7 +552,7 @@ export function statUpdatesRequest(
   const textStats = statRequest ? textPassTargets(statRequest).length : base.statCount;
   const textRequest = labeledRequest(
     { ...shared, maxTokens: statUpdatesCap(textStats) },
-    systemTiled(text.system, layerValues(values.ctx, statRequest?.context)),
+    withItemLine(systemTiled(text.system, layerValues(values.ctx, statRequest?.context)), base.itemNames),
     userTiled(text.user, user),
   );
   if (!statRequest || statRequest.textPass) return textRequest;
@@ -542,7 +560,7 @@ export function statUpdatesRequest(
   return {
     ...labeledRequest(
       { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, new Set(statRequest.targets.map((t) => t.ownerKey)).size) },
-      systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)),
+      withItemLine(systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)), base.itemNames),
       userTiled(prompts.user, user),
     ),
     responseSchema: statRequestSchema(statRequest),
@@ -568,9 +586,54 @@ export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>
   buildRequest: (input, material) => statUpdatesRequest(
     { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser, text: input.prompts.statText },
     { ctx: material.statCtx ?? material.ctx, action: material.effectiveAction, narration: material.narration },
-    { statCount: input.settings.statCount, statRequest: material.statRequest, quiet: quietInBatch(input) },
+    {
+      statCount: input.settings.statCount, statRequest: material.statRequest, quiet: quietInBatch(input),
+      ...(input.settings.inventoryDue && { itemNames: material.statItemNames }),
+    },
   ),
   parseResponse: (raw) => parseStatUpdates(raw),
+};
+
+/**
+ * The Inventory pass's request: the schema request, carrying the text request as its fallback. An endpoint that
+ * refused the schema before gets the text request alone. The text reply's format rides after the user message,
+ * out of the author's reach, because the parser depends on it.
+ */
+export function inventoryRequest(
+  prompts: { system: string; user: string },
+  values: { ctx: TokenValues; action: string; narration: string },
+  base: { textPass: boolean; quiet: boolean },
+): TurnPassRequest<ChatMessage> {
+  const system = systemTiled(prompts.system, values.ctx);
+  const user = userTiled(prompts.user, { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration });
+  const withFormat = (format: string): TiledRuns => ({
+    content: user.content + format,
+    runs: [...user.runs, { start: user.content.length, end: user.content.length + format.length, contextLabel: 'reply-format' }],
+  });
+  const shared = { type: 'inventory' as const, maxTokens: TURN_PASS_CAPS.inventory, silent: false, quiet: base.quiet };
+  const textRequest = labeledRequest(shared, system, withFormat(INVENTORY_TEXT_FORMAT));
+  if (base.textPass) return textRequest;
+  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
+  return {
+    ...labeledRequest(shared, system, withFormat(INVENTORY_JSON_FORMAT)),
+    responseSchema: inventoryPassSchema(),
+    textFallback: { systemPrompt, messages, maxTokens, anatomy },
+  };
+}
+
+/** How the story changed who has which item (R1, Q23). Due only in a world with items (Q37). */
+export const inventoryPass: TurnPassRecord<InventoryPassOp[]> = {
+  id: 'inventory',
+  type: 'inventory',
+  stage: 'postNarration',
+  fanOut: false,
+  isDue: (input) => input.settings.inventoryDue && input.prompts.inventory !== '',
+  buildRequest: (input, material) => inventoryRequest(
+    { system: input.prompts.inventory, user: input.prompts.inventoryUser },
+    { ctx: material.ctx, action: material.effectiveAction, narration: material.narration },
+    { textPass: input.settings.inventoryTextPass, quiet: quietInBatch(input) },
+  ),
+  parseResponse: (raw) => parseInventoryReply(raw),
 };
 
 /**
@@ -765,6 +828,7 @@ export const TURN_PASSES: TurnPassRecord[] = [
   narrationPass,
   choicesPass,
   statUpdatesPass,
+  inventoryPass,
   locationSuggestPass,
   entityLocationSuggestPass,
   summaryPass,

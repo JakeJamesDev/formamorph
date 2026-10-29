@@ -1,0 +1,209 @@
+{
+  "items": [
+    {
+      "id": "lantern",
+      "name": "Hooded Lantern",
+      "aiSummary": "A brass lantern whose shutter only half closes, so it always leaks a stripe of light."
+    },
+    {
+      "id": "knife",
+      "name": "Gutting Knife"
+    },
+    {
+      "id": "pouch",
+      "name": "Coin Pouch"
+    },
+    {
+      "id": "cloak",
+      "name": "Oilskin Cloak",
+      "slotId": "body",
+      "stackable": false
+    },
+    {
+      "id": "draught",
+      "name": "Healing Draught",
+      "consumable": true,
+      "aiSummary": "A stoppered vial of bitter green tonic that restores strength."
+    },
+    {
+      "id": "hook",
+      "name": "Bone Hook",
+      "slotId": "hand",
+      "aiSummary": "A hook carved from a pike's jaw, worn on a cord at the wrist."
+    },
+    {
+      "id": "eel",
+      "name": "Smoked Eel",
+      "consumable": true
+    },
+    {
+      "id": "oar",
+      "name": "Broken Oar"
+    },
+    {
+      "id": "token",
+      "name": "Silver Ferry Token"
+    }
+  ],
+  "slots": [
+    {
+      "id": "body",
+      "name": "Body"
+    },
+    {
+      "id": "hand",
+      "name": "Hand"
+    }
+  ],
+  "copies": [
+    {
+      "item": "lantern",
+      "where": "you"
+    },
+    {
+      "item": "knife",
+      "where": "you"
+    },
+    {
+      "item": "pouch",
+      "where": "you"
+    },
+    {
+      "item": "cloak",
+      "where": "you"
+    },
+    {
+      "item": "draught",
+      "where": "you",
+      "quantity": 2
+    },
+    {
+      "item": "hook",
+      "where": "ent-odette",
+      "equipped": true
+    },
+    {
+      "item": "eel",
+      "where": "ent-odette",
+      "quantity": 3
+    },
+    {
+      "item": "oar",
+      "where": "loc-sedge"
+    },
+    {
+      "item": "token",
+      "where": "loc-sedge",
+      "hidden": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "pickup",
+      "action": "I pick up the broken oar.",
+      "narration": "You stoop and lift the broken oar from the planks. The split blade is still wet, and the grip is worn smooth. You tuck it under your arm. Odette watches without comment.",
+      "expect": [
+        {
+          "item": "oar",
+          "where": "you"
+        }
+      ]
+    },
+    {
+      "id": "give",
+      "action": "I hand Odette my gutting knife.",
+      "narration": "You draw the gutting knife from your belt and hold it out, handle first. Odette takes it, tests the edge with her thumb, and slides it into her apron. \"Fair trade for the crossing,\" she says.",
+      "expect": [
+        {
+          "item": "knife",
+          "where": "ent-odette"
+        }
+      ]
+    },
+    {
+      "id": "drink",
+      "action": "I drink one of my healing draughts.",
+      "narration": "You pull the stopper from one of your healing draughts and drink it down. It is bitter and green on the tongue, and warmth spreads through your chest until the ache in your legs fades.",
+      "expect": [
+        {
+          "item": "draught",
+          "where": "you",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "equip",
+      "action": "I put on my oilskin cloak against the mist.",
+      "narration": "You shake out your oilskin cloak and pull it around your shoulders. The mist beads on the waxed cloth and runs off the hem.",
+      "expect": [
+        {
+          "item": "cloak",
+          "where": "you",
+          "equipped": true
+        }
+      ]
+    },
+    {
+      "id": "unequip",
+      "action": "I ask Odette to let me see her hook.",
+      "narration": "Odette slips the cord off her wrist and sets the bone hook in your palm for a moment. \"Pike jaw,\" she says. \"Don't drop it.\" You turn it in the lantern light and hand it back, and she lays it on the crate beside her rather than tying it on again.",
+      "expect": [
+        {
+          "item": "hook",
+          "where": "ent-odette",
+          "equipped": false
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "action": "I kneel and search between the dock planks.",
+      "narration": "You kneel and run your fingers along the gaps in the planks. Something cold catches under your nail: a silver ferry token, wedged deep between two boards. It glints when your lantern light falls on it.",
+      "expect": [
+        {
+          "item": "token",
+          "where": "loc-sedge",
+          "visibility": "visible"
+        }
+      ]
+    },
+    {
+      "id": "found",
+      "action": "I open the old crate by the ferry post.",
+      "narration": "The crate lid comes up with a groan. Under a tangle of net lies a rusty key on a loop of twine. You take the key and drop it into your pocket.",
+      "expect": [
+        {
+          "runtime": "key",
+          "where": "you"
+        }
+      ]
+    },
+    {
+      "id": "talk",
+      "action": "I ask Odette how long the crossing takes.",
+      "narration": "\"An hour, if the river's kind,\" Odette says, pulling her shawl tighter. \"Longer in this mist.\" She nods at your lantern. \"Keep that lit. The ferryman likes to see who he's carrying.\"",
+      "expect": []
+    },
+    {
+      "id": "look",
+      "action": "I look around the dock.",
+      "narration": "The dock runs out into the mist on black pilings. A broken oar lies across the planks, and Odette sits on a crate by the ferry post, her bone hook at her wrist. Your lantern leaks its stripe of light over the water.",
+      "expect": []
+    }
+  ],
+  "stat": [
+    {
+      "id": "potion",
+      "action": "I drink one of my healing draughts.",
+      "narration": "You pull the stopper from one of your healing draughts and drink it down. It is bitter and green on the tongue. The exhaustion of the long road drains out of you, and you stand straight again, rested and strong.",
+      "want": "none"
+    },
+    {
+      "id": "honeycake",
+      "action": "I eat the honey cake Odette gave me.",
+      "narration": "You eat the honey cake in three bites. It is dense and sweet. The exhaustion of the long road drains out of you, and you stand straight again, rested and strong.",
+      "want": "up"
+    }
+  ]
+}

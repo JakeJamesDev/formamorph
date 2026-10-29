@@ -38,6 +38,8 @@ export const TEST_PROMPTS: TurnPrompts = {
   discoverEntityUser: 'Note: <CHARACTER NAME>\n\n<FIRST PASSAGE>\n\n<LATER MATERIAL>',
   sceneTags: 'TAGS <WORLD DESCRIPTION>',
   sceneTagsUser: 'Draw: <NARRATION> | In frame: <IN FRAME>',
+  inventory: 'ITEMS <WORLD DESCRIPTION>',
+  inventoryUser: 'Items: <PLAYER ACTION> | <NARRATION>',
 };
 
 /** Everything on — the shape the parity capture ran in, so switching one thing off isolates it. */
@@ -54,6 +56,9 @@ export const TEST_SETTINGS: TurnSettings = {
   memoryDigests: true,
   characterDiaries: true,
   describeCharacters: true,
+  // The parity capture's world had no items.
+  inventoryDue: false,
+  inventoryTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',

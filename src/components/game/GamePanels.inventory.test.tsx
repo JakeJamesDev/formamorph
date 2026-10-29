@@ -183,6 +183,22 @@ describe('RightPanel — Inventory tab', () => {
     ]);
   });
 
+  it('lists a runtime item by name and uses one from its stack (Q56)', async () => {
+    const runtime: ItemCopy = { id: 'k', item: { kind: 'runtime', runtimeItemId: 'r1' }, where: you, quantity: 2, visibility: 'visible' };
+    const h = renderRightPanel({}, {
+      ...stage([runtime]),
+      seed: (g: Gameplay) => {
+        g.setCurrentLocation(yard);
+        g.setRuntimeItems([{ id: 'r1', name: 'Moonleaf' }]);
+        g.setItemCopies([runtime]);
+        g.setActiveTab('inventory');
+      },
+    });
+    expect(within(carried()).getByText('Moonleaf')).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'Use Moonleaf' }));
+    expect(mine(h.gameplay()).map((c) => c.quantity)).toEqual([1]);
+  });
+
   it('has no Inventory tab in a world without items', async () => {
     renderRightPanel({}, { world: { entities, locations: [yard] }, turns });
     await screen.findByRole('tab', { name: 'Traits' });

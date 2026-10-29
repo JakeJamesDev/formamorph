@@ -147,6 +147,7 @@ function inventoryScene(scene: ChipScene): InventoryScene {
   return {
     items: scene.items ?? [],
     copies: scene.itemCopies ?? [],
+    runtimeItems: scene.runtimeItems,
     playerName: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
     owners,
     location: scene.location,

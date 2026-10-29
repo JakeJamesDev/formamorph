@@ -73,8 +73,10 @@ describe('the Inventory chip', () => {
     expect(chipValues(played)('<INVENTORY|markdown>')).toBe('N/A');
   });
 
-  it('leaves runtime items out', () => {
-    expect(render([{ ...copy('coin', { kind: 'you' }), item: { kind: 'runtime', runtimeItemId: 'r1' } }])).toBe('N/A');
+  it('names a runtime item by its name, and skips one the save does not list', () => {
+    const runtime = (id: string): ItemCopy => ({ ...copy('coin', { kind: 'you' }), item: { kind: 'runtime', runtimeItemId: id } });
+    const withRuntime = { ...scene([runtime('r1'), runtime('gone')]), runtimeItems: [{ id: 'r1', name: 'Rusty Key' }] };
+    expect(chipValues(withRuntime)('<INVENTORY|markdown>')).toBe('- **Traveler**\n  - **carried:** Rusty Key\n');
   });
 
   it('reads N/A when nobody here has an item', () => {

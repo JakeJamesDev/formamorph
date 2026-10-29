@@ -394,7 +394,7 @@ const SYSTEM_TEMPLATE: Record<string, string> = {
   storyboard: 'storyboard', choices: 'choices', statupdates: 'statUpdates',
   location: 'locationChange', entitylocation: 'entityLocation', summary: 'summary', diary: 'diary',
   timepassed: 'timePassed', timeopening: 'openingTime', scenetags: 'sceneTags',
-  discover: 'discoverEntity', milestone: 'milestoneSelect',
+  discover: 'discoverEntity', milestone: 'milestoneSelect', inventory: 'inventory',
 };
 
 /** The same prompts with one template swapped for a marker that still carries a chip, so both the authored

@@ -20,6 +20,7 @@ const SPEC: Record<AIRequestType, [label: string, glyph: string]> = {
   timePassed: ['Generating Clock…', 'hourglass'],
   openingTime: ['Generating Opening…', 'hourglass'],
   sceneTags: ['Generating Scene Tags…', 'sparkles'],
+  inventory: ['Generating Inventory…', 'sparkles'],
   descriptionSummary: ['Generating Response…', 'sparkles'],
   descriptionBridge: ['Generating Response…', 'sparkles'],
   imageTags: ['Generating Response…', 'sparkles'],

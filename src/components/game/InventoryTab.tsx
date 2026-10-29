@@ -11,7 +11,7 @@ import { byEquipOrder, chargesLeft, itemUsable, slotCapacity, slotSizeOf, wholeC
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
-import type { Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
+import type { Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 export interface InventoryTabProps {
@@ -22,6 +22,8 @@ export interface InventoryTabProps {
   /** The Item Copies lying at the player's location. Hidden ones are filtered out here. */
   lying: readonly ItemCopy[];
   items: readonly Item[];
+  /** The runtime items the Inventory pass made. Absent ⇒ none. */
+  runtimeItems?: readonly RuntimeItem[];
   slots: readonly Slot[];
   /** The entities Give can pick (Q20). */
   present: readonly { id: string; name: string }[];
@@ -139,11 +141,11 @@ const lineFor = (copy: ItemCopy, item: Item | undefined): string | null => {
   return charges !== undefined && item?.charges !== undefined ? `${charges} of ${item.charges} charges` : null;
 };
 
-/** Use, for a Consumable or charged item (Q16, Q57). Off at zero charges. */
+/** Use, for a Consumable or charged item, or a runtime item (Q16, Q56, Q57). Off at zero charges. */
 function UseButton({ copy, item, name, disabled, onOps }: {
   copy: ItemCopy; item: Item | undefined; name: string; disabled: boolean; onOps: InventoryTabProps['onOps'];
 }) {
-  if (!item || !itemUsable(item)) return null;
+  if (copy.item.kind === 'item' && (!item || !itemUsable(item))) return null;
   const empty = chargesLeft(copy, item) === 0;
   return (
     <ItemRowButton
@@ -155,13 +157,15 @@ function UseButton({ copy, item, name, disabled, onOps }: {
 
 /** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items. */
 export function InventoryTab({
-  ownerName, copies, lying, items, slots, present, locationId, disabled, resolveText, imageOf, timed = [], onOps,
+  ownerName, copies, lying, items, runtimeItems = [], slots, present, locationId, disabled, resolveText, imageOf, timed = [], onOps,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
+  const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
   // Hidden Item Copies never show in the panel (story 79).
   const shown = copies.filter((c) => c.visibility === 'visible');
   const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? byId.get(copy.item.itemId) : undefined);
-  const nameOf = (copy: ItemCopy) => resolveText(itemOf(copy)?.name ?? '') || 'Unknown Item';
+  const nameOf = (copy: ItemCopy) => (copy.item.kind === 'runtime'
+    ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(itemOf(copy)?.name ?? '')) || 'Unknown Item';
   const equipped = shown.filter((c) => c.equipped).sort(byEquipOrder);
   const carried = shown.filter((c) => !c.equipped);
   const lyingHere = lying.filter((c) => c.visibility === 'visible');

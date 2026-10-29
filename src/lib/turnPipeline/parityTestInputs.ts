@@ -8,7 +8,7 @@ import {
   defaultChoicesPrompt, defaultChoicesUserPrompt,
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
   defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt,
-  defaultSceneTagsPrompt, defaultSceneTagsUserPrompt,
+  defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultInventoryPrompt, defaultInventoryUserPrompt,
   defaultLocationChangePrompt, defaultLocationChangeUserPrompt, defaultEntityLocationPrompt, defaultEntityLocationUserPrompt,
   defaultNarrationUserPrompt, defaultOocDirectivePrompt,
   defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, OPENING_SCENE_CUE,
@@ -47,6 +47,9 @@ export const PARITY_SETTINGS: TurnSettings = {
   // The recorded narration never invented a character, so no discovery request was dispatched; the
   // setting's own effect on the plan is covered in planTurn.test.ts.
   describeCharacters: false,
+  // The recorded world had no items, so no inventory request was dispatched.
+  inventoryDue: false,
+  inventoryTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
@@ -87,6 +90,8 @@ export const PARITY_PROMPTS: TurnPrompts = {
   // these carry the shipped defaults for completeness rather than because the capture used them.
   sceneTags: defaultSceneTagsPrompt,
   sceneTagsUser: defaultSceneTagsUserPrompt,
+  inventory: defaultInventoryPrompt,
+  inventoryUser: defaultInventoryUserPrompt,
 };
 
 // Historical replay uses the exact user templates that produced the recorded messages.

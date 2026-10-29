@@ -2,12 +2,14 @@ import { copiesAt } from './inventory';
 import type { ContextFormat } from './statContext';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { xmlEscape } from './utils';
-import type { Item, ItemCopy, ItemCopyWhere } from '@/types';
+import type { Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 
 /** What the inventory block reads: the authored items, every Item Copy, and who and where the scene is. */
 export interface InventoryScene {
   items: readonly Item[];
   copies: readonly ItemCopy[];
+  /** The runtime items the Inventory pass made. Absent ⇒ none. */
+  runtimeItems?: readonly RuntimeItem[];
   /** The label of the `you` owner: the played persona's name. */
   playerName: string;
   /** The present entities with a block of their own, in roster order. */
@@ -15,8 +17,11 @@ export interface InventoryScene {
   location: { id: string; name: string } | null;
 }
 
+/** What the block reads of an item: an authored item, or a runtime item's name. */
+type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription'>;
+
 /** The name an Item Copy goes by in the block, its quantity and hidden state after it. */
-function copyName(item: Item, copy: ItemCopy): string {
+function copyName(item: Named, copy: ItemCopy): string {
   const marks = [...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(copy.visibility === 'hidden' ? ['hidden'] : [])];
   return marks.length ? `${item.name} (${marks.join(', ')})` : item.name;
 }
@@ -24,12 +29,13 @@ function copyName(item: Item, copy: ItemCopy): string {
 /**
  * The `<INVENTORY>` chip's value: each present owner's equipped items with their AI Summary (the AI
  * Description where there is none) and carried items by name, then the Item Copies lying at the location,
- * hidden ones marked. Runtime items are left out. N/A when nobody present has an item.
+ * hidden ones marked. A runtime item goes by its name. N/A when nobody present has an item.
  */
 export function buildInventoryContext(scene: InventoryScene, format: ContextFormat): string {
   const items = new Map(scene.items.map((item) => [item.id, item]));
+  const runtime = new Map((scene.runtimeItems ?? []).map((item) => [item.id, item]));
   const named = (where: ItemCopyWhere) => copiesAt(scene.copies, where).flatMap((copy) => {
-    const item = copy.item.kind === 'item' && items.get(copy.item.itemId);
+    const item: Named | undefined = copy.item.kind === 'item' ? items.get(copy.item.itemId) : runtime.get(copy.item.runtimeItemId);
     return item ? [{ item, copy }] : [];
   });
   const md = format === 'markdown';

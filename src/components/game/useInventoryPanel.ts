@@ -30,7 +30,9 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const data = useGameDataOptional();
   const items = data?.items ?? NONE;
   const slots = data?.slots ?? NONE;
-  const { itemCopies, setItemCopies, entityPositions, discoveredEntities, addLogEntry, isWaitingForAI, isViewingPast } = useGameplay();
+  const {
+    itemCopies, setItemCopies, runtimeItems, entityPositions, discoveredEntities, addLogEntry, isWaitingForAI, isViewingPast,
+  } = useGameplay();
   const { entities, currentLocation, persona } = useResolvedWorld();
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
@@ -60,6 +62,6 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
     lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
-    items, slots, present, locationId, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
+    items, ...(runtimeItems?.length && { runtimeItems }), slots, present, locationId, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
   };
 }

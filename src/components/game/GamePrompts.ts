@@ -551,6 +551,33 @@ export const defaultSceneTagsUserPrompt = `<IN FRAME|format=markdown|header="In 
 <NARRATION|format=markdown|header="What happens">
 Tag what is happening in the picture.`;
 
+// The Inventory pass (requestType 'inventory'): runs after the narration and lists what the story did to items.
+// Its reply follows a JSON schema, or the text line format the request appends on an endpoint that refuses one.
+export const defaultInventoryPrompt = `You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.
+<PERSONA|summary.markdown|header="Player Character">\
+<INVENTORY|markdown|header="Items Here">
+## Operations
+- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.
+- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.
+- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.
+- equip: an owner wields or wears an item they carry.
+- unequip: an owner puts away or takes off an item they had equipped.
+- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.
+- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.
+
+## Fields
+- op: one operation from the list above.
+- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.
+- quantity: how many, a whole number from 1.
+- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. Empty for gain.
+- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
+
+Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.`;
+
+export const defaultInventoryUserPrompt = `<PLAYER ACTION|format=markdown|header="The player character's action">\
+<NARRATION|format=markdown|header="What happened">
+Record the item changes this turn made.`;
+
 /** The canonical prompt text every built-in preset derives from (see lib/sectionStyle). */
 export const PROMPT_TEXT_DEFAULTS: PromptValues = {
   systemPrompt: defaultSystemPrompt,
@@ -585,4 +612,6 @@ export const PROMPT_TEXT_DEFAULTS: PromptValues = {
   sceneTagsUserPrompt: defaultSceneTagsUserPrompt,
   discoverEntityPrompt: defaultDiscoverEntityPrompt,
   discoverEntityUserPrompt: defaultDiscoverEntityUserPrompt,
+  inventoryPrompt: defaultInventoryPrompt,
+  inventoryUserPrompt: defaultInventoryUserPrompt,
 };

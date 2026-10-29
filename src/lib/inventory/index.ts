@@ -5,7 +5,8 @@
 import { byEquipOrder, chargesLeft, itemStackable, itemUsable, sameWhere, slotCapacity, slotSizeOf } from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
 import type {
-  Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement, Slot,
+  Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
+  RuntimeItem, Slot,
 } from '@/types';
 import { timedTraitRow, type Dose } from './effects';
 
@@ -13,6 +14,10 @@ export {
   itemEffectLine, itemEffectLog, settleItemEffects, timedEffectViews, timedKey, type Dose, type ItemEffectChange,
   type TimedEffectNames, type TimedEffectView, type ItemEffectResult, type ItemEffectWorld, type OwnerStatTraits,
 } from './effects';
+export {
+  applyInventoryPass, inventoryPassSchema, itemNameKey, parseInventoryLines, parseInventoryReply, INVENTORY_JSON_FORMAT,
+  INVENTORY_TEXT_FORMAT, PASS_OP_KINDS, type InventoryPassResult, type PassScene,
+} from './pass';
 export {
   equipRequirement, settleInventory, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
 } from './settle';
@@ -83,7 +88,8 @@ export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined
 /** Who sent a list of operations. Bound stops the panel only (Q58). */
 export type InventorySource = 'pass' | 'panel' | 'script';
 
-/** One inventory change. A missing `quantity` on lose or transfer means the whole Item Copy. */
+/** One inventory change. A missing `quantity` on lose or transfer means the whole Item Copy. A gain's `itemId`
+ *  names an authored item or one of the call's runtime items. */
 export type InventoryOp =
   | { kind: 'gain'; itemId: string; quantity: number; to: ItemCopyWhere }
   | { kind: 'lose'; copyId: string; quantity?: number }
@@ -123,6 +129,8 @@ export interface InventoryCall {
   source: InventorySource;
   newId: NewId;
   presence?: Presence;
+  /** The runtime items a gain may name. */
+  runtimeItems?: readonly RuntimeItem[];
   /** Why the owner cannot equip `copy` under `copies` (Q49), or null. Absent ⇒ no requirement is checked. */
   requirement?: (copy: ItemCopy, copies: readonly ItemCopy[]) => string | null;
 }
@@ -198,10 +206,16 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   const one = (op: InventoryOp): string | null => {
     if (op.kind === 'gain') {
       const item = items.get(op.itemId);
+      const runtime = item ? undefined : call.runtimeItems?.find((r) => r.id === op.itemId);
       const quantity = Math.floor(op.quantity);
-      if (!item) return `gain: no item ${op.itemId}`;
+      if (!item && !runtime) return `gain: no item ${op.itemId}`;
       if (!(quantity > 0)) return `gain: quantity ${op.quantity} is not above 0`;
       if (!isPresent(op.to, call.presence)) return `gain: ${whereText(op.to)} is not present`;
+      if (runtime) {
+        list = put(list, { id: call.newId(), item: { kind: 'runtime', runtimeItemId: runtime.id }, where: op.to, quantity, visibility: 'visible' });
+        return null;
+      }
+      if (!item) return `gain: no item ${op.itemId}`;
       const ref = { kind: 'item', itemId: item.id } as const;
       if (itemStackable(item)) {
         const gained: ItemCopy = { id: call.newId(), item: ref, where: op.to, quantity, visibility: 'visible' };
@@ -348,13 +362,15 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
 /** What still exists for Item Copies to point at. */
 export interface CopyTargets {
   itemIds: ReadonlySet<string>;
+  /** The save's runtime items. Absent ⇒ runtime Item Copies are kept. */
+  runtimeItemIds?: ReadonlySet<string>;
   entityIds: ReadonlySet<string>;
   locationIds: ReadonlySet<string>;
 }
 
 const isOrphan = (copy: ItemCopy, targets: CopyTargets): boolean => {
-  // A runtime item is kept: the save holds no runtime-item list.
   if (copy.item.kind === 'item' && !targets.itemIds.has(copy.item.itemId)) return true;
+  if (copy.item.kind === 'runtime' && targets.runtimeItemIds && !targets.runtimeItemIds.has(copy.item.runtimeItemId)) return true;
   switch (copy.where.kind) {
     case 'you': return false;
     case 'entity': return !targets.entityIds.has(copy.where.id);

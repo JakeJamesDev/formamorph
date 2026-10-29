@@ -14,12 +14,13 @@ import type { PlayerStat } from '@/types';
 const FULL: PromptTextKey[] = [
   'systemPrompt', 'thinkingPrompt', 'directorPrompt', 'storyboardPrompt', 'characterPrompt', 'sceneTagsPrompt',
 ];
-const SUMMARY: PromptTextKey[] = ['choicesPrompt', 'statUpdatesPrompt'];
+const SUMMARY: PromptTextKey[] = ['choicesPrompt', 'statUpdatesPrompt', 'inventoryPrompt'];
 const NAME: PromptTextKey[] = ['summaryPrompt', 'milestoneSelectPrompt', 'diaryPrompt'];
 const COVERED = new Set<PromptTextKey>([...FULL, ...SUMMARY, ...NAME]);
 // The prompts whose persona block is headed "Player Character"; the scene-tags prompt has its own header.
 const HEADED: PromptTextKey[] = [
-  'characterPrompt', 'choicesPrompt', 'directorPrompt', 'statUpdatesPrompt', 'storyboardPrompt', 'systemPrompt', 'thinkingPrompt',
+  'characterPrompt', 'choicesPrompt', 'directorPrompt', 'inventoryPrompt', 'statUpdatesPrompt', 'storyboardPrompt', 'systemPrompt',
+  'thinkingPrompt',
 ];
 // The persona owns a stat, so a block that sends only a persona with stats renders it.
 const personaStats: PlayerStat[] = [{

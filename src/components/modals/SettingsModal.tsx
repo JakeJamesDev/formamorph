@@ -445,6 +445,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setDiscoverEntityPrompt,
     discoverEntityUserPrompt,
     setDiscoverEntityUserPrompt,
+    inventoryPrompt,
+    setInventoryPrompt,
+    inventoryUserPrompt,
+    setInventoryUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,
@@ -736,6 +740,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     director: { label: PROMPT_LABELS.director, value: directorPrompt, def: styledDefaults.directorPrompt, set: setDirectorPrompt, variables: PROMPT_KIND_VARIABLES.director },
     character: { label: PROMPT_LABELS.character, value: characterPrompt, def: styledDefaults.characterPrompt, set: setCharacterPrompt, variables: PROMPT_KIND_VARIABLES.character },
     discover: { label: PROMPT_LABELS.discover, value: discoverEntityPrompt, def: styledDefaults.discoverEntityPrompt, set: setDiscoverEntityPrompt, variables: PROMPT_KIND_VARIABLES.discover },
+    inventory: { label: PROMPT_LABELS.inventory, value: inventoryPrompt, def: styledDefaults.inventoryPrompt, set: setInventoryPrompt, variables: PROMPT_KIND_VARIABLES.inventory },
     storyboard: { label: PROMPT_LABELS.storyboard, value: storyboardPrompt, def: styledDefaults.storyboardPrompt, set: setStoryboardPrompt, variables: PROMPT_KIND_VARIABLES.storyboard },
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
@@ -825,6 +830,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     director: { value: directorUserPrompt, set: setDirectorUserPrompt, def: styledDefaults.directorUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.director ?? NO_VARIABLES },
     scenetags: { value: sceneTagsUserPrompt, set: setSceneTagsUserPrompt, def: styledDefaults.sceneTagsUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.scenetags ?? NO_VARIABLES },
     discover: { value: discoverEntityUserPrompt, set: setDiscoverEntityUserPrompt, def: styledDefaults.discoverEntityUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.discover ?? NO_VARIABLES },
+    inventory: { value: inventoryUserPrompt, set: setInventoryUserPrompt, def: styledDefaults.inventoryUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.inventory ?? NO_VARIABLES },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
@@ -922,6 +928,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       diary: diaryPrompt,
       sceneTags: sceneTagsPrompt,
       sceneTagsUser: sceneTagsUserPrompt,
+      inventory: inventoryPrompt,
+      inventoryUser: inventoryUserPrompt,
     },
   }), [
     systemPrompt, recapUserPrompt, nowLinePrompt, rehydrateUserPrompt,
@@ -930,7 +938,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt, statTextPrompts,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
-    discoverEntityPrompt, discoverEntityUserPrompt, milestoneSelectPrompt, milestoneSelectUserPrompt,
+    discoverEntityPrompt, discoverEntityUserPrompt, milestoneSelectPrompt, milestoneSelectUserPrompt, inventoryPrompt, inventoryUserPrompt,
   ]);
 
   // Which editors the open prompt actually has — the rail lists exactly these under it.
@@ -1946,6 +1954,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   />
                 </TabsContent>
               )}
+
+              <TabsContent value="inventory" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                <PromptField
+                  value={showingUser ? inventoryUserPrompt : inventoryPrompt}
+                  onChange={showingUser ? setInventoryUserPrompt : setInventoryPrompt}
+                  variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.inventory ?? []) : PROMPT_KIND_VARIABLES.inventory}
+                  previewValues={effectivePreviewValues}
+                  sampleData={usingSampleValues}
+                  readOnlyReason={readOnlyReason}
+                  onRequestEdit={duplicatePreset}
+                  fullscreen={promptsFullscreen}
+                  onRequestFullscreen={promptsMorph.toggle}
+                  readOnly={activePresetIsBuiltIn}
+                />
+              </TabsContent>
 
               {describeCharacters && (
                 <TabsContent value="discover" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">

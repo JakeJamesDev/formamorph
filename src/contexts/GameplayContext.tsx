@@ -52,6 +52,7 @@ import type {
   ImageAttachment,
   Item,
   ItemCopy,
+  RuntimeItem,
   ItemEffectLedger,
   LogEntry,
   GameLocation,
@@ -85,6 +86,7 @@ const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
 const NO_ITEM_COPIES: readonly ItemCopy[] = [];
 const NO_ITEM_EFFECTS: ItemEffectLedger = {};
+const NO_RUNTIME_ITEMS: readonly RuntimeItem[] = [];
 
 const EMPTY_ENTITY_STATS: EntityStatValues = {};
 
@@ -182,6 +184,8 @@ function useProvideGameplay() {
   const [itemCopies, setItemCopies] = useState<readonly ItemCopy[]>(NO_ITEM_COPIES);
   // What item effects have applied, beside the Item Copies they follow.
   const [itemEffects, setItemEffects] = useState<ItemEffectLedger>(NO_ITEM_EFFECTS);
+  // The runtime items the Inventory pass made, which runtime Item Copies point at.
+  const [runtimeItems, setRuntimeItems] = useState<readonly RuntimeItem[]>(NO_RUNTIME_ITEMS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -356,6 +360,7 @@ function useProvideGameplay() {
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
       ...(itemCopies.length ? { itemCopies: [...itemCopies] } : {}),
+      ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
       ...(Object.keys(itemEffects).length ? { itemEffects } : {}),
       visibleEntities,
       discoveredEntities,
@@ -377,7 +382,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, loreToggles, itemCopies, itemEffects, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -409,6 +414,7 @@ function useProvideGameplay() {
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
       setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
+      setRuntimeItems(gameState.runtimeItems ?? NO_RUNTIME_ITEMS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
@@ -572,6 +578,7 @@ function useProvideGameplay() {
       const entityIds = new Set([...worldEntities.map((e) => e.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]);
       const { copies, dropped } = withoutOrphanCopies(state.itemCopies ?? [], {
         itemIds: new Set(items.map((item) => item.id)), entityIds, locationIds: new Set(locationIds),
+        runtimeItemIds: new Set((state.runtimeItems ?? []).map((r) => r.id)),
       });
       for (const copy of dropped) orphanIds.add(copy.id);
       const traits = withoutOrphanTimedTraits(state.itemEffects ?? {}, { entityIds }, items);
@@ -937,6 +944,8 @@ function useProvideGameplay() {
     setItemCopies,
     itemEffects,
     setItemEffects,
+    runtimeItems,
+    setRuntimeItems,
     runtimeDictionaries,
     setRuntimeDictionaries,
     libraryDictionaries,
