@@ -1,6 +1,6 @@
 # 01: Player View
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,13 +23,24 @@ Spec: Q1, Q10, Q11, Q18, Q21, Q22, Q25, Q26; stories 11–22, 26.
 
 ## Acceptance criteria
 
-- [ ] An unmet entity, place or item is absent from the view
-- [ ] No AI description, AI summary, diary or script memory text appears in the view
-- [ ] An unrevealed entity appears under its alias, and under its real name once revealed
-- [ ] A discovered entity appears; one the player deleted does not
-- [ ] Places come from the current location and recorded turn locations; a turn without one adds nothing
-- [ ] An item counts once held or once a visible copy was at a met place; a hidden copy stays out until revealed
-- [ ] Hidden stats, disabled stats and hidden traits are absent; visible stats and the player's traits are present
-- [ ] Building from an earlier snapshot (undo) drops what later turns added
-- [ ] Each exclusion test fails when its filter is removed
-- [ ] The new ADR and the CONTEXT.md entry exist
+- [x] An unmet entity, place or item is absent from the view: `playerView.test.ts` entity, location and item cases
+- [x] No AI description, AI summary, diary or script memory text appears in the view: "holds no AI description…", plus the peeled-follower case
+- [x] An unrevealed entity appears under its alias, and under its real name once revealed: alias cases, including a discovered entity and one that left the scene
+- [x] A discovered entity appears; one the player deleted does not: "holds a discovered entity, and drops one the player deleted"
+- [x] Places come from the current location and recorded turn locations; a turn without one adds nothing: location cases
+- [x] An item counts once held or once a visible copy was at a met place; a hidden copy stays out until revealed: item cases (met place = where the player stood in that snapshot, per the spec session)
+- [x] Hidden stats, disabled stats and hidden traits are absent; visible stats and the player's traits are present: stat and trait cases
+- [x] Building from an earlier snapshot (undo) drops what later turns added: "drops what the undone turn added"
+- [x] Each exclusion test fails when its filter is removed: 18 filter removals, each red (a mutation script run in the worktree)
+- [x] The new ADR and the CONTEXT.md entry exist: ADR-0014, ADR-0011 status line, **Player View** glossary entry
+
+## Landed
+
+**Not verified**
+
+- None. Nothing reads the view yet, so there is nothing to see in the app.
+
+**For you**
+
+- Nothing to play-test until tickets 05 and 06 wire the view in.
+- Undo needs the snapshot chain and the history slice from the caller. Tickets 05 and 06 must pass the chain up to the current snapshot, not the whole `stateHistory`.

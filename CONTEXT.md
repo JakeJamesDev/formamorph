@@ -56,6 +56,10 @@ _Avoid_: snippet, preset, recipe, example
 The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts on the open world's authored data (ADR-0011).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
+**Player View**:
+What the player has met in one playthrough, in player text only: met and discovered entities (an unrevealed one under its scene alias alone), the current location and every location a turn recorded, the items the player held or saw visible where they stood, the visible stats and the player's own active traits. It holds no AI description, AI summary, diary, script memory line or hidden content. It reads the current snapshot and the snapshots before it, so an undo moves it back. The in-game world that Formaquestion reads (ADR-0014).
+_Avoid_: player world, known world, spoiler-safe world
+
 **Mascot**:
 The optional character beside the Formaquestion chat. It is a rig: a base image and an ordered list of layers, each an expression (one at a time, picked by the AI through the face call) or a state (any number stacked), each drawing its overlay images in order. The app sets its look at three moments through the Initial Look, Idle Look and Thinking Look rows, each a pick of one expression and one state. A Mask, dragged on the Preview, sets the head view. A transition (None, Dissolve or Jelly) moves it on each change of look. On by default, and it implies the minimal chrome. Exports as a mascot card.
 _Avoid_: avatar, assistant character, sprite

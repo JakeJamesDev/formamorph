@@ -1,6 +1,6 @@
 # ADR-0011 — An app-internal function may read the open world when its purpose needs it
 
-**Status:** Accepted · **Date:** 2026-10-05
+**Status:** Accepted · **Date:** 2026-10-05 · In game, "It reads the authored world, with no playthrough" is superseded by [ADR-0014](0014-formaquestion-reads-the-world-through-the-player-view-in-game.md)
 
 ## Context
 
