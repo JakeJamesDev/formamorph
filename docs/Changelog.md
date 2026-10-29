@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.5.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The built-in engine starts and finds your graphics card in the Linux desktop app.** Before, it failed with error 127 because its libraries were missing from the download.
+  - **The world library no longer goes empty when the browser can't read one world.** Your other worlds show, and a launch never replaces an edited default world it can't read.
+
 ---
 
 <details>
