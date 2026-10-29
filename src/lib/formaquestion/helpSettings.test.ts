@@ -24,6 +24,7 @@ describe('the default help settings', () => {
       codeTest: true,
       codeTestCallLimit: 3,
       openScreen: true,
+      readWorld: true,
       historyLength: 4,
       reasoning: { enabled: false, level: 'global' },
       reasoningBudget: 75,
@@ -87,6 +88,11 @@ describe('the stored help settings', () => {
   it('keep the roll switch, and take off for anything else', () => {
     expect(stored({ roll: true }).roll).toBe(true);
     expect(stored({ roll: 'yes' }).roll).toBe(false);
+  });
+
+  it('keep the Read the World switch, and take on for anything else', () => {
+    expect(stored({ readWorld: false }).readWorld).toBe(false);
+    expect(stored({ readWorld: 'no' }).readWorld).toBe(true);
   });
 
   it('keep the code test switch, and take on for anything else', () => {

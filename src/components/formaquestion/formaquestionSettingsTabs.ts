@@ -59,6 +59,7 @@ export const GENERAL_COPY = {
   aiPicks: { label: 'AI Search', hint: 'Asks your AI to choose the sections before answering. One extra request.' },
   semantic: { label: 'Semantic Search', hint: 'Finds sections by meaning, not exact words. Downloads a small model once.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the open screen, your selected item, and its guide section' },
+  readWorld: { label: 'Read the World', hint: "Sends the open world's text to your endpoint with each question" },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
 
@@ -205,6 +206,8 @@ export const PROMPTS_COPY = {
     pick: { label: 'Search', hint: 'Tells your AI how to choose guide sections from the heading list' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
     code: { label: 'Code', hint: 'Tells your AI how to write scripts on questions about code' },
+    worldEditor: { label: 'Editor World', hint: 'Tells your AI how to explain your world in the World Editor' },
+    worldGame: { label: 'Game World', hint: 'Tells your AI how to answer in game without spoilers' },
   },
   options: {
     title: 'Options',

@@ -59,6 +59,8 @@ export interface HelpSettings {
   readonly codeTestCallLimit: number;
   /** The open screen's section leads the docs, and the request names the screen. */
   readonly openScreen: boolean;
+  /** A request carries the open world's text and the world rules of its lean. */
+  readonly readWorld: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
   readonly historyLength: number;
   /** The answer request's reasoning switch and strength. The pick request never reasons. */
@@ -117,6 +119,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   codeTest: true,
   codeTestCallLimit: HELP_CODE_TEST_CALL_LIMIT,
   openScreen: true,
+  readWorld: true,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
   reasoningBudget: defaultReasoningBudgetPct('help'),
@@ -183,6 +186,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       codeTest: isBool,
       codeTestCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       openScreen: isBool,
+      readWorld: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,
       reasoningBudget: isBetween(MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT),

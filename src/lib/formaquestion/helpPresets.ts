@@ -1,11 +1,11 @@
 /**
  * The help preset store: the help prompts and the Code rider as one named set. The Default preset is read-only
  * and reads its texts and options from the code, so each release updates it for every player who has no custom
- * preset. A custom preset stores its own four texts and three option blocks. The store is a device
+ * preset. A custom preset stores its own texts and three option blocks. The store is a device
  * setting, apart from the gameplay prompt presets.
  */
 import { HELP_PICK_MAX_TOKENS } from './helpPicks';
-import { DEFAULT_HELP_PROMPTS, type HelpPromptKey, type HelpPromptTexts, type HelpRequestKey } from './helpPrompt';
+import { DEFAULT_HELP_PROMPTS, readHelpPromptTexts, type HelpPromptKey, type HelpPromptTexts, type HelpRequestKey } from './helpPrompt';
 
 /** One request's sampler values and cap. A preset holds them, so the Default preset's follow the code. */
 export interface HelpRequestOptions {
@@ -146,12 +146,12 @@ function readOptions(value: unknown): HelpPresetOptions {
   return mapHelpOptions((key) => readStoredBlock(stored[key], DEFAULT_HELP_OPTIONS[key]));
 }
 
-/** A stored preset with its id, a name and four texts; anything else is dropped. */
+/** A stored preset with its id, a name and its texts; anything else is dropped. */
 function readPreset(value: unknown): HelpPreset | null {
   if (!isRecord(value) || !isText(value.id) || value.id === '' || !isText(value.name) || !isRecord(value.prompts)) return null;
-  const { answer, pick, lookup, code } = value.prompts;
-  if (!isText(answer) || !isText(pick) || !isText(lookup) || !isText(code)) return null;
-  return { id: value.id, name: value.name, prompts: { answer, pick, lookup, code }, options: readOptions(value.options) };
+  const prompts = readHelpPromptTexts(value.prompts);
+  if ('bad' in prompts) return null;
+  return { id: value.id, name: value.name, prompts: prompts.texts, options: readOptions(value.options) };
 }
 
 /**

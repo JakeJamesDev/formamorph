@@ -1,6 +1,6 @@
 # 03: Read the World Switch and World Rules Prompt
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -19,11 +19,19 @@ Spec: Q7, Q19, Q23; stories 28–32.
 
 ## Acceptance criteria
 
-- [ ] The switch shows in Formaquestion's settings, on by default, with the endpoint line
-- [ ] The world-rules prompt is editable and resets to its built-in text
-- [ ] A help preset file from before this change loads, with the switch on and the built-in world rules
-- [ ] A file with both keys round-trips through export and import
-- [ ] A file missing another required entry is still refused
-- [ ] Frames `.scratch/frames/read-the-world-setting.png`, light and dark, desktop width
+- [x] The switch shows in Formaquestion's settings, on by default, with the endpoint line: `Formaquestion.settings.test.tsx` (default checkbox list, hint, remount)
+- [x] The world-rules prompt is editable and resets to its built-in text: split into **Editor World** and **Game World** riders (spec-session ruling); `FormaquestionPromptsTab.test.tsx` "the world rules in the Prompts tab"
+- [x] A help preset file from before this change loads, with the switch on and the built-in world rules: `helpPresetFile.test.ts` "loads a file from before Read the World…"; stored device presets too, `helpPresets.test.ts`. Both guards mutation-tested red
+- [x] A file with both keys round-trips through export and import: `helpPresetFile.test.ts` "gives the same texts…" with edited world rules and the switch off
+- [x] A file missing another required entry is still refused: `helpPresetFile.test.ts` "a missing prompt beside missing world rules" → `prompts.pick`
+- [x] Frames, light and dark, desktop width (1440×900): `.scratch/formaquestion-world-reading-03/frames/read-the-world-setting.png` and `read-the-world-setting-dark.png`
 
-For you: read the world-rules prompt's built-in text in Formaquestion's prompt settings.
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- For you: read the world-rules prompt's built-in text in Formaquestion's prompt settings. (Prompts tab → **Editor World** and **Game World**.)
+- Importing a preset file from before this change turns **Read the World** on, even if you had it off. This follows the ruling; say if an old file should leave the switch alone instead.
+- No probe ran: nothing sends the world rules until 04 and 05. Ticket 07's baseline measures them.

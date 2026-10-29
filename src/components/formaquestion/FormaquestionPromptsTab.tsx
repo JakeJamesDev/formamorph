@@ -38,6 +38,8 @@ const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
   pick: helpChipVocabulary(HELP_PROMPT_CHIPS.pick),
   lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
   code: helpChipVocabulary(HELP_PROMPT_CHIPS.code),
+  worldEditor: helpChipVocabulary(HELP_PROMPT_CHIPS.worldEditor),
+  worldGame: helpChipVocabulary(HELP_PROMPT_CHIPS.worldGame),
 };
 
 /** The select value of a prompt's Options row. */

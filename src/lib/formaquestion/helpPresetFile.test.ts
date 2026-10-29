@@ -20,6 +20,8 @@ function customized(): HelpSettings {
   presets = editHelpPrompt(presets, 'p-1', 'answer', 'Answer like a pirate. <NOT_IN_GUIDE>');
   presets = editHelpPrompt(presets, 'p-1', 'pick', 'Pick well.');
   presets = editHelpPrompt(presets, 'p-1', 'code', 'Give each box as one block.');
+  presets = editHelpPrompt(presets, 'p-1', 'worldEditor', 'Explain my world.');
+  presets = editHelpPrompt(presets, 'p-1', 'worldGame', 'No spoilers.');
   presets = editHelpOptions(presets, 'p-1', 'answer', { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 });
   presets = editHelpOptions(presets, 'p-1', 'pick', { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 });
   presets = editHelpOptions(presets, 'p-1', 'lookup', { temperature: 0.6, maxTokens: 1500 });
@@ -33,6 +35,7 @@ function customized(): HelpSettings {
     pickEndpoint: 'pick-endpoint-id',
     historyLength: 11,
     sources: { semantic: true },
+    readWorld: false,
   });
 }
 
@@ -45,7 +48,7 @@ describe('buildHelpPresetFile', () => {
   it('holds the field list and no other key', () => {
     const file = fileOf(customized());
     expect(Object.keys(file).sort()).toEqual([...HELP_PRESET_FILE_FIELDS].sort());
-    expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'code', 'lookup', 'pick']);
+    expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'code', 'lookup', 'pick', 'worldEditor', 'worldGame']);
     expect(Object.keys(file.options).sort()).toEqual(['answer', 'lookup', 'pick']);
     for (const block of Object.values(file.options)) expect(Object.keys(block).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
     // The face call has no switch and no call limit, so it has no row.
@@ -65,7 +68,7 @@ describe('buildHelpPresetFile', () => {
       formamorphHelpPreset: HELP_PRESET_FILE_VERSION,
       appVersion: '9.9.9',
       name: 'Chat Buddy',
-      prompts: { answer: 'Answer like a pirate. <NOT_IN_GUIDE>', pick: 'Pick well.', code: 'Give each box as one block.' },
+      prompts: { answer: 'Answer like a pirate. <NOT_IN_GUIDE>', pick: 'Pick well.', code: 'Give each box as one block.', worldEditor: 'Explain my world.', worldGame: 'No spoilers.' },
       options: {
         answer: { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 },
         pick: { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 },
@@ -73,6 +76,7 @@ describe('buildHelpPresetFile', () => {
       },
       tools: [{ tool: helpTool(), enabled: true }, { tool: helpTool({ id: 'h-2', name: 'find_place' }), enabled: false }],
       functions: { [DOCS_LOOKUP.name]: { enabled: true, maxCalls: 7 } },
+      readWorld: false,
     });
   });
 
@@ -98,12 +102,23 @@ describe('export then import on a clean profile', () => {
     const switchesByName = (s: HelpSettings) => Object.fromEntries(s.tools.map((t) => [t.name, s.toolSwitches[t.id] === true]));
     expect(switchesByName(result)).toEqual(switchesByName(source));
     expect({ lookup: result.lookup, limit: result.lookupCallLimit }).toEqual({ lookup: true, limit: 7 });
+    expect(result.readWorld).toBe(false);
+  });
+
+  it('loads a file from before Read the World with the switch on and the built-in world rules', () => {
+    const { readWorld: _, ...old } = JSON.parse(textOf(fileOf(customized()))) as Record<string, unknown>;
+    const { worldEditor: _e, worldGame: _g, ...oldPrompts } = old.prompts as Record<string, unknown>;
+    const parsed = parseHelpPresetFile(textOf({ ...old, prompts: oldPrompts }));
+    const device = helpSettingsOf({ readWorld: false });
+    const result = helpSettingsOf(importHelpPresetFile(device, parsed, mint).change, device);
+    expect(result.readWorld).toBe(true);
+    expect(activeHelpPreset(result.presets).prompts).toEqual({ ...oldPrompts, worldEditor: DEFAULT_HELP_PROMPTS.worldEditor, worldGame: DEFAULT_HELP_PROMPTS.worldGame });
   });
 
   it('leaves every device setting the file does not hold', () => {
     const device = helpSettingsOf({ answerEndpoint: 'mine', historyLength: 2 });
     const { change } = importHelpPresetFile(device, parseHelpPresetFile(textOf(fileOf(customized()))), mint);
-    expect(Object.keys(change).sort()).toEqual(['codeTest', 'codeTestCallLimit', 'lookup', 'lookupCallLimit', 'presets', 'roll', 'rollCallLimit', 'toolSwitches', 'tools']);
+    expect(Object.keys(change).sort()).toEqual(['codeTest', 'codeTestCallLimit', 'lookup', 'lookupCallLimit', 'presets', 'readWorld', 'roll', 'rollCallLimit', 'toolSwitches', 'tools']);
   });
 });
 
@@ -187,6 +202,9 @@ describe('parseHelpPresetFile', () => {
     ['a blank name', (f: Record<string, unknown>) => ({ ...f, name: '  ' }), 'name'],
     ['a missing prompt', (f: Record<string, unknown>) => ({ ...f, prompts: { answer: 'a', pick: 'b', code: 'c' } }), 'prompts.lookup'],
     ['a missing Code rider', (f: Record<string, unknown>) => ({ ...f, prompts: { answer: 'a', pick: 'b', lookup: 'l' } }), 'prompts.code'],
+    ['a missing prompt beside missing world rules', (f: Record<string, unknown>) => ({ ...f, readWorld: undefined, prompts: { answer: 'a', lookup: 'l', code: 'c' } }), 'prompts.pick'],
+    ['world rules that are not text', (f: Record<string, unknown>) => ({ ...f, prompts: { ...(f.prompts as Record<string, unknown>), worldGame: 3 } }), 'prompts.worldGame'],
+    ['a Read the World switch that is not a switch', (f: Record<string, unknown>) => ({ ...f, readWorld: 'yes' }), 'readWorld'],
     ['options of one block for every request', (f: Record<string, unknown>) => ({ ...f, options: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 } }), 'options.answer'],
     ['a missing Lookup block', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), lookup: undefined } }), 'options.lookup'],
     ['a Pick temperature out of range', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), pick: { temperature: 3, repetitionPenalty: 1, maxTokens: 150 } } }), 'options.pick.temperature'],
