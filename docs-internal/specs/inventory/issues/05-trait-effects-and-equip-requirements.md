@@ -28,6 +28,7 @@ Spec: Q9, Q46, Q48, Q49, Q52, Q66; stories 18, 20, 31–34.
 - [ ] Losing Strength below an equipped item's requirement unequips it and reverses its effects
 - [ ] A two-item cascade settles; a cycle stops at the cap with a diagnostic
 - [ ] The item docs page describes trait effects and equip requirements; changelog fragment written
+- [ ] Loading a save from another world reverses an orphaned Item Copy's effects at load, not at the next inventory change (Q60; from ticket 04's landing)
 
 ## Blocked by
 
