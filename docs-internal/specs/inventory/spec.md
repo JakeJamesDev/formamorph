@@ -167,10 +167,12 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q141 | (ticket 09) Q53 is one line in the built-in stat prompts, schema and text, sent only when the Inventory pass is due. It names the present items that have stat effects, not the turn's changes; the parallel batch rules those out. Probe: cloud potion double-add 11/12 → 0/12, runtime-item change kept 12/12; Cydonia unchanged (3/3 both) |
 | Q142 | (ticket 09) The stored turn keeps the pass's parsed operations (`inventoryOps`, additive save shape). The stats-only re-roll restores pre-turn Item Copies and replays them before the stat asks |
 | Q143 | (ticket 14) The pass schema gains a required `description` string, empty except on a gain that creates a runtime item; the text format gains a sixth field |
+| Q148 | (ticket 14, user) Replaces Q143: a description field in the pass broke hidden-item reveals on cloud (28/28 → 19/36). The pass stays unchanged; a `describeItem` Background Pass Queue kind describes runtime items that have none, in one sentence, with fixed prompt text and a sampler pin |
+| Q149 | (ticket 15) The Q141 stat line names visible items with stat effect rows (any timing) held by present owners or lying here; it leaves out hidden copies and copies elsewhere. A floor potion picked up and drunk in one turn gets its dose from the game |
 | Q144 | (ticket 14) The first description given wins: a later gain fills an absent description and never overwrites one |
 | Q145 | (ticket 14) The chip shows a runtime item with a description as `Name: description` on its own carried or lying-here line, like an equipped line |
 | Q146 | (ticket 14) The panel row's second line shows the description, trimmed to 200 characters at parse time |
-| Q147 | (ticket 13) The re-roll replays the pass at the turn's own location (`locationId` of the stored turn), not where the player stands now: a Go taken after the turn must not move the replay. The stored turn keeps the owners the live pass validated against (`inventoryOwners`, beside `inventoryOps`, additive save shape), and every re-roll replays against them |
+| Q147 | (ticket 13) The re-roll replays the pass at the turn's own location (`locationId` of the stored turn), not where the player stands now: a Go taken after the turn must not move the replay. The stored turn keeps the owners the live pass validated against and its location (`inventoryOwners`, `inventoryLocationId`, beside `inventoryOps`, additive save shape), and every re-roll replays against them |
 
 ## User Stories
 
