@@ -1,6 +1,6 @@
 # 13: Re-Roll Replay Reads This Turn's Presence
 
-Status: ready-for-human
+Status: done
 Blocked by: 09
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

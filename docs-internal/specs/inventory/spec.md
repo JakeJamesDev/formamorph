@@ -1,6 +1,7 @@
 # Spec: Inventory
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-29. Tickets 01–15; last landing fe698b8d4. Review: spec text corrected; gaps became tickets 12–15, and one more fix landed as d33efc7e1. Gates green on 2026-10-29.
 Spec session: inventory — spec
 
 ## Problem Statement
@@ -172,7 +173,7 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q144 | (ticket 14) The first description given wins: a later gain fills an absent description and never overwrites one |
 | Q145 | (ticket 14) The chip shows a runtime item with a description as `Name: description` on its own carried or lying-here line, like an equipped line |
 | Q146 | (ticket 14) The panel row's second line shows the description, trimmed to 200 characters at parse time |
-| Q147 | (ticket 13) The re-roll replays the pass at the turn's own location (`locationId` of the stored turn), not where the player stands now: a Go taken after the turn must not move the replay. The stored turn keeps the owners the live pass validated against and its location (`inventoryOwners`, `inventoryLocationId`, beside `inventoryOps`, additive save shape), and every re-roll replays against them |
+| Q147 | (ticket 13) The re-roll replays the pass at the location the live pass used (`inventoryLocationId`; a later code move can change the turn's `locationId`), not where the player stands now: a Go taken after the turn must not move the replay. The stored turn keeps the owners the live pass validated against and its location (`inventoryOwners`, `inventoryLocationId`, beside `inventoryOps`, additive save shape), and every re-roll replays against them |
 
 ## User Stories
 
@@ -316,7 +317,7 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 ### Runtime shape (save)
 
 - **Item Copy**: an id, the item id (or a runtime item id), a location as a tagged union (`you` / `entity` / `location`; `you` resolves to the played Persona, Q54), a quantity, an equipped slot and an equip order, a visibility **enum** (`visible` / `hidden`), and an open **per-copy state** field. Charges live in per-copy state in this effort.
-- **Runtime item**: a name and a short description, created by the pass, Stackable and Consumable, no slot, no effects (Q56).
+- **Runtime item**: a name created by the pass and a short description the `describeItem` background pass adds (Q148), Stackable and Consumable, no slot, no effects (Q56).
 - **Applied-effect ledger**: what each While Equipped or While Owned value effect actually moved, following the `appliedTraitValues` pattern. Bound facets are derived, not ledgered (Q51).
 - **Timed effects**: per owner, with the story-clock end time. They expire in the turn commit after the clock advances.
 - **First Obtain record**: which owners already got each item's On First Obtain effects.
