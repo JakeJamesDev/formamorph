@@ -6,6 +6,7 @@
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import type { HelpSources } from './helpSettings';
+import { isWorldSource, type AnswerSource, type WorldSource } from './helpWorldSource';
 
 /** A search source of a help question. */
 export type HelpSource = keyof HelpSources;
@@ -15,6 +16,9 @@ export const HELP_TRACE_DEPTH = 10;
 
 /** A docs section as the trace names it: enough to list it and open it, without its text. */
 export type HelpTraceSection = Pick<DocSection, 'id' | 'page' | 'label'>;
+
+/** A source that reached the model, as the trace names it: a docs section or a world item. */
+export type HelpTraceSource = HelpTraceSection | WorldSource;
 
 /** The sections one source ranked for one query, best first, cut to the trace depth. */
 export interface HelpSourceTrace {
@@ -79,14 +83,17 @@ export interface HelpTrace {
   preset: string;
   /** Null for a bare question, which runs no search. */
   search: HelpSearchTrace | null;
-  /** The sections that reached the model in the prompt, in order. */
-  sent: HelpTraceSection[];
+  /** The sources that reached the model in the prompt, in order. */
+  sent: HelpTraceSource[];
   /** The AI Search request, when it ran, then the answer request. */
   requests: HelpRequestTrace[];
 }
 
 /** The trace's view of a section. */
 export const traceSection = ({ id, page, label }: DocSection): HelpTraceSection => ({ id, page, label });
+
+/** The trace's view of a source: a world item stays as it is. */
+export const traceSource = (source: AnswerSource): HelpTraceSource => (isWorldSource(source) ? source : traceSection(source));
 
 /** What the search of one question ranked, in full, before the trace cuts it. The session fills it as the search runs. */
 export interface HelpSearchRecord {

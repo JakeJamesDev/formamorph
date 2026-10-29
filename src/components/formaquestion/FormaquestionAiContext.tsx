@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogTitle, dialogFullHeightMobile } from '@/co
 import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
-import { HELP_SAMPLER_FIELDS, type HelpQueryTrace, type HelpRequestTrace, type HelpSamplers, type HelpTrace, type HelpTraceSection } from '@/lib/formaquestion/helpTrace';
+import { HELP_SAMPLER_FIELDS, type HelpQueryTrace, type HelpRequestTrace, type HelpSamplers, type HelpTrace, type HelpTraceSource } from '@/lib/formaquestion/helpTrace';
+import { isWorldSource, sourceKey } from '@/lib/formaquestion/helpWorldSource';
 import { cn } from '@/lib/utils';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { routeText } from '@/lib/surface/surfaceTargets';
@@ -50,18 +51,19 @@ function HelpChips({ request }: { request: HelpRequestTrace }) {
   );
 }
 
-/** One ranked list of sections, with the ones that reached the model marked. */
-function SectionList({ sections, sent, label }: { sections: readonly HelpTraceSection[]; sent: ReadonlySet<string>; label: string }) {
-  if (sections.length === 0) return <p className="text-muted-foreground">{label}: {AI_CONTEXT_COPY.noRanking}</p>;
+/** One ranked list of sections, with the ones that reached the model marked. A world item reads "kind · name". */
+function SectionList({ sources, sent, label }: { sources: readonly HelpTraceSource[]; sent: ReadonlySet<string>; label: string }) {
+  if (sources.length === 0) return <p className="text-muted-foreground">{label}: {AI_CONTEXT_COPY.noRanking}</p>;
   return (
     <div>
       <p className="font-medium">{label}</p>
       <ol className="list-decimal pl-6">
-        {sections.map((section) => {
-          const reached = sent.has(section.id);
+        {sources.map((source) => {
+          const key = sourceKey(source);
+          const reached = sent.has(key);
           return (
-            <li key={section.id} data-sent={reached ? '' : undefined} className={reached ? 'font-semibold' : 'text-muted-foreground'}>
-              {section.page} › {section.label}
+            <li key={key} data-sent={reached ? '' : undefined} className={reached ? 'font-semibold' : 'text-muted-foreground'}>
+              {isWorldSource(source) ? `${source.worldKind} · ${source.name}` : `${source.page} › ${source.label}`}
               {reached && <span className="ml-1 rounded bg-primary/15 px-1 font-normal text-foreground">{AI_CONTEXT_COPY.sent}</span>}
             </li>
           );
@@ -76,15 +78,15 @@ function QueryBlock({ query, sent }: { query: HelpQueryTrace; sent: ReadonlySet<
   return (
     <div className="space-y-2 rounded-md border border-border p-2">
       <p>{AI_CONTEXT_COPY.query}: <q>{query.query}</q></p>
-      {query.sources.map((source) => <SectionList key={source.source} label={AI_CONTEXT_COPY.sources[source.source]} sections={source.sections} sent={sent} />)}
-      <SectionList label={AI_CONTEXT_COPY.merged} sections={query.merged} sent={sent} />
+      {query.sources.map((source) => <SectionList key={source.source} label={AI_CONTEXT_COPY.sources[source.source]} sources={source.sections} sent={sent} />)}
+      <SectionList label={AI_CONTEXT_COPY.merged} sources={query.merged} sent={sent} />
     </div>
   );
 }
 
 /** The Search block of one question: the screen, the preset, each query, the sections sent, and the route. */
 function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceRoute | null }) {
-  const sent = useMemo(() => new Set(trace.sent.map((section) => section.id)), [trace.sent]);
+  const sent = useMemo(() => new Set(trace.sent.map(sourceKey)), [trace.sent]);
   const off = trace.search?.on.length === 0;
   return (
     <div className="space-y-2 text-meta">
@@ -103,7 +105,7 @@ function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceRoute |
           {trace.search.queries.map((query) => <QueryBlock key={query.query} query={query} sent={sent} />)}
         </>
       )}
-      <SectionList label={AI_CONTEXT_COPY.sentList} sections={trace.sent} sent={sent} />
+      <SectionList label={AI_CONTEXT_COPY.sentList} sources={trace.sent} sent={sent} />
       <p>{AI_CONTEXT_COPY.route}: {route ? routeText(route.id, route.target) : AI_CONTEXT_COPY.none}</p>
     </div>
   );

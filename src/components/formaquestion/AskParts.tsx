@@ -20,6 +20,7 @@ import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { helpRevealSpec, helpRevealTiming } from '@/lib/formaquestion/helpReveal';
+import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from '@/lib/formaquestion/helpWorldSource';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
@@ -133,17 +134,24 @@ function AskTheCommunity({ question }: { question: string }) {
   );
 }
 
+/** A world source under an answer: its name alone, with no link (Q17). */
+function WorldSourceName({ source }: { source: WorldSource }) {
+  return <span className="inline-flex max-w-full items-center overflow-hidden rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-foreground"><span className="min-w-0 truncate">{source.name}</span></span>;
+}
+
 /** The source links of an answer, wrapped. */
-function SourceLinks({ guide, sections, onOpen }: { guide: Guide; sections: readonly DocSection[]; onOpen: (id: string) => void }) {
+function SourceLinks({ guide, sources, onOpen }: { guide: Guide; sources: readonly AnswerSource[]; onOpen: (id: string) => void }) {
   return (
     <div className="flex flex-wrap gap-1">
-      {sections.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
+      {sources.map((source) => (isWorldSource(source)
+        ? <WorldSourceName key={sourceKey(source)} source={source} />
+        : <SourceLink key={source.id} guide={guide} section={source} onOpen={onOpen} />))}
     </div>
   );
 }
 
 /** The answer's sources, or a flagged answer's nearest sections, in a popover from a button (Q22). A link closes it. */
-function SourcesPopover({ guide, label, sections, onOpen }: { guide: Guide; label: string; sections: readonly DocSection[]; onOpen: (id: string) => void }) {
+function SourcesPopover({ guide, label, sources, onOpen }: { guide: Guide; label: string; sources: readonly AnswerSource[]; onOpen: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -151,12 +159,12 @@ function SourcesPopover({ guide, label, sections, onOpen }: { guide: Guide; labe
         {/* As the Thinking toggle beside it; the chevron turns toward the popover above while it is open. */}
         <button type="button" className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}>
           <ChevronRight aria-hidden className={cn('h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none', open && '-rotate-90')} />
-          {`${label} (${sections.length})`}
+          {`${label} (${sources.length})`}
         </button>
       </PopoverTrigger>
       {/* Inline, so it stays in the window's layer above every dialog. */}
       <PopoverContent portal={false} side="top" align="start" aria-label={label} className="pointer-events-auto w-80 p-2">
-        <SourceLinks guide={guide} sections={sections} onOpen={(id) => { setOpen(false); onOpen(id); }} />
+        <SourceLinks guide={guide} sources={sources} onOpen={(id) => { setOpen(false); onOpen(id); }} />
       </PopoverContent>
     </Popover>
   );
@@ -183,7 +191,7 @@ export function AnswerToggles({ guide, exchange, folds, who, onOpen, onGo }: {
           onToggle={folds.thinking.toggle}
         />
       )}
-      {listed.length > 0 && <SourcesPopover guide={guide} label={listLabel} sections={listed} onOpen={onOpen} />}
+      {listed.length > 0 && <SourcesPopover guide={guide} label={listLabel} sources={listed} onOpen={onOpen} />}
       {listed.length > 0 && route && <TakeMeThere onClick={() => onGo(route)} />}
       {asksCommunity(exchange) && <AskTheCommunity question={exchange.question} />}
     </>
@@ -259,7 +267,7 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
             {sourced && route && <TakeMeThere onClick={() => onGo(route)} />}
             {asksCommunity(exchange) && <AskTheCommunity question={question} />}
           </div>
-          {sourced && fold.open && <SourceLinks guide={guide} sections={listed} onOpen={onOpen} />}
+          {sourced && fold.open && <SourceLinks guide={guide} sources={listed} onOpen={onOpen} />}
         </div>
       )}
     </div>

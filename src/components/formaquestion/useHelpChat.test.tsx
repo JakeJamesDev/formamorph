@@ -13,6 +13,7 @@ import type { ImageAttachment } from '@/types';
 import { helpAi } from '@/test/helpAiFixture';
 import type { HelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
+import { docSectionsOf } from '@/lib/formaquestion/helpWorldSource';
 
 const index = createDocsIndex({ pages: { Traits: '# Traits\n\n## How to Add a Trait\n\n1. Select **Add Trait**.\n' } });
 const ai: HelpAi = helpAi({ readsImages: true });
@@ -128,7 +129,7 @@ describe('useHelpChat', () => {
     await waitFor(() => expect(result.current.exchanges.at(-1)?.status).toBe('answered'));
 
     // The open screen's section leads; the question's own top hit comes next.
-    const [lead, top] = result.current.exchanges.at(-1)!.sources;
+    const [lead, top] = docSectionsOf(result.current.exchanges.at(-1)!.sources);
     expect(lead.page).toBe('WorldEditor');
     expect(top.id).toBe('Tools#how-to-try-a-tool');
   });

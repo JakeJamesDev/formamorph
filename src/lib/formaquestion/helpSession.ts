@@ -32,9 +32,10 @@ import type { HelpSettings } from './helpSettings';
 import { activeMascotRig } from './mascotPresets';
 import { helpToolsOn } from './helpTools';
 import {
-  emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection,
+  emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection, traceSource,
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
 } from './helpTrace';
+import { isWorldSource, type AnswerSource } from './helpWorldSource';
 import type { HelpFocus } from './helpFocus';
 import type { CodeTestOwner } from './helpCodeTestRun';
 import type { OpenWorld } from './helpWorld';
@@ -66,8 +67,8 @@ export interface EarlierExchange {
   answer: string;
   /** The answer did not come from the guide. */
   flagged?: boolean;
-  /** The docs sections that reached the model for this answer. */
-  sources?: readonly DocSection[];
+  /** The docs sections and world items that reached the model for this answer. */
+  sources?: readonly AnswerSource[];
   /** The open screen's section that led those sources. */
   lead?: DocSection;
 }
@@ -125,7 +126,7 @@ export type HelpEvent =
    * from the guide, and `nearest` holds the search's sections for the question. `lead` is the open screen's
    * section among the sources.
    */
-  | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[]; reasoning: string }
+  | { type: 'done'; text: string; sources: AnswerSource[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[]; reasoning: string }
   /** The AI set the Mascot's face: the layer id of an enabled expression of the rig. Each call yields one. */
   | { type: 'face'; face: string }
   /**
@@ -188,12 +189,18 @@ function keptHistory(history: readonly EarlierExchange[], historyLength: number)
 }
 
 /**
- * The section whose page a follow-up favors: the answer's first source other than the open screen's lead,
- * else the lead. None for an answer that did not come from the guide.
+ * The topic of an answer: its first source other than the open screen's lead, else the lead. A world item is
+ * never the lead. None for an answer that did not come from the guide.
  */
-function topicOf({ sources = [], lead, flagged }: EarlierExchange): DocSection | undefined {
+function topicOf({ sources = [], lead, flagged }: EarlierExchange): AnswerSource | undefined {
   if (flagged) return undefined;
-  return sources.find((section) => section.id !== lead?.id) ?? sources[0];
+  return sources.find((source) => isWorldSource(source) || source.id !== lead?.id) ?? sources[0];
+}
+
+/** The section whose page a follow-up favors: the topic when it is a docs section. A world topic favors no page. */
+function favoredSection(previous: EarlierExchange): DocSection | undefined {
+  const topic = topicOf(previous);
+  return topic && !isWorldSource(topic) ? topic : undefined;
 }
 
 /** The query a follow-up searches with after its own: the previous question and this one together. */
@@ -279,7 +286,7 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   const previous = answered(history).at(-1);
   const options = { onSurface: lead !== undefined, floor: HELP_SCORE_FLOOR };
   const hits = previous
-    ? [...index.search(question, 1, topicOf(previous), options), ...index.search(followUpQuery(previous, question), HELP_SECTION_LIMIT, undefined, options)]
+    ? [...index.search(question, 1, favoredSection(previous), options), ...index.search(followUpQuery(previous, question), HELP_SECTION_LIMIT, undefined, options)]
     : index.search(question, HELP_SECTION_LIMIT, undefined, options);
   const addsPageHowTos = lead && (!howToRule || POINTS_AT_SCREEN.test(question));
   // The open page's how-tos skip the floor: a "here" question's key often scores far below its top hit.
@@ -499,7 +506,7 @@ export async function* askHelp({
     ...(lead && { lead: traceSection(lead) }),
     preset: activeHelpPreset(settings.presets).name,
     search: record && searchTraceOf(record, inPrompt),
-    sent: inPrompt.map(traceSection),
+    sent: inPrompt.map(traceSource),
     requests: [...(record?.pick ? [record.pick] : []), requestTrace('Answer', spec, customPrompt, result, rounds)],
   });
   yield { type: 'trace', trace: traceOf() };

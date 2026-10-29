@@ -9,6 +9,7 @@ import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION, SCRIPT_TAB } from './helpCodeRider';
 import { helpUserMessage, screenLine } from './helpPrompt';
 import { askHelp, HELP_SECTION_LIMIT, helpSections, type HelpEvent, type HelpQuestion } from './helpSession';
+import { docSectionsOf } from './helpWorldSource';
 import { helpSettingsOf, type HelpSettings } from './helpSettings';
 
 const LEAD = 'World-Editor-Stats#scripts';
@@ -55,7 +56,7 @@ async function ask(question: string, over: Partial<HelpQuestion> = {}, docs: Doc
   return {
     user: userOf(fetchImpl),
     ids: done.sources.map((section) => section.id),
-    sources: done.sources,
+    sources: docSectionsOf(done.sources),
     lead: done.lead?.id,
     flagged: done.flagged,
     trace: trace.trace,

@@ -10,6 +10,7 @@ import { DEFAULT_CODE_RIDER, SCRIPT_TAB, scriptHomeLine, TRAIT_SCRIPT_TAB, WORLD
 import { CODE_TEST_RIDER_LINE } from './helpCodeTest';
 import { helpUserMessage } from './helpPrompt';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
+import { docSectionsOf } from './helpWorldSource';
 import { helpSettingsOf, type HelpSettings } from './helpSettings';
 
 const PAGES = {
@@ -45,7 +46,7 @@ async function ask(question: string, over: Partial<HelpQuestion> = {}) {
   const trace = events.findLast((event) => event.type === 'trace');
   return {
     fetchImpl,
-    sources: done?.type === 'done' ? done.sources : [],
+    sources: done?.type === 'done' ? docSectionsOf(done.sources) : [],
     customPrompt: trace?.type === 'trace' ? trace.trace.requests.at(-1)?.customPrompt : undefined,
   };
 }
