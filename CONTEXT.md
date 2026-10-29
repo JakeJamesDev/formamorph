@@ -393,11 +393,11 @@ The entity that owns the running stat, with the same fields as an `entities` ent
 _Avoid_: self (the running stat's own entry), persona (the played entity)
 
 **Script**:
-One box of JavaScript with a Timing, kept on a stat, on a trait or on the world. Its home decides what `self` is and when the script is in force; the surface is otherwise the same. It reads the world and writes through `self`, other stats, placeholders and traits. A script that names `player` can tell or ask the player.
+One box of JavaScript with a Timing, kept on a stat, on a trait, on the world or on an item. Its home decides what `self` is and when the script is in force; the surface is otherwise the same. It reads the world and writes through `self`, other stats, placeholders and traits. A script that names `player` can tell or ask the player.
 _Avoid_: stat code, code box, formula (a returned number is one use), macro
 
 **Timing**:
-When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. The Timing menu is the only way to move a script between timings. Inside one timing, an optional `order` decides who runs first.
+When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. An item's scripts have five Timings of their own, the item timings. The Timing menu is the only way to move a script between timings. Inside one timing, an optional `order` decides who runs first.
 _Avoid_: hook, phase, trigger (a Test Bench Instrument), event
 
 **Sandbox Snapshot**:
@@ -422,6 +422,10 @@ _Avoid_: on load, setup script, init
 **When a Trait Switches**:
 The Timing that runs once for each trait that turns on or off in play, whatever switched it. The script reads `trait`, the trait that switched, with `enabled` as its new state. Setup picks fire nothing.
 _Avoid_: on toggle, trait hook, trait event
+
+**Item timings**:
+The five Timings of an item's scripts: When Gained, When Lost, When Equipped, When Unequipped and When Consumed. Each runs once for each event of one of the item's Item Copies, from the Inventory pass, the panel or a script. `self` is the item and `owner` is the Item Copy's Owner, empty while it lies at a location. A script's inventory write runs item timings up to 3 levels deep; past that the write still lands and no timing runs. Starting items run none.
+_Avoid_: item hook, item trigger, on pickup
 
 **Original**:
 The world trait, group or stat a Link points at, at the root or under Blueprints. An Original is a Blueprint trait or stat. An entity's own trait or stat is never an Original.

@@ -1,6 +1,6 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, ItemCopy, LoreToggles,
-  OwnedTraitStates, Placeholder, PlayerStat, Script, Trait,
+  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemCopy, LoreToggles,
+  OwnedTraitStates, Placeholder, PlayerStat, Script, Slot, Trait,
 } from '@/types';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import {
@@ -8,6 +8,7 @@ import {
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
+import type { Dose, InventoryOp, InventoryResult, ItemScriptEvent } from './inventory';
 import { statCodeNamed } from './statCodeNames';
 import type { StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
@@ -92,6 +93,10 @@ export interface SandboxState {
   loreToggles?: LoreToggles;
   /** Every Item Copy in play. Absent ⇒ none. */
   itemCopies?: readonly ItemCopy[];
+  /** The world's items, which `items` reads. Absent ⇒ none. */
+  items?: readonly Item[];
+  /** The world's slots, which an equipped Item Copy names. Absent ⇒ none. */
+  slots?: readonly Slot[];
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */
@@ -157,6 +162,15 @@ export interface StatCodeTurn {
   choicesOnly?: boolean;
   /** Saved World Tool writes laid on ahead of `triggers`, in this order, with no script run (Q41). */
   replayed?: readonly ReplayedTrigger[];
+  /** The Item Copy event an item run fires on: its item's scripts of the event's timing run alone. */
+  itemEvent?: ItemEventRun;
+}
+
+/** One Item Copy event and its item, with the item's name as the player reads it. */
+export interface ItemEventRun {
+  event: ItemScriptEvent;
+  item: Pick<Item, 'id' | 'name' | 'scripts'>;
+  itemName: string;
 }
 
 /** One World Tool call a run fires: the Tool's name, its script, and the call's arguments. */
@@ -344,6 +358,8 @@ interface ScriptUnit {
   home: UnitHome;
   stat: PlayerStat | null;
   trait?: Trait;
+  /** An item script's item name, as the player reads it. */
+  itemName?: string;
   script: Script;
   /** A World Tool call's arguments; absent on a Script. */
   args?: ScriptTrigger['args'];
@@ -472,6 +488,79 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
 export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnResult): Promise<StatCodeTurnResult> {
   const after = afterRun(turn, result);
   return (await chainSwitchRuns(turn, [result], after, switchesBetween(turn, after))) ?? result;
+}
+
+/** How many levels of item events fire item scripts: a turn's or a panel's event is level 1 (Q66). */
+export const ITEM_EVENT_DEPTH = 3;
+
+/** Lays inventory writes onto Item Copies through the Inventory module, with the events they fire. */
+export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly InventoryOp[]) => Pick<InventoryResult, 'copies' | 'events' | 'diagnostics' | 'doses'>;
+
+/** What the item runs of one batch of events left. */
+export interface ItemRunsResult {
+  /** The runs as one result over the turn, their inventory writes taken out; null when no script ran. */
+  result: StatCodeTurnResult | null;
+  /** The Item Copies after every run's inventory writes. */
+  copies: readonly ItemCopy[];
+  /** The module's skips, and one line per event past the depth cap. */
+  diagnostics: string[];
+  /** The consumes the runs' writes made, which start their After Consumed effects. */
+  doses: Dose[];
+  /** Every inventory write the runs landed, in order, for a caller whose Item Copies moved meanwhile. */
+  ops: InventoryOp[];
+}
+
+/**
+ * Each event's item scripts, in order, over the state the run before left; `turn.state.itemCopies` is the state
+ * the events left. A run's inventory writes land through `apply` at once, and their events nest one level deeper.
+ * Past {@link ITEM_EVENT_DEPTH} the writes still land, but their events fire nothing (Q66, Q140). A run's own trait
+ * switches fire their switch runs. `depth` is the level `events` fire at.
+ */
+export async function runItemScripts(
+  turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: readonly Pick<Item, 'id' | 'name' | 'scripts'>[],
+  apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, depth = 1,
+): Promise<ItemRunsResult> {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const steps: StatCodeTurnResult[] = [];
+  const diagnostics: string[] = [];
+  const doses: Dose[] = [];
+  const landedOps: InventoryOp[] = [];
+  const level = async (at: StatCodeTurn, batch: readonly ItemScriptEvent[], depth: number): Promise<StatCodeTurn> => {
+    let now = at;
+    for (const event of batch) {
+      const item = byId.get(event.itemId);
+      if (!item || !filledScriptsAt(item, event.timing).length) continue;
+      if (depth > ITEM_EVENT_DEPTH) {
+        diagnostics.push(`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; ${SCRIPT_TIMING_LABEL[event.timing]} of ${itemNameOf(item)} did not run`);
+        continue;
+      }
+      const ran = await runScripts({ ...now, timing: event.timing, itemEvent: { event, item, itemName: itemNameOf(item) } });
+      const ops = ran.worldWrites?.inventory ?? [];
+      const step = ops.length ? { ...ran, worldWrites: withoutInventory(ran.worldWrites) } : ran;
+      steps.push(step);
+      const next = afterRun(now, step);
+      now = await switchRuns(next, switchesBetween(now, next), 1, steps);
+      if (!ops.length) continue;
+      const landed = apply(now.state.itemCopies ?? [], ops);
+      landedOps.push(...ops);
+      diagnostics.push(...landed.diagnostics);
+      doses.push(...landed.doses);
+      now = { ...now, state: { ...now.state, itemCopies: landed.copies } };
+      now = await level(now, landed.events, depth + 1);
+    }
+    return now;
+  };
+  const end = await level(turn, events, depth);
+  return {
+    result: steps.length ? chainedResult(turn, steps, end) : null, copies: end.state.itemCopies ?? [], diagnostics, doses, ops: landedOps,
+  };
+}
+
+/** `writes` without their inventory writes; undefined when nothing else is left. */
+export function withoutInventory(writes: WorldWrites | undefined): WorldWrites | undefined {
+  if (!writes) return writes;
+  const { inventory: _landed, ...rest } = writes;
+  return Object.keys(rest).length ? rest : undefined;
 }
 
 /** One switch run per event, over `turn`, the state the switches left (Q12, Q47). */
@@ -663,6 +752,13 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const ownerRuns = [...entityRuns.flatMap((run) => [...ahead.get(run.owner.id) ?? [], run]), ...waiting];
   const runs: OwnerRun[] = [globalRun, ...ownerRuns];
   if (turn.triggersOnly) for (const run of runs) run.units = [];
+  const { itemEvent } = turn;
+  if (itemEvent) {
+    for (const run of runs) run.units = [];
+    globalRun.units = filledScriptsAt(itemEvent.item, itemEvent.event.timing).map((script): ScriptUnit => ({
+      home: { kind: 'item', item: itemEvent.item, where: itemEvent.event.where }, stat: null, itemName: itemEvent.itemName, script,
+    }));
+  }
   /** A World Tool call's unit on the global run. */
   const toolUnit = (name: string, code: string, rest: Pick<ScriptUnit, 'args' | 'writes'>): { unit: ScriptUnit; run: OwnerRun } => ({
     unit: { home: { kind: 'tool' }, stat: null, script: { id: `tool:${name}`, name, timing, code }, ...rest }, run: globalRun,
@@ -677,8 +773,8 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     readings: { global: globalRun.inputs, owners: Object.fromEntries(entityRuns.map((run) => [run.owner.id, run.inputs])) },
   });
   /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
-  const whoRan = ({ stat, trait, script, args }: ScriptUnit) => (stat ? `Stat ${stat.name}`
-    : trait ? `Trait ${trait.name}` : `${args ? 'Tool' : 'Script'} ${scriptLabel(script, WORLD_OWNER)}`);
+  const whoRan = ({ stat, trait, itemName, script, args }: ScriptUnit) => (stat ? `Stat ${stat.name}`
+    : trait ? `Trait ${trait.name}` : itemName !== undefined ? `Item ${itemName}` : `${args ? 'Tool' : 'Script'} ${scriptLabel(script, WORLD_OWNER)}`);
   const switchInput = timing === 'switch' && turn.switched ? { switched: { event: turn.switched, world: switchWorld } } : {};
   // Run order: the replayed writes, the triggers, then ordered scripts, then owner order and stat order, so the
   // later write wins.
@@ -697,6 +793,9 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const { stat, script, args } = unit;
     const result = await snapshot.run({
       home: unit.home, timing, code: script.code, ...switchInput, ...(args && { args }), ...(prompts && { prompts }),
+      ...(itemEvent && {
+        itemEvent: { copyId: itemEvent.event.copyId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }) },
+      }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(choices && { choices }),
     });
@@ -748,9 +847,9 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
   // The switch log names the switching stat as the player reads it, or the world script.
   const switches = inOrder.map((unit) => {
-    const { stat, trait, script, writes } = unit;
+    const { stat, trait, itemName, script, writes } = unit;
     return {
-      by: stat ? turn.statNameOf(stat) : trait ? turn.traitNameOf(trait) : scriptLabel(script, WORLD_OWNER),
+      by: stat ? turn.statNameOf(stat) : trait ? turn.traitNameOf(trait) : itemName ?? scriptLabel(script, WORLD_OWNER),
       written: writes?.traits ? snapshot.switchesOf(unit, { traits: writes.traits.world, entities: writes.traits.entities }) : [],
     };
   });

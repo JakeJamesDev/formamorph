@@ -12,7 +12,7 @@ import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, ITEM_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -20,6 +20,8 @@ import {
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
 export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholders' | 'entities' | 'locations'> & {
   traits?: readonly CodeTraitPlace[];
+  /** The world's items by code name. Absent, Items is one type-over row. */
+  items?: readonly { id: string; name: string }[];
 };
 
 /** What an owned or Blueprint stat's `owner` holds, for the menu's Owner group. A null owner or name list is the
@@ -393,6 +395,7 @@ export function buildVariableTree(
   const placeholders = root('placeholders');
   const dictionaries = root('dictionaries');
   const locations = root('locations');
+  const items = root('items');
 
   const statRows = names
     ? firstOfEach((names.statNames ?? []).filter((name) => name !== ''), (name) => name)
@@ -414,6 +417,12 @@ export function buildVariableTree(
       name: dictionary.name, trail: [], children: dictionaryFields(keyed(dictionaries, dictionary.name), dictionary),
     }))
     : templateRows(dictionaries, (at) => dictionaryFields(at, null));
+  const itemFields = (path: Path, itemId: string | null) => ownerFields(path, ITEM_FIELDS, {
+    placeholders: (at) => (itemId === null ? typeOverPlaceholders(at) : ownedRows(itemId, at, [])),
+  }, 'on this item');
+  const itemRows = names
+    ? keyedLastWins(names.items ?? []).map((item) => ({ name: item.name, trail: [], children: itemFields(keyed(items, item.name), item.id) }))
+    : templateRows(items, (at) => itemFields(at, null));
   const locationRows = names
     ? keyedLastWins((names.locations ?? []).map((name) => ({ name })))
       .map(({ name }) => ({ name, trail: [], children: locationEntryFields(keyed(locations, name)) }))
@@ -446,6 +455,7 @@ export function buildVariableTree(
     { kind: 'group', label: 'Persona', info: globalInfo('persona'), children: personaFields },
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
+    nameList('Items', itemRows, 'No items in this world', globalInfo('items')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
     { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),

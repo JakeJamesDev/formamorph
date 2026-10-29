@@ -18,7 +18,10 @@ import {
 } from './statCodeTargets';
 
 /** Where a script is stored: the world's own list, or a stat's or trait's home as Find All Uses names it. */
-export type ScriptHomeRef = WorldScriptHome | CodeHome | TraitCodeHome;
+export type ScriptHomeRef = WorldScriptHome | CodeHome | TraitCodeHome | ItemScriptHome;
+
+/** Where an item's scripts are authored: the item's own list. */
+export type ItemScriptHome = { kind: 'item'; itemId: string };
 
 /** What the tree reads from a world. */
 export interface ScriptTreeWorld {
@@ -56,6 +59,7 @@ const homeKey = (home: ScriptHomeRef): string => {
     case 'trait': return `trait/${home.traitId}`;
     case 'entityTrait': return `entityTrait/${home.entityId}/${home.traitId}`;
     case 'traitLink': return `traitLink/${home.entityId}/${home.linkId}/${home.traitId}`;
+    case 'item': return `item/${home.itemId}`;
   }
 };
 

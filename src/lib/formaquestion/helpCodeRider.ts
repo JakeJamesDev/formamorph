@@ -16,7 +16,7 @@ export const SCRIPT_TAB: SurfaceId = 'worldEditorStat.code';
 
 const boxName = (timing: ScriptTiming) => SCRIPT_TIMING_LABEL[timing];
 /** When each box runs, so a small model picks the box by the task's moment, not by its label. */
-const RUNS_WHEN: Record<ScriptTiming, string> = {
+const RUNS_WHEN: Record<(typeof SCRIPT_TIMINGS)[number], string> = {
   before: 'at the start of each turn',
   after: 'at the end of each turn',
   output: 'once for each narration sentence',
@@ -44,7 +44,7 @@ export const DEFAULT_CODE_RIDER = [
  * drift test holds it to the sandbox's own list.
  */
 export const SANDBOX_GLOBAL_NAMES = [
-  'self', 'owner', 'stats', 'clock', 'turn', 'locations', 'location', 'discover', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+  'self', 'owner', 'stats', 'clock', 'turn', 'locations', 'location', 'discover', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'console',
 ] as const;
 
 const GLOBALS = SANDBOX_GLOBAL_NAMES.join('|');

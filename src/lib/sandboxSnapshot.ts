@@ -3,10 +3,10 @@
  * `snapshotOf`, then call `run` per Script unit and `switchesOf` per result. Owner entries, `self`, the cast, the
  * placeholders, the dictionaries, the places and the switched trait are assembled here and nowhere else.
  */
-import type { Entity, Placeholder, Stat, Trait } from '@/types';
+import type { Entity, Item, ItemCopy, ItemCopyWhere, Placeholder, Stat, Trait } from '@/types';
 import {
   EMPTY_REPLY, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxItem, type SandboxItemCopy, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
@@ -23,6 +23,7 @@ import { gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitW
 import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
+import { isItemTiming } from './scripts';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
 
@@ -38,11 +39,15 @@ export type UnitHome =
   | { kind: 'trait'; trait: HomeTrait; entityId: string | null }
   | { kind: 'blueprintTrait'; trait: HomeTrait }
   | { kind: 'world' }
-  | { kind: 'tool' };
+  | { kind: 'tool' }
+  /** An item's script, run on one Item Copy event at `where` (Q67). */
+  | { kind: 'item'; item: Pick<Item, 'id' | 'name'>; where: ItemCopyWhere };
 
 /** Whose `owner` a Script runs under. */
 export type UnitOwner =
   | { kind: 'none' }
+  /** The played persona's entry. */
+  | { kind: 'persona' }
   | { kind: 'entity'; entityId: string }
   /** An entry of its own holding the group's stats and no entity. */
   | { kind: 'blueprintStat'; stats: readonly Stat[] }
@@ -56,6 +61,10 @@ export function ownerOfHome(home: UnitHome): UnitOwner {
     case 'trait': return home.entityId === null ? { kind: 'none' } : { kind: 'entity', entityId: home.entityId };
     case 'blueprintStat': return { kind: 'blueprintStat', stats: home.groupStats };
     case 'blueprintTrait': return { kind: 'blueprintTrait' };
+    case 'item': {
+      const { where } = home;
+      return where.kind === 'you' ? { kind: 'persona' } : where.kind === 'entity' ? { kind: 'entity', entityId: where.id } : { kind: 'none' };
+    }
     default: return { kind: 'none' };
   }
 }
@@ -79,6 +88,8 @@ export interface ScriptRunUnit {
   readOnly?: boolean;
   /** The `turn.choices` the earlier scripts of the batch left, which this run reads in place of the state's (Q14). */
   choices?: readonly string[];
+  /** An item script's event: its Item Copy and how many it moved. */
+  itemEvent?: { copyId: string; quantity: number; was?: ItemCopy };
 }
 
 /** Each scope's stat turn inputs: the global run's and each Owner's, by id. The caller leaves them empty at a
@@ -226,6 +237,8 @@ interface Board {
   places?: SandboxPlaces;
   ownerStats: (id: string) => SandboxStats;
   placeholderDefs: readonly Placeholder[];
+  items: SandboxItem[];
+  itemCopy: (copy: ItemCopy) => SandboxItemCopy;
 }
 
 /** The pending persona's placeholder node: every persona-capable entity's own placeholders under `persona`. Each
@@ -284,9 +297,23 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   const assumed = assumedStats.map((name): Stat => ({ id: randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT }));
   const globalStats = assumed.length ? [...state.stats, ...assumed] : state.stats;
   const globalEnabled = assumed.length ? { ...state.enabled, ...activeStatEnabled(assumed, []) } : state.enabled;
+  const slotName = new Map((state.slots ?? []).map((slot) => [slot.id, slot.name]));
+  const authoredItems = new Map((state.items ?? []).map((item) => [item.id, item]));
+  const itemCopy = (copy: ItemCopy): SandboxItemCopy => {
+    const charges = copy.item.kind === 'item' ? authoredItems.get(copy.item.itemId)?.charges : undefined;
+    return {
+      id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: copy.equipped ? slotName.get(copy.equipped.slotId) ?? '' : '',
+      hidden: copy.visibility === 'hidden', ...(charges !== undefined && { charges: copy.state?.charges ?? charges }),
+    };
+  };
+  const items = (state.items ?? []).map((item): SandboxItem => ({
+    id: item.id, name: statCodeName(item.name, placeholderDefs),
+    ...(sandbox?.owners.get(item.id) ? { placeholders: sandbox.owners.get(item.id) } : {}),
+    copies: (state.itemCopies ?? []).filter((copy) => copy.item.kind === 'item' && copy.item.itemId === item.id).map(itemCopy),
+  }));
   return {
     stats: scopeStats(globalStats, globalEnabled, readings?.global),
-    traits, inPlay, placeholderDefs, ownerStats,
+    traits, inPlay, placeholderDefs, ownerStats, items, itemCopy,
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(
       codeDictionaries(placeholderSet?.dictionaries && withLoreToggles(placeholderSet.dictionaries, state.loreToggles), placeholderDefs), sandbox?.owners,
@@ -300,6 +327,7 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
 function ownerEntryOf(board: Board, owner: UnitOwner): SandboxEntity | undefined {
   switch (owner.kind) {
     case 'none': return undefined;
+    case 'persona': return board.inPlay.persona.id ? board.inPlay.persona : undefined;
     case 'entity': return board.inPlay.entities.find((entity) => entity.id === owner.entityId)
       ?? { id: owner.entityId, name: '', type: '', pronouns: '', inScene: false, traits: [], stats: board.ownerStats(owner.entityId) };
     case 'blueprintStat': return { name: '', traits: [], stats: { stats: owner.stats, enabled: activeStatEnabled(owner.stats, []) } };
@@ -367,6 +395,13 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
       ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
       ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
+      ...(read.items.length && { items: read.items }),
+      ...(unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing) && {
+        itemEvent: {
+          itemId: unit.home.item.id, timing: unit.timing, copyId: unit.itemEvent.copyId, quantity: unit.itemEvent.quantity,
+          ...(unit.itemEvent.was && { was: read.itemCopy(unit.itemEvent.was) }),
+        },
+      }),
     };
   };
   const snapshot: SandboxSnapshot = {

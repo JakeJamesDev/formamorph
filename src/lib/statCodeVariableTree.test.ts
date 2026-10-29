@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, Entity, Placeholder, ScriptTiming, Stat, Trait } from '@/types';
+import type { Dictionary, Entity, Item, Placeholder, ScriptTiming, Stat, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { executeStatCode } from './statCodeExecutor';
@@ -58,6 +58,9 @@ const world = {
       { id: 'sealed', name: 'Sealed', key: ['vault'], value: 'Hidden.', enabled: false },
     ],
   }] as Dictionary[],
+  items: [{
+    id: 'lamp', name: 'Brass Lamp', placeholders: [ph('l-glow', 'Glow', ['dim'])], statEffects: [], traitEffects: [], equipRequires: [],
+  }] as Item[],
 };
 
 /** The names as the stat box hands them to the editor. */
@@ -69,6 +72,7 @@ function editorNames(): VariableTreeNames {
     entities: entityTraitNames({ traits: world.traits, traitGroups: [], entities: world.entities }, list),
     placeholders: { list, owners: placeholderOwners(world), dictionaries: codeDictionaries(world.dictionaries, list) },
     locations: ['Dock', 'Old Mill'],
+    items: [{ id: 'lamp', name: 'Brass Lamp' }],
   };
 }
 
@@ -113,7 +117,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
   });
 
   it('keeps the in-group order of a stat’s fields', () => {
@@ -463,7 +467,7 @@ describe('field info', () => {
 describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
-    'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
+    'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items',
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {
@@ -567,6 +571,7 @@ describe('every leaf against the sandbox', () => {
     dictionaries: sandboxDictionaries(names.placeholders!.dictionaries ?? [], placeholders.owners),
     // Test Code stands at the world's starting location.
     places: { locations: [{ id: 'dock', name: 'Dock' }, { id: 'mill', name: 'Old Mill' }], location: { id: 'dock', name: 'Dock' } },
+    items: [{ id: 'lamp', name: 'Brass Lamp', placeholders: placeholders.owners.get('lamp'), copies: [] }],
   });
 
   // `diary` writes for a real entity and never the persona, so it has its own cases below.

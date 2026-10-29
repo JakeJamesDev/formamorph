@@ -121,12 +121,12 @@ describe('the Items list', () => {
 });
 
 describe('the item panel', () => {
-  it('reads like the entity panel: Profile, Descriptions, Properties and Placeholders', () => {
+  it('reads like the entity panel: Profile, Descriptions, Properties, Scripts and Placeholders', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
     const tabs = within(screen.getByRole('tablist', { name: 'Item Fields' })).getAllByRole('tab').map((t) => t.textContent?.trim());
-    expect(tabs).toEqual(['Profile', 'Descriptions', 'Properties', 'Effects', 'Requirements', 'Placeholders']);
+    expect(tabs).toEqual(['Profile', 'Descriptions', 'Properties', 'Effects', 'Requirements', 'Scripts', 'Placeholders']);
     itemFieldsTab('Descriptions');
     expect(screen.getByText('Player-Facing Description')).toBeTruthy();
     expect(screen.getByText('AI-Facing Summary')).toBeTruthy();

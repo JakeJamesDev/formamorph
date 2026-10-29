@@ -47,9 +47,9 @@ export interface ScriptBoxContext {
   home: UnitHome;
 }
 
-/** What `self` is in a box: a stat, a trait, or nothing on a world script. */
+/** What `self` is in a box: a stat, a trait, an item, or nothing on a world script. */
 const selfKindOf = (home: UnitHome): keyof typeof SCRIPT_SURFACES =>
-  ('stat' in home ? 'stat' : 'trait' in home ? 'trait' : 'world');
+  ('stat' in home ? 'stat' : 'trait' in home ? 'trait' : home.kind === 'item' ? 'item' : 'world');
 
 /** `world` with an entity Owner holding the stats the panel holds, so a library entity, which no world has,
  *  still runs with its `owner.stats`. */
@@ -106,8 +106,8 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
   const selfKind = selfKindOf(home);
   const isStat = selfKind === 'stat';
   const isOutput = timing === 'output';
-  // Stat and world scripts have a Templates menu; a trait's has none.
-  const hasTemplates = selfKind !== 'trait';
+  // Stat and world scripts have a Templates menu; a trait's and an item's have none.
+  const hasTemplates = selfKind === 'stat' || selfKind === 'world';
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // An entity stat's own traits, which a template's trait slot lists under Owner. A Blueprint's owners vary, so none.
   const ownerTraits = useMemo(
@@ -212,6 +212,7 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
           traits={traitPlaces}
           entities={analysis.entities}
           locations={analysis.locations}
+          items={names.items}
           lookup={analysis.lookup}
           navigation={navigation}
           revealLine={reveal?.line}

@@ -24,7 +24,8 @@ export const boxOwnerOf = (box: StatCodeBox | TraitCodeBox, placeholders: readon
 /** `owner` as the editor's lookups take it. Null for global scope. */
 export function codeBoxOwnerOf(owner: UnitOwner): CodeBoxOwner | null {
   switch (owner.kind) {
-    case 'none': return null;
+    case 'none':
+    case 'persona': return null;
     case 'entity': return { kind: 'entity', entityId: owner.entityId };
     case 'blueprintStat':
     case 'blueprintTrait': return { kind: 'blueprint' };

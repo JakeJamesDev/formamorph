@@ -10,7 +10,7 @@ import { phValues } from '@/test/placeholderValues';
 import { codeDiagnostics, statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
 import { executeStatCode, type StatCodeResult, type StatCodeRunOptions } from './statCodeExecutor';
 import {
-  CLOCK_MEMBERS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
+  CLOCK_MEMBERS, ITEM_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
   STAT_CODE_SURFACE, TRAIT_ENTRY_FIELDS, scriptSurface,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
@@ -84,6 +84,7 @@ const world = {
   owner: { id: 'owner', name: 'Owner', traits: [trait()], stats: { stats } },
   dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns, entries: [entry] }],
   places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
+  items: [{ id: 'item', name: 'Item', copies: [{ id: 'copy', where: { kind: 'you' as const }, quantity: 1, equipped: false, slot: '', hidden: false }] }],
 };
 const run = (code: string, options: StatCodeRunOptions = {}) => executeStatCode(code, stats, stats[0], { ...world, ...options });
 
@@ -145,6 +146,7 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   entities: ENTITY_FIELDS,
   placeholders: placeholderEntryFields('Wildcard'),
   dictionaries: DICTIONARY_FIELDS,
+  items: ITEM_FIELDS,
 };
 
 const rows = quickReferenceRows();

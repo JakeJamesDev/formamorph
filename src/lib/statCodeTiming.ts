@@ -4,15 +4,16 @@
  * them should pull the turn runner — and the QuickJS engine behind it — in to do it.
  */
 
-import type { Script } from '@/types';
+import type { ItemScriptTiming, Script } from '@/types';
 import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from './scripts';
 
 /** The two timings a stat's Code tab shows a box for. */
 export type StatCodeTiming = 'before' | 'after';
 
 /** The timings the runner runs over a turn's stats: the two boxes, At Game Start before the opening, During
- *  AI Output, which runs one narration sentence at a time, and When a Trait Switches, once per switch. */
-export type RunTiming = StatCodeTiming | 'start' | 'output' | 'switch';
+ *  AI Output, which runs one narration sentence at a time, When a Trait Switches, once per switch, and the item
+ *  timings, once per Item Copy event. */
+export type RunTiming = StatCodeTiming | 'start' | 'output' | 'switch' | ItemScriptTiming;
 
 /** Whether a run reads the turn's starting state: no ask, no regen and every delta zero. */
 export const readsTurnStart = (timing: RunTiming): boolean => timing !== 'after';
@@ -33,6 +34,7 @@ export const TIMING_LABEL = SCRIPT_TIMING_LABEL;
 /** A box's name where its stat is named beside it, as in a Find All Uses row. */
 export const TIMING_SHORT: Record<Script['timing'], string> = {
   before: 'Before', after: 'After', output: 'Output', start: 'Start', switch: 'Switch',
+  gained: 'Gained', lost: 'Lost', equipped: 'Equipped', unequipped: 'Unequipped', consumed: 'Consumed',
 };
 
 /** The confirm before a template replaces a box's code. */

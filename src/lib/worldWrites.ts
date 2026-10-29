@@ -8,7 +8,7 @@ export function advancedClock(turnStart: number, writes: WorldWrites | undefined
 
 /** `later` laid over `earlier`: the later move wins, advances add, discoveries join once per name, a
  *  described one filling in a bare one, and memory lines, pins, diary lines, entity writes and memory entry writes
- *  join in order. */
+ *  join in order, as do inventory writes. */
 export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldWrites | undefined): WorldWrites | undefined {
   if (!earlier || !later) return later ?? earlier;
   const location = later.location ?? earlier.location;
@@ -24,6 +24,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
   const diary = [...earlier.diary ?? [], ...later.diary ?? []];
   const entities = [...earlier.entities ?? [], ...later.entities ?? []];
   const memoryWrites = [...earlier.memoryWrites ?? [], ...later.memoryWrites ?? []];
+  const inventory = [...earlier.inventory ?? [], ...later.inventory ?? []];
   return {
     ...(location === undefined ? {} : { location }),
     ...(minutes === undefined ? {} : { minutes }),
@@ -33,5 +34,6 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
     ...(diary.length ? { diary } : {}),
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),
+    ...(inventory.length ? { inventory } : {}),
   };
 }

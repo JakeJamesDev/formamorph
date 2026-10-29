@@ -31,10 +31,13 @@ export type ThresholdUnit = 'raw' | 'percent';
 export type RegenUnit = 'minutes' | 'hours' | 'days' | 'weeks';
 
 /** When a script runs: before the turn's AI calls, after the AI's asks and regen land, on each completed
- *  narration sentence, once at a new playthrough's start, or when a trait switches in play. */
-export type ScriptTiming = 'before' | 'after' | 'output' | 'start' | 'switch';
+ *  narration sentence, once at a new playthrough's start, when a trait switches in play, or on an item's events. */
+export type ScriptTiming = 'before' | 'after' | 'output' | 'start' | 'switch' | ItemScriptTiming;
 
-/** One box of code with a timing, on a stat, a trait or the world. */
+/** When an item's script runs: its Item Copy is gained, lost, equipped, unequipped or consumed (Q33). */
+export type ItemScriptTiming = 'gained' | 'lost' | 'equipped' | 'unequipped' | 'consumed';
+
+/** One box of code with a timing, on a stat, a trait, the world or an item. */
 export interface Script {
   id: string;
   /** Absent or blank = the owner and timing name it. */
@@ -578,6 +581,8 @@ export interface Item {
   traitEffects: ItemTraitEffect[];
   /** Any one row that holds lets an owner equip it. Empty = always. */
   equipRequires: TraitRequirementRow[];
+  /** Runs on its Item Copies' events, only at the item timings. */
+  scripts?: Script[];
 }
 
 /** One equipment slot of the world, shared by the Persona and every entity. */
