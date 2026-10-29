@@ -496,6 +496,22 @@ export const ITEM_EVENT_DEPTH = 3;
 /** Lays inventory writes onto Item Copies through the Inventory module, with the events they fire. */
 export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly InventoryOp[]) => Pick<InventoryResult, 'copies' | 'events' | 'diagnostics' | 'doses'>;
 
+/**
+ * The inventory settle over `copies`, as if the runs had stopped there: `doses` are every consume so far, and
+ * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, and
+ * their events.
+ */
+export type SettleCopies = (copies: readonly ItemCopy[], doses: readonly Dose[], so: StatCodeTurnResult) =>
+  { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[] };
+
+/** Where a batch of item events starts, and how it settles after each write. */
+export interface ItemRunOptions {
+  /** The level the events fire at. Absent = 1. */
+  depth?: number;
+  /** Absent = no settle between writes. */
+  settle?: SettleCopies;
+}
+
 /** What the item runs of one batch of events left. */
 export interface ItemRunsResult {
   /** The runs as one result over the turn, their inventory writes taken out; null when no script ran. */
@@ -506,19 +522,20 @@ export interface ItemRunsResult {
   diagnostics: string[];
   /** The consumes the runs' writes made, which start their After Consumed effects. */
   doses: Dose[];
-  /** Every inventory write the runs landed, in order, for a caller whose Item Copies moved meanwhile. */
+  /** Every inventory write the runs landed, the settle's unequips among them, in order, for a caller whose Item
+   *  Copies moved meanwhile. */
   ops: InventoryOp[];
 }
 
 /**
  * Each event's item scripts, in order, over the state the run before left; `turn.state.itemCopies` is the state
- * the events left. A run's inventory writes land through `apply` at once, and their events nest one level deeper.
- * Past {@link ITEM_EVENT_DEPTH} the writes still land, but their events fire nothing (Q66, Q140). A run's own trait
- * switches fire their switch runs. `depth` is the level `events` fire at.
+ * the events left. A run's inventory writes land through `apply` at once, and their events nest one level deeper,
+ * with the automatic unequips `settle` finds after that write (Q66). Past {@link ITEM_EVENT_DEPTH} the writes still
+ * land, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs.
  */
 export async function runItemScripts(
   turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: readonly Pick<Item, 'id' | 'name' | 'scripts'>[],
-  apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, depth = 1,
+  apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, { depth = 1, settle }: ItemRunOptions = {},
 ): Promise<ItemRunsResult> {
   const byId = new Map(items.map((item) => [item.id, item]));
   const steps: StatCodeTurnResult[] = [];
@@ -545,8 +562,10 @@ export async function runItemScripts(
       landedOps.push(...ops);
       diagnostics.push(...landed.diagnostics);
       doses.push(...landed.doses);
-      now = { ...now, state: { ...now.state, itemCopies: landed.copies } };
-      now = await level(now, landed.events, depth + 1);
+      const settled = settle?.(landed.copies, doses, chainedResult(turn, steps, now)) ?? { copies: landed.copies, events: [] };
+      landedOps.push(...settled.events.map((e): InventoryOp => ({ kind: 'unequip', copyId: e.copyId })));
+      now = { ...now, state: { ...now.state, itemCopies: settled.copies } };
+      now = await level(now, [...landed.events, ...settled.events], depth + 1);
     }
     return now;
   };
