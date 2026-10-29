@@ -25,6 +25,7 @@ Spec: Q26, Q28, Q30, Q31, Q63, Q65; stories 78–82.
 - [ ] The player guide describes the Here section; changelog fragment written
 - [ ] Item images shown in play resolve their rules through `itemRuleStates` with the Item Copy (from ticket 10's landing: it has no play-time caller yet)
 - [ ] A locked trait's gate line never names a hidden Item Copy's item to the player (Q63; from ticket 10's landing)
+- [ ] A hidden equipped Item Copy has a defined slot display and swap-out rule: today it fills its slot's "n of m" count unseen, and the next equip can swap it out (from ticket 03; only 09 and 11 can create one). Ask the spec session for the rule before building
 
 ## Blocked by
 
