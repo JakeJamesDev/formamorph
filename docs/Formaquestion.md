@@ -49,6 +49,23 @@ In the World Editor, your AI gets the parts of your world that match your questi
 - The world sections have a size limit of their own, so they never push a guide section out of the request.
 - To keep your world out of help requests, turn off **Read the World** in Formaquestion Settings → **General**. A question then sends the guide alone.
 
+## How to Ask About Your Story
+<!-- keywords: in game, who is, who was, what happened, story so far, recap, lore, characters i met, places i visited, my items, my stats, spoilers, what should i do next, stuck, hint -->
+<!-- route: formaquestion.ask#question-field -->
+
+1. Play a world, or load a save.
+2. Open Formaquestion and ask about the story, such as "Who was the woman at the gate?" or "What is the Ashen Pact?".
+
+In the game, your AI gets only what you have met, together with the guide sections:
+
+- 📖 **The story so far.** The memories and the recent turns, as the narrator gets them. With **Memory Digests** off, the recent turns only.
+- 🧭 **What you have met.** The characters, places and items you have met, with the descriptions the game shows you. Your visible stats and your own traits.
+- 📚 **Lore.** The dictionary entries whose keywords are in your question, the story so far or what you have met. With **Semantic Lore** on, an entry close in meaning to your question also counts.
+
+Your AI never gets a character you have not met, an AI description, a diary, a hidden stat or a hidden trait. When you undo a turn, it forgets what that turn showed. When you ask what to do next, it gives what it would try as its own opinion, not the solution. The names under **Sources** do not open the editor, so selecting one can't show you spoilers.
+
+The story so far has a size limit of its own. **Read the World** turns all of this off too. Open Chat worlds follow the same rules.
+
 ## How to Go to the Screen an Answer Describes
 <!-- keywords: take me there, jump, go there, open the screen, open the tab, navigate, link, shortcut, show me where, find the control, button under the answer, open settings from help, direct me, takes me to the dialog -->
 <!-- route: formaquestion.ask#question-field -->
@@ -421,7 +438,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 - **Ask the Community**, under a finished answer, opens a new community question with your question as its title. See [How to Ask the Community](#how-to-ask-the-community).
 - **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
-- The request holds your question and those guide sections. It holds nothing from your saves. It holds nothing from your worlds either, unless **test_script** or one of your **My Tools** reads the world you have open. See [Tools](#tools).
+- The request holds your question and those guide sections. While **Read the World** is on, it also holds parts of the world you have open: see [How to Ask About Your World](#how-to-ask-about-your-world) and [How to Ask About Your Story](#how-to-ask-about-your-story). **test_script** and your **My Tools** can read that world too. See [Tools](#tools).
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again. **History Length** sets how many.
 - Before the answer, the app sends one more short request, while **AI Search** is on. In it, your AI gets the list of every guide heading and chooses the sections that answer your question. The answer then uses those sections together with the sections that the other searches find. When that request fails or chooses no section, the answer uses the other searches alone.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.

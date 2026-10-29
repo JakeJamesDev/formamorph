@@ -136,6 +136,8 @@ import { openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from "../l
 import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import { buildPlayerView } from "../lib/formaquestion/playerView";
+import type { GameWorldInput } from "../lib/formaquestion/gameWorld";
+import { storySoFar } from "../lib/formaquestion/storySoFar";
 import {
   playerViewMemory, playerViewScene, playerViewScript, playerViewWorld, type PlayerViewReach,
 } from "../lib/formaquestion/playerViewWorld";
@@ -2456,17 +2458,28 @@ const GameViewer = ({
     return { view, current };
   }, [saveCurrentGameState, gameStates, fullMessageHistory, getWorldData, persona, resolvePH]);
   // A Formaquestion Tool and the code test read the Player View while the game shows (Q20).
-  const helpToolWorld = useCallback(() => {
+  const helpToolWorld = useCallback((fired?: readonly DictionaryEntry[]) => {
     const reach = playerViewReach();
     const memory = toolMemorySource();
     const script = betweenTurnsScript();
     return buildToolSnapshot(
       playerViewScene(liveScene(), reach), withLoreToggles(playthroughDictionaries, loreToggles),
-      memory && playerViewMemory(memory), script && playerViewScript(script, reach),
+      memory && playerViewMemory(memory), script && playerViewScript(script, reach, new Set(fired?.map((entry) => entry.id))),
     );
   }, [playerViewReach, toolMemorySource, betweenTurnsScript, liveScene, playthroughDictionaries, loreToggles]);
   const helpAuthoredWorld = useCallback(() => playerViewWorld(getWorldData(), playerViewReach()), [getWorldData, playerViewReach]);
-  useHelpWorldSource(helpToolWorld, helpAuthoredWorld, { lean: 'game' });
+  // The game lean reads the Player View, the story so far as the narration builds it, and the narration's lore (Q9, Q15).
+  const helpGameWorld = useCallback((): GameWorldInput => {
+    const turns = parseEffectiveTurns(fullMessageHistory);
+    return {
+      view: playerViewReach().view,
+      story: storySoFar({ turns, memoryDigests, verbatimFloor: narrationVerbatimTurns, milestoneDrop: getMilestoneDrop(turns), stripMedia }),
+      lore: dictionary,
+      loreVectors: semanticLore ? embedVectorsRef.current : null,
+      resolve: resolvePH,
+    };
+  }, [parseEffectiveTurns, fullMessageHistory, playerViewReach, memoryDigests, narrationVerbatimTurns, getMilestoneDrop, stripMedia, dictionary, semanticLore, resolvePH]);
+  useHelpWorldSource(helpToolWorld, helpAuthoredWorld, { lean: 'game', game: helpGameWorld });
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
   const [toolLookups, setToolLookups] = useState<readonly (readonly string[])[]>([]);
 

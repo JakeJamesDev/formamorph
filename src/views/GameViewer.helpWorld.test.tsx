@@ -98,6 +98,17 @@ describe('the game registers the Player View for Formaquestion', () => {
     expect(authored.traits.map((t) => t.id)).toEqual(['brave']);
   });
 
+  it('gives the game lean the Player View and no item opener, so a world source is a plain name', async () => {
+    const world = await openGame();
+    expect(world.lean).toBe('game');
+    expect(world.open).toBeUndefined();
+    const { view, story } = world.game!();
+    expect(view.entities.map((e) => e.name)).toEqual(['Odd Wick']);
+    expect(view.stats.map((s) => s.id)).toEqual(['Coins']);
+    expect(JSON.stringify(view)).not.toMatch(/Velka|smuggl|heir|Suspicion/i);
+    expect(story.text).toBe('');
+  });
+
   it('reports a hidden stat to the code test as one the world does not have', async () => {
     const run = createCodeTest((await openGame()).authored);
     const result = await run(HELP_CODE_TEST, JSON.stringify({ code: 'stats.Suspicion.value = 1;', timing: 'after', owner: 'world' }));

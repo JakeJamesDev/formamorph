@@ -7,7 +7,7 @@ import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/doc
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
 import type { Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
-import type { WorldItemKind, WorldSource } from './helpWorldSource';
+import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
 export type WorldIndexInput = Pick<World, 'worldOverview' | 'stats' | 'locations' | 'entities' | 'traits' | 'dictionaries'>
@@ -20,6 +20,8 @@ export interface WorldIndex {
   sourceOf(section: Pick<DocSection, 'page'>): WorldSource | undefined;
   /** One pick-list line per item, with that item's sections. */
   pickList(): { lines: string[]; sections: DocSection[][] };
+  /** Every section of the item's page, in page order; empty when the index has no such item. */
+  sectionsOf(source: WorldSource): DocSection[];
 }
 
 /** The type name each kind reads as in a pick line and a source link. */
@@ -30,7 +32,8 @@ export const WORLD_KIND_NAMES: Record<WorldItemKind, string> = {
 /** The world prompts, by source id: the AI-Facing Description, then the overrides. */
 const PROMPT_NAMES = { systemPrompt: 'AI-Facing Description', narration: 'Narration Prompt', choices: 'Choices Prompt', statUpdates: 'Stat Updates Prompt' } as const;
 
-interface ItemPage {
+/** One item's page of a World Index. */
+export interface WorldPage {
   source: WorldSource;
   /** The owner names above the item in its pick line. */
   trail: string[];
@@ -75,7 +78,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   const statName = (id: string, own: readonly Stat[] = []) => [...own, ...world.stats].find((stat) => stat.id === id)?.name ?? id;
   const traitName = (id: string) => world.traits.find((trait) => trait.id === id)?.name ?? world.entities.flatMap((entity) => entity.traits ?? []).find((trait) => trait.id === id)?.name ?? id;
   const locationName = (id: string) => world.locations.find((location) => location.id === id)?.name ?? id;
-  const pages: ItemPage[] = [];
+  const pages: WorldPage[] = [];
   const add = (worldKind: WorldItemKind, id: string, name: string, trail: string[], markdown: string) =>
     pages.push({ source: { kind: 'world', worldKind, id, name }, trail, markdown });
 
@@ -187,8 +190,13 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     ));
   }
 
-  // One page per item; the page name keys it, so every part of a split item maps back to it.
-  const byPage = new Map<string, ItemPage>();
+  return worldIndexOfPages(pages);
+}
+
+/** The World Index of `pages`, one page per item. */
+export function worldIndexOfPages(pages: readonly WorldPage[]): WorldIndex {
+  // The page name keys each item, so every part of a split item maps back to it.
+  const byPage = new Map<string, WorldPage>();
   for (const page of pages) {
     const base = `world-${page.source.worldKind}-${encodeURIComponent(page.source.id)}`;
     let key = base;
@@ -212,6 +220,11 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
       }),
       sections: docs.contents().map(({ sections }) => docs.get(sections.filter((section) => !section.id.includes('-part-')).map((section) => section.id))),
     }),
+    sectionsOf: (source) => {
+      const key = pageNames.find((name) => sourceKey(byPage.get(name)!.source) === sourceKey(source));
+      const page = docs.contents().find((contents) => contents.page === key);
+      return page ? docs.get(page.sections.filter((section) => !section.id.includes('-part-')).map((section) => section.id)) : [];
+    },
   };
 }
 

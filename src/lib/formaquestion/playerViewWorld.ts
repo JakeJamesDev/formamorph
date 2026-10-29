@@ -2,7 +2,7 @@
  * The Player View as a Formaquestion Tool and the code test read it in game (Q20): the Tool Snapshot's scene,
  * memory and script state, and the code test's world, cut down to what the player has met, in player text.
  */
-import type { Connection, Entity, GameLocation, GameState, Item, ItemCopy, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
+import type { Connection, DictionaryEntry, Entity, GameLocation, GameState, Item, ItemCopy, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import type { SandboxState, StatePlaces } from '@/lib/statCodeTurn';
 import type { StatCodeOwners } from '@/lib/statCodeTraits';
@@ -272,9 +272,13 @@ function playerPlaces(met: Met, places: StatePlaces): StatePlaces {
   };
 }
 
-/** The script state a help Tool reads: visible stats, met owners and the persona, met places and item copies. */
-export function playerViewState(state: SandboxState, reach: PlayerViewReach): SandboxState {
+/**
+ * The script state a help Tool reads: visible stats, met owners and the persona, met places and item copies, and
+ * the dictionary entries in `fired`.
+ */
+export function playerViewState(state: SandboxState, reach: PlayerViewReach, fired: ReadonlySet<string> = new Set()): SandboxState {
   const met = metOf(reach);
+  const firedOnly = <B extends { entries?: readonly DictionaryEntry[] }>(book: B): B => ({ ...book, entries: (book.entries ?? []).filter((entry) => fired.has(entry.id)) });
   const shownIds = (stats: readonly PlayerStat[], enabled: Readonly<Record<string, boolean>>) =>
     new Set(stats.filter((stat) => stat.hidden !== true && enabled[stat.id] !== false).map((stat) => stat.id));
   const global = shownIds(state.stats, state.enabled);
@@ -299,14 +303,12 @@ export function playerViewState(state: SandboxState, reach: PlayerViewReach): Sa
     ...(state.items && { items: playerItems(met, state.items) }),
     // Custom lines include the ones scripts wrote, which stay out with diaries (Q21).
     ...(state.memories && { memories: state.memories.filter((memory) => !memory.custom) }),
-    // A script could list every entry unasked, so books keep their names and placeholders only.
+    // A script could list every entry unasked, so books list only the entries the question fired.
     ...(state.placeholders && {
       placeholders: {
         ...state.placeholders,
-        ...(state.placeholders.dictionaries && { dictionaries: state.placeholders.dictionaries.map((book) => ({ ...book, entries: [] })) }),
-        ...(state.placeholders.libraryDictionaries && {
-          libraryDictionaries: state.placeholders.libraryDictionaries.map((book) => ({ ...book, entries: [] })),
-        }),
+        ...(state.placeholders.dictionaries && { dictionaries: state.placeholders.dictionaries.map(firedOnly) }),
+        ...(state.placeholders.libraryDictionaries && { libraryDictionaries: state.placeholders.libraryDictionaries.map(firedOnly) }),
       },
     }),
   };
@@ -338,7 +340,7 @@ export function playerViewWorld(world: StatCodeWorld, reach: PlayerViewReach): S
 }
 
 /** A Tool script's source: its state and the world the editor names it from, both cut to the Player View. */
-export const playerViewScript = (source: ToolScriptSource, reach: PlayerViewReach): ToolScriptSource => ({
-  state: source.state && playerViewState(source.state, reach),
+export const playerViewScript = (source: ToolScriptSource, reach: PlayerViewReach, fired?: ReadonlySet<string>): ToolScriptSource => ({
+  state: source.state && playerViewState(source.state, reach, fired),
   authored: source.authored && playerViewWorld(source.authored, reach),
 });

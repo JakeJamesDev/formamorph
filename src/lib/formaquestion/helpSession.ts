@@ -26,7 +26,11 @@ import { requestPicks, requestWorldPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
 import { activeHelpOptions, activeHelpPreset, activeHelpPrompts, isHelpPromptEdited } from './helpPresets';
 import { helpRoutes } from './helpRoutes';
-import { semanticRanking, worldSemanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
+import { deviceEmbedder, semanticRanking, worldSemanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
+import { firedLore, gameWorldIndex, loreSource, type GameWorldInput } from './gameWorld';
+import { EMBED_BOUND_MS } from '@/lib/memoryRelevance';
+import { withTimeout } from '@/lib/withTimeout';
+import type { DictionaryEntry } from '@/types';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
 import { activeMascotRig } from './mascotPresets';
@@ -436,11 +440,46 @@ function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, o
   return { lead: quickReference, pinned: [] };
 }
 
-/** The World Index a question reads: the editor's live world while Read the World is on. A game world adds none. */
-function editorWorldIndex(world: OpenWorld | undefined, settings: HelpSettings): WorldIndex | undefined {
-  return settings.readWorld && world?.lean === 'editor' && world.world ? worldIndexOf(world.world()) : undefined;
+/** The question's vector for lore by meaning; null when the model is not on the device or the embed fails. */
+async function questionVector(question: string, embedder: HelpEmbedder): Promise<Float32Array | null> {
+  try {
+    if (!(await embedder.open())) return null;
+    return (await withTimeout(embedder.embed([question]), EMBED_BOUND_MS, null))?.[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
+/** The world a question reads while Read the World is on. */
+interface WorldRead {
+  index: WorldIndex;
+  /** In game: the game's world and the entries its context fired. */
+  game?: { input: GameWorldInput; fired: DictionaryEntry[] };
+}
+
+/** The editor's live world, or in game the Player View with the lore the question's context fires. */
+async function readWorld(world: OpenWorld | undefined, settings: HelpSettings, question: string, embedder: HelpEmbedder): Promise<WorldRead | undefined> {
+  if (!settings.readWorld) return undefined;
+  if (world?.lean === 'editor' && world.world) return { index: worldIndexOf(world.world()) };
+  if (world?.lean !== 'game' || !world.game) return undefined;
+  const input = world.game();
+  const fired = firedLore(input, question, input.loreVectors?.size ? await questionVector(question, embedder) : null);
+  return { index: gameWorldIndex(input, fired), game: { input, fired } };
+}
+
+/** `sections` once each, best first, while the text stays inside the world budget and section limit. The first is always kept. */
+function withinWorldBudget(sections: readonly DocSection[]): DocSection[] {
+  const kept: DocSection[] = [];
+  let size = 0;
+  for (const section of sections) {
+    if (kept.length === HELP_WORLD_SECTION_LIMIT) break;
+    if (kept.some((held) => held.id === section.id)) continue;
+    if (kept.length > 0 && size + section.markdown.length > HELP_WORLD_CHAR_BUDGET) break;
+    kept.push(section);
+    size += section.markdown.length;
+  }
+  return kept;
+}
 /** The items the world block holds, once each, in block order. */
 function worldSourcesOf(index: WorldIndex, sections: readonly DocSection[]): WorldSource[] {
   const items = new Map<string, WorldSource>();
@@ -501,11 +540,13 @@ export async function* askHelp({
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !lead && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
-  const worldIndex = record ? editorWorldIndex(world, settings) : undefined;
-  const worldRecord = worldIndex && record ? emptySearchRecord(record.on) : undefined;
   // The keyword search is instant. The pick request and the semantic ranking take time, and picks take the name.
   if (record && settings.sources.aiPicks) yield { type: 'stage', stage: 'picking' };
   else if (record && settings.sources.semantic) yield { type: 'stage', stage: 'searching' };
+  const read = record ? await readWorld(world, settings, question, embedder ?? deviceEmbedder) : undefined;
+  const worldIndex = read?.index;
+  const game = read?.game;
+  const worldRecord = worldIndex && record ? emptySearchRecord(record.on) : undefined;
   const searches = record
     ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record, world: worldIndex, worldRecord })
     : { guide: index };
@@ -516,7 +557,11 @@ export async function* askHelp({
   }
   const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead, pinned, howToRule });
   // The world pool fills its own budget, so a full world block never pushes out a guide section.
-  const worldInPrompt = searches.world ? helpSections(searches.world, question, { history: kept, budget: HELP_WORLD_CHAR_BUDGET, limit: HELP_WORLD_SECTION_LIMIT }) : [];
+  const ranked = searches.world ? helpSections(searches.world, question, { history: kept, budget: HELP_WORLD_CHAR_BUDGET, limit: HELP_WORLD_SECTION_LIMIT }) : [];
+  // In game the fired entries go ahead of the ranked rows, inside the same budget.
+  const worldInPrompt = game && worldIndex
+    ? withinWorldBudget([...game.fired.flatMap((entry) => worldIndex.sectionsOf(loreSource(entry))), ...ranked])
+    : ranked;
   const worldBlock: WorldBlockSection[] | undefined = worldIndex && worldInPrompt.flatMap((section) => {
     const source = worldIndex.sourceOf(section);
     return source ? [{ kind: source.worldKind, markdown: section.markdown }] : [];
@@ -527,16 +572,18 @@ export async function* askHelp({
     : null;
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
+  const story = game?.input.story.text;
   const turnMessage = bare
     ? question
-    : lookup ? helpLookupUserMessage(question, inPrompt, where, worldBlock) : helpUserMessage(question, inPrompt, where, worldBlock);
+    : lookup ? helpLookupUserMessage(question, inPrompt, where, worldBlock, story) : helpUserMessage(question, inPrompt, where, worldBlock, story);
   // The home line and the test-first line are the app's, so they ride a cleared rider too. The test line goes last.
   const home = scriptHomeLine(openSurface);
   const riderWithHome = home ? withRiderLine(prompts.code, home) : prompts.code;
   const rider = codeTest ? withRiderLine(riderWithHome, CODE_TEST_RIDER_LINE) : riderWithHome;
   const withCode = codeTurn ? withCodeRider(turnMessage, rider) : turnMessage;
   // The world rules ride last, after the code rider, the same way.
-  const userMessage = worldIndex ? withCodeRider(withCode, prompts.worldEditor) : withCode;
+  const worldRulesKey = game ? 'worldGame' : 'worldEditor';
+  const userMessage = worldIndex ? withCodeRider(withCode, prompts[worldRulesKey]) : withCode;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
   // own executors; the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
@@ -547,7 +594,7 @@ export async function* askHelp({
     ...(codeTest ? [{ ...HELP_CODE_TEST, callLimit: settings.codeTestCallLimit }] : []),
     ...playerTools,
   ];
-  const runTool = snapshotToolExecutor(world?.snapshot ?? emptyToolSnapshot);
+  const runTool = snapshotToolExecutor(world ? () => world.snapshot(game?.fired) : emptyToolSnapshot);
   // The offered functions without a handler, by id: each is offered only while its executor is here.
   const internal = new Map<string, ToolExecutor<OfferedFunction>>([
     ...(lookup ? [[DOCS_LOOKUP.id, lookup.execute] as const] : []),
@@ -567,7 +614,7 @@ export async function* askHelp({
   // The trace so far. Each yield builds it anew, so a viewer that keeps an earlier one sees no later change.
   const rounds: AiToolRound[] = [];
   const customPrompt = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer') || (codeTurn && isHelpPromptEdited(prompts, 'code'))
-    || (worldIndex !== undefined && isHelpPromptEdited(prompts, 'worldEditor'));
+    || (worldIndex !== undefined && isHelpPromptEdited(prompts, worldRulesKey));
   const traceOf = (result?: AiStreamResult): HelpTrace => ({
     surface: surface ? surfaceWords(surface) : null,
     focus: shownFocus ? focusWords(shownFocus) : null,
