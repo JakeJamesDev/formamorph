@@ -170,6 +170,19 @@ describe('applyInventoryPass', () => {
     expect(result.copies.map((c) => c.where)).toEqual([you]);
   });
 
+  it('moves the item for a gain from someone who holds it, rather than copying it', () => {
+    const result = run([copy('t', 'tonic', mara, { quantity: 3 })], [op('gain', 'Tonic', { owner: 'Mara', to: 'you' })]);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.copies.map(({ where, quantity }) => ({ where, quantity }))).toEqual([
+      { where: mara, quantity: 2 }, { where: you, quantity: 1 },
+    ]);
+  });
+
+  it('adds a copy for a gain from someone who does not hold the item', () => {
+    const result = run([copy('t', 'tonic', you)], [op('gain', 'Tonic', { owner: 'Mara', to: 'you' })]);
+    expect(result.copies.map(({ where, quantity }) => ({ where, quantity }))).toEqual([{ where: you, quantity: 2 }]);
+  });
+
   it('makes no second item where the same one already lies', () => {
     const result = run([copy('t', 'tonic', cellar)], [op('gain', 'Tonic', { to: 'here' })]);
     expect(result.copies).toEqual([copy('t', 'tonic', cellar)]);

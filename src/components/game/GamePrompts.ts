@@ -572,7 +572,9 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. Empty for gain.
 - to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
 
-Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.`;
+Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.
+
+Items Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it up, or puts it on or takes it off.`;
 
 export const defaultInventoryUserPrompt = `<PLAYER ACTION|format=markdown|header="The player character's action">\
 <NARRATION|format=markdown|header="What happened">

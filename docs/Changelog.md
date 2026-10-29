@@ -36,8 +36,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Requirement Rows can require an item.** Traits and image rules can check that an owner has an item, owned or equipped, with Not.
     - **The Inventory tab lists items lying at your location, and the story can reveal hidden items.** They show in a card named for the location. Hidden items stay out of every panel. Entity dialogs list what the entity wears.
     - **The Inventory tab can pick up the items lying at your location.** Pick Up works on Bound items too, and on a stack it asks how many.
-    - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice.
-    - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets.
+    - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice. An item you carry stays one item when the story mentions it again, and an item someone hands you leaves their inventory.
+    - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets. The description tells what the item is and how it looks, not where it lies.
     - **Emberwatch now has ten items: cold iron gear, remedies, grave goods and the two halves of the broken crown.** You start with a draught and a lantern. Lay both crown halves on the king's bier to end the Wight.
   - **Formaquestion:**
     - **Formaquestion Settings gain a Read the World switch and two world rules prompts.** The switch is on by default. Custom presets can edit the **Editor World** and **Game World** prompts. Older preset files still import.
@@ -46,12 +46,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
+    - **`inventory-regain-probe.cli.ts` scores the Inventory pass on items the player already carries.** It replays five real duplicate turns, checks retouch cases and two take-another guards, and scores runtime item descriptions for place words.
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
   - **The built-in engine starts and finds your graphics card in the Linux desktop app.** Before, it failed with error 127 because its libraries were missing from the download.
+  - **The world library no longer goes empty when the browser can't read one world.** Your other worlds show, and a launch never replaces an edited default world it can't read.
 
 ---
 

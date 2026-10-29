@@ -211,6 +211,14 @@ export function applyInventoryPass(
         skip(`${label}: no one present is "${op.to || op.owner}"`);
         continue;
       }
+      // A gain from someone who holds the item is them handing it over.
+      const giver = op.owner ? ownerOf(op.owner) : null;
+      const held = giver && giver.kind !== 'location' && !sameWhere(giver, to)
+        ? candidates(key, giver, 'transfer').filter((c) => c.visibility === 'visible') : [];
+      if (held.length) {
+        distribute(held, op.quantity, (copy, quantity) => run([{ kind: 'transfer', copyId: copy.id, to, quantity }]));
+        continue;
+      }
       // Taking what lies here moves it rather than making a second one.
       const lying = to.kind !== 'location' && scene.location
         ? candidates(key, { kind: 'location', id: scene.location.id }, 'transfer').filter((c) => c.visibility === 'visible') : [];
