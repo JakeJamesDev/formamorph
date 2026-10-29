@@ -93,6 +93,12 @@ export function entitiesInPlay(entities: Entity[], positions: Readonly<EntityPos
   });
 }
 
+/** The ids of the entities present at `locationId` as they stand in play. Pass the discovered entities in
+ *  `entities` too, so the ones met this turn count (Q62). */
+export const presentEntityIds = (
+  entities: Entity[], positions: Readonly<EntityPositions>, locationId: string | null | undefined,
+): string[] => entityIdsAt(locationId, entitiesInPlay(entities, positions));
+
 /** The entity fields a position is placed from. */
 export type PlaceableEntity = Pick<Entity, 'id' | 'locations' | 'presence' | 'movement' | 'customPersona'>;
 

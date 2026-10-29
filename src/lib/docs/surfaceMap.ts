@@ -109,6 +109,10 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'gameViewer.notes': { page: 'How-to-Play', anchor: 'notes' },
   'gameViewer.memory': { page: 'Memory', anchor: 'the-memory-tab' },
   'gameViewer.logs': { page: 'How-to-Play', anchor: 'logs' },
+  'gameViewer.stats': { page: 'How-to-Play', anchor: 'the-right-panel' },
+  'gameViewer.traits': { page: 'How-to-Play', anchor: 'the-right-panel' },
+  'gameViewer.inventory': { page: 'How-to-Play', anchor: 'how-to-use-your-inventory' },
+  'gameViewer.location': { page: 'How-to-Play', anchor: 'the-right-panel' },
   'gameViewerLayout.pages': { page: 'How-to-Play', anchor: 'narration-layout' },
   'gameViewerLayout.chat': { page: 'How-to-Play', anchor: 'narration-layout' },
 

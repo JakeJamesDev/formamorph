@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Consumable, Charges, Bound and an equipment slot. Set the world's slots on the Overview tab.
     - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items on the Overview tab, or on an entity's or location's Items tab. A new game starts with them; saved games never gain them.
     - **The narrator now knows what you and the people near you carry, through a new Inventory prompt chip.** It sends equipped items with their AI Summary, carried items by name, and the items lying here, with hidden ones marked. Built-in presets hold it; add it to your own from the chip bar.
+    - **The game's right panel has an Inventory tab to equip, unequip, drop and give your items.** Changes apply at once and are off while a turn runs. Drop and Give on a stack ask how many. Side panel tabs show icons alone when their labels don't fit.
 
 ### Minor Changes
 

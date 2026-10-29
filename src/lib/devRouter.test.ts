@@ -24,7 +24,7 @@ import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { FORMAQUESTION_TABS } from '@/components/formaquestion/formaquestionTabs';
 import { FORMAQUESTION_SETTINGS_TABS } from '@/components/formaquestion/formaquestionSettingsTabs';
-import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
+import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS } from '@/components/game/panelTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
@@ -239,7 +239,7 @@ describe('dev-router coverage guard', () => {
   });
 
   it('ledger lists exactly the game side panel tabs', () => {
-    expect([...DEV_MODAL_TABS.gameViewer]).toEqual([...GAME_LEFT_PANEL_TABS]);
+    expect([...DEV_MODAL_TABS.gameViewer]).toEqual([...GAME_LEFT_PANEL_TABS, ...GAME_RIGHT_PANEL_TABS]);
   });
 
   it('ledger lists exactly the narration layouts the game view can open in', () => {

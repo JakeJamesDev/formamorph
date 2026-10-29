@@ -2,9 +2,9 @@
  * The Inventory module: every change to Item Copies goes through here. Pure: no React, no AI, no storage. Ids
  * come from an injected maker, as the turn commit's do.
  */
-import { itemStackable, sameWhere } from '@/lib/items';
+import { byEquipOrder, itemStackable, sameWhere, slotCapacity, slotSizeOf } from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
-import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, PersonaRef, Placement } from '@/types';
+import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemRef, PersonaRef, Placement, Slot } from '@/types';
 
 /** Makes a fresh Item Copy id. */
 export type NewId = () => string;
@@ -67,6 +67,183 @@ export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined
     }
   }
   return copies;
+}
+
+/** Who sent a list of operations. Bound stops the panel only (Q58). */
+export type InventorySource = 'pass' | 'panel' | 'script';
+
+/** One inventory change. A missing `quantity` on lose or transfer means the whole Item Copy. */
+export type InventoryOp =
+  | { kind: 'gain'; itemId: string; quantity: number; to: ItemCopyWhere }
+  | { kind: 'lose'; copyId: string; quantity?: number }
+  | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
+  | { kind: 'equip'; copyId: string }
+  | { kind: 'unequip'; copyId: string };
+
+/** The authored slice the operations read. An absent slice reads as empty. */
+export interface InventoryWorld {
+  items?: readonly Item[];
+  slots?: readonly Slot[];
+}
+
+/** Who is present after this turn's moves (Q62). Absent = presence is not checked. */
+export interface Presence {
+  locationId: string | null | undefined;
+  entityIds: ReadonlySet<string>;
+}
+
+export interface InventoryCall {
+  world: InventoryWorld;
+  source: InventorySource;
+  newId: NewId;
+  presence?: Presence;
+}
+
+export interface InventoryResult {
+  copies: ItemCopy[];
+  /** One line per skipped operation (Q22). */
+  diagnostics: string[];
+}
+
+const isPresent = (where: ItemCopyWhere, presence: Presence | undefined): boolean => {
+  if (!presence) return true;
+  switch (where.kind) {
+    case 'you': return true;
+    case 'entity': return presence.entityIds.has(where.id);
+    case 'location': return !!presence.locationId && where.id === presence.locationId;
+  }
+};
+
+const sameRef = (a: ItemRef, b: ItemRef): boolean =>
+  (a.kind === 'item' ? b.kind === 'item' && a.itemId === b.itemId : b.kind === 'runtime' && a.runtimeItemId === b.runtimeItemId);
+
+/** Runtime items always stack (Q56). */
+const refStacks = (ref: ItemRef, items: ReadonlyMap<string, Item>): boolean => {
+  if (ref.kind === 'runtime') return true;
+  const item = items.get(ref.itemId);
+  return !!item && itemStackable(item);
+};
+
+const unequipped = (copy: ItemCopy): ItemCopy => {
+  const { equipped: _off, ...rest } = copy;
+  return rest;
+};
+
+const whereText = (where: ItemCopyWhere): string => (where.kind === 'you' ? 'you' : `${where.kind} ${where.id}`);
+
+/**
+ * Applies `ops` in order: the one validator every writer uses (Q45 hook 4). An invalid operation is skipped
+ * with a diagnostic; the valid ones still apply (Q22). Never changes `copies` or its Item Copies.
+ */
+export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly InventoryOp[], call: InventoryCall): InventoryResult {
+  const items = new Map((call.world.items ?? []).map((item) => [item.id, item]));
+  const slots = new Map((call.world.slots ?? []).map((slot) => [slot.id, slot]));
+  let list: ItemCopy[] = [...copies];
+  const diagnostics: string[] = [];
+  let order = Math.max(0, ...list.map((c) => c.equipped?.order ?? 0));
+
+  /** `next` with `copy` in its row (a new one goes last), or merged into a matching carried stack when its
+   *  item stacks and it is carried (Q94). */
+  const put = (next: ItemCopy[], copy: ItemCopy): ItemCopy[] => {
+    const stack = !copy.equipped && refStacks(copy.item, items) && next.find((c) => c.id !== copy.id && !c.equipped
+      && sameRef(c.item, copy.item) && c.visibility === copy.visibility && sameWhere(c.where, copy.where));
+    if (stack) {
+      return next.filter((c) => c.id !== copy.id)
+        .map((c) => (c === stack ? { ...c, quantity: c.quantity + copy.quantity } : c));
+    }
+    return next.some((c) => c.id === copy.id) ? next.map((c) => (c.id === copy.id ? copy : c)) : [...next, copy];
+  };
+
+  const one = (op: InventoryOp): string | null => {
+    if (op.kind === 'gain') {
+      const item = items.get(op.itemId);
+      const quantity = Math.floor(op.quantity);
+      if (!item) return `gain: no item ${op.itemId}`;
+      if (!(quantity > 0)) return `gain: quantity ${op.quantity} is not above 0`;
+      if (!isPresent(op.to, call.presence)) return `gain: ${whereText(op.to)} is not present`;
+      const ref = { kind: 'item', itemId: item.id } as const;
+      if (itemStackable(item)) {
+        list = put(list, { id: call.newId(), item: ref, where: op.to, quantity, visibility: 'visible' });
+        return null;
+      }
+      for (let i = 0; i < quantity; i += 1) {
+        list.push({
+          id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: 'visible',
+          ...(item.charges !== undefined && { state: { charges: item.charges } }),
+        });
+      }
+      return null;
+    }
+
+    const copy = list.find((c) => c.id === op.copyId);
+    if (!copy) return `${op.kind}: no Item Copy ${op.copyId}`;
+    if (!isPresent(copy.where, call.presence)) return `${op.kind}: Item Copy ${copy.id} is not present`;
+    const item = copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined;
+    const bound = call.source === 'panel' && !!item?.bound;
+
+    switch (op.kind) {
+      case 'lose':
+      case 'transfer': {
+        if (bound) return `${op.kind}: Item Copy ${copy.id} is Bound`;
+        const quantity = op.quantity === undefined ? copy.quantity : Math.floor(op.quantity);
+        if (!(quantity > 0) || quantity > copy.quantity) return `${op.kind}: quantity ${op.quantity} does not fit ${copy.quantity}`;
+        if (op.kind === 'transfer') {
+          if (!isPresent(op.to, call.presence)) return `transfer: ${whereText(op.to)} is not present`;
+          if (sameWhere(op.to, copy.where)) return `transfer: Item Copy ${copy.id} is already at ${whereText(op.to)}`;
+        }
+        const left = copy.quantity - quantity;
+        list = left > 0
+          ? list.map((c) => (c === copy ? { ...c, quantity: left } : c))
+          : list.filter((c) => c !== copy);
+        if (op.kind === 'transfer') {
+          const moved = { ...unequipped(copy), where: op.to, quantity, ...(left > 0 && { id: call.newId() }) };
+          list = put(list, moved);
+        }
+        return null;
+      }
+      case 'unequip': {
+        if (!copy.equipped) return `unequip: Item Copy ${copy.id} is not equipped`;
+        list = put(list, unequipped(copy));
+        return null;
+      }
+      case 'equip': {
+        if (copy.equipped) return `equip: Item Copy ${copy.id} is already equipped`;
+        if (copy.where.kind === 'location') return `equip: Item Copy ${copy.id} has no owner`;
+        const slot = item?.slotId ? slots.get(item.slotId) : undefined;
+        if (!slot) return `equip: Item Copy ${copy.id} has no slot`;
+        const size = slotSizeOf(item);
+        const capacity = slotCapacity(slot);
+        if (size > capacity) return `equip: Item Copy ${copy.id} takes ${size} of slot ${slot.name}'s ${capacity}`;
+        // The owner's items in this slot, longest equipped first (Q14, Q96).
+        const worn = list
+          .filter((c) => c.equipped?.slotId === slot.id && sameWhere(c.where, copy.where))
+          .sort(byEquipOrder);
+        const sizeOf = (c: ItemCopy) => slotSizeOf(c.item.kind === 'item' ? items.get(c.item.itemId) : undefined);
+        let used = worn.reduce((sum, c) => sum + sizeOf(c), 0);
+        for (const out of worn) {
+          if (used + size <= capacity) break;
+          list = put(list, unequipped(out));
+          used -= sizeOf(out);
+        }
+        order += 1;
+        const equipped = { slotId: slot.id, order };
+        // A swapped-out copy can merge into this stack, so read its quantity now. One splits off (Q65).
+        if ((list.find((c) => c.id === copy.id)?.quantity ?? 1) > 1) {
+          list = list.map((c) => (c.id === copy.id ? { ...c, quantity: c.quantity - 1 } : c));
+          list.push({ ...copy, id: call.newId(), quantity: 1, equipped });
+        } else {
+          list = list.map((c) => (c.id === copy.id ? { ...c, equipped } : c));
+        }
+        return null;
+      }
+    }
+  };
+
+  for (const op of ops) {
+    const skipped = one(op);
+    if (skipped) diagnostics.push(`Inventory (${call.source}) skipped ${skipped}`);
+  }
+  return { copies: list, diagnostics };
 }
 
 /** What still exists for Item Copies to point at. */
