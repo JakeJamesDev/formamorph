@@ -157,6 +157,15 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q131 | (ticket 06) A timed effect ends when the story clock reaches its end time, checked in the turn settle after the clock advances. A panel Use between turns starts the timer at the current time. Timed effects live in the item effect ledger |
 | Q132 | (ticket 06) A running timed effect whose item or owner no longer exists drops on load with its value reversed, in the existing orphan log line |
 | Q133 | (ticket 06) The timed-effect section is a new visual pattern: 06 adds it to the design-system reference and gets the user's approval before adopting it. Turning Consumable off keeps After Consumed rows stored but hidden |
+| Q134 | (ticket 11) Location events fire too, with `owner` empty (Q67). A drop fires When Lost for the owner, then When Gained at the location; a pickup fires the reverse. An equipped Item Copy fires When Unequipped first |
+| Q135 | (ticket 11) Reveal and set charges fire no timing. Equipping one from a stack fires only When Equipped. A swap-out and an automatic unequip fire When Unequipped. A stack merge fires nothing extra |
+| Q136 | (ticket 11) Consuming the last dose fires When Consumed only, not When Lost |
+| Q137 | (ticket 11) One event per operation, not per unit; the event carries the quantity moved |
+| Q138 | (ticket 11) Script reads: `items["Name"]` with its copies; owners and the location list their copies. Writes are verbs on the item and copy entries. Owner naming follows the existing script surface |
+| Q139 | (ticket 11) Script inventory writes skip the presence check; Q62 governs Give, the pass and narration only |
+| Q140 | (ticket 11) Turn-script writes commit through the module in run order and fire depth 1. Past depth 3 the write still applies; only its timing does not fire, with a diagnostic |
+| Q141 | (ticket 09) Q53 is one line in the built-in stat prompts, schema and text, sent only when the Inventory pass is due. It names the present items that have stat effects, not the turn's changes; the parallel batch rules those out. Probe: cloud potion double-add 11/12 → 0/12, runtime-item change kept 12/12; Cydonia unchanged (3/3 both) |
+| Q142 | (ticket 09) The stored turn keeps the pass's parsed operations (`inventoryOps`, additive save shape). The stats-only re-roll restores pre-turn Item Copies and replays them before the stat asks |
 
 ## User Stories
 
