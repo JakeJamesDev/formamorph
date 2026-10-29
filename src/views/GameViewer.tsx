@@ -93,7 +93,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryPassOp, ItemCopy, ItemCopyWhere, ItemEffectLedger, RuntimeItem } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemCopyWhere, ItemEffectLedger, RuntimeItem } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -1902,8 +1902,9 @@ const GameViewer = ({
         });
         if (!replay) return;
         const { written, afterTriggers } = replay;
-        // The turn's Inventory pass replays as saved, before the asks land (Q53).
-        const landed = landInventoryPass(prev.inventoryOps ?? [], currentLocation, [], replay.base, {
+        // The turn's Inventory pass replays as saved, at the place and presence it landed at (Q53, Q62).
+        const turnLocation = locations.find((loc) => loc.id === prev.inventoryLocationId) ?? null;
+        const landed = landInventoryPass(prev.inventoryOps ?? [], turnLocation, prev.inventoryOwners ?? [], replay.base, {
           copies: liveItemsRef.current.copies, ledger: liveItemsRef.current.effects, runtimeItems: preTurnItems.runtimeItems,
         });
         const base = landed?.state ?? replay.base;
@@ -2668,9 +2669,14 @@ const GameViewer = ({
     const discovered = commit.discoveries.map((d) => ({ id: d.entity.id, name: d.entity.name }));
     const { start: moveStart, from: moveFrom } = turn.entityMove;
     const movedTo = moveFrom ? commitEntityMoves(moveStart, commit, { from: moveFrom, to: turn.location?.id }).state.positions : undefined;
+    // What the pass validates against, which the turn keeps for its re-roll.
+    const inventoryRecord: Pick<AITurnResult, 'inventoryOwners' | 'inventoryLocationId'> = commit.inventoryOps.length ? {
+      inventoryOwners: inventoryOwnersAt(turn.location, discovered, movedTo),
+      ...(turn.location ? { inventoryLocationId: turn.location.id } : {}),
+    } : {};
     const inventory = landInventoryPass(
-      commit.inventoryOps, turn.location, discovered, outputWritten,
-      { copies: liveItemsRef.current.copies, ledger: liveItemsRef.current.effects, runtimeItems }, movedTo,
+      commit.inventoryOps, turn.location, inventoryRecord.inventoryOwners ?? [], outputWritten,
+      { copies: liveItemsRef.current.copies, ledger: liveItemsRef.current.effects, runtimeItems },
     );
     const outputBase = inventory?.state ?? outputWritten;
 
@@ -2713,7 +2719,7 @@ const GameViewer = ({
         if (!signal.aborted) setChoicesReady(true);
       } else if (scriptedChoices) setChoices([...scriptedChoices]);
     }
-    const storedTurn: AITurnResult = { ...final.turn, ...choicesPatch(final.turn.choices, scriptedChoices) };
+    const storedTurn: AITurnResult = { ...final.turn, ...choicesPatch(final.turn.choices, scriptedChoices), ...inventoryRecord };
     if (commit.suggestedLocation && !final.suggestedLocation) setSuggestedLocation(null);
     // Regen already ticked at the commit's hours: a longer code duration ticks the extra, a shorter one moves the clock alone.
     const extraHours = final.turnHours - commit.turnHours;
@@ -5180,32 +5186,39 @@ const GameViewer = ({
     };
   };
 
+  /** Q62: the owners at `location` after the turn's moves (live positions when none are given), and who the
+   *  turn discovered. */
+  const inventoryOwnersAt = (
+    location: GameLocation | null,
+    discovered: readonly InventoryOwner[],
+    positions?: FollowerState["positions"],
+  ): InventoryOwner[] => {
+    const scene = liveScene(location, null);
+    const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
+    const here = new Set(positions ? entityIdsAt(location?.id, entitiesInPlay(scene.entities, positions)) : scene.presentIds);
+    return [
+      ...scene.entities.filter((e) => here.has(e.id) && !played.has(e.id)).map((e) => ({ id: e.id, name: e.name })),
+      ...discovered,
+    ];
+  };
+
   /**
    * The Inventory pass's operations through the validator and the inventory settle, committed before the stat
-   * deltas (Q53). `from` holds the Item Copies, effects and runtime items it lands over; `positions` are where
-   * entities stand after the turn's moves, live positions when absent. Answers the state the stat commit then
-   * starts from and the item events the caller fires once the turn settles, or null when nothing moved.
+   * deltas (Q53). `owners` are the entities present (Q62); `from` holds the Item Copies, effects and runtime
+   * items it lands over. Answers the state the stat commit then starts from and the item events the caller
+   * fires once the turn settles, or null when nothing moved.
    */
   const landInventoryPass = (
     ops: readonly InventoryPassOp[],
     location: GameLocation | null,
-    discovered: readonly { id: string; name: string }[],
+    owners: readonly InventoryOwner[],
     base: TurnCodeState | null,
     from: { copies: readonly ItemCopy[]; ledger: ItemEffectLedger | undefined; runtimeItems: readonly RuntimeItem[] },
-    positions?: FollowerState["positions"],
   ): { state: TurnCodeState; events: ItemScriptEvent[] } | null => {
     if (!ops.length) return null;
     const traitsBefore = traitStateOver(base);
     const world = gatedWorld();
     const settleWorld = settleWorldOf(world);
-    const scene = liveScene(location, null);
-    const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
-    const here = new Set(positions ? entityIdsAt(location?.id, entitiesInPlay(scene.entities, positions)) : scene.presentIds);
-    // Q62: who stands here after the turn's moves, and who the turn discovered.
-    const owners = [
-      ...scene.entities.filter((e) => here.has(e.id) && !played.has(e.id)).map((e) => ({ id: e.id, name: e.name })),
-      ...discovered,
-    ];
     const result = applyInventoryPass(from.copies, ops, {
       items: worldItems, runtimeItems: from.runtimeItems, playerNames, owners,
       location: location && { id: location.id, name: location.name }, resolve: resolvePH,

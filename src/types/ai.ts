@@ -1,5 +1,5 @@
 import type { WorldMetadata } from './world';
-import type { InventoryPassOp } from './gameplay';
+import type { InventoryOwner, InventoryPassOp } from './gameplay';
 import type { SavedScriptWrites } from '@/lib/statCodeTurn';
 
 /** Sender role of a chat message, matching the OpenAI chat-completion roles. */
@@ -231,6 +231,10 @@ export interface AITurnResult {
   toolCalls?: TurnToolCall[];
   /** What the Inventory pass returned, which a stat re-roll replays. Absent when it changed nothing. */
   inventoryOps?: InventoryPassOp[];
+  /** The owners present when the pass landed (Q62), which the re-roll validates against. Set with `inventoryOps`. */
+  inventoryOwners?: InventoryOwner[];
+  /** Where the pass landed, which the re-roll validates against. Set with `inventoryOps`; absent when it had no location. */
+  inventoryLocationId?: string;
 }
 
 /** One Script World Tool call a turn made. */
