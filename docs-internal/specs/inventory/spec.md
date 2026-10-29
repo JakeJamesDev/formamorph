@@ -149,6 +149,14 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q123 | (ticket 05) One inventory settle (effects, grants, requirement re-check, trait gates, to a fixed point) runs wherever item effects settle today and in the turn commit after stat-pass deltas and stat code. 05 owns the turn-commit wiring |
 | Q124 | (ticket 05) The settle cap is 10 passes. Auto-unequip never re-equips, so a true cycle cannot form; the test drives a chain longer than an injected small cap |
 | Q125 | (ticket 05) Grant switches log like code switches with a source, "(by Cursed Ring)" or "(by An item)"; Hidden traits log nothing. When a Trait Switches scripts fire on grant changes. Auto-unequip and refused equips log their reason |
+| Q126 | (ticket 06) A permanent After Consumed row applies on every dose. Q64's refresh covers timed rows only |
+| Q127 | (ticket 06) The refresh key is owner, item and effect row. A second dose restarts each timed row's end time without reapplying its value. A different item's row runs separately |
+| Q128 | (ticket 06) Permanent After Consumed value moves once with no record; permanent min, max and regen rebase the stat as On First Obtain does; permanent trait rows join the permanent grant record (Q121). Timed min, max and regen derive while running |
+| Q129 | (ticket 06) Use shows on owned rows only. A consume on an Item Copy lying at a location is skipped with a diagnostic. Using an equipped Consumable copy consumes it and reverses its While Equipped effects |
+| Q130 | (ticket 06) 06 adds only the consume operation; the set-charges write is ticket 11's |
+| Q131 | (ticket 06) A timed effect ends when the story clock reaches its end time, checked in the turn settle after the clock advances. A panel Use between turns starts the timer at the current time. Timed effects live in the item effect ledger |
+| Q132 | (ticket 06) A running timed effect whose item or owner no longer exists drops on load with its value reversed, in the existing orphan log line |
+| Q133 | (ticket 06) The timed-effect section is a new visual pattern: 06 adds it to the design-system reference and gets the user's approval before adopting it. Turning Consumable off keeps After Consumed rows stored but hidden |
 
 ## User Stories
 
