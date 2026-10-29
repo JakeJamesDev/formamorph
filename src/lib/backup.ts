@@ -51,9 +51,11 @@ export const CATEGORY_LABELS: Record<BackupCategory, string> = {
 async function readStore(target: StoreTarget): Promise<IdRecord[]> {
   const db = await target.open();
   try {
-    return await promisifyRequest<IdRecord[]>(
+    const rows = await promisifyRequest<unknown[]>(
       db.transaction([target.store], 'readonly').objectStore(target.store).getAll(),
     );
+    // A value the browser can't read back comes out null.
+    return rows.filter((row): row is IdRecord => !!row && typeof row === 'object');
   } finally {
     db.close();
   }
