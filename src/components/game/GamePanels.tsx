@@ -1264,15 +1264,12 @@ export const RightPanel = ({
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
   const resolvePH = usePlaceholderResolver();
-  const inventory = useInventoryPanel();
   const devRoute = useDevRoute();
   React.useEffect(() => {
     if (!devRoute?.modal && devRoute?.tab && (GAME_RIGHT_PANEL_TABS as readonly string[]).includes(devRoute.tab)) {
       setActiveTab(devRoute.tab);
     }
   }, [devRoute?.modal, devRoute?.tab, setActiveTab]);
-  // A world without items keeps its three tabs.
-  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0;
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
   // keeps its row (so it can be switched back on) but stops contributing anything.
@@ -1346,6 +1343,9 @@ export const RightPanel = ({
     (ownerId: string) => entityStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
     [viewOwnedTraits, gateWorld],
   );
+  const inventory = useInventoryPanel(entityInForce);
+  // A world without items keeps its three tabs.
+  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0;
   const {
     options: entityOptions, shown: shownEntity, section: entitySection, players: playedOwners, showPicker: entitiesShowStats,
   } = useStatPanelEntity(entityInForce);

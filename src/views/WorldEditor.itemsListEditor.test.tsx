@@ -126,7 +126,7 @@ describe('the item panel', () => {
     openEditorTab(/Items/);
     openItem('Lamp');
     const tabs = within(screen.getByRole('tablist', { name: 'Item Fields' })).getAllByRole('tab').map((t) => t.textContent?.trim());
-    expect(tabs).toEqual(['Profile', 'Descriptions', 'Properties', 'Placeholders']);
+    expect(tabs).toEqual(['Profile', 'Descriptions', 'Properties', 'Effects', 'Placeholders']);
     itemFieldsTab('Descriptions');
     expect(screen.getByText('Player-Facing Description')).toBeTruthy();
     expect(screen.getByText('AI-Facing Summary')).toBeTruthy();
@@ -137,7 +137,7 @@ describe('the item panel', () => {
     openEditorTab(/Items/);
     openItem('Lamp');
     const tabs = within(screen.getByRole('tablist', { name: 'Item Fields' })).getAllByRole('tab').map((t) => t.textContent?.trim());
-    expect(tabs).toEqual(['Profile', 'Descriptions', 'Properties']);
+    expect(tabs).toEqual(['Profile', 'Descriptions', 'Properties', 'Effects']);
     itemFieldsTab('Descriptions');
     expect(screen.queryByText('AI-Facing Summary')).toBeNull();
   });

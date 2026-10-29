@@ -80,6 +80,8 @@ export type PlayerStat = Omit<Stat, 'value'> & {
   aiMaxDelta?: number;
   /** How far stat code has moved each bound, kept apart like `aiMaxDelta` so every layer stays derived. */
   codeDelta?: CodeBoundDeltas;
+  /** What the item effects in force add to each bound, recomputed from the Item Copies on every change. */
+  itemDelta?: CodeBounds;
 };
 
 /** A global stat as an older save stores it, with each code-set bound as an absolute number in `codeBounds`. */
@@ -247,6 +249,26 @@ export interface ItemCopy {
   state?: ItemCopyState;
 }
 
+/** One While Owned or While Equipped source in force on an owner, and the values it actually moved. */
+export interface AppliedItemEffect {
+  /** The entity whose own stats it moves. */
+  ownerId: string;
+  itemId: string;
+  timing: 'owned' | 'equipped';
+  /** Stat id → value delta, cap carry included. Reversal negates this. */
+  values: Record<string, number>;
+  /** Every Item Copy behind it is hidden, so its log lines name no item. */
+  hidden?: boolean;
+}
+
+/** The item effects in force. Bound facets are derived from the Item Copies and recorded nowhere. */
+export interface ItemEffectLedger {
+  /** Source key → what it applied. */
+  applied?: Record<string, AppliedItemEffect>;
+  /** Stat owner id → the items whose On First Obtain effects it got. */
+  firstObtained?: Record<string, string[]>;
+}
+
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
 export interface GameState {
   globalStats: PlayerStat[];
@@ -275,6 +297,8 @@ export interface GameState {
   entityStatChanges?: EntityStatChanges;
   /** Every Item Copy in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
   itemCopies?: ItemCopy[];
+  /** What item effects have applied. Absent ⇒ none. */
+  itemEffects?: ItemEffectLedger;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** Absent ⇒ none. */

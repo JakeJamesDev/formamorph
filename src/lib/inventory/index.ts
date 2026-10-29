@@ -6,6 +6,10 @@ import { byEquipOrder, itemStackable, sameWhere, slotCapacity, slotSizeOf } from
 import { inCast, playsAs } from '@/lib/owners';
 import type { Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemRef, PersonaRef, Placement, Slot } from '@/types';
 
+export {
+  itemEffectLine, itemEffectLog, settleItemEffects, type ItemEffectChange, type ItemEffectResult, type ItemEffectWorld, type OwnerStatTraits,
+} from './effects';
+
 /** Makes a fresh Item Copy id. */
 export type NewId = () => string;
 

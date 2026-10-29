@@ -114,4 +114,23 @@ describe('openingStateOf', () => {
       { where: { kind: 'location', id: 'gate' }, quantity: 2, visibility: 'hidden' },
     ]);
   });
+  it("puts the seeded Item Copies' effects in place on the first turn, On First Obtain included (Q59)", () => {
+    const row = (id: string, statId: string, amount: number, timing: 'owned' | 'firstObtain', facet: 'value' | 'max' = 'value') =>
+      ({ id, statId, amount, timing, facet, op: 'add' as const });
+    const ledger = { id: 'ledger', name: 'Ledger', statEffects: [row('r1', 'stock', 2, 'owned')], traitEffects: [], equipRequires: [] };
+    const charm = { id: 'charm', name: 'Charm', statEffects: [row('r2', 'vigor', 5, 'firstObtain', 'max'), row('r3', 'vigor', 1, 'firstObtain')], traitEffects: [], equipRequires: [] };
+    const fold = openingFold({
+      ...world,
+      items: [ledger, charm],
+      placements: [
+        { id: 'p1', where: { kind: 'you' }, quantity: 3, source: { kind: 'item', itemId: 'ledger' } },
+        { id: 'p2', where: { kind: 'entity', id: 'bram' }, quantity: 1, source: { kind: 'item', itemId: 'charm' } },
+      ],
+    }, { traits: [], owned: { bram: ['hardy'] } }, { ref: { source: 'world', entityId: 'albus' } });
+    // Albus's Stock 4 + the ledger once, for three Item Copies; Bram's Vigor 3 + Hardy 2 + the charm 1, under a cap raised by 5.
+    expect(valueOf(fold.entityStats.albus, 'stock')).toBe(6);
+    expect(fold.entityStats.bram.find((s) => s.id === 'vigor')).toMatchObject({ value: 6, max: 105 });
+    expect(fold.itemEffects.ledger.firstObtained).toEqual({ bram: ['charm'] });
+    expect(ownerStats(fold.state, 'bram')?.find((s) => s.id === 'vigor')?.value).toBe(6);
+  });
 });

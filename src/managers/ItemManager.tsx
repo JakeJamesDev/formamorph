@@ -9,6 +9,7 @@ import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { WorldInput } from '@/components/editor/WorldField';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
+import { ItemEffectsFields } from './ItemEffectsFields';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
@@ -192,7 +193,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
 };
 
 /**
- * Right-panel editor for one item: Profile, Descriptions, Properties and, in Advanced mode, its own
+ * Right-panel editor for one item: Profile, Descriptions, Properties, Effects and, in Advanced mode, its own
  * Placeholders. The panel remounts per item, so the tab and the open placeholder arrive as props.
  */
 const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder }: {
@@ -244,6 +245,10 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
 
       <PanelTabContent value="properties">
         <ItemPropertiesFields item={draft} apply={apply} />
+      </PanelTabContent>
+
+      <PanelTabContent value="effects">
+        <ItemEffectsFields item={draft} apply={apply} />
       </PanelTabContent>
 
       {advanced && (
