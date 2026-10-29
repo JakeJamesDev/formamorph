@@ -120,8 +120,8 @@ export async function fetchLlamaServer({ tag, platforms, dest = DEFAULT_DEST, fe
       await writeFile(path.join(staging, MARKER), `${name}\n`);
       await rm(path.join(dest, b.id), { recursive: true, force: true });
       await mkdir(dest, { recursive: true });
-      // Copy, not rename: the temp dir may sit on another drive.
-      await cp(staging, path.join(dest, b.id), { recursive: true });
+      // Copy, not rename: the temp dir may sit on another drive. Verbatim keeps the .so/.dylib links relative.
+      await cp(staging, path.join(dest, b.id), { recursive: true, verbatimSymlinks: true });
     }
   } finally {
     await rm(work, { recursive: true, force: true });
