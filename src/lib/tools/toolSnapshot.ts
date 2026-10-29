@@ -73,6 +73,8 @@ export interface ToolMemorySource {
   readonly meaning?: ToolMeaning | null;
   /** The Strip Links And Images setting: recall returns digests and diary entries as plain text. */
   readonly stripMedia?: boolean;
+  /** False drops diary entries, so recall reads digests only. Absent ⇒ diaries are read. */
+  readonly diaries?: boolean;
 }
 
 /** What a Tool script reads, and the world the editor names it from. */
@@ -109,11 +111,11 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-/** Digests through the override layer and diaries that hold a memory, outside the verbatim floor. No notes. */
-function toolMemories({ history, overrides, verbatimFloor }: ToolMemorySource): ToolMemory[] {
+/** Digests through the override layer and, unless turned off, diaries that hold a memory, outside the verbatim floor. No notes. */
+function toolMemories({ history, overrides, verbatimFloor, diaries: readDiaries = true }: ToolMemorySource): ToolMemory[] {
   const turns = applyMemoryOverrides(parseTurns([...history]), overrides);
   return turns.slice(0, Math.max(0, turns.length - verbatimFloor)).flatMap((t, i) => {
-    const parsed = parseTurnContent(history[t.index].content);
+    const parsed = readDiaries ? parseTurnContent(history[t.index].content) : null;
     const diaries = Object.entries(parsed ? turnDiaries(parsed) : {})
       .flatMap(([character, text]) => (typeof text === 'string' ? [{ character: character.trim(), text: text.trim() }] : []))
       .filter((d) => d.text && diaryHoldsMemory(d.text));
@@ -158,7 +160,7 @@ export function buildToolSnapshot(
   return Object.freeze({
     world: deepFreeze(world), chips: chipValues(scene), resolve,
     memories: deepFreeze(memories),
-    meaning: memory?.meaning ? toolMeaning(memory.meaning, memories) : null,
+    meaning: memory?.meaning ? toolMeaning(memory.diaries === false ? { ...memory.meaning, diaries: false } : memory.meaning, memories) : null,
     stripMedia: memory?.stripMedia === true,
     script,
   });

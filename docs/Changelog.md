@@ -41,6 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Emberwatch now has ten items: cold iron gear, remedies, grave goods and the two halves of the broken crown.** You start with a draught and a lantern. Lay both crown halves on the king's bier to end the Wight.
   - **Formaquestion:**
     - **Formaquestion Settings gain a Read the World switch and two world rules prompts.** The switch is on by default. Custom presets can edit the **Editor World** and **Game World** prompts. Older preset files still import.
+    - **In game, Formaquestion Tools and the code test see only what you have met.** They read player descriptions and visible stats, never AI descriptions, diaries, hidden stats or unmet characters and places.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

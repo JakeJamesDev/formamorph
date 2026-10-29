@@ -21,6 +21,8 @@ export interface PlayerViewEntity {
   player?: true;
   /** Known by its alias only. */
   alias?: true;
+  /** The other scene aliases the player saw it under, first seen first. */
+  seenAliases?: string[];
 }
 
 export interface PlayerViewLocation {
@@ -110,6 +112,21 @@ function aliasesInChain(chain: readonly GameState[], candidates: readonly Entity
   return aliases;
 }
 
+/** Entity id → every scene alias the player saw it under, revealed or not, first seen first. */
+function seenAliasesInChain(chain: readonly GameState[], candidates: readonly Entity[]): Map<string, string[]> {
+  const seen = new Map<string, string[]>();
+  for (const snapshot of chain) {
+    for (const row of snapshot.visibleEntities) {
+      const alias = row.alias?.trim();
+      const entity = alias ? resolveEntityByName(row.name, candidates) : undefined;
+      if (!alias || !entity) continue;
+      const list = seen.get(entity.id) ?? [];
+      if (!list.includes(alias)) seen.set(entity.id, [...list, alias]);
+    }
+  }
+  return seen;
+}
+
 function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEntity[] {
   const { world, persona, resolve } = input;
   const personaId = persona?.id ?? null;
@@ -129,6 +146,7 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
   const met = new Set(current.metEntities ?? []);
   // An entity known only by an alias shows the alias alone: its player description could name it.
   const aliases = aliasesInChain(input.chain, [...pool.values()], met);
+  const seenAliases = seenAliasesInChain(input.chain, [...pool.values()]);
 
   const rows: PlayerViewEntity[] = [];
   const seen = new Set<string>(personaId ? [personaId] : []);
@@ -136,9 +154,11 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
     if (seen.has(entity.id)) return;
     seen.add(entity.id);
     const alias = aliases.get(entity.id);
-    rows.push(alias !== undefined
+    const row: PlayerViewEntity = alias !== undefined
       ? { kind: 'entity', id: entity.id, name: alias, description: '', alias: true }
-      : { kind: 'entity', id: entity.id, name: resolve(entity.name), description: textOf(resolve, texts.has(entity.id) ? texts.get(entity.id) : entity.playerDescription) });
+      : { kind: 'entity', id: entity.id, name: resolve(entity.name), description: textOf(resolve, texts.has(entity.id) ? texts.get(entity.id) : entity.playerDescription) };
+    const others = (seenAliases.get(entity.id) ?? []).filter((name) => name !== row.name);
+    rows.push(others.length ? { ...row, seenAliases: others } : row);
   };
 
   if (persona) {
