@@ -17,6 +17,8 @@ In the game, Formaquestion answers about the lore and story so far, never beyond
 - The docs stay in the request (Q6). World sources show as plain names, with no editor link.
 - Open Chat worlds follow the same rules.
 
+- Ticket 06 leaves each dictionary book's `entries` empty in the in-game help Tool's script state. Fill it with the entries this question fired, if the activation runs before the Tool snapshot is built.
+
 Docs: the guide's Formaquestion page gains the in-game section.
 
 Spec: Q1, Q6, Q9, Q12, Q13, Q15, Q17, Q21; stories 11–27, 33.

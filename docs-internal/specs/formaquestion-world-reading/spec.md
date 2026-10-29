@@ -119,6 +119,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - The player's traits are the active global traits plus the played persona's owned traits. Switched-off traits stay out.
 - The played persona appears as the player. Persona-only entities not being played stay out.
 - The builder takes a `resolve(text)` input, so text reads with the values the player sees.
+- **Help snapshot in game (ticket 06):** only the help registration changes. Narration World Tools and Try It keep the full world. Entities keep only the names the player has seen, the revealed real name and the scene alias, and drop other authored aliases. Every enabled dictionary entry stays reachable by name (Q12); a Tool script's dictionary books carry their names and placeholders with an empty `entries` list, which ticket 05 fills with the entries the question fired. Recall memories hold digests only. Chips render from Player View rows. Script state and the code test's world hold visible stats and gate stats, met owners plus the persona, met locations and met item copies; placeholders and dictionaries are unchanged.
 - The Tool Snapshot and the authored world that the game registers with the open-world registry become Player View-based. The World Editor keeps registering the full authored world. This revises ADR-0011's "authored world, no playthrough" in game; a new ADR records it.
 
 ### Story so far (Q15, Q21)
@@ -136,6 +137,12 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 
 - A world index turns every authored part into sections in the docs-index shape: entities, places, items, traits, stats and their code, scripts, World Tools, dictionary entries and the world prompts. Placeholders stay as authored chips.
 - The index rebuilds from live editor state when the world changes, debounced. If rebuilds cost too much on large worlds, fall back to the last saved world (Q8).
+- One section per authored item: entity (both descriptions), location, item, trait, stat with its code, each script, each World Tool, each dictionary entry, each world prompt. An entity's own stats and traits are their own sections (ticket 04).
+- The index rebuilds in under 50 ms on the largest bundled world, debounced 500 ms. Section embeddings are computed lazily at question time and cached by text hash. Switching to the last saved world (Q8) is a design change that needs a spec ruling, not runtime switching.
+- One AI pick request carries the world lines as a second list after the guide list, with up to 5 picks per pool. Above 400 world sections, the world list leaves the pick request and keyword and semantic ranking carry the world pool. Guide recall@5 is probed with and without a world open.
+- The docs lookup function stays guide-only; the world block also rides in the lookup message. A bare question (every source off) sends no world block.
+- The answer and lookup prompts keep today's text. The guide-only relaxation rides the `worldEditor` rider, and the closing grounding line names world sections only when a world block is present. Both budgets start at 12,000 characters and 5 sections until ticket 07 tunes them.
+- The open-world registration gains `lean: 'editor' | 'game'`. Until ticket 05, a game registration sends no world block.
 - World sections rank through the same keyword, AI pick and semantic sources as guide sections, as a second pool. Guide and world hits fill separate budgets (Q24); the baseline tunes both sizes.
 
 ### Request and prompts (Q2, Q6, Q19, Q23)
