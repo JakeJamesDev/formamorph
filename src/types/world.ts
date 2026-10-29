@@ -215,7 +215,20 @@ export type TraitRequirement =
   | { kind: 'group'; id: string; name?: string; owner?: RequirementOwner; not?: true }
   | { kind: 'playingAs'; id: string; name?: string; not?: true }
   | StatRequirement
+  | ItemRequirement
   | TimeRequirement;
+
+/** An item Condition: an owner has a copy of the item, or has one equipped. `name` is the item's name when it
+ *  was stored, so an unresolved one still reads. An owner-less one means the host's owner; on an item it is
+ *  the Item Copy's owner, and never holds while the copy lies at a location. */
+export interface ItemRequirement {
+  kind: 'item';
+  id: string;
+  name?: string;
+  owner?: RequirementOwner;
+  status: 'owned' | 'equipped';
+  not?: true;
+}
 
 /** A coarse time of day, as the story clock splits its day by fractions. */
 export type Daypart = 'night' | 'dawn' | 'morning' | 'midday' | 'afternoon' | 'evening';

@@ -252,7 +252,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Playing As**, one list of **Stats** for each owner, and **Time of Day**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Playing As**, one list of **Stats** for each owner, **Items**, and **Time of Day**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -315,6 +315,25 @@ The game reads the stats once per turn, after the turn's stat changes have lande
 A trait's own stat changes don't make the game check again in the same turn. A trait that raises the stat its own condition reads can flip its own gate on the next turn. The [Test Bench](#test-bench-checks) warns about this.
 
 > 💡 **Gate on a different stat than the trait changes.** *Berserk* requires *Rage >= 80* and adds Strength. It's safe. If it also lowered Rage, it could turn itself off.
+
+### Item conditions
+<!-- keywords: item condition, needs an item, owns an item, wearing an item, equipped item, cursed ring, trait needs item, set bonus, item owner -->
+<!-- route: worldEditorTrait.availability -->
+
+An **item condition** holds while an owner has an item. It reads one of two states:
+
+- **Owned** holds while the owner has a copy of the item, carried or equipped.
+- **Equipped** holds while the owner has a copy in a slot. A copy that is only carried doesn't count.
+
+*Cursed* is an Automatic trait that requires the *Cursed Ring*, owned. It turns on when the ring joins the inventory and off when the ring leaves.
+
+1. Open the trait's **Availability** tab.
+2. Under **Requires**, select **Add Requirement**, then pick **Items**.
+3. Pick the item from **Owned** or **Equipped**, then pick the owner.
+
+The owner is **Same Owner**, the **Persona**, or an entity. On a global trait, **Same Owner** reads the Persona. A hidden copy still counts. Use the swap button to require that the owner doesn't have the item.
+
+In an item's image rule, a condition with no owner reads the owner of that copy. While the copy lies at a location, the condition doesn't hold, with or without Not.
 
 ### Time conditions
 <!-- keywords: time of day, only at night, daytime, evening, dawn, dusk, day night cycle, nocturnal, night form, works at night, story clock, daypart -->

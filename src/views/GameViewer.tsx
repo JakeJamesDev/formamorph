@@ -753,6 +753,7 @@ const GameViewer = ({
     setScriptTells,
     openingAction: openingTurnAction,
     setOpeningAction: setOpeningTurnAction,
+    itemCopies: heldItemCopies,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -800,11 +801,12 @@ const GameViewer = ({
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart,
+      items: worldItems, itemCopies: heldItemCopies,
       // A persona change reads this before its render, so its entities and library are the ones under `ref`.
       entities: ref === personaRef ? worldEntitiesOf(entities, persona) : presentEntitiesUnder(ref),
       ...inPlayOwners(ownerWorld, ref, libraryUnder(traitLibrary, personaRef, ref)),
     }),
-    [authoredTraits, traitGroups, daypart, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
+    [authoredTraits, traitGroups, daypart, worldItems, heldItemCopies, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
   // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {

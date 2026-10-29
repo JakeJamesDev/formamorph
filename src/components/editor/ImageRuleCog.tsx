@@ -10,7 +10,7 @@ import { RuleSourceContext, useRuleSource } from '@/contexts/RuleSourceContext';
 import { TraitStoreContext } from '@/contexts/TraitStoreContext';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRuleStates } from '@/lib/imageVisibility';
-import { personaHostStatSections, requirementStatSections } from '@/lib/requirementStatOptions';
+import { itemHostStatSections, personaHostStatSections, requirementStatSections } from '@/lib/requirementStatOptions';
 import { conditionTexts, requirementOptions, ruleStates, type GateInput, type RequirementOptions } from '@/lib/traitGates';
 import { shownWhileLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
@@ -75,7 +75,7 @@ function ImageRuleRows({ host, rows, onChange }: {
     const options = requirementOptions(source.gateInput, '');
     const states = hostRuleStates(source.gateInput, host, rows);
     if (host.kind === 'entity') return { states, options, statSections: requirementStatSections(source.gateInput, host.id) };
-    if (host.kind === 'item') return { states, options, statSections: requirementStatSections(source.gateInput, null) };
+    if (host.kind === 'item') return { states, options, statSections: itemHostStatSections(source.gateInput) };
     return { states, options: withoutPersonaOwner(options), statSections: personaHostStatSections(source.gateInput) };
   }, [source, host, rows]);
   const textOf = useMemo(() => source && conditionTexts(source.gateInput), [source]);

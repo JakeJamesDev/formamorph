@@ -50,6 +50,21 @@ export function personaHostStatSections(input: Pick<GateInput, 'owners' | 'entit
   return sections.filter((s) => s.options.length > 0);
 }
 
+/**
+ * The stats an item rule's Condition can read. The Item Copy's owner hosts the rule, so a Condition with no
+ * owner reads it (Q67): the first section gathers every stat an owner can have, global ones included, and
+ * names no owner. Then the persona and each entity, for a Condition that names its owner.
+ */
+export function itemHostStatSections(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>): RequirementStatSection[] {
+  const { section, playable } = sectionsOf(input);
+  const sections = [
+    { ...section('Item Owner', [null, ...input.entities.map((e) => e.id)]), own: true as const },
+    section('Persona', playable, { kind: 'you' }),
+    ...input.entities.map((e) => section(e.name, [e.id], { kind: 'entity', id: e.id, name: e.name })),
+  ];
+  return sections.filter((s) => s.options.length > 0);
+}
+
 /** The section builder over `input`'s stats, the entities a persona can be, and an owner's name. */
 function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>) {
   const statsOf = (ownerId: OwnerId): GateStatSet => (input.stats && partOf(input.stats, ownerId)) ?? {};

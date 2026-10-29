@@ -156,6 +156,8 @@ export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource, World
   dictionaries?: readonly Dictionary[];
   /** Absent ⇒ none. */
   locations?: readonly GameLocation[];
+  /** The authored items a Requires line can name. Absent ⇒ none. */
+  items?: OwnerWorld['items'];
 }
 
 /** Each box's lookup over `world`. The world's owners resolve once, on the first card any box opens. */
@@ -193,7 +195,7 @@ const signedAmount = (n: number, unit: string) => (n < 0 ? `−${-n}${unit}` : `
 /** Everything trait, placeholder, entity and dictionary cards read, built once per lookup. */
 function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const { placeholders } = world;
-  const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities };
+  const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, items: world.items };
   const named = new Map(entityTraitNames(ownerWorld, placeholders).map((entity) => [entity.id, entity]));
   const ownerById = new Map(resolveOwners(ownerWorld, undefined).owners.map((owner) => [owner.id, owner]));
   const gate = editorGateInput(ownerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));

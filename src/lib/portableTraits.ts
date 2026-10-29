@@ -26,6 +26,8 @@ export interface TraitWorld extends StatWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
+  /** The world's items, what an item Condition binds to by name. */
+  items?: readonly Named[];
   /** The world's blueprints, what a carried copy binds to. */
   blueprints?: readonly Placeholder[];
 }
@@ -37,9 +39,10 @@ type EntityOwner = Extract<RequirementOwner, { kind: 'entity' }>;
 export const traitWorldOf = (data: {
   traits?: readonly Trait[]; traitGroups?: readonly TraitGroup[]; entities?: readonly Entity[];
   placeholders?: readonly Placeholder[]; placeholderGroups?: readonly PlaceholderGroup[];
-  stats?: readonly Stat[]; statGroups?: readonly StatGroup[];
+  stats?: readonly Stat[]; statGroups?: readonly StatGroup[]; items?: readonly Named[];
 }): TraitWorld | undefined => (data.traits ? {
   traits: data.traits, traitGroups: data.traitGroups ?? [], entities: data.entities ?? [],
+  ...(data.items ? { items: data.items } : {}),
   ...(data.stats ? { stats: data.stats, statGroups: data.statGroups ?? [] } : {}),
   blueprints: worldBlueprints({ placeholders: [...data.placeholders ?? []], placeholderGroups: [...data.placeholderGroups ?? []] }),
 } : undefined);
@@ -60,12 +63,13 @@ function targets(world: TraitWorld, except?: string) {
     // Only a persona can be played as.
     playingAs: others.filter((e) => e.persona),
     stat: [...world.stats ?? [], ...others.flatMap((e) => e.stats ?? [])],
+    item: world.items ?? [],
     time: [],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], time: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [] };
 
 const isSelf = (r: TraitRequirement, entityId: string): r is Extract<TraitRequirement, { kind: 'playingAs' }> =>
   r.kind === 'playingAs' && (r.id === SELF_ENTITY || r.id === entityId);
@@ -244,7 +248,8 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withOwner(req, (b) => comparableOwner(b, entity.id));
     const owner = r.kind !== 'playingAs' && r.owner ? { owner: r.owner } : {};
-    const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit } : {};
+    const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit }
+      : r.kind === 'item' ? { status: r.status } : {};
     if (pointsInside(r, entity, inside) || !r.name) return { kind: r.kind, id: r.id, ...owner, ...comparison, ...not } as TraitRequirement;
     return { kind: r.kind, id: '', name: r.name, ...owner, ...comparison, ...not } as TraitRequirement;
   };

@@ -13,6 +13,8 @@ export interface OwnerWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
+  /** The authored items an item Condition can name. */
+  items?: GateInput['worldItems'];
 }
 
 /** One owner's effective tree: its own items plus each link's original and live subtree, in the places the
@@ -220,6 +222,7 @@ export function resolveOwners(
       entities: world.entities,
       persona: persona ?? { source: 'none' },
       originals: { traits: world.traits, groups: world.traitGroups },
+      ...(world.items ? { worldItems: world.items } : {}),
     },
   };
 }

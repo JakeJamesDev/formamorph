@@ -2037,7 +2037,7 @@ const traitGroupTooSmall: Rule = {
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** The slices the owner resolver reads. */
-export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities'>>;
+export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items'>>;
 
 const pairKey = (a: OwnerId, b: string) => `${scopeKey(a)}\u0000${b}`;
 
@@ -2061,6 +2061,7 @@ export function ownerWorldOf(world: OwnerSource, open: OpenGates = NONE_OPEN): O
   return {
     traits: (world.traits ?? []).map(opened),
     traitGroups: world.traitGroups ?? [],
+    ...(world.items ? { items: world.items } : {}),
     entities: (world.entities ?? []).map((e) => ({
       ...e, name: e.name ?? '',
       ...(e.traits ? { traits: e.traits.map(opened) } : {}),
@@ -2418,10 +2419,10 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const globalIds = new Set([...global.traits, ...global.groups].map((item) => item.id));
   const entityHolds = (req: TraitRequirement): boolean => (req.kind === 'stat'
     ? Object.values(stats.owners).some((set) => !!set[req.id])
-    : req.kind !== 'playingAs' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
+    : req.kind !== 'playingAs' && req.kind !== 'item' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
   const crossings = held.filter((gate) => gate.owner.id === null && global.traits.some((t) => t.id === gate.trait.id))
     .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
-      if (req.kind === 'playingAs' || req.kind === 'time' || req.owner) return [];
+      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'item' || req.owner) return [];
       const isGlobal = req.kind === 'stat' ? !!stats.global[req.id] : globalIds.has(req.id);
       return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
     })));

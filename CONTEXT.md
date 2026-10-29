@@ -440,12 +440,16 @@ One alternative in a Requirement. A row holds when every Condition in it holds (
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:
-One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, or a stat, with an optional owner, or the time of day. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item. A Time Condition has no Not.
+One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, a stat, or an item, with an optional owner, or the time of day. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item. A Time Condition has no Not.
 _Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
 
 **Stat Condition**:
 A Condition that compares an owner's stat to a number with one of six operators (`>`, `<`, `>=`, `<=`, `=`, `≠`). The number is raw, in the stat's units, or a percent of the stat's min-to-max span; the author picks per Condition. Traits and image Visibility rules share it. The game reads stats once per turn commit, after the stat pass, and a Condition on an inert or missing stat does not hold.
 _Avoid_: stat gate, stat requirement, threshold (a descriptor's word)
+
+**Item Condition**:
+A Condition that holds while an owner has an Item Copy of an item, owned (carried or equipped, hidden copies included) or equipped. Traits and image Visibility rules share it. With no owner it reads the host's owner; on a global trait or a location rule that is the Persona. On an item's rule it reads the Item Copy's owner, and never holds while the copy lies at a location, Not included.
+_Avoid_: item gate, inventory check
 
 **Time Condition**:
 A Condition that holds while the story clock's daypart is one of a set: night, dawn, morning, midday, afternoon, evening. Dayparts split the day by fraction, as the narration's do. It has no owner and no Not, and it never tests the day number or an hour. The game reads it once per turn commit, after the turn's time passes. Outside play it reads the opening hour, which is morning. Traits and image Visibility rules share it.

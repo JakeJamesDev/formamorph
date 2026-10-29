@@ -91,7 +91,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const isMountedRef = useMountedRef();
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, statGroups: rawStatGroups, locations: rawLocations, placeholders,
-    dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups, worldOverview,
+    dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups, worldOverview, items: worldItems, placements: worldPlacements,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
 
@@ -205,8 +205,11 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
   // Every owner in the cast: the player, the world's entities, and the library entities.
   const entryWorld = useMemo<EntryTraitWorld>(
-    () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups],
+    () => ({
+      traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
+      items: worldItems, placements: worldPlacements, locations: rawLocations,
+    }),
+    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, rawLocations],
   );
   const rawEntryWorld: EntryTraitWorld = {
     traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,

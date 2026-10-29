@@ -5,7 +5,10 @@ import { startingGateStats } from './gateStats';
 import { settle, settleDefaults, type GateInput, type SettleResult } from './traitGates';
 import { cascadeOffInput, settledCascadeOff } from './traitRuntime';
 import { scoped } from './scope';
-import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { seedItemCopies } from './inventory';
+import type {
+  CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, Stat, StatGroup, Trait, TraitGroup,
+} from '@/types';
 
 /** Choices retained for one visit to Enter World. */
 export interface EntryDraft {
@@ -51,6 +54,16 @@ export interface EntryTraitWorld {
   /** The world's stats, which stat Conditions read at their authored start. Absent, those stay unresolved. */
   stats?: readonly Stat[];
   statGroups?: readonly StatGroup[];
+  /** The authored items and their starting placements: item Conditions read the copies the new game seeds. */
+  items?: readonly Item[];
+  placements?: readonly Placement[];
+  locations?: readonly Pick<GameLocation, 'id'>[];
+}
+
+/** The Item Copies a new game would hold under `persona`, so an item Condition reads the start. The ids only tell copies apart. */
+function seededCopies(world: EntryTraitWorld, persona: PersonaRef) {
+  let n = 0;
+  return seedItemCopies({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
 }
 
 /** The gate input over every present owner under `persona`, without the active sets. */
@@ -58,6 +71,7 @@ const entryGateBase = (world: EntryTraitWorld, persona: PersonaRef): Omit<GateIn
   ...resolveOwners(world, persona, world.library).gate,
   stats: startingGateStats(world, world.library),
   reader: 'player',
+  ...(world.items ? { worldItems: world.items, itemCopies: seededCopies(world, persona) } : {}),
 });
 
 /** Global scope's tree and every present entity owner under `persona`: the world's entities, then the library

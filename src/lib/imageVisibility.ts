@@ -1,6 +1,6 @@
 // Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
+import type { Base64Data, Entity, GalleryImage, ItemCopy, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { entityImages } from './entityImages';
 import { locationImages, type LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
@@ -43,6 +43,27 @@ function locationRuleRows(input: GateInput, rows: readonly TraitRequirementRow[]
 /** Each row's state of a location image's rule. A location owns nothing, so global scope hosts it. */
 export const locationRuleStates = (input: GateInput, rows: readonly TraitRequirementRow[]) =>
   ruleStates(input, null, locationRuleRows(input, rows));
+
+/** The owner an Item Copy's rule reads for a Condition with no owner (Q67); none while it lies at a location. */
+const copyOwner = (where: ItemCopy['where']): RequirementOwner | null =>
+  (where.kind === 'you' ? PERSONA : where.kind === 'entity' ? { kind: 'entity', id: where.id } : null);
+
+/**
+ * Each row's state of an item image's rule, for one Item Copy. A Condition with no owner reads the copy's
+ * owner, and never holds while the copy lies at a location, Not included (Q67, Q91). An item has no owner of
+ * its own, so global scope hosts the rule.
+ */
+export function itemRuleStates(input: GateInput, copy: Pick<ItemCopy, 'where'>, rows: readonly TraitRequirementRow[]): RowState[] {
+  const owner = copyOwner(copy.where);
+  const ownerless = (req: TraitRequirement) => req.kind !== 'playingAs' && req.kind !== 'time' && req.owner === undefined;
+  const states = ruleStates(input, null, mapConditions(rows, (req): TraitRequirement =>
+    (owner && ownerless(req) ? { ...req, owner } as TraitRequirement : req)));
+  if (owner) return states;
+  return states.map((row, i) => {
+    const conditions = row.conditions.map((c, j) => (ownerless(rows[i].all[j]) ? { ...c, holds: false } : c));
+    return { holds: conditions.every((c) => c.holds), conditions };
+  });
+}
 
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
 export const visibleLocationImages = (location: LocationImageBearing, input: GateInput): VisibleImage[] =>
