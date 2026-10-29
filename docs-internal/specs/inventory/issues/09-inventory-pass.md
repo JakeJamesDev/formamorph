@@ -30,6 +30,8 @@ Spec: R1, R2, Q18, Q22, Q23, Q24, Q36, Q37, Q38, Q53, Q55, Q56, Q62; stories 25,
 - [ ] Probe numbers on the cloud default and Cydonia with in-batch controls: operation accuracy on a fixed scene set, and the stat pass no longer double-adds a drunk potion's effect
 - [ ] The guide pages for the turn and for items describe the pass; changelog fragment written
 - [ ] Discarding an unpaired user turn and the stats-only re-roll restore Item Copies the pass wrote (from ticket 02's landing)
+- [ ] A re-roll of a turn that consumed an item restores its running timed effects; a test drives it (from ticket 06's landing)
+- [ ] The panel lists runtime items, and a runtime item gets the Use button (the `consume` op already accepts them; from ticket 06's landing)
 
 For you: play a few turns that pick up, give and drink items and check the panel follows the story.
 
