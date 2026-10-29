@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyInventoryOps, type ItemScriptEvent } from './inventory';
-import { ITEM_EVENT_DEPTH, runItemScripts, type ApplyInventory, type StatCodeTurn } from './statCodeTurn';
+import { ITEM_EVENT_DEPTH, runItemScripts, type ApplyInventory, type SettleCopies, type StatCodeTurn } from './statCodeTurn';
 import type { Entity, Item, ItemCopy, ItemScriptTiming, PlayerStat } from '@/types';
 import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
@@ -56,6 +56,54 @@ describe('runItemScripts', () => {
     expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Gift Box did not run']);
   });
 
+  describe('automatic unequips', () => {
+    const box = item('i-box', 'Gift Box', [['gained', 'stats.Gold.value += 1; self.give(locations.Vault);']]);
+    const ring = item('i-ring', 'Ring', [['unequipped', 'stats.Gold.value += 10;']]);
+    const worn: ItemCopy = { ...copy('c-ring', 'i-ring', { kind: 'you' }), equipped: { slotId: 'finger', order: 1 } };
+    const unequip = (copies: readonly ItemCopy[]) => {
+      const held = copies.find((c) => c.id === 'c-ring');
+      if (!held?.equipped) return { copies, events: [] };
+      return {
+        copies: copies.map((c) => (c === held ? copy('c-ring', 'i-ring', { kind: 'you' }) : c)),
+        events: [event('unequipped', 'i-ring', 'c-ring', { kind: 'you' })],
+      };
+    };
+    /** A settle whose Ring requirement fails once `boxes` Gift Boxes exist. */
+    const settleAt = (boxes: number): SettleCopies => (copies) =>
+      (copies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'i-box').length < boxes ? { copies, events: [] } : unequip(copies));
+    const runWith = (settle: SettleCopies) => runItemScripts(
+      turnOf([box, ring], [copy('c-0', 'i-box', { kind: 'location', id: 'loc-vault' }), worn]),
+      [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box, ring], applyWith([box, ring]), (i) => i.name, { settle },
+    );
+    const unequipOp = { kind: 'unequip', copyId: 'c-ring' };
+
+    it('fires an unequip that a depth-2 write caused at depth 3', async () => {
+      // The depth-1 write makes the second box; the depth-2 write makes the third, which unequips the Ring.
+      const out = await runWith(settleAt(3));
+      expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(ITEM_EVENT_DEPTH + 10);
+      expect(out.copies.find((c) => c.id === 'c-ring')?.equipped).toBeUndefined();
+      expect(out.ops.filter((op) => op.kind === 'unequip')).toEqual([unequipOp]);
+      expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Gift Box did not run']);
+    });
+
+    it('settles over the stats the runs so far wrote', async () => {
+      // Gold reaches 2 in the depth-2 run, so its write unequips the Ring.
+      const out = await runWith((copies, _doses, so) => ((so.stats.find((s) => s.id === 'gold')?.value ?? 0) < 2 ? { copies, events: [] } : unequip(copies)));
+      expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(ITEM_EVENT_DEPTH + 10);
+    });
+
+    it('stops an unequip that a depth-3 write caused, with a diagnostic', async () => {
+      const out = await runWith(settleAt(4));
+      expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(ITEM_EVENT_DEPTH);
+      expect(out.copies.find((c) => c.id === 'c-ring')?.equipped).toBeUndefined();
+      expect(out.ops.filter((op) => op.kind === 'unequip')).toEqual([unequipOp]);
+      expect(out.diagnostics).toEqual([
+        'Item scripts nested past 3 levels; When Gained of Gift Box did not run',
+        'Item scripts nested past 3 levels; When Unequipped of Ring did not run',
+      ]);
+    });
+  });
+
   it('hands a When Lost script the Item Copy that left, as it stood', async () => {
     const coin = item('i-coin', 'Coin', [['lost', 'stats.Gold.value += self.event.copy.quantity;']]);
     const start = [{ ...copy('c-1', 'i-coin', { kind: 'you' }), quantity: 4 }];
@@ -68,7 +116,7 @@ describe('runItemScripts', () => {
     const box = item('i-box', 'Gift Box', [['gained', 'self.give(locations.Vault);']]);
     const start = [copy('c-0', 'i-box', { kind: 'location', id: 'loc-vault' })];
     const out = await runItemScripts(
-      turnOf([box], start), [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box], applyWith([box]), (i) => i.name, ITEM_EVENT_DEPTH,
+      turnOf([box], start), [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box], applyWith([box]), (i) => i.name, { depth: ITEM_EVENT_DEPTH },
     );
     expect(out.ops).toEqual([{ kind: 'gain', itemId: 'i-box', to: { kind: 'location', id: 'loc-vault' }, quantity: 1 }]);
     expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Gift Box did not run']);

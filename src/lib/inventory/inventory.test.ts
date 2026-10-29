@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyInventoryOps, copiesAt, seedItemCopies, withoutOrphanCopies, type InventoryCall, type SeedWorld,
+  applyInventoryOps, copiesAt, seedItemCopies, statEffectItems, withoutOrphanCopies, type InventoryCall, type SeedWorld,
 } from '.';
 import { presentEntityIds } from '@/lib/entityPresence';
 import type { Entity, Item, ItemCopy, Placement, PlacementWhere } from '@/types';
@@ -97,6 +97,27 @@ describe('copiesAt', () => {
     expect(copiesAt(copies, you).map((c) => c.id)).toEqual(['a']);
     expect(copiesAt(copies, { kind: 'entity', id: 'bram' }).map((c) => c.id)).toEqual(['b']);
     expect(copiesAt(copies, { kind: 'location', id: 'bram' }).map((c) => c.id)).toEqual(['d']);
+  });
+});
+
+describe('statEffectItems', () => {
+  const boost = { id: 's', statId: 'hp', facet: 'value', timing: 'equipped', amount: 1, op: 'add' } as const;
+  const effectItems = ['mine', 'held', 'floor', 'secret', 'away', 'elsewhere'].map((id) => item(id, { statEffects: [boost] }));
+  const scene = { locationId: 'cellar', entityIds: ['bram'] };
+  const of = (itemId: string, where: ItemCopy['where'], over: Partial<ItemCopy> = {}) =>
+    copy(itemId, { item: { kind: 'item', itemId }, where, ...over });
+
+  it('names visible copies held by you or a present entity, or lying here, and leaves out hidden ones and other places', () => {
+    const copies = [
+      of('mine', you), of('held', { kind: 'entity', id: 'bram' }), of('floor', { kind: 'location', id: 'cellar' }),
+      of('secret', you, { visibility: 'hidden' }), of('away', { kind: 'entity', id: 'albus' }), of('elsewhere', { kind: 'location', id: 'attic' }),
+    ];
+    expect(statEffectItems(copies, effectItems, scene).map((i) => i.id)).toEqual(['mine', 'held', 'floor']);
+  });
+
+  it('names an item once a visible copy is present, beside a hidden one, and never one without stat effects', () => {
+    const copies = [of('secret', you, { visibility: 'hidden' }), of('secret', { kind: 'location', id: 'cellar' }), copy('potion')];
+    expect(statEffectItems(copies, [...effectItems, potion], scene).map((i) => i.id)).toEqual(['secret']);
   });
 });
 

@@ -37,6 +37,19 @@ export interface SeedWorld {
 export const copiesAt = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
   copies.filter((copy) => sameWhere(copy.where, where));
 
+/**
+ * The items with stat effects that the stat request names (Q53, Q149): visible Item Copies held by you or a
+ * present entity, or lying at `scene.locationId`. In authored order.
+ */
+export function statEffectItems(
+  copies: readonly ItemCopy[], items: readonly Item[], scene: { locationId?: string; entityIds: readonly string[] },
+): Item[] {
+  const here = (where: ItemCopyWhere) => where.kind === 'you'
+    || (where.kind === 'entity' ? scene.entityIds.includes(where.id) : where.id === scene.locationId);
+  const ids = new Set(copies.flatMap((c) => (c.item.kind === 'item' && c.visibility === 'visible' && here(c.where) ? [c.item.itemId] : [])));
+  return items.filter((item) => ids.has(item.id) && item.statEffects.length > 0);
+}
+
 /** Where a placement's Item Copies go under `persona`, or null when its owner is not in play (Q54, Q82). */
 function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef | undefined): ItemCopyWhere | null {
   const { where } = placement;

@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingStateOf } from '@/lib/openingState';
 import {
-  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, timedEffectViews, type Dose, type InventoryOp, type ItemScriptEvent,
+  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, statEffectItems, timedEffectViews, type Dose, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { playedEntityIds } from '@/lib/scope';
@@ -27,7 +27,7 @@ import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins
 import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
 import {
   changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runItemScripts, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, withoutInventory, withPinWrites,
-  type ApplyInventory, type SandboxState, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
+  type ApplyInventory, type SandboxState, type ScriptTrigger, type SettleCopies, type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
 import { landSwitchRun } from "@/lib/switchRunLanding";
 import { openOutputRun, type OutputRun } from "@/lib/outputRun";
@@ -93,7 +93,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemCopyWhere, ItemEffectLedger, RuntimeItem } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -373,6 +373,20 @@ type PreTurnCodeState = Pick<
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
  *  passes, which run before React re-renders with it. */
 type TurnCodeState = Pick<LiveSnapshot, 'globalStats'> & PreTurnCodeState;
+
+/** `base`'s fields over `live`; `traits` are the world's, which chosen traits refresh from. */
+function codeStateOver(base: TurnCodeState | null, live: TraitRuntimeState, traits: Trait[]): TraitRuntimeState {
+  if (!base) return live;
+  return {
+    stats: base.globalStats ?? live.stats,
+    traits: base.globalTraits ? refreshChosenTraits(base.globalTraits, traits) : live.traits,
+    disabledTraitIds: base.disabledTraitIds ?? live.disabledTraitIds,
+    appliedValues: base.appliedTraitValues ?? live.appliedValues,
+    cascadeOffTraitIds: base.cascadeOffTraitIds ?? live.cascadeOffTraitIds,
+    ownedTraits: base.ownedTraits ?? live.ownedTraits,
+    entityStats: base.entityStats ?? live.entityStats,
+  };
+}
 
 /** A running turn's view of the history. Each absent field reads live state. */
 interface HistoryTurnView {
@@ -5117,12 +5131,17 @@ const GameViewer = ({
       entityStats: live.entityStats ?? {},
     }, events[0].timing);
     if (!prepared) return;
+    const ledger = liveItemsRef.current.effects;
     try {
       // No action caused the event, so it reads none, even while a turn runs.
       const turn = { ...prepared.turn, state: { ...prepared.turn.state, turn: { ...currentTurnRead(), action: "" } } };
       const start = turn.state.itemCopies ?? [];
       const generation = itemRunGenerationRef.current;
-      const ran = await runItemScripts(turn, events, worldItems ?? [], applyScriptOps, (item) => resolvePH(item.name), depth);
+      // Each write's automatic unequips fire one level below it, settled over what the runs so far left.
+      const settle: SettleCopies = (copies, doses, so) => settleInventory({
+        copies, previous: start, traits: codeStateOver(prepared.writtenBy(so), live, traits), ledger, doses, now: gameTime,
+      }, settleWorldOf(gatedWorld()));
+      const ran = await runItemScripts(turn, events, worldItems ?? [], applyScriptOps, (item) => resolvePH(item.name), { depth, settle });
       // A discarded turn takes the runs it started with it.
       if (!mounted.current || generation !== itemRunGenerationRef.current) return;
       if (ran.result) landBetweenTurns(prepared.finish(ran.result).world);
@@ -5131,14 +5150,14 @@ const GameViewer = ({
         return;
       }
       // Item Copies that moved during the runs take their writes again, on top.
-      const live = liveItemsRef.current.copies;
-      const landed = live === start ? ran : { ...ran, ...applyScriptOps(live, ran.ops) };
-      const unequips = commitItemCopies(landed.copies, live, landed.diagnostics, landed.doses);
+      const liveCopies = liveItemsRef.current.copies;
+      const landed = liveCopies === start ? ran : { ...ran, ...applyScriptOps(liveCopies, ran.ops) };
+      const unequips = commitItemCopies(landed.copies, liveCopies, landed.diagnostics, landed.doses);
       if (unequips.length) await runItemEvents(unequips, depth + 1);
     } catch (error) {
       console.error("Error running item scripts:", error);
     }
-  }, [worldItems, prepareStatCode, gameTime, calendar, currentTurnRead, applyScriptOps, resolvePH, mounted, landBetweenTurns, commitItemCopies, addLogEntry]);
+  }, [worldItems, prepareStatCode, gameTime, calendar, currentTurnRead, applyScriptOps, resolvePH, mounted, landBetweenTurns, commitItemCopies, addLogEntry, settleWorldOf, gatedWorld, traits]);
 
   /** A script's inventory writes, landed in run order with their item events at the first level (Q140). */
   const landScriptInventory = useCallback((ops: readonly InventoryOp[]) => {
@@ -5167,28 +5186,12 @@ const GameViewer = ({
   }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents]);
 
   /** The present items whose stat effects the game applies, which the stat request names (Q53). */
-  const statItemNames = (location: GameLocation | null): string[] => {
-    const scene = liveScene(location, null);
-    const present = (where: ItemCopyWhere) => where.kind === 'you'
-      || (where.kind === 'entity' ? scene.presentIds.includes(where.id) : where.id === location?.id);
-    const ids = new Set(itemCopies.flatMap((c) => (c.item.kind === 'item' && present(c.where) ? [c.item.itemId] : [])));
-    return worldItems.filter((item) => ids.has(item.id) && item.statEffects.length > 0).map((item) => resolvePH(item.name));
-  };
+  const statItemNames = (location: GameLocation | null): string[] =>
+    statEffectItems(itemCopies, worldItems, { locationId: location?.id, entityIds: liveScene(location, null).presentIds })
+      .map((item) => resolvePH(item.name));
 
   /** The trait state the turn's stat commit starts from: `base`'s fields over the live state. */
-  const traitStateOver = (base: TurnCodeState | null): TraitRuntimeState => {
-    const live = liveTraitStateRef.current;
-    if (!base) return live;
-    return {
-      stats: base.globalStats ?? live.stats,
-      traits: base.globalTraits ? refreshChosenTraits(base.globalTraits, traits) : live.traits,
-      disabledTraitIds: base.disabledTraitIds ?? live.disabledTraitIds,
-      appliedValues: base.appliedTraitValues ?? live.appliedValues,
-      cascadeOffTraitIds: base.cascadeOffTraitIds ?? live.cascadeOffTraitIds,
-      ownedTraits: base.ownedTraits ?? live.ownedTraits,
-      entityStats: base.entityStats ?? live.entityStats,
-    };
-  };
+  const traitStateOver = (base: TurnCodeState | null): TraitRuntimeState => codeStateOver(base, liveTraitStateRef.current, traits);
 
   /** Q62: the owners at `location` after the turn's moves (live positions when none are given), and who the
    *  turn discovered. */
