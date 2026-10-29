@@ -92,7 +92,7 @@ export const PATH_TRIGGERS = {
   'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts', 'src/lib/codeGuideLinks.test.ts'],
   'src/index.css': ['src/lib/landingPulse.test.ts'],
   'index.html': ['src/components/themeBootstrap.test.ts'],
-  'src/defaultworlds/*.json': ['src/lib/bundledWorldText.ts', 'src/test/bundledWorldFiles.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts', 'src/lib/seedRule.bundled.test.ts', 'src/lib/shippedWorld.test.ts', 'scripts/shipBundledWorlds.test.ts', 'scripts/bundledRevisions.test.ts'],
+  'src/defaultworlds/*.json': ['src/lib/bundledWorldText.ts', 'src/test/bundledWorldFiles.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts', 'src/lib/seedRule.bundled.test.ts', 'src/lib/shippedWorld.test.ts', 'scripts/shipBundledWorlds.test.ts', 'scripts/bundledRevisions.test.ts', 'testing/baseline/harness/world-question-cases.ts', 'testing/baseline/harness/world-question-cases.test.ts'],
   'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
   'src/defaultworlds/drone.json': ['src/lib/droneWorld.test.ts', 'testing/art-harness/artHarness.test.ts'],
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/lib/emberwatchWorld.scripts.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
