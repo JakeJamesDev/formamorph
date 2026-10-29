@@ -191,16 +191,65 @@ export async function putWorldRecords(db: IDBDatabase, records: readonly StoredW
   for (const record of records) announceWorldSaved(record.id);
 }
 
-/** One world's metadata record, or undefined when the world is not stored. */
-export function readWorldMeta(db: IDBDatabase, id: string): Promise<WorldMetaRecord | undefined> {
-  return promisifyRequest<WorldMetaRecord | undefined>(
+/** A stored value the browser can't read back comes out null. */
+const isReadable = (value: unknown): value is object => !!value && typeof value === 'object';
+
+/** One world's metadata record, or undefined when it is not stored or can't be read. */
+export async function readWorldMeta(db: IDBDatabase, id: string): Promise<WorldMetaRecord | undefined> {
+  const meta = await promisifyRequest<unknown>(
     db.transaction([WORLD_META_STORE], 'readonly').objectStore(WORLD_META_STORE).get(id),
   );
+  return isReadable(meta) ? meta as WorldMetaRecord : undefined;
 }
 
-/** Every metadata record in the library. */
-export async function readAllWorldMeta(db: IDBDatabase): Promise<WorldMetaRecord[]> {
-  return promisifyRequest<WorldMetaRecord[]>(
-    db.transaction([WORLD_META_STORE], 'readonly').objectStore(WORLD_META_STORE).getAll(),
-  );
+/** The library's metadata, and the stored worlds that have none and can't be read to derive it. */
+export interface WorldMetaRead {
+  meta: WorldMetaRecord[];
+  unreadable: string[];
+}
+
+/** Derive and store metadata for `ids` from their world records, in one transaction over both stores. */
+async function rebuildWorldMeta(db: IDBDatabase, ids: string[]): Promise<WorldMetaRead> {
+  const transaction = libraryTransaction(db, 'readwrite');
+  const worlds = transaction.objectStore(WORLD_STORE);
+  const read: WorldMetaRead = { meta: [], unreadable: [] };
+  for (const id of ids) {
+    const request = worlds.get(id);
+    request.onsuccess = () => {
+      if (!isReadable(request.result)) {
+        read.unreadable.push(id);
+        return;
+      }
+      const meta = worldMetaOf(request.result as StoredWorldShape);
+      transaction.objectStore(WORLD_META_STORE).put(meta);
+      read.meta.push(meta);
+    };
+  }
+  await transactionDone(transaction);
+  return read;
+}
+
+/**
+ * Every metadata record in the library.
+ *
+ * A stored world whose metadata is missing or unreadable gets it rebuilt from its world record. One bad
+ * row would otherwise hide the whole library.
+ */
+export async function readAllWorldMeta(db: IDBDatabase): Promise<WorldMetaRead> {
+  const transaction = db.transaction([WORLD_STORE, WORLD_META_STORE], 'readonly');
+  const metaStore = transaction.objectStore(WORLD_META_STORE);
+  const [rows, worldIds] = await Promise.all([
+    promisifyRequest<unknown[]>(metaStore.getAll()),
+    promisifyRequest(transaction.objectStore(WORLD_STORE).getAllKeys()),
+  ]);
+  const meta = rows.filter(isReadable) as WorldMetaRecord[];
+  const listed = new Set(meta.map((m) => m.id));
+  const missing = worldIds.map(String).filter((id) => !listed.has(id));
+  if (missing.length === 0) return { meta, unreadable: [] };
+
+  const rebuilt = await rebuildWorldMeta(db, missing);
+  return {
+    meta: [...meta, ...rebuilt.meta].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+    unreadable: rebuilt.unreadable,
+  };
 }
