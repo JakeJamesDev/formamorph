@@ -140,6 +140,9 @@ function worldBlock(world: readonly WorldBlockSection[] | undefined): string[] {
   return [`<world>\n${world.map(({ kind, markdown }) => `<section kind="${kind}">\n${markdown}\n</section>`).join('\n\n')}\n</world>`];
 }
 
+/** The story block of a game request, or none. A story with no turns yet still sends it empty. */
+const storyBlock = (story: string | undefined): string[] => (story === undefined ? [] : [`<story>\n${story}\n</story>`]);
+
 /** Where an answer's facts come from: the guide, and the world when the request reads one. */
 const groundsOf = (world: readonly WorldBlockSection[] | undefined) => (world ? 'guide and world sections' : 'guide sections');
 
@@ -147,13 +150,14 @@ const groundsOf = (world: readonly WorldBlockSection[] | undefined) => (world ? 
  * The one user message of a help request: the docs sections, the world sections when the request reads a world,
  * then the question, then the grounding line.
  */
-export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[]): string {
+export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[], story?: string): string {
   const guide = sections
     .map((section) => `<section page="${pageLabel(section.page)}">\n${section.markdown}\n</section>`)
     .join('\n\n');
   return [
     `<guide>\n${guide}\n</guide>`,
     ...worldBlock(world),
+    ...storyBlock(story),
     ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
     `Answer the question from the ${groundsOf(world)} above.`,
@@ -164,10 +168,11 @@ export function helpUserMessage(question: string, sections: readonly DocSection[
  * The one user message of a lookup request: the sections the search found when it found one, then the
  * world sections when the request reads a world, then the question and the grounding line.
  */
-export function helpLookupUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[]): string {
+export function helpLookupUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[], story?: string): string {
   return [
     ...(sections.length > 0 ? [`<guide>\n${sections.map(sectionBlock).join('\n\n')}\n</guide>`] : []),
     ...worldBlock(world),
+    ...storyBlock(story),
     ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
     `Read the guide sections the question needs with ${DOCS_LOOKUP.name}, then answer the question from the ${groundsOf(world)}.`,

@@ -198,6 +198,15 @@ describe('playerViewState', () => {
     expect(books?.dictionaries).toEqual([{ id: 'lore', name: 'Lore', entries: [] }]);
     expect(books?.libraryDictionaries).toEqual([{ id: 'lib', name: 'Lore', entries: [] }]);
   });
+
+  it("lists in each book only the entries the question fired", () => {
+    const pact = { id: 'l1', name: 'Pact', key: ['pact'], value: 'The pact binds the heir.' };
+    const heir = { id: 'l2', name: 'Heir', key: ['heir'], value: 'The heir hides in the vault.' };
+    const book = { id: 'lore', name: 'Lore', entries: [pact, heir] };
+    const placeholders = { placeholders: [], rolls: {}, dictionaries: [book], libraryDictionaries: [] };
+    const books = playerViewState({ ...state, placeholders } as SandboxState, reach(), new Set(['l1'])).placeholders;
+    expect(books?.dictionaries).toEqual([{ id: 'lore', name: 'Lore', entries: [pact] }]);
+  });
 });
 
 describe('playerViewWorld', () => {
