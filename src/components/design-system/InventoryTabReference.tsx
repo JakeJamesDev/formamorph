@@ -26,6 +26,7 @@ const START: ItemCopy[] = [
   { id: 't', item: { kind: 'item', itemId: 'tonic' }, where: you, quantity: 5, visibility: 'visible' },
   { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { charges: 2 } },
   { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible' },
+  { id: 'l', item: { kind: 'item', itemId: 'tonic' }, where: { kind: 'location', id: 'sample-room' }, quantity: 2, visibility: 'visible' },
 ];
 const PRESENT = [{ id: 'courier', name: 'Courier' }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
@@ -46,7 +47,7 @@ const Strip = ({ width }: { width: number }) => (
 );
 
 /** The game panel's Inventory tab on sample Item Copies. Its buttons run the real Inventory module on local
- *  state, and Drop leaves Item Copies at a sample location the tab doesn't list. */
+ *  state, and Drop leaves Item Copies in the Here section. */
 export function InventoryTabReference() {
   const [copies, setCopies] = useState(START);
   const [busy, setBusy] = useState(false);
@@ -59,7 +60,7 @@ export function InventoryTabReference() {
       <CardHeader>
         <CardTitle>Inventory Tab</CardTitle>
         <CardDescription>
-          Equip, Unequip, Drop and Give act at once. Drop and Give on a stack ask how many. The Ash Wand is Bound.
+          Equip, Unequip, Drop and Give act at once. Drop and Give on a stack ask how many. The Ash Wand is Bound. Here lists the visible items lying at the location.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-start gap-6">
@@ -71,6 +72,7 @@ export function InventoryTabReference() {
           <InventoryTab
             ownerName="Kate"
             copies={copies.filter((c) => c.where.kind === 'you')}
+            lying={copies.filter((c) => c.where.kind === 'location')}
             items={ITEMS}
             slots={SLOTS}
             present={PRESENT}

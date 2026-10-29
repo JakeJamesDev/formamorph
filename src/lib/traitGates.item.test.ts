@@ -3,6 +3,7 @@ import type { Entity, ItemCopy, ItemRequirement, PersonaRef, Trait, TraitRequire
 import { gateOf, gateStates, requirementOptions, sameRequirement, settle, type GateInput, type GateStatSet } from './traitGates';
 import { buildEntityCardData, parseEntityCardData } from './entityFile';
 import { itemRuleStates } from './imageVisibility';
+import { gateLine } from './traitGateLine';
 import { itemHostStatSections } from './requirementStatOptions';
 import { bindOwnedTraits, portableOwnedTraits, traitWorldOf } from './portableTraits';
 import { scoped, type OwnerId } from './scope';
@@ -92,6 +93,15 @@ describe('item Conditions', () => {
     expect(state?.rows[0].conditions[0]).toMatchObject({ text: 'Ash: equipping Cursed Ring', unresolved: false, holds: false });
     expect(sameRequirement(ring('owned'), ring('equipped'))).toBe(false);
     expect(sameRequirement(ring('owned'), ring('owned'))).toBe(true);
+  });
+
+  it("keeps a hidden Item Copy's item out of the player's gate line while the Condition still holds (Q63, Q115)", () => {
+    const line = (copies: ItemCopy[]) => gateLine(gateOf(gateStates(input([gated(ring())], copies)), null, 'Curse'));
+    const hiddenOnly = [copy('a', { kind: 'you' }, { visibility: 'hidden' })];
+    expect(unlocked(ring(), hiddenOnly)).toBe(true);
+    expect(line(hiddenOnly)).toBeNull();
+    expect(line([copy('a', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
+    expect(line([copy('a', { kind: 'you' }, { visibility: 'hidden' }), copy('b', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
   });
 
   it('offers each item as owned, and as equipped when it fits a slot', () => {

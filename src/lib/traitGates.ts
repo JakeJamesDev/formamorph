@@ -272,12 +272,12 @@ function index(input: GateInput) {
   /** Whether an item Condition on `from` holds before Not: its owner has a copy of the item, equipped when the
    *  status says so. An owner-less one on global scope reads the persona (Q88); a played entity reads the
    *  copies of `you` (Q54, Q90). */
-  const itemHeld = (req: ItemRequirement, from: GateScopeTree): boolean => {
+  const itemHeld = (req: ItemRequirement, from: GateScopeTree, visibleOnly = false): boolean => {
     const owner: RequirementOwner = req.owner ?? (from.id === null ? { kind: 'you' } : { kind: 'entity', id: from.id });
     const ids = owner.kind === 'you' ? played : [owner.id];
     const you = owner.kind === 'you' || ids.some((id) => played.includes(id));
     return (input.itemCopies ?? []).some((copy) => copy.item.kind === 'item' && copy.item.itemId === req.id && copy.quantity > 0
-      && (req.status === 'owned' || !!copy.equipped)
+      && (!visibleOnly || copy.visibility === 'visible') && (req.status === 'owned' || !!copy.equipped)
       && (copy.where.kind === 'you' ? you : copy.where.kind === 'entity' && ids.includes(copy.where.id)));
   };
   const statNames = new Map<string, string>();
@@ -507,7 +507,10 @@ function rowStatesOf(rows: readonly TraitRequirementRow[], host: Located<{ id: s
       const named = requirementText(req, idx);
       const stat = req.kind === 'stat' ? idx.statOf(req, host.owner) : null;
       const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
-      const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id) : !!stat && (!!stat.hidden || !!stat.inert);
+      // An item held only as a hidden Item Copy stays out of the player's line (Q63, Q115).
+      const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id)
+        : req.kind === 'item' ? !req.not && idx.itemHeld(req, host.owner) && !idx.itemHeld(req, host.owner, true)
+          : !!stat && (!!stat.hidden || !!stat.inert);
       return { text: named.text, persona: named.persona, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx) };
     });
     return { holds: conditions.every((c) => c.holds), conditions };

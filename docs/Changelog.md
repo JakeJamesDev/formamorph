@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Inventory:**
     - **Requirement Rows can require an item.** Traits and image rules can check that an owner has an item, owned or equipped, with Not.
+    - **The Inventory tab lists items lying at your location, and the story can reveal hidden items.** Hidden items stay out of every panel. Entity dialogs list what the entity wears.
 - **🛠️ Developer tooling**
   - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
 

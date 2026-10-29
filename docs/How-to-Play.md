@@ -258,7 +258,7 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 <!-- route: gameViewer.inventory -->
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
-2. **Equipped** lists each slot with what you wear there. **Carried** lists the rest.
+2. **Equipped** lists each slot with what you wear there. **Carried** lists the rest. **Here** lists the items lying at your location.
 3. Use the buttons on an item's row:
 
 | Button | What it does |
@@ -268,7 +268,7 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 | **Drop** | Leaves the item here, at your location. |
 | **Give** | Hands the item to someone here. |
 
-Changes apply at once. The next turn's narration sees them. On a stack, **Drop** and **Give** ask how many. Type a number or select **All**.
+Items with art show a small image on their row. **Here** shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop** and **Give** ask how many. Type a number or select **All**.
 
 > [!NOTE]
 > The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but the story can still take it.
@@ -280,6 +280,8 @@ Changes apply at once. The next turn's narration sees them. On a stack, **Drop**
 Select a name in the **Entities** tab to open it. The first select shows that entity's Avatar, 3D model or image in the entity view.
 
 The dialog shows the entity's image or 3D model, its player-facing description, and its sound. An entity the story invented also has **Edit** and **Regenerate** for its description. **Regenerate** shows a **New Description** to **Keep** or **Discard**.
+
+An **Equipped** list shows what the entity wears, when you can see it. What the entity carries stays private.
 
 An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doesn't open.
 

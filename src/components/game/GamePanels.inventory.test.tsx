@@ -128,10 +128,14 @@ describe('RightPanel — Inventory tab', () => {
     expect(h.gameplay().itemCopies).toEqual([copy('c', 'coin', { quantity: 2 })]);
   });
 
-  it('counts a hidden equipped item in its slot fill', async () => {
-    renderRightPanel({}, stage([copy('x', 'dagger', { visibility: 'hidden', equipped: { slotId: 'hand', order: 1 } }), copy('c', 'coin')]));
+  it('leaves a hidden equipped item out of its slot display and count (Q112)', async () => {
+    renderRightPanel({}, stage([
+      copy('x', 'dagger', { visibility: 'hidden', equipped: { slotId: 'hand', order: 1 } }),
+      copy('y', 'dagger', { equipped: { slotId: 'hand', order: 2 } }),
+    ]));
     const hand = within(await screen.findByRole('region', { name: 'Your inventory' })).getByRole('listitem', { name: 'Hand' });
     expect(within(hand).getByText('1 of 2')).toBeInTheDocument();
+    expect(within(hand).getAllByText('Dagger')).toHaveLength(1);
   });
 
   it('turns every button off on a past page', async () => {
