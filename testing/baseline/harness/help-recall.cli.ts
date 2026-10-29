@@ -19,6 +19,8 @@
 //   howto-old with `--ai`: shipped, where the open page's how-tos join every question, as before ticket 49
 //   semantic-on with `--ai`: shipped, with Semantic Search on over section vectors embedded fresh in Node
 //   search-old with `--ai`: shipped, with exact keywords, as before guide-open-and-search ticket 01
+//   world-open with `--ai`: shipped, with a bundled world open in the World Editor (`--world`, default emberwatch),
+//             so a world pick request runs beside the guide's; scores the guide pool only
 // The pick prompt, the pick list and the rank merge are the app's.
 //
 // `--screen` asks every task and follow-up over one open screen, as the app does; the "here" questions keep
@@ -34,9 +36,9 @@
 //   sent    a keyed section is in the block that fits the request's size budget
 //
 // Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old,howto-old,semantic-on,search-old] [--sets known,blind] [--text head|full|chunks]
-//          [--screen library|stats|game]
+//          [--screen library|stats|game] [--world emberwatch]
 //          [--ai] [--runs 5] [--parallel 4] [--endpoint URL] [--model default] [--token T] [--show]
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
@@ -48,6 +50,9 @@ import { askHelp, HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExch
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { mergeRanks, rankByVector } from '@/lib/formaquestion/rankMerge';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
+import { buildWorldIndex } from '@/lib/formaquestion/worldIndex';
+import { migrateWorld } from '@/lib/version';
+import type { World } from '@/types';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { exactDocsIndex, mean, noUsage, probeSnapshot, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
@@ -60,7 +65,7 @@ const argVal = (flag: string, fallback: string) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old'] as const;
+const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old', 'world-open'] as const;
 type Arm = (typeof ARMS)[number];
 /** The values of a comma list flag, each one of `allowed`. */
 function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
@@ -70,7 +75,7 @@ function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
   return values as T[];
 }
 /** The arms that run the help session's own search. */
-const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old'] as const satisfies readonly Arm[];
+const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old', 'world-open'] as const satisfies readonly Arm[];
 const isSessionArm = (arm: Arm): arm is (typeof SESSION_ARMS)[number] => (SESSION_ARMS as readonly Arm[]).includes(arm);
 const isAiArm = (arm: Arm) => arm.startsWith('ai') || isSessionArm(arm);
 // The arms that send requests run only with `--ai`.
@@ -102,6 +107,8 @@ const screen = screens.at(0);
 const index = bundledDocsIndex();
 const exactIndex = exactDocsIndex();
 const SEMANTIC_ON = helpSettingsOf({ sources: { semantic: true } });
+const worldId = argVal('--world', 'emberwatch');
+const WORLD_INDEX = arms.includes('world-open') ? buildWorldIndex(migrateWorld(JSON.parse(readFileSync(`src/defaultworlds/${worldId}.json`, 'utf8'))) as World) : undefined;
 const nodeSemantic = args.includes('--ai') && arms.includes('semantic-on') ? await nodeEmbedder(index) : null;
 const cases = [...loadKnownCases(), ...loadBlindCases()]
   .filter((c) => sets.includes(c.set))
@@ -372,6 +379,7 @@ if (arms.some(isAiArm)) {
         const search = await helpSearch({
           question: c.question, history, settings: arm === 'semantic-on' ? SEMANTIC_ON : DEFAULT_HELP_SETTINGS, snapshot: probeSnapshot(target),
           index: arm === 'search-old' ? exactIndex : index, hint, screenRule: arm !== 'keep-old', embedder: nodeSemantic?.embedder, fetchImpl,
+          world: arm === 'world-open' ? WORLD_INDEX : undefined,
         });
         found.set(`${arm}|${c.id}`, { search, ms: performance.now() - asked, usage });
       })), parallel);
@@ -417,7 +425,7 @@ const table = (head: string[], lines: string[][]) =>
 const ARM_LABELS: Record<Arm, string> = {
   keyword: 'Keyword', semantic: 'Semantic', hybrid: 'Hybrid', ai: 'AI picks', 'ai+keyword': 'AI picks + keyword', 'ai+keyword+semantic': 'AI picks + keyword + semantic',
   shipped: 'Shipped switches', 'pick-old': 'Pick with no earlier answer', 'keep-old': 'Every pick over the screen', 'howto-old': 'Page how-tos on every question',
-  'semantic-on': 'Shipped with Semantic Search', 'search-old': 'Shipped with exact keywords',
+  'semantic-on': 'Shipped with Semantic Search', 'search-old': 'Shipped with exact keywords', 'world-open': 'Shipped with a world open',
 };
 const KIND_LABELS: Record<RecallKind, string> = { task: 'Task', here: 'Here', followUp: 'Follow-up' };
 const ranArms = ARMS.filter((arm) => rows.some((r) => r.arm === arm));

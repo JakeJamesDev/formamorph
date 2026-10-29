@@ -22,11 +22,11 @@ import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './gene
 import { helpChipValues, renderHelpPrompt } from './helpChips';
 import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, scriptHomeLine, withCodeRider, withRiderLine, WORLD_SCRIPT_TAB } from './helpCodeRider';
 import { createFaceCall } from './helpFace';
-import { requestPicks } from './helpPicks';
+import { requestPicks, requestWorldPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
 import { activeHelpOptions, activeHelpPreset, activeHelpPrompts, isHelpPromptEdited } from './helpPresets';
 import { helpRoutes } from './helpRoutes';
-import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
+import { semanticRanking, worldSemanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
 import { activeMascotRig } from './mascotPresets';
@@ -35,13 +35,14 @@ import {
   emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection, traceSource,
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
 } from './helpTrace';
-import { isWorldSource, type AnswerSource } from './helpWorldSource';
+import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from './helpWorldSource';
+import { worldIndexOf, type WorldIndex } from './worldIndex';
 import type { HelpFocus } from './helpFocus';
 import type { CodeTestOwner } from './helpCodeTestRun';
 import type { OpenWorld } from './helpWorld';
 import { mergeRanks } from './rankMerge';
 import { focusWords, openFocus, surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
-import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
+import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage, type WorldBlockSection } from './helpPrompt';
 
 /** The fewest sections of each source's ranking the merge reads; a search that asks for more gets more. */
 const HELP_MERGE_DEPTH = 50;
@@ -60,6 +61,12 @@ export const HELP_SCORE_FLOOR = 0.2;
 
 /** The most characters of docs section text the lookup calls of one question return together, in addition to the prompt's. */
 export const HELP_LOOKUP_CHAR_BUDGET = 12_000;
+
+/** The most world sections one help request holds, apart from the docs sections. */
+export const HELP_WORLD_SECTION_LIMIT = 5;
+
+/** The most characters of world section text one help request holds, apart from the docs budget. */
+export const HELP_WORLD_CHAR_BUDGET = 12_000;
 
 /** An earlier question of the conversation and the answer text it got. */
 export interface EarlierExchange {
@@ -274,10 +281,12 @@ const POINTS_AT_SCREEN = /\b(?:here|this|these)\b/i;
  * page's best how-to sections next, so a "here" question reaches them; any other question keeps those slots for its own hits. Any
  * other hit under the score floor of its own search stays out.
  */
-export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead, pinned = [], howToRule = true }: {
+export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, limit = HELP_SECTION_LIMIT, lead, pinned = [], howToRule = true }: {
   /** The exchanges the request carries. The newest with answer text is the one a follow-up continues. */
   history?: readonly EarlierExchange[];
   budget?: number;
+  /** The most sections the block holds. */
+  limit?: number;
   lead?: DocSection;
   /** The sections every request of the turn sends after the lead, whatever the search finds. */
   pinned?: readonly DocSection[];
@@ -286,8 +295,8 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   const previous = answered(history).at(-1);
   const options = { onSurface: lead !== undefined, floor: HELP_SCORE_FLOOR };
   const hits = previous
-    ? [...index.search(question, 1, favoredSection(previous), options), ...index.search(followUpQuery(previous, question), HELP_SECTION_LIMIT, undefined, options)]
-    : index.search(question, HELP_SECTION_LIMIT, undefined, options);
+    ? [...index.search(question, 1, favoredSection(previous), options), ...index.search(followUpQuery(previous, question), limit, undefined, options)]
+    : index.search(question, limit, undefined, options);
   const addsPageHowTos = lead && (!howToRule || POINTS_AT_SCREEN.test(question));
   // The open page's how-tos skip the floor: a "here" question's key often scores far below its top hit.
   const onPage = addsPageHowTos ? index.search(question, Infinity, undefined, { onSurface: true }).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
@@ -296,7 +305,7 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   for (const section of [...(lead ? [lead] : []), ...pinned]) if (!kept.some((held) => held.id === section.id)) kept.push(section);
   let size = kept.reduce((sum, section) => sum + section.markdown.length, 0);
   for (const hit of ordered) {
-    if (kept.length === HELP_SECTION_LIMIT) break;
+    if (kept.length === limit) break;
     if (kept.some((section) => section.id === hit.id)) continue;
     if (kept.length > 0 && size + hit.markdown.length > budget) break;
     kept.push(hit);
@@ -318,6 +327,10 @@ export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'his
   hint?: SurfaceHint | null;
   /** Gets each source's ranking of each query, and the pick request, for the trace. */
   record?: HelpSearchRecord;
+  /** The open world's index: the second pool, ranked by the same sources. */
+  world?: WorldIndex;
+  /** Gets each source's ranking of the world pool. */
+  worldRecord?: HelpSearchRecord;
 }
 
 /**
@@ -334,22 +347,12 @@ function screenPicks(question: string, picks: DocSection[], lead: DocSection | u
  * screen rule empties, or a semantic source with no model on the device. The keyword search alone is the
  * index's own search, with its score floor.
  */
-export async function helpSearch({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, semanticFloor = HELP_SEMANTIC_FLOOR, signal, fetchImpl, record }: HelpSearchQuestion): Promise<DocsIndex> {
-  const on = settings.sources;
-  // The embedder takes no stop signal, so Stop ends the wait for it here.
-  const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
-  const previous = keptHistory(history, settings.historyLength).at(-1);
-  const prompts = activeHelpPrompts(settings.presets);
-  const prompt = renderHelpPrompt(prompts.pick, helpChipValues('pick', settings));
-  const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Search', spec, isHelpPromptEdited(prompts, 'pick'), result); });
-  const pickSnapshot = helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING);
-  const [allPicks, semantic] = await Promise.all([
-    on.aiPicks
-      ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, pickSnapshot, activeHelpOptions(settings.presets).pick, { signal, fetchImpl, observe }).catch(() => [])
-      : [],
-    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), { embedder, floor: semanticFloor }), stopped]) : null,
-  ]);
-  const picks = screenRule ? screenPicks(question, allPicks, hint?.section) : allPicks;
+export async function helpSearch(ask: HelpSearchQuestion): Promise<DocsIndex> {
+  return (await helpSearches(ask)).guide;
+}
+
+/** The search of one pool from the rankings its sources gave. The keyword search alone is the index's own. */
+function poolSearch(index: DocsIndex, on: HelpSettings['sources'], picks: readonly DocSection[], semantic: SectionRanking | null, record: HelpSearchRecord | undefined): DocsIndex {
   const picked: SectionRanking = (_query, limit) => picks.slice(0, limit);
   const sources: NamedRanking[] = [
     ...(on.keyword ? [{ source: 'keyword' as const, ranking: keywordRanking(index) }] : []),
@@ -358,6 +361,37 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   ];
   if (on.keyword && sources.length === 1) return record ? recordedKeyword(index, record) : index;
   return mergedSearch(index, sources, record);
+}
+
+/**
+ * The searches of one question: the guide's, and the world's when a world index is given. Each pool gets its
+ * own pick request, sent in parallel, so the guide's request is the same with or without a world.
+ */
+export async function helpSearches({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, semanticFloor = HELP_SEMANTIC_FLOOR, signal, fetchImpl, record, world, worldRecord }: HelpSearchQuestion): Promise<{ guide: DocsIndex; world?: DocsIndex }> {
+  const on = settings.sources;
+  // The embedder takes no stop signal, so Stop ends the wait for it here.
+  const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
+  const previous = keptHistory(history, settings.historyLength).at(-1);
+  const prompts = activeHelpPrompts(settings.presets);
+  const prompt = renderHelpPrompt(prompts.pick, helpChipValues('pick', settings));
+  const edited = isHelpPromptEdited(prompts, 'pick');
+  const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Search', spec, edited, result); });
+  const observeWorld = worldRecord && ((spec: AiRequestSpec, result?: AiStreamResult) => { worldRecord.pick = requestTrace('AI World Search', spec, edited, result); });
+  const pickSnapshot = helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING);
+  const pickAsk = { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where };
+  const sampling = activeHelpOptions(settings.presets).pick;
+  const queries = helpQueries(question, previous);
+  const [guidePicks, worldPicks, semantic, worldSemantic] = await Promise.all([
+    on.aiPicks ? requestPicks(index, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe }).catch(() => []) : [],
+    on.aiPicks && world ? requestWorldPicks(world.pickList(), pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe: observeWorld }).catch(() => []) : [],
+    on.semantic ? Promise.race([semanticRanking(index, queries, { embedder, floor: semanticFloor }), stopped]) : null,
+    on.semantic && world ? Promise.race([worldSemanticRanking(world, queries, { embedder, floor: semanticFloor }), stopped]) : null,
+  ]);
+  const picks = screenRule ? screenPicks(question, guidePicks, hint?.section) : guidePicks;
+  return {
+    guide: poolSearch(index, on, picks, semantic, record),
+    ...(world && { world: poolSearch(world.docs, on, worldPicks, worldSemantic, worldRecord) }),
+  };
 }
 
 /** The least similarity a section needs to join a question's search by meaning; weaker hits pull answers off topic. */
@@ -400,6 +434,26 @@ function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, o
   if (!quickReference) return { lead: hint?.section, pinned: [], where: hint?.where };
   if (hint && onCodeTab) return { lead: hint.section, pinned: [quickReference], where: hint.where };
   return { lead: quickReference, pinned: [] };
+}
+
+/** The World Index a question reads: the editor's live world while Read the World is on. A game world adds none. */
+function editorWorldIndex(world: OpenWorld | undefined, settings: HelpSettings): WorldIndex | undefined {
+  return settings.readWorld && world?.lean === 'editor' && world.world ? worldIndexOf(world.world()) : undefined;
+}
+
+/** The items the world block holds, once each, in block order. */
+function worldSourcesOf(index: WorldIndex, sections: readonly DocSection[]): WorldSource[] {
+  const items = new Map<string, WorldSource>();
+  for (const section of sections) {
+    const source = index.sourceOf(section);
+    if (source && !items.has(sourceKey(source))) items.set(sourceKey(source), source);
+  }
+  return [...items.values()];
+}
+
+/** The world search as the trace lists it: each ranked section as its item. */
+function worldSearchTraceOf(index: WorldIndex, record: HelpSearchRecord, sent: readonly DocSection[]) {
+  return searchTraceOf(record, sent, (section) => index.sourceOf(section) ?? traceSection(section));
 }
 
 /**
@@ -447,15 +501,27 @@ export async function* askHelp({
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !lead && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
+  const worldIndex = record ? editorWorldIndex(world, settings) : undefined;
+  const worldRecord = worldIndex && record ? emptySearchRecord(record.on) : undefined;
   // The keyword search is instant. The pick request and the semantic ranking take time, and picks take the name.
   if (record && settings.sources.aiPicks) yield { type: 'stage', stage: 'picking' };
   else if (record && settings.sources.semantic) yield { type: 'stage', stage: 'searching' };
-  const search = record ? await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record }) : index;
+  const searches = record
+    ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record, world: worldIndex, worldRecord })
+    : { guide: index };
+  const search = searches.guide;
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead, stopped: true, flagged: false, nearest: [], reasoning: '' };
     return;
   }
   const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead, pinned, howToRule });
+  // The world pool fills its own budget, so a full world block never pushes out a guide section.
+  const worldInPrompt = searches.world ? helpSections(searches.world, question, { history: kept, budget: HELP_WORLD_CHAR_BUDGET, limit: HELP_WORLD_SECTION_LIMIT }) : [];
+  const worldBlock: WorldBlockSection[] | undefined = worldIndex && worldInPrompt.flatMap((section) => {
+    const source = worldIndex.sourceOf(section);
+    return source ? [{ kind: source.worldKind, markdown: section.markdown }] : [];
+  });
+  const worldSources = worldIndex ? worldSourcesOf(worldIndex, worldInPrompt) : [];
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
@@ -463,12 +529,14 @@ export async function* askHelp({
   const prompts = activeHelpPrompts(settings.presets);
   const turnMessage = bare
     ? question
-    : lookup ? helpLookupUserMessage(question, inPrompt, where) : helpUserMessage(question, inPrompt, where);
+    : lookup ? helpLookupUserMessage(question, inPrompt, where, worldBlock) : helpUserMessage(question, inPrompt, where, worldBlock);
   // The home line and the test-first line are the app's, so they ride a cleared rider too. The test line goes last.
   const home = scriptHomeLine(openSurface);
   const riderWithHome = home ? withRiderLine(prompts.code, home) : prompts.code;
   const rider = codeTest ? withRiderLine(riderWithHome, CODE_TEST_RIDER_LINE) : riderWithHome;
-  const userMessage = codeTurn ? withCodeRider(turnMessage, rider) : turnMessage;
+  const withCode = codeTurn ? withCodeRider(turnMessage, rider) : turnMessage;
+  // The world rules ride last, after the code rider, the same way.
+  const userMessage = worldIndex ? withCodeRider(withCode, prompts.worldEditor) : withCode;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
   // own executors; the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
@@ -498,7 +566,8 @@ export async function* askHelp({
   });
   // The trace so far. Each yield builds it anew, so a viewer that keeps an earlier one sees no later change.
   const rounds: AiToolRound[] = [];
-  const customPrompt = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer') || (codeTurn && isHelpPromptEdited(prompts, 'code'));
+  const customPrompt = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer') || (codeTurn && isHelpPromptEdited(prompts, 'code'))
+    || (worldIndex !== undefined && isHelpPromptEdited(prompts, 'worldEditor'));
   const traceOf = (result?: AiStreamResult): HelpTrace => ({
     surface: surface ? surfaceWords(surface) : null,
     focus: shownFocus ? focusWords(shownFocus) : null,
@@ -506,8 +575,9 @@ export async function* askHelp({
     ...(lead && { lead: traceSection(lead) }),
     preset: activeHelpPreset(settings.presets).name,
     search: record && searchTraceOf(record, inPrompt),
-    sent: inPrompt.map(traceSource),
-    requests: [...(record?.pick ? [record.pick] : []), requestTrace('Answer', spec, customPrompt, result, rounds)],
+    ...(worldIndex && worldRecord && { worldSearch: worldSearchTraceOf(worldIndex, worldRecord, worldInPrompt) }),
+    sent: [...inPrompt.map(traceSource), ...worldSources],
+    requests: [...(record?.pick ? [record.pick] : []), ...(worldRecord?.pick ? [worldRecord.pick] : []), requestTrace('Answer', spec, customPrompt, result, rounds)],
   });
   yield { type: 'trace', trace: traceOf() };
   yield { type: 'stage', stage: 'waiting' };
@@ -545,7 +615,7 @@ export async function* askHelp({
     } else if (event.type === 'done') {
       native = event.result.reasoningText;
       content = event.result.content;
-      const sources = [...(lookup?.fetched() ?? []), ...inPrompt];
+      const sources: AnswerSource[] = [...(lookup?.fetched() ?? []), ...inPrompt, ...worldSources];
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
       // A Stop can land while a start of the marker is held back; that start stays hidden.
       const answer = readMarker(stripReasoningLive(event.result.content), { final: !stopped });

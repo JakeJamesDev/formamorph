@@ -87,5 +87,5 @@ export const emptyCodeWorld = (): StatCodeWorld => ({
   stats: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [],
 });
 
-/** An open world: `snapshot` for the Tools, `authored` for the code test. */
-export const openWorld = (snapshot: ToolSnapshotSource = emptyToolSnapshot, authored: StatCodeWorldSource = emptyCodeWorld): OpenWorld => ({ snapshot, authored });
+/** An open world: `snapshot` for the Tools, `authored` for the code test. It sends no world block. */
+export const openWorld = (snapshot: ToolSnapshotSource = emptyToolSnapshot, authored: StatCodeWorldSource = emptyCodeWorld): OpenWorld => ({ lean: 'game', snapshot, authored });

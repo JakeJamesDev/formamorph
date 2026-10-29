@@ -6,7 +6,7 @@
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import type { HelpSources } from './helpSettings';
-import { isWorldSource, type AnswerSource, type WorldSource } from './helpWorldSource';
+import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from './helpWorldSource';
 
 /** A search source of a help question. */
 export type HelpSource = keyof HelpSources;
@@ -23,7 +23,8 @@ export type HelpTraceSource = HelpTraceSection | WorldSource;
 /** The sections one source ranked for one query, best first, cut to the trace depth. */
 export interface HelpSourceTrace {
   source: HelpSource;
-  sections: HelpTraceSection[];
+  /** Docs sections, or world items in the world search. */
+  sections: HelpTraceSource[];
 }
 
 /** One query the search ran: each source's ranking, then the merged order. */
@@ -32,7 +33,7 @@ export interface HelpQueryTrace {
   /** One row per source that was on. A failed pick, or a semantic source with no model, has no sections. */
   sources: HelpSourceTrace[];
   /** The merged order, cut to the trace depth; every section that reached the model stays in. */
-  merged: HelpTraceSection[];
+  merged: HelpTraceSource[];
 }
 
 /** The sampler values one request carried, in the settings' names. Absent where the body sent none. */
@@ -83,6 +84,8 @@ export interface HelpTrace {
   preset: string;
   /** Null for a bare question, which runs no search. */
   search: HelpSearchTrace | null;
+  /** The search of the open world's pool, when the question read a world. */
+  worldSearch?: HelpSearchTrace;
   /** The sources that reached the model in the prompt, in order. */
   sent: HelpTraceSource[];
   /** The AI Search request, when it ran, then the answer request. */
@@ -109,21 +112,33 @@ export function recordQuery(record: HelpSearchRecord, query: HelpSearchRecord['q
   if (!record.queries.some((known) => known.query === query.query)) record.queries.push(query);
 }
 
-/** A ranking cut to the trace depth, with every section that reached the model kept past the cut. */
-function cutToDepth(sections: readonly DocSection[], sent: ReadonlySet<string>): HelpTraceSection[] {
-  return sections.filter((section, at) => at < HELP_TRACE_DEPTH || sent.has(section.id)).map(traceSection);
+/**
+ * A ranking cut to the trace depth, with every section that reached the model kept past the cut. Sections that
+ * read as one trace row, such as the parts of one world item, show once.
+ */
+function cutToDepth(sections: readonly DocSection[], sent: ReadonlySet<string>, view: (section: DocSection) => HelpTraceSource): HelpTraceSource[] {
+  const rows = new Map<string, HelpTraceSource>();
+  sections.forEach((section, at) => {
+    if (at >= HELP_TRACE_DEPTH && !sent.has(section.id)) return;
+    const row = view(section);
+    if (!rows.has(sourceKey(row))) rows.set(sourceKey(row), row);
+  });
+  return [...rows.values()];
 }
 
-/** The search trace of a question: the record cut to the trace depth, with the sent sections kept. */
-export function searchTraceOf(record: HelpSearchRecord, sent: readonly DocSection[]): HelpSearchTrace {
+/**
+ * The search trace of a question: the record cut to the trace depth, with the sent sections kept. `view` names
+ * each section as the trace lists it; the world search lists its items.
+ */
+export function searchTraceOf(record: HelpSearchRecord, sent: readonly DocSection[], view: (section: DocSection) => HelpTraceSource = traceSection): HelpSearchTrace {
   const sentIds = new Set(sent.map((section) => section.id));
   return {
     on: record.on,
     pick: record.pick,
     queries: record.queries.map(({ query, sources, merged }) => ({
       query,
-      sources: sources.map(({ source, sections }) => ({ source, sections: cutToDepth(sections, sentIds) })),
-      merged: cutToDepth(merged, sentIds),
+      sources: sources.map(({ source, sections }) => ({ source, sections: cutToDepth(sections, sentIds, view) })),
+      merged: cutToDepth(merged, sentIds, view),
     })),
   };
 }

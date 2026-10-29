@@ -36,6 +36,19 @@ Your AI writes the answer from the guide sections that match your question. To e
 
 The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear Conversation** in the title bar's **⋮** menu.
 
+## How to Ask About Your World
+<!-- keywords: my world, explain my world, why does my tool not fire, my script, my stat code, my entity, lorebook entry, world prompt, unsaved edits, world sources, read the world -->
+<!-- route: formaquestion.ask#question-field -->
+
+1. Open a world in the World Editor.
+2. Open Formaquestion and ask about a part of your world, such as "What does my Dawn Bell script do?".
+3. To open a part that the answer used, select its name under **Sources**.
+
+In the World Editor, your AI gets the parts of your world that match your question, together with the guide sections. It can explain entities, locations, items, traits, stats and their code, scripts, World Tools, dictionary entries and the world prompts. It reads your edits before you save them. Placeholders show as you wrote them, not as a roll.
+
+- The world sections have a size limit of their own, so they never push a guide section out of the request.
+- To keep your world out of help requests, turn off **Read the World** in Formaquestion Settings → **General**. A question then sends the guide alone.
+
 ## How to Go to the Screen an Answer Describes
 <!-- keywords: take me there, jump, go there, open the screen, open the tab, navigate, link, shortcut, show me where, find the control, button under the answer, open settings from help, direct me, takes me to the dialog -->
 <!-- route: formaquestion.ask#question-field -->

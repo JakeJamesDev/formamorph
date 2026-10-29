@@ -4,6 +4,7 @@ import { DOCS_LOOKUP, sectionBlock } from './docsLookup';
 import { HELP_CHIP, renderHelpPrompt } from './helpChips';
 import { DEFAULT_CODE_RIDER } from './helpCodeRider';
 import { DEFAULT_WORLD_EDITOR_RULES, DEFAULT_WORLD_GAME_RULES } from './helpWorldRules';
+import type { WorldItemKind } from './helpWorldSource';
 
 /** The texts a help preset holds, as stored: chips in place. */
 export interface HelpPromptTexts {
@@ -127,28 +128,48 @@ export function screenLine(where: string): string {
   return `The player asks from this screen: ${where}. The words "here" and "this" in the question mean it. The first guide section explains it.`;
 }
 
-/** The one user message of a help request: the docs sections, then the question, then the grounding line. */
-export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string): string {
+/** A world section as the world block holds it: its item's kind and its text, heading included. */
+export interface WorldBlockSection {
+  kind: WorldItemKind;
+  markdown: string;
+}
+
+/** The world block, or none when the request reads no world. A search that missed still sends it empty. */
+function worldBlock(world: readonly WorldBlockSection[] | undefined): string[] {
+  if (!world) return [];
+  return [`<world>\n${world.map(({ kind, markdown }) => `<section kind="${kind}">\n${markdown}\n</section>`).join('\n\n')}\n</world>`];
+}
+
+/** Where an answer's facts come from: the guide, and the world when the request reads one. */
+const groundsOf = (world: readonly WorldBlockSection[] | undefined) => (world ? 'guide and world sections' : 'guide sections');
+
+/**
+ * The one user message of a help request: the docs sections, the world sections when the request reads a world,
+ * then the question, then the grounding line.
+ */
+export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[]): string {
   const guide = sections
     .map((section) => `<section page="${pageLabel(section.page)}">\n${section.markdown}\n</section>`)
     .join('\n\n');
   return [
     `<guide>\n${guide}\n</guide>`,
+    ...worldBlock(world),
     ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
-    'Answer the question from the guide sections above.',
+    `Answer the question from the ${groundsOf(world)} above.`,
   ].join('\n\n');
 }
 
 /**
  * The one user message of a lookup request: the sections the search found when it found one, then the
- * question and the grounding line.
+ * world sections when the request reads a world, then the question and the grounding line.
  */
-export function helpLookupUserMessage(question: string, sections: readonly DocSection[], where?: string): string {
+export function helpLookupUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[]): string {
   return [
     ...(sections.length > 0 ? [`<guide>\n${sections.map(sectionBlock).join('\n\n')}\n</guide>`] : []),
+    ...worldBlock(world),
     ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
-    `Read the guide sections the question needs with ${DOCS_LOOKUP.name}, then answer the question from the guide sections.`,
+    `Read the guide sections the question needs with ${DOCS_LOOKUP.name}, then answer the question from the ${groundsOf(world)}.`,
   ].join('\n\n');
 }

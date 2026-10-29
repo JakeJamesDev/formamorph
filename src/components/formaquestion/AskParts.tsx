@@ -21,6 +21,8 @@ import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { helpRevealSpec, helpRevealTiming } from '@/lib/formaquestion/helpReveal';
 import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from '@/lib/formaquestion/helpWorldSource';
+import { useHelpWorld } from '@/lib/formaquestion/helpWorld';
+import { WORLD_KIND_NAMES } from '@/lib/formaquestion/worldIndex';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
@@ -134,9 +136,23 @@ function AskTheCommunity({ question }: { question: string }) {
   );
 }
 
-/** A world source under an answer: its name alone, with no link (Q17). */
+/** A world source under an answer: a link to its item while the open world opens items, else its name alone (Q17). */
 function WorldSourceName({ source }: { source: WorldSource }) {
-  return <span className="inline-flex max-w-full items-center overflow-hidden rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-foreground"><span className="min-w-0 truncate">{source.name}</span></span>;
+  const open = useHelpWorld()?.open;
+  if (!open) return <span className="inline-flex max-w-full items-center overflow-hidden rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-foreground"><span className="min-w-0 truncate">{source.name}</span></span>;
+  return (
+    <Tip tip={`${WORLD_KIND_NAMES[source.worldKind]} › ${source.name}`} labelsChild={false}>
+      <button
+        type="button"
+        onClick={() => open(source)}
+        className={cn('inline-flex max-w-full items-center gap-1 overflow-hidden rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-accent-foreground', FOCUS_RING)}
+      >
+        <span className="min-w-0 shrink truncate">{WORLD_KIND_NAMES[source.worldKind]}</span>
+        <ChevronRight aria-hidden className="h-3 w-3 shrink-0" />
+        <span className="min-w-0 shrink truncate text-foreground">{source.name}</span>
+      </button>
+    </Tip>
+  );
 }
 
 /** The source links of an answer, wrapped. */

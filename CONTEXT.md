@@ -53,8 +53,12 @@ Starter code with slots that a script box's **Templates** menu fills in and inse
 _Avoid_: snippet, preset, recipe, example
 
 **Formaquestion**:
-The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts on the open world's authored data (ADR-0011).
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs, the current Surface, and world text from the open world while Read the World is on: in the World Editor, the sections of the World Index that match the question, unsaved edits included, in a world block with a budget of its own. A Formaquestion Tool the player turns on and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts, read the open world too (ADR-0011).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
+
+**World Index**:
+The open world's authored parts as sections in the Docs Index shape, one page per item: entities, locations, items, traits, stats with their code, world scripts, World Tools, dictionary entries and the world prompts. Placeholders read as their authored chips. Formaquestion ranks it with the same sources as the guide, as a second pool. Built from the World Editor's live world, and rebuilt when a slice changes.
+_Avoid_: world search index, lore index
 
 **Player View**:
 What the player has met in one playthrough, in player text only: met and discovered entities (an unrevealed one under its scene alias alone), the current location and every location a turn recorded, the items the player held or saw visible where they stood, the visible stats and the player's own active traits. It holds no AI description, AI summary, diary, script memory line or hidden content. It reads the current snapshot and the snapshots before it, so an undo moves it back. The in-game world that Formaquestion reads (ADR-0014).
