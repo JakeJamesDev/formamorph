@@ -571,11 +571,11 @@ function useProvideGameplay() {
   ) => {
     const locationIds = locations.map((l) => l.id);
     const orphanIds = new Set<string>();
-    /** The state without Item Copies whose item, owner entity or location the world no longer has, and its
+    /** The state without Item Copies whose item, owner entity or location the playthrough no longer holds, and its
      *  item effects settled, the dropped ones reversed (Q60). */
     const withoutOrphans = (state: GameState, persona?: PersonaRef): GameState => {
       if (!items || !worldEntities || (!state.itemCopies?.length && !state.itemEffects?.applied && !state.itemEffects?.timed)) return state;
-      const entityIds = new Set([...worldEntities.map((e) => e.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]);
+      const entityIds = heldEntityIds(worldEntities.map((e) => e.id), state, persona);
       const { copies, dropped } = withoutOrphanCopies(state.itemCopies ?? [], {
         itemIds: new Set(items.map((item) => item.id)), entityIds, locationIds: new Set(locationIds),
         runtimeItemIds: new Set((state.runtimeItems ?? []).map((r) => r.id)),
