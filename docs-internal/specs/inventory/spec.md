@@ -135,6 +135,20 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q109 | (ticket 04) While Equipped applies once per equipped Item Copy: two equipped rings apply twice. Q11's once-per-owner covers While Owned only |
 | Q110 | (ticket 04) A max raise on a value resting at its cap carries the value up, as trait max raises do. That carry goes on the value ledger and reverses exactly |
 | Q111 | (ticket 04) The orphan drop reverses While Equipped and While Owned value changes only. On First Obtain changes and their record stay |
+| Q112 | (ticket 07, user ruling) A hidden equipped Item Copy fills its slot unseen: the panel and its "n of m" count show visible Item Copies only, but it takes capacity, and swap-out can unequip it by equip order. That unequip logs "An item" and the copy stays hidden and carried |
+| Q113 | (ticket 07, user ruling) Inventory panel rows (slots, carried, Here) show a small item thumbnail picked through `itemRuleStates`, using the existing thumbnail token. Rows without an image show none |
+| Q114 | (ticket 07) Reveal addresses an Item Copy by id with an optional quantity; a partial reveal splits a row off. A revealed carried copy merges per Q94; a revealed equipped copy stays equipped. Reveal of an owned copy needs presence. The panel never sends it |
+| Q115 | (ticket 07) A locked trait's gate line reads an Item Condition matched only by hidden Item Copies as if no copy exists. It names the item only as the authored rule does |
+| Q116 | (ticket 07) An entity's visible equipped Item Copies show as an Equipped section on its existing overview tab, built from the 03 row parts. No new pattern |
+| Q117 | (ticket 05) A trait grant reaches the owner's own tree only: the played entity's for `you`, the entity's (owned or linked) otherwise. No global-scope traits, matching Q39 and Q107. A missing trait skips the row with a diagnostic. The picker lists each owner's traits under headings, deduped, with no world section |
+| Q118 | (ticket 05) The trait picker excludes both Always On and Hidden mode traits |
+| Q119 | (ticket 05) A granted trait's own gate still applies. While its gate fails it stays off, and it returns once the gate holds again while the grant holds. It never joins the cascade-off list |
+| Q120 | (ticket 05) The player cannot switch off a trait while a grant holds it. Grants neither retire exclusive siblings nor get retired by them |
+| Q121 | (ticket 05) An On First Obtain trait row is a permanent grant source in the First Obtain record. It ignores Pick Count and siblings and never reverses |
+| Q122 | (ticket 05) Q49's "own effects" means every While Owned and While Equipped effect, stat and trait, of the same item at that owner, across all its Item Copies. On First Obtain changes count as base |
+| Q123 | (ticket 05) One inventory settle (effects, grants, requirement re-check, trait gates, to a fixed point) runs wherever item effects settle today and in the turn commit after stat-pass deltas and stat code. 05 owns the turn-commit wiring |
+| Q124 | (ticket 05) The settle cap is 10 passes. Auto-unequip never re-equips, so a true cycle cannot form; the test drives a chain longer than an injected small cap |
+| Q125 | (ticket 05) Grant switches log like code switches with a source, "(by Cursed Ring)" or "(by An item)"; Hidden traits log nothing. When a Trait Switches scripts fire on grant changes. Auto-unequip and refused equips log their reason |
 
 ## User Stories
 
