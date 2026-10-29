@@ -111,6 +111,24 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q85 | (ticket 02) The orphan drop (Q60) runs on the current state and every history snapshot. Its diagnostic is one system log line per load with the count; no toast |
 | Q86 | (ticket 02) The seed stacks by item, owner and visibility. A non-stackable placement of quantity N makes N Item Copies of 1. A charged Item Copy starts full. Seeded Item Copies start unequipped |
 | Q87 | (ticket 02) 02 seeds without effects. 04 adds effect apply to the seed (Q59) and effect reversal to the orphan drop |
+| Q88 | (ticket 10) An owner-less Item Condition on a global trait or a location image rule reads the played Persona; on an entity-owned trait it reads that entity, as stat and trait Conditions do |
+| Q89 | (ticket 10) On an item rule host, an owner-less Condition of any kind never holds while the Item Copy lies at a location, under Not too, as an unresolved Condition does today |
+| Q90 | (ticket 10) An entity owner the Persona plays reads the `you` Item Copies, through the played-entity ids |
+| Q91 | (ticket 10) Owned means any Item Copy of the item at the owner with quantity above 0, carried or equipped, visible or hidden. Equipped means such a copy is equipped. Not flips the result. Runtime items never match. Reads go through `copiesAt` only |
+| Q92 | (ticket 03, user ruling) Drop and Give on a stack ask how many, defaulting to 1, with an All choice, using an existing number input |
+| Q93 | (ticket 03) The panel in 03 has slots and carried items with Equip, Unequip, Drop and Give. Use and timed effects are 06; the Here section and an entity's equipped items (story 81) are 07 |
+| Q94 | (ticket 03) A stackable Item Copy that lands beside a carried stack of the same item and visibility merges into it. Equipped Item Copies never merge |
+| Q95 | (ticket 03) Dropping or giving an equipped Item Copy unequips it first |
+| Q96 | (ticket 03) Swap-out unequips the items equipped longest, one at a time, until the new item's slot size fits |
+| Q97 | (ticket 03) Operations address Item Copies by id: gain names an item, quantity and target; lose names a copy and optional quantity; transfer names a copy and target. 09 adds the name form for the pass |
+| Q98 | (ticket 08) The inventory chip is `<INVENTORY>` with the shared Format axis only, no Scope or Content axes |
+| Q99 | (ticket 08) The chip is offered to every prompt through the context variables, like Entities. Built-in presets add it to narration only |
+| Q100 | (ticket 08) Built-in narration places it after the current-location entities block, headed "Items Here": the played owner first, labeled as the existing chips label the player, then present entities in roster order, then a "Lying here" group |
+| Q101 | (ticket 08) Narration reads presence from the chip scene, after the auto location pass. In Suggest mode the move lands after narration, so narration sees the pre-move location. That is Q62 for narration |
+| Q102 | (ticket 08) An equipped item with no AI Summary falls back to its AI Description, as Summary content does elsewhere |
+| Q103 | (ticket 08) 08 renders authored items only and skips runtime Item Copies. 09 adds runtime names to the chip |
+| Q104 | (ticket 08) The hidden-item contract lives in the built-in preset's pre-text as a positive statement, not in the renderer, so authors can reword it |
+| Q105 | (ticket 08) 08 records the Q19 probe numbers only. If the event line helps, the spec session adds it to ticket 09 |
 
 ## User Stories
 
