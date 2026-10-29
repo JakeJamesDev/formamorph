@@ -44,6 +44,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The built-in engine starts and finds your graphics card in the Linux desktop app.** Before, it failed with error 127 because its libraries were missing from the download.
+
 ---
 
 <details>

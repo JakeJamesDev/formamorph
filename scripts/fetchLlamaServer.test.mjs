@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -92,6 +92,25 @@ describe('fetchLlamaServer', () => {
     const offline = async (url) => { calls.push(url); throw new Error('network used'); };
     expect(await fetchLlamaServer({ tag: 'b1', platforms: ['mac'], dest, fetchImpl: offline })).toEqual([]);
     expect(calls).toEqual([]);
+  });
+
+  // Windows cannot create the fixture's symlink without Developer Mode; CI runs this on Linux.
+  it.skipIf(process.platform === 'win32')('keeps the library symlinks relative, so they resolve after the work dir is gone', async () => {
+    const dest = await tmp('llama-test-');
+    const src = await tmp('llama-src-');
+    await mkdir(path.join(src, 'llama-b1'));
+    await writeFile(path.join(src, 'llama-b1', 'libx.so.0.8.0'), 'library');
+    await symlink('libx.so.0.8.0', path.join(src, 'llama-b1', 'libx.so.0'));
+    spawnSync('tar', ['-czf', 'asset.tar.gz', 'llama-b1'], { cwd: src });
+    const bytes = await readFile(path.join(src, 'asset.tar.gz'));
+    const assets = BUILDS.filter((b) => b.platform === 'linux').map((b) => ({ name: b.asset('b1'), browser_download_url: `https://x/${b.id}` }));
+    const fetchImpl = async (url) => (url.includes('api.github.com') ? json(200, { assets }) : new Response(bytes));
+
+    expect(await fetchLlamaServer({ tag: 'b1', platforms: ['linux'], dest, fetchImpl })).toEqual(['linux-x64-vulkan', 'linux-x64-cpu']);
+    for (const id of ['linux-x64-vulkan', 'linux-x64-cpu']) {
+      expect(await readlink(path.join(dest, id, 'libx.so.0'))).toBe('libx.so.0.8.0');
+      expect(await readFile(path.join(dest, id, 'libx.so.0'), 'utf8')).toBe('library');
+    }
   });
 
   it('asks the release again when the folder holds another tag', async () => {
