@@ -7,6 +7,7 @@ import { GameDataProvider, useGameData } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
 import { worldFixture } from '@/test/gamePanels';
+import { timedKey } from '@/lib/inventory';
 import type { Entity, GameLocation, Item, ItemCopy, Placement, SaveRecord } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -172,6 +173,34 @@ describe('Item Copies in a save', () => {
     await load(live, 'discovered');
     expect(live().gameplay.itemCopies).toEqual([found]);
   });
+  it('keep a running timed trait on a played library persona, and drop one whose owner is gone (Q132)', async () => {
+    const live = mount();
+    await loadWorld(live);
+    const base = live().gameplay.saveCurrentGameState();
+    const tonic: Item = {
+      id: 'tonic', name: 'Haste Tonic', consumable: true, statEffects: [], equipRequires: [],
+      traitEffects: [{ id: 'grant', traitId: 'hasted', timing: 'consumed', duration: { kind: 'time', hours: 2 } }],
+    };
+    const running = (ownerId: string) => ({ row: 'trait', ownerId, itemId: 'tonic', rowId: 'grant', endsAt: 14 });
+    const state = {
+      ...base, fullMessageHistory: undefined,
+      itemEffects: { timed: { [timedKey('l-wren', 'tonic', 'grant')]: running('l-wren'), [timedKey('gone', 'tonic', 'grant')]: running('gone') } },
+    };
+    await putSaveRecord({
+      id: 'persona-timed', name: 'persona-timed', version: '3.0.1', currentState: state, stateHistory: [state],
+      persona: { source: 'library', entityId: 'l-wren' },
+    } as unknown as SaveRecord);
+
+    await act(async () => {
+      await live().gameplay.loadGame('persona-timed', [cellar], [], [bram], undefined, [lamp, tonic], () => () => []);
+    });
+    const kept = { timed: { [timedKey('l-wren', 'tonic', 'grant')]: running('l-wren') } };
+    expect(live().gameplay.itemEffects).toEqual(kept);
+    expect(live().gameplay.gameStates[0].itemEffects).toEqual(kept);
+    const lines = live().gameplay.logEntries.map((e) => e.text).filter((t) => t.startsWith('Removed'));
+    expect(lines).toEqual(['Removed 1 item whose item, owner or location no longer exists']);
+  });
+
   it("reverse a dropped Item Copy's effects, in the state and its history (Q60)", async () => {
     const live = mount();
     await loadWorld(live);
