@@ -5,6 +5,9 @@ import { createGuide } from '@/lib/formaquestion/guide';
 import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { devHelpTraceSample } from '@/lib/devHelpTraceSample';
 import type { WorldSource } from '@/lib/formaquestion/helpWorldSource';
+import { helpWorld } from '@/lib/formaquestion/helpWorld';
+import { openWorld } from '@/test/helpFixtures';
+import userEvent from '@testing-library/user-event';
 import { Answer } from './AskParts';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
 import type { HelpExchange } from './useHelpChat';
@@ -35,6 +38,19 @@ describe('a world source in an answer', () => {
     expect(within(sources).getByText('Mira')).toBeInTheDocument();
     expect(within(sources).queryByRole('button', { name: /Mira/ })).toBeNull();
     expect(within(sources).getByRole('button', { name: /How to Add a Trait/ })).toBeInTheDocument();
+  });
+
+  it('opens its item while the open world opens items', async () => {
+    const open = vi.fn();
+    const leave = helpWorld.register({ ...openWorld(), lean: 'editor', open });
+    try {
+      render(<Answer guide={guide} exchange={exchange()} settings={helpSettingsOf()} onSettingsChange={() => {}} onOpen={() => {}} onGo={() => {}} />);
+      const sources = screen.getByRole('group', { name: 'Sources' });
+      await userEvent.click(within(sources).getByRole('button', { name: /Mira/ }));
+      expect(open).toHaveBeenCalledWith(mira);
+    } finally {
+      leave();
+    }
   });
 
   it('is listed in AI Context with its kind and name', () => {

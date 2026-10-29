@@ -58,7 +58,7 @@ describe('the registry hooks', () => {
     const build = () => emptyToolSnapshot();
     const reader = renderHook(() => useHelpWorld());
     expect(reader.result.current).toBeUndefined();
-    const source = renderHook(() => useHelpWorldSource(build, emptyCodeWorld));
+    const source = renderHook(() => useHelpWorldSource(build, emptyCodeWorld, { lean: 'game' }));
     expect(readable(helpWorld.get()!.snapshot())).toEqual(readable(build()));
     expect(helpWorld.get()?.authored()).toEqual(emptyCodeWorld());
     expect(reader.result.current).toBe(helpWorld.get());
@@ -71,17 +71,19 @@ describe('the registry hooks', () => {
     const ids = () => helpWorld.get()?.snapshot().world.entities.map((entity) => entity.id);
     const statNames = () => helpWorld.get()?.authored().stats.map((stat) => stat.name);
     const gameWorld = (name: string) => () => ({ ...emptyCodeWorld(), stats: [{ id: name, name, type: 'number' as const, description: '', value: 0, min: 0, max: 100, regen: 0, descriptors: [] }] });
-    const game = renderHook(({ build, authored }) => useHelpWorldSource(build, authored), {
+    const game = renderHook(({ build, authored }) => useHelpWorldSource(build, authored, { lean: 'game' }), {
       initialProps: { build: sampleToolSnapshot, authored: gameWorld('Courage') },
     });
-    const editor = renderHook(() => useHelpWorldSource(emptyToolSnapshot, emptyCodeWorld));
+    const editor = renderHook(() => useHelpWorldSource(emptyToolSnapshot, emptyCodeWorld, { lean: 'editor' }));
     // The game's builders change every turn; the editor stays on top regardless.
     game.rerender({ build: emptyToolSnapshot, authored: gameWorld('Wit') });
     game.rerender({ build: sampleToolSnapshot, authored: gameWorld('Grit') });
     expect(ids()).toEqual([]);
     expect(statNames()).toEqual([]);
+    expect(helpWorld.get()?.lean).toBe('editor');
 
     editor.unmount();
+    expect(helpWorld.get()?.lean).toBe('game');
     // The builders the game holds now, not the ones it mounted with.
     expect(ids()).toContain('wren');
     expect(statNames()).toEqual(['Grit']);

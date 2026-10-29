@@ -3,10 +3,11 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { EMBED_BOUND_MS, EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import { sseReply, sseResponse, textSnapshot } from '@/test/aiTextFixtures';
 import { pastPicks } from '@/test/helpFixtures';
-import { semanticRanking, type HelpEmbedder } from './helpSemantic';
+import { semanticRanking, worldSemanticRanking, type HelpEmbedder } from './helpSemantic';
 import { askHelp, type HelpEvent } from './helpSession';
 import { helpSettingsOf } from './helpSettings';
 import { encodeVector, sectionTexts, type SectionVectorsFile } from './sectionVectors';
+import { buildWorldIndex, type WorldIndexInput } from './worldIndex';
 
 const index = createDocsIndex({
   pages: {
@@ -58,6 +59,34 @@ describe('semanticRanking', () => {
   it('gives no section for a query it did not embed', async () => {
     const ranking = await semanticRanking(index, ['test'], { embedder });
     expect(ranking?.('another', 5)).toEqual([]);
+  });
+});
+
+describe('worldSemanticRanking', () => {
+  const worldOf = (prefix: string, count: number): WorldIndexInput => ({
+    worldOverview: { name: prefix, description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [] },
+    stats: [], locations: [], traits: [], items: [], dictionaries: [],
+    entities: Array.from({ length: count }, (_, at) => ({ id: `${prefix}-${at}`, name: `${prefix} ${at}`, playerDescription: `${prefix} keeps gate ${at}.` })),
+  });
+  const counting = () => {
+    const embedded: string[] = [];
+    const spy: HelpEmbedder = { ...embedder, embed: async (texts) => { embedded.push(...texts); return texts.map(() => Float32Array.of(1, 0)); } };
+    return { spy, embedded };
+  };
+
+  it('embeds only the sections the cache lacks, and drops a closed world once the cache outgrows the open one', async () => {
+    const big = buildWorldIndex(worldOf('Larkspur', 6));
+    const small = buildWorldIndex(worldOf('Quillon', 1));
+    const { spy, embedded } = counting();
+    const of = (prefix: string) => embedded.filter((text) => text.includes(prefix)).length;
+    await worldSemanticRanking(big, ['gate'], { embedder: spy });
+    const first = of('Larkspur');
+    expect(first).toBeGreaterThanOrEqual(6);
+    await worldSemanticRanking(big, ['gate'], { embedder: spy });
+    expect(of('Larkspur')).toBe(first);
+    await worldSemanticRanking(small, ['gate'], { embedder: spy });
+    await worldSemanticRanking(big, ['gate'], { embedder: spy });
+    expect(of('Larkspur')).toBe(2 * first);
   });
 });
 

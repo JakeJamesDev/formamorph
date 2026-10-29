@@ -139,7 +139,8 @@ import { Tip } from '@/components/ui/tooltip';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { openingStateOf } from '@/lib/openingState';
-import { useHelpWorldSource } from '@/lib/formaquestion/helpWorld';
+import { useHelpWorldSource, useWorldIndexWarmup } from '@/lib/formaquestion/helpWorld';
+import type { WorldSource } from '@/lib/formaquestion/helpWorldSource';
 
 /** The Take Me There mark for a tab's search and add row. The registry says which tabs have one; Overview has no list. */
 function listToolbarTarget(tab: string): TargetAttribute | undefined {
@@ -215,7 +216,7 @@ const WorldEditorInner = ({
     const world = getWorldData();
     return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? [], null, { state: openingStateOf(world), authored: world });
   }, [getWorldData]);
-  useHelpWorldSource(editorToolWorld, getWorldData);
+  useWorldIndexWarmup(getWorldData);
 
   // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
   const buildCurrentWorld = (): World => ({
@@ -596,6 +597,22 @@ const WorldEditorInner = ({
       case 'location': return navigateToBenchItem('locations', item.locationId);
     }
   }, [navigateToBenchItem]);
+  // A Formaquestion world source opens its item; an entity's own stat or trait opens on the entity.
+  const openWorldSource = useCallback(({ worldKind, id }: WorldSource) => {
+    const entities = getWorldData().entities;
+    switch (worldKind) {
+      case 'stat': return openCodeCardItem({ kind: 'stat', statId: id, entityId: entities.find((entity) => entity.stats?.some((stat) => stat.id === id))?.id });
+      case 'trait': return openCodeCardItem({ kind: 'trait', traitId: id, entityId: entities.find((entity) => entity.traits?.some((trait) => trait.id === id))?.id });
+      case 'entity': return navigateToBenchItem('entities', id);
+      case 'location': return navigateToBenchItem('locations', id);
+      case 'item': return navigateToBenchItem('items', id);
+      case 'dictionary': return navigateToBenchItem('dictionary', id);
+      case 'script': return navigateToBenchItem('scripts', scriptEntryKey({ kind: 'world' }, id));
+      case 'tool': return navigateToBenchItem('tools', id);
+      case 'prompt': return setActiveTab('overview');
+    }
+  }, [getWorldData, openCodeCardItem, navigateToBenchItem]);
+  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource });
   // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
   const goToCodeUse = useCallback(({ entityId, rowId, trait, world, tool, timing, scriptId, line }: CodeUse) => {
     requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), ...(tool && { tool }), timing, scriptId, line });

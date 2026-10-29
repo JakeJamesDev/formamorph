@@ -2466,7 +2466,7 @@ const GameViewer = ({
     );
   }, [playerViewReach, toolMemorySource, betweenTurnsScript, liveScene, playthroughDictionaries, loreToggles]);
   const helpAuthoredWorld = useCallback(() => playerViewWorld(getWorldData(), playerViewReach()), [getWorldData, playerViewReach]);
-  useHelpWorldSource(helpToolWorld, helpAuthoredWorld);
+  useHelpWorldSource(helpToolWorld, helpAuthoredWorld, { lean: 'game' });
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
   const [toolLookups, setToolLookups] = useState<readonly (readonly string[])[]>([]);
 

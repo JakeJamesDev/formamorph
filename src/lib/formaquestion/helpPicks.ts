@@ -32,9 +32,16 @@ export interface PickQuestion {
   where?: string;
 }
 
-/** The one user message of a pick request: the section list, then the question. */
-export function pickMessage(lines: readonly string[], { question, earlier, earlierAnswer, where }: Omit<PickQuestion, 'prompt'>): string {
+/** The most world lines a world pick request lists; a bigger world's pool is ranked by the other sources alone. */
+export const HELP_PICK_WORLD_LINES = 400;
+
+/** The line that tells the model what a world pick request's list is. */
+export const PICK_WORLD_LINE = 'The sections are the parts of the world open in the World Editor, one on each line.';
+
+/** The one user message of a pick request: the lead line when given, the section list, then the question. */
+export function pickMessage(lines: readonly string[], { question, earlier, earlierAnswer, where }: Omit<PickQuestion, 'prompt'>, lead?: string): string {
   return [
+    ...(lead ? [lead] : []),
     `<sections>\n${lines.join('\n')}\n</sections>`,
     ...(where ? [`The player asks from this screen: ${where}.`] : []),
     ...(earlier ? [`The player's earlier question: ${earlier}`] : []),
@@ -71,6 +78,12 @@ export function readPicks(reply: string, lines: readonly string[]): number[] {
   return picks;
 }
 
+/** One pool's pick list: a line per item and that item's sections. */
+export interface PickPool {
+  lines: string[];
+  sections: DocSection[][];
+}
+
 /**
  * Asks the model which guide sections answer the question, best first; none when the reply copies no line.
  * It sends as the help kind with reasoning off, and with the samplers and cap the caller gives. Throws the
@@ -80,13 +93,35 @@ export async function requestPicks(
   index: DocsIndex,
   ask: PickQuestion,
   snapshot: AiSettingsSnapshot,
-  { temperature, repetitionPenalty, maxTokens }: HelpRequestOptions,
+  sampling: HelpRequestOptions,
   options: AiTextOptions = {},
 ): Promise<DocSection[]> {
-  const { lines, sections } = pickList(index);
+  return requestPoolPicks(pickList(index), ask, snapshot, sampling, options);
+}
+
+/** {@link requestPicks} over the open world's parts; none, with no request, for a world over the line cap. */
+export async function requestWorldPicks(
+  world: PickPool,
+  ask: PickQuestion,
+  snapshot: AiSettingsSnapshot,
+  sampling: HelpRequestOptions,
+  options: AiTextOptions = {},
+): Promise<DocSection[]> {
+  if (world.lines.length > HELP_PICK_WORLD_LINES) return [];
+  return requestPoolPicks(world, ask, snapshot, sampling, options, PICK_WORLD_LINE);
+}
+
+async function requestPoolPicks(
+  { lines, sections }: PickPool,
+  ask: PickQuestion,
+  snapshot: AiSettingsSnapshot,
+  { temperature, repetitionPenalty, maxTokens }: HelpRequestOptions,
+  options: AiTextOptions,
+  lead?: string,
+): Promise<DocSection[]> {
   const reply = await requestAiText(snapshot, {
     systemPrompt: ask.prompt,
-    messages: [{ role: 'user', content: pickMessage(lines, ask) }],
+    messages: [{ role: 'user', content: pickMessage(lines, ask, lead) }],
     requestType: 'help',
     maxTokensOverride: maxTokens,
     samplerOverride: { temperature, repetitionPenalty },
