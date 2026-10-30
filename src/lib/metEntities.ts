@@ -1,27 +1,15 @@
-import type { DiscoveredEntity, Entity, EntityPositions } from '@/types';
+import type { EntityPositions } from '@/types';
+import type { EntityPresence } from '@/lib/presence';
 
-/** Each runtime character's position: the location it was met at. */
-export function runtimeCharacterPositions(discovered: readonly DiscoveredEntity[]): EntityPositions {
-  const positions: EntityPositions = {};
-  for (const { entity, locationId } of discovered) if (locationId) positions[entity.id] = locationId;
-  return positions;
-}
-
-/** Location id → the names of the met entities positioned there, in cast order. */
+/** Location id → the names of the met entities shown there, in cast order. */
 export type MetRoster = Readonly<Record<string, string[]>>;
 
-/** Where each met entity with a position stands. */
-export function metRosterByLocation({ entities, positions, met }: {
-  entities: readonly Entity[];
-  positions: Readonly<EntityPositions>;
-  met: readonly string[];
-}): MetRoster {
-  const metIds = new Set(met);
+/** Each Met entity at its places; `anchors` places a runtime character that lists none. */
+export function metRosterByLocation(met: readonly EntityPresence[], anchors: Readonly<EntityPositions>): MetRoster {
   const roster: Record<string, string[]> = {};
-  for (const entity of entities) {
-    const at = positions[entity.id];
-    if (at === undefined || !metIds.has(entity.id)) continue;
-    (roster[at] ??= []).push(entity.name);
+  for (const { entity, label } of met) {
+    const places = entity.locations?.length ? entity.locations : anchors[entity.id] ? [anchors[entity.id]] : [];
+    for (const at of new Set(places)) (roster[at] ??= []).push(label ?? entity.name);
   }
   return roster;
 }

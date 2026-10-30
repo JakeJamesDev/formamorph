@@ -61,7 +61,7 @@ The open world's authored parts as sections in the Docs Index shape, one page pe
 _Avoid_: world search index, lore index
 
 **Player View**:
-What the player has met in one playthrough, in player text only: met and discovered entities (an unrevealed one under its scene alias alone), the current location and every location a turn recorded, the items the player held or saw visible where they stood, the visible stats and the player's own active traits. It holds no AI description, AI summary, diary, script memory line or hidden content. It reads the current snapshot and the snapshots before it, so an undo moves it back. The in-game world that Formaquestion reads (ADR-0014).
+What the player has met in one playthrough, in player text only: the Met entities (an unmet stranger only under a scene alias the player saw, never its true name), the current location and every location a turn recorded, the items the player held or saw visible where they stood, the visible stats and the player's own active traits. It holds no AI description, AI summary, diary, script memory line or hidden content. It reads the current snapshot and the snapshots before it, so an undo moves it back. The in-game world that Formaquestion reads (ADR-0014).
 _Avoid_: player world, known world, spoiler-safe world
 
 **Mascot**:

@@ -1,38 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@/types';
-import { metRosterByLocation, runtimeCharacterPositions } from './metEntities';
+import { computePresence, type PresenceInput } from './presence';
+import { metRosterByLocation } from './metEntities';
 
-const bram: Entity = { id: 'bram', name: 'Bram' };
-const tilly: Entity = { id: 'tilly', name: 'Tilly' };
-const hesk: Entity = { id: 'hesk', name: 'Old Hesk' };
-const cast = [bram, tilly, hesk];
+const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
+
+const LOCATIONS = [{ id: 'market' }, { id: 'keep' }, { id: 'mound-a' }, { id: 'mound-b' }].map((l) => ({ ...l, parentId: null }));
+
+/** The Met set of a state where the player stands at the market. */
+const metSet = (input: Partial<PresenceInput>) => computePresence({
+  entities: [], runtime: [], positions: {}, followers: [], locationId: 'market', locations: LOCATIONS, connections: [],
+  persona: null, met: [], strangerAliases: {}, turns: [], ...input,
+}).met;
 
 describe('metRosterByLocation', () => {
-  it('lists each met entity with a position at that position', () => {
-    const roster = metRosterByLocation({ entities: cast, positions: { bram: 'market', tilly: 'market', hesk: 'keep' }, met: ['bram', 'tilly', 'hesk'] });
-    expect(roster).toEqual({ market: ['Bram', 'Tilly'], keep: ['Old Hesk'] });
+  it('lists each met entity where it stands, wherever the player is', () => {
+    const cast = [entity('bram', 'Bram', { locations: ['market'] }), entity('hesk', 'Old Hesk', { locations: ['market'] })];
+    const roster = metRosterByLocation(metSet({ entities: cast, positions: { hesk: 'keep' } }), {});
+    expect(roster).toEqual({ market: ['Bram'], keep: ['Old Hesk'] });
   });
 
-  it('shows nothing for an entity the player has not met', () => {
-    const roster = metRosterByLocation({ entities: cast, positions: { bram: 'market', tilly: 'keep' }, met: ['bram'] });
-    expect(roster).toEqual({ market: ['Bram'] });
+  it('lists an unpositioned entity at each place it lists', () => {
+    const lights = entity('lights', 'The Cold Lights', { locations: ['mound-a', 'mound-b'] });
+    expect(metRosterByLocation(metSet({ entities: [lights] }), {})).toEqual({ 'mound-a': ['The Cold Lights'], 'mound-b': ['The Cold Lights'] });
   });
 
-  it('shows nothing for a met entity with no position', () => {
-    expect(metRosterByLocation({ entities: cast, positions: {}, met: ['bram'] })).toEqual({});
+  it('leaves out a stranger, and shows it once the story names it', () => {
+    const spy = entity('spy', 'Sylvie Thornwhistle', { strangerName: 'a hooded stranger', locations: ['market'] });
+    expect(metRosterByLocation(metSet({ entities: [spy] }), {})).toEqual({});
+    expect(metRosterByLocation(metSet({ entities: [spy], met: ['spy'] }), {})).toEqual({ market: ['Sylvie Thornwhistle'] });
   });
 
-  it('skips a met id whose entity is gone', () => {
-    expect(metRosterByLocation({ entities: cast, positions: { ghost: 'keep' }, met: ['ghost'] })).toEqual({});
-  });
-});
-
-describe('runtimeCharacterPositions', () => {
-  it('places each runtime character where it was met, and skips one with no location', () => {
-    const positions = runtimeCharacterPositions([
-      { entity: { id: 'cart', name: 'Cart Driver' }, locationId: 'road', sourceTurnId: 't1' },
-      { entity: { id: 'voice', name: 'A Voice' }, sourceTurnId: 't2' },
-    ]);
-    expect(positions).toEqual({ cart: 'road' });
+  it('places a runtime character where it was met', () => {
+    const fishwife = entity('fish', 'Fishwife');
+    expect(metRosterByLocation(metSet({ runtime: [fishwife] }), { fish: 'market' })).toEqual({ market: ['Fishwife'] });
   });
 });

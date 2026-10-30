@@ -8,7 +8,8 @@ import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle } from '@/components/game/useInventoryPanel';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
-import { metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
+import { metRosterByLocation } from '@/lib/metEntities';
+import { usePresence } from '@/lib/usePresence';
 import { IN_SCENE_TURNS, introducedIds, metCheck, sceneAfterMove, strangerAliasesFromCast, withMet } from '@/lib/presence';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
@@ -878,13 +879,12 @@ const GameViewer = ({
     () => Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
     [traitLibrary, allEntities],
   );
-  // The Map's live roster: where each met entity with a position stands. A runtime character stands where
-  // it was met.
-  const metRoster = useMemo(() => metRosterByLocation({
-    entities: allEntities,
-    positions: { ...runtimeCharacterPositions(discoveredEntities), ...entityPositions },
-    met: metEntities,
-  }), [allEntities, discoveredEntities, entityPositions, metEntities]);
+  // The Map's live roster: the Met set where each entity stands. A runtime character stands where it was met.
+  const { met: metPresence } = usePresence();
+  const metRoster = useMemo(
+    () => metRosterByLocation(metPresence, runtimePositions(discoveredEntities)),
+    [metPresence, discoveredEntities],
+  );
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
   // never gets promoted to a person. Location names include the whole world, not just here — the
