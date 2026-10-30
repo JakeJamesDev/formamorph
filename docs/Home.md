@@ -44,6 +44,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🔤 **[Glossary](Glossary)** | Every Formamorph term in one place, each linked to the page that explains it |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |
 | 🛠️ **[World Editor](WorldEditor)** | The editor's modes, find and replace, the Authoring Tour, and saving your changes |
+| 📓 **[Game Editor](Game-Editor)** | Edit the game you are playing: its entities, your stats, and who is where. The world stays as it is. |
 | 🌍 **[World Editor: Overview](World-Editor-Overview)** | The world's name, card, music and AI-facing text, and uploaded or linked images |
 | 📦 **[World Editor: Media](World-Editor-Media)** | Every image, sound, 3D Model and Avatar in a world, with sizes, stacks and previews |
 | 🎬 **[World Editor: Openings](World-Editor-Openings)** | The ways a game can start, their weights, and Self openings for personas |

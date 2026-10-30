@@ -84,6 +84,7 @@ const EMPTY_ENTITY_CHANGES: EntityStatChanges = {};
 const EMPTY_CHOICES: Choice[] = [];
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
+const EMPTY_DISCOVERED: DiscoveredEntity[] = [];
 const NO_ITEM_COPIES: readonly ItemCopy[] = [];
 const NO_ITEM_EFFECTS: ItemEffectLedger = {};
 const NO_RUNTIME_ITEMS: readonly RuntimeItem[] = [];
@@ -791,6 +792,8 @@ function useProvideGameplay() {
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
   const viewEntityStats = viewedSnapshot ? (viewedSnapshot.entityStats ?? EMPTY_ENTITY_STATS) : entityStats;
+  // The entities as that turn knew them.
+  const viewDiscoveredEntities = viewedSnapshot ? (viewedSnapshot.discoveredEntities ?? EMPTY_DISCOVERED) : discoveredEntities;
   // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
   const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
@@ -1019,6 +1022,7 @@ function useProvideGameplay() {
     viewDisabledTraitIds,
     viewOwnedTraits,
     viewEntityStats,
+    viewDiscoveredEntities,
     viewEntityStatChanges,
     viewCodePins,
     viewCharacterData,

@@ -33,7 +33,8 @@ afterEach(() => {
 
 /** Opens the editor over the game and renames the world, which leaves one pending edit. */
 const editName = async (name: string) => {
-  fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Menu' }));
+  fireEvent.click(await screen.findByRole('button', { name: /Edit World/ }));
   const editor = await screen.findByRole('dialog', { name: 'World Editor' });
   fireEvent.change(within(editor).getByDisplayValue('Sedge Landing'), { target: { value: name } });
   // The editor reads the edit as pending once Save lights up, as a person would wait for it.
@@ -50,7 +51,9 @@ describe('Exit Without Saving in the in-play editor', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Exit Without Saving' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'World Editor' })).toBeNull());
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Menu' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /Edit World/ }));
     const reopened = await screen.findByRole('dialog', { name: 'World Editor' });
     expect(within(reopened).getByDisplayValue('Sedge Landing')).toBeInTheDocument();
     expect(within(reopened).queryByDisplayValue('Brinewell')).toBeNull();

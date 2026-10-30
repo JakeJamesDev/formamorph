@@ -66,6 +66,8 @@ interface EditorFindBarProps {
   onNavigate: (match: SearchMatch | null) => void;
   onAddPlaceholder: (placeholder: Placeholder) => void;
   onClose: () => void;
+  /** What the docked field searches, in its name: Search World, or Search Game in the Game Editor. */
+  subject?: 'World' | 'Game';
 }
 
 /** A tab's caption, for the breadcrumb — the value a target carries is the tab's id, not its name. */
@@ -176,7 +178,7 @@ export function ReplaceAllConfirm({ open, onOpenChange, count, fields, skipped, 
 
 export default function EditorFindBar({
   layout = 'floating', focusSignal, onActiveChange, onLeave, expanded = false, onExpandedChange, fieldAttributes,
-  targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace = false, onNavigate, onAddPlaceholder, onClose,
+  targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace = false, onNavigate, onAddPlaceholder, onClose, subject = 'World',
 }: EditorFindBarProps) {
   const docked = layout === 'docked';
   const [query, setQuery] = useState('');
@@ -396,8 +398,8 @@ export default function EditorFindBar({
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label={docked ? 'Search World' : 'Find'}
-            placeholder={docked ? 'Search World' : 'Find'}
+            aria-label={docked ? `Search ${subject}` : 'Find'}
+            placeholder={docked ? `Search ${subject}` : 'Find'}
             className={cn('h-8 focus-visible:ring-0', findClearable ? 'pr-[6rem]' : 'pr-[4.25rem]')}
           />
           {findClearable && (
@@ -568,7 +570,7 @@ export default function EditorFindBar({
         onKeyDown={onKeyDown}
         onBlur={leaveCheck}
         role="search"
-        aria-label="Search World"
+        aria-label={`Search ${subject}`}
       >
         {expanded ? (
           <>
@@ -590,8 +592,8 @@ export default function EditorFindBar({
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search World"
-              placeholder="Search World"
+              aria-label={`Search ${subject}`}
+              placeholder={`Search ${subject}`}
               className="h-full min-w-0 flex-1 bg-transparent px-2 text-meta outline-none placeholder:text-muted-foreground"
             />
             {/* An option left on shows here, so a collapsed search never filters silently. */}
@@ -646,7 +648,7 @@ export default function EditorFindBar({
       data-editor-find-skip
       onKeyDown={onKeyDown}
       role="search"
-      aria-label="Find and replace in world"
+      aria-label={`Find and replace in ${subject.toLowerCase()}`}
     >
       {fullBar}
       {confirmDialog}

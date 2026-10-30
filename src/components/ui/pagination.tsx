@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils"
 import { buttonVariants, Button, type ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { paginationSlots, pageWindow } from "@/lib/pagination"
+import { fittedPaginationSlots, paginationSlots, pageWindow } from "@/lib/pagination"
+import { useElementSize } from "@/lib/useElementSize"
 import { useIsMobile } from "@/lib/useIsMobile"
 
 const Pagination = ({
@@ -159,23 +160,27 @@ function JumpPopover({ page, pageCount, onPageChange, children }: {
  * The shared page footer: Previous · numbered strip · Next. The strip reserves a constant number of
  * equal-width cells (`paginationSlots`, padding short layouts with invisible spacers) so its width never
  * changes as you flip — keeping Previous/Next from reflowing. Used by every pager (game turns, AI-context
- * debug, community browser) so they stay consistent.
+ * debug, community browser) so they stay consistent. `fill` spreads it over its container instead: Previous
+ * and Next at the edges and as many page numbers between them as the width holds.
  */
 function Pager({
   page,
   pageCount,
   onPageChange,
   className,
+  fill = false,
 }: {
   page: number
   pageCount: number
   onPageChange: (page: number) => void
   className?: string
+  fill?: boolean
 }) {
   const atStart = pageCount === 0 || page <= 1
   const atEnd = pageCount === 0 || page >= pageCount
 
   const isMobile = useIsMobile()
+  const [stripRef, strip] = useElementSize()
 
   const pageCell = (p: number) => {
     // The current page opens the jump-to-page popover (desktop + mobile) instead of navigating to itself.
@@ -220,7 +225,8 @@ function Pager({
     // whose width equals what those cells would occupy (so the strip's total width — and Previous/Next —
     // stays fixed) with the ellipsis centered inside it. This centers a lone ellipsis in the gap between the
     // two page groups regardless of how lopsided they are (e.g. "1 2 3 4  …  43").
-    const slots = paginationSlots(page, pageCount)
+    // A page cell is 2.5rem with a 0.25rem gap; the filled strip fits as many as its measured width holds.
+    const slots = fill ? fittedPaginationSlots(page, pageCount, Math.floor((strip.width + 4) / 44)) : paginationSlots(page, pageCount)
     for (let i = 0; i < slots.length; ) {
       const slot = slots[i]
       if (slot.kind === "page") {
@@ -262,7 +268,7 @@ function Pager({
 
   return (
     <Pagination className={className}>
-      <PaginationContent>
+      <PaginationContent className={cn(fill && "w-full")}>
         <PaginationItem>
           <PaginationPrevious
             href="#"
@@ -274,7 +280,11 @@ function Pager({
             className={atStart ? "pointer-events-none opacity-50" : ""}
           />
         </PaginationItem>
-        {cells}
+        {fill ? (
+          <li ref={stripRef} className="min-w-0 flex-1">
+            <ul className="flex flex-row items-center justify-center gap-1">{cells}</ul>
+          </li>
+        ) : cells}
         <PaginationItem>
           <PaginationNext
             href="#"

@@ -17,6 +17,8 @@ export interface NavRailTab {
 export interface NavRailGroup {
   id: string;
   tabs: readonly NavRailTab[];
+  /** A heading over the group's tabs, which is not a tab itself. Only the Game Editor draws one. */
+  caption?: string;
 }
 
 export interface NavRailProps {
@@ -81,6 +83,12 @@ export function NavRail({
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
             {index > 0 && <div aria-hidden data-rail-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}
+            {group.caption && (
+              // Collapsed, the caption fades out and keeps its height, so the rows below never move.
+              <div aria-hidden data-rail-caption className="overflow-hidden whitespace-nowrap px-2 pb-0.5 pt-1 text-meta font-medium uppercase text-muted-foreground" style={fade}>
+                {group.caption}
+              </div>
+            )}
             {group.tabs.map(({ value: tab, label: name, icon: Icon }) => (
               <Tip key={tab} tip={name} side="right" labelsChild={false} disabled={expanded}>
                 <TabsPrimitive.Trigger

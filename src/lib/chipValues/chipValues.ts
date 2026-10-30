@@ -170,6 +170,15 @@ const pulledIdsOver = (cast: readonly Entity[], scene: Pick<ChipScene, 'persona'
   return [...relatedIds(cast, [...(personaId ? [personaId] : []), ...scene.presentIds, ...scene.inSceneIds])];
 };
 
+/** The ids the `<ENTITIES|reachable>` chip lists for a scene: the Nearby entities across the reachable
+ *  locations, minus anyone here or in a sub-location, as the roster precedence drops them. */
+export function reachableRosterIds(scene: Pick<ChipScene, 'location' | 'locations' | 'connections' | 'entities' | 'presentIds' | 'outerScopeEntities'>): string[] {
+  const { location, locations, connections, presentIds } = scene;
+  const outer = scene.outerScopeEntities ?? scene.entities;
+  const higher = new Set([...presentIds, ...sublocationEntityIds(location, locations, outer)]);
+  return reachableEntityIds(location, locations, connections, outer).filter((id) => !higher.has(id));
+}
+
 /** The Entities chip's scope builders over one scene and its relationship ends. */
 function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Record<string, (opts: ContextOpts) => MarkedText> {
   const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;

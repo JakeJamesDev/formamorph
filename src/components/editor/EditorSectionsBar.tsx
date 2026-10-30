@@ -42,6 +42,9 @@ export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenCh
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
             {index > 0 && <div aria-hidden data-sections-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}
+            {group.caption && (
+              <div aria-hidden data-sections-caption className="px-2 pt-1 text-meta font-medium uppercase text-muted-foreground">{group.caption}</div>
+            )}
             {group.tabs.map(({ value: tab, label, icon: Icon }) => (
               <TabsPrimitive.Trigger
                 key={tab}
