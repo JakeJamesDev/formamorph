@@ -26,7 +26,8 @@ vi.mock('@/lib/contextLength', async () => {
 });
 
 const STATE = {
-  tier: 'supporter', state: 'ready', window: 24000, maxTokens: 600, tokenMargin: 800,
+  // maxTokens sits below any local VITE_DEFAULT_MAX_TOKENS, so the state's cap is what binds.
+  tier: 'supporter', state: 'ready', window: 24000, maxTokens: 200, tokenMargin: 800,
   model: { id: 'entry-7', capabilities: { tools: true, reasoning: 'openrouter', budget: true } },
   percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
 };
@@ -85,7 +86,7 @@ describe('SettingsContext: Formamorph AI', () => {
 
     await waitFor(() => expect(result.current.hostedAi.presetState).toBe('ready'));
     const narration = result.current.resolveEndpointForKind('narration');
-    expect(narration).toMatchObject({ hosted: true, url: HOSTED_CHAT_URL, model: 'entry-7', maxTokens: 600, contextWindow: 23200 });
+    expect(narration).toMatchObject({ hosted: true, url: HOSTED_CHAT_URL, model: 'entry-7', maxTokens: 200, contextWindow: 23200 });
     expect(narration.reasoning).toMatchObject({ tools: true, dialect: 'openrouter', budget: true });
     expect(result.current.contextWindow).toBe(23200);
 
