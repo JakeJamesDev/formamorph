@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Smile } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import type { DiscoveredEntity, PlayerStat } from '@/types';
+import type { GameCopies } from '@/lib/gameCopies';
 import type { UseGameEditorExtension } from './gameEditorExtension';
 
 const state = vi.hoisted(() => ({
@@ -23,6 +24,9 @@ const state = vi.hoisted(() => ({
   commitManualEntityStatEdit: vi.fn(),
   entityPositions: {} as Record<string, string>,
   setEntityPositions: vi.fn(),
+  gameCopies: {} as GameCopies,
+  viewGameCopies: {} as GameCopies,
+  commitManualGameCopies: vi.fn(),
 }));
 vi.mock('@/contexts/GameplayContext', () => ({ useGameplay: () => state }));
 // The generate buttons have their own tests; here they only need to be there.
@@ -204,12 +208,13 @@ describe('the Game Editor', () => {
     expect(screen.getByText('This world gives you no stats')).toBeTruthy();
   });
 
-  it("shows the player's persona, read only", async () => {
+  it("edits this game's copy of the persona, and Reset to Persona goes back", async () => {
     const user = userEvent.setup();
-    renderEditor({ request: { tab: 'entities', key: 1 }, player: { name: 'Natmon', persona: { id: 'n', name: 'Natmon', aiDescription: 'A tall ranger.' } } });
-    expect(screen.getByLabelText('Name')).toBeDisabled();
-    await openTab(user, 'Descriptions');
-    expect(screen.getByLabelText('AI-Facing Description')).toHaveProperty('value', 'A tall ranger.');
+    const persona = { id: 'n', name: 'Natmon', aiDescription: 'A tall ranger.' };
+    renderEditor({ request: { tab: 'entities', key: 1 }, player: { name: 'Natmon', persona } });
+    await user.type(screen.getByLabelText('Pronouns'), 'they/them');
+    await user.click(save());
+    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ entities: { n: { pronouns: 'they/them' } } });
   });
 
   it("edits the player's stats, kept on Save", async () => {
@@ -298,6 +303,15 @@ describe('the Game Editor', () => {
 });
 
 describe('the Game Editor Overview', () => {
+  it("shows the world's descriptions, and an edit makes this game's copy on Save", async () => {
+    const user = userEvent.setup();
+    renderEditor({ request: { tab: 'overview', key: 1 }, worldText: { description: 'Foxes.', aiDescription: 'Foxes rule.' } });
+    await user.type(screen.getByLabelText('AI-Facing Description'), ' Always.');
+    await user.click(save());
+    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ world: { description: 'Foxes.', aiDescription: 'Foxes rule. Always.' } });
+  });
+
+
   it('shows the game and who is here, and opens an entity from there', async () => {
     const user = userEvent.setup();
     renderEditor({
@@ -343,13 +357,37 @@ describe('world entities in the Game Editor', () => {
     expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Ren');
   });
 
-  it('locks their text, and offers no Remove', async () => {
+  it('makes a copy on the first edit, keeps only that field, and leaves the world alone', async () => {
     const user = userEvent.setup();
     renderEditor({ worldEntities: [REN], request: { tab: 'entities', entityId: 'ren', key: 2 } });
-    expect(screen.getByLabelText('Name')).toBeDisabled();
+    expect(screen.getByText('From the world. An edit makes this game a copy.')).toBeTruthy();
+    await user.type(screen.getByLabelText('Pronouns'), 'he/him');
+    expect(list().textContent).toContain('From the world · ');
+    expect(state.commitManualGameCopies).not.toHaveBeenCalled();
+    await user.click(save());
+    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ entities: { ren: { pronouns: 'he/him' } } });
+  });
+
+  it('offers no Remove, and Reset to World drops the copy on Save', async () => {
+    const user = userEvent.setup();
+    state.gameCopies = { entities: { ren: { pronouns: 'he/him' } } };
+    renderEditor({ worldEntities: [REN], request: { tab: 'entities', entityId: 'ren', key: 2 } });
+    expect(screen.getByLabelText('Pronouns')).toHaveProperty('value', 'he/him');
     expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
-    await openTab(user, 'Descriptions');
-    expect(screen.getByLabelText('AI-Facing Description')).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Reset to World' }));
+    expect(screen.getByLabelText('Pronouns')).toHaveProperty('value', '');
+    await user.click(save());
+    expect(state.commitManualGameCopies).toHaveBeenCalledWith({});
+    state.gameCopies = {};
+  });
+
+  it('undoes the first edit back to the world', async () => {
+    const user = userEvent.setup();
+    renderEditor({ worldEntities: [REN], request: { tab: 'entities', entityId: 'ren', key: 2 } });
+    await user.type(screen.getByLabelText('Pronouns'), 'he/him');
+    await user.click(screen.getByRole('button', { name: /^Undo/ }));
+    expect(save()).toBeDisabled();
+    expect(list().textContent).toContain('From the World');
   });
 
   it('edits their stats, kept on Save', async () => {

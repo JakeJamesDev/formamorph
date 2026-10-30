@@ -1,3 +1,4 @@
+import type { GameCopies } from '@/lib/gameCopies';
 import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere } from './world';
 import type { ChatMessage } from './ai';
 
@@ -363,6 +364,8 @@ export interface GameState {
   itemCopies?: ItemCopy[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: RuntimeItem[];
+  /** What this game changed of the world and the persona (see lib/gameCopies). Absent ⇒ none. */
+  copies?: GameCopies;
   /** What item effects have applied. Absent ⇒ none. */
   itemEffects?: ItemEffectLedger;
   /** Absent ⇒ none. */

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Trash2 } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,11 +22,20 @@ const NO_PLACE = '__nowhere__';
 /** The player's entry holds stats only, unless an extension keeps their fields in the save. */
 const STATS_TAB = GAME_ENTITY_PANEL_TABS.filter((t) => t.value === 'stats');
 
-/** Whose entry the panel shows: the player's stats, an entity of the world, or an invented entity. A world
- *  entity's text belongs to the world; its stats, and where it stands when it has one place, are this game's. */
+/** Whose entry the panel shows: the player's, an entity of the world, or an invented entity. Edits to the first
+ *  two go to this game's copy, taken on the first edit; the world and the persona stay as they are. */
 export type GameEntitySubject =
-  | { kind: 'player'; persona?: Entity }
-  | { kind: 'world'; entity: Entity; position: string | undefined; listed: readonly string[]; onMove: (locationId: string) => void }
+  | { kind: 'player'; persona?: Entity; copied: boolean; onCopy?: (patch: Partial<Entity>) => void; onReset?: () => void }
+  | {
+    kind: 'world';
+    entity: Entity;
+    position: string | undefined;
+    listed: readonly string[];
+    onMove: (locationId: string) => void;
+    copied: boolean;
+    onCopy: (patch: Partial<Entity>) => void;
+    onReset: () => void;
+  }
   | { kind: 'entity'; record: DiscoveredEntity; live: DiscoveredEntity | undefined };
 
 export interface GameEntityEditorProps {
@@ -60,6 +69,7 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
   const id = record?.entity.id ?? world?.entity.id ?? '';
   const entry = player ? parts.player : undefined;
   const persona = subject?.kind === 'player' ? subject.persona : undefined;
+  const copyOwner = subject?.kind === 'world' || subject?.kind === 'player' ? subject : null;
   const entity: Partial<Entity> = record?.entity ?? world?.entity ?? entry?.fields ?? persona ?? {};
   const name = entity.name ?? '';
   const pronouns = entity.pronouns ?? '';
@@ -68,10 +78,11 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
   const playerDescription = entity.playerDescription ?? '';
   const summary = entity.aiSummary ?? '';
 
-  const locked = readOnly || !!world || (!!persona && !entry);
+  const locked = readOnly || (!!persona && !entry && !copyOwner?.onCopy);
 
   const edit = (patch: Partial<Entity>) => {
     if (record) props.onEntityChange({ ...record, entity: { ...record.entity, ...patch } });
+    else if (copyOwner?.onCopy) copyOwner.onCopy(patch);
     else entry?.onEdit(patch);
   };
   const liveName = subject?.kind === 'entity' ? subject.live?.entity.name : undefined;
@@ -186,7 +197,7 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
 
   const worldNote = world && (
     <div className="mb-3 space-y-3">
-      <Hint>A world entity. Its text stays as the world has it; its stats and where it stands are this game&apos;s.</Hint>
+      <Hint>{world.copied ? "This game's own copy. The world isn't changed." : "A world entity. An edit makes it this game's own."}</Hint>
       <div className="space-y-2">
         <Label id={`game-entity-place-${id}`}>Location</Label>
         <Hint>Moves this entity in this game</Hint>
@@ -201,7 +212,7 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
   );
 
   const personaNote = persona && !entry && (
-    <Hint className="mb-3">Your persona. Its text stays as it is outside this game; your stats are this game&apos;s.</Hint>
+    <Hint className="mb-3">{copyOwner?.copied ? "This game's own copy of your persona." : 'Your persona. An edit makes this game a copy.'}</Hint>
   );
 
   // The panel's tabs: the fields when there are any, an extension's tabs, then the stats.
@@ -227,9 +238,15 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
     </PanelTabs>
   );
 
-  const footer = readOnly || (!record && !parts.footerStart && !parts.footerEnd) ? null : (
+  const resettable = copyOwner?.copied && copyOwner.onReset;
+  const footer = readOnly || (!record && !resettable && !parts.footerStart && !parts.footerEnd) ? null : (
     <div className="flex flex-wrap items-center gap-2 border-t p-3">
       {parts.footerStart}
+      {resettable && (
+        <Button variant="ghost" size="sm" onClick={copyOwner.onReset}>
+          <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden />{world ? 'Reset to World' : 'Reset to Persona'}
+        </Button>
+      )}
       {record && (
         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={props.onRemove}>
           <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden />Remove

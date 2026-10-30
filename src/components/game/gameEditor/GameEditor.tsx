@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronRight, Clapperboard, Undo2 } from 'lucide-react';
+import { ChevronRight, Clapperboard, RotateCcw, Undo2 } from 'lucide-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -8,6 +8,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ListDetail } from '@/components/ui/list-detail';
 import { Hint, SectionTitle } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { NavRail } from '@/components/NavRail';
 import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { TruncatedText } from '@/components/TruncatedText';
@@ -32,8 +35,9 @@ import { useElementSize } from '@/lib/useElementSize';
 import { useIsMobile } from '@/lib/useIsMobile';
 import {
   EMPTY_DRAFT_HISTORY, GAME_EDITOR_PLAYER, changedField, draftAt, draftHasChanges, draftedEntities, draftedStats, savedEntities,
-  withDraftEntity, withDraftExtra, withDraftPosition, withDraftRemoved, withDraftStat, withStep, type DraftHistory, type GameEditorDraft,
+  patchField, withDraftCopy, withDraftEntity, withDraftExtra, withDraftPosition, withDraftRemoved, withDraftStat, withStep, type DraftHistory, type GameEditorDraft,
 } from '@/lib/gameEditorDraft';
+import { savedCopy, withCopyOf, withEntityCopy, type EntityCopy, type GameCopies, type WorldCopy } from '@/lib/gameCopies';
 import { NO_PLACES, stepPlace, withPlace, type GameEditorPlaces } from '@/lib/gameEditorPlaces';
 import { gameEntityTabFor, gameSearchTargets } from '@/lib/gameEditorSearch';
 import { EMPTY_LETTERS } from '@/lib/placementLetters';
@@ -49,6 +53,7 @@ import type { DiscoveredEntity, Entity, GameLocation, Placeholder, PlayerStat } 
 const RAIL_STORAGE_KEY = 'formamorph.gameEditor.navRail';
 /** The rail tabs that show the entity list: everyone, then the two views of the model's sight. */
 const ENTITY_LIST_TABS: readonly string[] = ['entities', 'active', 'inactive'];
+const NO_WORLD_TEXT: WorldCopy = {};
 const NO_ENTITIES: readonly Entity[] = [];
 const NO_EXTENSIONS: readonly UseGameEditorExtension[] = [];
 const NO_PLACEHOLDERS: Placeholder[] = [];
@@ -84,8 +89,10 @@ export interface GameEditorProps {
   activeEntityIds?: readonly string[];
   /** Who the scene list has now, as the game's side panel shows them. */
   sceneEntityIds?: readonly string[];
-  /** The world's own entities, chips filled in, the played one left out. */
+  /** The world's own entities, chips filled in, the played one left out, without this game's copies over them. */
   worldEntities?: readonly Entity[];
+  /** The world's own two descriptions, chips filled in. */
+  worldText?: WorldCopy;
   scene: GameEditorScene;
   /** Pages the game to a turn, as the game's own pager does. */
   onPageChange: (page: number) => void;
@@ -99,12 +106,12 @@ export interface GameEditorProps {
  * shows the game as that turn left it and reads only.
  */
 export function GameEditor(props: GameEditorProps) {
-  const { open, onOpenChange, request, worldName, player, locations, worldEntities = NO_ENTITIES, activeEntityIds, sceneEntityIds, scene, onPageChange, extensions = NO_EXTENSIONS } = props;
+  const { open, onOpenChange, request, worldName, player, locations, worldEntities = NO_ENTITIES, worldText = NO_WORLD_TEXT, activeEntityIds, sceneEntityIds, scene, onPageChange, extensions = NO_EXTENSIONS } = props;
   const {
     discoveredEntities: liveDiscovered, setDiscoveredEntities,
     currentPage, totalPages, isViewingPast, viewDiscoveredEntities,
     globalStats, viewStats, entityStats, viewEntityStats, commitManualStatEdit, commitManualEntityStatEdit,
-    entityPositions, setEntityPositions,
+    entityPositions, setEntityPositions, gameCopies, viewGameCopies, commitManualGameCopies,
   } = useGameplay();
   const past = isViewingPast;
   const isMobile = useIsMobile();
@@ -162,10 +169,18 @@ export function GameEditor(props: GameEditorProps) {
   const filtering = !past && activeEntityIds !== undefined && tab !== 'entities' && ENTITY_LIST_TABS.includes(tab);
   const inRoster = (id: string) => !filtering || activeEntityIds.includes(id) === (tab === 'active');
   const listedEntities = shownDiscovered.filter((d) => inRoster(d.entity.id) && matches(d.entity.name, d.entity.aliases));
-  // A world entity the save holds a copy of lists once, as the save's.
-  const worldRows = worldEntities.filter((e) => !shownDiscovered.some((d) => d.entity.id === e.id));
-  const listedWorld = worldRows.filter((e) => inRoster(e.id) && matches(e.name, e.aliases));
-  const playerName = player?.name || 'You';
+  // This game's copies, as the turn on show has them and with the draft over them.
+  const baseCopies: GameCopies = past ? viewGameCopies : gameCopies;
+  const copyOf = (id: string): EntityCopy | undefined => {
+    if (!past && draft.copies && id in draft.copies) return draft.copies[id] ?? undefined;
+    return baseCopies.entities?.[id];
+  };
+  const shownWorld = worldEntities.map((e) => withEntityCopy(e, copyOf(e.id)));
+  // A world entity with a copy lists as this game's.
+  const copiedRows = shownWorld.filter((e) => copyOf(e.id) && inRoster(e.id) && matches(e.name, e.aliases));
+  const worldRows = shownWorld;
+  const listedWorld = shownWorld.filter((e) => !copyOf(e.id) && inRoster(e.id) && matches(e.name, e.aliases));
+  const playerName = (player?.persona && copyOf(player.persona.id)?.name?.trim()) || player?.name || 'You';
   // The player is always in the model's sight.
   const playerListed = !!player && matches(playerName) && !(filtering && tab === 'inactive');
 
@@ -174,8 +189,21 @@ export function GameEditor(props: GameEditorProps) {
   const detailId = selectedId ?? (isMobile ? null : fallbackId);
   const selectedRecord = shownDiscovered.find((d) => d.entity.id === detailId);
   const selectedWorld = worldRows.find((e) => e.id === detailId);
+  // A copy is taken by the first edit: the patch goes over what the copy holds so far, and only it is kept.
+  const editCopy = (id: string, name: string, patch: Partial<Entity>) => {
+    const field = patchField(patch);
+    edit({ verb: 'Edit', type: 'Entity', name, field }, `${id}:${field}`, (d) => withDraftCopy(d, id, { ...copyOf(id), ...patch }));
+  };
+  const resetCopy = (id: string, name: string) => edit({ verb: 'Reset', type: 'Entity', name }, `reset:${id}`, (d) => withDraftCopy(d, id, null));
+  const personaId = player?.persona?.id;
   const subject = detailId === GAME_EDITOR_PLAYER && player
-    ? { kind: 'player' as const, persona: player.persona }
+    ? {
+      kind: 'player' as const,
+      persona: player.persona && withEntityCopy(player.persona, copyOf(player.persona.id)),
+      copied: !!personaId && !!copyOf(personaId),
+      onCopy: personaId ? (patch: Partial<Entity>) => editCopy(personaId, playerName, patch) : undefined,
+      onReset: personaId ? () => resetCopy(personaId, playerName) : undefined,
+    }
     : selectedRecord
       ? { kind: 'entity' as const, record: selectedRecord, live: liveDiscovered.find((d) => d.entity.id === selectedRecord.entity.id) }
       : selectedWorld
@@ -186,6 +214,9 @@ export function GameEditor(props: GameEditorProps) {
           listed: selectedWorld.locations ?? [],
           onMove: (locationId: string) => edit({ verb: 'Edit', type: 'Entity', name: selectedWorld.name, field: 'Location' }, `${selectedWorld.id}:Location`,
             (d) => withDraftPosition(d, entityPositions[selectedWorld.id], selectedWorld.id, locationId)),
+          copied: !!copyOf(selectedWorld.id),
+          onCopy: (patch: Partial<Entity>) => editCopy(selectedWorld.id, selectedWorld.name, patch),
+          onReset: () => resetCopy(selectedWorld.id, selectedWorld.name),
         }
         : null;
 
@@ -263,6 +294,19 @@ export function GameEditor(props: GameEditorProps) {
       else for (const [statId, value] of Object.entries(values)) commitManualEntityStatEdit(id, statId, value);
     }
     if (Object.keys(draft.positions ?? {}).length) setEntityPositions((prev) => ({ ...prev, ...draft.positions }));
+    if (draft.copies || draft.world !== undefined) {
+      const sources = [...worldEntities, ...(player?.persona ? [player.persona] : [])];
+      let next = gameCopies;
+      for (const [id, copy] of Object.entries(draft.copies ?? {})) {
+        const source = sources.find((e) => e.id === id);
+        if (source) next = withCopyOf(next, id, copy && savedCopy(copy, source));
+      }
+      if (draft.world !== undefined) {
+        const { world: _old, ...rest } = next;
+        next = draft.world ? { ...rest, world: draft.world } : rest;
+      }
+      commitManualGameCopies(next);
+    }
     for (const part of added) part.onSave?.();
     setHistory(EMPTY_DRAFT_HISTORY);
     return true;
@@ -324,7 +368,7 @@ export function GameEditor(props: GameEditorProps) {
           label={<>{playerName}<YouMark onFill={detailId === GAME_EDITOR_PLAYER} /></>}
         />
       )}
-      {(listedEntities.length > 0 || (!term && !filtering)) && <SectionTitle className="px-2 pt-3">Game Entities</SectionTitle>}
+      {(listedEntities.length > 0 || copiedRows.length > 0 || (!term && !filtering)) && <SectionTitle className="px-2 pt-3">Game Entities</SectionTitle>}
       {listedEntities.map((d) => (
         <EditorRow
           key={d.entity.id}
@@ -337,7 +381,19 @@ export function GameEditor(props: GameEditorProps) {
           meta={placeName(d.locationId)}
         />
       ))}
-      {shownDiscovered.length === 0 && !term && !filtering && (
+      {copiedRows.map((e) => (
+        <EditorRow
+          key={e.id}
+          grip={false}
+          gripSlot={sceneMark(e.id)}
+          selected={detailId === e.id}
+          onSelect={() => setSelectedId(e.id)}
+          selectionLabel={e.name}
+          label={e.name}
+          meta={`From the world · ${worldPlace(e)}`}
+        />
+      ))}
+      {shownDiscovered.length === 0 && copiedRows.length === 0 && !term && !filtering && (
         <Hint className="px-2 py-3">The story hasn&apos;t invented any entities yet.</Hint>
       )}
       {listedWorld.length > 0 && <SectionTitle className="px-2 pt-3">World Entities</SectionTitle>}
@@ -353,7 +409,7 @@ export function GameEditor(props: GameEditorProps) {
           meta={worldPlace(e)}
         />
       ))}
-      {(term || filtering) && !playerListed && listedEntities.length === 0 && listedWorld.length === 0 && <Hint className="px-2 py-3">No matches</Hint>}
+      {(term || filtering) && !playerListed && listedEntities.length === 0 && copiedRows.length === 0 && listedWorld.length === 0 && <Hint className="px-2 py-3">No matches</Hint>}
     </EditorRowList>
   );
   const entityToolbar = (
@@ -425,8 +481,40 @@ export function GameEditor(props: GameEditorProps) {
   );
   const openableIds = new Set([...shownDiscovered.map((d) => d.entity.id), ...worldRows.map((e) => e.id)]);
   const worldIds = new Set(worldRows.map((e) => e.id));
+  // The world's descriptions as this game has them: its copy, or the world's own until the first edit takes one.
+  const shownWorldCopy = past ? viewGameCopies.world : draft.world === null ? undefined : draft.world ?? gameCopies.world;
+  const worldFields = shownWorldCopy ?? worldText;
+  const editWorld = (patch: WorldCopy) => edit(
+    { verb: 'Edit', type: 'World', name: worldName, field: patch.description !== undefined ? 'Player-Facing Description' : 'AI-Facing Description' },
+    `world:${patch.description !== undefined ? 'description' : 'aiDescription'}`,
+    (d) => ({ ...d, world: { ...worldFields, ...patch } }),
+  );
+  const worldSection = (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <SectionTitle className="mr-auto">World Description</SectionTitle>
+        {shownWorldCopy && !past && (
+          <Button variant="ghost" size="sm" onClick={() => edit({ verb: 'Reset', type: 'World', name: worldName }, 'world:reset', (d) => ({ ...d, world: null }))}>
+            <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden />Reset to World
+          </Button>
+        )}
+      </div>
+      <Hint>{shownWorldCopy ? "This game's own copy. The world isn't changed." : "The world's own text. An edit makes this game a copy."}</Hint>
+      <fieldset disabled={past} className="contents">
+        <div className="space-y-2">
+          <Label htmlFor="game-world-description">Player-Facing Description</Label>
+          <Textarea id="game-world-description" className="min-h-20" value={worldFields.description ?? ''} onChange={(e) => editWorld({ description: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="game-world-ai-description">AI-Facing Description</Label>
+          <Textarea id="game-world-ai-description" className="min-h-32" value={worldFields.aiDescription ?? ''} onChange={(e) => editWorld({ aiDescription: e.target.value })} />
+        </div>
+      </fieldset>
+    </section>
+  );
   const overviewDetail = (
     <div className="space-y-6">
+    {worldSection}
     <section className="space-y-3">
       <SectionTitle>Here Now</SectionTitle>
       <Hint>Who the story has at {scene.locationName ?? 'this location'}</Hint>

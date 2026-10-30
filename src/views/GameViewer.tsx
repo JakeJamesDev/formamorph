@@ -81,6 +81,7 @@ import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { GameEditor, type GameEditorRequest } from "../components/game/gameEditor/GameEditor";
+import { NO_GAME_COPIES } from "../lib/gameCopies";
 import { gameEditorTab } from "./gameEditorTabs";
 import { asSettingsTab, type SettingsTabId } from "../components/modals/settingsTabs";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
@@ -709,6 +710,8 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    gameCopies,
+    setGameCopies,
     itemCopies,
     setItemCopies,
     itemEffects,
@@ -810,6 +813,7 @@ const GameViewer = ({
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder,
+    copySources,
   } = useResolvedWorld();
   usePersonaNotice();
   // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
@@ -2364,7 +2368,8 @@ const GameViewer = ({
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
-    overview: worldOverview.systemPrompt || "",
+    // This game's copy of the world's AI-Facing Description wins over the world's own.
+    overview: gameCopies.world?.aiDescription ?? (worldOverview.systemPrompt || ""),
     stats: activeStats,
     statPlacement: globalStatPlacement,
     traits: activeTraits,
@@ -5455,6 +5460,7 @@ const GameViewer = ({
       setMemoryPins({});
       setCodePins({});
       setLoreToggles({});
+      setGameCopies(NO_GAME_COPIES);
       setEntityVisualPreference({});
       // A new game always holds a reference; None is a choice, and absence means a save from before personas.
       const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
@@ -6020,9 +6026,10 @@ const GameViewer = ({
         onOpenChange={setGameEditorOpen}
         request={gameEditorRequest}
         worldName={worldOverview?.name ?? ''}
-        player={{ name: persona?.entity.name ?? "You", persona: gameEditorOpen && persona ? resolveEntityTexts([persona.entity], resolveEntityText)[0] : undefined }}
+        player={{ name: persona?.entity.name ?? "You", persona: gameEditorOpen && copySources.persona ? resolveEntityTexts([copySources.persona], resolveEntityText)[0] : undefined }}
         locations={locations}
-        worldEntities={gameEditorOpen ? resolveEntityTexts(entities.filter((e) => e.id !== persona?.entity.id), resolveEntityText) : undefined}
+        worldEntities={gameEditorOpen ? resolveEntityTexts(copySources.entities, resolveEntityText) : undefined}
+        worldText={{ description: resolvePH(worldOverview?.description ?? ''), aiDescription: resolvePH(worldOverview?.systemPrompt ?? '') }}
         activeEntityIds={gameEditorOpen ? [...sceneRosterIds(liveScene()), ...gameEditorSceneIds] : undefined}
         sceneEntityIds={gameEditorSceneIds}
         scene={{

@@ -8,6 +8,7 @@ import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUti
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
 import { loreEntries, NO_LORE_TOGGLES, playthroughBooks } from '../lib/loreToggles';
+import { NO_GAME_COPIES, hasCopies, type GameCopies } from '../lib/gameCopies';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { turnActivity } from '../lib/turnActivity';
 import { setLiveReasoning } from '../lib/reasoningStreamStore';
@@ -187,6 +188,8 @@ function useProvideGameplay() {
   const [itemEffects, setItemEffects] = useState<ItemEffectLedger>(NO_ITEM_EFFECTS);
   // The runtime items the Inventory pass made, which runtime Item Copies point at.
   const [runtimeItems, setRuntimeItems] = useState<readonly RuntimeItem[]>(NO_RUNTIME_ITEMS);
+  // What this game changed of the world and the persona.
+  const [gameCopies, setGameCopies] = useState<GameCopies>(NO_GAME_COPIES);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -362,6 +365,7 @@ function useProvideGameplay() {
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
       ...(itemCopies.length ? { itemCopies: [...itemCopies] } : {}),
       ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
+      ...(hasCopies(gameCopies) ? { copies: gameCopies } : {}),
       ...(Object.keys(itemEffects).length ? { itemEffects } : {}),
       visibleEntities,
       discoveredEntities,
@@ -416,6 +420,7 @@ function useProvideGameplay() {
       setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
       setRuntimeItems(gameState.runtimeItems ?? NO_RUNTIME_ITEMS);
+      setGameCopies(gameState.copies ?? NO_GAME_COPIES);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
@@ -791,6 +796,7 @@ function useProvideGameplay() {
   // on a past page, since the live branch returns the state values themselves.
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
+  const viewGameCopies = viewedSnapshot ? (viewedSnapshot.copies ?? NO_GAME_COPIES) : gameCopies;
   const viewEntityStats = viewedSnapshot ? (viewedSnapshot.entityStats ?? EMPTY_ENTITY_STATS) : entityStats;
   // The entities as that turn knew them.
   const viewDiscoveredEntities = viewedSnapshot ? (viewedSnapshot.discoveredEntities ?? EMPTY_DISCOVERED) : discoveredEntities;
@@ -873,6 +879,17 @@ function useProvideGameplay() {
       : prev));
   }, [currentPage]);
 
+  // The player's edits of this game's copies: live, and into the viewed turn's snapshot, as a stat edit is.
+  const commitManualGameCopies = useCallback((next: GameCopies) => {
+    setGameCopies(next);
+    const idx = currentPage - 1;
+    setGameStates((prev) => {
+      if (idx < 0 || idx >= prev.length) return prev;
+      const { copies: _old, ...rest } = prev[idx];
+      return placeSnapshot(prev, idx, hasCopies(next) ? { ...rest, copies: next } : rest);
+    });
+  }, [currentPage]);
+
   // The same for an entity's stat. The baseline moves with it, so the edit is not counted as the turn's change.
   // Every write is absolute, so a burst of slider moves between renders lands on the last value without drift.
   const commitManualEntityStatEdit = useCallback((ownerId: string, statId: string, value: number) => {
@@ -915,6 +932,10 @@ function useProvideGameplay() {
     globalStats,
     setGlobalStats,
     commitManualStatEdit,
+    gameCopies,
+    setGameCopies,
+    viewGameCopies,
+    commitManualGameCopies,
     commitManualEntityStatEdit,
     globalTraits,
     setGlobalTraits,

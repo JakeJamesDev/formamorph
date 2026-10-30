@@ -14,7 +14,7 @@ Select the **Game Editor** button at the top right of the game. On a phone, it i
 <!-- keywords: summary, current scene, who is here, time, turn number, location, now, nearby, my stats -->
 <!-- route: gameEditor.overview -->
 
-The **Overview** tab shows the game as it stands: the world, the turn, the time and the location, and how many entities the game has. **You** shows your stats. **Here Now** lists who the story has at your location, and **Nearby** lists who the AI is told is in the places reachable from it.
+The **Overview** tab shows the game as it stands: the world, the turn, the time and the location, and how many entities the game has. **World Description** holds the world's two descriptions: your first edit makes this game a copy, which the AI reads from then on. **You** shows your stats. **Here Now** lists who the story has at your location, and **Nearby** lists who the AI is told is in the places reachable from it.
 
 ## Entities
 <!-- keywords: active, list every character, invented characters, edit npc, fix pronouns, move a character, rename -->
@@ -32,7 +32,7 @@ Under **Entities** on the left, **Active** shows you and the entities the model 
 
 A new name keeps the old one under **Aliases**, so the story can still use it. **Location** moves the entity: the scene follows. **Remove** takes an invented entity out of the game and stops the story bringing it back.
 
-Your entry shows your persona's text and pictures, read only, with your stats beside them. A world entity's text and pictures belong to the world, so they read only here: change them with **Edit World**. Its stats and its **Location** are this game's own.
+A world entity and your persona start out reading their source. Your first edit makes this game a copy of what you changed, and a world entity moves to **In the Game**, marked **From the world**. Fields you leave alone keep following the source. **Reset to World** or **Reset to Persona** drops the copy. The world, the library and your other games never change, and a rollback takes a copy back with its turn.
 
 ## Saving and History
 <!-- keywords: save, discard, undo, redo, history, search, find, replace, earlier turn, read only -->

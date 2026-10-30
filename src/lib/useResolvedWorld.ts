@@ -5,6 +5,7 @@ import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveOwnerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
 import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, ownerPins, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { traitScopedPins } from '@/lib/placeholderPins';
+import { withEntityCopies } from '@/lib/gameCopies';
 import { resolvePersona, withPersonaEntry, worldEntitiesOf, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { entitiesInPlay } from '@/lib/entityPresence';
@@ -40,6 +41,8 @@ export interface ResolvedWorld {
   /** The cast: the authored entities without the one the player plays (see lib/persona), each positioned one
    *  listing only its position. */
   entities: Entity[];
+  /** The cast and the persona without this game's copies over them. */
+  copySources: { entities: Entity[]; persona: Entity | null };
   /** Who the player plays, or null. */
   persona: ResolvedPersona | null;
   /** The persona's name and aliases, which the planner reads as the player. */
@@ -232,12 +235,12 @@ const NO_PIN_SET: PinSet = { world: NO_PINS, of: () => NO_PINS, bind: (trait) =>
 export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, string>): string | null {
   const { entities } = useGameData();
   const { placeholders } = usePlaceholderSession();
-  const { personaRef, libraryPersona } = useGameplay();
+  const { personaRef, libraryPersona, gameCopies } = useGameplay();
   // Read from the authored entities, because the resolved ones render the chip this name feeds.
   return useMemo(() => {
     const found = resolvePersona(personaRef, entities, libraryPersona ? [libraryPersona] : []).persona;
-    return found ? resolvePlaceholders(found.entity.name, { placeholders, rolls, pins }) : null;
-  }, [personaRef, entities, libraryPersona, placeholders, rolls, pins]);
+    return found ? resolvePlaceholders(gameCopies.entities?.[found.entity.id]?.name ?? found.entity.name, { placeholders, rolls, pins }) : null;
+  }, [personaRef, entities, libraryPersona, gameCopies, placeholders, rolls, pins]);
 }
 
 export function useResolvedWorld(): ResolvedWorld {
@@ -248,7 +251,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     globalStats: rawGlobalStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, globalTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions,
+    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions, gameCopies,
   } = useGameplay();
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
@@ -284,15 +287,23 @@ export function useResolvedWorld(): ResolvedWorld {
   const personaName = usePersonaName(rolls, pins);
 
   const {
-    entities: worldEntities, locations, connections, stats, traits, traitGroups,
+    entities: sourceEntities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
     resolveEntityText, resolveEntityFor, resolveNameOf,
   } = useResolvedAuthoredWorld(pinSet, personaName);
   // Resolved like the world's entities, so the side panel and the planner read its name, not its chips.
-  const libraryEntities = useMemo(
+  const sourceLibrary = useMemo(
     () => (libraryPersona ? resolveEntityNames([libraryPersona], resolveNameOf) : []),
     [libraryPersona, resolveNameOf],
   );
+  // The entities and the persona as this game plays them: everything below reads these.
+  const worldEntities = useMemo(() => withEntityCopies(sourceEntities, gameCopies), [sourceEntities, gameCopies]);
+  const libraryEntities = useMemo(() => withEntityCopies(sourceLibrary, gameCopies), [sourceLibrary, gameCopies]);
+  // What a game copy lies over, for the Game Editor to show and to go back to.
+  const copySources = useMemo(() => {
+    const { persona: played, cast: world } = resolvePersona(personaRef, sourceEntities, sourceLibrary);
+    return { entities: world, persona: played?.entity ?? null };
+  }, [personaRef, sourceEntities, sourceLibrary]);
   const { persona, cast, playerNames, unresolved } = useMemo(
     () => resolvePersona(personaRef, worldEntities, libraryEntities),
     [personaRef, worldEntities, libraryEntities],
@@ -339,7 +350,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
+    entities, copySources, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,

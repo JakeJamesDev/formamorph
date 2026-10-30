@@ -1,3 +1,4 @@
+import type { EntityCopy, WorldCopy } from '@/lib/gameCopies';
 import type { DiscoveredEntity, Entity } from '@/types';
 import type { StepLabelParts } from '@/lib/editorHistoryLabels';
 
@@ -18,6 +19,10 @@ export interface GameEditorDraft {
   stats?: Readonly<Record<string, Readonly<Record<string, number>>>>;
   /** Where world entities now stand, by entity id. */
   positions?: Readonly<Record<string, string>>;
+  /** This game's copies as edited, by entity id. `null` goes back to the source at Save. */
+  copies?: Readonly<Record<string, EntityCopy | null>>;
+  /** This game's copy of the world's descriptions as edited. `null` reads the world's own again at Save. */
+  world?: WorldCopy | null;
   /** What the editor's extensions hold, by key. */
   extras?: Readonly<Record<string, unknown>>;
 }
@@ -28,6 +33,7 @@ export const EMPTY_GAME_EDITOR_DRAFT: GameEditorDraft = { entities: {}, removed:
 export function draftHasChanges(draft: GameEditorDraft): boolean {
   return Object.keys(draft.entities).length > 0 || draft.removed.length > 0 || Object.keys(draft.stats ?? {}).length > 0
     || Object.keys(draft.positions ?? {}).length > 0
+    || Object.keys(draft.copies ?? {}).length > 0 || draft.world !== undefined
     || Object.keys(draft.extras ?? {}).length > 0;
 }
 
@@ -54,6 +60,11 @@ export function withDraftPosition(draft: GameEditorDraft, live: string | undefin
   if (locationId === live) delete positions[id];
   else positions[id] = locationId;
   return { ...draft, positions };
+}
+
+/** The draft with one entity's copy set, or marked to go back to its source by `null`. */
+export function withDraftCopy(draft: GameEditorDraft, id: string, copy: EntityCopy | null): GameEditorDraft {
+  return { ...draft, copies: { ...(draft.copies ?? {}), [id]: copy } };
 }
 
 /** The draft with one extension's slice set, or dropped by `undefined`. */
@@ -148,6 +159,10 @@ const RECORD_FIELDS: readonly [keyof Entity | 'locationId', string][] = [
   ['locationId', 'Location'], ['playerDescription', 'Player-Facing Description'],
   ['aiDescription', 'AI-Facing Description'], ['aiSummary', 'AI-Facing Summary'],
 ];
+
+/** The label of the field a copy's patch changes. */
+export const patchField = (patch: Partial<Entity>): string =>
+  RECORD_FIELDS.find(([key]) => key in patch)?.[1] ?? 'Entity';
 
 /** The label of the first field that differs between two versions of an entity's record. */
 export function changedField(before: DiscoveredEntity | undefined, after: DiscoveredEntity): string | undefined {
