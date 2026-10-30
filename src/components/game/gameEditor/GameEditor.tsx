@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronRight, Undo2 } from 'lucide-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { YouMark } from '@/components/game/YouMark';
 import { StatRow } from '@/components/game/StatRow';
 import { useRemoveDiscovered } from '@/components/game/useRemoveDiscovered';
+import { useReaderHistoryInput } from '@/components/formaquestion/useReaderHistoryInput';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useElementSize } from '@/lib/useElementSize';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -32,6 +33,7 @@ import {
   EMPTY_DRAFT_HISTORY, GAME_EDITOR_PLAYER, changedField, draftAt, draftHasChanges, draftedEntities, draftedStats, savedEntities,
   withDraftEntity, withDraftExtra, withDraftRemoved, withDraftStat, withStep, type DraftHistory, type GameEditorDraft,
 } from '@/lib/gameEditorDraft';
+import { NO_PLACES, stepPlace, withPlace, type GameEditorPlaces } from '@/lib/gameEditorPlaces';
 import { gameEntityTabFor, gameSearchTargets } from '@/lib/gameEditorSearch';
 import { EMPTY_LETTERS } from '@/lib/placementLetters';
 import type { SearchMatch } from '@/lib/worldSearch';
@@ -112,11 +114,19 @@ export function GameEditor(props: GameEditorProps) {
   const [removing, setRemoving] = useState<string | null>(null);
   const [closePrompt, setClosePrompt] = useState(false);
   const search = useListSearch();
+  // The places visited, for the mouse's back and forward buttons. Declared ahead of the request's landing, so
+  // a landing starts the list over the place the editor was left on.
+  const [places, setPlaces] = useState<GameEditorPlaces>(NO_PLACES);
+  useEffect(() => {
+    if (open) setPlaces((p) => withPlace(p, { tab, selectedId, entityTab }));
+  }, [open, tab, selectedId, entityTab]);
   // A request lands on its tab and entity; reopening starts from a clean draft.
   useEffect(() => {
     if (!open) return;
     setTab(request.tab);
     setSelectedId(request.entityId ?? null);
+    setPlaces(withPlace(NO_PLACES, { tab: request.tab, selectedId: request.entityId ?? null, entityTab }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the panel tab stays as the player left it
   }, [open, request.key, request.tab, request.entityId]);
   useEffect(() => { if (!open) setHistory(EMPTY_DRAFT_HISTORY); }, [open]);
 
@@ -146,6 +156,18 @@ export function GameEditor(props: GameEditorProps) {
       : null;
 
   // The extensions, called in the list's fixed order. Their parts lay over the editor's own.
+  const stepHistory = (delta: -1 | 1) => {
+    const next = stepPlace(places, delta);
+    if (!next) return;
+    const place = next.list[next.at];
+    setPlaces(next);
+    setTab(place.tab);
+    setSelectedId(place.selectedId);
+    setEntityTab(place.entityTab);
+  };
+  const windowRef = useRef<HTMLElement | null>(null);
+  // The dialog is modal, so all input is in it; a prompt over it keeps the buttons to itself.
+  useReaderHistoryInput({ enabled: open && !closePrompt && removing === null, windowRef, guideOpen: true, onStep: stepHistory });
   const openEntity = (id: string) => { setTab('entities'); setSelectedId(id); };
   const context: GameEditorContext = {
     readOnly: past,

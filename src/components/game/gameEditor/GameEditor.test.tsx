@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Smile } from 'lucide-react';
 import type { ComponentProps } from 'react';
@@ -314,6 +314,24 @@ describe('the Game Editor Overview', () => {
     await user.click(within(screen.getByLabelText('Jump to a tab')).getByRole('button', { name: 'Active' }));
     expect(list()).toBeTruthy();
     state.globalStats = [];
+  });
+});
+
+describe('the mouse buttons in the Game Editor', () => {
+  it('goes back to the Overview from an entity opened there, and forward again', async () => {
+    const user = userEvent.setup();
+    renderEditor({
+      request: { tab: 'overview', key: 1 },
+      scene: { locationName: 'The Hut', here: [{ id: 'suya', name: 'Suya' }] },
+    });
+    await user.click(screen.getByRole('button', { name: 'Suya' }));
+    expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Suya');
+
+    fireEvent.mouseUp(screen.getByLabelText('Game entities'), { button: 3 });
+    expect(await screen.findByLabelText('Jump to a tab')).toBeTruthy();
+
+    fireEvent.mouseUp(screen.getByLabelText('Jump to a tab'), { button: 4 });
+    expect(await screen.findByLabelText('Name')).toHaveProperty('value', 'Suya');
   });
 });
 
