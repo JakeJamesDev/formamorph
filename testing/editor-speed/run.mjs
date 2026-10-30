@@ -297,6 +297,7 @@ async function framed(page, body) {
 const STEPS = {
   async open({ page, cdp }) {
     await page.getByText('Large Bench World', { exact: false }).first().click();
+    await page.getByRole('button', { name: 'Menu' }).click();
     const edit = page.getByRole('button', { name: 'Edit World' });
     await edit.waitFor({ timeout: 60_000 });
     await settle(page);
@@ -490,7 +491,7 @@ const STEPS = {
       const promptMs = Date.now() - t0;
       await keep.click();
       // A lone import opens the world's details once it is stored.
-      await page.getByRole('button', { name: 'Edit World' }).waitFor({ timeout: 180_000 });
+      await page.getByRole('button', { name: 'Menu' }).waitFor({ timeout: 180_000 });
       const visibleMs = Date.now() - t0;
       await settle(page, 1500);
       return { promptMs, visibleMs, settledMs: Date.now() - t0 };

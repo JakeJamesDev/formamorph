@@ -98,7 +98,8 @@ function StepRowTip({ handle }: { handle: StepTipHandle }) {
 }
 
 /** The head row, every Step, the Saved marker and the dimmed future. A click on a row only jumps. */
-export function HistoryList({ history }: { history: HistoryView }) {
+/** `headLabel` names the list's first row, the document as it opened. */
+export function HistoryList({ history, headLabel = 'World opened' }: { history: HistoryView; headLabel?: string }) {
   const { rows, cursor, saved, jump } = history;
   const [tipHandle] = useState(() => createTooltipHandle<StepLabelParts>());
   return (
@@ -111,7 +112,7 @@ export function HistoryList({ history }: { history: HistoryView }) {
         onClick={() => jump(0)}
         aria-current={cursor === 0 ? 'step' : undefined}
       >
-        World opened
+        {headLabel}
       </button>
       {saved === 0 && SAVED_MARKER}
       {rows.map((row, i) => {
@@ -171,7 +172,7 @@ const PILL_FACE = 'h-8 rounded-none border-y border-l px-2.5';
  * The app bar's history control. Desktop is a split pill: Undo, Redo and a chevron that opens the list.
  * Mobile is one History icon whose popover carries Undo and Redo in its head.
  */
-export function HistoryControls({ history, layout, disabled = false, openRequest = false, fieldAttributes }: {
+export function HistoryControls({ history, layout, disabled = false, openRequest = false, fieldAttributes, headLabel }: {
   history: HistoryView;
   layout: 'pill' | 'icon';
   disabled?: boolean;
@@ -179,6 +180,8 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
   openRequest?: boolean;
   /** The Take Me There attribute for the control: on the pill's group, or on the icon button. */
   fieldAttributes?: TargetAttribute;
+  /** The list's first row. The World Editor's is World opened. */
+  headLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => { if (openRequest && !disabled) setOpen(true); }, [openRequest, disabled]);
@@ -232,7 +235,7 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
           )}
         </div>
         <ScrollArea className="max-h-[50vh]">
-          <HistoryList history={history} />
+          <HistoryList history={history} headLabel={headLabel} />
         </ScrollArea>
       </PopoverContent>
     </Popover>

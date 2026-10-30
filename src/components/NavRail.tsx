@@ -8,6 +8,8 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
 export interface NavRailTab {
+  /** Sits under the tab before it, indented, as a narrower view of it. */
+  nested?: boolean;
   value: string;
   label: string;
   icon: LucideIcon;
@@ -17,6 +19,8 @@ export interface NavRailTab {
 export interface NavRailGroup {
   id: string;
   tabs: readonly NavRailTab[];
+  /** A heading over the group's tabs, which is not a tab itself. Only the Game Editor draws one. */
+  caption?: string;
 }
 
 export interface NavRailProps {
@@ -81,12 +85,18 @@ export function NavRail({
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
             {index > 0 && <div aria-hidden data-rail-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}
-            {group.tabs.map(({ value: tab, label: name, icon: Icon }) => (
+            {group.caption && (
+              // Collapsed, the caption fades out and keeps its height, so the rows below never move.
+              <div aria-hidden data-rail-caption className="overflow-hidden whitespace-nowrap px-2 pb-0.5 pt-1 text-meta font-medium uppercase text-muted-foreground" style={fade}>
+                {group.caption}
+              </div>
+            )}
+            {group.tabs.map(({ value: tab, label: name, icon: Icon, nested }) => (
               <Tip key={tab} tip={name} side="right" labelsChild={false} disabled={expanded}>
                 <TabsPrimitive.Trigger
                   value={tab}
                   disabled={disabled}
-                  className={cn(ROW, NAV_TAB_STATES, 'disabled:pointer-events-none')}
+                  className={cn(ROW, NAV_TAB_STATES, 'disabled:pointer-events-none', nested && expanded && 'pl-6')}
                 >
                   {tab === value && (
                     <span aria-hidden data-rail-accent className="absolute inset-y-1.5 -left-1.5 w-0.5 rounded-r bg-foreground" />

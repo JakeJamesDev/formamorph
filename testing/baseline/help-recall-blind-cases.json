@@ -88,7 +88,9 @@
     { "id": "statcode-b3", "page": "ScriptsGuide", "question": "can a script read the in-game time of day?", "section": "ScriptsGuide#the-story-clock" },
     { "id": "linked-b1", "page": "LinkedContent", "question": "the original character I copied from was changed, how do I get those changes?", "section": "LinkedContent#how-to-update-a-linked-copy", "otherSections": ["LinkedContent#updates"] },
     { "id": "linked-b2", "page": "LinkedContent", "question": "the game says it can't find the original of something in my setting, how do I fix that?", "section": "LinkedContent#how-to-repair-a-missing-source", "otherSections": ["LinkedContent#repairs"] },
-    { "id": "linked-b3", "page": "LinkedContent", "question": "how do I let other people's settings use my character as an optional extra?", "section": "LinkedContent#how-to-offer-an-entity-or-dictionary-as-an-add-on" }
+    { "id": "linked-b3", "page": "LinkedContent", "question": "how do I let other people's settings use my character as an optional extra?", "section": "LinkedContent#how-to-offer-an-entity-or-dictionary-as-an-add-on" },
+    { "id": "game-editor-b1", "page": "Game-Editor", "question": "a side character the story made up has the wrong name, can I change it just in this save?", "section": "Game-Editor#entities" },
+    { "id": "game-editor-b2", "page": "Game-Editor", "question": "I went back a few turns and can't change anything in the editor, why?", "section": "Game-Editor#saving-and-history" }
   ],
   "followUps": [
     { "id": "follow-b-world-send", "after": "library-b1", "question": "and how do I send it back to them after I change it?", "section": "Library#how-to-export-a-world" },
