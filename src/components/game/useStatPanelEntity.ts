@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
-import { discoveredAsEntities } from '@/lib/runtimeCharacters';
-import { normalizeVisibleEntities } from '@/lib/sceneEntities';
+import { usePresence } from '@/lib/usePresence';
 import { personaEntities } from '@/lib/entityStats';
-import { firstShowableEntity, shownEntityStats, statPanelOptions, statPanelSelection } from '@/lib/statPanelEntities';
+import { shownEntityStats, statPanelOptions, statPanelSelection } from '@/lib/statPanelEntities';
 import { withTraitToggles, type OwnerStatTraits } from '@/lib/statOwners';
 import type { Entity, PlayerStat, Stat, StatGroup } from '@/types';
 import { usePlayAvatars } from '@/lib/usePlayAvatars';
@@ -29,25 +28,23 @@ const ownerOf = (entity: Entity, values: Readonly<Record<string, readonly Player
  * stats on and off.
  */
 export function useStatPanelEntity(inForce: OwnerStatTraits) {
-  const {
-    viewEntityStats, viewVisibleEntities: scene, gameStates, currentPage, discoveredEntities, selectedEntityId, personaRef,
-  } = useGameplay();
-  const { entities: cast, persona, traitEntities } = useResolvedWorld();
+  const { viewEntityStats, currentPage, isViewingPast, selectedEntityId, personaRef } = useGameplay();
+  const { persona, traitEntities } = useResolvedWorld();
+  const { inScene } = usePresence(isViewingPast ? currentPage : undefined);
   const values = useMemo(() => withTraitToggles(viewEntityStats, inForce), [viewEntityStats, inForce]);
-  const pickable = useMemo(() => [...cast, ...discoveredAsEntities(discoveredEntities)], [cast, discoveredEntities]);
   const played = useMemo(() => personaEntities(persona?.entity, traitEntities, personaRef), [persona, traitEntities, personaRef]);
-  const history = useMemo(
-    () => [...gameStates.slice(0, currentPage).map((state) => normalizeVisibleEntities(state?.visibleEntities)), scene],
-    [gameStates, currentPage, scene],
-  );
   const options = useMemo(
-    () => statPanelOptions({ entities: pickable, persona: persona?.entity ?? null, scene, history, values, keep: selectedEntityId }),
-    [pickable, persona, scene, history, values, selectedEntityId],
+    () => statPanelOptions({ persona: persona?.entity ?? null, scene: inScene }),
+    [persona, inScene],
   );
   const { shows } = usePlayAvatars();
-  const shownId = statPanelSelection(selectedEntityId, options, firstShowableEntity(scene, pickable, shows)?.id);
+  const firstShown = inScene.find((p) => shows(p.entity))?.entity.id;
+  const shownId = statPanelSelection(selectedEntityId, options, firstShown);
   const playedIds = new Set(played.map((entity) => entity.id));
-  const shownEntity = shownId && !playedIds.has(shownId) ? pickable.find((entity) => entity.id === shownId) : undefined;
+  const shownPresence = shownId && !playedIds.has(shownId) ? inScene.find((p) => p.entity.id === shownId) : undefined;
+  // A stranger's section reads its label wherever its name would show.
+  const shownEntity = shownPresence && (shownPresence.met || !shownPresence.label
+    ? shownPresence.entity : { ...shownPresence.entity, name: shownPresence.label });
   return {
     options,
     shown: options.find((option) => option.id === shownId),

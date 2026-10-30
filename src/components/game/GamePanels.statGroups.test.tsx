@@ -75,16 +75,17 @@ describe('RightPanel — stat groups', () => {
         statFixture('Hunger', 3, { order: 1 }),
       ],
     };
+    const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
     const bram = {
-      id: 'bram', name: 'Bram', image: 'data:image/png;base64,AAAA',
+      id: 'bram', name: 'Bram', image: 'data:image/png;base64,AAAA', locations: ['yard'],
       stats: values.bram,
       statGroups: [group('g-bond', 'Bond', { order: 0 }), group('g-quiet', 'Quiet', { order: 2 })],
     };
     const stage = {
-      world: { entities: [bram] } as never,
-      turns: [{ narration: 'Bram waits.', turnId: 't1', scene, entityStats: values }],
+      world: { entities: [bram], locations: [YARD] } as never,
+      turns: [{ narration: 'Bram waits.', turnId: 't1', scene, entities: ['Bram'], entityStats: values }],
       stats: [statFixture('Vigor', 50)],
-      seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(scene); g.setSelectedEntityId('bram'); },
+      seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(scene); g.setCurrentLocation(YARD as never); g.setSelectedEntityId('bram'); },
     };
 
     it('lays the picked entity\'s rows out under its own group subheaders, in the entity card', () => {
@@ -100,12 +101,12 @@ describe('RightPanel — stat groups', () => {
     });
 
     it('keeps the entity\'s groups apart from the world\'s player groups', () => {
-      renderRightPanel({}, { ...stage, world: { entities: [bram], statGroups } as never });
+      renderRightPanel({}, { ...stage, world: { entities: [bram], locations: [YARD], statGroups } as never });
       expect(within(screen.getByTestId('entity-stats')).queryByText('Body')).toBeNull();
     });
 
     it('folds the entity card on its own, without touching the Global card', () => {
-      renderRightPanel({}, { ...stage, world: { entities: [bram], statGroups } as never, stats });
+      renderRightPanel({}, { ...stage, world: { entities: [bram], locations: [YARD], statGroups } as never, stats });
       const section = screen.getByTestId('entity-stats');
       fireEvent.click(within(section).getByRole('button', { name: 'Bram' }));
       expect(within(section).queryByText('Trust')).toBeNull();

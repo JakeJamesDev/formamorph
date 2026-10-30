@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { LeftPanel, RightPanel } from './GamePanels';
 import { defaultSystemPrompt } from './GamePrompts';
-import { renderInGame, renderRightPanel, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
+import { renderInGame, renderRightPanel, statFixture, turnHistory, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { EntityStatValues, SceneEntity } from '@/types';
 import { NO_DELTAS } from '@/lib/useStatDeltas';
 import { regenerateState } from '@/lib/turnHistory';
@@ -17,20 +17,24 @@ const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
 const bram = { id: 'bram', name: 'Bram', image: PICTURE, locations: ['yard'] };
 const odette = { id: 'odette', name: 'Odette', image: PICTURE, locations: ['yard'] };
 const wick = { id: 'wick', name: 'Wick', image: PICTURE, locations: ['yard'], strangerName: 'a thin runner' };
-const world = { entities: [bram, odette, wick], locations: [YARD] } as never;
+// Mara stands here too but takes no part, so she is quiet: here, and not in scene.
+const mara = { id: 'mara', name: 'Mara', image: PICTURE, locations: ['yard'] };
+const world = { entities: [bram, odette, wick, mara], locations: [YARD] } as never;
 
 const values: EntityStatValues = {
   bram: [statFixture('Trust', 40), statFixture('Secret', 9, { hidden: true }), statFixture('Dormant', 3, { enabled: false })],
   odette: [statFixture('Stock', 12)],
   wick: [statFixture('Nerve', 7)],
+  mara: [statFixture('Poise', 2)],
 };
 
-// Turn one: Odette and Bram are met by name. Turn two, the live scene: Bram by name, Wick only by alias.
+// Turn one: Odette and Bram take part. Turn two, the live scene: Bram, Odette and Wick, who shows by his Stranger Name.
 const met: SceneEntity[] = [{ name: 'Odette', revealed: true }, { name: 'Bram', revealed: true }];
 const now: SceneEntity[] = [{ name: 'Bram', revealed: true }, { name: 'Wick', alias: 'a thin runner', revealed: false }];
+const takingPart = ['Bram', 'Odette', 'Wick'];
 const turns: TurnFixture[] = [
-  { narration: 'You meet Odette and Bram.', turnId: 't1', scene: met, entityStats: values },
-  { narration: 'A runner joins Bram.', turnId: 't2', scene: now, entityStats: values },
+  { narration: 'You meet Odette and Bram.', turnId: 't1', scene: met, entities: ['Odette', 'Bram'], locationId: 'yard', entityStats: values },
+  { narration: 'A runner joins Bram.', turnId: 't2', scene: now, entities: takingPart, locationId: 'yard', entityStats: values },
 ];
 const stage = {
   world, turns, stats: [statFixture('Vigor', 50)],
@@ -80,12 +84,12 @@ describe('RightPanel — entity stats', () => {
     expect(within(section()!).queryByText('Dormant')).not.toBeInTheDocument();
   });
 
-  it('lists present entities, then absent ones, then (None)', async () => {
+  it('lists the In Scene entities in cast order, then (None)', async () => {
     renderRightPanel({}, stage);
-    expect(await optionLabels()).toEqual(['Bram', 'a thin runner', 'Odette', '(None)']);
+    expect(await optionLabels()).toEqual(['Bram', 'Odette', 'a thin runner', '(None)']);
   });
 
-  it('lists an unrevealed entity by its alias and never by its name', async () => {
+  it('lists a stranger by its label and never by its name', async () => {
     renderRightPanel({}, stage);
     await choose('a thin runner');
     expect(within(section()!).getByText('Nerve')).toBeInTheDocument();
@@ -93,17 +97,18 @@ describe('RightPanel — entity stats', () => {
     expect(screen.queryByText('Wick')).not.toBeInTheDocument();
   });
 
-  it('lists an absent entity by name once an earlier turn revealed it', async () => {
+  it('leaves out a quiet entity that owns stats', async () => {
     renderRightPanel({}, stage);
-    expect(await optionLabels()).toContain('Odette');
+    expect(await optionLabels()).not.toContain('Mara');
   });
 
-  it('leaves out an absent entity no turn revealed', async () => {
-    renderRightPanel({}, { ...stage, turns: [{ ...turns[1] }, { ...turns[1], turnId: 't3' }] });
+  it('leaves out an entity that took part but stands elsewhere', async () => {
+    const away = { ...odette, locations: ['barn'] };
+    renderRightPanel({}, { ...stage, world: { entities: [bram, away, wick], locations: [YARD, { id: 'barn', name: 'Barn' }] } as never });
     expect(await optionLabels()).toEqual(['Bram', 'a thin runner', '(None)']);
   });
 
-  it('shows a picked absent entity with its stats', async () => {
+  it('shows a picked entity with its stats', async () => {
     renderRightPanel({}, stage);
     await choose('Odette');
     expect(within(section()!).getByText('Stock')).toBeInTheDocument();
@@ -196,7 +201,9 @@ describe('RightPanel — entity stats', () => {
     });
     act(() => { view.gameplay().statDeltas.show(null,{ vigor: -3 }); });
     expect(screen.getByText('-3')).toBeInTheDocument();
-    act(() => { view.gameplay().loadGameState(view.gameplay().gameStates[1], []); });
+    // A real save carries its history, which the scene window reads.
+    const save = { ...view.gameplay().gameStates[1], fullMessageHistory: turnHistory(turns) };
+    act(() => { view.gameplay().loadGameState(save, [YARD as never]); });
     act(() => { view.gameplay().setSelectedEntityId('bram'); });
     expect(screen.queryByText('-3')).not.toBeInTheDocument();
     expect(within(section()!).queryByText('+6')).not.toBeInTheDocument();
@@ -267,10 +274,11 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
   const mira = { id: 'mira', name: 'Mira', persona: true, image: PICTURE };
   const played = { ...values, mira: [statFixture('Trust', 60), statFixture('Calm', 5)] };
   const asMira = (pick?: string) => ({
-    world: { entities: [bram, odette, wick, mira] } as never, turns, stats: [statFixture('Vigor', 50), statFixture('Trust', 10)],
+    world: { entities: [bram, odette, wick, mira], locations: [YARD] } as never, turns, stats: [statFixture('Vigor', 50), statFixture('Trust', 10)],
     seed: (g: Gameplay) => {
       g.setEntityStats(played);
       g.setVisibleEntities(now);
+      g.setCurrentLocation(YARD as never);
       g.setPersonaRef({ source: 'world', entityId: 'mira' });
       if (pick) g.setSelectedEntityId(pick);
     },
@@ -347,10 +355,11 @@ describe('RightPanel — editing entity and persona stats', () => {
   const mira = { id: 'mira', name: 'Mira', persona: true, image: PICTURE };
   /** A world whose only visible stats belong to entities: Vigor is hidden. */
   const ownersOnly = {
-    world: { entities: [bram, odette, wick, mira] } as never, turns, stats: [statFixture('Vigor', 50, { hidden: true })],
+    world: { entities: [bram, odette, wick, mira], locations: [YARD] } as never, turns, stats: [statFixture('Vigor', 50, { hidden: true })],
     seed: (g: Gameplay) => {
       g.resetEntityStats({ ...values, mira: [statFixture('Calm', 5)] });
       g.setVisibleEntities(now);
+      g.setCurrentLocation(YARD as never);
       g.setPersonaRef({ source: 'world', entityId: 'mira' });
       g.setSelectedEntityId('bram');
     },
@@ -398,7 +407,7 @@ describe('RightPanel — editing entity and persona stats', () => {
     expect(valueOf(g.gameStates[g.currentPage - 1].entityStats, 'bram', 'trust')).toBe(70);
   });
 
-  it('edits a picked entity that is not in the scene', async () => {
+  it('edits a picked entity', async () => {
     const view = renderRightPanel({}, ownersOnly);
     await choose('Odette');
     fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));

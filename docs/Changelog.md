@@ -64,6 +64,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Entities tab lists everyone here, strangers by label.** People in the scene come first. Click a stranger for a popup with the label, image and description only.
     - **Give offers only people in the scene, strangers by label.** A stranger never shows a true name there. Someone with no label isn't offered.
     - **Entities in the World Editor take a Stranger Name and Stranger Description.** In Advanced mode, the player sees them until the story names the entity. A blank Stranger Name means met from the start.
+    - **The stat picker and the Traits tab list only people in the scene.** Strangers show by label, and a stranger's traits and stats never show the true name.
   - **World Editor and game side panel tabs show every label when they fit, then the selected tab's, then icons alone.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
 - **🛠️ Developer tooling**
   - **Inventory:**

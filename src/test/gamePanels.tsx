@@ -74,6 +74,8 @@ export interface TurnFixture {
   stats?: PlayerStat[];
   /** Who stood in this turn's scene, with each name's reveal state. */
   scene?: SceneEntity[];
+  /** Where the player stood when the turn ended. */
+  locationId?: string;
   /** Each entity's stat values as this turn left them. */
   entityStats?: EntityStatValues;
   /** What this turn moved each entity stat. */
@@ -159,6 +161,7 @@ function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
     ...(turn.entityStats ? { entityStats: turn.entityStats } : {}),
     ...(turn.entityStatChanges ? { entityStatChanges: turn.entityStatChanges } : {}),
     visibleEntities: turn.scene ?? [],
+    ...(turn.locationId ? { locationId: turn.locationId } : {}),
     logEntries: [],
     gameplayText: turn.narration,
     gameTime: 0,
