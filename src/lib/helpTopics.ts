@@ -220,6 +220,26 @@ Aliases apply in every mode, and they travel with the world and with an exported
 
 Give an entity the one or two names the story will actually use. Each alias is also a line the AI reads whenever the entity is in scene, so a long list is extra prompt for no gain.`,
   },
+  'worldEditor.strangerName': {
+    title: 'Stranger Name',
+    wikiPage: 'World-Editor-Entities',
+    wikiAnchor: 'strangers',
+    body: `Hides who an entity is until the story names it. Until then the player sees the **Stranger Name** ("a hooded figure") and the **Stranger Description**, and the AI uses the Stranger Name too.
+
+**Who starts met**
+
+An entity starts met, with no introduction, when any of these is true:
+
+- It has no Stranger Name. Old worlds play as before.
+- It has a relationship with the persona the player plays, on either side.
+- One of its **Known In** picks covers a place where the persona lives. The pick's child places count too.
+
+The **Nearby** default of **Known In** makes nobody met. A persona that lives nowhere, such as the Custom Persona, meets every stranger fresh.
+
+A stranger turns met once the story uses the entity's real name. Met stays met for the rest of the game.
+
+Both fields take placeholders and rolls. Clear a field to remove it.`,
+  },
   'worldEditor.statChanges': {
     title: 'Stat Changes',
     wikiPage: 'World-Editor-Traits',
