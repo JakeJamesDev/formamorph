@@ -52,6 +52,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **With an AI Language set, Formaquestion keeps names from your world as the world writes them.** This works even after you clear the world rules prompts.
   - **Supporter Flair:**
     - **Supporter Flair now covers a third Patreon tier.** The new tier gets its own badge and ring color in the app, and lists first on the Supporters page.
+  - **Formamorph AI:**
+    - **The Formamorph AI section on your formamorph.ai account page shows your allowance.** It shows your tier, percent used, about how many turns are left and the reset date.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

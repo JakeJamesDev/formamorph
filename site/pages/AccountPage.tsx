@@ -6,6 +6,7 @@ import { ProfileAvatarEditor } from '@/components/menu/ProfileAvatarEditor';
 import { PatreonSection, type PatreonReturn } from '@/components/PatreonSection';
 import AuthService from '@/services/AuthService';
 import { Field } from '../components/AccountForm';
+import { AllowanceSection } from '../components/AllowanceSection';
 import { NoteLine, type Note } from '../components/NoteLine';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
@@ -368,6 +369,9 @@ export function AccountPage() {
         <AvatarSection username={user?.username ?? null} suspended={suspended} />
         <EmailSection suspended={suspended} />
         <PatreonSection openAuthorize={leaveTo} returned={patreonReturn} suspended={suspended} />
+        <Section title="Formamorph AI">
+          <AllowanceSection />
+        </Section>
         <PasswordSection suspended={suspended} />
         <DeleteSection suspended={suspended} open={deleting} onOpenChange={setDeleting} />
       </div>
