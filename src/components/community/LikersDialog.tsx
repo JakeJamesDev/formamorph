@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toastError } from "@/lib/linkToast";
-import { Fingerprint, HeartOff, Link2, UserCheck, VenetianMask } from "lucide-react";
+import { Fingerprint, HeartOff, Link2, Network, UserCheck, VenetianMask } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,10 +18,50 @@ import { formatServerDate, formatServerDateTime } from "@/lib/serverDate";
 import { cn } from "@/lib/utils";
 import WorldStorageService from "@/services/WorldStorageService";
 import type { WorldRecord } from "@/components/WorldDetails";
-import type { AnonymousLikeRow, LikerAuditRow, LikerRow } from "@/types";
+import type {
+  AnonymousLikeRow, LikerAuditRow, LikerRow, LikesMarkerReason, LikesSummary, NetworkKind,
+} from "@/types";
 
 /** What the audit knows about one liker, once it has been asked for. Keyed by account id. */
-type AuditMarks = Record<string, Pick<LikerAuditRow, 'groupId' | 'linkedToAuthor'>>;
+type AuditMarks = Record<string, Pick<LikerAuditRow, 'groupId' | 'linkedToAuthor' | 'networkKind'>>;
+
+/** What a Network Kind reads as on a row, and the fact its tip states. */
+const KIND_COPY: Record<NetworkKind, { label: string; tip: string }> = {
+  vpn: { label: 'VPN', tip: 'Liked from an address on a VPN list' },
+  hosting: { label: 'Hosting', tip: 'Liked from an address on a hosting network list' },
+  tor: { label: 'Tor', tip: 'Liked from an address on the Tor exit list' },
+};
+
+const REASON_COPY: Record<LikesMarkerReason, string> = {
+  burst: 'Burst',
+  flagged_share: 'Flagged share',
+};
+
+/** The badge a like wears when its address matched a list. Renders nothing for no kind. */
+const NetworkKindBadge = ({ kind }: { kind?: NetworkKind | null }) => {
+  const copy = kind ? KIND_COPY[kind] : undefined;
+  if (!copy) return null;
+
+  return (
+    <Tip tip={copy.tip} labelsChild={false}>
+      <span
+        data-network-kind={kind}
+        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-meta font-medium text-muted-foreground"
+      >
+        <Network className="h-3 w-3" />
+        {copy.label}
+      </span>
+    </Tip>
+  );
+};
+
+/** "12 of 40 likes (30%)" style reading of the 90-day window. Null when the window holds no likes. */
+const describeSummary = (summary: LikesSummary) => {
+  if (summary.total === 0) return null;
+
+  const share = summary.share === null ? '' : ` (${Math.round(summary.share * 100)}%)`;
+  return `${summary.flagged} of ${summary.total} ${summary.total === 1 ? 'like' : 'likes'} flagged in the last ${summary.windowDays} days${share}`;
+};
 
 /**
  * The Anonymous Likes from one address, which is the unit a removal acts on.
@@ -51,6 +91,8 @@ interface LikersDialogProps {
   currentUser?: WorldRecord | null;
   /** Reports the listing's new like count after a removal, so the heart behind this agrees. */
   onLikesChanged?: (likes: number) => void;
+  /** Runs the audit as the dialog opens, so a Likes Marker lands on the evidence. */
+  auditOnOpen?: boolean;
 }
 
 /** "3 Anonymous Likes", or "1 Anonymous Like". */
@@ -142,7 +184,7 @@ const RemoveLikeButton = ({ tip, label, onClick }: { tip: string; label: string;
  * one to anything else on the screen.
  */
 export function LikersDialog({
-  open, onOpenChange, listingId, listingName, currentUser, onLikesChanged,
+  open, onOpenChange, listingId, listingName, currentUser, onLikesChanged, auditOnOpen = false,
 }: LikersDialogProps) {
   const [rows, setRows] = useState<LikerRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -156,9 +198,13 @@ export function LikersDialog({
   const [marks, setMarks] = useState<AuditMarks | null>(null);
   /** The Anonymous Like rows the audit sent, capped by the server. Empty until it is asked. */
   const [anonymousRows, setAnonymousRows] = useState<AnonymousLikeRow[]>([]);
+  /** The 90-day reading the audit sent, or null until it is asked or when the server sends none. */
+  const [summary, setSummary] = useState<LikesSummary | null>(null);
   const [isAuditing, setIsAuditing] = useState(false);
   /** Which listing is on screen. An audit that answers for any other one is about something else. */
   const shown = useRef<string | null>(null);
+  /** Set once the audit answered, so a slower plain list cannot overwrite its rows. */
+  const auditLanded = useRef(false);
 
   useEffect(() => {
     if (!open || !listingId) return;
@@ -171,12 +217,14 @@ export function LikersDialog({
     setError(null);
     setMarks(null);
     setAnonymousRows([]);
+    setSummary(null);
+    auditLanded.current = false;
     setIsAuditing(false);
     setIsLoading(true);
 
     WorldStorageService.fetchLikers(listingId)
       .then((result) => {
-        if (cancelled) return;
+        if (cancelled || auditLanded.current) return;
         setRows(result.rows);
         setTotal(result.total);
         setAnonymous(result.anonymous);
@@ -248,9 +296,12 @@ export function LikersDialog({
       setTotal(result.total);
       setAnonymous(result.anonymous);
       setAnonymousRows(result.anonymousRows);
+      setSummary(result.summary ?? null);
+      auditLanded.current = true;
+      setIsLoading(false);
       setMarks(Object.fromEntries(result.rows.map((row: LikerAuditRow) => [
         row.id,
-        { groupId: row.groupId, linkedToAuthor: row.linkedToAuthor },
+        { groupId: row.groupId, linkedToAuthor: row.linkedToAuthor, networkKind: row.networkKind },
       ])));
     } catch (e) {
       if (shown.current === asked) toastError(e, 'Failed to audit these likes');
@@ -258,6 +309,11 @@ export function LikersDialog({
       if (shown.current === asked) setIsAuditing(false);
     }
   }, [listingId]);
+
+  // A marker opens the dialog on the evidence. The plain list loads beside it and yields to the audit.
+  useEffect(() => {
+    if (open && listingId && auditOnOpen) void runAudit();
+  }, [open, listingId, auditOnOpen, runAudit]);
 
   /**
    * Take Anonymous Likes off the listing, by address or all of them.
@@ -376,6 +432,7 @@ export function LikersDialog({
               className="text-label font-medium"
             />
             <StatusPill status={row.status} />
+            <NetworkKindBadge kind={marks?.[row.id]?.networkKind} />
             {linkedToAuthor
               && linkedBadge('This account acted from an address the author also acted from')}
             {row.claimedAt && (
@@ -435,6 +492,7 @@ export function LikersDialog({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span className="text-label font-medium">Anonymous Like</span>
+          <NetworkKindBadge kind={anon.networkKind} />
           {anon.linkedToAuthor
             && linkedBadge('This like came from an address the author also acted from')}
         </div>
@@ -515,6 +573,7 @@ export function LikersDialog({
     };
   };
 
+  const summaryText = summary ? describeSummary(summary) : null;
   const hasLikes = rows.length > 0 || anonymous > 0;
   const { title: confirmTitle, description: confirmDescription } = confirmation();
 
@@ -573,11 +632,39 @@ export function LikersDialog({
               </p>
             )}
 
+            {audited && summaryText && (
+              <p data-likes-summary="true" className="text-meta text-muted-foreground">
+                {summaryText}
+              </p>
+            )}
+
             {/* The server caps the audit too, and a flood is exactly the case that reaches the cap. */}
             {audited && anonymous > anonymousRows.length && (
               <p className="text-meta text-muted-foreground">
                 Showing the newest {anonymousRows.length} of {anonymous} Anonymous Likes.
               </p>
+            )}
+          </div>
+        )}
+
+        {audited && summary && (summary.bursts.length > 0 || summary.reasons.length > 0) && (
+          <div data-bursts="true" className="space-y-1 rounded-md border bg-muted/30 p-2">
+            {summary.reasons.length > 0 && (
+              <p className="text-meta text-muted-foreground">
+                Marker fires on: {summary.reasons.map((reason) => REASON_COPY[reason]).join(' and ')}
+              </p>
+            )}
+            {summary.bursts.length > 0 && (
+              <>
+                <p className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">Bursts</p>
+                <ul className="space-y-0.5">
+                  {summary.bursts.map((burst) => (
+                    <li key={burst.startedAt} className="text-meta text-muted-foreground">
+                      {formatServerDateTime(burst.startedAt)} — {burst.size} different likers
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         )}

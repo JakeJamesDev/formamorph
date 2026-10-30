@@ -135,12 +135,27 @@
   <p>The hash has one purpose: <strong>to limit and detect abuse</strong>. It caps how many of these likes
     one connection may give one listing, and it lets staff see a number that was inflated from one place.
     Nothing else uses it.</p>
-  <p><strong>We blank the hash after 90 days.</strong> The like stays and still counts. Only where it came
-    from goes.</p>
+  <p><strong>We blank the hash and the browser family after 90 days.</strong> The like stays and still
+    counts. Only where it came from goes.</p>
   <p><strong>To take one of these likes back, press the heart again on the same copy of the app.</strong></p>
   <p><strong>Signing in moves these likes to your account.</strong> They become ordinary Likes. We record
     which account took the Install, so signing out again does not let the same copy of the app like a
     listing twice. Deleting your account deletes that record too.</p>
+
+  <h2>The kind of network behind a like</h2>
+  <p>When you like a listing, signed in or not, we store <strong>the kind of network the like came
+    from</strong>: a VPN, a hosting network, or Tor. A like from any other network stores nothing.</p>
+  <p>We find the kind by checking your network address against <strong>lists kept on our own
+    server</strong>. Your address is never sent to anyone to check it. We do not store the address.</p>
+  <p>The kind has one purpose: <strong>to detect abuse</strong>. It lets staff see when a listing's likes
+    were inflated from VPNs, cloud servers, or Tor. It never causes anything to happen by itself. A like
+    from a VPN is accepted and counted like any other.</p>
+  <p><strong>We blank the kind after 90 days.</strong> The like stays and still counts.</p>
+  <p>The VPN and hosting lists come from
+    <a href="https://github.com/X4BNet/lists_vpn">X4BNet lists_vpn</a>, built from IP address data by
+    <a href="https://www.iplocate.io">IPLocate.io</a> under
+    <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. The Tor list comes from the
+    Tor Project.</p>
 
   <h2>Who else handles your data</h2>
   <p><strong>Hetzner</strong> hosts the server in <strong>Helsinki, Finland</strong>. Your data lives
@@ -165,8 +180,9 @@
   <ul>
     <li><strong>Your account and what you published:</strong> until you delete it.</li>
     <li><strong>Signals:</strong> 90 days.</li>
-    <li><strong>The address hash beside a like you gave while signed out:</strong> 90 days. The like
-      itself stays.</li>
+    <li><strong>The address hash and browser family beside a like you gave while signed out:</strong> 90
+      days. The like itself stays.</li>
+    <li><strong>The kind of network beside a like:</strong> 90 days. The like itself stays.</li>
     <li><strong>Nightly copies of the database:</strong> up to 30 days.</li>
     <li><strong>Published files:</strong> mirrored to Cloudflare storage for as long as the listing
       exists.</li>

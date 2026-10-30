@@ -25,7 +25,7 @@ import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { LikeState } from '@/lib/likeCount';
 import type {
-  AnonymousLikeRow, AnonymousLikesRemoved, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata,
+  AnonymousLikeRow, AnonymousLikesRemoved, LikerAuditRow, LikerRow, LikesSummary, VrmLicense, WorldMetadata,
 } from '@/types';
 import {
   INSTALL_HEADER_NAME, installHeaderInUse, noteInstallHeaderRefused, readerInstallId, storedInstallId,
@@ -1382,6 +1382,7 @@ class WorldStorageService {
     rows: LikerAuditRow[];
     anonymous: number;
     anonymousRows: AnonymousLikeRow[];
+    summary?: LikesSummary | null;
   }> {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/likes/audit`, {
       headers: authHeaders(),
@@ -1395,6 +1396,7 @@ class WorldStorageService {
       rows?: LikerAuditRow[];
       anonymous?: number;
       anonymousRows?: AnonymousLikeRow[];
+      summary?: LikesSummary | null;
     } | undefined;
 
     return {
@@ -1402,6 +1404,7 @@ class WorldStorageService {
       rows: data?.rows ?? [],
       anonymous: Number(data?.anonymous) || 0,
       anonymousRows: data?.anonymousRows ?? [],
+      summary: data?.summary ?? null,
     };
   }
 

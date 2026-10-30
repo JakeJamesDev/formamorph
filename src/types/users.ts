@@ -162,6 +162,35 @@ export interface LikerAuditRow extends LikerRow {
   groupId: number | null;
   /** Whether this account acted from an address the listing's author also acted from. */
   linkedToAuthor: boolean;
+  /** The kind of network the like came from, or null when none matched or the sweep blanked it. */
+  networkKind?: NetworkKind | null;
+}
+
+/** The kinds of network the server flags a like for. */
+export type NetworkKind = 'vpn' | 'hosting' | 'tor';
+
+/** Why a listing carries a Likes Marker. Fixed order: Burst, then flagged share. */
+export type LikesMarkerReason = 'burst' | 'flagged_share';
+
+/** One run of many different likers inside a short window. */
+export interface LikeBurst {
+  /** When the first like of the run was given, as a server timestamp. */
+  startedAt: string;
+  /** How many different likers the run holds. */
+  size: number;
+}
+
+/** What the audit says about a listing's likes in the last 90 days. */
+export interface LikesSummary {
+  windowDays: number;
+  /** Likes in the window whose kind is VPN, hosting or Tor. */
+  flagged: number;
+  /** All likes in the window. */
+  total: number;
+  /** Flagged over total, or null when there are no likes in the window. */
+  share: number | null;
+  bursts: LikeBurst[];
+  reasons: LikesMarkerReason[];
 }
 
 /**
@@ -186,6 +215,8 @@ export interface AnonymousLikeRow {
    * with nothing to remove it by on its own.
    */
   addressKey: string | null;
+  /** The kind of network it came from, or null when none matched or the sweep blanked it. */
+  networkKind?: NetworkKind | null;
 }
 
 /** What either Anonymous Like removal answers with: what went, and the two numbers the screen shows. */
