@@ -11,7 +11,7 @@ const ids = () => { let i = 0; return () => `n${i++}`; };
 
 const hand: Slot = { id: 'hand', name: 'Hand' };
 const sword = item('sword', 'Iron Sword', { stackable: false, slotId: 'hand' });
-const tonic = item('tonic', 'Tonic', { consumable: true });
+const tonic = item('tonic', 'Tonic', { uses: 1 });
 const ring = item('ring', '{Cursed} Ring');
 const you = { kind: 'you' } as const;
 const mara = { kind: 'entity', id: 'mara' } as const;

@@ -275,11 +275,12 @@ export function applyInventoryPass(
       ]));
       continue;
     }
-    // Equip, unequip and consume act on one Item Copy at a time, read again after each.
+    // Equip, unequip and use act on one Item Copy at a time, read again after each.
     for (let i = 0; i < op.quantity; i += 1) {
       const [copy] = candidates(key, where, op.op);
       if (!copy) break;
-      run([{ kind: op.op, copyId: copy.id }]);
+      // The pass names a use `consume`.
+      run([{ kind: op.op === 'consume' ? 'use' : op.op, copyId: copy.id }]);
     }
   }
 

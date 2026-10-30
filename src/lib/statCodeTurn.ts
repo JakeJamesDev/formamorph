@@ -497,7 +497,7 @@ export const ITEM_EVENT_DEPTH = 3;
 export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly InventoryOp[]) => Pick<InventoryResult, 'copies' | 'events' | 'diagnostics' | 'doses'>;
 
 /**
- * The inventory settle over `copies`, as if the runs had stopped there: `doses` are every consume so far, and
+ * The inventory settle over `copies`, as if the runs had stopped there: `doses` are every use so far, and
  * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, their
  * events, and the settle's log lines.
  */
@@ -520,7 +520,7 @@ export interface ItemRunsResult {
   copies: readonly ItemCopy[];
   /** The module's skips, the settles' log lines, and one line per event past the depth cap. */
   diagnostics: string[];
-  /** The consumes the runs' writes made, which start their After Consumed effects. */
+  /** The uses the runs' writes made, which start their After Use effects. */
   doses: Dose[];
   /** Every inventory write the runs landed, the settle's unequips among them, in order, for a caller whose Item
    *  Copies moved meanwhile. */

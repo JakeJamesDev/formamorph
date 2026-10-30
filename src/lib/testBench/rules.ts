@@ -491,6 +491,23 @@ const traitToggleMissingStat: Rule = {
   },
 };
 
+const itemBecomesMissingItem: Rule = {
+  id: 'item-becomes-missing-item',
+  severity: 'error',
+  section: 'items',
+  summary: (count) => `${count} items become an item that doesn’t exist when used up`,
+  // An item with no Uses never reads its When Empty.
+  check: (world) => {
+    const known = new Set((world.items ?? []).map((i) => i.id));
+    return (world.items ?? [])
+      .filter((i) => i.uses !== undefined && i.whenEmpty?.kind === 'becomes' && !known.has(i.whenEmpty.itemId))
+      .map((i) => {
+        const item = namedItem(i.id, i.name, world, 'items');
+        return finding(itemBecomesMissingItem, `${quote(item.name)} becomes an item that doesn’t exist when used up`, [item]);
+      });
+  },
+};
+
 // ── Placeholder pins, from every source ────────────────────────────────────────────────────────────────────
 
 /** The world as the pin editors read it, so a finding labels a source exactly as its editor does. One per
@@ -3734,7 +3751,7 @@ const imageMislabeled: Rule = {
 /** Every rule the Bench runs, in catalog order. Display order comes from severity, not this list. */
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
-  entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, placeholderPinBroken,
+  entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, itemBecomesMissingItem, placeholderPinBroken,
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat,
   scriptBeforeReadsDelta, scriptTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,

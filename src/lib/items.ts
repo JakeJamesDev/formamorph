@@ -2,21 +2,29 @@ import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import type { Item, ItemCopy, Placement, PlacementWhere, Slot, Trait } from '@/types';
+import type { Item, ItemCopy, ItemWhenEmpty, Placement, PlacementWhere, Slot, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [] });
 
-/** Charges rule stacking out (Q47); otherwise stacking is on unless switched off. */
-export const itemStackable = (item: Item): boolean => item.charges === undefined && item.stackable !== false;
+/** Uses 2 or more rule stacking out, since each copy counts its own; otherwise stacking is on unless switched off. */
+export const itemStackable = (item: Item): boolean => (item.uses === undefined || item.uses <= 1) && item.stackable !== false;
 
-/** Use applies to it: it is Consumable or has charges (Q16, Q57). */
-export const itemUsable = (item: Item): boolean => !!item.consumable || item.charges !== undefined;
+/** Use applies to it: it has Uses, After Use effects or a When Used script (Q20). */
+export const itemUsable = (item: Item): boolean => item.uses !== undefined
+  || item.statEffects.some((row) => row.timing === 'used') || item.traitEffects.some((row) => row.timing === 'used')
+  || !!item.scripts?.some((script) => script.timing === 'used');
 
-/** The charges an Item Copy of `item` has left: full when it records none. Undefined when the item has none. */
-export const chargesLeft = (copy: Pick<ItemCopy, 'state'>, item: Item | undefined): number | undefined =>
-  (item?.charges === undefined ? undefined : copy.state?.charges ?? item.charges);
+/** The uses an Item Copy of `item` has left: full when it records none. Undefined when the item has no Uses. */
+export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Item | undefined): number | undefined =>
+  (item?.uses === undefined ? undefined : copy.state?.uses ?? item.uses);
+
+/** How the editor and Formaquestion name each When Empty outcome. */
+export const WHEN_EMPTY_LABEL: Record<ItemWhenEmpty['kind'], string> = { stays: 'Stays', gone: 'Gone', becomes: 'Becomes' };
+
+/** What a copy of `item` leaves on its last use (Q26). */
+export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };
 
 export const slotCapacity = (slot: Slot): number => slot.capacity ?? 1;
 

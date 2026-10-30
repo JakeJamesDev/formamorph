@@ -61,7 +61,7 @@ const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-pass-case
 const items: Item[] = fixture.items.map((item) => ({
   ...item, traitEffects: [], equipRequires: [],
   statEffects: item.id === 'draught'
-    ? [{ id: 'row', statId: 'stat-vigor', facet: 'value', timing: 'consumed', amount: 20, op: 'add' } as unknown as Item['statEffects'][number]]
+    ? [{ id: 'row', statId: 'stat-vigor', facet: 'value', timing: 'used', amount: 20, op: 'add' } as unknown as Item['statEffects'][number]]
     : [],
 }));
 const whereOf = (where: string): ItemCopyWhere => (

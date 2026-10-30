@@ -286,14 +286,14 @@ export const ITEM_COPY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'equipped', detail: 'boolean', info: 'True when it’s equipped' },
   { name: 'slot', detail: 'string', info: 'Name of the slot it’s equipped in, or empty when it’s carried' },
   { name: 'hidden', detail: 'boolean', info: 'True when the player can’t see it' },
-  { name: 'charges', detail: 'number', info: 'Charges left, or null when its item has no charges' },
+  { name: 'uses', detail: 'number', info: 'Uses left, or null when its item has no Uses' },
   { name: 'lose', detail: '(quantity?) => void', info: 'Removes it, or the quantity you pass. Bound doesn’t stop a script.' },
   { name: 'moveTo', detail: '(to, quantity?) => void', info: 'Moves it, or the quantity you pass, to an entity, the persona or a location, by entry or by name' },
   { name: 'equip', detail: '() => void', info: 'Equips it in its item’s slot, unequipping the one equipped longest when the slot is full' },
   { name: 'unequip', detail: '() => void', info: 'Unequips it. It stays owned.' },
-  { name: 'consume', detail: '() => void', info: 'Uses one dose or one charge, as Use does' },
+  { name: 'use', detail: '() => void', info: 'Uses it once, as Use does' },
   { name: 'reveal', detail: '(quantity?) => void', info: 'Makes it visible to the player, or the quantity you pass' },
-  { name: 'setCharges', detail: '(charges) => void', info: 'Sets its charges, from 0 up to its item’s Charges' },
+  { name: 'setUses', detail: '(uses) => void', info: 'Sets its uses left, from 0 up to its item’s Uses' },
 ]);
 
 /** The members of one entry in `items`, and of an item script's `self`. */
@@ -301,7 +301,7 @@ export const ITEM_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the item' },
   { name: 'name', detail: 'string', info: 'Code name of the item' },
   { name: 'placeholders', detail: 'object', info: 'The item’s own placeholders by name. Use items.Lamp.placeholders["Two Words"] for a name with a space.' },
-  { name: 'copies', detail: 'array', info: 'Its Item Copies in play, each with id, item, owner, location, quantity, equipped, slot, hidden and charges' },
+  { name: 'copies', detail: 'array', info: 'Its Item Copies in play, each with id, item, owner, location, quantity, equipped, slot, hidden and uses' },
   { name: 'give', detail: '(to, quantity?) => void', info: 'Gives a new Item Copy to an entity, the persona or a location, by entry or by name' },
 ], ['placeholders']);
 
@@ -526,7 +526,7 @@ export const WORLD_SCRIPT_SURFACE: CodeSurface = {
 
 /** What an item script's `self.event` holds. */
 export const ITEM_EVENT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
-  { name: 'timing', detail: 'string', info: 'The timing that ran: gained, lost, equipped, unequipped or consumed' },
+  { name: 'timing', detail: 'string', info: 'The timing that ran: gained, lost, equipped, unequipped or used' },
   { name: 'quantity', detail: 'number', info: 'How many the event moved' },
   { name: 'copy', detail: 'object', info: 'The Item Copy the event happened to, with the fields of an items copy. Once it’s gone, it reads as it stood before the event.' },
 ]);

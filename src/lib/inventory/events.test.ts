@@ -5,9 +5,9 @@ import type { Item, ItemCopy } from '@/types';
 const item = (id: string, over: Partial<Item> = {}): Item =>
   ({ id, name: id, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 
-const potion = item('potion', { consumable: true });
+const potion = item('potion', { uses: 1 });
 const ring = item('ring', { stackable: false, slotId: 'finger' });
-const wand = item('wand', { charges: 3 });
+const wand = item('wand', { uses: 3, whenEmpty: { kind: 'stays' } });
 const you = { kind: 'you' } as const;
 const bram = { kind: 'entity', id: 'bram' } as const;
 const cellar = { kind: 'location', id: 'cellar' } as const;
@@ -44,10 +44,18 @@ describe('applyInventoryOps events (Q33, Q134–Q140)', () => {
     expect(events([copy('p', 'ring', { quantity: 2 })], [{ kind: 'equip', copyId: 'p' }])).toEqual([['equipped', 'n0', you, 1]]);
   });
 
-  it('fires When Consumed only, even for the last dose, and nothing for reveal or set charges', () => {
-    expect(events([copy('a', 'potion')], [{ kind: 'consume', copyId: 'a' }])).toEqual([['consumed', 'a', you, 1]]);
+  it('fires When Used only, even for the last dose, and nothing for reveal or set uses', () => {
+    expect(events([copy('a', 'potion')], [{ kind: 'use', copyId: 'a' }])).toEqual([['used', 'a', you, 1]]);
     expect(events([copy('h', 'potion', { visibility: 'hidden' })], [{ kind: 'reveal', copyId: 'h' }])).toEqual([]);
-    expect(events([copy('w', 'wand', { state: { charges: 1 } })], [{ kind: 'setCharges', copyId: 'w', charges: 3 }])).toEqual([]);
+    expect(events([copy('w', 'wand', { state: { uses: 1 } })], [{ kind: 'setUses', copyId: 'w', uses: 3 }])).toEqual([]);
+  });
+
+  it('fires When Used on the used copy and When Gained on its Becomes result, never When Lost (Q28)', () => {
+    const flask = item('flask', { uses: 1, whenEmpty: { kind: 'becomes', itemId: 'wand' } });
+    const world = { items: [flask, wand] };
+    let i = 0;
+    const result = applyInventoryOps([copy('f', 'flask')], [{ kind: 'use', copyId: 'f' }], { world, source: 'panel', newId: () => `n${i++}` });
+    expect(result.events.map((e) => [e.timing, e.itemId, e.copyId])).toEqual([['used', 'flask', 'f'], ['gained', 'wand', 'n0']]);
   });
 
   it('fires nothing for a runtime item or a skipped operation', () => {
@@ -57,18 +65,18 @@ describe('applyInventoryOps events (Q33, Q134–Q140)', () => {
   });
 });
 
-describe('applyInventoryOps setCharges (Q41, Q47)', () => {
+describe('applyInventoryOps setUses (Q41, Q47)', () => {
   it('recharges an Item Copy within the item’s maximum', () => {
-    const empty = copy('w', 'wand', { state: { charges: 0 } });
-    const set = (charges: number) => applyInventoryOps([empty], [{ kind: 'setCharges', copyId: 'w', charges }], call()).copies[0].state;
-    expect(set(2)).toEqual({ charges: 2 });
-    expect(set(9)).toEqual({ charges: 3 });
-    expect(set(-1)).toEqual({ charges: 0 });
+    const empty = copy('w', 'wand', { state: { uses: 0 } });
+    const set = (uses: number) => applyInventoryOps([empty], [{ kind: 'setUses', copyId: 'w', uses }], call()).copies[0].state;
+    expect(set(2)).toEqual({ uses: 2 });
+    expect(set(9)).toEqual({ uses: 3 });
+    expect(set(-1)).toEqual({ uses: 0 });
   });
 
-  it('skips an item with no charges with a diagnostic', () => {
-    const result = applyInventoryOps([copy('a', 'potion')], [{ kind: 'setCharges', copyId: 'a', charges: 2 }], call());
-    expect(result.diagnostics).toEqual(['Inventory (script) skipped setCharges: Item Copy a has no charges']);
+  it('skips an item with no Uses with a diagnostic', () => {
+    const result = applyInventoryOps([copy('a', 'ring')], [{ kind: 'setUses', copyId: 'a', uses: 2 }], call());
+    expect(result.diagnostics).toEqual(['Inventory (script) skipped setUses: Item Copy a has no Uses']);
   });
 
   it('lets a script remove a Bound Item Copy the panel cannot (Q58)', () => {

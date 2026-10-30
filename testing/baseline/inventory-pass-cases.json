@@ -22,7 +22,7 @@
     {
       "id": "draught",
       "name": "Healing Draught",
-      "consumable": true,
+      "uses": 1,
       "aiSummary": "A stoppered vial of bitter green tonic that restores strength."
     },
     {
@@ -34,7 +34,7 @@
     {
       "id": "eel",
       "name": "Smoked Eel",
-      "consumable": true
+      "uses": 1
     },
     {
       "id": "oar",

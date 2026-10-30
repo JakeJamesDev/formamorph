@@ -362,7 +362,7 @@ describe('the Emberwatch items', () => {
   it('starts the played persona with a draught and a full lantern, and hides the barrow finds', () => {
     const copies = seeded(asEntity(world, 'Albus'));
     expect(copiesOf(copies, 'Healing Draught').find((copy) => copy.where.kind === 'you')?.quantity).toBe(1);
-    expect(copiesOf(copies, 'Hooded Lantern')).toMatchObject([{ where: { kind: 'you' }, state: { charges: 3 } }]);
+    expect(copiesOf(copies, 'Hooded Lantern')).toMatchObject([{ where: { kind: 'you' }, state: { uses: 3 } }]);
     expect(copiesOf(copies, 'Cold Iron Sword')).toHaveLength(2);
     expect(copiesOf(copies, "Old King's Coin")).toMatchObject([{ quantity: 12, visibility: 'hidden' }]);
     expect(copiesOf(copies, "Haldren's Crown, Lower Half")).toMatchObject([{ visibility: 'hidden' }]);

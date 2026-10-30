@@ -12,7 +12,7 @@ import type {
   ItemStatFacet, PersonaRef, PlayerStat, TimedItemEffect, Trait,
 } from '@/types';
 
-/** One consume of an authored item: what starts its After Consumed effects on the Item Copy's owner. */
+/** One use of an authored item: what starts its After Use effects on the Item Copy's owner. */
 export interface Dose {
   itemId: string;
   where: ItemCopyWhere;
@@ -32,7 +32,7 @@ export interface ItemEffectState {
   copies: readonly ItemCopy[];
   entityStats: EntityStatValues;
   ledger: ItemEffectLedger | undefined;
-  /** The consumes to start this settle. */
+  /** The uses to start this settle. */
   doses?: readonly Dose[];
   /** The story clock's `gameTime`. Absent: no timed effect ends. */
   now?: number;
@@ -139,7 +139,7 @@ function boundDeltas(
   return out;
 }
 
-/** The key a running After Consumed row has on its owner. A second dose finds it (Q64). */
+/** The key a running After Use row has on its owner. A second dose finds it (Q64). */
 export const timedKey = (ownerId: string, itemId: string, rowId: string): string => `${ownerId}:${itemId}:${rowId}`;
 
 /** `stats` carrying exactly `deltas` as their item bound deltas. */
@@ -265,13 +265,13 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     logMoves(entry.hidden || !item ? null : item.name, entry.ownerId, moved, row && row.facet !== 'value' ? [row] : [], -1);
   }
 
-  // A dose starts each After Consumed row; a row already running restarts its timer instead (Q64).
+  // A dose starts each After Use row; a row already running restarts its timer instead (Q64).
   for (const dose of state.doses ?? []) {
     const item = items.get(dose.itemId);
     const ownerId = item ? statOwnerOf(dose.where, world, entityStats) : null;
     if (!item || ownerId === null) continue;
     const forGood: ItemStatEffect[] = [];
-    for (const row of ownedRows(item, ownerId, rowsOf(item, 'consumed'))) {
+    for (const row of ownedRows(item, ownerId, rowsOf(item, 'used'))) {
       if (row.duration?.kind !== 'time') {
         forGood.push(row);
         continue;

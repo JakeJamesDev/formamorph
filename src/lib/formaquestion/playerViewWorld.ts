@@ -134,10 +134,10 @@ const playerConnections = (met: Met, connections: readonly Connection[] = []): C
   .map((c) => ({ id: c.id, a: c.a, b: c.b, ...(c.aToB && { aToB: {} }), ...(c.bToA && { bToA: {} }) }));
 
 function playerItem(item: Item, row: PlayerViewItem): Item {
-  const { id, value, valueUnit, stackable, consumable, charges, bound, slotId, slotSize, placeholders } = item;
+  const { id, value, valueUnit, stackable, uses, whenEmpty, bound, slotId, slotSize, placeholders } = item;
   return {
     id, name: row.name, playerDescription: row.description, aiDescription: row.description,
-    value, valueUnit, stackable, consumable, charges, bound, slotId, slotSize, placeholders,
+    value, valueUnit, stackable, uses, whenEmpty, bound, slotId, slotSize, placeholders,
     statEffects: [], traitEffects: [], equipRequires: [],
   };
 }

@@ -26,7 +26,7 @@ const key: SandboxItem = {
 };
 const wand: SandboxItem = {
   id: 'i-wand', name: 'Wand', copies: [
-    { id: 'c-3', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', hidden: false, charges: 1 },
+    { id: 'c-3', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', hidden: false, uses: 1 },
   ],
 };
 
@@ -43,8 +43,8 @@ describe('executeStatCode items', () => {
       if (mine.owner !== 'Hero' || mine.location !== '') throw new Error('owner ' + mine.owner);
       if (lying.owner !== '' || lying.location !== 'Vault' || !lying.hidden || lying.quantity !== 2) throw new Error('lying');
       const wand = items.Wand.copies[0];
-      if (wand.owner !== 'Keeper' || !wand.equipped || wand.slot !== 'Hand' || wand.charges !== 1) throw new Error('wand');
-      if (mine.charges !== null) throw new Error('charges');
+      if (wand.owner !== 'Keeper' || !wand.equipped || wand.slot !== 'Hand' || wand.uses !== 1) throw new Error('wand');
+      if (mine.uses !== null) throw new Error('uses');
     `);
     expect(res.error).toBeNull();
   });
@@ -70,7 +70,7 @@ describe('executeStatCode items', () => {
       mine.lose();
       lying.reveal(1);
       const wand = items.Wand.copies[0];
-      wand.unequip(); wand.equip(); wand.consume(); wand.setCharges(3);
+      wand.unequip(); wand.equip(); wand.use(); wand.setUses(3);
     `);
     expect(res.error).toBeNull();
     expect(res.worldWrites?.inventory).toEqual([
@@ -82,8 +82,8 @@ describe('executeStatCode items', () => {
       { kind: 'reveal', copyId: 'c-2', quantity: 1 },
       { kind: 'unequip', copyId: 'c-3' },
       { kind: 'equip', copyId: 'c-3' },
-      { kind: 'consume', copyId: 'c-3' },
-      { kind: 'setCharges', copyId: 'c-3', charges: 3 },
+      { kind: 'use', copyId: 'c-3' },
+      { kind: 'setUses', copyId: 'c-3', uses: 3 },
     ]);
   });
 
@@ -115,10 +115,10 @@ describe('executeStatCode items', () => {
   });
 
   it('reads a gone event copy as it stood before the event, listed at no owner', async () => {
-    const was = { id: 'gone', where: { kind: 'you' as const }, quantity: 2, equipped: false, slot: '', hidden: false, charges: 1 };
+    const was = { id: 'gone', where: { kind: 'you' as const }, quantity: 2, equipped: false, slot: '', hidden: false, uses: 1 };
     const res = await run(`
       const copy = self.event.copy;
-      if (copy.id !== 'gone' || copy.quantity !== 2 || copy.owner !== 'Hero' || copy.charges !== 1) throw new Error('copy');
+      if (copy.id !== 'gone' || copy.quantity !== 2 || copy.owner !== 'Hero' || copy.uses !== 1) throw new Error('copy');
       if (persona.items.some((c) => c.id === 'gone')) throw new Error('listed');
     `, { itemEvent: { itemId: 'i-wand', timing: 'lost', copyId: 'gone', quantity: 2, was } });
     expect(res.error).toBeNull();

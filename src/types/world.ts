@@ -34,8 +34,8 @@ export type RegenUnit = 'minutes' | 'hours' | 'days' | 'weeks';
  *  narration sentence, once at a new playthrough's start, when a trait switches in play, or on an item's events. */
 export type ScriptTiming = 'before' | 'after' | 'output' | 'start' | 'switch' | ItemScriptTiming;
 
-/** When an item's script runs: its Item Copy is gained, lost, equipped, unequipped or consumed (Q33). */
-export type ItemScriptTiming = 'gained' | 'lost' | 'equipped' | 'unequipped' | 'consumed';
+/** When an item's script runs: its Item Copy is gained, lost, equipped, unequipped or used (Q33). */
+export type ItemScriptTiming = 'gained' | 'lost' | 'equipped' | 'unequipped' | 'used';
 
 /** One box of code with a timing, on a stat, a trait, the world or an item. */
 export interface Script {
@@ -513,11 +513,11 @@ export interface EntityGroup {
   order?: number;
 }
 
-/** When an item effect row acts: while its Item Copy is equipped, while it is owned, after it is consumed, or
+/** When an item effect row acts: while its Item Copy is equipped, while it is owned, after it is used, or
  *  once on the owner's first obtain. */
-export type ItemTiming = 'equipped' | 'owned' | 'consumed' | 'firstObtain';
+export type ItemTiming = 'equipped' | 'owned' | 'used' | 'firstObtain';
 
-/** How long an After Consumed effect runs: for good, or a span of story-clock hours. */
+/** How long an After Use effect runs: for good, or a span of story-clock hours. */
 export type ItemEffectDuration = { kind: 'permanent' } | { kind: 'time'; hours: number };
 
 /** The part of a stat an item effect row moves. */
@@ -529,7 +529,7 @@ export interface ItemStatEffect {
   statId: string;
   facet: ItemStatFacet;
   timing: ItemTiming;
-  /** Read only under the `consumed` timing. */
+  /** Read only under the `used` timing. */
   duration?: ItemEffectDuration;
   amount: number;
   op: 'add';
@@ -540,12 +540,15 @@ export interface ItemTraitEffect {
   id: string;
   traitId: string;
   timing: ItemTiming;
-  /** Read only under the `consumed` timing. */
+  /** Read only under the `used` timing. */
   duration?: ItemEffectDuration;
 }
 
 /** What an item's value counts in: a stat (such as Gold), or free text. */
 export type ItemValueUnit = { kind: 'stat'; statId: string } | { kind: 'text'; text: string };
+
+/** What a copy's last use leaves: the copy at zero uses, nothing, or one copy of another authored item. */
+export type ItemWhenEmpty = { kind: 'stays' } | { kind: 'gone' } | { kind: 'becomes'; itemId: string };
 
 /** An authored item kind. In play the save holds Item Copies of it. */
 export interface Item {
@@ -566,11 +569,12 @@ export interface Item {
   placeholders?: Placeholder[];
   value?: number;
   valueUnit?: ItemValueUnit;
-  /** Absent = stackable. Never read while `charges` is set. */
+  /** Absent = stackable. Never read while `uses` is 2 or more. */
   stackable?: boolean;
-  consumable?: boolean;
-  /** The charge count each Item Copy starts with. Absent = no charges. */
-  charges?: number;
+  /** The uses each Item Copy starts with, from 1. Absent = unlimited. */
+  uses?: number;
+  /** What a copy's last use leaves. Read only while `uses` is set; absent = Gone (Q26). */
+  whenEmpty?: ItemWhenEmpty;
   /** The player cannot drop or give its Item Copies. */
   bound?: boolean;
   /** The world slot it equips into. Absent = not equippable. */

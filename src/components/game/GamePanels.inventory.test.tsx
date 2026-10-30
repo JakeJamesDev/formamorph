@@ -15,8 +15,10 @@ const items = [
   item('helm', 'Iron Helm', { stackable: false, slotId: 'head' }),
   item('crown', 'Old Crown', { stackable: false, slotId: 'head', bound: true }),
   item('coin', 'Coin'),
-  item('tonic', 'Tonic', { consumable: true }),
-  item('wand', 'Ash Wand', { charges: 3, stackable: false, slotId: 'hand' }),
+  item('tonic', 'Tonic', { uses: 1 }),
+  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, slotId: 'hand' }),
+  item('horn', 'War Horn', { statEffects: [{ id: 'h', statId: 'nerve', facet: 'value', timing: 'used', amount: 1, op: 'add' }] }),
+  item('lamp', 'Oil Lamp', { uses: 1, whenEmpty: { kind: 'stays' } }),
 ];
 const yard = { id: 'yard', name: 'Yard' } as GameLocation;
 const hall = { id: 'hall', name: 'Hall' } as GameLocation;
@@ -173,13 +175,27 @@ describe('RightPanel — Inventory tab', () => {
     expect(doses).toEqual([{ itemId: 'tonic', where: you, hidden: false }]);
   });
 
-  it('spends a charge on an equipped wand, and turns Use off at zero charges', async () => {
-    const h = renderRightPanel({}, stage([copy('w', 'wand', { state: { charges: 1 }, equipped: { slotId: 'hand', order: 1 } })]));
-    expect(await screen.findByText('1 of 3 charges')).toBeInTheDocument();
+  it('spends a use on an equipped wand, and turns Use off at zero uses', async () => {
+    const h = renderRightPanel({}, stage([copy('w', 'wand', { state: { uses: 1 }, equipped: { slotId: 'hand', order: 1 } })]));
+    expect(await screen.findByText('1 of 3 uses')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Use Ash Wand' }));
-    expect(mine(h.gameplay())[0].state).toEqual({ charges: 0 });
-    expect(await screen.findByRole('button', { name: 'Use Ash Wand: no charges left' })).toBeDisabled();
+    expect(mine(h.gameplay())[0].state).toEqual({ uses: 0 });
+    expect(await screen.findByRole('button', { name: 'Use Ash Wand: no uses left' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Use Coin' })).not.toBeInTheDocument();
+  });
+
+  it('shows Use on an item with After Use effects and no Uses, with no uses line (Q20)', async () => {
+    renderRightPanel({}, stage([copy('h', 'horn')]));
+    expect(await screen.findByRole('button', { name: 'Use War Horn' })).toBeEnabled();
+    expect(within(carried()).queryByText(/uses/)).not.toBeInTheDocument();
+  });
+
+  it('shows no uses line on a full Uses 1 stack, and No uses left on a spent copy (Q30)', async () => {
+    renderRightPanel({}, stage([copy('l', 'lamp', { quantity: 2 }), copy('s', 'lamp', { state: { uses: 0 } })]));
+    expect(await screen.findByText('No uses left')).toBeInTheDocument();
+    expect(within(carried()).getAllByText(/uses/)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Use Oil Lamp: no uses left' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Use Oil Lamp' })).toBeEnabled();
   });
 
   it('lists the running timed effects with the time left', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import type { Dictionary, Entity, Stat, Tool, World } from '@/types';
+import type { Dictionary, Entity, Item, Stat, Tool, World } from '@/types';
 import { buildWorldIndex, worldIndexOf, type WorldIndexInput } from './worldIndex';
 
 const stat = (patch: Partial<Stat> = {}): Stat => ({ id: 'grit', name: 'Grit', type: 'number', description: 'How long you hold on.', min: 0, max: 100, value: 40, regen: 0, descriptors: [], ...patch });
@@ -84,6 +84,15 @@ describe('the World Index', () => {
     const [top] = index.docs.search('widow', 1);
     expect(top.markdown).toContain('A widow from {Town}.');
     expect(top.markdown).not.toContain('Ashford');
+  });
+
+  it('states an item’s Uses and When Empty, and names a Becomes target only when the world holds it', () => {
+    const item = (id: string, name: string, patch: Partial<Item> = {}): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...patch });
+    const section = (items: Item[]) => buildWorldIndex(world({ items })).docs.search('draught', 1)[0].markdown;
+    const draught = item('draught', 'Healing Draught', { uses: 1, whenEmpty: { kind: 'becomes', itemId: 'bottle' } });
+    expect(section([draught, item('bottle', 'Empty Bottle')])).toContain('Uses: 1 · When Empty: Becomes Empty Bottle');
+    expect(section([draught])).toContain('When Empty: Becomes another item');
+    expect(section([item('draught', 'Healing Draught')])).not.toContain('Uses');
   });
 
   it('maps every part of a long item back to it', () => {

@@ -17,11 +17,13 @@ import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useEditorMode } from '@/lib/editorMode';
 import { fieldFrame } from '@/lib/historyField';
-import { itemStackable, slotCapacity, wholeCount } from '@/lib/items';
+import { WHEN_EMPTY_LABEL, itemStackable, slotCapacity, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { canBePlayer } from '@/lib/owners';
 import { itemPanelTabsFor, type ItemPanelTab } from '@/views/itemPanelTabs';
-import type { Item, ItemValueUnit } from '@/types';
+import type { Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
+
+const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes'] as const satisfies readonly ItemWhenEmpty['kind'][];
 
 const NO_UNIT = 'none';
 const TEXT_UNIT = 'text';
@@ -45,9 +47,9 @@ const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
   </div>
 );
 
-/** The item fields beyond its descriptions: value, stacking, use, charges, the lock, and equipping. */
+/** The item fields beyond its descriptions: value, stacking, uses, the lock, and equipping. */
 const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
-  const { playStats, entities, slots, placeholders } = useGameData();
+  const { playStats, entities, slots, placeholders, items } = useGameData();
   const label = (name: string) => labelPlaceholders(name, placeholders);
   // The Global Stats, then each persona's own (Q75).
   const statGroups = useMemo(() => [
@@ -63,7 +65,12 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
     apply({ valueUnit: next });
   };
   const slot = slots.find((s) => s.id === item.slotId);
-  const charged = item.charges !== undefined;
+  const multiUse = (item.uses ?? 1) > 1;
+  const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
+  const others = items.filter((i) => i.id !== item.id);
+  const pickEmpty = (kind: ItemWhenEmpty['kind']) => apply({
+    whenEmpty: kind === 'becomes' ? { kind, itemId: empty?.kind === 'becomes' ? empty.itemId : others[0]?.id ?? '' } : { kind },
+  });
   const id = (field: string) => `item-${field}-${item.id}`;
 
   return (
@@ -114,36 +121,57 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         id={id('stackable')}
         field="stackable"
         label="Stackable"
-        hint={charged ? 'Clear Charges to turn this on' : 'Groups Item Copies into one row with a quantity'}
+        hint={multiUse ? 'Set Uses to 1 or blank to turn this on' : 'Groups Item Copies into one row with a quantity'}
         checked={itemStackable(item)}
-        disabled={charged}
+        disabled={multiUse}
         onChange={(stackable) => apply({ stackable })}
       />
-      <CheckRow
-        id={id('consumable')}
-        field="consumable"
-        label="Consumable"
-        hint="Lets the owner use it up"
-        checked={!!item.consumable}
-        onChange={(consumable) => apply({ consumable: consumable || undefined })}
-      />
-
-      <div className="space-y-2" {...fieldFrame('charges')}>
-        <Label htmlFor={id('charges')}>Charges</Label>
-        <Hint>Sets the uses each Item Copy starts with. Blank means none.</Hint>
+      <div className="space-y-2" {...fieldFrame('uses')}>
+        <Label htmlFor={id('uses')}>Uses</Label>
+        <Hint>Sets how many times each Item Copy can be used. Blank means unlimited.</Hint>
         <WorldInput
-          id={id('charges')}
+          id={id('uses')}
           type="number"
           min={1}
           className="w-32"
-          value={item.charges ?? ''}
+          value={item.uses ?? ''}
           onChange={(e) => {
-            const charges = wholeCount(e.target.value);
-            // Charges turn stacking off (Q47); clearing them leaves it off (Q76).
-            apply(charges === undefined ? { charges: undefined } : { charges: Math.max(1, charges), stackable: false });
+            const typed = wholeCount(e.target.value);
+            if (typed === undefined) return apply({ uses: undefined, whenEmpty: undefined });
+            const uses = Math.max(1, typed);
+            // Uses 2+ turn stacking off; When Empty starts as Gone (Q26).
+            apply({ uses, ...(uses > 1 && { stackable: false }), ...(!item.whenEmpty && { whenEmpty: { kind: 'gone' } }) });
           }}
         />
       </div>
+      {empty && (
+        <div className="space-y-2" {...fieldFrame('whenEmpty')}>
+          <Label id={id('when-empty-label')}>When Empty</Label>
+          <Hint>Picks what happens to an Item Copy after its last use</Hint>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={empty.kind} onValueChange={(kind) => pickEmpty(kind as ItemWhenEmpty['kind'])}>
+              <SelectTrigger className="w-48" aria-labelledby={id('when-empty-label')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WHEN_EMPTY_KINDS.map((kind) => (
+                  <SelectItem key={kind} value={kind} disabled={kind === 'becomes' && !others.length}>{WHEN_EMPTY_LABEL[kind]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {empty.kind === 'becomes' && (
+              <Select value={empty.itemId || undefined} onValueChange={(itemId) => apply({ whenEmpty: { kind: 'becomes', itemId } })}>
+                <SelectTrigger className="w-48" aria-label="Becomes Item">
+                  <SelectValue placeholder="Select item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {others.map((i) => <SelectItem key={i.id} value={i.id}>{label(i.name) || 'Unnamed Item'}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+      )}
 
       <CheckRow
         id={id('bound')}

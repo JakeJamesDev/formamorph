@@ -286,6 +286,21 @@ describe('reference-integrity rules', () => {
     expect(runRules(toggled('s1'))).toEqual([]);
   });
 
+  it('flags an item that becomes a deleted item when used up, and quiets when the target exists or Uses is blank', () => {
+    const becomes = (itemId: string, uses?: number) => base({
+      items: [
+        { id: 'potion', name: 'Potion', statEffects: [], traitEffects: [], equipRequires: [], uses, whenEmpty: { kind: 'becomes', itemId } },
+        { id: 'bottle', name: 'Empty Bottle', statEffects: [], traitEffects: [], equipRequires: [] },
+      ],
+    });
+    const found = only(becomes('gone', 1), 'item-becomes-missing-item');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].items).toEqual([{ id: 'potion', name: 'Potion', section: 'items' }]);
+    expect(only(becomes('bottle', 1), 'item-becomes-missing-item')).toEqual([]);
+    expect(only(becomes('gone'), 'item-becomes-missing-item')).toEqual([]);
+  });
+
   it('leaves an owned trait’s toggles to the owner rule', () => {
     const w = base({
       stats: [stat({ id: 's1', name: 'Mana' })],
@@ -5215,6 +5230,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'dictionary-entry-inert': 'simple',
   'dictionary-keyword-substring': 'simple',
   'entity-location-orphan': 'simple',
+  'item-becomes-missing-item': 'simple',
   // Rule-level granularity: a name-vs-name collision is Simple-fixable, and an alias-caused one riding the
   // same rule into Simple is the accepted cost of not classifying per finding.
   'entity-match-collision': 'simple',

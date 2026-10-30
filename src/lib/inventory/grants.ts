@@ -22,14 +22,14 @@ export interface WantedGrants {
   held: Record<string, string[]>;
   /** `<owner id>:<trait id>` → the first item holding it, and whether every Item Copy behind it is hidden. */
   sources: Map<string, { item: Item; hidden: boolean }>;
-  /** Owner id → the traits On First Obtain and Permanent After Consumed rows granted for good, this settle's included. */
+  /** Owner id → the traits On First Obtain and Permanent After Use rows granted for good, this settle's included. */
   firstObtainTraits: Record<string, string[]>;
   /** The trait rows still running after this settle's expiry and doses, keyed as the ledger keys them. */
   timedTraits: Record<string, TimedItemEffect>;
   diagnostics: string[];
 }
 
-/** The running After Consumed trait rows a settle reads, and the consumes it starts. */
+/** The running After Use trait rows a settle reads, and the uses it starts. */
 export interface TimedGrants {
   entries?: Readonly<Record<string, TimedItemEffect>>;
   doses?: readonly Dose[];
@@ -84,7 +84,7 @@ export function wantedGrants(
   for (const dose of timed.doses ?? []) {
     const item = world.items.get(dose.itemId);
     if (!item) continue;
-    for (const row of rowsOf(item, 'consumed')) {
+    for (const row of rowsOf(item, 'used')) {
       const ownerId = treeOwnerOf(dose.where, row.traitId, world);
       const trait = ownerId === null ? undefined : traitOf(ownerId, row.traitId);
       if (ownerId === null || !trait) {

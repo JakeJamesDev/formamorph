@@ -13,36 +13,31 @@ const row = (id: string, timing: ItemStatEffect['timing'], over: Partial<ItemSta
   ({ id, statId: 'strength', facet: 'value', timing, amount: 2, op: 'add', ...over });
 const item = (over: Partial<Item>): Item => ({
   id: 'i', name: 'Potion', traitEffects: [], equipRequires: [],
-  statEffects: [row('a', 'owned'), row('b', 'consumed', { duration: { kind: 'time', hours: 2 } })], ...over,
+  statEffects: [row('a', 'owned'), row('b', 'used', { duration: { kind: 'time', hours: 2 } })], ...over,
 });
 const renderFields = (it: Item, apply = vi.fn()) => {
   render(<GameDataProvider><ItemEffectsFields item={it} apply={apply} /></GameDataProvider>);
   return apply;
 };
 
-describe('ItemEffectsFields — After Consumed', () => {
-  it('shows an After Consumed row with its duration on a Consumable item', () => {
-    renderFields(item({ consumable: true }));
+describe('ItemEffectsFields — After Use', () => {
+  it('shows an After Use row with its duration on an item with Uses', () => {
+    renderFields(item({ uses: 1 }));
     expect(screen.getAllByRole('combobox', { name: 'Timing' })).toHaveLength(2);
     expect(screen.getByRole('combobox', { name: 'Duration' })).toHaveTextContent('Hours');
     expect(screen.getByRole('spinbutton', { name: 'Duration Amount' })).toHaveValue(2);
   });
 
-  it('shows it on an item with charges', () => {
-    renderFields(item({ charges: 3 }));
+  it('shows it, and offers After Use, on an item with no Uses (Q25)', () => {
+    renderFields(item({}));
+    expect(screen.getAllByRole('combobox', { name: 'Timing' })).toHaveLength(2);
     expect(screen.getByRole('combobox', { name: 'Duration' })).toBeInTheDocument();
-  });
-
-  it('hides an After Consumed row on an item that cannot be used, and keeps it stored', () => {
-    const apply = renderFields(item({}));
-    expect(screen.getAllByRole('combobox', { name: 'Timing' })).toHaveLength(1);
-    expect(screen.queryByRole('combobox', { name: 'Duration' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Amount' }), { target: { value: '5' } });
-    expect(apply.mock.calls[0][0].statEffects.map((r: ItemStatEffect) => [r.id, r.amount])).toEqual([['a', 5], ['b', 2]]);
+    fireEvent.keyDown(screen.getAllByRole('combobox', { name: 'Timing' })[0], { key: 'Enter' });
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toContain('After Use');
   });
 
   it('writes a typed duration in story hours', () => {
-    const apply = renderFields(item({ consumable: true }));
+    const apply = renderFields(item({ uses: 1 }));
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Duration Amount' }), { target: { value: '3' } });
     expect(apply.mock.calls[0][0].statEffects[1].duration).toEqual({ kind: 'time', hours: 3 });
   });
