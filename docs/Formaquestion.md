@@ -445,7 +445,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 - With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.
 - **Clear Conversation**, in the **⋮** menu, removes every question and answer, and ends an answer that is coming in.
 - While a game turn generates, **Send** waits. **Search** and **Guide** still work.
-- The answer is in your **AI Language**. Control names stay as the guide writes them. See [Settings](Settings).
+- The answer is in your **AI Language**. Control names stay as the guide writes them, and names from your world stay as the world writes them. See [Settings](Settings).
 - Enter sends the question. Shift+Enter starts a new line.
 - **Stop** ends an answer and keeps its text.
 - **Scroll to End**, the round arrow above the question field, shows while the end of the conversation is more than half a window height away. Select it to go to the end and keep following the answer. See [How to Return to the Newest Answer](#how-to-return-to-the-newest-answer).
