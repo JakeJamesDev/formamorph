@@ -43,6 +43,7 @@ const FEEDBACK_REVIEWED_CONTEXTS = [
 const ALLOWED = [
   '@/services/AuthService',
   '@/services/AgeGateService',
+  '@/services/HostedStateService',
   '@/services/PatreonService',
   '@/services/PolicyService',
   '@/services/UserService',
@@ -191,7 +192,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 67: `usernameRule`, the one username check the register page and `AuthService` share; a pure leaf.
     // 69: `refusalWatch` and the `fetchTarget` leaf it reads, so the rename page can watch for the rename refusal.
     // 70: `useRenameSubmit`, the rename flow the game dialog and the rename page share; it reads only the service and the rule.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(70);
+    // 71: `HostedStateService`, the read-only hosted-state call the allowance section makes; it reads only the auth leaves.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(71);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
