@@ -113,7 +113,7 @@ describe('the pass names an unidentified item by either face', () => {
   const item2 = item('ring2', { name: 'Ring of Luck', unidentifiedName: 'Plain Ring' });
   const scene = (items: Item[]): PassScene => ({ items, runtimeItems: [], playerNames: [], owners: [], location: { id: 'cellar', name: 'Cellar' } });
   const op = (kind: InventoryPassOp['op'], name: string, over: Partial<InventoryPassOp> = {}): InventoryPassOp =>
-    ({ op: kind, item: name, quantity: 1, owner: 'you', to: '', ...over });
+    ({ op: kind, item: name, quantity: 1, owner: 'you', to: '', state: '', ...over });
   const pass = (copies: ItemCopy[], ops: InventoryPassOp[], items: Item[] = [ring, coin]) =>
     applyInventoryPass(copies, ops, scene(items), { world: { items }, newId: ids() });
 

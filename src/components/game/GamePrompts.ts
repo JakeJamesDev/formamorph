@@ -558,12 +558,13 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 <INVENTORY|markdown|header="Items Here">
 ## Operations
 - gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.
-- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.
+- lose: an owner loses an item for good - it is burned, broken or destroyed, used up off screen, or leaves the scene with no one present.
 - transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.
 - equip: an owner wields or wears an item they carry.
 - unequip: an owner puts away or takes off an item they had equipped.
-- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.
-- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.
+- use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, or spends a charge of it.
+- change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.
+- reveal: an item marked hidden comes into view because someone searches where it lies, or an item's true nature becomes known. A found item stays where it lies until someone takes it.
 
 ## Fields
 - op: one operation from the list above.
@@ -571,10 +572,12 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - quantity: how many, a whole number from 1.
 - owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. Empty for gain.
 - to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
+- state: for change, the item's new state in a word or two. Empty for every other operation.
+- after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.
 
 Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.
 
-Items Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it up, or puts it on or takes it off.`;
+Items Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it, changes it, or puts it on or takes it off.`;
 
 export const defaultInventoryUserPrompt = `<PLAYER ACTION|format=markdown|header="The player character's action">\
 <NARRATION|format=markdown|header="What happened">

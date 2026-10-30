@@ -237,15 +237,22 @@ export interface RuntimeItem {
   description?: string;
 }
 
-export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'consume' | 'reveal';
+export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'use' | 'change' | 'reveal';
 
-/** One operation as the Inventory pass names it. `owner` holds the item now; `to` receives it (gain, transfer). */
+/** What a use leaves of a runtime item (Q10). */
+export type InventoryUseAfter = 'kept' | 'used up';
+
+/** One operation as the Inventory pass names it. `owner` holds the item now; `to` receives it (gain, transfer).
+ *  `state` is the new State (change), absent when the reply named none; `after` is what a use leaves, absent when
+ *  the reply named neither word. */
 export interface InventoryPassOp {
   op: InventoryPassOpKind;
   item: string;
   quantity: number;
   owner: string;
   to: string;
+  state?: string;
+  after?: InventoryUseAfter;
 }
 
 /** An entity the Inventory pass can name as an owner. */

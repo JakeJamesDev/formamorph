@@ -212,10 +212,11 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 ## Items in the story
 <!-- keywords: inventory pass, ai gives items, story picks up item, invented item, runtime item, item names, narrator item changes -->
 
-After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use up an item, and reveal a hidden one. It sees the items of the player, of the people here, and of the location.
+After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use an item, change its State, and reveal a hidden or unidentified one. It sees the items of the player, of the people here, and of the location.
 
+- 🧪 A use follows the item's **When Empty**. For a plain item the story made, the story says whether the use kept it or used it up.
 - 🔤 A name in the story matches your item when it's the same name, ignoring case and spaces. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
-- ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used up, and it has no slot and no effects. The same name later reuses it.
+- ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used, and it has no slot and no effects. The same name later reuses it.
 - 🎒 The step runs only while the world has items or the game holds any. A world with no items never sends it.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
 

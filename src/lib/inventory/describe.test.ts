@@ -5,7 +5,7 @@ import {
   cleanItemDescription, describeItemRequest, dueItemDescriptions, ITEM_DESCRIPTION_CAP, withItemDescription,
 } from './describe';
 
-const op = (kind: InventoryPassOp['op'], item: string): InventoryPassOp => ({ op: kind, item, quantity: 1, owner: '', to: 'you' });
+const op = (kind: InventoryPassOp['op'], item: string): InventoryPassOp => ({ op: kind, item, quantity: 1, owner: '', to: 'you', state: '' });
 const turn = (turnId: string, narration: string, inventoryOps?: InventoryPassOp[]): ChatMessage => ({
   role: 'assistant',
   content: serializeTurnContent({ narration, choices: [], stat_changes: [], turnId, ...(inventoryOps && { inventoryOps }) }),

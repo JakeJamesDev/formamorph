@@ -4,14 +4,17 @@
  */
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import { sameCharacterName } from '@/lib/entityMatch';
-import { isUnidentified, sameWhere } from '@/lib/items';
-import type { InventoryPassOp, InventoryPassOpKind, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import { isUnidentified, sameState, sameWhere, stateWord } from '@/lib/items';
+import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
-export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'consume', 'reveal'] as const satisfies readonly InventoryPassOpKind[];
+export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'use', 'change', 'reveal'] as const satisfies readonly InventoryPassOpKind[];
 // Fails to compile when the union gains an operation the list lacks.
 const _everyOpListed: Exclude<InventoryPassOpKind, (typeof PASS_OP_KINDS)[number]> extends never ? true : never = true;
 void _everyOpListed;
+
+/** The words `after` takes on a use. */
+export const PASS_AFTER_WORDS = ['kept', 'used up'] as const satisfies readonly InventoryUseAfter[];
 
 /** The most one operation moves, so a stray number cannot flood the inventory. */
 export const PASS_QUANTITY_CAP = 99;
@@ -34,6 +37,7 @@ export const inventoryPassSchema = (): ResponseSchema => ({
         items: {
           type: 'object',
           additionalProperties: false,
+          // Optional, so a reply can close an operation that has no state or after; a required one loops cloud on whitespace.
           required: ['op', 'item', 'quantity', 'owner', 'to'],
           properties: {
             op: { type: 'string', enum: [...PASS_OP_KINDS] },
@@ -41,6 +45,8 @@ export const inventoryPassSchema = (): ResponseSchema => ({
             quantity: { type: 'integer', minimum: 1 },
             owner: { type: 'string' },
             to: { type: 'string' },
+            state: { type: 'string' },
+            after: { type: 'string', enum: ['', ...PASS_AFTER_WORDS] },
           },
         },
       },
@@ -51,7 +57,7 @@ export const inventoryPassSchema = (): ResponseSchema => ({
 /** The text pass's reply format, which rides after the user message out of the author's reach. */
 export const INVENTORY_TEXT_FORMAT = `
 
-Reply with one line per change: the operation, the item, the quantity, the owner and the receiver, split by " | ". Leave the owner or the receiver empty when the operation has none. Reply NONE when no item changed.`;
+Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state and the after, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
 
 /** The schema request's reply format: what the text format's NONE is for the JSON reply. */
 export const INVENTORY_JSON_FORMAT = `
@@ -70,11 +76,21 @@ const text = (value: unknown): string => (typeof value === 'string' ? value.trim
 /** Item names a schema reply fills in for a turn with no change. */
 const NO_ITEM = /^(nothing|none|no items?|n\/a|null)$/i;
 
+/** `used up` however the model spaces or joins it; anything else reads as none. */
+const afterOf = (value: unknown): InventoryUseAfter | undefined => {
+  const word = text(value).toLowerCase().replace(/[\s_-]+/g, ' ').replace(/^usedup$/, 'used up');
+  return PASS_AFTER_WORDS.find((w) => w === word);
+};
+
 const passOp = (raw: Record<string, unknown>): InventoryPassOp | null => {
   const op = text(raw.op).toLowerCase();
   const item = text(raw.item);
   if (!isKind(op) || !item || NO_ITEM.test(item)) return null;
-  return { op, item, quantity: quantityOf(raw.quantity), owner: text(raw.owner), to: text(raw.to) };
+  const after = afterOf(raw.after);
+  return {
+    op, item, quantity: quantityOf(raw.quantity), owner: text(raw.owner), to: text(raw.to),
+    ...(raw.state !== undefined && { state: text(raw.state) }), ...(after && { after }),
+  };
 };
 
 const jsonOps = (raw: string): InventoryPassOp[] | null => {
@@ -91,11 +107,11 @@ const jsonOps = (raw: string): InventoryPassOp[] | null => {
   }
 };
 
-/** The text pass's lines: `op | item | quantity | owner | to`. A line that names no operation is skipped. */
+/** The text pass's lines: `op | item | quantity | owner | to | state | after`. A line that names no operation is skipped. */
 export function parseInventoryLines(raw: string): InventoryPassOp[] {
   return raw.split('\n').flatMap((line) => {
-    const [op = '', item = '', quantity = '', owner = '', to = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
-    const parsed = passOp({ op, item, quantity, owner, to });
+    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
+    const parsed = passOp({ op, item, quantity, owner, to, state, after });
     return parsed ? [parsed] : [];
   });
 }
@@ -176,7 +192,7 @@ export function applyInventoryPass(
   };
 
   /** The Item Copies at `where` named `key`, the likeliest target first. */
-  const candidates = (key: string, where: ItemCopyWhere, kind: InventoryPassOpKind): ItemCopy[] => {
+  const candidates = (key: string, where: ItemCopyWhere, kind: InventoryPassOpKind, state = ''): ItemCopy[] => {
     const here = list.filter((c) => nameMatches(c, key) && sameWhere(c.where, where));
     const rank = (c: ItemCopy) => (c.visibility === 'hidden' ? 2 : 0) + (c.equipped ? 1 : 0);
     switch (kind) {
@@ -184,6 +200,8 @@ export function applyInventoryPass(
       case 'reveal': return [...here.filter((c) => c.visibility === 'hidden'), ...here.filter((c) => c.visibility === 'visible' && isUnidentified(c))];
       case 'equip': return here.filter((c) => !c.equipped).sort((a, b) => rank(a) - rank(b));
       case 'unequip': return here.filter((c) => c.equipped).sort((a, b) => rank(a) - rank(b));
+      // A copy already at the new State is not changed again.
+      case 'change': return here.filter((c) => !sameState(c, { state: { state } })).sort((a, b) => rank(a) - rank(b));
       default: return here.sort((a, b) => rank(a) - rank(b));
     }
   };
@@ -209,10 +227,10 @@ export function applyInventoryPass(
   const known = (key: string) => authored.some((a) => a.key === key || isFace(a, key)) || !!runtimeNamed(key);
 
   for (const named of passOps) {
-    // A name copied with the Items Here summary after it reads as the name before the colon.
-    const colon = named.item.indexOf(':');
-    const bare = colon > 0 && !known(itemNameKey(named.item)) && known(itemNameKey(named.item.slice(0, colon)));
-    let op = bare ? { ...named, item: named.item.slice(0, colon) } : named;
+    // A name copied with the Items Here summary or marks after it reads as the name before the colon or " (".
+    const cut = [named.item.indexOf(':'), named.item.indexOf(' (')].filter((at) => at > 0)
+      .find((at) => !known(itemNameKey(named.item)) && known(itemNameKey(named.item.slice(0, at))));
+    let op = cut !== undefined ? { ...named, item: named.item.slice(0, cut) } : named;
     const key = itemNameKey(op.item);
     // Taking from this place an item it never listed is finding a new one.
     const from = op.op === 'transfer' ? ownerOf(op.owner) : null;
@@ -276,9 +294,21 @@ export function applyInventoryPass(
       skip(`${label}: no one present is "${op.to}"`);
       continue;
     }
-    if (!candidates(key, where, op.op).length) {
+    // A change needs any copy here; its State check follows.
+    const held = op.op === 'change' ? list.some((c) => nameMatches(c, key) && sameWhere(c.where, where)) : candidates(key, where, op.op).length > 0;
+    if (!held) {
       skip(`${label}: none at "${op.owner}"`);
       continue;
+    }
+    if (op.op === 'change') {
+      if (op.state === undefined) {
+        skip(`${label}: it names no state`);
+        continue;
+      }
+      if (!candidates(key, where, op.op, op.state).length) {
+        skip(`${label}: every one at "${op.owner}" is already ${stateWord(op.state) ?? 'without a State'}`);
+        continue;
+      }
     }
     if (op.op === 'lose' || op.op === 'transfer' || op.op === 'reveal') {
       const to = op.op === 'transfer' ? ownerOf(op.to) : null;
@@ -289,12 +319,13 @@ export function applyInventoryPass(
       ]));
       continue;
     }
-    // Equip, unequip and use act on one Item Copy at a time, read again after each.
+    // Equip, unequip, use and change act on one Item Copy at a time, read again after each.
     for (let i = 0; i < op.quantity; i += 1) {
-      const [copy] = candidates(key, where, op.op);
+      const [copy] = candidates(key, where, op.op, op.state);
       if (!copy) break;
-      // The pass names a use `consume`.
-      run([{ kind: op.op === 'consume' ? 'use' : op.op, copyId: copy.id }]);
+      run([op.op === 'change' ? { kind: 'change', copyId: copy.id, state: op.state ?? '' }
+        : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }) }
+        : { kind: op.op, copyId: copy.id }]);
     }
   }
 
