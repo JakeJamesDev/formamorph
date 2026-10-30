@@ -10,7 +10,7 @@ Model rationale: a staff-only marker on two existing surfaces and one more optio
 
 ## What to build
 
-A staff-only **Likes Marker** shows on the community browser card and in the listing details of every marked listing, on every tab including contests. It names which reason fired (Burst, flagged share, or both). Pressing it opens **Audit the likes** for that listing. The Moderation popover gains **Flagged Likes (n)**: disabled at zero, narrowing together with Quarantined, sending the staff-only filter to the catalog. Flagged Likes applies on the contest tab, so the Moderation button shows there again; ticket 02 gates the button and its mobile wrapper on `staffHere`, which this ticket widens.
+A staff-only **Likes Marker** shows on the community browser card and in the listing details of every marked listing, on every tab including contests. It names which reason fired (Burst, flagged share, or both). Pressing it opens **Audit the likes** for that listing with the audit already loaded, so the summary and Bursts from ticket 05 show without a second press. The Moderation popover gains **Flagged Likes (n)**: disabled at zero, narrowing together with Quarantined, sending the staff-only filter to the catalog. Flagged Likes applies on the contest tab, so the Moderation button shows there again; ticket 02 gates the button and its mobile wrapper on `staffHere`, which this ticket widens.
 
 ## Acceptance criteria
 
