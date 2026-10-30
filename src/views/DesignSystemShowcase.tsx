@@ -15,6 +15,7 @@ import { VariableMenuReference } from '@/components/design-system/VariableMenuRe
 import { YouMarkReference } from '@/components/design-system/YouMarkReference';
 import { InventoryTabReference } from '@/components/design-system/InventoryTabReference';
 import { SegmentedMultiSelectReference } from '@/components/design-system/SegmentedMultiSelectReference';
+import { CollapsingSegmentedReference } from '@/components/design-system/CollapsingSegmentedReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -474,6 +475,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Segmented Multi-Select',
     description: 'A segmented control where each option turns on by itself, as the time chip uses',
     Component: SegmentedMultiSelectReference,
+  },
+  {
+    id: 'collapsing-segmented',
+    label: 'Collapsing Segmented',
+    description: 'A pick-one segmented control that folds the other options to icons when its labels don’t fit',
+    Component: CollapsingSegmentedReference,
   },
   {
     id: 'inventory-tab',
