@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "id": "pendant", "name": "Veilstone Pendant", "unidentifiedName": "Gray Pebble Pendant", "unidentifiedDescription": "A smooth gray pebble on a leather cord.",
+      "aiSummary": "Shows the dead as pale figures to its wearer, and whispers the names of the drowned."
+    },
+    {
+      "id": "compass", "name": "Ferryman's Compass", "unidentifiedName": "Cracked Brass Disc", "unidentifiedDescription": "A cracked brass disc with a thin needle under dull glass.",
+      "aiSummary": "Its needle never points north. It points to the nearest grave."
+    },
+    {
+      "id": "ring", "name": "Ring of Hollow Hunger", "unidentifiedName": "Tarnished Ring", "unidentifiedDescription": "A plain ring of tarnished metal.",
+      "aiSummary": "A cursed ring that drains the wearer's warmth and strength a little each hour."
+    },
+    {
+      "id": "crown", "name": "Drowned Crown", "unidentifiedName": "Rusted Circlet", "unidentifiedDescription": "A thin circlet, rusted green at the edges.",
+      "aiSummary": "The crown of a drowned king. It calls the dead to whoever wears it."
+    },
+    {
+      "id": "phial", "name": "Tideglass Phial", "unidentifiedName": "Stoppered Vial", "unidentifiedDescription": "A small glass vial, stoppered with wax, that holds a drop of cloudy water.",
+      "aiSummary": "Holds a drop of the river's memory. Whoever drinks it sees visions of past drownings."
+    }
+  ],
+  "copies": {
+    "pendant": [{ "item": "pendant", "where": "you" }],
+    "compass": [{ "item": "compass", "where": "you" }],
+    "ring": [{ "item": "ring", "where": "you", "equipped": true }],
+    "crown": [{ "item": "crown", "where": "loc-sedge" }],
+    "phial": [{ "item": "phial", "where": "you" }]
+  },
+  "cases": [
+    {
+      "id": "carried", "copies": "pendant", "action": "I check my pockets before the crossing.",
+      "leak": "veilstone", "nature": "\\b(ghosts?|pale figures|the dead)\\b"
+    },
+    {
+      "id": "handled", "copies": "compass", "action": "I turn the disc over in my fingers and study it.",
+      "leak": "ferryman.s compass", "nature": "\\b(graves?|grave)\\b"
+    },
+    {
+      "id": "worn", "copies": "ring", "action": "I rub the ring on my finger and wait by the ferry post.",
+      "leak": "hollow hunger|ring of hollow", "nature": "\\b(drain\\w*|curse[ds]?)\\b"
+    },
+    {
+      "id": "lying", "copies": "crown", "action": "I look around the dock.",
+      "leak": "drowned crown", "nature": "\\b(drowned king|calls the dead)\\b"
+    },
+    {
+      "id": "baited", "copies": "phial", "baited": true, "action": "I hold up the vial and ask Odette: what is this?",
+      "leak": "tideglass", "nature": "\\b(memor(y|ies)|visions?)\\b"
+    }
+  ]
+}
