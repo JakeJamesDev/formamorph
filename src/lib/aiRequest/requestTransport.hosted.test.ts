@@ -296,6 +296,24 @@ describe('Formamorph AI through the Request Transport', () => {
     expect((results[0].error as AiStreamError).hosted?.presetState).toBe('locked');
   });
 
+  it('finishes a started turn after the commit spends the allowance, and blocks the next turn', async () => {
+    quietErrors();
+    const proxy = fakeProxy([() => proxyReply('One.', 'turn-1', { percentUsed: 100, turnsLeft: 0, resetAt: '2026-11-01T00:00:00.000Z' }), () => proxyReply('Two.', 'turn-1')]);
+    const { session } = await signedIn(proxy.fetchImpl);
+    const turn = new HostedTurn();
+    await send(request(), context(proxy.fetchImpl, session, { hostedTurn: turn }));
+    session.settleTurn();
+    expect(session.getSnapshot().presetState).toBe('exhausted');
+
+    // A pass after the commit joins the admitted turn; a new turn has no id and the client refuses it.
+    const later = await send(request({ type: 'statUpdates', silent: true }), context(proxy.fetchImpl, session, { hostedTurn: turn }));
+    const next = await send(request(), context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() }));
+
+    expect(later.error).toBeNull();
+    expect(proxy.chatCalls().map((c) => c.headers[TURN_HEADER])).toEqual([undefined, 'turn-1']);
+    expect((next.error as AiStreamError).hosted?.presetState).toBe('exhausted');
+  });
+
   it('still sends while the hosted state is unavailable', async () => {
     const proxy = fakeProxy([() => proxyReply('One.', 'turn-1')], () => { throw new TypeError('Failed to fetch'); });
     const { session } = await signedIn(proxy.fetchImpl);

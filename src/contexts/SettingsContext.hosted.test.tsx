@@ -36,6 +36,8 @@ const ENDPOINTS_KEY = 'FORMAMORPH_textEndpointPresets';
 const PROMPTS_KEY = 'FORMAMORPH_promptPresets';
 
 function seed(activeId: string) {
+  // These players already made their one-time choice on this device; the switch has its own tests.
+  localStorage.setItem('FORMAMORPH_hostedAiDevice', JSON.stringify({ switched: true, previousPresetId: null }));
   const store: TextEndpointPresetStore = {
     activeId,
     presets: [{ id: 'mine', name: 'Mine', values: { endpoint: 'http://mine.test/v1', apiToken: 'k', model: 'mine-8b', contextWindowOverride: 8192, maxOutputOverride: { enabled: true, value: 300 }, samplerOverrides: defaultEndpointSamplerOverrides() } }],

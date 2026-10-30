@@ -119,6 +119,7 @@ import { useAiSettingsSnapshot } from "../lib/aiRequest/useAiSettingsSnapshot";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { transportRequest, type TransportContext, type TransportRequest, type TransportSink } from "../lib/aiRequest/requestTransport";
 import { hostedSession } from "../lib/hostedAi/hostedSession";
+import { showHostedNotices } from "../components/modals/hostedNotices";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { schemaAccepted, toolsSupported } from "../lib/reasoningEffort";
 import { completeSentenceCount, completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
@@ -3535,6 +3536,8 @@ const GameViewer = ({
         context: commitContext,
         entityMove: { start: moveStart, from: moveFrom, applied: turnJoin ?? moveStart },
       });
+      // The allowance notice comes after the commit, never while the stream runs.
+      showHostedNotices(settings.switchBackFromHostedAi);
     } catch (error) {
       // The pipeline's own failures come back as a typed result above; what lands here is a derivation
       // throwing — context assembly, the read-aloud pass, or applying the commit.

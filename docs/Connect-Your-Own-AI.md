@@ -5,7 +5,24 @@ In the browser and on Android, Formamorph starts on the **Demo AI**. It is a sma
 
 The AI writes everything you read. A stronger model gives you sharper narration, a better memory of your story, and entities that act the same from turn to turn. Nothing else changes the experience as much.
 
-Every route ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode.
+## Formamorph AI for Supporters
+<!-- keywords: formamorph ai, supporter, patreon, allowance, monthly allowance, turns left, used up, ran out, switch back, hosted ai, no setup, no key -->
+<!-- route: settingsEndpoints.text#text-preset -->
+
+**Formamorph AI** is a built-in preset for Patreon Supporters. It needs no key and no setup. Your Supporter tier sets the context window and the size of your monthly allowance.
+
+The first time a device sees your Supporter tier, Formamorph selects **Formamorph AI** for you. It does this once on each device. After that, your choice stays.
+
+To see your allowance, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your tier, the percent used, about how many turns are left, and the reset date. The numbers update after each turn.
+
+- Each turn on any device counts against one shared allowance.
+- The allowance resets on the 1st of each month (UTC).
+- A notice appears after a turn when you pass a warning level. Each notice shows once a month.
+- When the allowance runs out, Formamorph AI stops until the reset date. Select **Switch Back** to return to your last preset, or **Upgrade** to open the Patreon page.
+
+If you are not a Supporter, the preset shows a **Join on Patreon** button.
+
+Every route to your own AI ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode.
 
 ## How to Connect LM Studio
 <!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, gguf, lmstudio, port 1234, developer tab server, failed to fetch, connection refused, browser blocks request, self hosted llm -->

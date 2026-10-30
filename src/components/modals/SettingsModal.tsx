@@ -75,6 +75,8 @@ import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor, presetEditor, type PresetEditorView } from './textEndpointEditorModel';
 import { FORMAMORPH_AI_PRESET_ID } from '@/lib/textEndpointPresets';
 import { HOSTED_PRESET_STATES, type HostedPresetState } from '@/lib/hostedAi/refusals';
+import type { HostedState } from '@/lib/hostedAi/hostedState';
+import { showExhaustedNotice, showWarningNotice } from './hostedNotices';
 
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
@@ -258,6 +260,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const devRoute = useDevRoute();
   // DEV dev-router: `fixture=fai-<state>` shows Formamorph AI's editor in that state, selecting nothing.
   const devHostedState = import.meta.env.DEV ? devHostedStateOf(devRoute?.fixture) : undefined;
+  // DEV dev-router: `fixture=fai-notice-75`, `fai-notice-90` and `fai-notice-exhausted` raise the allowance notices.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const kind = devRoute?.fixture?.startsWith('fai-notice-') ? devRoute.fixture.slice(11) : '';
+    const sample = { resetAt: '2026-12-01T00:00:00.000Z' } as HostedState;
+    if (kind === '75' || kind === '90') showWarningNotice(Number(kind), sample);
+    if (kind === 'exhausted') showExhaustedNotice(sample, () => {});
+  }, [devRoute]);
   // DEV dev-router: `#dev?modal=settingsCompare` opens the compare view on a canned Narration edit.
   const [devCompare, setDevCompare] = useState(false);
   useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'settingsCompare') setDevCompare(true); }, [devRoute]);

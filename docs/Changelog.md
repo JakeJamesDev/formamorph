@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Supporter Flair now covers a third Patreon tier.** The new tier gets its own badge and ring color in the app, and lists first on the Supporters page.
   - **Formamorph AI:**
     - **The Formamorph AI section on your formamorph.ai account page shows your allowance.** It shows your tier, percent used, about how many turns are left and the reset date.
+    - **Formamorph AI shows your allowance, warns you twice, and offers one click back when it runs out.** Settings shows the percent used, about how many turns are left and the reset date. A new Supporter device switches to it once.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

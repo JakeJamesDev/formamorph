@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, us
 import AuthService from '@/services/AuthService';
 import { hostedSession, type HostedSnapshot } from '@/lib/hostedAi/hostedSession';
 import { hostedPromptWindow } from '@/lib/hostedAi/hostedState';
+import { readHostedDevice, writeHostedDevice } from '@/lib/hostedAi/hostedAllowance';
 import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
 import { PROMPT_TEXT_DEFAULTS } from '../components/game/GamePrompts';
 import { EXPERIMENTAL_PROMPT_VALUES } from '../components/game/ExperimentalPrompts';
@@ -1366,7 +1367,20 @@ function useProvideSettings() {
     endpointId: canonicalPresetId(textPresetStore, textPresetStore.activeId),
     endpoint: textValues.endpoint,
   });
-  const selectTextEndpointPreset = (id: string) => setTextPresetStore((s) => textSetActive(s, id));
+  // Selecting Formamorph AI by hand records the preset it replaces, for the one-click switch back.
+  const selectTextEndpointPreset = (id: string) => {
+    if (isFormamorphAiId(id) && !isFormamorphAiId(textPresetStore.activeId)) {
+      writeHostedDevice({ ...readHostedDevice(), previousPresetId: textPresetStore.activeId });
+    }
+    setTextPresetStore((s) => textSetActive(s, id));
+  };
+  /** Returns to the preset that was active before Formamorph AI; Demo AI when that preset is gone. */
+  const switchBackFromHostedAi = () => {
+    const previous = readHostedDevice().previousPresetId;
+    const known = previous !== null && !isFormamorphAiId(previous)
+      && (textPresetStore.presets.some((p) => p.id === previous) || builtinTextEndpointPresets.some((p) => p.id === previous));
+    setTextPresetStore((s) => textSetActive(s, known ? previous : DEFAULT_TEXT_PRESET_ID));
+  };
   /** A new preset copied from `source`, with its overrides off. `select` makes it the active preset. */
   const addTextEndpointPresetFrom = (name: string, source: (s: TextEndpointPresetStore) => TextEndpointValues, select: boolean) => {
     const id = randomUUID();
@@ -1857,6 +1871,7 @@ function useProvideSettings() {
     activeTextEndpointIsDemoAI,
     hostedAi: hostedSnapshot,
     refreshHostedState,
+    switchBackFromHostedAi,
     narrationIsDemoAI,
     selectTextEndpointPreset,
     addTextEndpointPreset,
