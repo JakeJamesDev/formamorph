@@ -260,7 +260,7 @@ function pendingPersonaOf(
   const entries = playables.map((id) => cast.entities.find((entity) => entity.id === id));
   const stats = playables.flatMap((id) => ownerStats(id).stats);
   return {
-    id: PENDING_PERSONA_ID, name: '', type: '', pronouns: '', inScene: true,
+    id: PENDING_PERSONA_ID, name: '', type: '', pronouns: '', inScene: true, met: true,
     traits: [...new Set(entries.flatMap((entity) => entity?.traits.map((trait) => trait.name) ?? []))]
       .map((name) => ({ id: '', name, enabled: false, acquired: false })),
     placeholders: personaPlaceholders(playables, owners),
@@ -332,7 +332,7 @@ function ownerEntryOf(board: Board, owner: UnitOwner): SandboxEntity | undefined
     case 'none': return undefined;
     case 'persona': return board.inPlay.persona.id ? board.inPlay.persona : undefined;
     case 'entity': return board.inPlay.entities.find((entity) => entity.id === owner.entityId)
-      ?? { id: owner.entityId, name: '', type: '', pronouns: '', inScene: false, traits: [], stats: board.ownerStats(owner.entityId) };
+      ?? { id: owner.entityId, name: '', type: '', pronouns: '', inScene: false, met: false, traits: [], stats: board.ownerStats(owner.entityId) };
     case 'blueprintStat': return { name: '', traits: [], stats: { stats: owner.stats, enabled: activeStatEnabled(owner.stats, []) } };
     case 'blueprintTrait': return { name: '', traits: [], stats: { stats: [], enabled: {} } };
   }

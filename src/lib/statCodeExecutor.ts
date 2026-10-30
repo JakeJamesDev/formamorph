@@ -208,7 +208,7 @@ export interface WorldWrites {
   pins?: string[];
   /** Every `diary` line, in call order. */
   diary?: DiaryWrite[];
-  /** Every `move`, `follow` and `unfollow` on an entity entry, in call order. */
+  /** Every `move`, `follow`, `unfollow` and `meet` on an entity entry, in call order. */
   entities?: EntityCodeWrite[];
   /** Every `pin`, `forget`, `edit` and `remove` on a `memories` entry, in call order. */
   memoryWrites?: MemoryWrite[];
@@ -219,8 +219,8 @@ export interface WorldWrites {
 /** One verb on a `memories` entry, by the row's id. An edit marks whether the row is a Custom line. */
 export type MemoryWrite = { id: string } & ({ kind: 'pin' | 'forget' | 'remove' } | { kind: 'edit'; text: string; custom: boolean });
 
-/** One `move`, `follow` or `unfollow` on an entity entry: the entity's id, or its name when it has none. */
-export type EntityCodeWrite = { entity: string } & ({ kind: 'move'; location: string } | { kind: 'follow' | 'unfollow' });
+/** One `move`, `follow`, `unfollow` or `meet` on an entity entry: the entity's id, or its name when it has none. */
+export type EntityCodeWrite = { entity: string } & ({ kind: 'move'; location: string } | { kind: 'follow' | 'unfollow' | 'meet' });
 
 /** One `diary` call: the entity's id, or its name when it has none, and the line. */
 export interface DiaryWrite {
@@ -304,6 +304,8 @@ export interface SandboxEntity {
   type?: string;
   pronouns?: string;
   inScene?: boolean;
+  /** Whether the player has met the entity. Absent reads false; the played persona is always met. */
+  met?: boolean;
   description?: string;
   summary?: string;
   aliases?: readonly string[];
@@ -900,8 +902,8 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
-  'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
-  'items', 'move', 'follow', 'unfollow', 'diary',
+  'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
+  'items', 'move', 'follow', 'unfollow', 'meet', 'diary',
 ] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
@@ -987,10 +989,10 @@ const entitiesPrelude = (
   statEntriesOf: (entity: SandboxEntity) => StatEntry[], standing: Standing, reads: HostReads,
 ): string => {
   const data = (entity: SandboxEntity, owner: boolean) => {
-    const { id = '', type = '', pronouns = '', inScene = false, description, summary, aliases = [], traits, placeholders } = entity;
+    const { id = '', type = '', pronouns = '', inScene = false, met = false, description, summary, aliases = [], traits, placeholders } = entity;
     const played = isPlayed(entity, persona);
     return {
-      id, type, pronouns, inScene, location: standing.nameOf(entity, played), following: !played && !!entity.following,
+      id, type, pronouns, inScene, met: played || met, location: standing.nameOf(entity, played), following: !played && !!entity.following,
       description: reads.text(description), summary: reads.text(summary), aliases, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
       stats: owner ? {} : statMapData(statEntriesOf(entity)), owner, played,
     };
@@ -1008,6 +1010,7 @@ const entitiesPrelude = (
     `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,
     `const statMapOf = ((keys) => ${trackedMapFactory(statMapKind(blankStat, null))})(Object.keys);`,
     `const statReaders = [];`,
+    `const meets = new Set();`,
     `const statMap = (key, unknown, data) => {`,
     `  const [map, rows] = statMapOf(data);`,
     `  statReaders.push([key, unknown, rows]);`,
@@ -1019,11 +1022,13 @@ const entitiesPrelude = (
     `    : ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
     `  const stats = data.owner ? ${OWNER_STATS} : statMap(key, unknown, data.stats || {});`,
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
-    `  const write = (kind) => (target) => ${ENTITY_WRITE}(who, kind, target);`,
-    `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), diary: write('diary') };`,
-    `  const blank = { id: '', type: '', pronouns: '', inScene: false, location: '', following: false, description: -1, summary: -1 };`,
+    `  const write = (kind) => (target) => { ${ENTITY_WRITE}(who, kind, target); if (kind === 'meet') meets.add(who.id || who.name); };`,
+    `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), meet: write('meet'), diary: write('diary') };`,
+    `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, description: -1, summary: -1 };`,
     `  const aliases = Object.freeze([...(data.aliases || [])]);`,
     `  const values = { ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, traits, placeholders, stats, ...moves };`,
+    // A meet in this run shows on a later read of `met`; the commit lands it.
+    `  define(values, 'met', { enumerable: true, get: () => !!data.met || (!who.unknown && !who.played && meets.has(who.id || who.name)) });`,
     // The items prelude runs later; the getter reads it once code runs.
     `  define(values, 'items', { enumerable: true, get: () => (who.unknown ? Object.freeze([]) : data.played ? ${ITEMS_AT}('you') : ${ITEMS_AT}('entity', who.id)) });`,
     `  return [lazy(values, ['description', 'summary'], '', ${NO_NOTE}), rows, who.played ? Object.keys(moves) : []];`,
@@ -1731,6 +1736,7 @@ const worldPrelude = (
   `      return;`,
   `    }`,
   `    if (who.unknown) fail('The game has no entity named "' + who.name + '"');`,
+  `    if (who.played && kind === 'meet') return;`,
   `    if (who.played) fail(!diary ? 'The persona moves with the player' : who.name ? 'The game has no entity named "' + who.name + '"' : 'The persona has no diary');`,
   `    const entity = who.id || who.name;`,
   `    if (diary) writes.diary.push({ entity, line: line('diary', target) });`,

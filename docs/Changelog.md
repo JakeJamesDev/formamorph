@@ -67,6 +67,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The stat picker and the Traits tab list only people in the scene.** Strangers show by label, and a stranger's traits and stats never show the true name.
     - **The map and the Help window show the people you've met, and never a stranger's true name.** People with no Stranger Name show from the start, and a multi-place entity shows at each place.
     - **The story calls a stranger by their Stranger Name until you meet them.** The planner casts them under it, and a first name alone no longer slips into the scene.
+    - **Scripts can now read whether the player has met an entity and introduce one.** Read `entities.<Entity>.met`, or call `entities.<Entity>.meet()` to make a stranger known. `met` never turns false.
   - **World Editor and game side panel tabs show every label when they fit, then the selected tab's, then icons alone.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
 - **🛠️ Developer tooling**
   - **Inventory:**

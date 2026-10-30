@@ -929,6 +929,13 @@ const GameViewer = ({
     const ids = introducedIds(narration, allEntities, [...presentIdsAt(loc), ...currentFollowers()]);
     if (ids.length) setMetEntities((met) => withMet(met, ids));
   }, [presentIdsAt, allEntities, currentFollowers, setMetEntities]);
+  const metEntitiesRef = useRef(metEntities);
+  metEntitiesRef.current = metEntities;
+  /** The ids of everyone the player has met now: the met-in-play list plus the start rule. */
+  const metIdsNow = useCallback((): string[] => {
+    const isMet = metCheck(metEntitiesRef.current, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)));
+    return allEntities.filter(isMet).map((entity) => entity.id);
+  }, [allEntities, persona, locations, discoveredEntities]);
   // An edit to the latest page can name someone too.
   const rescanNarration = useCallback((page: number, narration: string): string[] => {
     const participants = rescanScene(page, narration);
@@ -2801,6 +2808,8 @@ const GameViewer = ({
     }
     const location = codeTarget ?? turn.location;
     const { start, from, applied } = turn.entityMove;
+    const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
+    if (meets?.length) setMetEntities((met) => withMet(met, meets));
     if (from) {
       const { state, offer } = commitEntityMoves(start, final, { from, to: location?.id });
       const { peel } = turn.context;
@@ -3780,6 +3789,7 @@ const GameViewer = ({
           ownerTraits: {
             ...held, world, entities: codeEntities.world, library: libraryIn(world), discovered: laterDiscovered(discoveredEntities),
             inSceneIds: liveScene().inSceneIds,
+            metIds: metIdsNow(),
           },
           placeholders: {
             ...statCodePlaceholders,

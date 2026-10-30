@@ -6,6 +6,7 @@ import { entityStatOwners, seedEntityStats, statOwnerEntities } from './entitySt
 import { inPlayLibrary, inPlayOwners } from './ownedTraitsInPlay';
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
+import { startsMet } from './presence';
 import { startingLocations } from './startingLocation';
 import { playStatWorld } from './statLinks';
 import type { ResolveText, SandboxState } from './statCodeTurn';
@@ -101,6 +102,9 @@ export function openingFold(
 
   const locations = world.locations ?? [];
   const start = startingLocations(locations)[0] ?? locations[0] ?? null;
+  // A new game has no met-in-play list yet, so the start rule alone says who the player knows.
+  const played = ref.source === 'world' ? entities.find((e) => e.id === ref.entityId) ?? null : persona?.libraryEntity ?? null;
+  const metIds = [...entities, ...library].filter((e) => startsMet(e, played, locations)).map((e) => e.id);
   const state: SandboxState = {
     stats: traitState.stats,
     enabled: activeStatEnabled(traitState.stats, statTraitsInForce(traitState, traitWorld)),
@@ -109,7 +113,7 @@ export function openingFold(
     gateStats: gateStatsOf(traitState, traitWorld),
     ownerTraits: {
       acquired: traitState.traits, disabledTraitIds: [], appliedValues: traitState.appliedValues, ownedTraits,
-      world: traitWorld, entities, library,
+      world: traitWorld, entities, library, metIds,
     },
     placeholders: {
       placeholders: allPlaceholders(world), owners: placeholderOwners(world), dictionaries: world.dictionaries ?? [], rolls: {},
