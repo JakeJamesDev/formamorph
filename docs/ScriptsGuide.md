@@ -383,7 +383,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
-| `items` | `id`, `name`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
+| `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds one name to those objects. A script reads only the name its own timing adds:
@@ -956,9 +956,9 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **A user Tool can't write it.** The write is ignored and reported, as every user Tool write is.
 
 ### Items
-<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
+<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, identify item, unidentified, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
 
-`items` holds every item of the world by code name. Each entry has `id`, `name`, its own `placeholders`, and `copies`: its Item Copies in play.
+`items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `copies`: its Item Copies in play. An unidentified field is `''` when the item leaves it blank.
 
 Each Item Copy has these members. They are read-only.
 
@@ -971,6 +971,7 @@ Each Item Copy has these members. They are read-only.
 | `quantity` | How many it holds |
 | `equipped` and `slot` | Whether it's equipped, and the slot's name |
 | `hidden` | True when the player can't see it |
+| `unidentified` | True when the player sees the item's unidentified face |
 | `uses` | Uses left, or `null` when the item has no **Uses** |
 | `state` | Its **State** word, or `null` when it has none |
 
@@ -990,7 +991,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 | `copy.moveTo(to, n?)` | Moves the Item Copy, or `n` of it, to `to` |
 | `copy.equip()` and `copy.unequip()` | Equips or unequips it, as the panel does |
 | `copy.use()` | Uses it once, as **Use** does |
-| `copy.reveal(n?)` | Makes it visible to the player |
+| `copy.reveal(n?)` | Makes a hidden Item Copy visible. On a visible unidentified one, identifies it |
 | `copy.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
 | `copy.setState(word)` | Sets its **State**. `''` clears it. |
 

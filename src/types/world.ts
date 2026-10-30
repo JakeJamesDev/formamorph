@@ -561,6 +561,10 @@ export interface Item {
   aiDescription?: string;
   /** Short description sent to the AI where the full one is too long. */
   aiSummary?: string;
+  /** The name an unidentified Item Copy shows. Either unidentified field set ⇒ every copy starts unidentified (Q16). */
+  unidentifiedName?: string;
+  /** The description an unidentified Item Copy shows. Blank shows `playerDescription`. */
+  unidentifiedDescription?: string;
   /** The item's gallery, in author order. A rule's owner-less Condition reads the Item Copy's owner. */
   images?: GalleryImage[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */

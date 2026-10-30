@@ -148,6 +148,8 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
       `# ${item.name}`,
       facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
       field('Player Description', text(item.playerDescription)),
+      field('Unidentified Name', text(item.unidentifiedName)),
+      field('Unidentified Description', text(item.unidentifiedDescription)),
       field('AI Description', text(item.aiDescription)),
       field('AI Summary', text(item.aiSummary)),
       item.statEffects.length > 0 && `**Stat Effects:**\n${item.statEffects.map((effect) => `- ${statName(effect.statId)} (${effect.facet}, ${effect.timing}): ${effect.amount > 0 ? '+' : ''}${effect.amount}`).join('\n')}`,

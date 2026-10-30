@@ -1,5 +1,5 @@
 import { copiesAt } from './inventory';
-import { copyState, usesLeft } from './items';
+import { copyFace, copyState, isUnidentified, usesLeft } from './items';
 import type { ContextFormat } from './statContext';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { xmlEscape } from './utils';
@@ -19,7 +19,8 @@ export interface InventoryScene {
 }
 
 /** What the block reads of an item: an authored item, or a runtime item's name and description. */
-type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses'> & { runtimeDescription?: string };
+type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription'>
+  & { runtimeDescription?: string };
 
 /** Uses left as the block reads them, as the Inventory tab shows them (Q30). Null when there is nothing to say. */
 function usesMark(item: Named, copy: ItemCopy): string | null {
@@ -29,21 +30,34 @@ function usesMark(item: Named, copy: ItemCopy): string | null {
   return left === 0 ? 'no uses left' : null;
 }
 
-/** The name an Item Copy goes by in the block: its State, uses left, quantity and hidden state after it. */
+/** The name an Item Copy goes by in the block (its unidentified face while unidentified): its State, uses left,
+ *  quantity and hidden state after it. */
 function copyName(item: Named, copy: ItemCopy): string {
+  const name = copyFace(item, copy).name;
   const state = copyState(copy);
   const uses = usesMark(item, copy);
   const marks = [
     ...(state ? [state] : []), ...(uses ? [uses] : []),
     ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(copy.visibility === 'hidden' ? ['hidden'] : []),
   ];
-  return marks.length ? `${item.name} (${marks.join(', ')})` : item.name;
+  return marks.length ? `${name} (${marks.join(', ')})` : name;
+}
+
+/** The AI text of an item: its AI Summary, else its AI Description. */
+const aiText = (item: Named): string => (item.aiSummary?.trim() || item.aiDescription?.trim()) ?? '';
+
+/** An unidentified copy's line: the face the player sees, then the true face marked unknown to the player (Q14, Q38). */
+function unidentifiedLine(item: Named, copy: ItemCopy): string {
+  const seen = copyFace(item, copy).description?.trim();
+  const truth = aiText(item);
+  return `${copyName(item, copy)}${seen ? `: ${seen}` : ''} (unknown to the player: it is ${item.name}${truth ? `: ${truth}` : ''})`;
 }
 
 /**
  * The `<INVENTORY>` chip's value: each present owner's equipped items with their AI Summary (the AI
  * Description where there is none) and carried items by name, then the Item Copies lying at the location,
- * hidden ones marked. A runtime item goes by its name; one with a description gets a line of its own (Q145).
+ * hidden ones marked. A runtime item goes by its name; one with a description gets a line of its own (Q145), as
+ * does an unidentified copy, with both faces.
  * N/A when nobody present has an item.
  */
 export function buildInventoryContext(scene: InventoryScene, format: ContextFormat): string {
@@ -65,18 +79,20 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
     : `${name}\n${fields}`
   );
   type Held = { item: Named; copy: ItemCopy };
-  /** One comma line of names, then a line for each described runtime item. */
+  /** One comma line of names, then a line for each described runtime item and each unidentified copy. */
   const listed = (key: string, held: readonly Held[]) => {
-    const plain = held.filter(({ item }) => !item.runtimeDescription).map(({ item, copy }) => copyName(item, copy));
-    const described = held.filter(({ item }) => item.runtimeDescription)
-      .map(({ item, copy }) => field(key, `${copyName(item, copy)}: ${item.runtimeDescription}`));
+    const own = ({ item, copy }: Held) => !!item.runtimeDescription || isUnidentified(copy);
+    const plain = held.filter((h) => !own(h)).map(({ item, copy }) => copyName(item, copy));
+    const described = held.filter(own).map(({ item, copy }) => field(key, isUnidentified(copy)
+      ? unidentifiedLine(item, copy) : `${copyName(item, copy)}: ${item.runtimeDescription}`));
     return (plain.length ? field(key, plain.join(', ')) : '') + described.join('');
   };
   const ownerBlock = (name: string, where: ItemCopyWhere) => {
     const held = named(where);
     if (!held.length) return '';
     const equipped = held.filter(({ copy }) => copy.equipped).map(({ item, copy }) => {
-      const text = (item.aiSummary?.trim() || item.aiDescription?.trim()) ?? '';
+      if (isUnidentified(copy)) return field('equipped', unidentifiedLine(item, copy));
+      const text = aiText(item);
       return field('equipped', text ? `${copyName(item, copy)}: ${text}` : copyName(item, copy));
     });
     return block('owner', name, equipped.join('') + listed('carried', held.filter(({ copy }) => !copy.equipped)));

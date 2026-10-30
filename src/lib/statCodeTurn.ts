@@ -9,6 +9,7 @@ import {
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
 import type { Dose, InventoryOp, InventoryResult, ItemScriptEvent } from './inventory';
+import { faceName, isUnidentified } from './items';
 import { statCodeNamed } from './statCodeNames';
 import type { StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
@@ -534,7 +535,7 @@ export interface ItemRunsResult {
  * land, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs.
  */
 export async function runItemScripts(
-  turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: readonly Pick<Item, 'id' | 'name' | 'scripts'>[],
+  turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: readonly Pick<Item, 'id' | 'name' | 'scripts' | 'unidentifiedName'>[],
   apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, { depth = 1, settle }: ItemRunOptions = {},
 ): Promise<ItemRunsResult> {
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -547,11 +548,14 @@ export async function runItemScripts(
     for (const event of batch) {
       const item = byId.get(event.itemId);
       if (!item || !filledScriptsAt(item, event.timing).length) continue;
+      // The run names the item by the face its copy shows (Q17).
+      const copy = now.state.itemCopies?.find((c) => c.id === event.copyId) ?? event.was;
+      const itemName = itemNameOf({ name: faceName(item, !!copy && isUnidentified(copy)) });
       if (depth > ITEM_EVENT_DEPTH) {
-        diagnostics.push(`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; ${SCRIPT_TIMING_LABEL[event.timing]} of ${itemNameOf(item)} did not run`);
+        diagnostics.push(`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; ${SCRIPT_TIMING_LABEL[event.timing]} of ${itemName} did not run`);
         continue;
       }
-      const ran = await runScripts({ ...now, timing: event.timing, itemEvent: { event, item, itemName: itemNameOf(item) } });
+      const ran = await runScripts({ ...now, timing: event.timing, itemEvent: { event, item, itemName } });
       const ops = ran.worldWrites?.inventory ?? [];
       const step = ops.length ? { ...ran, worldWrites: withoutInventory(ran.worldWrites) } : ran;
       steps.push(step);

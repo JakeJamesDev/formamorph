@@ -11,7 +11,7 @@ import { stateWord } from '@/lib/items';
 import { statBlueprintIds } from '@/lib/statLinks';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import type { ToolMemorySource, ToolScriptSource } from '@/lib/tools/toolSnapshot';
-import type { PlayerView, PlayerViewEntity, PlayerViewItem, PlayerViewLocation } from './playerView';
+import { playerItemId, unidentifiedRowId, type PlayerView, type PlayerViewEntity, type PlayerViewItem, type PlayerViewLocation } from './playerView';
 
 /** A Player View and the snapshot it was built from. */
 export interface PlayerViewReach {
@@ -135,7 +135,8 @@ const playerConnections = (met: Met, connections: readonly Connection[] = []): C
   .map((c) => ({ id: c.id, a: c.a, b: c.b, ...(c.aToB && { aToB: {} }), ...(c.bToA && { bToA: {} }) }));
 
 function playerItem(item: Item, row: PlayerViewItem): Item {
-  const { id, value, valueUnit, stackable, uses, whenEmpty, state, bound, slotId, slotSize, placeholders } = item;
+  const { value, valueUnit, stackable, uses, whenEmpty, state, bound, slotId, slotSize, placeholders } = item;
+  const { id } = row;
   return {
     id, name: row.name, playerDescription: row.description, aiDescription: row.description,
     value, valueUnit, stackable, uses, whenEmpty, state: stateWord(state), bound, slotId, slotSize, placeholders,
@@ -143,15 +144,28 @@ function playerItem(item: Item, row: PlayerViewItem): Item {
   };
 }
 
-const playerItems = (met: Met, items: readonly Item[] = []): Item[] => keepMet(items, met.items, playerItem);
+/** Each met face of `items`, under its row's id and name: the true face and the unidentified one apart (Q40). */
+const metFaces = <T extends { id: string }>(met: Met, items: readonly T[], build: (item: T, row: PlayerViewItem) => T): T[] =>
+  items.flatMap((item) => [item.id, unidentifiedRowId(item.id)].flatMap((id) => {
+    const row = met.items.get(id);
+    return row ? [build(item, row)] : [];
+  }));
+
+const playerItems = (met: Met, items: readonly Item[] = []): Item[] => metFaces(met, items, playerItem);
 
 /** A visible copy of a met item, held by the player or a met entity, or at a met place. */
 function copyShown(met: Met, copy: ItemCopy): boolean {
-  const itemId = copy.item.kind === 'item' ? copy.item.itemId : copy.item.runtimeItemId;
-  if (copy.visibility !== 'visible' || !met.items.has(itemId)) return false;
+  if (copy.visibility !== 'visible' || !met.items.has(playerItemId(copy))) return false;
   const { where } = copy;
   return where.kind === 'you' || (where.kind === 'entity' ? met.entities.has(where.id) : met.locations.has(where.id));
 }
+
+/** The shown copies, an unidentified one pointing at its face's row so it never names the true item. */
+const shownCopies = (met: Met, copies: readonly ItemCopy[]): ItemCopy[] => copies.flatMap((copy) => {
+  if (!copyShown(met, copy)) return [];
+  const itemId = playerItemId(copy);
+  return copy.item.kind === 'item' && itemId !== copy.item.itemId ? [{ ...copy, item: { kind: 'item', itemId } }] : [copy];
+});
 
 /** Only the keys of `record` in `keep`. */
 const picked = <T>(record: Readonly<Record<string, T>>, keep: (key: string) => boolean): Record<string, T> =>
@@ -183,7 +197,7 @@ export function playerViewScene(scene: ChipScene, reach: PlayerViewReach): ChipS
     presentIds: metIds(scene.presentIds),
     inSceneIds: metIds(scene.inSceneIds),
     items: playerItems(met, scene.items),
-    itemCopies: scene.itemCopies?.filter((copy) => copyShown(met, copy)),
+    itemCopies: scene.itemCopies && shownCopies(met, scene.itemCopies),
     runtimeItems: scene.runtimeItems?.flatMap((item) => {
       const row = met.items.get(item.id);
       return row ? [{ id: item.id, name: row.name, description: row.description }] : [];
@@ -233,12 +247,10 @@ function playerOwnerTraits(met: Met, owners: StatCodeOwners, keep: KeepStat, sta
     ...(world.daypart && { daypart: world.daypart }),
     ...(world.gateStats && { gateStats: playerGateStats(world.gateStats, keep, statOwners) }),
     ...(world.items && {
-      items: world.items.flatMap((item) => {
-        const row = met.items.get(item.id);
-        return row ? [{ ...item, name: row.name }] : [];
-      }),
+      // Only the fields a Condition reads, so no other text of the item rides along.
+      items: metFaces(met, world.items, (item, row) => ({ id: row.id, name: row.name, ...(item.slotId !== undefined && { slotId: item.slotId }) })),
     }),
-    ...(world.itemCopies && { itemCopies: world.itemCopies.filter((copy) => copyShown(met, copy)) }),
+    ...(world.itemCopies && { itemCopies: shownCopies(met, world.itemCopies) }),
   };
   return {
     acquired: global,
@@ -299,7 +311,7 @@ export function playerViewState(state: SandboxState, reach: PlayerViewReach, fir
     ...(state.places && { places: playerPlaces(met, state.places) }),
     ...(state.positions && { positions: picked(state.positions, (id) => met.entities.has(id) && met.locations.has(state.positions![id])) }),
     ...(state.followers && { followers: state.followers.filter((id) => met.entities.has(id)) }),
-    ...(state.itemCopies && { itemCopies: state.itemCopies.filter((copy) => copyShown(met, copy)) }),
+    ...(state.itemCopies && { itemCopies: shownCopies(met, state.itemCopies) }),
     ...(state.items && { items: playerItems(met, state.items) }),
     // Custom lines include the ones scripts wrote, which stay out with diaries (Q21).
     ...(state.memories && { memories: state.memories.filter((memory) => !memory.custom) }),

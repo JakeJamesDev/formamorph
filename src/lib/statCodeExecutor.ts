@@ -1100,6 +1100,8 @@ export interface SandboxItemCopy {
   /** The slot's name; empty when carried. */
   slot: string;
   hidden: boolean;
+  /** It shows the item's unidentified face to the player. Absent = identified. */
+  unidentified?: boolean;
   /** Uses left. Absent: the item has no Uses. */
   uses?: number;
   /** The State word. Absent: none. */
@@ -1111,6 +1113,10 @@ export interface SandboxItemCopy {
 export interface SandboxItem {
   id: string;
   name: string;
+  /** The authored Unidentified Name. Absent = blank. */
+  unidentifiedName?: string;
+  /** The authored Unidentified Description. Absent = blank. */
+  unidentifiedDescription?: string;
   /** Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
   copies: readonly SandboxItemCopy[];
@@ -1127,7 +1133,7 @@ export interface SandboxItemEvent {
 }
 
 /** The fields on an Item Copy entry; none takes a write. */
-const ITEM_COPY_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'uses', 'state'] as const;
+const ITEM_COPY_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'unidentified', 'uses', 'state'] as const;
 
 // The prelude's reader of the Item Copies at one owner or location, which entity and location entries call.
 const ITEMS_AT = '__formamorphItemsAt';
@@ -1153,7 +1159,7 @@ const itemsPrelude = (
   const named = [...new Map(items.map((item) => [item.name, item]))];
   const copyData = (item: SandboxItem, copy: SandboxItemCopy) => ({
     id: copy.id, item: item.name, owner: ownerName(copy.where), location: copy.where.kind === 'location' ? placeName.get(copy.where.id) ?? '' : '',
-    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, hidden: copy.hidden, uses: copy.uses ?? null, state: copy.state ?? null,
+    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, hidden: copy.hidden, unidentified: copy.unidentified === true, uses: copy.uses ?? null, state: copy.state ?? null,
     at: copy.where.kind === 'you' ? 'you' : `${copy.where.kind}:${copy.where.id}`,
   });
   const targets: [string, ItemCopyWhere][] = [
@@ -1163,6 +1169,7 @@ const itemsPrelude = (
   const spec = {
     items: named.map(([name, item]) => [name, {
       id: item.id, ph: ownerIndex(indexOf, item.placeholders), copies: item.copies.map((copy) => copyData(item, copy)),
+      unidentifiedName: item.unidentifiedName, unidentifiedDescription: item.unidentifiedDescription,
     }]),
     // By id first: an entry names its target by id. By name for a target written as text.
     ids: Object.fromEntries([
@@ -1221,7 +1228,7 @@ const itemsPrelude = (
     `  const entry = (key, data, unknown) => {`,
     `    const path = (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'items.' + key : 'items[' + JSON.stringify(key) + ']') + '.';`,
     `    const copies = Object.freeze(data.copies.map((copy, at) => copyEntry(copy, path + 'copies[' + at + '].')));`,
-    `    const out = lock({ id: data.id, name: unknown ? '' : key, placeholders: view(data.ph, ['item', key], unknown), copies }, ['id', 'name', 'placeholders', 'copies'], path, note);`,
+    `    const out = lock({ id: data.id, name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown), copies }, ['id', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'copies'], path, note);`,
     `    verb(out, path, 'give', (to, quantity) => {`,
     `      if (unknown) fail('The world has no item named "' + key + '"');`,
     `      writes.inventory.push({ kind: 'gain', itemId: data.id, to: whereOf(to, path + 'give'), quantity: count(quantity, path + 'give').quantity || 1 });`,
@@ -1233,7 +1240,7 @@ const itemsPrelude = (
     `  const strays = Object.create(null);`,
     `  const items = new Proxy(Object.freeze(map), {`,
     `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, copies: [] }, true)),`,
+    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, copies: [], unidentifiedName: '', unidentifiedDescription: '' }, true)),`,
     `  });`,
     `  const none = Object.freeze([]);`,
     `  const at = (kind, id) => byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,

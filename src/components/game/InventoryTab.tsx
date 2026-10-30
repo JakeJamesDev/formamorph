@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { formatTimeLeft } from '@/lib/gameClock';
-import { byEquipOrder, copyState, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
+import { byEquipOrder, copyFace, copyState, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
@@ -180,8 +180,12 @@ export function InventoryTab({
   // Hidden Item Copies never show in the panel (story 79).
   const shown = copies.filter((c) => c.visibility === 'visible');
   const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? byId.get(copy.item.itemId) : undefined);
-  const nameOf = (copy: ItemCopy) => (copy.item.kind === 'runtime'
-    ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(itemOf(copy)?.name ?? '')) || 'Unknown Item';
+  // An unidentified copy goes by its unidentified face (Q17).
+  const nameOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    return (copy.item.kind === 'runtime'
+      ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
+  };
   const equipped = shown.filter((c) => c.equipped).sort(byEquipOrder);
   const carried = shown.filter((c) => !c.equipped);
   const lyingHere = lying.filter((c) => c.visibility === 'visible');
