@@ -1,6 +1,7 @@
 # Spec: Item Use and Identity
 
 Status: ready-for-agent
+Spec session: item-use-and-identity — spec
 
 ## Problem Statement
 
