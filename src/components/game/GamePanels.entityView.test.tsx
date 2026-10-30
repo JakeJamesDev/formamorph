@@ -88,6 +88,16 @@ describe('LeftPanel — one entity view', () => {
     expect(screen.queryByTestId('vrm-viewer')).toBeNull();
   });
 
+  it('opens on the first met entity, never on a stranger listed before it', async () => {
+    const stranger = { ...heron, id: 'shade', name: 'The Shade', images: [{ data: PICTURE }], strangerName: 'a hooded figure' } as Entity;
+    show({
+      cast: [stranger, golem],
+      scene: [{ name: 'The Shade', alias: 'a hooded figure', revealed: false }, { name: 'Golem', revealed: true }],
+    });
+    await waitFor(() => expect(lastAvatarUrl()).toBe(store.golem.file.data));
+    expect(screen.queryByAltText('The Shade')).toBeNull();
+  });
+
   it('lets the stored preference override the order', () => {
     show({
       cast: [golem], scene: [{ name: 'Golem', revealed: true }],
