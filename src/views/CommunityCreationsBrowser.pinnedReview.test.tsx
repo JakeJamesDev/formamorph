@@ -82,7 +82,11 @@ const gridNames = (names: string[]) => {
     .map((el) => el.textContent);
 };
 
-const showPendingToggle = () => screen.queryByRole('button', { name: 'Show Pending' });
+/** A Moderation popover option, opening the popover first when it is closed. */
+const option = async (name: string | RegExp) => {
+  if (!screen.queryByRole('checkbox', { name })) fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
+  return screen.getByRole('checkbox', { name });
+};
 
 beforeEach(() => {
   // jsdom has no `matchMedia`; the browser reads it for the mobile layout switch.
@@ -141,7 +145,7 @@ describe('the pinned review group', () => {
     await screen.findByText('Live One');
 
     expect(pinnedGroup()).toBeNull();
-    expect(showPendingToggle()).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Moderation/ })).toBeNull();
     expect(gridNames(ALL)).toContain('New Two');
   });
 
@@ -168,7 +172,7 @@ describe('the pinned review group', () => {
 
   it('does not match the pending name once Show Pending is off', async () => {
     renderBrowser();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show Pending' }));
+    fireEvent.click(await option('Show Pending'));
 
     fireEvent.change(screen.getByPlaceholderText(/^Search worlds/), { target: { value: 'four draft' } });
 
@@ -238,11 +242,11 @@ describe('the pinned review group', () => {
     renderBrowser();
     await screen.findByRole('region', { name: 'Awaiting Review' });
 
-    fireEvent.click(screen.getByRole('button', { name: /Quarantined/ }));
+    fireEvent.click(await option(/^Quarantined/));
 
     expect(pinnedGroup()).toBeNull();
     expect(gridNames(ALL)).toEqual(['Resubmitted Three']);
-    expect(showPendingToggle()).toBeNull();
+    expect(await option('Show Pending')).toBeDisabled();
   });
 });
 
@@ -261,7 +265,7 @@ describe('Show Pending', () => {
   it('is on by default', async () => {
     renderBrowser();
 
-    expect((await screen.findByRole('button', { name: 'Show Pending' })).getAttribute('aria-pressed')).toBe('true');
+    expect((await option('Show Pending')).getAttribute('aria-checked')).toBe('true');
     expect(pinnedGroup()).not.toBeNull();
   });
 
@@ -269,7 +273,7 @@ describe('Show Pending', () => {
     catalog.items = [listing('live', 'Live One')];
     renderBrowser();
 
-    expect(await screen.findByRole('button', { name: 'Show Pending' })).toBeTruthy();
+    expect(await option('Show Pending')).toBeTruthy();
     expect(pinnedGroup()).toBeNull();
   });
 
@@ -279,18 +283,18 @@ describe('Show Pending', () => {
       fresh('new', 'New Two', 3),
     ];
     renderBrowser();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show Pending' }));
+    fireEvent.click(await option('Show Pending'));
     fireEvent.click(screen.getByLabelText('Go to next page'));
     expect(pinnedGroup()).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show Pending' }));
+    fireEvent.click(await option('Show Pending'));
 
     expect(pinnedGroup()).not.toBeNull();
   });
 
   it('off gives the player view: new listings hidden, updates and own listings in their slot', async () => {
     renderBrowser();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show Pending' }));
+    fireEvent.click(await option('Show Pending'));
 
     expect(pinnedGroup()).toBeNull();
     expect(gridNames(ALL)).toEqual(['Live One', 'Update Four', 'Mine Five']);
@@ -300,12 +304,72 @@ describe('Show Pending', () => {
 
   it('stays off across a remount', async () => {
     const first = renderBrowser();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show Pending' }));
+    fireEvent.click(await option('Show Pending'));
     first.unmount();
 
     renderBrowser();
 
-    expect((await screen.findByRole('button', { name: 'Show Pending' })).getAttribute('aria-pressed')).toBe('false');
+    expect((await option('Show Pending')).getAttribute('aria-checked')).toBe('false');
     expect(pinnedGroup()).toBeNull();
+  });
+});
+
+describe('the Moderation button', () => {
+  beforeEach(() => {
+    catalog.items = [
+      listing('live', 'Live One'),
+      fresh('new', 'New Two', 3),
+      resubmitted('resub', 'Resubmitted Three', 5),
+    ];
+  });
+
+  const trigger = () => screen.queryByRole('button', { name: /^Moderation/ });
+
+  it('replaces the two toggles for staff', async () => {
+    renderBrowser();
+    await screen.findByRole('region', { name: 'Awaiting Review' });
+
+    expect(trigger()).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show Pending' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Quarantined/ })).toBeNull();
+  });
+
+  it('shows nothing to a player or a guest', async () => {
+    const view = renderBrowser(player);
+    await screen.findByText('Live One');
+    expect(trigger()).toBeNull();
+    view.unmount();
+
+    renderBrowser(null);
+    await screen.findByText('Live One');
+    expect(trigger()).toBeNull();
+  });
+
+  it('shows the Quarantined count', async () => {
+    renderBrowser();
+
+    expect(await option('Quarantined (1)')).toBeEnabled();
+  });
+
+  it('disables Quarantined at zero rather than hiding it', async () => {
+    catalog.items = [listing('live', 'Live One')];
+    renderBrowser();
+
+    expect(await option('Quarantined (0)')).toBeDisabled();
+  });
+
+  it('carries no badge in the default view', async () => {
+    renderBrowser();
+
+    expect(await screen.findByRole('button', { name: 'Moderation' })).toBeTruthy();
+  });
+
+  it('badges the options away from their default', async () => {
+    renderBrowser();
+    fireEvent.click(await option('Show Pending'));
+    expect(screen.getByRole('button', { name: 'Moderation, 1 changed' })).toBeTruthy();
+
+    fireEvent.click(await option(/^Quarantined/));
+    expect(screen.getByRole('button', { name: 'Moderation, 2 changed' })).toBeTruthy();
   });
 });
