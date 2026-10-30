@@ -130,7 +130,7 @@ A player without a pledge sees the preset locked, with a link to join on Patreon
 - The global daily ceiling sums every row since 00:00 UTC. When a sum reaches it, the server sets a pause and alerts admins once: email to a staff address from the environment, plus an in-app admin message. New first calls are refused with `service_paused`; calls of turns already admitted finish.
 - An admin can lift a pause. A lift holds until 00:00 UTC. The ceiling check restarts with the new day.
 - The hourly job reads the provider account balance through the provider's balance endpoint, with the same server key, and alerts admins when it falls below a threshold from settings.
-- A daily job reads the provider's per-day spend for the server key and stores it next to the recorded day sum. The spend-versus-estimate report shows both.
+- A daily job reads the provider's per-day spend for the server key and stores it next to the recorded day sum. It reads each complete UTC day by date range after midnight, catching up any days it missed. The balance and usage URLs live in the environment. The spend-versus-estimate report shows both.
 
 **Server settings**
 - One admin-only settings record holds, per tier: window, monthly budget and a fallback cost per turn for the turns estimate. Globally: the approved model list and the active model, daily ceiling, balance alert threshold, upstream idle limit, `max_tokens` cap, token estimate ratio and margin, turn time limit and call cap, parallel and per-minute limits, warning thresholds, retention period, and per-token prices for computed cost.
