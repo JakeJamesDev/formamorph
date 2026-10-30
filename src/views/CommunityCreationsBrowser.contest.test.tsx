@@ -204,7 +204,7 @@ describe('whether the Contest tab is there at all', () => {
 });
 
 describe('staff review on the contest tab', () => {
-  it('pins nothing and offers no Show Pending, leaving a pending entry in the grid', async () => {
+  it('pins nothing and offers no Pin Pending, leaving a pending entry in the grid', async () => {
     const admin = { id: 'a1', username: 'root-admin', accountType: 'admin' } as unknown as WorldRecord;
     server.events = [contest()];
     catalog.items = [
@@ -218,11 +218,32 @@ describe('staff review on the contest tab', () => {
 
     await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
     expect(screen.queryByRole('region', { name: 'Awaiting Review' })).not.toBeInTheDocument();
-    // Flagged Likes is the one option that applies here, so the button stays; the other two are hidden.
+    // Only All Listings and Flagged Likes apply here, so the button stays; Quarantined and Pin Pending are hidden.
     fireEvent.click(screen.getByRole('button', { name: /^Moderation/ }));
-    expect(screen.getByRole('checkbox', { name: /^Flagged Likes/ })).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: 'Show Pending' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: /^Quarantined/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'All Listings' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Flagged Likes/ })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Pin Pending' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /^Quarantined/ })).not.toBeInTheDocument();
+  });
+
+  it('reads a Quarantined pick from a catalog tab as All Listings, and gets it back on return', async () => {
+    const admin = { id: 'a1', username: 'root-admin', accountType: 'admin' } as unknown as WorldRecord;
+    server.events = [contest()];
+    catalog.items = [
+      listing('Saltmarsh', { contest_event_id: 'e1' }),
+      listing('Coldkeep', { quarantined_at: at(-1), quarantine_expires_at: at(28) }),
+    ];
+    renderBrowser({ currentUser: admin });
+    fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: /^Quarantined/ }));
+    expect(screen.getByRole('button', { name: 'Moderation, 1 changed' })).toBeInTheDocument();
+
+    await openContestTab();
+
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+    expect(screen.getByRole('button', { name: 'Moderation' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Moderation' }));
+    expect(screen.getByRole('radio', { name: 'All Listings' })).toHaveAttribute('aria-checked', 'true');
   });
 });
 
@@ -240,8 +261,8 @@ describe('Flagged Likes on the contest tab', () => {
   });
 
   const flaggedOption = async () => {
-    if (!screen.queryByRole('checkbox', { name: /^Flagged Likes/ })) fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
-    return screen.getByRole('checkbox', { name: /^Flagged Likes/ });
+    if (!screen.queryByRole('radio', { name: /^Flagged Likes/ })) fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
+    return screen.getByRole('radio', { name: /^Flagged Likes/ });
   };
 
   it('counts the shown contest’s marked entries and narrows to them, on the marker too', async () => {

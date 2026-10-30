@@ -93,11 +93,15 @@ const gridNames = (names: string[]) => {
     .map((el) => el.textContent);
 };
 
-/** A Moderation popover option, opening the popover first when it is closed. */
-const option = async (name: string | RegExp) => {
-  if (!screen.queryByRole('checkbox', { name })) fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
-  return screen.getByRole('checkbox', { name });
+/** A Moderation popover control of the given role, opening the popover first when it is closed. */
+const control = async (role: 'checkbox' | 'radio', name: string | RegExp) => {
+  if (!screen.queryByRole(role, { name })) fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
+  return screen.getByRole(role, { name });
 };
+/** The Pin Pending checkbox. */
+const option = (name: string | RegExp) => control('checkbox', name);
+/** A choice in the Show radio group. */
+const view = (name: string | RegExp) => control('radio', name);
 
 beforeEach(() => {
   // jsdom has no `matchMedia`; the browser reads it for the mobile layout switch.
@@ -181,9 +185,9 @@ describe('the pinned review group', () => {
     expect(namesIn(pinnedGroup()!, ['Update Four Draft'])).toEqual(['Update Four Draft']);
   });
 
-  it('does not match the pending name once Show Pending is off', async () => {
+  it('does not match the pending name once Pin Pending is off', async () => {
     renderBrowser();
-    fireEvent.click(await option('Show Pending'));
+    fireEvent.click(await option('Pin Pending'));
 
     fireEvent.change(screen.getByPlaceholderText(/^Search worlds/), { target: { value: 'four draft' } });
 
@@ -253,15 +257,15 @@ describe('the pinned review group', () => {
     renderBrowser();
     await screen.findByRole('region', { name: 'Awaiting Review' });
 
-    fireEvent.click(await option(/^Quarantined/));
+    fireEvent.click(await view(/^Quarantined/));
 
     expect(pinnedGroup()).toBeNull();
     expect(gridNames(ALL)).toEqual(['Resubmitted Three']);
-    expect(await option('Show Pending')).toBeDisabled();
+    expect(await option('Pin Pending')).toBeDisabled();
   });
 });
 
-describe('Show Pending', () => {
+describe('Pin Pending', () => {
   const ALL = ['Live One', 'New Two', 'Update Four', 'Mine Five'];
 
   beforeEach(() => {
@@ -276,7 +280,7 @@ describe('Show Pending', () => {
   it('is on by default', async () => {
     renderBrowser();
 
-    expect((await option('Show Pending')).getAttribute('aria-checked')).toBe('true');
+    expect((await option('Pin Pending')).getAttribute('aria-checked')).toBe('true');
     expect(pinnedGroup()).not.toBeNull();
   });
 
@@ -284,7 +288,7 @@ describe('Show Pending', () => {
     catalog.items = [listing('live', 'Live One')];
     renderBrowser();
 
-    expect(await option('Show Pending')).toBeTruthy();
+    expect(await option('Pin Pending')).toBeTruthy();
     expect(pinnedGroup()).toBeNull();
   });
 
@@ -294,18 +298,18 @@ describe('Show Pending', () => {
       fresh('new', 'New Two', 3),
     ];
     renderBrowser();
-    fireEvent.click(await option('Show Pending'));
+    fireEvent.click(await option('Pin Pending'));
     fireEvent.click(screen.getByLabelText('Go to next page'));
     expect(pinnedGroup()).toBeNull();
 
-    fireEvent.click(await option('Show Pending'));
+    fireEvent.click(await option('Pin Pending'));
 
     expect(pinnedGroup()).not.toBeNull();
   });
 
   it('off gives the player view: new listings hidden, updates and own listings in their slot', async () => {
     renderBrowser();
-    fireEvent.click(await option('Show Pending'));
+    fireEvent.click(await option('Pin Pending'));
 
     expect(pinnedGroup()).toBeNull();
     expect(gridNames(ALL)).toEqual(['Live One', 'Update Four', 'Mine Five']);
@@ -315,12 +319,12 @@ describe('Show Pending', () => {
 
   it('stays off across a remount', async () => {
     const first = renderBrowser();
-    fireEvent.click(await option('Show Pending'));
+    fireEvent.click(await option('Pin Pending'));
     first.unmount();
 
     renderBrowser();
 
-    expect((await option('Show Pending')).getAttribute('aria-checked')).toBe('false');
+    expect((await option('Pin Pending')).getAttribute('aria-checked')).toBe('false');
     expect(pinnedGroup()).toBeNull();
   });
 });
@@ -341,7 +345,7 @@ describe('the Moderation button', () => {
     await screen.findByRole('region', { name: 'Awaiting Review' });
 
     expect(trigger()).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Show Pending' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Pin Pending' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Quarantined/ })).toBeNull();
   });
 
@@ -359,14 +363,14 @@ describe('the Moderation button', () => {
   it('shows the Quarantined count', async () => {
     renderBrowser();
 
-    expect(await option('Quarantined (1)')).toBeEnabled();
+    expect(await view('Quarantined (1)')).toBeEnabled();
   });
 
   it('disables Quarantined at zero rather than hiding it', async () => {
     catalog.items = [listing('live', 'Live One')];
     renderBrowser();
 
-    expect(await option('Quarantined (0)')).toBeDisabled();
+    expect(await view('Quarantined (0)')).toBeDisabled();
   });
 
   it('carries no badge in the default view', async () => {
@@ -375,13 +379,24 @@ describe('the Moderation button', () => {
     expect(await screen.findByRole('button', { name: 'Moderation' })).toBeTruthy();
   });
 
-  it('badges the options away from their default', async () => {
+  it('badges Pin Pending off and a view other than All Listings, one each', async () => {
     renderBrowser();
-    fireEvent.click(await option('Show Pending'));
+    fireEvent.click(await option('Pin Pending'));
     expect(screen.getByRole('button', { name: 'Moderation, 1 changed' })).toBeTruthy();
 
-    fireEvent.click(await option(/^Quarantined/));
+    fireEvent.click(await view(/^Quarantined/));
     expect(screen.getByRole('button', { name: 'Moderation, 2 changed' })).toBeTruthy();
+
+    fireEvent.click(await view('All Listings'));
+    expect(screen.getByRole('button', { name: 'Moderation, 1 changed' })).toBeTruthy();
+  });
+
+  it('lists the Show group and keeps Pin Pending apart from it', async () => {
+    renderBrowser();
+
+    expect((await view('All Listings')).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radiogroup')).not.toContainElement(await option('Pin Pending'));
+    expect(screen.queryByRole('radio', { name: 'Pin Pending' })).toBeNull();
   });
 });
 
@@ -403,24 +418,35 @@ describe('Flagged Likes', () => {
   it('counts the marked listings and shows only them', async () => {
     renderBrowser();
 
-    fireEvent.click(await option('Flagged Likes (2)'));
+    fireEvent.click(await view('Flagged Likes (2)'));
 
     expect(gridNames(ALL).sort()).toEqual(['Marked Quarantined Three', 'Marked Two']);
   });
 
-  it('shows only the listings that are both flagged and quarantined when both are on', async () => {
+  it('swaps to Quarantined when it is picked, clearing Flagged Likes', async () => {
     renderBrowser();
-    fireEvent.click(await option('Flagged Likes (2)'));
-    fireEvent.click(await option(/^Quarantined/));
+    fireEvent.click(await view('Flagged Likes (2)'));
+    fireEvent.click(await view(/^Quarantined/));
 
-    expect(gridNames(ALL)).toEqual(['Marked Quarantined Three']);
+    expect(gridNames(ALL).sort()).toEqual(['Marked Quarantined Three', 'Quarantined Four']);
+    expect((await view('Flagged Likes (2)')).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('swaps back to Flagged Likes from Quarantined, and All Listings clears both', async () => {
+    renderBrowser();
+    fireEvent.click(await view(/^Quarantined/));
+    fireEvent.click(await view('Flagged Likes (2)'));
+    expect(gridNames(ALL).sort()).toEqual(['Marked Quarantined Three', 'Marked Two']);
+
+    fireEvent.click(await view('All Listings'));
+    expect(gridNames(ALL).sort()).toEqual([...ALL].sort());
   });
 
   it('is disabled at zero rather than hidden', async () => {
     catalog.items = [listing('live', 'Live One')];
     renderBrowser();
 
-    expect(await option('Flagged Likes (0)')).toBeDisabled();
+    expect(await view('Flagged Likes (0)')).toBeDisabled();
   });
 
   it('shows no marker and no option to a player, whatever the row carries', async () => {

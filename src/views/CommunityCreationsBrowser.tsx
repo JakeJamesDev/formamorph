@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, X, SlidersHorizontal, ChevronDown,
-  ShieldAlert, Trophy, Eye, Flag,
+  ShieldAlert, Trophy, Flag,
   type LucideIcon,
 } from "lucide-react";
 import { LikersDialog } from "@/components/community/LikersDialog";
@@ -57,7 +57,7 @@ import { useEventBanners } from "@/components/events/useEventBanners";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters, type CommunityFilterPreferences, type ReviewPinning } from "@/lib/useCommunityBrowserFilters";
 import { useDevReviewViewer, useDevModerationOpen } from "@/lib/dev/devReviewViewer";
-import { ModerationMenu, type ModerationOption } from "@/components/community/ModerationMenu";
+import { ModerationMenu, type ModerationChoice, type ModerationView } from "@/components/community/ModerationMenu";
 import { PinnedReviewGroup } from "@/components/community/PinnedReviewGroup";
 import { useReviewDecision } from "@/components/community/useReviewDecision";
 import { decidedRow, listingIdOf, reviewSubjectOf } from "@/lib/reviewRows";
@@ -285,8 +285,7 @@ const CommunityCreationsBrowser = ({
   const [quarantineNotice, setQuarantineNotice] = useState<QuarantineTarget | null>(null);
   // Admin-only view of just what is hidden — the whole catalog is already in memory, so this is a filter
   // over it rather than another request.
-  const [quarantinedOnly, setQuarantinedOnly] = useState(false);
-  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [moderationView, setModerationView] = useState<ModerationView>('all');
   // The listing whose likes audit a Likes Marker opened.
   const [auditing, setAuditing] = useState<WorldRecord | null>(null);
   // Staff only: off shows the browser as players see it.
@@ -432,9 +431,12 @@ const CommunityCreationsBrowser = ({
   // Narrowed before paging, not after: filtering the page in hand would leave the pager counting pages
   // that are mostly empty. The catalog is one request that already carries every quarantined listing this
   // account may see, so this is a filter over it rather than another fetch — the same as search and tags.
-  // Both "only" options narrow together, so a listing has to pass every one that is on.
-  const catalogForKinds = quarantinedOnly || flaggedOnly
-    ? remoteWorlds.filter((w) => (!quarantinedOnly || isQuarantined(w)) && (!flaggedOnly || isLikesMarked(w)))
+  // One view at a time. The contest tab has no Quarantined view, so it reads the stored pick as All Listings.
+  const staffView: ModerationView = browseTab === 'contest' && moderationView === 'quarantined' ? 'all' : moderationView;
+  const quarantinedOnly = staffView === 'quarantined';
+  const flaggedOnly = staffView === 'flaggedLikes';
+  const catalogForKinds = quarantinedOnly ? remoteWorlds.filter(isQuarantined)
+    : flaggedOnly ? remoteWorlds.filter(isLikesMarked)
     : remoteWorlds;
   const quarantinedCount = remoteWorlds.filter(isQuarantined).length;
 
@@ -586,45 +588,46 @@ const CommunityCreationsBrowser = ({
   const staffHere = moderationHere && browseTab !== 'contest';
   // Counted over what the tab shows: the contest's entries there, the whole catalog elsewhere.
   const flaggedCount = (browseTab === 'contest' ? contestEntries : remoteWorlds).filter(isLikesMarked).length;
-  const moderationOptions: ModerationOption[] = [
+  const moderationChoices: ModerationChoice[] = [
     {
-      key: 'quarantined',
+      value: 'all',
+      label: 'All Listings',
+      applies: moderationHere,
+      help: 'Show every listing',
+    },
+    {
+      value: 'quarantined',
       label: 'Quarantined',
       icon: ShieldAlert,
       count: quarantinedCount,
-      checked: quarantinedOnly,
-      defaultChecked: false,
       applies: staffHere,
       disabled: quarantinedCount === 0 && !quarantinedOnly,
       help: 'Show only what is hidden pending changes',
-      onChange: setQuarantinedOnly,
     },
     {
-      key: 'showPending',
-      label: 'Show Pending',
-      icon: Eye,
-      checked: showPending,
-      defaultChecked: true,
-      applies: staffHere,
-      disabled: quarantinedOnly,
-      help: 'Show listings that wait for review',
-      onChange: setShowPending,
-    },
-    {
-      key: 'flaggedLikes',
+      value: 'flaggedLikes',
       label: 'Flagged Likes',
       icon: Flag,
       count: flaggedCount,
-      checked: flaggedOnly,
-      defaultChecked: false,
       applies: moderationHere,
       disabled: flaggedCount === 0 && !flaggedOnly,
       help: 'Show only listings whose likes look inflated',
-      onChange: setFlaggedOnly,
     },
   ];
   const moderationControl = (
-    <ModerationMenu options={moderationOptions} defaultOpen={devModerationOpen} />
+    <ModerationMenu
+      choices={moderationChoices}
+      view={staffView}
+      onViewChange={setModerationView}
+      pin={{
+        applies: staffHere,
+        checked: showPending,
+        disabled: quarantinedOnly,
+        help: 'Pin listings that wait for review above the results',
+        onChange: setShowPending,
+      }}
+      defaultOpen={devModerationOpen}
+    />
   );
 
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
@@ -1488,7 +1491,7 @@ const CommunityCreationsBrowser = ({
                       ? 'No entries yet. Publish a world with the contest switch on to be the first.'
                       : 'This contest ended with no entries.') :
                     quarantinedOnly || flaggedOnly ?
-                    `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} ${quarantinedOnly && flaggedOnly ? 'are quarantined and flagged' : quarantinedOnly ? 'are quarantined' : 'have flagged likes'}.` :
+                    `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} ${quarantinedOnly ? 'are quarantined' : 'have flagged likes'}.` :
                     anyFilterApplied ?
                       `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} match your filters. Clear them to see everything.` :
                       `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} available. Be the first to publish one!`}

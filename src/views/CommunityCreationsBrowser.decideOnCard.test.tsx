@@ -172,7 +172,7 @@ describe('deciding on a pinned card', () => {
     expect(resync).toHaveBeenCalledTimes(1);
 
     fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
-    fireEvent.click(await screen.findByRole('checkbox', { name: /^Quarantined/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: /^Quarantined/ }));
     expect(onPage('New Two')).toBe(true);
   });
 
