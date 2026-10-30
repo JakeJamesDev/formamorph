@@ -362,11 +362,52 @@ describe('the Emberwatch items', () => {
   it('starts the played persona with a draught and a full lantern, and hides the barrow finds', () => {
     const copies = seeded(asEntity(world, 'Albus'));
     expect(copiesOf(copies, 'Healing Draught').find((copy) => copy.where.kind === 'you')?.quantity).toBe(1);
-    expect(copiesOf(copies, 'Hooded Lantern')).toMatchObject([{ where: { kind: 'you' }, state: { uses: 3 } }]);
+    expect(copiesOf(copies, 'Hooded Lantern').filter((copy) => copy.where.kind === 'you')).toMatchObject([{ state: { uses: 3 } }]);
+    expect(copiesOf(copies, 'Hooded Lantern').filter((copy) => copy.where.kind === 'location')).toHaveLength(2);
     expect(copiesOf(copies, 'Cold Iron Sword')).toHaveLength(2);
-    expect(copiesOf(copies, "Old King's Coin")).toMatchObject([{ quantity: 12, visibility: 'hidden' }]);
+    const hall = world.locations.find((l) => l.name === 'The Hall of Shields')!.id;
+    expect(copiesOf(copies, "Old King's Coin").filter((copy) => copy.where.kind === 'location' && copy.where.id === hall))
+      .toMatchObject([{ quantity: 12, visibility: 'hidden' }]);
     expect(copiesOf(copies, "Haldren's Crown, Lower Half")).toMatchObject([{ visibility: 'hidden' }]);
     expect(copiesOf(copies, "Haldren's Crown, Upper Half")).toMatchObject([{ where: { kind: 'entity', id: entityNamed(world, 'The Barrow Wight').id } }]);
+  });
+
+  const carriedNames = (copies: readonly ItemCopy[], where: ItemCopy['where']) => copies
+    .filter((copy) => copy.item.kind === 'item' && JSON.stringify(copy.where) === JSON.stringify(where))
+    .map((copy) => items.find((item) => copy.item.kind === 'item' && item.id === copy.item.itemId)!.name);
+
+  it("lands each hero's own gear on the player only while that hero is played", () => {
+    const you = { kind: 'you' } as const;
+    expect(carriedNames(seeded(asEntity(world, 'Albus')), you))
+      .toEqual(expect.arrayContaining(["Oath-Keeper's Shield", 'Steel Longsword', 'Ember Holy Symbol']));
+    expect(carriedNames(seeded(asEntity(world, 'Sylvie Thornwhistle')), you))
+      .toEqual(expect.arrayContaining(['Elf-Steel Dagger', 'Lockpick Roll']));
+    expect(carriedNames(seeded(NONE), you)).toEqual(expect.arrayContaining(['Walking Staff', 'Oilskin Cloak', 'Road Rations']));
+
+    // Under Sylvie, Albus stays in the cast with his gear, and Wanderer's gear never enters the game.
+    const asSylvie = seeded(asEntity(world, 'Sylvie Thornwhistle'));
+    expect(carriedNames(asSylvie, you)).not.toContain("Oath-Keeper's Shield");
+    expect(carriedNames(asSylvie, { kind: 'entity', id: entityNamed(world, 'Albus').id })).toContain("Oath-Keeper's Shield");
+    expect(copiesOf(asSylvie, 'Walking Staff')).toEqual([]);
+  });
+
+  it('hides the finds the story must reveal, and leaves the plain ones in view', () => {
+    const copies = seeded(NONE);
+    for (const name of ['Brass Spyglass', 'Sealed Letter', 'Beer-Stained Barrow Map', "Oath Ring of the King's Guard", "Maelis's Ward Scroll", 'Gold Burial Cup']) {
+      expect(copiesOf(copies, name).map((copy) => copy.visibility), name).toEqual(expect.arrayContaining(['hidden']));
+      expect(copiesOf(copies, name).every((copy) => copy.where.kind === 'location'), name).toBe(true);
+    }
+    for (const name of ['Flask of Lamp Oil', "Rusted Guard's Shield"]) {
+      expect(copiesOf(copies, name).every((copy) => copy.visibility === 'visible'), name).toBe(true);
+    }
+  });
+
+  it('seeds the ring and the scroll unidentified, and the letter sealed', () => {
+    const copies = seeded(NONE);
+    expect(copiesOf(copies, "Oath Ring of the King's Guard")).toMatchObject([{ state: { unidentified: true } }]);
+    expect(copiesOf(copies, "Maelis's Ward Scroll")).toMatchObject([{ state: { unidentified: true } }]);
+    expect(copiesOf(copies, 'Sealed Letter')).toMatchObject([{ state: { state: 'sealed' } }]);
+    expect(itemNamed('Sealed Letter').whenEmpty).toEqual({ kind: 'changesState', state: 'opened' });
   });
 
   it('gives a human Paladin Darkvision only while the lantern is equipped', () => {
