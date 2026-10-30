@@ -20,3 +20,4 @@ Model rationale: concurrency-sensitive accounting where a race is a billing hole
 - [ ] A first call is refused with `budget_exhausted` (carrying the reset time) once the subject's month sum, open rows included, reaches its tier budget; the month resets at 00:00 UTC on the 1st; a tier change applies against the same sum.
 - [ ] `window_exceeded` fires only past the estimate plus margin, carries the current window, and the row records estimated and upstream prompt tokens.
 - [ ] Each guard is proven by removing it once.
+- [ ] The server's `CONTEXT.md` glossary gains entries for Formamorph AI, Spend subject and refusal code (left open by ticket 03).
