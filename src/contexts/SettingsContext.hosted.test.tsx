@@ -1,7 +1,11 @@
+import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act, waitFor, screen, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SettingsProvider, useSettings } from './SettingsContext';
+import { AgeGateProvider } from './AgeGateContext';
+import { HostedAiStateSync } from '@/components/HostedAiStateSync';
+import { AGE_GATE_VERSION } from '@/lib/ageGate';
 import AuthService from '@/services/AuthService';
 import { textEndpointPresetCodec, FORMAMORPH_AI_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
@@ -32,7 +36,10 @@ const STATE = {
   percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
 };
 
-const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>;
+// The app's order: the hosted reads sit inside the age gate, which sits inside the settings.
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <SettingsProvider><AgeGateProvider><HostedAiStateSync />{children}</AgeGateProvider></SettingsProvider>
+);
 const ENDPOINTS_KEY = 'FORMAMORPH_textEndpointPresets';
 const PROMPTS_KEY = 'FORMAMORPH_promptPresets';
 
@@ -51,8 +58,12 @@ function seed(activeId: string) {
 let stateReads = 0;
 let modelProbes = 0;
 let served: Omit<typeof STATE, 'model'> & { model: { id: string; capabilities: object } } = STATE;
+let accountAttested = true;
+const gateAnswer = (accepted: boolean) =>
+  new Response(JSON.stringify({ accepted, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }));
 beforeEach(() => {
   served = STATE;
+  accountAttested = true;
   localStorage.clear();
   resolveCapability.mockClear();
   fetchContextLength.mockClear();
@@ -64,6 +75,8 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
   vi.stubGlobal('fetch', vi.fn(async (input: string) => {
     if (input === HOSTED_STATE_URL) { stateReads += 1; return new Response(JSON.stringify({ success: true, data: served })); }
+    if (String(input).endsWith('/policies/age-gate')) return gateAnswer(accountAttested);
+    if (String(input).endsWith('/policies/age-gate/accept')) return gateAnswer(true);
     if (String(input).startsWith(HOSTED_CHAT_URL.replace(/\/chat\/completions$/, ''))) modelProbes += 1;
     return new Response('{}', { status: 404 });
   }));
@@ -74,6 +87,76 @@ afterEach(() => {
   vi.unstubAllGlobals();
   AuthService.token = null;
   hostedSession.reset();
+});
+
+describe('SettingsContext: the hosted state waits for the age gate', () => {
+  interface Boot {
+    name: string;
+    arrange: () => void;
+    afterMount?: (result: { current: ReturnType<typeof useSettings> }) => void;
+  }
+  const boots: Boot[] = [
+    { name: 'Formamorph AI is active', arrange: () => seed(FORMAMORPH_AI_PRESET_ID) },
+    {
+      name: 'a prompt is pinned to Formamorph AI',
+      arrange: () => seed('mine'),
+      afterMount: (result) => act(() => result.current.setPromptEndpoint('summary', FORMAMORPH_AI_PRESET_ID)),
+    },
+    {
+      name: 'the device never switched',
+      arrange: () => {
+        seed('mine');
+        localStorage.setItem('FORMAMORPH_hostedAiDevice', JSON.stringify({ switched: false, previousPresetId: null }));
+      },
+    },
+  ];
+
+  it.each(boots)('sends no read before the answer, and one after it, when $name', async ({ arrange, afterMount }) => {
+    arrange();
+    accountAttested = false;
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    afterMount?.(result);
+
+    // The account comes back unanswered, so the gate is on screen; a read would have counted by now.
+    const accept = await screen.findByRole('button', { name: 'Accept' });
+    expect(stateReads).toBe(0);
+    expect(result.current.hostedAi.presetState).toBe('unavailable');
+
+    fireEvent.click(accept);
+    await waitFor(() => expect(stateReads).toBe(1));
+  });
+
+  /** Another tab signs in as a second account. */
+  const switchAccount = () => act(() => {
+    localStorage.setItem('authToken', 'token-b');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'authToken' }));
+  });
+
+  it('reads again for a new account once its answer is in', async () => {
+    seed(FORMAMORPH_AI_PRESET_ID);
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    await waitFor(() => expect(result.current.hostedAi.presetState).toBe('ready'));
+    expect(stateReads).toBe(1);
+
+    switchAccount();
+    await waitFor(() => expect(stateReads).toBe(2));
+  });
+
+  it('sends no read for a new account until that account answers the gate', async () => {
+    seed(FORMAMORPH_AI_PRESET_ID);
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    await waitFor(() => expect(result.current.hostedAi.presetState).toBe('ready'));
+    expect(stateReads).toBe(1);
+
+    accountAttested = false;
+    switchAccount();
+    const accept = await screen.findByRole('button', { name: 'Accept' });
+    expect(stateReads).toBe(1);
+    expect(result.current.hostedAi.presetState).toBe('unavailable');
+
+    fireEvent.click(accept);
+    await waitFor(() => expect(stateReads).toBe(2));
+  });
 });
 
 describe('SettingsContext: Formamorph AI', () => {
