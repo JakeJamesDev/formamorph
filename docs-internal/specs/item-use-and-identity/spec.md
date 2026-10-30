@@ -1,6 +1,7 @@
 # Spec: Item Use and Identity
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-30. Tickets 01–06; last landing 3bc507828, follow-ups e95abaddb and df2c2fef9. Review: spec text corrected; one gap fixed in df2c2fef9. Gates green on 2026-10-30.
 Spec session: item-use-and-identity — spec
 
 ## Problem Statement
@@ -11,7 +12,7 @@ The Inventory pass shows the gap in play. On cloud, when the narration breaks a 
 
 ## Solution
 
-**Use** is the one action. An item can be used when it has a Uses count, On Use effects or an On Use script. Two settings replace Consumable and Charges:
+**Use** is the one action. An item can be used when it has a Uses count, After Use effects or a When Used script. Two settings replace Consumable and Charges:
 
 - **Uses**: how many times a copy can be used before it is empty. Blank means unlimited. 1 means single-use.
 - **When Empty**: what happens to the copy when its Uses run out. **Stays** keeps it at zero, ready for a recharge. **Gone** removes it. **Becomes** turns it into another authored item. **Changes State** sets a new State word.
@@ -80,7 +81,7 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 | Q49 | The pass probe grades a state case as a hit when the item stays with its owner at the same quantity and nothing else moves; that rate carries the Q23 bar against shipped. The rate at which the State is set to a new word is reported beside it. Two arms, `shipped` (frozen, `consume` mapped to `use`) and `new`; base cases and replays run under both. `retouch-read` is the unseal case, and a new `read-open` case (a letter already "opened", reread, nothing changes) is the control. Ticket 04 |
 | Q50 | The `use` line says "as it is meant to be used", and `lose` names burned, broken or destroyed. On cloud the broader "any use" wording turned destroying an item into `use` (use-up guards 0/6). Ticket 04 |
 | Q51 | A pass item name with a trailing parenthetical that Items Here wrote (State, uses left, marks) reads as the name before it when that bare name is known, as the colon rule does. Ticket 04 |
-| Q52 | On a gain, `owner` names where the item comes from: the person who hands it over, or "here" for anywhere else. The validator skips a gain whose source is its own recipient. The two ship together: with the old "Empty for gain" line, real pickups come back self-sourced and the rule would drop them. A gain from "here" or a person still adds one more of an item already held. After ticket 04 |
+| Q52 | On a gain, `owner` names where the item comes from: the person who hands it over, or "here" for anywhere else. The validator skips a gain whose source is its own recipient. The two ship together: with the old "Empty for gain" line, real pickups come back self-sourced and the rule would drop them. A gain from "here" or a person still adds one more of an item already held. Cloud, 12 per arm against frozen shipped: state 48/48, use 36/36, reveal 12/12, regain guards 24/24, use-up guards 22/24 (= shipped), base 105/108; replays 53/60 against 52/60 for ticket 04's prompt in one batch. After ticket 04 (e95abaddb) |
 | Q47 | Requirement text puts the new checks in parentheses after the name, as Items Here shows State: "owning Lantern (lit)", "equipping Ring (unidentified)". The editor adds a State text field and an Identity select (Any, Identified, Unidentified) after Owned/Equipped. Ticket 05 |
 | Q40 | Formaquestion's player view splits rows per face: an unidentified copy is its own row under its unidentified face, even when another copy of the item is identified. Ticket 03 |
 | Q41 | The script item entry exposes `unidentifiedName` and `unidentifiedDescription` as authored, blank as "". Each copy exposes `unidentified`. In the player view these read as the face the player knows. Ticket 03 |
@@ -137,7 +138,7 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 - The Item drops `consumable` and `charges`. It gains **Uses** (a whole number from 1, or absent for unlimited), **When Empty** (`stays`, `gone`, `becomes` with an authored item id, or `changesState` with a State word), **State** (the starting State), **Unidentified Name** and **Unidentified Description**.
 - When Empty applies only when Uses is set. An item with no Uses has no When Empty.
 - Stacking follows today's rule with Uses in place of Charges. An item with Uses 1 stacks, as a Consumable does today. An item with Uses 2 or more does not stack, because each copy counts its own uses.
-- The Item Copy's per-copy state gains `uses` (in place of `charges`), `state` (the current State word) and `unidentified` (a flag). Seeding a copy sets its uses to the Item's Uses, its State to the Item's State, and `unidentified` when the Item has an unidentified field.
+- The Item Copy's per-copy state gains `uses` (in place of `charges`), `state` (the current State word) and `unidentified` (a flag). A seeded copy starts at full uses (an absent `uses` means full, so a Uses 1 stack stores none), its State to the Item's State, and `unidentified` when the Item has an unidentified field.
 - The merge key adds State and the unidentified flag to today's key (item, place, visibility, unequipped, stacking). Copies merge only when both match.
 - Inventory has not shipped. No world, save or stored-turn migration is written for `consumable`, `charges` or the `consume` op name; compat for an unreleased form is dead code.
 - The item timing After Consumed and the script timing `consumed` take the new names After Use and `used`.
@@ -154,7 +155,7 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 
 ### The Inventory pass
 
-- The schema and the text line format gain `use` (in place of `consume`), `change`, a `state` field (the new State, for `change`) and an `after` field (`kept` or `used up`, for `use` on a runtime item). Fields an operation does not use are empty, as `to` is today.
+- The schema and the text line format gain `use` (in place of `consume`), `change`, a `state` field (the new State, for `change`) and an `after` field (`kept` or `used up`, for `use` on a runtime item). `state` and `after` are optional in the schema. A `change` with no `state` is skipped, and an empty `state` clears it (Q31).
 - The prompt's operation list describes `use` as an owner using an item as it is meant to be used (drinking, eating, reading, opening, blowing, spending a charge), and `lose` as an item burned, broken or destroyed (Q50), `change` as an item whose look or state changes without being used, and `reveal` as a hidden item coming into view or an item's true nature becoming known.
 - `applyInventoryPass` resolves a name against both faces of an unidentified item, so the pass can name it either way.
 - The prompt change ships with probe numbers against the Q23 bar. The existing re-gain probe's fixture holds the letter cases; it gains the state, use and reveal cases listed under Testing.
