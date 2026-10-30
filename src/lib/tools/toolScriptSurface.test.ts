@@ -50,8 +50,8 @@ describe('no verb on the surface', () => {
     expect(labelsAt('return clock.|')).toEqual(['day', 'daypart', 'hour', 'minute', 'deltaHours', 'elapsedHours', 'previous']);
     expect(labelsAt('return memories.|')).toEqual([]);
     expect(labelsAt('return entities.Mara.|', named)).not.toEqual(expect.arrayContaining(['move']));
-    expect(labelsAt('return entities.Mara.|', named)).toEqual(expect.arrayContaining(['location', 'following', 'stats']));
-    expect(labelsAt('return entities.Mara.|', named).filter((label) => ['move', 'follow', 'unfollow', 'diary'].includes(label))).toEqual([]);
+    expect(labelsAt('return entities.Mara.|', named)).toEqual(expect.arrayContaining(['location', 'following', 'met', 'stats']));
+    expect(labelsAt('return entities.Mara.|', named).filter((label) => ['move', 'follow', 'unfollow', 'meet', 'diary'].includes(label))).toEqual([]);
   });
 
   it('keeps a built-in’s calls', () => {

@@ -371,7 +371,7 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
@@ -380,8 +380,8 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
@@ -439,7 +439,7 @@ A script does not have to return anything. One that only writes `self`, a placeh
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
-`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()` and `diary()`. So code reaches the entity's own stats as `owner.stats`, its own traits as `owner.traits`, and its own placeholders as `owner.placeholders`.
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`. So code reaches the entity's own stats as `owner.stats`, its own traits as `owner.traits`, and its own placeholders as `owner.placeholders`.
 
 | Box | What `owner` is |
 | --- | --- |
@@ -786,7 +786,7 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 | `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Entries take writes |
 
-`persona` also has the `id`, `type`, `pronouns`, `inScene`, `location`, `following`, `description`, `summary` and `aliases` of an [entity entry](#entities). `inScene` is always true for the played persona. `location` is where the player is. `following` is always false. Each entry in `persona.traits` has the [same members as a `traits` entry](#traits), for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
+`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary` and `aliases` of an [entity entry](#entities). `inScene` and `met` are always true for the played persona. `location` is where the player is. `following` is always false. Each entry in `persona.traits` has the [same members as a `traits` entry](#traits), for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
 
 ```javascript
 // Lose a point each turn while the persona is Scarred.
@@ -818,6 +818,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `type` | The entity's type, or `''` when it has none. Read-only |
 | `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
 | `inScene` | True when the entity is in this turn's scene. Read-only |
+| `met` | True when the player has met the entity. It never turns false again. Read-only |
 | `location` | The code name of the location the entity is at. A follower reads the player's location. Empty when the entity has no position of its own and is at every location it lists. Read-only |
 | `following` | True when the entity follows the player. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |
@@ -830,6 +831,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes the entity follow the player |
 | `unfollow()` | Stops the entity following the player |
+| `meet()` | Introduces the entity to the player. See [Meeting Entities](#meeting-entities) |
 | `diary(line)` | Adds a line to the entity's diary. See [Diary](#diary) |
 
 Each entry in an entity's `stats` has the [same members as a `stats` entry](#stat-properties), `previous` and `delta` included. Code writes `value`, `min`, `max` and `regen` on an entry, by the rules in [Writing to Other Stats](#writing-to-other-stats). A write to any other field is ignored and reported. An entity's stats run every turn, whether or not the entity is in the scene. A stat the entity has switched off reads with `enabled` false, and a write to it is ignored and reported.
@@ -860,7 +862,23 @@ if (self.value <= 0) entities.Mira.stats.Stamina.value -= 10;
 - An entity's media are not in the entry.
 - An entity the game discovered during play is an entry, with every field above.
 
-A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch or a stat write through it is ignored and reported. A `move`, `follow`, `unfollow` or `diary` call through it stops the script with an error. A `diary` call first reads the key as an id, then as a name, so `entities[id].diary(line)` works for an id held in a variable. In the World Editor, a `diary` call through an unknown name only warns, because a discovered entity can have that name. Check `entities.Mira.name` to test whether Mira is in the game.
+A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch or a stat write through it is ignored and reported. A `move`, `follow`, `unfollow`, `meet` or `diary` call through it stops the script with an error. `met` reads false. A `diary` call first reads the key as an id, then as a name, so `entities[id].diary(line)` works for an id held in a variable. In the World Editor, a `diary` call through an unknown name only warns, because a discovered entity can have that name. Check `entities.Mira.name` to test whether Mira is in the game.
+
+#### Meeting Entities
+<!-- keywords: met, meet, stranger, introduce, reveal identity, stranger name, known entity, hooded stranger -->
+
+An entity with a **Stranger Name** is a stranger until the story names it. `entities.<Entity>.met` is true once the player has met the entity. It never turns false again.
+
+**`entities.<Entity>.meet()`** introduces the entity to the player, for example when a found letter reveals who the stranger is. It works on any entity of the game, here or not. On an entity the player has met, it does nothing.
+
+- A read of `met` later in the same run already sees the call.
+- The write lands when the turn ends.
+- A user Tool script reads `met` but has no `meet()`.
+
+```javascript
+// Once the clue stat reaches 3, the player learns who the hooded stranger is.
+if (self.value >= 3) entities.Sylvie.meet();
+```
 
 #### Moving Entities
 <!-- keywords: move npc, companion joins, follow player, leave party, schedule, patrol, entity location, send away -->

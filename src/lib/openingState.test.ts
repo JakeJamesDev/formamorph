@@ -83,6 +83,13 @@ describe('openingStateOf', () => {
     expect(valueOf(fold.entityStats.vale, 'calm')).toBe(6);
   });
 
+  it('opens with the start rule’s met list: no Stranger Name, or a tie to the persona', () => {
+    const hooded = { ...bram, id: 'hooded', name: 'Hooded', strangerName: 'a hooded stranger' } as Entity;
+    const friend = { ...bram, id: 'friend', name: 'Friend', strangerName: 'a stranger', relationships: [{ targetId: 'albus' }] } as Entity;
+    const fold = openingFold({ ...world, entities: [bram, albus, hooded, friend] }, { traits: [], owned: {} }, { ref: { source: 'world', entityId: 'albus' } });
+    expect(fold.state.ownerTraits.metIds).toEqual(['bram', 'albus', 'friend']);
+  });
+
   it('stands nowhere in a world with no locations', () => {
     expect(openingStateOf({ ...world, locations: [] }).places).toEqual({ locations: [], location: null, connections: [] });
   });

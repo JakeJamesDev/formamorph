@@ -31,6 +31,8 @@ export interface StatCodeOwners {
   discovered?: readonly Entity[];
   /** Ids of the entities in the turn's scene. Absent ⇒ none; the played persona is always in it. */
   inSceneIds?: readonly string[];
+  /** Ids of the entities the player has met. Absent ⇒ an entity with no Stranger Name is met and the rest are not. */
+  metIds?: readonly string[];
 }
 
 /** The traits as a snapshot holds them in live shapes, each re-read from the world as play reads them. */
@@ -92,6 +94,7 @@ export interface CodeEntity extends SandboxEntity {
   type: string;
   pronouns: string;
   inScene: boolean;
+  met: boolean;
   traits: (SandboxTrait & { id: string })[];
 }
 
@@ -103,7 +106,7 @@ export interface CodeEntities {
   persona: CodeEntity;
 }
 
-const NO_PERSONA: CodeEntity = { id: '', name: '', type: '', pronouns: '', inScene: false, traits: [] };
+const NO_PERSONA: CodeEntity = { id: '', name: '', type: '', pronouns: '', inScene: false, met: false, traits: [] };
 
 /** The entity the player plays: the picked world or library persona, else the Custom Persona entity under
  *  None. Null when none plays. */
@@ -133,6 +136,7 @@ function codeEntity(
     type: statCodeName(authored.type, named),
     pronouns: statCodeName(authored.pronouns, named),
     inScene: authored.id === played || !!ownerTraits.inSceneIds?.includes(authored.id),
+    met: authored.id === played || (ownerTraits.metIds ? ownerTraits.metIds.includes(authored.id) : authored.strangerName === undefined),
     traits: (owner?.traits ?? []).map((trait) => ({
       ...traitIdentity({ ...trait, name: authoredTraitName(trait, authored, ownerTraits.world.traits) }, authored.id,
         [...(owner?.groups ?? []), ...ownerTraits.world.groups], gates, named),

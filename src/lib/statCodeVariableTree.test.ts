@@ -343,8 +343,8 @@ describe('verbs last in a group (R7)', () => {
     expect(misordered(toolTree)).toEqual([]);
   });
 
-  it('reads an entity’s fields, then move, follow, unfollow, diary', () => {
-    expect(levelAt(tree, 'Entities', 'Mira').slice(-4)).toEqual(['move', 'follow', 'unfollow', 'diary']);
+  it('reads an entity’s fields, then move, follow, unfollow, meet, diary', () => {
+    expect(levelAt(tree, 'Entities', 'Mira').slice(-5)).toEqual(['move', 'follow', 'unfollow', 'meet', 'diary']);
   });
 
   it('reads the memory entry’s eleven fields, then pin, forget, edit, remove', () => {
@@ -467,7 +467,7 @@ describe('field info', () => {
 describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
-    'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items',
+    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items',
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {

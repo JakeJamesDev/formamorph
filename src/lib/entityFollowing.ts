@@ -317,6 +317,8 @@ export function applyEntityCodeWrites<S extends FollowerState>(
       case "follow":
         next = { ...next, positions: atPlayer(), followers: following ? next.followers : [...next.followers, entity] };
         break;
+      case "meet": // lands on the met list at commit
+        break;
     }
   }
   return next;

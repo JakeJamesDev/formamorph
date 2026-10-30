@@ -578,6 +578,13 @@ describe('computeTurnCommit — entity movement', () => {
       expect(follows.state.followers).toEqual(['corvin', 'mira']);
       expect(follows.state.positions).toMatchObject({ mira: 'inn' });
     });
+
+    it('keeps an entity the code only met in the offer, and leaves the state as it was', () => {
+      const coded = withCodeWrites(commit, { entities: [{ entity: 'wenna', kind: 'meet' }] }, context());
+      const { state, offer } = commitEntityMoves(atInn, coded, { from: 'inn', to: 'inn' });
+      expect(offer.comeAlong).toEqual(['wenna']);
+      expect(state).toEqual(commitEntityMoves(atInn, commit, { from: 'inn', to: 'inn' }).state);
+    });
   });
 
   describe('code entity writes', () => {
