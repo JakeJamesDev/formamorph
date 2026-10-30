@@ -115,6 +115,11 @@ export class HostedSession {
     this.listeners.forEach((listener) => listener());
   }
 
+  /** Drops the old account's state and tells subscribers, when the token changed since the last snapshot. Reads nothing. */
+  accountChanged() {
+    if (this.credential() !== this.builtFor) this.reset();
+  }
+
   /** Forgets everything account-bound. */
   reset() {
     this.forget();

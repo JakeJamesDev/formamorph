@@ -8,21 +8,24 @@ import { FORMAMORPH_AI_PRESET_ID } from '@/lib/textEndpointPresets';
 import AuthService from '@/services/AuthService';
 
 /**
- * The one-time switch to Formamorph AI. Once the age gate is answered, a device that never switched reads
- * the hosted state, and the first time it shows a usable tier the preset changes. It sits inside the age
- * gate because that gate decides whether the community server is asked anything at boot.
+ * Every automatic read of the hosted state, and the one-time switch to Formamorph AI. It reads the state while
+ * any prompt can send to Formamorph AI or the device never switched, once for each account the age gate has
+ * an answer for. The first time a device that never switched sees a usable tier, the preset changes. It sits
+ * inside the age gate because that gate decides whether the community server is asked anything at boot.
  */
-export function HostedAiAutoSwitch() {
-  const { attested } = useAgeGate();
-  const { hostedAi, selectTextEndpointPreset } = useSettings();
+export function HostedAiStateSync() {
+  const { attested, attestedSession } = useAgeGate();
+  const { hostedAi, hostedInUse, selectTextEndpointPreset } = useSettings();
   const [switched, setSwitched] = useState(() => readHostedDevice().switched);
+  const readState = hostedInUse || !switched;
 
+  useEffect(() => AuthService.onSessionChanged(() => hostedSession.accountChanged()), []);
+
+  // A new account reads once the gate has its answer.
   useEffect(() => {
-    if (switched || !attested || !HOSTED_STATE_URL) return;
+    if (!readState || attestedSession === null || !HOSTED_STATE_URL) return;
     void hostedSession.refresh();
-    // The session drops the old account's state itself; this reads the new one's.
-    return AuthService.onSessionChanged(() => { void hostedSession.refresh(); });
-  }, [switched, attested]);
+  }, [readState, attestedSession]);
 
   useEffect(() => {
     if (!attested || !shouldSwitchOnce(hostedAi.hosted, readHostedDevice())) return;
