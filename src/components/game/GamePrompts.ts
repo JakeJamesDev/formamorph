@@ -570,7 +570,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - op: one operation from the list above.
 - item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.
 - quantity: how many, a whole number from 1.
-- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. Empty for gain.
+- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else.
 - to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
 - state: for change, the item's new state in a word or two. Empty for every other operation.
 - after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.

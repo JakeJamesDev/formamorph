@@ -244,6 +244,11 @@ export function applyInventoryPass(
       }
       // A gain from someone who holds the item is them handing it over.
       const giver = op.owner ? ownerOf(op.owner) : null;
+      // A gain whose source is its own recipient is the item it already holds.
+      if (giver && sameWhere(giver, to)) {
+        skip(`${label}: it comes from "${op.owner}", who receives it`);
+        continue;
+      }
       const held = giver && giver.kind !== 'location' && !sameWhere(giver, to)
         ? candidates(key, giver, 'transfer').filter((c) => c.visibility === 'visible') : [];
       if (held.length) {
