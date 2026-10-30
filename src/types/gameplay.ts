@@ -261,8 +261,8 @@ export type ItemCopyVisibility = 'visible' | 'hidden';
 
 /** State one Item Copy keeps of its own. */
 export interface ItemCopyState {
-  /** Charges left. Absent = the item has no charges. */
-  charges?: number;
+  /** Uses left. Absent = full, or the item has no Uses. */
+  uses?: number;
 }
 
 /** One item in play: a stack of `quantity` copies of an item in one place. */
@@ -290,7 +290,7 @@ export interface AppliedItemEffect {
   hidden?: boolean;
 }
 
-/** One running After Consumed row on an owner, which ends at a story-clock hour (Q40). */
+/** One running After Use row on an owner, which ends at a story-clock hour (Q40). */
 export interface TimedItemEffect {
   /** A stat row moves the owner's stats; a trait row grants a trait. */
   row: 'stat' | 'trait';
@@ -312,9 +312,9 @@ export interface ItemEffectLedger {
   applied?: Record<string, AppliedItemEffect>;
   /** Stat owner id → the items whose On First Obtain effects it got. */
   firstObtained?: Record<string, string[]>;
-  /** Trait owner id → the traits On First Obtain and Permanent After Consumed rows grant it for good (Q121). */
+  /** Trait owner id → the traits On First Obtain and Permanent After Use rows grant it for good (Q121). */
   firstObtainTraits?: Record<string, string[]>;
-  /** `<owner id>:<item id>:<row id>` → the After Consumed row running there. */
+  /** `<owner id>:<item id>:<row id>` → the After Use row running there. */
   timed?: Record<string, TimedItemEffect>;
 }
 

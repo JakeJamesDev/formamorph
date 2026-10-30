@@ -2,10 +2,10 @@
  * The Inventory module: every change to Item Copies goes through here. Pure: no React, no AI, no storage. Ids
  * come from an injected maker, as the turn commit's do.
  */
-import { byEquipOrder, chargesLeft, itemStackable, itemUsable, sameWhere, slotCapacity, slotSizeOf } from '@/lib/items';
+import { byEquipOrder, itemStackable, itemUsable, sameWhere, slotCapacity, slotSizeOf, usesLeft, whenEmptyOf } from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
 import type {
-  Entity, GameLocation, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
+  Entity, GameLocation, Item, ItemCopy, ItemCopyState, ItemCopyVisibility, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
   RuntimeItem, Slot,
 } from '@/types';
 import { timedTraitRow, type Dose } from './effects';
@@ -68,7 +68,7 @@ function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef |
 /**
  * The Item Copies a new game starts with, from the world's placements in authored order. A stackable item
  * placed twice on one owner forms one stack; a hidden placement stays its own row. Each copy of an item that
- * isn't stackable is its own Item Copy with full charges. Seeded copies start carried. Runs for a new game
+ * isn't stackable is its own Item Copy with full uses. Seeded copies start carried. Runs for a new game
  * only (Q59).
  */
 export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): ItemCopy[] {
@@ -91,7 +91,7 @@ export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined
     for (let i = 0; i < quantity; i += 1) {
       copies.push({
         id: newId(), item: ref, where, quantity: 1, visibility,
-        ...(item.charges !== undefined && { state: { charges: item.charges } }),
+        ...(item.uses !== undefined && { state: { uses: item.uses } }),
       });
     }
   }
@@ -104,14 +104,14 @@ export type InventorySource = 'pass' | 'panel' | 'script';
 /** One inventory change. A missing `quantity` on lose or transfer means the whole Item Copy. A gain's `itemId`
  *  names an authored item or one of the call's runtime items. */
 export type InventoryOp =
-  | { kind: 'gain'; itemId: string; quantity: number; to: ItemCopyWhere }
+  | { kind: 'gain'; itemId: string; quantity: number; to: ItemCopyWhere; /** Absent = visible. */ visibility?: ItemCopyVisibility }
   | { kind: 'lose'; copyId: string; quantity?: number }
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
   | { kind: 'equip'; copyId: string }
   | { kind: 'unequip'; copyId: string }
-  | { kind: 'consume'; copyId: string }
+  | { kind: 'use'; copyId: string }
   | { kind: 'reveal'; copyId: string; quantity?: number }
-  | { kind: 'setCharges'; copyId: string; charges: number };
+  | { kind: 'setUses'; copyId: string; uses: number };
 
 /** One Item Copy event an item's scripts of that timing run on (Q33). `where` is the owner or location it
  *  happened at; `quantity` is how many it moved. */
@@ -121,7 +121,7 @@ export interface ItemScriptEvent {
   copyId: string;
   where: ItemCopyWhere;
   quantity: number;
-  /** The Item Copy as it stood before a When Lost or When Consumed event, which can leave it gone. */
+  /** The Item Copy as it stood before a When Lost or When Used event, which can leave it gone. */
   was?: ItemCopy;
 }
 
@@ -150,7 +150,7 @@ export interface InventoryCall {
 
 export interface InventoryResult {
   copies: ItemCopy[];
-  /** One per consume of an authored item, in order: what starts its After Consumed effects. */
+  /** One per use of an authored item, in order: what starts its After Use effects. */
   doses: Dose[];
   /** One line per skipped operation (Q22). */
   diagnostics: string[];
@@ -199,21 +199,34 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy) => {
     if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }) });
   };
+  const itemOf = (copy: ItemCopy): Item | undefined => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
+  /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place and uses left (Q27). */
+  const sameRow = (c: ItemCopy, copy: ItemCopy): boolean => !c.equipped && sameRef(c.item, copy.item)
+    && c.visibility === copy.visibility && sameWhere(c.where, copy.where)
+    && usesLeft(c, itemOf(c)) === usesLeft(copy, itemOf(copy));
   /** The row `copy` ended in after a `put`: its own, or the stack it merged into. */
   const rowOf = (copy: ItemCopy): string => (list.some((c) => c.id === copy.id) ? copy.id
-    : list.find((c) => !c.equipped && sameRef(c.item, copy.item) && c.visibility === copy.visibility && sameWhere(c.where, copy.where))?.id ?? copy.id);
+    : list.find((c) => sameRow(c, copy))?.id ?? copy.id);
   let order = Math.max(0, ...list.map((c) => c.equipped?.order ?? 0));
 
   /** `next` with `copy` in its row (a new one goes last), or merged into a matching carried stack when its
    *  item stacks and it is carried (Q94). */
   const put = (next: ItemCopy[], copy: ItemCopy): ItemCopy[] => {
-    const stack = !copy.equipped && refStacks(copy.item, items) && next.find((c) => c.id !== copy.id && !c.equipped
-      && sameRef(c.item, copy.item) && c.visibility === copy.visibility && sameWhere(c.where, copy.where));
+    const stack = !copy.equipped && refStacks(copy.item, items) && next.find((c) => c.id !== copy.id && sameRow(c, copy));
     if (stack) {
       return next.filter((c) => c.id !== copy.id)
         .map((c) => (c === stack ? { ...c, quantity: c.quantity + copy.quantity } : c));
     }
     return next.some((c) => c.id === copy.id) ? next.map((c) => (c.id === copy.id ? copy : c)) : [...next, copy];
+  };
+
+  /** `list` with one copy of `copy`'s stack given `state`: in place when it is alone, else split off as its own
+   *  row, which merges into any stack it now matches. */
+  const withOneCopy = (copy: ItemCopy, state: ItemCopyState): ItemCopy[] => {
+    const changed = { ...copy, state: { ...copy.state, ...state } };
+    if (copy.quantity <= 1) return put(list, changed);
+    const rest = list.map((c) => (c === copy ? { ...c, quantity: c.quantity - 1 } : c));
+    return put(rest, { ...changed, id: call.newId(), quantity: 1 });
   };
 
   const one = (op: InventoryOp): string | null => {
@@ -231,7 +244,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       if (!item) return `gain: no item ${op.itemId}`;
       const ref = { kind: 'item', itemId: item.id } as const;
       if (itemStackable(item)) {
-        const gained: ItemCopy = { id: call.newId(), item: ref, where: op.to, quantity, visibility: 'visible' };
+        const gained: ItemCopy = { id: call.newId(), item: ref, where: op.to, quantity, visibility: op.visibility ?? 'visible' };
         list = put(list, gained);
         fire('gained', ref, rowOf(gained), op.to, quantity);
         return null;
@@ -239,8 +252,8 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       const first = list.length;
       for (let i = 0; i < quantity; i += 1) {
         list.push({
-          id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: 'visible',
-          ...(item.charges !== undefined && { state: { charges: item.charges } }),
+          id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: op.visibility ?? 'visible',
+          ...(item.uses !== undefined && { state: { uses: item.uses } }),
         });
       }
       fire('gained', ref, list[first].id, op.to, quantity);
@@ -290,29 +303,34 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         }
         return null;
       }
-      case 'consume': {
-        if (copy.where.kind === 'location') return `consume: Item Copy ${copy.id} has no owner`;
-        // Runtime items are Consumable (Q56).
-        if (item && !itemUsable(item)) return `consume: Item Copy ${copy.id} is not Consumable`;
-        const charges = chargesLeft(copy, item);
-        if (charges !== undefined && !(charges > 0)) return `consume: Item Copy ${copy.id} has no charges`;
-        // A charge spends first; a Consumable copy goes once its quantity or last charge does (Q57).
-        const spent = charges === undefined ? copy
-          : { ...copy, state: { ...copy.state, charges: charges - 1 } };
-        const gone = charges === undefined || (charges === 1 && !!item?.consumable);
-        if (!gone) list = list.map((c) => (c === copy ? spent : c));
-        else if (copy.quantity > 1) list = list.map((c) => (c === copy ? { ...copy, quantity: copy.quantity - 1 } : c));
-        else list = list.filter((c) => c !== copy);
+      case 'use': {
+        if (copy.where.kind === 'location') return `use: Item Copy ${copy.id} has no owner`;
+        // Runtime items can always be used, and a use removes one (Q56).
+        if (item && !itemUsable(item)) return `use: Item Copy ${copy.id} can't be used`;
+        const left = usesLeft(copy, item);
+        if (left !== undefined && !(left > 0)) return `use: Item Copy ${copy.id} has no uses left`;
         if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden' });
-        fire('consumed', copy.item, copy.id, copy.where, 1, copy);
+        fire('used', copy.item, copy.id, copy.where, 1, copy);
+        const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : { kind: 'gone' as const };
+        if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });
+        else if (empty?.kind === 'stays') list = withOneCopy(copy, { uses: 0 });
+        else if (empty) {
+          list = copy.quantity > 1 ? list.map((c) => (c === copy ? { ...copy, quantity: copy.quantity - 1 } : c)) : list.filter((c) => c !== copy);
+          if (empty.kind === 'becomes') {
+            // The result is carried by the same owner, keeps the copy's visibility and seeds like any gain (Q12, Q28).
+            const missing = one({ kind: 'gain', itemId: empty.itemId, quantity: 1, to: copy.where, visibility: copy.visibility });
+            if (missing) diagnostics.push(`Inventory (${call.source}) removed Item Copy ${copy.id} as Gone: ${missing}`);
+          }
+        }
         return null;
       }
-      case 'setCharges': {
-        const max = item?.charges;
-        if (max === undefined) return `setCharges: Item Copy ${copy.id} has no charges`;
-        if (!Number.isFinite(op.charges)) return `setCharges: ${op.charges} is not a number`;
-        const charges = Math.min(max, Math.max(0, Math.floor(op.charges)));
-        list = list.map((c) => (c === copy ? { ...c, state: { ...c.state, charges } } : c));
+      case 'setUses': {
+        const max = item?.uses;
+        if (max === undefined) return `setUses: Item Copy ${copy.id} has no Uses`;
+        if (!Number.isFinite(op.uses)) return `setUses: ${op.uses} is not a number`;
+        const uses = Math.min(max, Math.max(0, Math.floor(op.uses)));
+        // A copy that now matches a stack's uses merges into it.
+        list = put(list, { ...copy, state: { ...copy.state, uses } });
         return null;
       }
       case 'unequip': {

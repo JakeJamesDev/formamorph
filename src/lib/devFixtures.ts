@@ -53,12 +53,12 @@ const WHITE_ROOM_ID = '1783535114538';
 const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand', capacity: 2 }, { id: 'dev-slot-ring', name: 'Ring' }];
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
-    id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', consumable: true,
+    id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', uses: 1,
     value: 5, valueUnit: { kind: 'text', text: 'silver' }, traitEffects: [], equipRequires: [],
-    statEffects: [{ id: 'dev-effect-tonic', statId: 'dev-vigor', facet: 'value', timing: 'consumed', duration: { kind: 'time', hours: 2 }, amount: 2, op: 'add' }],
+    statEffects: [{ id: 'dev-effect-tonic', statId: 'dev-vigor', facet: 'value', timing: 'used', duration: { kind: 'time', hours: 2 }, amount: 2, op: 'add' }],
   },
   {
-    id: 'dev-item-wand', name: 'Ash Wand', playerDescription: 'A wand of pale ash wood.', charges: 3, stackable: false, bound: true,
+    id: 'dev-item-wand', name: 'Ash Wand', playerDescription: 'A wand of pale ash wood.', uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true,
     slotId: 'dev-slot-hand', statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
@@ -255,7 +255,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       return { world: { ...world, locations: [DEV_KEEP, ...locations], entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
     }
     case 'items': {
-      // The white room with three items and two slots: a stacked consumable, a bound charged wand in Hand, and
+      // The white room with three items and two slots: a stacked single-use tonic, a bound three-use wand in Hand, and
       // a two-handed sword valued in the world's first stat.
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       return {

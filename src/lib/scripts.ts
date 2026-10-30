@@ -10,7 +10,7 @@ import type { ItemScriptTiming, Script, ScriptTiming } from '@/types';
 export const SCRIPT_TIMINGS = ['before', 'after', 'output', 'start', 'switch'] as const satisfies readonly ScriptTiming[];
 
 /** The timings an item's scripts run at, one per Item Copy event (Q33). */
-export const ITEM_SCRIPT_TIMINGS = ['gained', 'lost', 'equipped', 'unequipped', 'consumed'] as const satisfies readonly ItemScriptTiming[];
+export const ITEM_SCRIPT_TIMINGS = ['gained', 'lost', 'equipped', 'unequipped', 'used'] as const satisfies readonly ItemScriptTiming[];
 
 /** Whether `timing` is one of an item's. */
 export const isItemTiming = (timing: ScriptTiming): timing is ItemScriptTiming =>
@@ -27,7 +27,7 @@ export const SCRIPT_TIMING_LABEL: Record<ScriptTiming, string> = {
   lost: 'When Lost',
   equipped: 'When Equipped',
   unequipped: 'When Unequipped',
-  consumed: 'When Consumed',
+  used: 'When Used',
 };
 
 /** When a timing runs and what it is for, shown when an author selects the timing. */
@@ -41,7 +41,7 @@ export const SCRIPT_TIMING_DESCRIPTION: Record<ScriptTiming, string> = {
   lost: 'Runs when an owner or a location loses one of its Item Copies. Use it to undo what the item started.',
   equipped: 'Runs when one of its Item Copies is equipped. Use it for effects the effect rows can’t express.',
   unequipped: 'Runs when one of its Item Copies is unequipped, swapped out included. Use it to undo what equipping did.',
-  consumed: 'Runs when one of its Item Copies is used, one dose or one charge. Use it for what the use does.',
+  used: 'Runs when one of its Item Copies is used. Use it for what the use does.',
 };
 
 /** Anything that holds scripts: a stat, a trait, the world, an item. */

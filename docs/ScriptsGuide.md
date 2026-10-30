@@ -300,10 +300,10 @@ An item's scripts use five timings of their own. Each runs once for each event o
 | **When Lost** | An owner or a location loses an Item Copy. A drop is When Lost for the owner, then When Gained at the location |
 | **When Equipped** | An Item Copy is equipped. Equipping one from a stack runs it once |
 | **When Unequipped** | An Item Copy is unequipped, by hand, by a full slot, or by a requirement that stops holding |
-| **When Consumed** | An Item Copy is used: one dose or one charge. The last dose runs this timing only, not When Lost |
+| **When Used** | An Item Copy is used. The last use runs this timing only, not When Lost. A **Becomes** result runs its own When Gained |
 
 - `self.event` holds `timing`, `quantity`, the number the event moved, and `copy`, the Item Copy's entry. Once the Item Copy is gone, `copy` reads it as it stood before the event.
-- Revealing an Item Copy and setting its charges run no timing. Starting items run none either.
+- Revealing an Item Copy and setting its uses run no timing. Starting items run none either.
 - Their writes apply when each script ends, not at the end of the turn. A script's inventory write runs the item timings it causes, up to 3 levels deep. Past that, the write still applies, no timing runs, and the turn log says so.
 
 ### When Your Code Runs
@@ -956,7 +956,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **A user Tool can't write it.** The write is ignored and reported, as every user Tool write is.
 
 ### Items
-<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set charges, consume from code, reveal item, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
+<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, use from code, reveal item, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
 
 `items` holds every item of the world by code name. Each entry has `id`, `name`, its own `placeholders`, and `copies`: its Item Copies in play.
 
@@ -971,7 +971,7 @@ Each Item Copy has these members. They are read-only.
 | `quantity` | How many it holds |
 | `equipped` and `slot` | Whether it's equipped, and the slot's name |
 | `hidden` | True when the player can't see it |
-| `charges` | Charges left, or `null` when the item has no charges |
+| `uses` | Uses left, or `null` when the item has no **Uses** |
 
 An entity's entry, `persona` and a location's entry each have `items`: the Item Copies there.
 
@@ -988,9 +988,9 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 | `copy.lose(n?)` | Removes the Item Copy, or `n` of it |
 | `copy.moveTo(to, n?)` | Moves the Item Copy, or `n` of it, to `to` |
 | `copy.equip()` and `copy.unequip()` | Equips or unequips it, as the panel does |
-| `copy.consume()` | Uses one dose or one charge, as Use does |
+| `copy.use()` | Uses it once, as **Use** does |
 | `copy.reveal(n?)` | Makes it visible to the player |
-| `copy.setCharges(n)` | Sets its charges, from 0 up to the item's **Charges** |
+| `copy.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
 
 - The writes apply when the script ends, in run order, through the same checks as the panel. A check that fails skips that write and logs why.
 - **Bound** stops the player only. A script can remove or move a Bound Item Copy.
@@ -999,7 +999,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 
 ```javascript
 // Resting at the shrine refills every wand the player carries.
-if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item === 'Wand') copy.setCharges(3);
+if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item === 'Wand') copy.setUses(3);
 ```
 
 ### Narration

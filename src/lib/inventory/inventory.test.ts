@@ -14,7 +14,7 @@ const ids = () => { let i = 0; return () => `c${i++}`; };
 
 const potion = item('potion');
 const sword = item('sword', { stackable: false });
-const wand = item('wand', { charges: 3 });
+const wand = item('wand', { uses: 3, whenEmpty: { kind: 'stays' } });
 const bram = { id: 'bram', name: 'Bram' } as Entity;
 const albus = { id: 'albus', name: 'Albus', persona: true } as Entity;
 const ghost = { id: 'ghost', name: 'Ghost', persona: true, personaOnly: true } as Entity;
@@ -43,13 +43,13 @@ describe('seedItemCopies', () => {
     expect(copies.map((c) => c.where)).toEqual([{ kind: 'entity', id: 'bram' }, { kind: 'location', id: 'cellar' }]);
   });
 
-  it('makes one Item Copy per unit of an item that does not stack, each charged item with full charges', () => {
+  it('makes one Item Copy per unit of an item that does not stack, each item with Uses at full uses', () => {
     const copies = seedItemCopies(world([place('sword', you, 2), place('wand', you, 2)]), undefined, ids());
     expect(copies.map((c) => [c.item, c.quantity, c.state])).toEqual([
       [{ kind: 'item', itemId: 'sword' }, 1, undefined],
       [{ kind: 'item', itemId: 'sword' }, 1, undefined],
-      [{ kind: 'item', itemId: 'wand' }, 1, { charges: 3 }],
-      [{ kind: 'item', itemId: 'wand' }, 1, { charges: 3 }],
+      [{ kind: 'item', itemId: 'wand' }, 1, { uses: 3 }],
+      [{ kind: 'item', itemId: 'wand' }, 1, { uses: 3 }],
     ]);
     expect(new Set(copies.map((c) => c.id)).size).toBe(4);
     expect(copies.every((c) => c.equipped === undefined)).toBe(true);
@@ -230,9 +230,9 @@ describe('applyInventoryOps', () => {
   });
 
   it('keeps each copy of an item that does not stack its own row', () => {
-    const start = [of('wand', 'w1', { state: { charges: 1 } }), of('wand', 'w2', { where: bramWhere, state: { charges: 3 } })];
+    const start = [of('wand', 'w1', { state: { uses: 1 } }), of('wand', 'w2', { where: bramWhere, state: { uses: 3 } })];
     const { copies } = applyInventoryOps(start, [{ kind: 'transfer', copyId: 'w1', to: bramWhere }], call());
-    expect(copies.map((c) => c.state?.charges)).toEqual([3, 1]);
+    expect(copies.map((c) => c.state?.uses)).toEqual([3, 1]);
   });
 
   it('refuses a panel drop or give of a Bound copy, and lets the pass and scripts move it', () => {
@@ -309,15 +309,15 @@ describe('applyInventoryOps', () => {
     ]);
   });
 
-  it('gains into a stack, or one copy each with full charges for an item that does not stack', () => {
+  it('gains into a stack, or one copy each with full uses for an item that does not stack', () => {
     const { copies } = applyInventoryOps([copy('p', { quantity: 2 })], [
       { kind: 'gain', itemId: 'potion', quantity: 3, to: you },
       { kind: 'gain', itemId: 'wand', quantity: 2, to: bramWhere },
     ], call());
     expect(copies).toEqual([
       copy('p', { quantity: 5 }),
-      of('wand', 'c1', { where: bramWhere, state: { charges: 3 } }),
-      of('wand', 'c2', { where: bramWhere, state: { charges: 3 } }),
+      of('wand', 'c1', { where: bramWhere, state: { uses: 3 } }),
+      of('wand', 'c2', { where: bramWhere, state: { uses: 3 } }),
     ]);
   });
 

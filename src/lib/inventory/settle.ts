@@ -25,7 +25,7 @@ export interface InventorySettleState {
   previous?: readonly ItemCopy[];
   traits: TraitRuntimeState;
   ledger: ItemEffectLedger | undefined;
-  /** The consumes this settle starts, from the validator's result. */
+  /** The uses this settle starts, from the validator's result. */
   doses?: readonly Dose[];
   /** The story clock's `gameTime`, which timed effects end by and start from. Absent: none ends. */
   now?: number;
@@ -92,7 +92,7 @@ function reader(world: InventorySettleWorld) {
   };
 
   /** One pass: grants and stat effects from `effectCopies`, then the trait gates, which read `copies`. `doses` start
-   *  their After Consumed rows, so only one pass gets them. */
+   *  their After Use rows, so only one pass gets them. */
   const pass = (
     state: Omit<InventorySettleState, 'copies'>, effectCopies: readonly ItemCopy[], copies: readonly ItemCopy[], doses?: readonly Dose[],
   ): Pass => {

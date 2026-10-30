@@ -2130,15 +2130,15 @@ Open `#dev?modal=designSystem&tab=segmented-multi-select` for the time chip's co
 
 > ✅ **Approved.** The user approved the layout on 2026-10-28 (Inventory ticket 03), with one change: side panel tabs show icons alone whenever their labels would overlap. The user approved the Use button and the Effects section on 2026-10-29 (Inventory ticket 06).
 
-**Density:** Compact, like the Stats and Traits tabs. Item rows are 36px tall; a charges line adds one meta line.
+**Density:** Compact, like the Stats and Traits tabs. Item rows are 36px tall; a uses line adds one meta line.
 
 ### Composition
 
 - 🗂️ **Owner card.** The played Persona's `PanelOwnerCard`, with the You pill. Under None it reads **You** with no pill.
 - 🛡️ **Equipped.** One row per world slot. The slot name sits left in meta text, with "1 of 2" under it when the slot holds more than one. The equipped items sit right, each with an Unequip button. A free slot reads **Empty**.
-- 🎒 **Carried.** One row per Item Copy: the name, ×count for a stack, a lock for Bound, and a charges line. Icon buttons on the right: Use (only for a Consumable or charged item), Equip (only for an item with a slot), Drop and Give.
-- ✨ **Use.** A sparkles icon button on carried and equipped rows. It spends one of a stack or one charge, and turns off at zero charges.
-- ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Consumed effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
+- 🎒 **Carried.** One row per Item Copy: the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 copy). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
+- ✨ **Use.** A sparkles icon button on carried and equipped rows. It spends one use, and turns off at zero uses.
+- ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
 - 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the present entities as `CompactSelectionRow`s, or "Nobody is here."
 - 🔒 **Bound.** Drop and Give stay in place, disabled, with the reason in their tooltips.
 - 🏷️ **Tab strip.** The side panels' strips show labels only while every label fits its cell. Otherwise each tab shows its icon, and the tooltip names it.
@@ -2165,7 +2165,7 @@ The tab fills the right panel on desktop and the **Status** sheet on mobile. Row
 | Bound | Drop and Give disabled; Equip still works. |
 | Hidden Item Copy | Never shown. A hidden equipped item still counts in its slot's fill. |
 | Equipped row | Use (when it applies) and Unequip. Drop and Give act on carried rows. |
-| Zero charges | Use stays in place, disabled: "Use Ash Wand: no charges left". |
+| Zero uses | Use stays in place, disabled: "Use Ash Wand: no uses left". |
 | Nothing carried | "You carry nothing." |
 | No items in the world | No Inventory tab. |
 

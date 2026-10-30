@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now grant traits, and an item's Requirements tab sets what its owner needs to equip it.** A granted trait comes from the owner's own list and leaves the owner's own picks alone. An item unequips on its own once its requirement stops holding; its own bonus never counts.
     - **Items can now be used up: the Inventory tab has a Use button for Consumable and charged items.** After Consumed effects last a set story time or for good, and the tab lists them with time left. A second dose restarts the timer.
     - **Items can now run scripts when an Item Copy is gained, lost, equipped, unequipped or used.** Scripts read who owns what through `items` and can give, take, move, equip, use, reveal and recharge items.
+    - **Items now have Uses and When Empty in place of Consumable and Charges.** An empty item can stay, vanish or become another item, such as a potion that leaves a bottle. Any item with After Use effects shows a Use button.
 
 ### Minor Changes
 

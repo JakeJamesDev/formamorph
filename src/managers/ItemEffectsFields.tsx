@@ -10,7 +10,7 @@ import { fieldFrame } from '@/lib/historyField';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { resolvedEntityStats } from '@/lib/statLinks';
 import { randomUUID } from '@/lib/uuid';
-import { itemTraitOptions, itemUsable } from '@/lib/items';
+import { itemTraitOptions } from '@/lib/items';
 import { TURN_TIME_UNITS, joinTurnHours, splitTurnHours, type TurnTimeUnit } from '@/lib/gameClock';
 import { useRuleSource } from '@/contexts/RuleSourceContext';
 import type { Item, ItemEffectDuration, ItemStatEffect, ItemStatFacet, ItemTiming, ItemTraitEffect, Stat, Trait } from '@/types';
@@ -26,19 +26,13 @@ const FACETS: { value: ItemStatFacet; label: string }[] = [
 const TIMINGS: { value: ItemTiming; label: string }[] = [
   { value: 'equipped', label: 'While Equipped' },
   { value: 'owned', label: 'While Owned' },
-  { value: 'consumed', label: 'After Consumed' },
+  { value: 'used', label: 'After Use' },
   { value: 'firstObtain', label: 'On First Obtain' },
 ];
 
-/** The timings `item` offers: After Consumed only when it is Consumable or has charges (Q16). */
-const timingsFor = (item: Item) => TIMINGS.filter((t) => t.value !== 'consumed' || itemUsable(item));
-
-/** A row the editor shows. An After Consumed row of an item that can't be used stays stored and hidden. */
-const shown = (item: Item, row: { timing: ItemTiming }) => row.timing !== 'consumed' || itemUsable(item);
-
-/** A new timing, with a one-hour duration when it turns After Consumed. */
+/** A new timing, with a one-hour duration when it turns After Use. */
 const timingPatch = (timing: ItemTiming, duration: ItemEffectDuration | undefined) =>
-  ({ timing, ...(timing === 'consumed' && !duration && { duration: { kind: 'time', hours: 1 } as const }) });
+  ({ timing, ...(timing === 'used' && !duration && { duration: { kind: 'time', hours: 1 } as const }) });
 
 const UNIT_LABELS: Record<TurnTimeUnit, [one: string, many: string]> = {
   minutes: ['Minute', 'Minutes'],
@@ -47,7 +41,7 @@ const UNIT_LABELS: Record<TurnTimeUnit, [one: string, many: string]> = {
   weeks: ['Week', 'Weeks'],
 };
 
-/** An After Consumed row's duration: Permanent, or an amount of story time (Q7). */
+/** An After Use row's duration: Permanent, or an amount of story time (Q7). */
 function DurationField({ value, onChange, frame }: {
   value: ItemEffectDuration | undefined; onChange: (duration: ItemEffectDuration) => void; frame: ReturnType<typeof fieldFrame>;
 }) {
@@ -110,7 +104,7 @@ export const ItemEffectsFields = ({ item, apply }: { item: Item; apply: (patch: 
     <div className="space-y-2">
       <Label>Stat Effects</Label>
       <Hint>Changes the stats of whoever owns it</Hint>
-      {rows.map((row, index) => shown(item, row) && (
+      {rows.map((row, index) => (
         <div key={row.id} className="flex flex-wrap items-center gap-2">
           <Select value={row.statId || undefined} onValueChange={(statId) => update(index, { statId })}>
             <SelectTrigger className="w-44" aria-label="Stat" {...fieldFrame('statEffects', row.id, 'statId')}>
@@ -138,10 +132,10 @@ export const ItemEffectsFields = ({ item, apply }: { item: Item; apply: (patch: 
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {timingsFor(item).map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              {TIMINGS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          {row.timing === 'consumed' && (
+          {row.timing === 'used' && (
             <DurationField value={row.duration} onChange={(duration) => update(index, { duration })} frame={fieldFrame('statEffects', row.id, 'duration')} />
           )}
           <WorldInput
@@ -181,7 +175,7 @@ export const ItemTraitEffectsFields = ({ item, apply }: { item: Item; apply: (pa
     <div className="space-y-2">
       <Label>Trait Effects</Label>
       <Hint>Gives whoever owns it a trait from their own list</Hint>
-      {rows.map((row, index) => shown(item, row) && (
+      {rows.map((row, index) => (
         <div key={row.id} className="flex flex-wrap items-center gap-2">
           <Select value={row.traitId || undefined} onValueChange={(traitId) => update(index, { traitId })}>
             <SelectTrigger className="w-44" aria-label="Trait" {...fieldFrame('traitEffects', row.id, 'traitId')}>
@@ -201,10 +195,10 @@ export const ItemTraitEffectsFields = ({ item, apply }: { item: Item; apply: (pa
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {timingsFor(item).map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              {TIMINGS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          {row.timing === 'consumed' && (
+          {row.timing === 'used' && (
             <DurationField value={row.duration} onChange={(duration) => update(index, { duration })} frame={fieldFrame('traitEffects', row.id, 'duration')} />
           )}
           <Button variant="ghost" size="icon" aria-label="Remove Trait Effect" onClick={() => write(rows.filter((_, i) => i !== index))}>

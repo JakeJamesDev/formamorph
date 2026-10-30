@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { formatTimeLeft } from '@/lib/gameClock';
-import { byEquipOrder, chargesLeft, itemUsable, slotCapacity, slotSizeOf, wholeCount } from '@/lib/items';
+import { byEquipOrder, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
@@ -36,7 +36,7 @@ export interface InventoryTabProps {
   resolveText: (text: string) => string;
   /** The image an Item Copy shows now, through its item's rules (Q113). Absent = no thumbnails. */
   imageOf?: (copy: ItemCopy) => string | undefined;
-  /** The After Consumed effects running on the played Persona (Q40). */
+  /** The After Use effects running on the played Persona (Q40). */
   timed?: readonly TimedEffectView[];
   onOps: (ops: InventoryOp[]) => void;
 }
@@ -147,21 +147,25 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
   );
 }
 
+/** Uses left: "N of M uses" for Uses 2+; a Uses 1 copy shows a line only once spent (Q30). */
 const lineFor = (copy: ItemCopy, item: Item | undefined): string | null => {
-  const charges = chargesLeft(copy, item);
-  return charges !== undefined && item?.charges !== undefined ? `${charges} of ${item.charges} charges` : null;
+  const left = usesLeft(copy, item);
+  if (left === undefined || item?.uses === undefined) return null;
+  if (item.uses > 1) return `${left} of ${item.uses} uses`;
+  return left === 0 ? 'No uses left' : null;
 };
 
-/** Use, for a Consumable or charged item, or a runtime item (Q16, Q56, Q57). Off at zero charges. */
+/** Use, for an item with Uses, After Use effects or a When Used script, or a runtime item (Q20, Q56). Off at
+ *  zero uses. */
 function UseButton({ copy, item, name, disabled, onOps }: {
   copy: ItemCopy; item: Item | undefined; name: string; disabled: boolean; onOps: InventoryTabProps['onOps'];
 }) {
   if (copy.item.kind === 'item' && (!item || !itemUsable(item))) return null;
-  const empty = chargesLeft(copy, item) === 0;
+  const spent = usesLeft(copy, item) === 0;
   return (
     <ItemRowButton
-      label={empty ? `Use ${name}: no charges left` : `Use ${name}`} icon={Sparkles} disabled={disabled || empty}
-      onClick={() => onOps([{ kind: 'consume', copyId: copy.id }])}
+      label={spent ? `Use ${name}: no uses left` : `Use ${name}`} icon={Sparkles} disabled={disabled || spent}
+      onClick={() => onOps([{ kind: 'use', copyId: copy.id }])}
     />
   );
 }

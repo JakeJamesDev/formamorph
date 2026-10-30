@@ -13,8 +13,12 @@ describe('itemStackable', () => {
     expect(itemStackable(item({ id: 'a', stackable: true }))).toBe(true);
   });
 
-  it('never stacks an item with charges, whatever the switch says (Q47)', () => {
-    expect(itemStackable(item({ id: 'a', charges: 3, stackable: true }))).toBe(false);
+  it('never stacks an item with Uses 2 or more, whatever the switch says', () => {
+    expect(itemStackable(item({ id: 'a', uses: 2, stackable: true }))).toBe(false);
+  });
+
+  it('stacks an item with Uses 1', () => {
+    expect(itemStackable(item({ id: 'a', uses: 1 }))).toBe(true);
   });
 
   it('does not stack when switched off', () => {

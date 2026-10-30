@@ -15,8 +15,8 @@ const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand', capacity: 2 }, { id: 'ring', 
 const item = (id: string, name: string, over: Partial<Item>): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 const ITEMS: Item[] = [
-  item('tonic', 'Healing Tonic', { consumable: true }),
-  item('wand', 'Ash Wand', { charges: 3, stackable: false, bound: true, slotId: 'hand' }),
+  item('tonic', 'Healing Tonic', { uses: 1 }),
+  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true, slotId: 'hand' }),
   item('sword', 'Greatsword', { stackable: false, slotId: 'hand', slotSize: 2 }),
   item('ring', 'Silver Ring', { stackable: false, slotId: 'ring' }),
 ];
@@ -24,7 +24,7 @@ const you = { kind: 'you' } as const;
 const START: ItemCopy[] = [
   { id: 's', item: { kind: 'item', itemId: 'sword' }, where: you, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
   { id: 't', item: { kind: 'item', itemId: 'tonic' }, where: you, quantity: 5, visibility: 'visible' },
-  { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { charges: 2 } },
+  { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { uses: 2 } },
   { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible' },
   { id: 'l', item: { kind: 'item', itemId: 'tonic' }, where: { kind: 'location', id: 'sample-room' }, quantity: 2, visibility: 'visible' },
 ];
@@ -65,7 +65,7 @@ export function InventoryTabReference() {
       <CardHeader>
         <CardTitle>Inventory Tab</CardTitle>
         <CardDescription>
-          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand charge, and turns off at zero charges. The Ash Wand is Bound. Effects lists the After Consumed effects running, with time left. Give lists the entities in the scene above the rest at the location. A card named for the location lists the visible items lying there, each with Pick Up.
+          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand use, and turns off at zero uses. The Ash Wand is Bound. Effects lists the After Use effects running, with time left. Give lists the entities in the scene above the rest at the location. A card named for the location lists the visible items lying there, each with Pick Up.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-start gap-6">

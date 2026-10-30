@@ -4,9 +4,10 @@
  */
 import { builtinLabel } from '@/lib/builtinPlaceholders';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { WHEN_EMPTY_LABEL, whenEmptyOf } from '@/lib/items';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
-import type { DictionaryEntry, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
+import type { DictionaryEntry, Item, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
@@ -133,10 +134,17 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
       linked.length > 0 && field('Connections', linked.join(', ')),
     ));
   }
+  // A Becomes target outside this world, such as an unmet item in the player view, goes unnamed.
+  const whenEmptyText = (item: Item): string => {
+    const empty = whenEmptyOf(item);
+    if (empty.kind !== 'becomes') return WHEN_EMPTY_LABEL[empty.kind];
+    const target = world.items?.find((i) => i.id === empty.itemId);
+    return `${WHEN_EMPTY_LABEL.becomes} ${target?.name ?? 'another item'}`;
+  };
   for (const item of world.items ?? []) {
     add('item', item.id, item.name, [], lines(
       `# ${item.name}`,
-      facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.consumable && 'Consumable', item.charges !== undefined && `Charges: ${item.charges}`, item.bound && 'Bound'),
+      facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, item.bound && 'Bound'),
       field('Player Description', text(item.playerDescription)),
       field('AI Description', text(item.aiDescription)),
       field('AI Summary', text(item.aiSummary)),

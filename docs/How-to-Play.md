@@ -263,14 +263,14 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 
 | Button | What it does |
 |---|---|
-| **Use** | Uses up one of the item, or spends one charge, and starts its effects. Off when no charges are left. |
+| **Use** | Uses the item once and starts its effects. Off when no uses are left. |
 | **Equip** | Wears the item in its slot. A full slot takes off the item you equipped there first. From a stack, you equip one. |
 | **Unequip** | Takes the item off. You keep it. |
 | **Drop** | Leaves the item here, at your location. |
 | **Give** | Hands the item to someone here. People in the scene come first, then everyone else at your location. |
 | **Pick Up** | Takes an item lying at your location into your inventory. |
 
-**Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack. A charged item shows its charges under its name.
+**Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack. An item with uses shows how many are left under its name.
 
 Items with art show a small image on their row. The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
 

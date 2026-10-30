@@ -34,7 +34,7 @@ export const TIMING_LABEL = SCRIPT_TIMING_LABEL;
 /** A box's name where its stat is named beside it, as in a Find All Uses row. */
 export const TIMING_SHORT: Record<Script['timing'], string> = {
   before: 'Before', after: 'After', output: 'Output', start: 'Start', switch: 'Switch',
-  gained: 'Gained', lost: 'Lost', equipped: 'Equipped', unequipped: 'Unequipped', consumed: 'Consumed',
+  gained: 'Gained', lost: 'Lost', equipped: 'Equipped', unequipped: 'Unequipped', used: 'Used',
 };
 
 /** The confirm before a template replaces a box's code. */

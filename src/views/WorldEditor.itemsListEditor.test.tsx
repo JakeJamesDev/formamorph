@@ -142,7 +142,7 @@ describe('the item panel', () => {
     expect(screen.queryByText('AI-Facing Summary')).toBeNull();
   });
 
-  it('turns Stackable off and locks it once the item has charges, and keeps it off when they clear', () => {
+  it('turns Stackable off and locks it at Uses 2 or more, leaves it on at Uses 1, and keeps it off when Uses clear', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
@@ -150,25 +150,50 @@ describe('the item panel', () => {
     const stackable = () => screen.getByRole('checkbox', { name: 'Stackable' });
     expect(stackable().getAttribute('aria-checked')).toBe('true');
 
-    fireEvent.change(screen.getByLabelText('Charges'), { target: { value: '3' } });
-    expect(ctx().items[0]).toMatchObject({ charges: 3, stackable: false });
+    fireEvent.change(screen.getByLabelText('Uses'), { target: { value: '1' } });
+    expect(ctx().items[0]).toMatchObject({ uses: 1 });
+    expect(stackable().getAttribute('aria-checked')).toBe('true');
+
+    fireEvent.change(screen.getByLabelText('Uses'), { target: { value: '3' } });
+    expect(ctx().items[0]).toMatchObject({ uses: 3, stackable: false });
     expect(stackable().getAttribute('aria-checked')).toBe('false');
     expect(stackable().hasAttribute('disabled')).toBe(true);
 
-    fireEvent.change(screen.getByLabelText('Charges'), { target: { value: '' } });
-    expect(ctx().items[0].charges).toBeUndefined();
+    fireEvent.change(screen.getByLabelText('Uses'), { target: { value: '' } });
+    expect(ctx().items[0].uses).toBeUndefined();
+    expect(ctx().items[0].whenEmpty).toBeUndefined();
     expect(ctx().items[0].stackable).toBe(false);
     expect(stackable().hasAttribute('disabled')).toBe(false);
   });
 
-  it('writes Consumable and Bound', () => {
+  it('shows When Empty once Uses is set, starting at Gone, and picks a Becomes target from the items', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
     itemFieldsTab('Properties');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Consumable' }));
+    expect(screen.queryByRole('combobox', { name: 'When Empty' })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText('Uses'), { target: { value: '2' } });
+    expect(ctx().items[0].whenEmpty).toEqual({ kind: 'gone' });
+    expect(screen.getByRole('combobox', { name: 'When Empty' })).toHaveTextContent('Gone');
+
+    pickOption('When Empty', 'Stays');
+    expect(ctx().items[0].whenEmpty).toEqual({ kind: 'stays' });
+
+    pickOption('When Empty', 'Becomes');
+    expect(ctx().items[0].whenEmpty).toEqual({ kind: 'becomes', itemId: 'sword' });
+    openSelect('Becomes Item');
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Greatsword']);
+  });
+
+  it('writes Bound', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Items/);
+    openItem('Lamp');
+    itemFieldsTab('Properties');
+    expect(screen.queryByRole('checkbox', { name: 'Consumable' })).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Bound' }));
-    expect(ctx().items[0]).toMatchObject({ consumable: true, bound: true });
+    expect(ctx().items[0]).toMatchObject({ bound: true });
   });
 
   it('takes a value with a free-text unit', () => {

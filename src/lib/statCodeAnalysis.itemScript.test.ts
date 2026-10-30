@@ -11,7 +11,7 @@ describe('an item script in the editor', () => {
     const code = [
       'if (self.event.timing === "gained" && self.event.copy) self.event.copy.equip();',
       'items.Lamp.give(owner, 2);',
-      'for (const copy of persona.items) if (copy.item === self.name) copy.setCharges(3);',
+      'for (const copy of persona.items) if (copy.item === self.name) { copy.setUses(3); copy.use(); }',
     ].join('\n');
     expect(messages(code, scriptSurface(ITEM_SCRIPT_SURFACE, timing))).toEqual([]);
   });

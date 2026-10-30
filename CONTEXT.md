@@ -97,12 +97,24 @@ Any world inhabitant the narrator can reference — person, creature, plant, or 
 _Avoid_: character (too narrow)
 
 **Item**:
-An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Consumable, Charges, Bound and Slot. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
+An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Uses, When Empty, Bound and Slot. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
 _Avoid_: object, thing, entity (for an item)
 
 **Item Copy**:
-One item in play, kept in the save. It has an Owner or lies at a location, a quantity, an equipped state and a visibility. Always written in full.
+One item in play, kept in the save. It has an Owner or lies at a location, a quantity, an equipped state, a visibility and its uses left. Always written in full.
 _Avoid_: copy (that is a placeholder Copy), instance
+
+**Use**:
+The one action on an Item Copy: drink, read, blow, spend. It runs the item's After Use effects and When Used scripts, then spends one of the copy's Uses when the item has them. An item can be used when it has Uses, After Use effects or a When Used script. A runtime item's use removes one.
+_Avoid_: consume, activate
+
+**Uses**:
+How many times one Item Copy can be used before it is empty. Blank means unlimited. Each copy counts its own; an item with Uses 2 or more never stacks.
+_Avoid_: charges, doses
+
+**When Empty**:
+What a copy's last use leaves: Stays (the copy at zero uses, ready for a recharge), Gone (removed) or Becomes (one carried copy of another authored item for the same owner). It applies only while Uses is set; blank reads as Gone.
+_Avoid_: consumable, on empty
 
 **Placement**:
 An authored starting Item Copy: where it goes (the Persona, an entity or a location), a quantity, Hidden, and a source. The source is one item. A new game's seed turns each Placement into Item Copies.
@@ -432,7 +444,7 @@ The Timing that runs once for each trait that turns on or off in play, whatever 
 _Avoid_: on toggle, trait hook, trait event
 
 **Item timings**:
-The five Timings of an item's scripts: When Gained, When Lost, When Equipped, When Unequipped and When Consumed. Each runs once for each event of one of the item's Item Copies, from the Inventory pass, the panel or a script. `self` is the item and `owner` is the Item Copy's Owner, empty while it lies at a location. A script's inventory write runs item timings up to 3 levels deep; past that the write still lands and no timing runs. Starting items run none.
+The five Timings of an item's scripts: When Gained, When Lost, When Equipped, When Unequipped and When Used. Each runs once for each event of one of the item's Item Copies, from the Inventory pass, the panel or a script. `self` is the item and `owner` is the Item Copy's Owner, empty while it lies at a location. A script's inventory write runs item timings up to 3 levels deep; past that the write still lands and no timing runs. Starting items run none.
 _Avoid_: item hook, item trigger, on pickup
 
 **Original**:

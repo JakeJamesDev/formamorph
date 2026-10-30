@@ -34,7 +34,7 @@ The item panel works like the entity panel.
 |---|---|
 | **Profile** | The name, the images with their rules, and the image tags |
 | **Descriptions** | The player-facing and AI-facing descriptions, and in Advanced mode the **AI-Facing Summary** |
-| **Properties** | Value, Stackable, Consumable, Charges, Bound, Slot and Slot Size |
+| **Properties** | Value, Stackable, Uses, When Empty, Bound, Slot and Slot Size |
 | **Effects** | The stat effect rows: what the item does to its owner's stats |
 | **Placeholders** | The item's own placeholders (Advanced mode only) |
 
@@ -43,23 +43,32 @@ An image's **Visibility Rule** reads whoever owns the item. A Condition with no 
 An item's placeholders roll once per playthrough. Every Item Copy shows the same value.
 
 ## Properties
-<!-- keywords: value, price, worth, stack, consumable, charges, uses, bound, quest item, slot, equip -->
+<!-- keywords: value, price, worth, stack, consumable, charges, uses, when empty, empty bottle, becomes, single use, bound, quest item, slot, equip -->
 <!-- route: worldEditorItem.properties -->
 
 | Property | What it does |
 |---|---|
 | **Value** | What the item is worth. The unit is a stat, such as Gold, or your own text. |
 | **Stackable** | Item Copies group into one row with a quantity. On by default. |
-| **Consumable** | The owner can use the item up. |
-| **Charges** | How many uses each Item Copy starts with. Leave it blank for none. |
+| **Uses** | How many times each Item Copy can be used. Leave it blank for unlimited. |
+| **When Empty** | What a copy's last use leaves: **Stays** (kept at zero uses), **Gone** (removed) or **Becomes** (turns into another item you pick). Shows once **Uses** is set; it starts at **Gone**. |
 | **Bound** | The player can't drop the item or give it away. The player can still pick it up, and the story can still move it. |
 | **Slot** | The slot the item equips into. **Not Equippable** means it can't be worn or held. |
 | **Slot Size** | How much of the slot's capacity the item takes, such as 2 for a two-handed sword. |
 
-> ⚠️ An item with **Charges** never stacks. Setting charges turns **Stackable** off. Clearing them leaves it off until you turn it on.
+> ⚠️ An item with **Uses** 2 or more never stacks, because each copy counts its own. Setting it turns **Stackable** off. Clearing it leaves it off until you turn it on. **Uses** 1 still stacks.
+
+| Item | Uses | When Empty |
+|---|---|---|
+| 🧪 Potion that leaves a bottle | 1 | Becomes Empty Bottle |
+| 🍷 Potion with three gulps | 3 | Gone |
+| 🪄 Wand | 3 | Stays |
+| 📯 Horn | blank | — |
+
+> 🧭 The **Test Bench** flags an item that **Becomes** an item you deleted.
 
 ## Effects
-<!-- keywords: stat effects, bonus, buff, equip bonus, raise strength, max health, regen, while equipped, while owned, first obtain, after consumed, potion, duration, timed effect -->
+<!-- keywords: stat effects, bonus, buff, equip bonus, raise strength, max health, regen, while equipped, while owned, first obtain, after use, after consumed, potion, duration, timed effect -->
 <!-- route: worldEditorItem.effects -->
 
 An effect row changes one of the owner's own stats. Each row picks a stat, a facet, a timing and an amount.
@@ -74,7 +83,7 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 |---|---|
 | ⚔️ **While Equipped** | While the item is equipped. Two equipped copies apply twice. |
 | 🎒 **While Owned** | While the owner has the item. Three copies still count once. |
-| 🧪 **After Consumed** | When the owner uses the item, for a set time or for good. Shows only for a **Consumable** item or one with **Charges**. |
+| 🧪 **After Use** | When the owner uses the item, for a set time or for good. A row here makes the item usable, even with **Uses** blank. |
 | ✨ **On First Obtain** | Once, the first time the owner gets the item. It stays after the item is gone. |
 
 - When an effect ends, it gives back exactly what it gave. A +2 that only fit +1 under the maximum takes back 1.
@@ -83,17 +92,18 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 - An owner without the stat skips the row, and the log says so. The player's own stats come from the persona, not the Global Stats.
 - The log names the item for each change. A hidden item shows as "An item".
 
-### After Consumed effects
-<!-- keywords: consume, use item, drink, potion, buff duration, timed effect, permanent, second dose, refresh, charges, wand, recharge -->
+### After Use effects
+<!-- keywords: consume, after consumed, use item, drink, potion, buff duration, timed effect, permanent, second dose, refresh, charges, wand, recharge -->
 
-An **After Consumed** row also picks a **Duration**: **Permanent**, or an amount of story time in minutes, hours, days or weeks.
+An **After Use** row also picks a **Duration**: **Permanent**, or an amount of story time in minutes, hours, days or weeks.
 
-- 🧪 **Use** lowers a stack by one. On an item with **Charges**, it spends one charge instead.
-- 🔋 At zero charges, a **Consumable** item is gone. Any other item stays, with **Use** off.
+- 🧪 **Use** shows on an item with **Uses**, **After Use** effects or a **When Used** script. It spends one use.
+- 🔋 The last use runs **When Empty** on that one copy. A copy that **Stays** keeps **Use** off until a script recharges it.
+- 📯 An item with **Uses** blank can be used any number of times and never changes.
 - ⏳ A timed effect ends once the story clock passes its duration, and gives back exactly what it gave.
 - 🔁 A second dose while the effect runs restarts its timer. The effect doesn't stack.
 - ♾️ A **Permanent** effect never ends, and each dose applies it again.
-- 🎲 Each Item Copy keeps its own charges. Giving one wand away moves only its own count.
+- 🎲 Each Item Copy keeps its own uses. Giving one wand away moves only its own count.
 
 ### Trait effects
 <!-- keywords: trait effects, grant trait, cursed ring, give trait, item trait -->
@@ -106,7 +116,7 @@ A trait effect row gives the owner a trait while its timing holds. Each row pick
 - ⏳ The trait's own requirements still apply. A granted trait whose requirement fails turns on once it holds.
 - ✋ The player cannot switch off a trait an item holds on.
 - ✨ **On First Obtain** grants the trait for good.
-- 🧪 **After Consumed** grants the trait for its duration, or for good when **Permanent**.
+- 🧪 **After Use** grants the trait for its duration, or for good when **Permanent**.
 - ⚙️ Automatic traits are not offered: they turn on by their own rules.
 
 ## Requirements
@@ -121,7 +131,7 @@ Requirement Rows on the **Requirements** tab set what an owner needs to equip th
 - 🔄 An equipped item unequips on its own once no row holds, and its effects reverse. One unequip can set off another; the game settles them all, up to 10 rounds.
 
 ## Scripts
-<!-- keywords: item scripts, when gained, when lost, when equipped, when unequipped, when consumed, item code, item event -->
+<!-- keywords: item scripts, when gained, when lost, when equipped, when unequipped, when used, when consumed, item code, item event -->
 <!-- route: worldEditorItem.scripts -->
 
 The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
@@ -132,7 +142,7 @@ The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
 | **When Lost** | An owner or a location loses an Item Copy |
 | **When Equipped** | An Item Copy is equipped |
 | **When Unequipped** | An Item Copy is unequipped |
-| **When Consumed** | An Item Copy is used: one dose or one charge |
+| **When Used** | An Item Copy is used |
 
 - 🧑 `owner` is the Item Copy's owner, and empty while it lies at a location. `self` is the item.
 - 🔗 A script that gives or takes items runs those items' scripts too, 3 levels deep at most.

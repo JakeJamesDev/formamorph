@@ -48,7 +48,7 @@ const copy = (id: string, over: Partial<ItemCopy> = {}): ItemCopy =>
   ({ id, item: { kind: 'item', itemId: 'lamp' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', ...over });
 const held = [
   copy('a', { quantity: 3 }),
-  copy('b', { where: { kind: 'entity', id: 'bram' }, equipped: { slotId: 'hand', order: 1 }, state: { charges: 2 } }),
+  copy('b', { where: { kind: 'entity', id: 'bram' }, equipped: { slotId: 'hand', order: 1 }, state: { uses: 2 } }),
   copy('c', { where: { kind: 'location', id: 'cellar' }, visibility: 'hidden' }),
 ];
 
@@ -178,8 +178,8 @@ describe('Item Copies in a save', () => {
     await loadWorld(live);
     const base = live().gameplay.saveCurrentGameState();
     const tonic: Item = {
-      id: 'tonic', name: 'Haste Tonic', consumable: true, statEffects: [], equipRequires: [],
-      traitEffects: [{ id: 'grant', traitId: 'hasted', timing: 'consumed', duration: { kind: 'time', hours: 2 } }],
+      id: 'tonic', name: 'Haste Tonic', uses: 1, statEffects: [], equipRequires: [],
+      traitEffects: [{ id: 'grant', traitId: 'hasted', timing: 'used', duration: { kind: 'time', hours: 2 } }],
     };
     const running = (ownerId: string) => ({ row: 'trait', ownerId, itemId: 'tonic', rowId: 'grant', endsAt: 14 });
     const state = {
