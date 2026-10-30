@@ -149,7 +149,7 @@ export function applyInventoryPass(
   }));
   let runtimeItems = [...scene.runtimeItems];
   let list: ItemCopy[] = [...copies];
-  const doses: InventoryResult['doses'] = [];
+  const itemUses: InventoryResult['itemUses'] = [];
   const events: InventoryResult['events'] = [];
   const diagnostics: string[] = [];
   const skip = (why: string) => diagnostics.push(`Inventory (pass) skipped ${why}`);
@@ -160,7 +160,7 @@ export function applyInventoryPass(
   const run = (ops: InventoryOp[]) => {
     const result = applyInventoryOps(list, ops, { ...call, source: 'pass', presence, runtimeItems });
     list = result.copies;
-    doses.push(...result.doses);
+    itemUses.push(...result.itemUses);
     diagnostics.push(...result.diagnostics);
     events.push(...result.events);
   };
@@ -340,7 +340,7 @@ export function applyInventoryPass(
     }
   }
 
-  return { copies: list, doses, diagnostics, events, runtimeItems };
+  return { copies: list, itemUses, diagnostics, events, runtimeItems };
 }
 
 /** Splits `quantity` over `copies` in order, each taking what it holds. */

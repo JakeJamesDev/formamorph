@@ -202,3 +202,5 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 
 - **Export shape:** world items gain Uses, When Empty, State, Unidentified Name and Unidentified Description, and lose Consumable and Charges. Saved Item Copies gain uses, State and the unidentified flag, and lose charges. Inventory is unreleased, so no migration is written.
 - The re-gain fixes in commit e3efd8d1c stay. `change` replaces the state-change prompt line proposed after the letter split.
+- **Open edge (recorded 2026-10-30, for later):** `described-held` stays 0/12 on cloud. When an NPC takes the player's item and hands it back, the pass sends a gain from that NPC, who never held it, so the player ends with two. Any fix runs under the ammo ruling: no refusal of a gain because the recipient already holds the item.
+- Post-close cleanup: the use record is `ItemUse` (the glossary avoids "doses"); wiki search keywords keep consume, consumable and charges as synonyms on purpose.

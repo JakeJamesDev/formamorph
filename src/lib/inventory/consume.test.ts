@@ -44,11 +44,11 @@ const start = (stats: PlayerStat[]): Play => ({
   ledger: undefined, log: [], skipped: [], now: 0,
 });
 
-/** Every writer's path: the validator, then the inventory settle with its doses at the play's clock. */
+/** Every writer's path: the validator, then the inventory settle with its uses at the play's clock. */
 function act(play: Play, ops: InventoryOp[], list: readonly Item[] = items): Play {
   let n = play.copies.length;
-  const { copies, doses, diagnostics } = applyInventoryOps(play.copies, ops, { world: { items: list }, source: 'panel', newId: () => `c${n++}-${play.now}` });
-  const settled = settleInventory({ copies, previous: play.copies, traits: play.traits, ledger: play.ledger, doses, now: play.now }, world(list));
+  const { copies, itemUses, diagnostics } = applyInventoryOps(play.copies, ops, { world: { items: list }, source: 'panel', newId: () => `c${n++}-${play.now}` });
+  const settled = settleInventory({ copies, previous: play.copies, traits: play.traits, ledger: play.ledger, itemUses, now: play.now }, world(list));
   return { ...play, copies: settled.copies, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };
 }
 /** The clock advances, then the turn commit settles. */
@@ -100,7 +100,7 @@ describe('timed effects', () => {
     expect(play.log).toContain('Potion of Might: Strength -1');
   });
 
-  it('never ends a Permanent effect, and applies it on every dose', () => {
+  it('never ends a Permanent effect, and applies it on every use', () => {
     let play = act(start([stat('strength', 3)]), [gain('elixir', 2)]);
     play = act(play, [use(play, 'elixir')]);
     play = act(play, [use(play, 'elixir')]);
@@ -109,7 +109,7 @@ describe('timed effects', () => {
     expect(play.ledger?.timed).toBeUndefined();
   });
 
-  it('applies a dose once when it sets off an unequip', () => {
+  it('applies a use once when it sets off an unequip', () => {
     const sword = item('sword', 'Sword', { slotId: 'hand', equipRequires: [{ all: [{ kind: 'stat', id: 'strength', operator: '>=', value: 5, unit: 'raw' }] }] });
     const sap = item('sap', 'Weakening Sap', { uses: 1, statEffects: [after('strength', -1, PERMANENT)] });
     const list = [...items, sword, sap];
@@ -123,7 +123,7 @@ describe('timed effects', () => {
     expect(heroStat(play, 'strength').value).toBe(4);
   });
 
-  it('restarts the timer on a second dose and does not stack the effect', () => {
+  it('restarts the timer on a second use and does not stack the effect', () => {
     let play = act(start([stat('strength', 3)]), [gain('might', 2)]);
     play = act(play, [use(play, 'might')]);
     play = advance(play, 1);
@@ -143,7 +143,7 @@ describe('timed effects', () => {
     expect(heroStat(play, 'strength').max).toBe(10);
   });
 
-  it('grants a trait while it runs, refreshes it on a second dose, and switches it off at the end', () => {
+  it('grants a trait while it runs, refreshes it on a second use, and switches it off at the end', () => {
     let play = act(start([stat('speed', 1)]), [gain('haste', 2)]);
     play = act(play, [use(play, 'haste')]);
     expect(on(play)).toEqual(['hasted']);
@@ -183,7 +183,7 @@ describe('timed effects', () => {
     expect(timedEffectViews(play.ledger, items, ['ally'], play.now, names)).toEqual([]);
   });
 
-  it('names no item for a dose from a hidden Item Copy', () => {
+  it('names no item for a use from a hidden Item Copy', () => {
     const play = start([stat('strength', 3)]);
     const hidden: ItemCopy = { id: 'h', item: { kind: 'item', itemId: 'might' }, where: hero, quantity: 1, visibility: 'hidden' };
     const used = act({ ...play, copies: [hidden] }, [{ kind: 'use', copyId: 'h' }]);
@@ -349,7 +349,7 @@ describe('uses and When Empty', () => {
     const gained = applyInventoryOps([], [{ kind: 'gain', itemId: 'rt-cake', quantity: 2, to: hero }], call);
     const used = applyInventoryOps(gained.copies, [{ kind: 'use', copyId: gained.copies[0].id }], call);
     expect(used.copies.map((c) => c.quantity)).toEqual([1]);
-    expect(used.doses).toEqual([]);
+    expect(used.itemUses).toEqual([]);
   });
 
   it('clamps setUses to the item’s Uses and merges a refilled copy back into its stack', () => {

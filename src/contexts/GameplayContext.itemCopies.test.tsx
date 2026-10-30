@@ -98,7 +98,7 @@ describe('Item Copies in a save', () => {
       live().gameplay.setRuntimeItems([key]);
     });
     const turnStart = live().gameplay.saveCurrentGameState();
-    // The turn consumed the lamp's dose, made another runtime item and ended the timed effect.
+    // The turn consumed the lamp's use, made another runtime item and ended the timed effect.
     await act(async () => {
       live().gameplay.setItemCopies([copy('later')]);
       live().gameplay.setItemEffects({});

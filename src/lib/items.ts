@@ -2,7 +2,7 @@ import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import type { Item, ItemCopy, ItemCopyState, ItemWhenEmpty, Placement, PlacementWhere, Slot, Trait } from '@/types';
+import type { Item, ItemCopy, ItemCopyState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, Slot, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -43,16 +43,27 @@ export const faceName = (item: Pick<Item, 'name' | 'unidentifiedName'>, unidenti
   (unidentified && item.unidentifiedName?.trim() ? item.unidentifiedName : item.name);
 
 /** The name a log line gives a source of `item`: null when hidden (Q63), the unidentified face when unidentified (Q17). */
-export const seenItemName = (item: Pick<Item, 'name' | 'unidentifiedName'>, hidden: boolean, unidentified: boolean): string | null =>
-  (hidden ? null : faceName(item, unidentified));
+export const seenItemName = (item: Pick<Item, 'name' | 'unidentifiedName'>, seen: StoredSighting): string | null =>
+  (seen.hidden ? null : faceName(item, !!seen.unidentified));
 
 /** How the log sees a source behind several Item Copies, folded copy by copy. */
 export interface SourceSighting { hidden: boolean; unidentified: boolean }
 
+/** A sighting as a stored record keeps it: an absent flag is false. */
+export interface StoredSighting { hidden?: boolean; unidentified?: boolean }
+
+/** What one Item Copy shows the player. */
+export const copySighting = (copy: Pick<ItemCopy, 'visibility' | 'state'>): SourceSighting =>
+  ({ hidden: copy.visibility === 'hidden', unidentified: isUnidentified(copy) });
+
+/** A sighting's set flags alone, for a stored record. */
+export const storedSighting = (seen: StoredSighting): StoredSighting =>
+  ({ ...(seen.hidden && { hidden: true }), ...(seen.unidentified && { unidentified: true }) });
+
 /** Folds one more copy into `seen`: hidden while every copy is, unidentified while every visible copy is (Q39). */
-export function foldSighting(seen: SourceSighting, hidden: boolean, unidentified: boolean): void {
-  if (!hidden) seen.unidentified = seen.hidden ? unidentified : seen.unidentified && unidentified;
-  seen.hidden &&= hidden;
+export function foldSighting(seen: SourceSighting, next: SourceSighting): void {
+  if (!next.hidden) seen.unidentified = seen.hidden ? next.unidentified : seen.unidentified && next.unidentified;
+  seen.hidden &&= next.hidden;
 }
 
 /** How the editor and Formaquestion name each When Empty outcome. */
@@ -66,8 +77,15 @@ export const stateWord = (text: string | undefined): string | undefined => text?
 /** An Item Copy's State word, or undefined when it has none. */
 export const copyState = (copy: Pick<ItemCopy, 'state'>): string | undefined => stateWord(copy.state?.state);
 
-/** An Item Copy's State as stacking compares it: trimmed and case-insensitive (Q31). Empty when it has none. */
-export const stateKey = (copy: Pick<ItemCopy, 'state'>): string => (copyState(copy) ?? '').toLowerCase();
+/** A State word as stacking and conditions compare it: trimmed and case-insensitive (Q31). Empty when blank. */
+export const stateTextKey = (text: string | undefined): string => (stateWord(text) ?? '').toLowerCase();
+
+/** An Item Copy's State as stacking compares it. Empty when it has none. */
+export const stateKey = (copy: Pick<ItemCopy, 'state'>): string => stateTextKey(copy.state?.state);
+
+/** An item condition's identity check from untrusted input, or undefined when it holds none. */
+export const itemIdentity = (value: unknown): ItemRequirement['identity'] =>
+  (value === 'identified' || value === 'unidentified' ? value : undefined);
 
 /** Whether two Item Copies have the same State for stacking. */
 export const sameState = (a: Pick<ItemCopy, 'state'>, b: Pick<ItemCopy, 'state'>): boolean => stateKey(a) === stateKey(b);

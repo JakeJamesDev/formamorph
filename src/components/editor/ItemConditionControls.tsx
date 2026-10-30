@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { itemIdentity } from '@/lib/items';
 import type { ItemRequirement } from '@/types';
 
 const ANY = 'any';
@@ -21,7 +22,8 @@ const withState = (requirement: ItemRequirement, text: string): ItemRequirement 
 /** `requirement` with its identity set; `any` clears the check. */
 const withIdentity = (requirement: ItemRequirement, value: string): ItemRequirement => {
   const { identity: _identity, ...rest } = requirement;
-  return value === 'identified' || value === 'unidentified' ? { ...rest, identity: value } : rest;
+  const identity = itemIdentity(value);
+  return identity ? { ...rest, identity } : rest;
 };
 
 /**

@@ -11,7 +11,7 @@ import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex 
 import { buildTree, flattenTree } from './groupTree';
 import { blueprintsSubtreeIds } from './blueprintGroups';
 import { conditionsOf, rowsHold } from './requirementRows';
-import { faceName, isUnidentified, itemHasUnidentifiedFace, stateKey } from './items';
+import { faceName, isUnidentified, itemHasUnidentifiedFace, stateKey, stateTextKey } from './items';
 import { partOf, playedEntityIds, scoped, scopedEntries, scopeKey, withPart, type OwnerId, type Scoped } from './scope';
 
 /** The breadcrumb of a world trait or group with no group above it. */
@@ -186,7 +186,7 @@ export const requirementOwnerKey = (owner?: RequirementOwner): string =>
   (owner === undefined ? 'same' : owner.kind === 'you' ? 'you' : `entity:${owner.id}`);
 
 /** The State word an item Condition requires as stacking compares it: trimmed and lower case, empty for none (Q31). */
-const itemStateKey = (req: ItemRequirement): string => (req.state ?? '').trim().toLowerCase();
+const itemStateKey = (req: ItemRequirement): string => stateTextKey(req.state);
 
 const sameDayparts = (a: TimeRequirement, b: TimeRequirement): boolean => daypartSet(a.dayparts).join() === daypartSet(b.dayparts).join();
 

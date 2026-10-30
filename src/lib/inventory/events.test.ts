@@ -44,7 +44,7 @@ describe('applyInventoryOps events (Q33, Q134–Q140)', () => {
     expect(events([copy('p', 'ring', { quantity: 2 })], [{ kind: 'equip', copyId: 'p' }])).toEqual([['equipped', 'n0', you, 1]]);
   });
 
-  it('fires When Used only, even for the last dose, and nothing for reveal or set uses', () => {
+  it('fires When Used only, even for the last use, and nothing for reveal or set uses', () => {
     expect(events([copy('a', 'potion')], [{ kind: 'use', copyId: 'a' }])).toEqual([['used', 'a', you, 1]]);
     expect(events([copy('h', 'potion', { visibility: 'hidden' })], [{ kind: 'reveal', copyId: 'h' }])).toEqual([]);
     expect(events([copy('w', 'wand', { state: { uses: 1 } })], [{ kind: 'setUses', copyId: 'w', uses: 3 }])).toEqual([]);

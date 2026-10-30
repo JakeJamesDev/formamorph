@@ -311,13 +311,13 @@ export interface TimedItemEffect {
   ownerId: string;
   itemId: string;
   rowId: string;
-  /** The `gameTime` it ends at. A second dose moves it (Q64). */
+  /** The `gameTime` it ends at. A second use moves it (Q64). */
   endsAt: number;
   /** Stat rows: stat id → value delta. Expiry negates this. */
   values?: Record<string, number>;
-  /** The dose came from a hidden Item Copy, so its lines name no item. */
+  /** The use came from a hidden Item Copy, so its lines name no item. */
   hidden?: boolean;
-  /** The dose came from an unidentified Item Copy, so its lines use the unidentified face. */
+  /** The use came from an unidentified Item Copy, so its lines use the unidentified face. */
   unidentified?: boolean;
 }
 
