@@ -24,6 +24,7 @@
 - [🔤 Glossary](Glossary)
 - [✍️ Text Formatting](TextFormatting)
 - [🛠️ World Editor](WorldEditor)
+- [📓 Game Editor](Game-Editor)
   - [🌍 Overview](World-Editor-Overview)
   - [📦 Media](World-Editor-Media)
   - [🎬 Openings](World-Editor-Openings)

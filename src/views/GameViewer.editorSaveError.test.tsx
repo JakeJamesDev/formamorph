@@ -35,7 +35,8 @@ describe('Save & Exit on a full disk', () => {
   it('shows the storage-full message instead of closing silently', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     renderGameViewer(WORLD);
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Menu' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit World/ }));
     const editor = await screen.findByRole('dialog', { name: 'World Editor' });
     fireEvent.change(within(editor).getByDisplayValue('Sedge Landing'), { target: { value: 'Brinewell' } });
     restore = failWritesOnQuota(WORLD_STORE);

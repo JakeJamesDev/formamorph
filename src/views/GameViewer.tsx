@@ -52,7 +52,7 @@ import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
+import { Music, NotebookPen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
@@ -80,6 +80,9 @@ import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganizatio
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
+import { GameEditor, type GameEditorRequest } from "../components/game/gameEditor/GameEditor";
+import { NO_GAME_COPIES, withLiveCopies } from "../lib/gameCopies";
+import { gameEditorTab } from "./gameEditorTabs";
 import { asSettingsTab, type SettingsTabId } from "../components/modals/settingsTabs";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { toastFeedbackNotify } from "@/lib/feedbackToast";
@@ -129,7 +132,7 @@ import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
-import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
+import { chipValues, entityStatsField, reachableRosterIds, sceneEntityChipValues, sceneRosterIds } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
@@ -196,7 +199,7 @@ import type { PromptJumpTarget } from "../lib/promptJump";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
-import { buildStamper, daypartAt, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, daypartAt, formatClock, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildMemoryLedger, closedTurns, scriptMemories } from "../lib/memoryView";
@@ -206,7 +209,7 @@ import { selectSemanticRehydrations } from "../lib/semanticRehydration";
 import { pickHistoryRecall, type HistoryPicks } from "../lib/historyRecall";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
-import { findEntityNames, matchNames, sameCharacterName } from "../lib/entityMatch";
+import { findEntityNames, matchNames, resolveEntityByName, sameCharacterName } from "../lib/entityMatch";
 import { keepSameRows, parseChoices, parseStreamingChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
@@ -707,6 +710,8 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    gameCopies,
+    setGameCopies,
     itemCopies,
     setItemCopies,
     itemEffects,
@@ -808,6 +813,7 @@ const GameViewer = ({
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder,
+    copySources,
   } = useResolvedWorld();
   usePersonaNotice();
   // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
@@ -1240,8 +1246,12 @@ const GameViewer = ({
       case 'location': setIsLocationModalOpen(true); break;
       case 'aiContext': setIsDebugOpen(true); break;
       case 'demoAI': demoAINoticeRef.current?.open(); break;
+      case 'gameEditor':
+        setGameEditorRequest((prev) => ({ tab: gameEditorTab(devRoute.tab), key: prev.key + 1 }));
+        setGameEditorOpen(true);
+        break;
     }
-  }, [devRoute?.modal]);
+  }, [devRoute?.modal, devRoute?.tab]);
   // Entity modal is a per-entity detail view (needs a selected entity), so open the first one — and wait
   // for `entities` to load (a fixture boot populates them asynchronously). Tree-shaken in prod.
   useEffect(() => {
@@ -1408,6 +1418,13 @@ const GameViewer = ({
   const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  // The Game Editor, and the tab it opens on.
+  const [gameEditorOpen, setGameEditorOpen] = useState(false);
+  const [gameEditorRequest, setGameEditorRequest] = useState<GameEditorRequest>({ tab: 'overview', key: 0 });
+  const openGameEditor = useCallback((tab: GameEditorRequest['tab']) => {
+    setGameEditorRequest((prev) => ({ tab, key: prev.key + 1 }));
+    setGameEditorOpen(true);
+  }, []);
 
   /**
    * Move a stat by `delta`, clamped to its range. Deltas rather than absolute values because a turn's other
@@ -1529,6 +1546,7 @@ const GameViewer = ({
         break;
       }
       case 'worldEditor': setIsEditingWorld(true); break;
+      case 'gameEditor': openGameEditor(gameEditorTab(stepTab(steps, 'gameEditor'))); break;
       case 'export': setIsExportModalOpen(true); break;
       case 'location': setIsLocationModalOpen(true); break;
       case 'aiContext': setIsDebugOpen(true); break;
@@ -1657,7 +1675,7 @@ const GameViewer = ({
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
-    if (!loadGameState(previousState, locations, { keepLiveHistory: true })) return;
+    if (!loadGameState(withLiveCopies(previousState, gameCopies), locations, { keepLiveHistory: true })) return;
     // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
     // AND overlap the re-roll's language-model request on the one GPU.
     cancelSceneImage();
@@ -2350,7 +2368,8 @@ const GameViewer = ({
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
-    overview: worldOverview.systemPrompt || "",
+    // This game's copy of the world's AI-Facing Description wins over the world's own.
+    overview: gameCopies.world?.aiDescription ?? (worldOverview.systemPrompt || ""),
     stats: activeStats,
     statPlacement: globalStatPlacement,
     traits: activeTraits,
@@ -2377,6 +2396,23 @@ const GameViewer = ({
     itemCopies,
     runtimeItems,
   });
+
+  // Who the scene list has now, as the side panel shows them.
+  const gameEditorSceneIds = gameEditorOpen
+    ? visibleEntities.flatMap((se) => resolveEntityByName(se.name, allEntities)?.id ?? [])
+    : [];
+
+  // The Game Editor's Nearby list: who `<ENTITIES|reachable>` would send the AI from the player's location,
+  // the persona left out.
+  const gameEditorNearby = () => {
+    const scene = liveScene();
+    return reachableRosterIds(scene)
+      .filter((id) => id !== persona?.entity.id)
+      .flatMap((id) => {
+        const found = scene.entities.find((e) => e.id === id);
+        return found ? [{ id, name: found.name }] : [];
+      });
+  };
 
   const contextValues = useCallback((
     locationOverride?: GameLocation | null,
@@ -5424,6 +5460,7 @@ const GameViewer = ({
       setMemoryPins({});
       setCodePins({});
       setLoreToggles({});
+      setGameCopies(NO_GAME_COPIES);
       setEntityVisualPreference({});
       // A new game always holds a reference; None is a choice, and absence means a save from before personas.
       const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
@@ -5828,7 +5865,7 @@ const GameViewer = ({
     }
     return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
   };
-  const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
+  const menuModal = (extra?: { onEditWorld?: () => void; onOpenGameEditor?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal
       onSettingsClick={() => setIsSettingsOpen(true)}
       onReportBug={canReportBug ? () => setShowBugReport(true) : undefined}
@@ -5873,8 +5910,8 @@ const GameViewer = ({
               {t.label}
             </button>
           ))}
-          {/* Menu joins the tab row on mobile; Edit World + AI Context fold into it (their header buttons hide). */}
-          {menuModal({ onEditWorld: () => setIsEditingWorld(true), onShowAiContext: () => setIsDebugOpen(true) })}
+          {/* Menu joins the tab row on mobile; the Game Editor + AI Context fold into it (their header buttons hide). */}
+          {menuModal({ onEditWorld: () => setIsEditingWorld(true), onOpenGameEditor: () => openGameEditor('overview'), onShowAiContext: () => setIsDebugOpen(true) })}
         </div>
       )}
 
@@ -5930,18 +5967,18 @@ const GameViewer = ({
       </div>
       )}
 
-      {/* Edit-world + Menu buttons — desktop only. On mobile both fold into the tab-row menu. */}
+      {/* Game Editor + Menu buttons — desktop only. On mobile both fold into the tab-row menu. */}
       {!uiHidden && !isMobile && (
       <div className="absolute top-16 right-2 md:top-2 flex gap-2">
-        <Tip tip="Edit World">
+        <Tip tip="Game Editor">
           <Button
-            onClick={() => setIsEditingWorld(true)}
+            onClick={() => openGameEditor('overview')}
             className="flex items-center justify-center rounded-full w-10 h-10 p-0"
           >
-            <SquarePen className="h-5 w-5" />
+            <NotebookPen className="h-5 w-5" />
           </Button>
         </Tip>
-        {menuModal()}
+        {menuModal({ onEditWorld: () => setIsEditingWorld(true) })}
       </div>
       )}
 
@@ -5983,6 +6020,31 @@ const GameViewer = ({
           />
         );
       })()}
+
+      <GameEditor
+        open={gameEditorOpen}
+        onOpenChange={setGameEditorOpen}
+        request={gameEditorRequest}
+        worldName={worldOverview?.name ?? ''}
+        player={{ name: persona?.entity.name ?? "You", persona: gameEditorOpen && copySources.persona ? resolveEntityTexts([copySources.persona], resolveEntityText)[0] : undefined }}
+        locations={locations}
+        worldEntities={gameEditorOpen ? resolveEntityTexts(copySources.entities, resolveEntityText) : undefined}
+        worldText={{ description: resolvePH(worldOverview?.description ?? ''), aiDescription: resolvePH(worldOverview?.systemPrompt ?? '') }}
+        activeEntityIds={gameEditorOpen ? [...sceneRosterIds(liveScene()), ...gameEditorSceneIds] : undefined}
+        sceneEntityIds={gameEditorSceneIds}
+        scene={{
+          locationName: currentLocation?.name,
+          timeLabel: formatClock(gameTime, calendar),
+          here: presentIdsAt(currentLocation)
+            .filter((id) => id !== persona?.entity.id)
+            .flatMap((id) => {
+              const found = allEntities.find((e) => e.id === id);
+              return found ? [{ id, name: found.name }] : [];
+            }),
+          nearby: gameEditorOpen ? gameEditorNearby() : [],
+        }}
+        onPageChange={handlePageChange}
+      />
 
       <LocationModal
         isOpen={isLocationModalOpen}

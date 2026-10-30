@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
+import { useRemoveDiscovered } from './useRemoveDiscovered';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
@@ -146,9 +147,6 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     setViewNotes: setPlayerNotes,
     // Runtime-discovered cast: shown with a badge and removable, since the story invents these and an
     // occasional wrong guess (a place read as a person) needs a way out.
-    setDiscoveredEntities,
-    setSuppressedCharacterNames,
-    setVisibleEntities,
     setIsEditMode,
     // Shared with the stat panel's entity picker.
     selectedEntityId,
@@ -159,14 +157,9 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   // Authored cast only — the panel receives authored + discovered together, and the two need telling
   // apart to decide what the player may remove.
   const authoredNames = new Set(authoredEntities.map((e) => e.name));
+  const dropDiscovered = useRemoveDiscovered();
   const removeDiscovered = (name: string) => {
-    // Suppression is what makes the deletion stick: without it the next turn naming them promotes
-    // them straight back.
-    setDiscoveredEntities((prev) => prev.filter((d) => d.entity.name !== name));
-    setSuppressedCharacterNames((prev) => (prev.includes(name) ? prev : [...prev, name]));
-    // Also drop them from the live scene list, or the row lingers as a dead, unopenable entry that
-    // no longer resolves to any entity.
-    setVisibleEntities((prev) => prev.filter((se) => se.name !== name));
+    dropDiscovered(name);
     setPendingRemoval(null);
   };
   const avatars = usePlayAvatars();

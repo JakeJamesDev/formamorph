@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tip } from "@/components/ui/tooltip";
-import { Menu, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
+import { Menu, Save, FolderOpen, SquarePen, NotebookPen, ScrollText, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
@@ -17,7 +17,7 @@ import { formatBytes } from '@/lib/imageOptim';
 import { EXIT_TO_MENU_PROMPT } from '@/lib/leavePrompts';
 import type { WorldOverview, SaveRecord } from "@/types";
 
-export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
+export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onOpenGameEditor, onShowAiContext }: {
   onSettingsClick: () => void;
   /** Opens the feedback form. Omitted when the community server is off or nobody is signed in. */
   onReportBug?: () => void;
@@ -30,6 +30,8 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
   onExitToMenu: () => void;
   /** Optional extra items — used on mobile, where these live in the menu instead of their own header buttons. */
   onEditWorld?: () => void;
+  /** Opens the Game Editor; the header's button folds in here on mobile. */
+  onOpenGameEditor?: () => void;
   onShowAiContext?: () => void;
 }) => {
   const current = React.useMemo(
@@ -113,6 +115,11 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}>
               <FolderOpen className="mr-2 h-4 w-4" /> Load Game
             </Button>
+            {onOpenGameEditor && (
+              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onOpenGameEditor(); }}>
+                <NotebookPen className="mr-2 h-4 w-4" /> Game Editor
+              </Button>
+            )}
             {onEditWorld && (
               <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onEditWorld(); }}>
                 {/* Matches the header's Edit World button, which this folds into on mobile. */}

@@ -24,6 +24,7 @@ import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
+import { GAME_EDITOR_TABS, GAME_ENTITY_PANEL_TABS } from '@/views/gameEditorTabs';
 
 /** The ids of one ledger, each with its tab's label. */
 function tabsOf(ledger: string, tabs: readonly { value: string; label: string }[]): [string, string][] {
@@ -53,6 +54,7 @@ const ENTRIES: [string, string][] = [
   ['deletedElsewhere', 'World Deleted in Another Tab'],
   ['settings', 'Settings'],
   ['worldEditor', 'World Editor'],
+  ['gameEditor', 'Game Editor'],
   ['worldUpdate', 'Update This World'],
   ['aiContext', 'AI Context'],
   ['demoAI', "You're Playing on the Demo AI"],
@@ -113,6 +115,8 @@ const ENTRIES: [string, string][] = [
   ...tabsOf('worldEditorPlaceholder', PLACEHOLDER_PANEL_TABS),
   ...tabsOf('worldEditorBench', BENCH_TABS),
   ...tabsOf('worldEditorTour', TOUR_STEPS.map((step) => ({ value: step.id, label: step.title }))),
+  ...tabsOf('gameEditor', GAME_EDITOR_TABS),
+  ...tabsOf('gameEditorEntity', GAME_ENTITY_PANEL_TABS),
   ...tabsOf('entityEditor', ENTITY_EDITOR_TABS),
   ...tabsOf('entityEditorEntity', ENTITY_EDITOR_SUBTABS),
   ...tabsOf('dictionaryEditor', DICTIONARY_EDITOR_TABS),

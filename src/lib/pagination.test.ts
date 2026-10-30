@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { paginationSlots, maxPaginationSlots, pageWindow, type PageSlot } from './pagination';
+import { fittedPaginationSlots, paginationSlots, maxPaginationSlots, pageWindow, type PageSlot } from './pagination';
 
 const pages = (slots: PageSlot[]) =>
   slots.map((s) => (s.kind === 'page' ? s.page : s.kind === 'ellipsis' ? '…' : '_'));
@@ -54,5 +54,27 @@ describe('pageWindow', () => {
     expect(pageWindow(1, 2)).toEqual([1, 2]);
     expect(pageWindow(1, 1)).toEqual([1]);
     expect(pageWindow(1, 0)).toEqual([]);
+  });
+});
+
+describe('fittedPaginationSlots', () => {
+  const show = (slots: PageSlot[]) => slots.map((s) => (s.kind === 'page' ? String(s.page) : '…')).join(' ');
+
+  it('shows every page when they fit', () => {
+    expect(show(fittedPaginationSlots(3, 10, 12))).toBe('1 2 3 4 5 6 7 8 9 10');
+  });
+
+  it('widens the window to the room it has', () => {
+    expect(show(fittedPaginationSlots(1, 40, 10))).toBe('1 2 3 4 5 6 7 8 … 40');
+    expect(show(fittedPaginationSlots(20, 40, 10))).toBe('1 … 18 19 20 21 22 23 … 40');
+    expect(show(fittedPaginationSlots(40, 40, 10))).toBe('1 … 33 34 35 36 37 38 39 40');
+  });
+
+  it('keeps the same number of cells on every page, and never fewer than seven', () => {
+    for (let page = 1; page <= 40; page++) {
+      expect(fittedPaginationSlots(page, 40, 10)).toHaveLength(10);
+      expect(fittedPaginationSlots(page, 40, 3)).toHaveLength(7);
+      expect(show(fittedPaginationSlots(page, 40, 10)).split(' ')).toContain(String(page));
+    }
   });
 });

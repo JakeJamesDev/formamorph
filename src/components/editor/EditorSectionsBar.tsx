@@ -42,7 +42,10 @@ export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenCh
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
             {index > 0 && <div aria-hidden data-sections-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}
-            {group.tabs.map(({ value: tab, label, icon: Icon }) => (
+            {group.caption && (
+              <div aria-hidden data-sections-caption className="px-2 pt-1 text-meta font-medium uppercase text-muted-foreground">{group.caption}</div>
+            )}
+            {group.tabs.map(({ value: tab, label, icon: Icon, nested }) => (
               <TabsPrimitive.Trigger
                 key={tab}
                 value={tab}
@@ -51,6 +54,7 @@ export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenCh
                   'flex min-h-11 w-full min-w-0 items-center gap-2 rounded px-2 py-1 text-left text-label',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                   NAV_TAB_STATES,
+                  nested && 'pl-6',
                 )}
               >
                 <Icon aria-hidden className="h-4 w-4 shrink-0" />

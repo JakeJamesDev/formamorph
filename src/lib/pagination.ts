@@ -69,3 +69,23 @@ export function paginationSlots(currentPage: number, totalPages: number): PageSl
   slots[Math.floor((gapStart + gapEnd) / 2)] = { kind: 'ellipsis' };
   return slots;
 }
+
+/**
+ * The pager cells for a strip that holds `slots` cells, as many as the space allows: every page when they
+ * fit, otherwise page 1, the last page, the widest window around the current page the strip leaves room
+ * for, and an ellipsis for each gap. Always `min(totalPages, max(7, slots))` cells, so Previous and Next
+ * stay put as you flip.
+ */
+export function fittedPaginationSlots(currentPage: number, totalPages: number, slots: number): PageSlot[] {
+  const count = Math.min(totalPages, Math.max(7, slots));
+  const pages = (from: number, to: number): PageSlot[] =>
+    Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => ({ kind: 'page', page: from + i }));
+  if (totalPages <= count) return pages(1, totalPages);
+  const gap: PageSlot = { kind: 'ellipsis' };
+  // Near an end, one gap: the pages run from that end up to past the current page.
+  if (currentPage <= count - 3) return [...pages(1, count - 2), gap, ...pages(totalPages, totalPages)];
+  if (currentPage >= totalPages - (count - 4)) return [...pages(1, 1), gap, ...pages(totalPages - (count - 3), totalPages)];
+  const inner = count - 4;
+  const start = currentPage - Math.floor((inner - 1) / 2);
+  return [...pages(1, 1), gap, ...pages(start, start + inner - 1), gap, ...pages(totalPages, totalPages)];
+}
