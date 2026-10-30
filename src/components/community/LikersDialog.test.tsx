@@ -985,8 +985,8 @@ describe('what the audit says about network kinds and Bursts', () => {
     await runAudit();
 
     expect(await screen.findByText('Marker fires on: Burst and Flagged share')).toBeTruthy();
-    expect(screen.getByText(/— 9 different likers/)).toBeTruthy();
-    expect(screen.getByText(/— 8 different likers/)).toBeTruthy();
+    expect(screen.getByText(/ · 9 likers$/)).toBeTruthy();
+    expect(screen.getByText(/ · 8 likers$/)).toBeTruthy();
   });
 
   it('shows no Bursts section when nothing fired', async () => {

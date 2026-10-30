@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import type { WorldRecord } from '@/components/WorldDetails';
@@ -11,8 +11,19 @@ vi.mock('@/services/AuthService', () => ({
   default: { token: 'test-token', getCurrentUser: () => null },
 }));
 
+const audit = vi.hoisted(() => ({
+  fetchLikersAudit: vi.fn(async () => ({
+    total: 0, rows: [], anonymous: 0, anonymousRows: [],
+    summary: { windowDays: 90, flagged: 0, total: 0, share: null, bursts: [], reasons: [] },
+  })),
+}));
+
 vi.mock('@/services/WorldStorageService', () => ({
-  default: { API_URL: 'https://example.test/api' },
+  default: {
+    API_URL: 'https://example.test/api',
+    fetchLikers: vi.fn(async () => ({ total: 0, rows: [], anonymous: 0 })),
+    ...audit,
+  },
 }));
 
 // The catalog list is the fixture; the real hook fetches and caches through IndexedDB.
@@ -371,5 +382,62 @@ describe('the Moderation button', () => {
 
     fireEvent.click(await option(/^Quarantined/));
     expect(screen.getByRole('button', { name: 'Moderation, 2 changed' })).toBeTruthy();
+  });
+});
+
+describe('Flagged Likes', () => {
+  const ALL = ['Live One', 'Marked Two', 'Marked Quarantined Three', 'Quarantined Four'];
+
+  beforeEach(() => {
+    audit.fetchLikersAudit.mockClear();
+    catalog.items = [
+      listing('live', 'Live One'),
+      listing('marked', 'Marked Two', { likes_marker: ['burst'] }),
+      listing('both', 'Marked Quarantined Three', {
+        likes_marker: ['burst', 'flagged_share'], quarantined_at: day(1), quarantine_expires_at: day(28),
+      }),
+      listing('quar', 'Quarantined Four', { quarantined_at: day(1), quarantine_expires_at: day(28) }),
+    ];
+  });
+
+  it('counts the marked listings and shows only them', async () => {
+    renderBrowser();
+
+    fireEvent.click(await option('Flagged Likes (2)'));
+
+    expect(gridNames(ALL).sort()).toEqual(['Marked Quarantined Three', 'Marked Two']);
+  });
+
+  it('shows only the listings that are both flagged and quarantined when both are on', async () => {
+    renderBrowser();
+    fireEvent.click(await option('Flagged Likes (2)'));
+    fireEvent.click(await option(/^Quarantined/));
+
+    expect(gridNames(ALL)).toEqual(['Marked Quarantined Three']);
+  });
+
+  it('is disabled at zero rather than hidden', async () => {
+    catalog.items = [listing('live', 'Live One')];
+    renderBrowser();
+
+    expect(await option('Flagged Likes (0)')).toBeDisabled();
+  });
+
+  it('shows no marker and no option to a player, whatever the row carries', async () => {
+    renderBrowser(player);
+    await screen.findByText('Marked Two');
+
+    expect(document.querySelector('[data-likes-marker]')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Moderation/ })).toBeNull();
+  });
+
+  it('names the reasons on the card and opens the audit for that listing when pressed', async () => {
+    renderBrowser();
+    await screen.findByText('Marked Two');
+
+    expect(document.querySelector('[data-likes-marker="burst flagged_share"]')?.textContent).toContain('Burst and Flagged share');
+    fireEvent.click(document.querySelector('[data-likes-marker="burst"]') as HTMLElement);
+
+    await waitFor(() => expect(audit.fetchLikersAudit).toHaveBeenCalledWith('marked'));
   });
 });

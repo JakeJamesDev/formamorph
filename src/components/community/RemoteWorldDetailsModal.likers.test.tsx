@@ -196,6 +196,53 @@ describe('opening the likers list', () => {
   });
 });
 
+describe('the Likes Marker in the details', () => {
+  const marker = () => document.querySelector('[data-likes-marker]');
+
+  const answer = (likesMarker?: string[]) => vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({
+    status: 'ok',
+    details: { changelog: [], anonymousLikes: false, ...(likesMarker ? { likesMarker: likesMarker as never } : {}) },
+  });
+
+  it('shows what the single-listing answer says to staff, and opens the audit when pressed', async () => {
+    answer(['flagged_share']);
+    show({ currentUser: account('m1', 'mod') });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Likes marker: Flagged share/ }));
+
+    await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
+    expect(likersProps.last?.auditOnOpen).toBe(true);
+  });
+
+  it('lets the fresh answer clear a marker the catalog row still carried', async () => {
+    answer([]);
+    show({ currentUser: account('m1', 'mod'), world: world({ likes_marker: ['burst'] }) });
+
+    await screen.findByRole('button', { name: /Show who liked this/ });
+    await waitFor(() => expect(marker()).toBeNull());
+  });
+
+  it('opens the plain list, not the audit, from the likes count', async () => {
+    answer(['burst']);
+    show({ currentUser: account('m1', 'mod') });
+    await screen.findByRole('button', { name: /Likes marker/ });
+
+    fireEvent.click(screen.getByRole('button', { name: /Show who liked this/ }));
+
+    await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
+    expect(likersProps.last?.auditOnOpen).toBe(false);
+  });
+
+  it('shows a player nothing, even when the answer carries a marker', async () => {
+    answer(['burst']);
+    show({ world: world({ likes_marker: ['burst'] }) });
+
+    await screen.findByText('Sedge Landing');
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
+    expect(marker()).toBeNull();
+  });
+});
+
 describe('the list does not follow the reader to the next listing', () => {
   it('closes when the details modal closes, so the next listing opens without it', async () => {
     const { rerender } = show({ currentUser: account('a1', 'admin') });

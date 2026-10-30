@@ -25,8 +25,9 @@ import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { LikeState } from '@/lib/likeCount';
 import type {
-  AnonymousLikeRow, AnonymousLikesRemoved, LikerAuditRow, LikerRow, LikesSummary, VrmLicense, WorldMetadata,
+  AnonymousLikeRow, AnonymousLikesRemoved, LikerAuditRow, LikerRow, LikesMarkerReason, LikesSummary, VrmLicense, WorldMetadata,
 } from '@/types';
+import { likesMarkerOf } from '@/lib/likesMarker';
 import {
   INSTALL_HEADER_NAME, installHeaderInUse, noteInstallHeaderRefused, readerInstallId, storedInstallId,
 } from '@/lib/anonymousLikes';
@@ -86,6 +87,8 @@ export interface ListingDetails {
   name?: string;
   /** The author's waiting update, null when none waits, absent for a player or an older server. */
   pendingUpdate?: PendingUpdate | null;
+  /** Why the listing's likes look inflated. Staff only: absent for everybody else and an older server. */
+  likesMarker?: LikesMarkerReason[];
 }
 
 /**
@@ -1061,6 +1064,7 @@ class WorldStorageService {
           updatedAt: typeof body.data?.updated_at === 'string' ? body.data.updated_at : undefined,
           name: typeof body.data?.name === 'string' ? body.data.name : undefined,
           ...(body.data && 'pending_update' in body.data ? { pendingUpdate: body.data.pending_update ?? null } : {}),
+          ...(body.data && 'likes_marker' in body.data ? { likesMarker: likesMarkerOf(body.data) } : {}),
         },
       };
     } catch (error) {

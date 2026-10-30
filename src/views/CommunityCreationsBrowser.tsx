@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, X, SlidersHorizontal, ChevronDown,
-  ShieldAlert, Trophy, Eye,
+  ShieldAlert, Trophy, Eye, Flag,
   type LucideIcon,
 } from "lucide-react";
+import { LikersDialog } from "@/components/community/LikersDialog";
+import { isLikesMarked } from "@/lib/likesMarker";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
 import { CATALOG_KINDS, KIND_TAB_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
@@ -284,6 +286,9 @@ const CommunityCreationsBrowser = ({
   // Admin-only view of just what is hidden — the whole catalog is already in memory, so this is a filter
   // over it rather than another request.
   const [quarantinedOnly, setQuarantinedOnly] = useState(false);
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  // The listing whose likes audit a Likes Marker opened.
+  const [auditing, setAuditing] = useState<WorldRecord | null>(null);
   // Staff only: off shows the browser as players see it.
   const [showPending, setShowPending] = usePersistentState(SHOW_PENDING_KEY, true, boolCodec);
   // The published world whose add-on offers the author is reviewing.
@@ -427,7 +432,10 @@ const CommunityCreationsBrowser = ({
   // Narrowed before paging, not after: filtering the page in hand would leave the pager counting pages
   // that are mostly empty. The catalog is one request that already carries every quarantined listing this
   // account may see, so this is a filter over it rather than another fetch — the same as search and tags.
-  const catalogForKinds = quarantinedOnly ? remoteWorlds.filter(isQuarantined) : remoteWorlds;
+  // Both "only" options narrow together, so a listing has to pass every one that is on.
+  const catalogForKinds = quarantinedOnly || flaggedOnly
+    ? remoteWorlds.filter((w) => (!quarantinedOnly || isQuarantined(w)) && (!flaggedOnly || isLikesMarked(w)))
+    : remoteWorlds;
   const quarantinedCount = remoteWorlds.filter(isQuarantined).length;
 
   // Contests: the one running now and the archives behind it. The tab appears while there is either.
@@ -518,8 +526,9 @@ const CommunityCreationsBrowser = ({
   // Contest entries are worlds, so the contest tab keeps the stacked grid.
   const gridLayout = browseTab === 'contest' ? 'stacked' : cardLayoutFor(thumbAspectFor(browseTab));
 
+  const contestEntries = browseTab === 'contest' ? entriesOf(remoteWorlds, shownContest?.id) : [];
   const catalogInView = browseTab === 'contest'
-    ? entriesOf(remoteWorlds, shownContest?.id)
+    ? flaggedOnly ? contestEntries.filter(isLikesMarked) : contestEntries
     : catalogForKinds;
 
   // Staff review from the catalog tabs only; the contest tab and the Quarantined view keep every row in place.
@@ -573,7 +582,10 @@ const CommunityCreationsBrowser = ({
 
   // One popover for the staff view options. A zero count disables an option (unless it is on, so it can be
   // switched off); a tab it does not suit hides it.
-  const staffHere = capabilities.moderation && viewerIsStaff && browseTab !== 'contest';
+  const moderationHere = capabilities.moderation && viewerIsStaff;
+  const staffHere = moderationHere && browseTab !== 'contest';
+  // Counted over what the tab shows: the contest's entries there, the whole catalog elsewhere.
+  const flaggedCount = (browseTab === 'contest' ? contestEntries : remoteWorlds).filter(isLikesMarked).length;
   const moderationOptions: ModerationOption[] = [
     {
       key: 'quarantined',
@@ -597,6 +609,18 @@ const CommunityCreationsBrowser = ({
       disabled: quarantinedOnly,
       help: 'Show listings that wait for review',
       onChange: setShowPending,
+    },
+    {
+      key: 'flaggedLikes',
+      label: 'Flagged Likes',
+      icon: Flag,
+      count: flaggedCount,
+      checked: flaggedOnly,
+      defaultChecked: false,
+      applies: moderationHere,
+      disabled: flaggedCount === 0 && !flaggedOnly,
+      help: 'Show only listings whose likes look inflated',
+      onChange: setFlaggedOnly,
     },
   ];
   const moderationControl = (
@@ -1260,6 +1284,7 @@ const CommunityCreationsBrowser = ({
         onApprove={decides ? approveCard : undefined}
         onReject={decides ? rejectCard : undefined}
         reviewBusy={decides && review.busyId !== null}
+        onOpenLikes={moderationHere ? setAuditing : undefined}
       />
     );
   };
@@ -1373,7 +1398,7 @@ const CommunityCreationsBrowser = ({
                     </CollapsibleTrigger>
                     </TutorialPopover>
                   </div>
-                  {staffHere && <div className="flex flex-wrap items-center gap-2">{moderationControl}</div>}
+                  {moderationHere && <div className="flex flex-wrap items-center gap-2">{moderationControl}</div>}
                 </>
               ) : (
                 // The title row fills its header, so the search box grows into the free space. Refresh ends
@@ -1458,12 +1483,12 @@ const CommunityCreationsBrowser = ({
                 <div className="col-span-full text-center py-12 text-muted-foreground">
                   {/* Filters now outlive the session, so an empty grid names them rather than reading as an
                       empty catalog. */}
-                  {browseTab === 'contest' && !anyFilterApplied ?
+                  {browseTab === 'contest' && !anyFilterApplied && !flaggedOnly ?
                     (shownContest && contestPhase(shownContest) === 'live'
                       ? 'No entries yet. Publish a world with the contest switch on to be the first.'
                       : 'This contest ended with no entries.') :
-                    quarantinedOnly ?
-                    `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} are quarantined.` :
+                    quarantinedOnly || flaggedOnly ?
+                    `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} ${quarantinedOnly && flaggedOnly ? 'are quarantined and flagged' : quarantinedOnly ? 'are quarantined' : 'have flagged likes'}.` :
                     anyFilterApplied ?
                       `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} match your filters. Clear them to see everything.` :
                       `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} available. Be the first to publish one!`}
@@ -1681,6 +1706,18 @@ const CommunityCreationsBrowser = ({
         onConfirm={() => { setNotifyAuthor(takedown); setTakedown(null); }}
         onCancel={() => setTakedown(null)}
       />
+
+      {moderationHere && (
+        <LikersDialog
+          open={auditing !== null}
+          onOpenChange={(o) => { if (!o) setAuditing(null); }}
+          listingId={auditing ? String(auditing._id || auditing.id) : null}
+          listingName={auditing?.name}
+          currentUser={currentUser}
+          onLikesChanged={(likes) => { if (auditing) handleLikesChanged(auditing, likes); }}
+          auditOnOpen
+        />
+      )}
 
       <QuarantineDialog
         open={quarantining !== null}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen, cleanup, waitFor, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
@@ -218,6 +218,66 @@ describe('staff review on the contest tab', () => {
 
     await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
     expect(screen.queryByRole('region', { name: 'Awaiting Review' })).not.toBeInTheDocument();
+    // Flagged Likes is the one option that applies here, so the button stays; the other two are hidden.
+    fireEvent.click(screen.getByRole('button', { name: /^Moderation/ }));
+    expect(screen.getByRole('checkbox', { name: /^Flagged Likes/ })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Show Pending' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /^Quarantined/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Flagged Likes on the contest tab', () => {
+  const admin = { id: 'a1', username: 'root-admin', accountType: 'admin' } as unknown as WorldRecord;
+
+  beforeEach(() => {
+    server.events = [contest()];
+    catalog.items = [
+      listing('Saltmarsh', { contest_event_id: 'e1', likes_marker: ['burst'] }),
+      listing('Thawline', { contest_event_id: 'e1' }),
+      // Marked, but entered in no contest: the contest tab neither counts nor shows it.
+      listing('Coldkeep', { likes_marker: ['flagged_share'] }),
+    ];
+  });
+
+  const flaggedOption = async () => {
+    if (!screen.queryByRole('checkbox', { name: /^Flagged Likes/ })) fireEvent.click(await screen.findByRole('button', { name: /^Moderation/ }));
+    return screen.getByRole('checkbox', { name: /^Flagged Likes/ });
+  };
+
+  it('counts the shown contest’s marked entries and narrows to them, on the marker too', async () => {
+    renderBrowser({ currentUser: admin });
+    await openContestTab();
+
+    expect(await flaggedOption()).toHaveAccessibleName('Flagged Likes (1)');
+    fireEvent.click(await flaggedOption());
+
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+    expect(document.querySelector('[data-likes-marker="burst"]')).not.toBeNull();
+  });
+
+  it('keeps the option on when the reader moves from the catalog to the contest tab', async () => {
+    renderBrowser({ currentUser: admin });
+    await screen.findByRole('tab', { name: 'Contest' });
+    fireEvent.click(await flaggedOption());
+    expect(await flaggedOption()).toHaveAttribute('aria-checked', 'true');
+
+    await openContestTab();
+
+    expect(await flaggedOption()).toHaveAttribute('aria-checked', 'true');
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+  });
+
+  it('shows the marker to staff and never to a player', async () => {
+    const view = renderBrowser({ currentUser: admin });
+    await openContestTab();
+    await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
+    expect(document.querySelector('[data-likes-marker]')).not.toBeNull();
+    view.unmount();
+
+    renderBrowser();
+    await openContestTab();
+    await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
+    expect(document.querySelector('[data-likes-marker]')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Moderation/ })).not.toBeInTheDocument();
   });
 });
