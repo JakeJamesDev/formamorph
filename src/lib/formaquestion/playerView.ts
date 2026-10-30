@@ -6,6 +6,7 @@ import type {
   ChatMessage, DiscoveredEntity, Entity, GameState, Item, ItemCopy, PlayerStat, RuntimeItem, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
+import { copyState, stateKey } from '@/lib/items';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
@@ -39,6 +40,8 @@ export interface PlayerViewItem {
   id: string;
   name: string;
   description: string;
+  /** The State word of the copies this row stands for. Absent = none. */
+  state?: string;
 }
 
 export interface PlayerViewStat {
@@ -208,23 +211,29 @@ function copiedItem(
   return item && { id: item.id, name: item.name, text: item.description };
 }
 
+/** One row per met item and State. An item's States come from the latest snapshot the player met it in, so a
+ *  State it has left behind never shows. */
 function viewItems(input: PlayerViewInput): PlayerViewItem[] {
   const authored = new Map((input.world.items ?? []).map((item) => [item.id, item]));
   const runtime = new Map<string, RuntimeItem>();
-  const rows: PlayerViewItem[] = [];
-  const seen = new Set<string>();
-  for (const snapshot of input.chain) {
+  const met = new Map<string, { item: { id: string; name: string; text?: string }; at: number; states: Map<string, string | undefined> }>();
+  input.chain.forEach((snapshot, at) => {
     for (const item of snapshot.runtimeItems ?? []) runtime.set(item.id, item);
     for (const copy of snapshot.itemCopies ?? []) {
       if (!metCopy(copy, snapshot)) continue;
-      const met = copiedItem(copy.item, authored, runtime);
-      const key = `${copy.item.kind}:${met?.id}`;
-      if (!met || seen.has(key)) continue;
-      seen.add(key);
-      rows.push({ kind: 'item', id: met.id, name: input.resolve(met.name), description: textOf(input.resolve, met.text) });
+      const item = copiedItem(copy.item, authored, runtime);
+      if (!item) continue;
+      const key = `${copy.item.kind}:${item.id}`;
+      const row = met.get(key);
+      const entry = row && row.at === at ? row : { item, at, states: new Map<string, string | undefined>() };
+      if (entry !== row) met.set(key, entry);
+      const byState = stateKey(copy);
+      if (!entry.states.has(byState)) entry.states.set(byState, copyState(copy));
     }
-  }
-  return rows;
+  });
+  return [...met.values()].flatMap(({ item, states }) => [...states.values()].map((state) => ({
+    kind: 'item' as const, id: item.id, name: input.resolve(item.name), description: textOf(input.resolve, item.text), ...(state && { state }),
+  })));
 }
 
 /** A stat the player sees: enabled and not hidden. */

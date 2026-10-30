@@ -23,7 +23,7 @@ import { canBePlayer } from '@/lib/owners';
 import { itemPanelTabsFor, type ItemPanelTab } from '@/views/itemPanelTabs';
 import type { Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
 
-const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes'] as const satisfies readonly ItemWhenEmpty['kind'][];
+const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes', 'changesState'] as const satisfies readonly ItemWhenEmpty['kind'][];
 
 const NO_UNIT = 'none';
 const TEXT_UNIT = 'text';
@@ -69,7 +69,9 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
   const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
   const others = items.filter((i) => i.id !== item.id);
   const pickEmpty = (kind: ItemWhenEmpty['kind']) => apply({
-    whenEmpty: kind === 'becomes' ? { kind, itemId: empty?.kind === 'becomes' ? empty.itemId : others[0]?.id ?? '' } : { kind },
+    whenEmpty: kind === 'becomes' ? { kind, itemId: empty?.kind === 'becomes' ? empty.itemId : others[0]?.id ?? '' }
+      : kind === 'changesState' ? { kind, state: empty?.kind === 'changesState' ? empty.state : '' }
+        : { kind },
   });
   const id = (field: string) => `item-${field}-${item.id}`;
 
@@ -144,6 +146,16 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
           }}
         />
       </div>
+      <div className="space-y-2" {...fieldFrame('state')}>
+        <Label htmlFor={id('state')}>State</Label>
+        <Hint>Sets the word each Item Copy starts with, such as sealed</Hint>
+        <WorldInput
+          id={id('state')}
+          className="w-48"
+          value={item.state ?? ''}
+          onChange={(e) => apply({ state: e.target.value || undefined })}
+        />
+      </div>
       {empty && (
         <div className="space-y-2" {...fieldFrame('whenEmpty')}>
           <Label id={id('when-empty-label')}>When Empty</Label>
@@ -168,6 +180,15 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
                   {others.map((i) => <SelectItem key={i.id} value={i.id}>{label(i.name) || 'Unnamed Item'}</SelectItem>)}
                 </SelectContent>
               </Select>
+            )}
+            {empty.kind === 'changesState' && (
+              <WorldInput
+                aria-label="New State"
+                className="w-40"
+                placeholder="opened"
+                value={empty.state}
+                onChange={(e) => apply({ whenEmpty: { kind: 'changesState', state: e.target.value } })}
+              />
             )}
           </div>
         </div>

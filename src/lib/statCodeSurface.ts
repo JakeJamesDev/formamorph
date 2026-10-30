@@ -287,6 +287,7 @@ export const ITEM_COPY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'slot', detail: 'string', info: 'Name of the slot it’s equipped in, or empty when it’s carried' },
   { name: 'hidden', detail: 'boolean', info: 'True when the player can’t see it' },
   { name: 'uses', detail: 'number', info: 'Uses left, or null when its item has no Uses' },
+  { name: 'state', detail: 'string', info: 'Its State word, or null when it has none' },
   { name: 'lose', detail: '(quantity?) => void', info: 'Removes it, or the quantity you pass. Bound doesn’t stop a script.' },
   { name: 'moveTo', detail: '(to, quantity?) => void', info: 'Moves it, or the quantity you pass, to an entity, the persona or a location, by entry or by name' },
   { name: 'equip', detail: '() => void', info: 'Equips it in its item’s slot, unequipping the one equipped longest when the slot is full' },
@@ -294,6 +295,7 @@ export const ITEM_COPY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'use', detail: '() => void', info: 'Uses it once, as Use does' },
   { name: 'reveal', detail: '(quantity?) => void', info: 'Makes it visible to the player, or the quantity you pass' },
   { name: 'setUses', detail: '(uses) => void', info: 'Sets its uses left, from 0 up to its item’s Uses' },
+  { name: 'setState', detail: '(state) => void', info: 'Sets its State word. An empty string clears it.' },
 ]);
 
 /** The members of one entry in `items`, and of an item script's `self`. */
@@ -301,7 +303,7 @@ export const ITEM_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the item' },
   { name: 'name', detail: 'string', info: 'Code name of the item' },
   { name: 'placeholders', detail: 'object', info: 'The item’s own placeholders by name. Use items.Lamp.placeholders["Two Words"] for a name with a space.' },
-  { name: 'copies', detail: 'array', info: 'Its Item Copies in play, each with id, item, owner, location, quantity, equipped, slot, hidden and uses' },
+  { name: 'copies', detail: 'array', info: 'Its Item Copies in play, each with id, item, owner, location, quantity, equipped, slot, hidden, uses and state' },
   { name: 'give', detail: '(to, quantity?) => void', info: 'Gives a new Item Copy to an entity, the persona or a location, by entry or by name' },
 ], ['placeholders']);
 

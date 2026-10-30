@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { formatTimeLeft } from '@/lib/gameClock';
-import { byEquipOrder, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
+import { byEquipOrder, copyState, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
@@ -190,6 +190,7 @@ export function InventoryTab({
   const row = (copy: ItemCopy, actions: ReactNode) => {
     const item = itemOf(copy);
     const name = nameOf(copy);
+    const state = copyState(copy);
     const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : lineFor(copy, item);
     const image = imageOf?.(copy);
     return (
@@ -203,6 +204,7 @@ export function InventoryTab({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
             <span className="truncate">{name}</span>
+            {state && <span className="shrink-0 text-meta text-muted-foreground">{state}</span>}
             {copy.quantity > 1 && <span className="shrink-0 text-meta text-muted-foreground">×{copy.quantity}</span>}
             {item?.bound && (
               <Tip tip="Bound: you can't drop or give it">

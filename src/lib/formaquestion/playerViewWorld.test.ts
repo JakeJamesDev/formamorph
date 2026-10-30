@@ -104,10 +104,10 @@ describe('playerViewScene', () => {
     expect(ids(cut.itemCopies)).toEqual(['c1']);
   });
 
-  it('keeps a met item’s Uses and When Empty', () => {
-    const counted = { ...item('key'), uses: 2, whenEmpty: { kind: 'stays' } as const };
+  it('keeps a met item’s Uses, When Empty and State', () => {
+    const counted = { ...item('key'), uses: 2, whenEmpty: { kind: 'stays' } as const, state: ' rusty ' };
     const kept = playerViewScene({ ...scene, items: [counted, item('gem')] }, reach());
-    expect(kept.items).toEqual([expect.objectContaining({ id: 'key', uses: 2, whenEmpty: { kind: 'stays' } })]);
+    expect(kept.items).toEqual([expect.objectContaining({ id: 'key', uses: 2, whenEmpty: { kind: 'stays' }, state: 'rusty' })]);
   });
 
   it('drops the world overview and the lore, and keeps the notes', () => {

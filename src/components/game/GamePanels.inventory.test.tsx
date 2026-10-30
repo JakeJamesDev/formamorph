@@ -198,6 +198,15 @@ describe('RightPanel — Inventory tab', () => {
     expect(screen.getByRole('button', { name: 'Use Oil Lamp' })).toBeEnabled();
   });
 
+  it('shows each copy’s State beside its name, with no control to change it (Q3, Q13)', async () => {
+    renderRightPanel({}, stage([copy('l', 'lamp', { state: { state: 'lit' } }), copy('u', 'lamp', { quantity: 2, state: { state: 'unlit' } })]));
+    const rows = within(await screen.findByRole('region', { name: 'Your inventory' })).getAllByRole('listitem')
+      .filter((li) => li.textContent?.includes('Oil Lamp'));
+    expect(rows.map((li) => within(li).getByText(/^(lit|unlit)$/).textContent)).toEqual(['lit', 'unlit']);
+    expect(within(carried()).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(carried()).queryByRole('button', { name: /state/i })).not.toBeInTheDocument();
+  });
+
   it('lists the running timed effects with the time left', async () => {
     renderRightPanel({
       inventorySettle: {

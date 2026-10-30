@@ -158,6 +158,18 @@ describe('runItemScripts', () => {
     expect(out.diagnostics).toEqual([]);
   });
 
+  it('reads a copy’s State and sets it through the validator', async () => {
+    const lantern = item('i-lantern', 'Lantern', [['gained', `
+      const lamp = self.copies[0];
+      if (lamp.state !== 'unlit') throw new Error('state ' + lamp.state);
+      lamp.setState('lit');
+    `]]);
+    const start = [{ ...copy('c-0', 'i-lantern', { kind: 'you' }), state: { state: 'unlit' } }];
+    const out = await runItemScripts(turnOf([lantern], start), [event('gained', 'i-lantern', 'c-0', { kind: 'you' })], [lantern], applyWith([lantern]), (i) => i.name);
+    expect(out.diagnostics).toEqual([]);
+    expect(out.copies.map((c) => c.state)).toEqual([{ state: 'lit' }]);
+  });
+
   it('runs nothing and keeps the copies when the item has no script for the timing', async () => {
     const plain = item('i-plain', 'Plain', []);
     const start = [copy('c-1', 'i-plain', { kind: 'you' })];

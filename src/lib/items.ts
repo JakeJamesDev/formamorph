@@ -2,7 +2,7 @@ import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import type { Item, ItemCopy, ItemWhenEmpty, Placement, PlacementWhere, Slot, Trait } from '@/types';
+import type { Item, ItemCopy, ItemCopyState, ItemWhenEmpty, Placement, PlacementWhere, Slot, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -17,11 +17,34 @@ export const itemUsable = (item: Item): boolean => item.uses !== undefined
   || !!item.scripts?.some((script) => script.timing === 'used');
 
 /** The uses an Item Copy of `item` has left: full when it records none. Undefined when the item has no Uses. */
-export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Item | undefined): number | undefined =>
+export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'> | undefined): number | undefined =>
   (item?.uses === undefined ? undefined : copy.state?.uses ?? item.uses);
 
 /** How the editor and Formaquestion name each When Empty outcome. */
-export const WHEN_EMPTY_LABEL: Record<ItemWhenEmpty['kind'], string> = { stays: 'Stays', gone: 'Gone', becomes: 'Becomes' };
+export const WHEN_EMPTY_LABEL: Record<ItemWhenEmpty['kind'], string> = {
+  stays: 'Stays', gone: 'Gone', becomes: 'Becomes', changesState: 'Changes State',
+};
+
+/** A State word as stored: trimmed, or undefined when blank. */
+export const stateWord = (text: string | undefined): string | undefined => text?.trim() || undefined;
+
+/** An Item Copy's State word, or undefined when it has none. */
+export const copyState = (copy: Pick<ItemCopy, 'state'>): string | undefined => stateWord(copy.state?.state);
+
+/** An Item Copy's State as stacking compares it: trimmed and case-insensitive (Q31). Empty when it has none. */
+export const stateKey = (copy: Pick<ItemCopy, 'state'>): string => (copyState(copy) ?? '').toLowerCase();
+
+/** Whether two Item Copies have the same State for stacking. */
+export const sameState = (a: Pick<ItemCopy, 'state'>, b: Pick<ItemCopy, 'state'>): boolean => stateKey(a) === stateKey(b);
+
+/** The per-copy state a new Item Copy of `item` starts with: the starting State, and full uses when it doesn't stack.
+ *  Undefined when none. */
+export function seededState(item: Item): ItemCopyState | undefined {
+  const state = stateWord(item.state);
+  const uses = itemStackable(item) ? undefined : item.uses;
+  if (uses === undefined && !state) return undefined;
+  return { ...(uses !== undefined && { uses }), ...(state && { state }) };
+}
 
 /** What a copy of `item` leaves on its last use (Q26). */
 export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };

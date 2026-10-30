@@ -41,7 +41,7 @@ export function playerViewPages(view: PlayerView): WorldPage[] {
     })),
     ...view.items.map((row) => ({
       source: source('item', row.id, row.name), trail: [],
-      markdown: lines(`# ${row.name}`, row.description),
+      markdown: lines(`# ${row.name}`, row.state && `State: ${row.state}`, row.description),
     })),
     ...view.stats.map((row) => ({
       source: source('stat', row.id, row.name), trail: trail(row.ownerId),

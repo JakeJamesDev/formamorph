@@ -263,6 +263,8 @@ export type ItemCopyVisibility = 'visible' | 'hidden';
 export interface ItemCopyState {
   /** Uses left. Absent = full, or the item has no Uses. */
   uses?: number;
+  /** The copy's current State word. Absent = none. */
+  state?: string;
 }
 
 /** One item in play: a stack of `quantity` copies of an item in one place. */

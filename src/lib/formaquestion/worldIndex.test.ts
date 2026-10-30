@@ -95,6 +95,14 @@ describe('the World Index', () => {
     expect(section([item('draught', 'Healing Draught')])).not.toContain('Uses');
   });
 
+  it('states an item’s starting State and a Changes State word', () => {
+    const item = (patch: Partial<Item>): Item => ({ id: 'draught', name: 'Healing Draught', statEffects: [], traitEffects: [], equipRequires: [], ...patch });
+    const section = (one: Item) => buildWorldIndex(world({ items: [one] })).docs.search('draught', 1)[0].markdown;
+    expect(section(item({ uses: 1, whenEmpty: { kind: 'changesState', state: 'drained' }, state: ' sealed ' })))
+      .toContain('Uses: 1 · When Empty: Changes State to drained · State: sealed');
+    expect(section(item({ state: '  ' }))).not.toContain('State');
+  });
+
   it('maps every part of a long item back to it', () => {
     const long = world({ entities: [{ ...mara, playerDescription: Array.from({ length: 400 }, (_, at) => `Sentence ${at} about the gate.`).join('\n\n') }] });
     const index = buildWorldIndex(long);

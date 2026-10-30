@@ -43,7 +43,7 @@ An image's **Visibility Rule** reads whoever owns the item. A Condition with no 
 An item's placeholders roll once per playthrough. Every Item Copy shows the same value.
 
 ## Properties
-<!-- keywords: value, price, worth, stack, consumable, charges, uses, when empty, empty bottle, becomes, single use, bound, quest item, slot, equip -->
+<!-- keywords: value, price, worth, stack, consumable, charges, uses, when empty, empty bottle, becomes, changes state, single use, state, sealed, opened, lit, bound, quest item, slot, equip -->
 <!-- route: worldEditorItem.properties -->
 
 | Property | What it does |
@@ -51,7 +51,8 @@ An item's placeholders roll once per playthrough. Every Item Copy shows the same
 | **Value** | What the item is worth. The unit is a stat, such as Gold, or your own text. |
 | **Stackable** | Item Copies group into one row with a quantity. On by default. |
 | **Uses** | How many times each Item Copy can be used. Leave it blank for unlimited. |
-| **When Empty** | What a copy's last use leaves: **Stays** (kept at zero uses), **Gone** (removed) or **Becomes** (turns into another item you pick). Shows once **Uses** is set; it starts at **Gone**. |
+| **When Empty** | What a copy's last use leaves: **Stays** (kept at zero uses), **Gone** (removed), **Becomes** (turns into another item you pick) or **Changes State** (kept at zero uses with the word you type). Shows once **Uses** is set; it starts at **Gone**. |
+| **State** | The word each Item Copy starts with, such as *sealed* or *unlit*. The story and scripts can change it. Leave it blank for none. |
 | **Bound** | The player can't drop the item or give it away. The player can still pick it up, and the story can still move it. |
 | **Slot** | The slot the item equips into. **Not Equippable** means it can't be worn or held. |
 | **Slot Size** | How much of the slot's capacity the item takes, such as 2 for a two-handed sword. |
@@ -63,9 +64,16 @@ An item's placeholders roll once per playthrough. Every Item Copy shows the same
 | 🧪 Potion that leaves a bottle | 1 | Becomes Empty Bottle |
 | 🍷 Potion with three gulps | 3 | Gone |
 | 🪄 Wand | 3 | Stays |
+| ✉️ Letter | 1 | Changes State "opened" |
 | 📯 Horn | blank | — |
 
 > 🧭 The **Test Bench** flags an item that **Becomes** an item you deleted.
+
+### State
+
+- 🏷️ The player sees each copy's **State** beside its name in the **Inventory** tab. The AI sees it beside the name too.
+- 🧱 Copies with different States never stack. "Lit" and "lit" count as the same.
+- ✋ The **Inventory** tab has no control to change it. The story and scripts do.
 
 ## Effects
 <!-- keywords: stat effects, bonus, buff, equip bonus, raise strength, max health, regen, while equipped, while owned, first obtain, after use, after consumed, potion, duration, timed effect -->

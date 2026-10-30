@@ -4,7 +4,7 @@
  */
 import { builtinLabel } from '@/lib/builtinPlaceholders';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
-import { WHEN_EMPTY_LABEL, whenEmptyOf } from '@/lib/items';
+import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
 import type { DictionaryEntry, Item, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
@@ -137,14 +137,16 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   // A Becomes target outside this world, such as an unmet item in the player view, goes unnamed.
   const whenEmptyText = (item: Item): string => {
     const empty = whenEmptyOf(item);
+    if (empty.kind === 'changesState') return `${WHEN_EMPTY_LABEL.changesState} to ${empty.state.trim() || 'none'}`;
     if (empty.kind !== 'becomes') return WHEN_EMPTY_LABEL[empty.kind];
     const target = world.items?.find((i) => i.id === empty.itemId);
     return `${WHEN_EMPTY_LABEL.becomes} ${target?.name ?? 'another item'}`;
   };
+  const stateLine = (item: Item): string | false => { const word = stateWord(item.state); return !!word && `State: ${word}`; };
   for (const item of world.items ?? []) {
     add('item', item.id, item.name, [], lines(
       `# ${item.name}`,
-      facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, item.bound && 'Bound'),
+      facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
       field('Player Description', text(item.playerDescription)),
       field('AI Description', text(item.aiDescription)),
       field('AI Summary', text(item.aiSummary)),
