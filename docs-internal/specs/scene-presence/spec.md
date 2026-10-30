@@ -149,6 +149,18 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q60:** the Inventory tab's own writes accept only In Scene owners, so a give to a quiet or absent entity is refused. Inventory pass writes keep "at location" (Q26).
 - **Q61:** Give's empty text reads "Nobody is in the scene." The inventory panel's participants input is removed once nothing reads it.
 
+### Rulings (ticket 05 intent questions, 2026-10-30)
+
+- **Q62:** the Player View stays pure. It computes the Met set by calling the Presence module on its own current snapshot, not by taking a hook's live value, so an undo still moves it back (ADR-0014). Met rows follow cast order without the persona, and runtime characters are met by the start rule.
+- **Q63:** a stranger's row in the Player View keeps the existing rule: aliases the player has seen in the chain's scene rows. A stranger seen under no alias, with only a Stranger Name, gets no row.
+- **Q64:** the map reads the live Met set. Positioned entities show at their position, and unpositioned ones at each place they list. The old roster helpers are removed.
+
+### Rulings (ticket 06 intent questions, 2026-10-30)
+
+- **Q65:** Stranger Name and Stranger Description sit together as a pair in the Profile tab's identity group, after Pronouns. This matches how the item editor keeps Unidentified Name and Unidentified Description side by side. The description has no AI-generate button.
+- **Q66:** both fields show in Advanced mode only, and only in the World Editor. Library entities get neither.
+- **Q67:** one help topic on Stranger Name states the start-met rule with the existing field names, plus a section on the World Editor entities docs page. The changelog fragment is a user-facing Minor Added entry, in the same group as the Entities tab and Give entries.
+
 ### The Presence module
 
 - A new pure module computes presence. Its input is the game state, the authored and discovered entities, the locations with their connections and parents, the played persona, and the recent turns' scene records. Its output gives, for every entity:
