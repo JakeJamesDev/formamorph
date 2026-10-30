@@ -37,13 +37,13 @@ afterEach(() => {
   if (original) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', original);
 });
 
-function Harness() {
+function Harness({ tabs = TABS }: { tabs?: readonly CollapsingSegmentOption<Tab>[] }) {
   const [value, setValue] = useState<Tab>('profile');
   return (
     <TooltipProvider>
       <Tabs value={value} onValueChange={(v) => setValue(v as Tab)}>
-        <CollapsingTabsList tabs={TABS} value={value} aria-label="Entity Fields" />
-        {TABS.map((t) => <TabsContent key={t.value} value={t.value}>{t.label} body</TabsContent>)}
+        <CollapsingTabsList tabs={tabs} value={value} aria-label="Entity Fields" />
+        {tabs.map((t) => <TabsContent key={t.value} value={t.value}>{t.label} body</TabsContent>)}
       </Tabs>
     </TooltipProvider>
   );
@@ -80,6 +80,23 @@ describe('CollapsingTabsList', () => {
     expect(motion()).toEqual([false, false, false]);
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     await new Promise((r) => setTimeout(r, 0));
+    expect(motion()).toEqual([true, true, true]);
+  });
+
+  it('lands without a slide when tabs arrive after mount, as a game panel adds its Inventory tab', async () => {
+    // Profile and Matching alone fit 300px with both labels; the third tab folds the strip to one label.
+    room = 300;
+    const { rerender } = render(<Harness tabs={[TABS[0], TABS[2]]} />);
+    const frame = async () => {
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    await frame();
+    rerender(<Harness tabs={TABS} />);
+    const motion = () => TABS.map((t) => screen.getByRole('tab', { name: t.label }).querySelector('.grid')!.className.includes('transition-'));
+    expect(TABS.map((t) => labelShown(t.label))).toEqual([true, false, false]);
+    expect(motion()).toEqual([false, false, false]);
+    await frame();
     expect(motion()).toEqual([true, true, true]);
   });
 

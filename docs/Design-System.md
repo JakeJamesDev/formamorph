@@ -2166,10 +2166,11 @@ The top bar folds its parts together, in a fixed order, by whether its three cel
 
 ### As a tab strip
 
-Editor detail panels use the same three steps on a strip of tabs, through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)).
+Editor detail panels and the game's side panels use the same three steps on a strip of tabs. The editor reaches it through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)).
 
 - 🧩 **Component.** `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) keeps the tab and panel roles. It shares its measuring with the segmented control through `useCollapsingSegments`.
 - ↔️ **Fills its row.** Unlike the segmented control, the tabs stretch to the strip's full width.
+- 🆕 **New tabs land.** A tab that arrives or renames after mount, such as the game's Inventory tab or the log count, snaps to its step without a slide.
 
 ## Pattern: Inventory Tab
 
@@ -2188,7 +2189,7 @@ Editor detail panels use the same three steps on a strip of tabs, through `Panel
 - ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
 - 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the present entities as `CompactSelectionRow`s, or "Nobody is here."
 - 🔒 **Bound.** Drop and Give stay in place, disabled, with the reason in their tooltips.
-- 🏷️ **Tab strip.** The side panels' strips show labels only while every label fits its cell. Otherwise each tab shows its icon, and the tooltip names it.
+- 🏷️ **Tab strip.** The side panels' strips are [collapsing tab strips](#as-a-tab-strip): every label, then only the selected tab's, then icons alone. A folded tab's tooltip names it.
 
 ### Production mapping
 
@@ -2196,13 +2197,13 @@ Editor detail panels use the same three steps on a strip of tabs, through `Panel
 | --- | --- |
 | The tab body | `InventoryTab` in [`InventoryTab.tsx`](../src/components/game/InventoryTab.tsx) |
 | Its data and its one write | `useInventoryPanel` in [`useInventoryPanel.ts`](../src/components/game/useInventoryPanel.ts), through `applyInventoryOps` in [`inventory/index.ts`](../src/lib/inventory/index.ts) |
-| The measured tab strip | `PanelTabList` and `PanelTab` in [`PanelTabList.tsx`](../src/components/game/PanelTabList.tsx) |
+| The measured tab strip | `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) |
 | The host | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
 | Isolated reference | [`InventoryTabReference.tsx`](../src/components/design-system/InventoryTabReference.tsx) |
 
 ### Responsive behavior
 
-The tab fills the right panel on desktop and the **Status** sheet on mobile. Rows keep their buttons; long names truncate first. Popovers align to the button's end and stay in the viewport. At 1280px and on a 390px phone the four-tab strip shows icons; at 1920px it shows labels.
+The tab fills the right panel on desktop and the **Status** sheet on mobile. Rows keep their buttons; long names truncate first. Popovers align to the button's end and stay in the viewport. At 1920px the four-tab strip shows every label. From 1600px to 1100px it shows the selected tab's label only, and at 1024px icons alone.
 
 ### State reference
 

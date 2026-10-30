@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs } from '@/components/ui/tabs';
 import { Meta } from '@/components/ui/typography';
 import { InventoryTab } from '@/components/game/InventoryTab';
-import { PanelTab, PanelTabList } from '@/components/game/PanelTabList';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { randomUUID } from '@/lib/uuid';
@@ -35,18 +35,19 @@ const TIMED: TimedEffectView[] = [
 ];
 const PRESENT = [{ id: 'courier', name: 'Courier', inScene: true }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
+const STATUS_TABS = [
+  { value: 'stats', icon: StatIcon, label: 'Stats' },
+  { value: 'traits', icon: TraitIcon, label: 'Traits' },
+  { value: 'inventory', icon: ItemIcon, label: 'Inventory' },
+  { value: 'location', icon: LocationIcon, label: 'Location' },
+];
 
-/** The side panel's tab strip at one width: labels while all four fit, icons alone below that. */
+/** The side panel's tab strip at one width: every label, then the selected tab's, then icons alone. */
 const Strip = ({ width }: { width: number }) => (
   <div style={{ width }} className="space-y-1">
     <Meta>{width}px</Meta>
     <Tabs value="inventory">
-      <PanelTabList>
-        <PanelTab value="stats" icon={StatIcon} label="Stats" />
-        <PanelTab value="traits" icon={TraitIcon} label="Traits" />
-        <PanelTab value="inventory" icon={ItemIcon} label="Inventory" />
-        <PanelTab value="location" icon={LocationIcon} label="Location" />
-      </PanelTabList>
+      <CollapsingTabsList aria-label="Status" value="inventory" tabs={STATUS_TABS} />
     </Tabs>
   </div>
 );

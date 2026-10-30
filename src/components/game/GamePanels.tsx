@@ -43,7 +43,7 @@ import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
 import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { InventoryTab } from './InventoryTab';
-import { PanelTab, PanelTabList } from './PanelTabList';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { useInventoryPanel, type InventoryPanelSettle } from './useInventoryPanel';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
@@ -284,13 +284,17 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
       )}
 
       <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <PanelTabList>
-          {isMobile && <PanelTab value="model" icon={AvatarIcon} label="View" />}
-          <PanelTab value="entities" icon={EntitiesIcon} label="Entities" />
-          <PanelTab value="notes" icon={NotebookPen} label="Notes" />
-          <PanelTab value="memory" icon={Brain} label="Memory" />
-          <PanelTab value="logs" icon={ScrollText} label={`Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})`} />
-        </PanelTabList>
+        <CollapsingTabsList
+          aria-label="Character"
+          value={leftTab}
+          tabs={[
+            ...(isMobile ? [{ value: 'model', icon: AvatarIcon, label: 'View' }] : []),
+            { value: 'entities', icon: EntitiesIcon, label: 'Entities' },
+            { value: 'notes', icon: NotebookPen, label: 'Notes' },
+            { value: 'memory', icon: Brain, label: 'Memory' },
+            { value: 'logs', icon: ScrollText, label: `Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})` },
+          ]}
+        />
         {isMobile && (
           <TabsContent value="model" className="flex-grow overflow-hidden min-h-[100px]">
             {entityView}
@@ -1432,12 +1436,16 @@ export const RightPanel = ({
       </div>
 
       <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <PanelTabList>
-          {hasShownStats && <PanelTab value="stats" icon={StatIcon} label="Stats" />}
-          <PanelTab value="traits" icon={TraitIcon} label="Traits" />
-          {hasInventory && <PanelTab value="inventory" icon={ItemIcon} label="Inventory" />}
-          <PanelTab value="location" icon={LocationIcon} label="Location" />
-        </PanelTabList>
+        <CollapsingTabsList
+          aria-label="Status"
+          value={shownTab}
+          tabs={[
+            ...(hasShownStats ? [{ value: 'stats', icon: StatIcon, label: 'Stats' }] : []),
+            { value: 'traits', icon: TraitIcon, label: 'Traits' },
+            ...(hasInventory ? [{ value: 'inventory', icon: ItemIcon, label: 'Inventory' }] : []),
+            { value: 'location', icon: LocationIcon, label: 'Location' },
+          ]}
+        />
         {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
         <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
           {entitiesShowStats && (
