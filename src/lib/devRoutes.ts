@@ -160,6 +160,7 @@ export const DEV_MODAL_TABS = {
   // follows the session. `tab=moderation` needs a live server for reports — it opens empty otherwise.
   // `tab=serverSettings` is the Server tab: one box per server setting, read from the live server, so
   // against a server without the settings routes each row reports that it went unanswered.
+  // `fixture=hostedAi` adds the Formamorph AI panel over canned routes (`devHostedAiSample.ts`).
   adminPanel: ['users', 'broadcasts', 'policies', 'serverSettings', 'events', 'feedback', 'moderation', 'log'],
   // Admin Panel → Events uses the `subtab=…` slot for which of its two role views to render over the
   // canned calendar, so the moderator's read-only half is reachable without a second account.
