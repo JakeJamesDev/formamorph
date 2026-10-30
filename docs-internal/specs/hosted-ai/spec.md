@@ -86,7 +86,7 @@ A player without a pledge sees the preset locked, with a link to join on Patreon
 ## Implementation Decisions
 
 **Tiers and entitlement**
-- The Patreon tier mapping gains a third tier key above `supporter` and `supporter_plus`. The `patreon_links.tier` CHECK constraint allows only the two existing keys, so a schema step rebuilds that table. The existing tiers keep their keys and prices.
+- The Patreon tier mapping gains a third tier key, `supporter_top`, above `supporter` and `supporter_plus`. The key is internal and stays when the tier gets its display name. The `patreon_links.tier` CHECK constraint allows only the two existing keys, so a schema step rebuilds that table. The existing tiers keep their keys and prices.
 - The new key joins every tier surface on both sides in one change: the Supporter content qualifier, the Supporters wall sort, the client tier type, the flair map and its labels. The new tier's flair color is a new visual pattern and needs the user's approval.
 - Entitlement follows Patreon (Q25): an account is entitled while `currently_entitled_tiers` holds a mapped tier, exactly as Supporter content works today. The webhook and the hourly reconcile keep it current. No tier means no access, at once, with no grace period.
 - A staff grant names a tier and an end date. When a grant and a pledge both exist, the higher tier wins.
