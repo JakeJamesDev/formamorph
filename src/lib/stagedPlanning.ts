@@ -3,7 +3,7 @@ import { renderPromptTemplate } from "./promptTemplate";
 import { layerValues, type TokenValues } from "./promptValues";
 import { collectCharacterDiary } from "./turnDigest";
 import { selectRelevantDiary } from "./semanticDiary";
-import { sameCharacterName, matchNames, findEntityNames, stripQuotedSpeech } from "./entityMatch";
+import { sameCharacterName, matchNames, findEntityNames, stripQuotedSpeech, distinctiveWords } from "./entityMatch";
 import { escapeRegExp } from "./utils";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 
@@ -270,12 +270,18 @@ const REVEAL_FALLBACK = "someone the player has not yet identified";
  * Keep not-yet-revealed character names out of the plan the narrator reads. For each cast bullet naming a
  * character whose real name has NOT appeared in past narration (`isRevealed` is the caller's narration-corpus
  * check), rewrite that name everywhere in the plan — Scene, Cast, and Beats — to the parenthetical alias the
- * planner gave ("the silver-haired woman"), or a neutral fallback when it gave none. Revealed names, the
- * player, and empty-cast sentinels are left untouched. This is the code-side backstop for the prompt's alias
- * rule, which small/large models honor unevenly.
+ * planner gave ("the silver-haired woman"), else `labelFor`'s label, else a neutral fallback. A lone distinctive
+ * word of the name ("Corvin" for "Corvin Ashby") is swapped too, unless another cast bullet or `otherNames`
+ * shares it. Revealed names, the player, and empty-cast sentinels are left untouched. This is the code-side
+ * backstop for the prompt's alias rule, which small/large models honor unevenly.
  */
-export function sanitizePlanForReveal(plan: string, isRevealed: (realName: string) => boolean): string {
+export function sanitizePlanForReveal(
+  plan: string,
+  isRevealed: (realName: string) => boolean,
+  opts: { labelFor?: (realName: string) => string | null | undefined; otherNames?: readonly string[] } = {},
+): string {
   const renames: { real: string; to: string }[] = [];
+  const castNames: string[] = [];
   const seen = new Set<string>();
   for (const line of plan.split("\n")) {
     const bullet = line.trim().match(BULLET_RE);
@@ -285,9 +291,11 @@ export function sanitizePlanForReveal(plan: string, isRevealed: (realName: strin
     const key = real.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
+    castNames.push(real);
     if (isRevealed(real)) continue;
-    renames.push({ real, to: alias || REVEAL_FALLBACK });
+    renames.push({ real, to: alias || opts.labelFor?.(real) || REVEAL_FALLBACK });
   }
+  const wordsOf = (name: string) => name.toLowerCase().split(/[^\p{L}\p{N}']+/u).filter(Boolean);
   let out = plan;
   for (const { real, to } of renames) {
     const esc = escapeRegExp(real);
@@ -295,6 +303,15 @@ export function sanitizePlanForReveal(plan: string, isRevealed: (realName: strin
     // bare occurrence left in the Scene/Beats prose. Function replacement avoids `$&`-style pitfalls.
     out = out.replace(new RegExp(`\\b${esc}\\b\\s*\\([^)]*\\)`, "gi"), () => to);
     out = out.replace(new RegExp(`\\b${esc}\\b`, "gi"), () => to);
+    if (wordsOf(real).length < 2) continue;
+    const shared = new Set(
+      [...castNames, ...(opts.otherNames ?? [])].filter((n) => n.toLowerCase() !== real.toLowerCase()).flatMap(wordsOf),
+    );
+    for (const word of distinctiveWords(real)) {
+      if (wordsOf(word).some((w) => shared.has(w))) continue;
+      // Case-sensitive: a lone word counts only as written in the name, as a proper noun.
+      out = out.replace(new RegExp(`\\b${escapeRegExp(word)}\\b`, "g"), () => to);
+    }
   }
   return out;
 }

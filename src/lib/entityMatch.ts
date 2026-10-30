@@ -332,7 +332,7 @@ const significantWords = (name: string): string[] =>
  * A name whose words are *all* everyday ("Rose Wolf", "Iron Gate") keeps them — dropping every word would
  * guarantee a miss, and a false positive is the cheaper error for the surfaces this feeds.
  */
-const distinctiveWords = (name: string): string[] => {
+export const distinctiveWords = (name: string): string[] => {
   const sig = significantWordsAsWritten(name);
   const distinct = sig.filter((w) => !COMMON_WORDS.has(w.toLowerCase()));
   return distinct.length > 0 ? distinct : sig;

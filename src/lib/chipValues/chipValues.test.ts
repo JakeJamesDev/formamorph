@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { chipValues, sceneEntityChipValues } from './chipValues';
+import { chipValues, plannerEntityChipValues, sceneEntityChipValues } from './chipValues';
+import { readValue } from '../promptValues';
 import type { ChipScene } from './chipScene';
 import { knownPersonaLine } from '../personaContext';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
@@ -292,6 +293,33 @@ describe('the scene-roster override for the Choices prompt', () => {
 
   it('renders the placeholder when nobody is in the scene', () => {
     expect(sceneEntityChipValues(scene(), [])('<ENTITIES|name>')).toBe(NONE_PLACEHOLDER);
+  });
+});
+
+describe("the planner's stranger override", () => {
+  const labels = { guard: 'a gate guard', merchant: 'a man with a lantern' };
+
+  it("prints each unmet stranger's label in its own block, in every scope that lists it", () => {
+    const values = plannerEntityChipValues(scene(), labels);
+    expect(readValue(values, '<ENTITIES|summary.markdown>')).toContain('- **Guard**\n  - **stranger name:** a gate guard\n');
+    expect(readValue(values, '<ENTITIES|summary>')).toContain('Guard\n  stranger name: a gate guard\n');
+    expect(readValue(values, '<ENTITIES|xml>')).toContain('<stranger_name>a gate guard</stranger_name>');
+    expect(readValue(values, '<ENTITIES|sublocations.summary.markdown>')).toContain('  - **stranger name:** a man with a lantern\n');
+  });
+
+  it('covers every Entities token, and differs from the base values only by the label lines', () => {
+    const base = chipValues(scene());
+    const values = plannerEntityChipValues(scene(), labels);
+    for (const token of spelledTokens('<ENTITIES>')) {
+      const planner = readValue(values, token);
+      expect(planner, token).toBeDefined();
+      expect(planner!.replace(/^.*stranger[ _]name.*\n/gm, ''), token).toBe(base(token));
+    }
+  });
+
+  it('adds nothing when no stranger has a label, so the planner reads the base values', () => {
+    expect(plannerEntityChipValues(scene(), {})).toEqual({});
+    expect(chipValues(scene())('<ENTITIES|summary.markdown>')).not.toContain('stranger name');
   });
 });
 

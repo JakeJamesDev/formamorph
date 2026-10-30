@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, GameLocation } from '@/types';
 import {
-  computePresence, connectedPlaces, introducedIds, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
+  computePresence, connectedPlaces, introducedIds, plannerStrangers, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
   type PresenceInput, type SceneTurn,
 } from './presence';
 import { readNarration } from './turnPipeline/narrationReading';
@@ -267,5 +267,35 @@ describe('strangerAliasesFromCast', () => {
       { name: 'A Drover', alias: 'a drover' }, { name: 'Sylvie', alias: ' ' },
     ];
     expect(strangerAliasesFromCast(none, cast, [mara, sylvie], isMet)).toBe(none);
+  });
+});
+
+describe('the planner\'s stranger labels', () => {
+  const marr: Entity = { id: 'marr', name: 'Marr', strangerName: 'a gate guard', locations: ['hall'] };
+  const sylvie: Entity = { id: 'sylvie', name: 'Sylvie', strangerName: 'a hooded woman', locations: ['hall'] };
+  const shade: Entity = { id: 'shade', name: 'The Shade', strangerName: ' ', locations: ['hall'] };
+  const isMet = (e: Entity) => e.id === 'sylvie' || e.strangerName === undefined;
+  const aliases = { marr: 'the guard with the scar' };
+
+  it('labels each unmet stranger by its latest alias, else its Stranger Name', () => {
+    expect(plannerStrangers([marr, mara], isMet, {}).labels).toEqual({ marr: 'a gate guard' });
+    expect(plannerStrangers([marr], isMet, aliases).labels).toEqual({ marr: 'the guard with the scar' });
+  });
+
+  it('leaves out met strangers, entities without a Stranger Name, and strangers with no label', () => {
+    expect(plannerStrangers([sylvie, mara, shade], isMet, {}).labels).toEqual({});
+  });
+
+  it('reveals a stranger by met, by true name in any case, and knows nothing of other entities', () => {
+    const { reveal } = plannerStrangers([marr, sylvie, mara, shade], isMet, aliases);
+    expect(reveal('marr')).toEqual({ met: false, label: 'the guard with the scar' });
+    expect(reveal('Sylvie')).toEqual({ met: true, label: null });
+    expect(reveal('The Shade')).toEqual({ met: false, label: null });
+    expect(reveal('Mara')).toBeUndefined();
+  });
+
+  it('labels a stranger as the panels do', () => {
+    const p = presence({ entities: [marr, mara], strangerAliases: aliases });
+    expect(plannerStrangers([marr], (e) => p.byId.get(e.id)!.met, aliases).labels.marr).toBe(p.byId.get('marr')?.label);
   });
 });
