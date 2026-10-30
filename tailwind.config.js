@@ -108,6 +108,7 @@ module.exports = {
         supporter: {
           DEFAULT: "hsl(var(--supporter))",
           plus: "hsl(var(--supporter-plus))",
+          top: "hsl(var(--supporter-top))",
         },
         // The filled heart on a liked listing. Deliberately one pink across every theme — see index.css.
         like: "hsl(var(--like))",

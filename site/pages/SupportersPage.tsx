@@ -18,7 +18,7 @@ type State =
   | { status: 'failed'; error: string };
 
 /** The sections in display order. The server sends the rows already sorted; the page only splits them. */
-const SECTIONS: SupporterTier[] = ['supporter_plus', 'supporter'];
+const SECTIONS: SupporterTier[] = ['supporter_top', 'supporter_plus', 'supporter'];
 
 function SupporterRow({ supporter }: { supporter: Supporter }) {
   const flair = { tier: supporter.tier, since: supporter.since };
@@ -41,7 +41,7 @@ function SupporterRow({ supporter }: { supporter: Supporter }) {
  * The Supporters wall at `formamorph.ai/supporters`: every linked supporter who keeps the flair on.
  *
  * Open to anyone. The server decides who is listed and in what order, so the page keeps the order it
- * receives and only splits the rows into the two tier sections.
+ * receives and only splits the rows into the tier sections.
  */
 export function SupportersPage() {
   const [state, setState] = useState<State>({ status: 'loading' });

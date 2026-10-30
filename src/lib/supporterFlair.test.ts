@@ -35,5 +35,6 @@ describe('the tier to draw', () => {
     expect(flairTier(null)).toBeNull();
     expect(flairTier({ tier: 'platinum' })).toBeNull();
     expect(flairTier({ tier: 'supporter_plus' })).toBe('supporter_plus');
+    expect(flairTier({ tier: 'supporter_top' })).toBe('supporter_top');
   });
 });

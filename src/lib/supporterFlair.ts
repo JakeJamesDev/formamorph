@@ -3,7 +3,7 @@ import { parseServerDate } from '@/lib/serverDate';
 import type { SupporterTier } from '@/types';
 
 /** Every tier, in display order. */
-export const SUPPORTER_TIERS: readonly SupporterTier[] = ['supporter', 'supporter_plus'];
+export const SUPPORTER_TIERS: readonly SupporterTier[] = ['supporter', 'supporter_plus', 'supporter_top'];
 
 /** The tier to draw, or null. An absent field, a null, and a tier this build doesn't know all mean no flair. */
 export const flairTier = (supporter: { tier: string } | null | undefined): SupporterTier | null =>
@@ -32,23 +32,29 @@ export function supporterTenure(since: string | null | undefined, now: Date = ne
 export const SUPPORTER_LABELS: Record<SupporterTier, string> = {
   supporter: 'Supporter',
   supporter_plus: 'Supporter+',
+  // Working label until the tier is named.
+  supporter_top: 'Supporter++',
 };
 
 /** Name color per tier. */
 export const SUPPORTER_NAME_STYLES: Record<SupporterTier, string> = {
   supporter: 'text-supporter',
   supporter_plus: 'text-supporter-plus',
+  supporter_top: 'text-supporter-top',
 };
 
-/** Badge per tier. Supporter+ adds an outline, so the tiers differ by shape as well as by hue. */
+/** Badge per tier. Supporter+ adds an outline and the top tier a double outline, so the tiers differ by shape as well as by hue. */
 export const SUPPORTER_BADGE_STYLES: Record<SupporterTier, string> = {
   supporter: 'bg-supporter/10 text-supporter',
   supporter_plus: 'bg-supporter-plus/15 text-supporter-plus ring-1 ring-inset ring-supporter-plus/60',
+  supporter_top:
+    'bg-supporter-top/15 text-supporter-top ring-1 ring-inset ring-supporter-top/60 shadow-[0_0_0_2px_hsl(var(--supporter-top)/0.25)]',
 };
 
 const RING_COLORS: Record<SupporterTier, string> = {
   supporter: 'ring-supporter',
   supporter_plus: 'ring-supporter-plus',
+  supporter_top: 'ring-supporter-top',
 };
 
 /** Ring width and gap per Profile Image size: small images take a thin ring so it does not crowd the face. */

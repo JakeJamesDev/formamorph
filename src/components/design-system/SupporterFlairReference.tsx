@@ -16,16 +16,23 @@ const THREAD: readonly Sample[] = [
   { name: 'map-reader' },
   { name: 'river-quill', tier: 'supporter' },
   { name: 'mira-vale', tier: 'supporter_plus' },
+  { name: 'ember-crown', tier: 'supporter_top' },
   { name: 'wren_hallow', role: 'mod' },
   { name: 'lantern-dev', role: 'dev' },
   { name: 'ferry-admin', role: 'admin' },
 ];
 
+const SWATCHES: Record<SupporterTier, { fill: string; token: string }> = {
+  supporter: { fill: 'bg-supporter', token: '--supporter' },
+  supporter_plus: { fill: 'bg-supporter-plus', token: '--supporter-plus' },
+  supporter_top: { fill: 'bg-supporter-top', token: '--supporter-top' },
+};
+
 function Swatch({ tier }: { tier: SupporterTier }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={cn('h-5 w-5 rounded-full', tier === 'supporter' ? 'bg-supporter' : 'bg-supporter-plus')} aria-hidden="true" />
-      <Meta>{tier === 'supporter' ? '--supporter' : '--supporter-plus'}</Meta>
+      <span className={cn('h-5 w-5 rounded-full', SWATCHES[tier].fill)} aria-hidden="true" />
+      <Meta>{SWATCHES[tier].token}</Meta>
     </div>
   );
 }

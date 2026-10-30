@@ -10,7 +10,7 @@ const tokens = (css: string, selector: string) => {
     .find(([, list]) => list.trim().split(/\s*,\s*/).includes(selector));
   const body = block?.[2] ?? '';
   return Object.fromEntries(
-    [...body.matchAll(/--(supporter(?:-plus)?):\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]),
+    [...body.matchAll(/--(supporter(?:-plus|-top)?):\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]),
   );
 };
 
@@ -21,7 +21,7 @@ describe('the site stylesheet defines the Supporter Flair colors', () => {
   it.each([':root', '.dark'])('in %s, with the same values as the app', (selector) => {
     const expected = tokens(app, selector);
 
-    expect(Object.keys(expected).sort()).toEqual(['supporter', 'supporter-plus']);
+    expect(Object.keys(expected).sort()).toEqual(['supporter', 'supporter-plus', 'supporter-top']);
     expect(tokens(site, selector)).toEqual(expected);
   });
 });
