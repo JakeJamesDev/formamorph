@@ -8,7 +8,7 @@ import { applySemanticLore, selectSemanticLore } from '@/lib/semanticDictionary'
 import type { PlayerView } from './playerView';
 import type { StorySoFar } from './storySoFar';
 import type { WorldSource } from './helpWorldSource';
-import { worldIndexOfPages, type WorldIndex, type WorldPage } from './worldIndex';
+import { entryName, lines, worldIndexOfPages, type WorldIndex, type WorldPage } from './worldIndex';
 
 /** The game's world for one question, as the open-world registration hands it over. */
 export interface GameWorldInput {
@@ -21,9 +21,6 @@ export interface GameWorldInput {
   /** Resolves placeholder chips the way the player sees them. */
   resolve: (text: string) => string;
 }
-
-/** Builds the markdown of one row from its lines; blank lines drop out. */
-const lines = (...parts: (string | false | undefined)[]): string => parts.filter((part): part is string => !!part && part.trim() !== '').join('\n\n');
 
 const source = (worldKind: WorldSource['worldKind'], id: string, name: string): WorldSource => ({ kind: 'world', worldKind, id, name });
 
@@ -58,7 +55,7 @@ export function playerViewPages(view: PlayerView): WorldPage[] {
 }
 
 /** A fired entry as its world source. */
-export const loreSource = (entry: DictionaryEntry): WorldSource => source('dictionary', entry.id, entry.name || entry.key[0] || 'Entry');
+export const loreSource = (entry: DictionaryEntry): WorldSource => source('dictionary', entry.id, entryName(entry));
 
 /** The page of one fired entry: its name and its text as the narration reads it. */
 const lorePage = (entry: DictionaryEntry, resolve: GameWorldInput['resolve']): WorldPage => {

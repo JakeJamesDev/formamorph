@@ -105,12 +105,16 @@ function playerEntity(met: Met, entity: Entity, row: PlayerViewEntity, targets: 
   };
 }
 
+/** The met ones of `things`, each rebuilt from its Player View row. */
+const keepMet = <T extends { id: string }, R>(things: readonly T[], rows: ReadonlyMap<string, R>, build: (thing: T, row: R) => T): T[] =>
+  things.flatMap((thing) => {
+    const row = rows.get(thing.id);
+    return row ? [build(thing, row)] : [];
+  });
+
 const playerEntities = (met: Met, entities: readonly Entity[], stats: readonly Stat[] = []): Entity[] => {
   const targets = new Map(stats.map((stat) => [stat.id, stat]));
-  return entities.flatMap((entity) => {
-    const row = met.entities.get(entity.id);
-    return row ? [playerEntity(met, entity, row, targets)] : [];
-  });
+  return keepMet(entities, met.entities, (entity, row) => playerEntity(met, entity, row, targets));
 };
 
 function playerLocation(met: Met, location: GameLocation, row: PlayerViewLocation): GameLocation {
@@ -121,10 +125,8 @@ function playerLocation(met: Met, location: GameLocation, row: PlayerViewLocatio
   };
 }
 
-const playerLocations = (met: Met, locations: readonly GameLocation[]): GameLocation[] => locations.flatMap((location) => {
-  const row = met.locations.get(location.id);
-  return row ? [playerLocation(met, location, row)] : [];
-});
+const playerLocations = (met: Met, locations: readonly GameLocation[]): GameLocation[] =>
+  keepMet(locations, met.locations, (location, row) => playerLocation(met, location, row));
 
 /** Connections between met places, without their travel hints. */
 const playerConnections = (met: Met, connections: readonly Connection[] = []): Connection[] => connections
@@ -140,10 +142,7 @@ function playerItem(item: Item, row: PlayerViewItem): Item {
   };
 }
 
-const playerItems = (met: Met, items: readonly Item[] = []): Item[] => items.flatMap((item) => {
-  const row = met.items.get(item.id);
-  return row ? [playerItem(item, row)] : [];
-});
+const playerItems = (met: Met, items: readonly Item[] = []): Item[] => keepMet(items, met.items, playerItem);
 
 /** A visible copy of a met item, held by the player or a met entity, or at a met place. */
 function copyShown(met: Met, copy: ItemCopy): boolean {

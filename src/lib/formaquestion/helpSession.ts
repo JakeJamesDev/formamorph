@@ -310,13 +310,18 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
   const kept: DocSection[] = [];
   for (const section of [...(lead ? [lead] : []), ...pinned]) if (!kept.some((held) => held.id === section.id)) kept.push(section);
+  return fillWithin(kept, ordered, budget, limit);
+}
+
+/** `kept` plus `candidates` once each, in order, while the text stays inside `budget` and `limit`. The first section is always kept. */
+function fillWithin(kept: DocSection[], candidates: readonly DocSection[], budget: number, limit: number): DocSection[] {
   let size = kept.reduce((sum, section) => sum + section.markdown.length, 0);
-  for (const hit of ordered) {
+  for (const section of candidates) {
     if (kept.length === limit) break;
-    if (kept.some((section) => section.id === hit.id)) continue;
-    if (kept.length > 0 && size + hit.markdown.length > budget) break;
-    kept.push(hit);
-    size += hit.markdown.length;
+    if (kept.some((held) => held.id === section.id)) continue;
+    if (kept.length > 0 && size + section.markdown.length > budget) break;
+    kept.push(section);
+    size += section.markdown.length;
   }
   return kept;
 }
@@ -470,27 +475,13 @@ async function readWorld(world: OpenWorld | undefined, settings: HelpSettings, q
   return { index: gameWorldIndex(input, fired), game: { input, fired } };
 }
 
-/** `sections` once each, best first, while the text stays inside the world budget and section limit. The first is always kept. */
-function withinWorldBudget(sections: readonly DocSection[]): DocSection[] {
-  const kept: DocSection[] = [];
-  let size = 0;
-  for (const section of sections) {
-    if (kept.length === HELP_WORLD_SECTION_LIMIT) break;
-    if (kept.some((held) => held.id === section.id)) continue;
-    if (kept.length > 0 && size + section.markdown.length > HELP_WORLD_CHAR_BUDGET) break;
-    kept.push(section);
-    size += section.markdown.length;
-  }
-  return kept;
-}
-
 /** The game world block: capped fired lore ahead of the ranked rows; lore drops from the end until the top row fits. */
 function gameWorldSections(index: WorldIndex, fired: readonly DictionaryEntry[], rows: readonly DocSection[]): DocSection[] {
   const lore = fired.flatMap((entry) => index.sectionsOf(loreSource(entry))).slice(0, HELP_FIRED_LORE_SECTION_LIMIT);
   const top = rows[0];
   const size = (sections: readonly DocSection[]) => sections.reduce((sum, section) => sum + section.markdown.length, 0);
   while (top && lore.length > 0 && size(lore) + top.markdown.length > HELP_WORLD_CHAR_BUDGET) lore.pop();
-  return withinWorldBudget([...lore, ...rows]);
+  return fillWithin([], [...lore, ...rows], HELP_WORLD_CHAR_BUDGET, HELP_WORLD_SECTION_LIMIT);
 }
 
 /** The items the world block holds, once each, in block order. */
