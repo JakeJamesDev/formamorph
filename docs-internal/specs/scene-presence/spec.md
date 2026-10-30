@@ -168,7 +168,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q70:** the field carries the Presence label: the latest story alias, else the Stranger Name. This follows Q27, where the story's alias wins once seen.
 - **Q71:** for an entity with a Stranger Name, met decides whether the name may appear, in the prompt rule and the code backstop alike. A name spoken elsewhere does not reveal it (Q41). Entities without a Stranger Name keep today's narration test.
 - **Q72:** the backstop fills a missing alias with the label in place of the generic fallback. It does not overwrite an alias the planner invented. The staged-mode director prompt is out of scope.
-- **Q73:** after the full-name swap, the backstop also swaps each distinctive word of an unrevealed name for the alias. It uses the same distinctive words that name-part detection uses (Q41). This applies to every unrevealed name, strangers and narration-test names alike, so hiding matches revealing. A word shared with another cast entity's name is never swapped, and only whole words match.
+- **Q73:** after the full-name swap, the backstop also swaps each distinctive word of an unrevealed name for the alias. It uses the same distinctive words that name-part detection uses (Q41). This applies to every unrevealed name, strangers and narration-test names alike, so hiding matches revealing. A word shared with any other entity's name is never swapped, whether that entity is in the cast or off-scene, and the same goes for the player's names. Only whole words match. Ticket 07 widened the guard beyond the cast.
 ### Rulings (ticket 08 intent questions, 2026-10-30)
 
 - **Q74:**
