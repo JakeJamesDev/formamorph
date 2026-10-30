@@ -4,7 +4,7 @@ import { phValueId, phValues } from '@/test/placeholderValues';
 import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
   activeOwnedTraitIds, addedCharacters, ownerGroupId, ownerPins, ownerPriming, ownerTraitTree, inPlayLibrary, libraryUnder, playerEntityIds,
-  rowOwner, withOwnerNames,
+  rowOwner, withOwnerNames, inSceneTraitTree,
   type OwnerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
@@ -263,6 +263,24 @@ describe('ownerTraitTree — the player-facing tree', () => {
     expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira', 'cp']);
     expect(tree.groups.find((g) => g.id === ownerGroupId('albus', 'classes'))?.maxPicks).toBe(1);
     expect(tree.traits.map((t) => rowOwner(tree, t))).toEqual([null, null, 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
+  });
+
+  it('keeps only In Scene owners, the player and the kept library owners, and draws a stranger under its label', () => {
+    const tree = inSceneTraitTree(ownerTraitTree(linkedWorld, NONE), {
+      scene: new Set(['albus']), keep: new Set(), labels: new Map([['albus', 'a hooded man']]),
+    });
+    expect([...tree.entityNodes.keys()]).toEqual(['albus', 'cp']);
+    expect(tree.entityNodes.get('albus')?.name).toBe('a hooded man');
+    expect(tree.groups.find((g) => g.id === 'albus')?.name).toBe('a hooded man');
+    expect(tree.groups.some((g) => g.id === 'mira' || g.id.startsWith('mira/'))).toBe(false);
+    expect(tree.traits.map((t) => rowOwner(tree, t))).toEqual([null, null, 'albus', 'albus', 'albus', 'cp']);
+    expect([...tree.ownerOfGroup.values()]).not.toContain('mira');
+  });
+
+  it('keeps a kept owner that is not in scene', () => {
+    const tree = inSceneTraitTree(ownerTraitTree(linkedWorld, NONE), { scene: new Set(), keep: new Set(['mira']), labels: new Map() });
+    expect([...tree.entityNodes.keys()]).toEqual(['mira', 'cp']);
+    expect(tree.entityNodes.get('mira')?.name).toBe('Mira');
   });
 
   it("gives the Custom Persona entity a node beside the player's top level under None, and none under a world persona", () => {

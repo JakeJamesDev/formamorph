@@ -141,6 +141,41 @@ export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefine
   return { groups, traits, entityNodes, ownerOfGroup, owners };
 }
 
+/**
+ * The tree with only the nodes the player may see: those in `scene`, the player's own and `keep` (the library
+ * owners). A dropped node takes its groups and traits. A node in `labels` is a stranger, drawn under that label.
+ */
+export function inSceneTraitTree(
+  tree: OwnerTraitTree,
+  { scene, keep, labels }: { scene: ReadonlySet<string>; keep: ReadonlySet<string>; labels: ReadonlyMap<string, string> },
+): OwnerTraitTree {
+  const players = new Set(playerEntityIds(tree));
+  const shown = (id: string) => scene.has(id) || keep.has(id) || players.has(id);
+  const ownerOfGroup = new Map([...tree.ownerOfGroup].filter(([, owner]) => shown(owner)));
+  const entityNodes = new Map<string, Entity>();
+  for (const [id, entity] of tree.entityNodes) {
+    if (!shown(id)) continue;
+    const label = labels.get(id);
+    entityNodes.set(id, label === undefined ? entity : { ...entity, name: label });
+  }
+  const kept = (groupId: string | null | undefined) => {
+    const owner = groupId == null ? undefined : tree.ownerOfGroup.get(groupId);
+    return owner === undefined || shown(owner);
+  };
+  return {
+    ...tree,
+    entityNodes,
+    ownerOfGroup,
+    groups: tree.groups
+      .filter((g) => kept(g.id))
+      .map((g) => {
+        const label = labels.get(g.id);
+        return label !== undefined && entityNodes.has(g.id) ? { ...g, name: label } : g;
+      }),
+    traits: tree.traits.filter((t) => kept(t.groupId)),
+  };
+}
+
 /** The entity nodes that are the player's, in node order: the played persona, and the Custom Persona
  *  entity under None and a library persona. Each wears the You mark. */
 export const playerEntityIds = (tree: Pick<OwnerTraitTree, 'owners'>): string[] =>

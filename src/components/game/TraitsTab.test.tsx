@@ -21,24 +21,34 @@ const G = (id: string, name: string, extra: Partial<TraitGroup> = {}): TraitGrou
   id, name, parentId: null, ...extra,
 });
 
-/** Mount the right panel on the Traits tab, holding `held` of the world's traits. */
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+
+/** Mount the right panel on the Traits tab, holding `held` of the world's traits. Each world entity stands in
+ *  the yard unless it names a place, and took part in the last turn, so it is in scene unless `quiet` names it. */
 const renderTraits = (
   traits: Trait[],
   traitGroups: TraitGroup[],
   held: string[],
-  options: PanelHarnessOptions = {},
-) =>
-  renderRightPanel({}, {
-    turns: TURNS,
+  options: PanelHarnessOptions & { quiet?: string[] } = {},
+) => {
+  const { quiet = [], ...harness } = options;
+  const cast = ((harness.world?.entities ?? []) as { name: string; locations?: string[] }[])
+    .map((entity) => ({ ...entity, locations: entity.locations ?? ['yard'] }));
+  return renderRightPanel({}, {
+    turns: TURNS.map((turn) => ({
+      ...turn, locationId: 'yard', entities: cast.map((e) => e.name).filter((name) => !quiet.includes(name)),
+    })),
     stats: STATS,
-    ...options,
-    world: { traits, traitGroups, ...options.world },
+    ...harness,
+    world: { traits, traitGroups, locations: [YARD], ...harness.world, entities: cast as never },
     seed: (gameplay) => {
       gameplay.setGlobalTraits(traits.filter((t) => held.includes(t.id)));
+      gameplay.setCurrentLocation(YARD as never);
       gameplay.setActiveTab('traits');
-      options.seed?.(gameplay);
+      harness.seed?.(gameplay);
     },
   });
+};
 
 /** The traits with a control on screen right now, in render order. */
 const shown = () =>
@@ -390,7 +400,7 @@ describe('entity nodes in the traits tab', () => {
     ],
   };
   const PALADIN = T('t-paladin', 'Paladin');
-  const withAsh = (options: PanelHarnessOptions = {}) => renderTraits([PALADIN], [], [], {
+  const withAsh = (options: PanelHarnessOptions & { quiet?: string[] } = {}) => renderTraits([PALADIN], [], [], {
     ...options,
     world: { entities: [ash] },
     seed: (gameplay) => {
@@ -419,6 +429,35 @@ describe('entity nodes in the traits tab', () => {
     fireEvent.click(within(section('Ash')).getByRole('button', { name: /^Disabled/ }));
     expect(screen.getByRole('checkbox', { name: 'Switch on Loyal' })).toBeDisabled();
     expect(screen.getByText('Requires Paladin')).toBeTruthy();
+  });
+
+  it('leaves out the node of an entity that is here but took no part lately', () => {
+    withAsh({ quiet: ['Ash'] });
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+    expect(screen.queryByText('Tamed')).toBeNull();
+  });
+
+  it('leaves out the node of an entity that took part but stands elsewhere', () => {
+    renderTraits([PALADIN], [], [], {
+      world: { entities: [{ ...ash, locations: ['barn'] }], locations: [YARD, { id: 'barn', name: 'Barn' }] },
+      seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
+    });
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+  });
+
+  it('draws a stranger in scene under its label and never its name', () => {
+    renderTraits([PALADIN], [], [], {
+      world: { entities: [{ ...ash, strangerName: 'a hooded man' }] },
+      seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
+    });
+    expect(within(section('a hooded man')).getByRole('checkbox', { name: 'Switch off Tamed' })).toBeEnabled();
+    expect(screen.queryByText('Ash')).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Switch off Ash’s Tamed' })).toBeNull();
+  });
+
+  it('keeps the played entity’s node when it took no part', () => {
+    withAsh({ quiet: ['Ash'], seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
+    expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
   });
 
   it('marks the entity the player plays with the You pill after its name, and reads it out as You', () => {

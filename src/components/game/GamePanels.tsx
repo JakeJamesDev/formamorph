@@ -16,7 +16,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
-  activeOwnedTraitIds, ownerTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
+  activeOwnedTraitIds, ownerTraitTree, inSceneTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
 } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -1287,13 +1287,19 @@ export const RightPanel = ({
     [traits, traitGroups, traitEntities],
   );
   // A linked row's name reads its entity as the Character Name, from the original's authored text.
+  // Owner nodes follow In Scene; the player's and the library's stay. A stranger's node reads its label.
+  const { inScene: sceneNow } = usePresence(isViewingPast ? currentPage : undefined);
   const traitTree = React.useMemo(
     () => withOwnerNames(
-      ownerTraitTree(ownerWorld, personaRef, traitLibrary),
+      inSceneTraitTree(ownerTraitTree(ownerWorld, personaRef, traitLibrary), {
+        scene: new Set(sceneNow.map((p) => p.entity.id)),
+        keep: new Set(traitLibrary.map((e) => e.id)),
+        labels: new Map(sceneNow.filter((p) => !p.met && p.label).map((p) => [p.entity.id, p.label!])),
+      }),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
       (text, owner, trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text)),
     ),
-    [ownerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
+    [ownerWorld, personaRef, traitLibrary, sceneNow, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
   );
   // An owner's trait card reads that owner as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
@@ -1359,8 +1365,6 @@ export const RightPanel = ({
   const playedRows = playedOwners.filter((owner) => owner.rows.length > 0);
   // Stats the player sees besides the world's own.
   const ownersShowStats = entitiesShowStats || playedRows.length > 0;
-  const presentOptions = entityOptions.filter((option) => option.present);
-  const absentOptions = entityOptions.filter((option) => !option.present);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
@@ -1452,9 +1456,7 @@ export const RightPanel = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {entityItems(presentOptions)}
-                  {presentOptions.length > 0 && absentOptions.length > 0 && <SelectSeparator />}
-                  {entityItems(absentOptions)}
+                  {entityItems(entityOptions)}
                   <SelectSeparator />
                   <SelectItem value={NO_ENTITY}>(None)</SelectItem>
                 </SelectContent>
