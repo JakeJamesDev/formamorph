@@ -6,7 +6,7 @@ import { builtinLabel } from '@/lib/builtinPlaceholders';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
-import type { Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
+import type { DictionaryEntry, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
@@ -59,7 +59,10 @@ function fenced(code: string): string {
 }
 
 /** Builds the markdown of one item from its lines; blank and missing lines drop out. */
-const lines = (...parts: (string | false | undefined | null)[]): string => parts.filter((part): part is string => !!part && part.trim() !== '').join('\n\n');
+export const lines = (...parts: (string | false | undefined | null)[]): string => parts.filter((part): part is string => !!part && part.trim() !== '').join('\n\n');
+
+/** A dictionary entry's display name: its name, else its first keyword. */
+export const entryName = (entry: DictionaryEntry): string => entry.name || entry.key[0] || 'Entry';
 
 /** A labeled field, or nothing when the value is blank. */
 const field = (label: string, value: string | undefined): string | undefined => (value?.trim() ? `**${label}:** ${value.trim()}` : undefined);
@@ -151,8 +154,8 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   for (const tool of world.tools ?? []) toolPage(tool);
   for (const book of world.dictionaries) {
     for (const entry of book.entries) {
-      add('dictionary', entry.id, entry.name || entry.key[0] || 'Entry', [book.name], lines(
-        `# ${entry.name || entry.key[0] || 'Entry'}`,
+      add('dictionary', entry.id, entryName(entry), [book.name], lines(
+        `# ${entryName(entry)}`,
         facts(`Entry in ${book.name}`, entry.enabled === false && 'Off', book.enabled === false && 'Book off', entry.constant && 'Always Inject'),
         entry.key.length > 0 && field('Trigger Keywords', entry.key.join(', ')),
         entry.secondaryKeys?.length ? field('Secondary Keywords', entry.secondaryKeys.join(', ')) : undefined,
@@ -210,6 +213,8 @@ export function worldIndexOfPages(pages: readonly WorldPage[]): WorldIndex {
     hubDemotion: false,
   });
   let picks: ReturnType<WorldIndex['pickList']> | undefined;
+  // A split item's later parts stay out; the docs index joins them back to their first part.
+  const wholeSections = (sections: readonly { id: string }[]) => docs.get(sections.filter((section) => !section.id.includes('-part-')).map((section) => section.id));
   return {
     docs,
     sourceOf: (section) => byPage.get(section.page)?.source,
@@ -218,12 +223,12 @@ export function worldIndexOfPages(pages: readonly WorldPage[]): WorldIndex {
         const { source, trail } = byPage.get(key)!;
         return [WORLD_KIND_NAMES[source.worldKind], ...trail, source.name].join(' › ');
       }),
-      sections: docs.contents().map(({ sections }) => docs.get(sections.filter((section) => !section.id.includes('-part-')).map((section) => section.id))),
+      sections: docs.contents().map(({ sections }) => wholeSections(sections)),
     }),
     sectionsOf: (source) => {
       const key = pageNames.find((name) => sourceKey(byPage.get(name)!.source) === sourceKey(source));
       const page = docs.contents().find((contents) => contents.page === key);
-      return page ? docs.get(page.sections.filter((section) => !section.id.includes('-part-')).map((section) => section.id)) : [];
+      return page ? wholeSections(page.sections) : [];
     },
   };
 }

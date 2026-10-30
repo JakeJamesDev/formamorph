@@ -98,31 +98,30 @@ function discoveredText(record: DiscoveredEntity, world: ReadonlyMap<string, Ent
   return invented ? record.entity.aiDescription : record.entity.playerDescription;
 }
 
-/** Entity id → the alias each unrevealed scene row knew it by, newest last, for entities not met by name. */
-function aliasesInChain(chain: readonly GameState[], candidates: readonly Entity[], met: ReadonlySet<string>): Map<string, string> {
-  const aliases = new Map<string, string>();
+/** Every aliased scene row of the chain that resolves to one of `candidates`, oldest first. */
+function* aliasedRows(chain: readonly GameState[], candidates: readonly Entity[]): Generator<{ entity: Entity; alias: string; revealed: boolean }> {
   for (const snapshot of chain) {
     for (const row of snapshot.visibleEntities) {
       const alias = row.alias?.trim();
-      if (row.revealed || !alias) continue;
-      const entity = resolveEntityByName(row.name, candidates);
-      if (entity && !met.has(entity.id)) aliases.set(entity.id, alias);
+      const entity = alias ? resolveEntityByName(row.name, candidates) : undefined;
+      if (alias && entity) yield { entity, alias, revealed: row.revealed };
     }
   }
+}
+
+/** Entity id → the alias each unrevealed scene row knew it by, newest last, for entities not met by name. */
+function aliasesInChain(chain: readonly GameState[], candidates: readonly Entity[], met: ReadonlySet<string>): Map<string, string> {
+  const aliases = new Map<string, string>();
+  for (const { entity, alias, revealed } of aliasedRows(chain, candidates)) if (!revealed && !met.has(entity.id)) aliases.set(entity.id, alias);
   return aliases;
 }
 
 /** Entity id → every scene alias the player saw it under, revealed or not, first seen first. */
 function seenAliasesInChain(chain: readonly GameState[], candidates: readonly Entity[]): Map<string, string[]> {
   const seen = new Map<string, string[]>();
-  for (const snapshot of chain) {
-    for (const row of snapshot.visibleEntities) {
-      const alias = row.alias?.trim();
-      const entity = alias ? resolveEntityByName(row.name, candidates) : undefined;
-      if (!alias || !entity) continue;
-      const list = seen.get(entity.id) ?? [];
-      if (!list.includes(alias)) seen.set(entity.id, [...list, alias]);
-    }
+  for (const { entity, alias } of aliasedRows(chain, candidates)) {
+    const list = seen.get(entity.id) ?? [];
+    if (!list.includes(alias)) seen.set(entity.id, [...list, alias]);
   }
   return seen;
 }

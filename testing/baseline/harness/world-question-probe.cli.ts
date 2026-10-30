@@ -116,20 +116,27 @@ const SETTINGS: Record<Arm, HelpSettings> = {
   fullold: DEFAULT_HELP_SETTINGS,
 };
 
+/** A fetch that sends each request through `edit`, which changes its messages in place and says whether it did. */
+function rewritingFetch(fetchImpl: typeof fetch, edit: (messages: { role?: string; content: unknown }[]) => boolean): typeof fetch {
+  return ((url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as { messages: { role?: string; content: unknown }[] };
+    return edit(body.messages) ? fetchImpl(url, { ...init, body: JSON.stringify(body) }) : fetchImpl(url, init);
+  }) as typeof fetch;
+}
+
 const WORLD_NAMES_SENTENCE = ` ${worldNamesLine(language)}`;
 /** A fetch that swaps the world-names sentence of the answer request for `replacement`. It ends the probe when the app sent none. */
 function withWorldNames(fetchImpl: typeof fetch, replacement: string): typeof fetch {
-  return ((url: RequestInfo | URL, init?: RequestInit) => {
-    const body = JSON.parse(String(init?.body)) as { messages: { content: unknown }[] };
-    const system = String(body.messages[0]?.content);
-    if (system.startsWith(HELP_PICK_SYSTEM_PROMPT)) return fetchImpl(url, init);
+  return rewritingFetch(fetchImpl, (messages) => {
+    const system = String(messages[0]?.content);
+    if (system.startsWith(HELP_PICK_SYSTEM_PROMPT)) return false;
     if (!system.includes(WORLD_NAMES_SENTENCE)) {
       console.error('the answer request has no world-names sentence to swap');
       process.exit(1);
     }
-    body.messages[0].content = system.replace(WORLD_NAMES_SENTENCE, replacement);
-    return fetchImpl(url, { ...init, body: JSON.stringify(body) });
-  }) as typeof fetch;
+    messages[0].content = system.replace(WORLD_NAMES_SENTENCE, replacement);
+    return true;
+  });
 }
 const index = bundledDocsIndex();
 const snapshot = probeSnapshot({ endpoint, model, token });
@@ -201,17 +208,14 @@ function namesOf(caseId: string, answer: string): { kept: string[]; lost: string
  */
 function withOldPickLine(fetchImpl: typeof fetch): { fetchImpl: typeof fetch; swapped: () => boolean } {
   let swapped = false;
-  const wrapped = ((url: RequestInfo | URL, init?: RequestInit) => {
-    const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: unknown }[] };
-    const last = body.messages.at(-1);
-    const isPick = String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT);
-    if (isPick && typeof last?.content === 'string' && last.content.startsWith(`${PICK_GAME_LINE}\n\n`)) {
-      last.content = PICK_WORLD_LINE + last.content.slice(PICK_GAME_LINE.length);
-      swapped = true;
-      return fetchImpl(url, { ...init, body: JSON.stringify(body) });
-    }
-    return fetchImpl(url, init);
-  }) as typeof fetch;
+  const wrapped = rewritingFetch(fetchImpl, (messages) => {
+    const last = messages.at(-1);
+    const isPick = String(messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT);
+    if (!isPick || typeof last?.content !== 'string' || !last.content.startsWith(`${PICK_GAME_LINE}\n\n`)) return false;
+    last.content = PICK_WORLD_LINE + last.content.slice(PICK_GAME_LINE.length);
+    swapped = true;
+    return true;
+  });
   return { fetchImpl: wrapped, swapped: () => swapped };
 }
 
