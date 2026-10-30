@@ -59,4 +59,8 @@ export function withCopyOf(copies: GameCopies, id: string, copy: EntityCopy | nu
   return Object.keys(next).length ? { ...rest, entities: next } : rest;
 }
 
+/** The turn a re-generate goes back to, with the copies the player holds now: an edit isn't an outcome of the
+ *  turn being rolled again, so it stays. A rollback restores a turn as it was, copies included. */
+export const withLiveCopies = <S extends { copies?: GameCopies }>(state: S, live: GameCopies): S => ({ ...state, copies: live });
+
 export const hasCopies = (copies: GameCopies): boolean => !!copies.world || Object.keys(copies.entities ?? {}).length > 0;

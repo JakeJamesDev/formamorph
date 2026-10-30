@@ -81,7 +81,7 @@ import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { GameEditor, type GameEditorRequest } from "../components/game/gameEditor/GameEditor";
-import { NO_GAME_COPIES } from "../lib/gameCopies";
+import { NO_GAME_COPIES, withLiveCopies } from "../lib/gameCopies";
 import { gameEditorTab } from "./gameEditorTabs";
 import { asSettingsTab, type SettingsTabId } from "../components/modals/settingsTabs";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
@@ -1675,7 +1675,7 @@ const GameViewer = ({
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
-    if (!loadGameState(previousState, locations, { keepLiveHistory: true })) return;
+    if (!loadGameState(withLiveCopies(previousState, gameCopies), locations, { keepLiveHistory: true })) return;
     // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
     // AND overlap the re-roll's language-model request on the one GPU.
     cancelSceneImage();
