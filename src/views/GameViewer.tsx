@@ -8,7 +8,8 @@ import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle } from '@/components/game/useInventoryPanel';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
-import { metFromScene, metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
+import { metRosterByLocation, runtimeCharacterPositions } from '@/lib/metEntities';
+import { IN_SCENE_TURNS, introducedIds, metCheck, sceneAfterMove, strangerAliasesFromCast, withMet } from '@/lib/presence';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
@@ -456,9 +457,6 @@ const turnErrorMessage = (kind: TurnErrorKind): string =>
 
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
-// How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
-// the prior CHOICES_PRESENCE_TURNS-1), so a character named earlier but only implied now isn't dropped.
-const CHOICES_PRESENCE_TURNS = 3;
 
 const NO_OWNED_TRAITS: OwnedTraitPicks = {};
 const NO_PASSES: ReadonlySet<BackgroundPassKind> = new Set();
@@ -675,7 +673,6 @@ const GameViewer = ({
 
   const {
     setCharacterData,
-    visibleEntities,
     setVisibleEntities,
     setCurrentLocation,
     setGlobalStats,
@@ -700,8 +697,10 @@ const GameViewer = ({
     setEntityFollowers,
     carryFollowersTo,
     applyFollowerState,
+    currentFollowers,
     metEntities,
     setMetEntities,
+    setStrangerAliases,
     setSelectedEntityId,
     codePins,
     setCodePins,
@@ -878,10 +877,6 @@ const GameViewer = ({
     () => Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
     [traitLibrary, allEntities],
   );
-  // An entity is met once the scene lists it by its revealed name.
-  useEffect(() => {
-    setMetEntities((met) => metFromScene(met, visibleEntities, allEntities));
-  }, [visibleEntities, allEntities, setMetEntities]);
   // The Map's live roster: where each met entity with a position stands. A runtime character stands where
   // it was met.
   const metRoster = useMemo(() => metRosterByLocation({
@@ -918,13 +913,24 @@ const GameViewer = ({
     () => ({ ...characterExclusions, suppressed: suppressedCharacterNames }),
     [characterExclusions, suppressedCharacterNames],
   );
-  const rescanNarration = useNarrationRescan({ entities: allEntities, exclusions: rescanExclusions });
+  const rescanScene = useNarrationRescan({ entities: allEntities, exclusions: rescanExclusions });
 
   /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
   const presentIdsAt = useCallback(
     (loc: GameLocation | null | undefined): string[] => entityIdsAt(loc?.id, allEntities),
     [allEntities],
   );
+  /** Meets each entity at `loc` that `narration` names. Followers count as here before their move renders. */
+  const meetNamed = useCallback((narration: string, loc: GameLocation | null | undefined) => {
+    const ids = introducedIds(narration, allEntities, [...presentIdsAt(loc), ...currentFollowers()]);
+    if (ids.length) setMetEntities((met) => withMet(met, ids));
+  }, [presentIdsAt, allEntities, currentFollowers, setMetEntities]);
+  // An edit to the latest page can name someone too.
+  const rescanNarration = useCallback((page: number, narration: string): string[] => {
+    const participants = rescanScene(page, narration);
+    if (page === totalPages) meetNamed(narration, currentLocation);
+    return participants;
+  }, [rescanScene, totalPages, meetNamed, currentLocation]);
 
   // Two narration reveal styles, chosen by the Fade-in Narration setting: `fadeReveal` releases whole
   // sentences paced to Streamdown's per-word fade; `smoothReveal` is the classic character crawl that
@@ -1833,7 +1839,7 @@ const GameViewer = ({
     void runPartialRegen(async (signal) => {
       const presentNames = new Set([
         ...(prev.entities ?? []),
-        ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
+        ...recentParticipants(fullMessageHistory, IN_SCENE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
       let shown: Pick<AITurnResult, "choices" | "aiChoices"> | null = null;
@@ -2329,7 +2335,7 @@ const GameViewer = ({
     [timeContext, openingHourPending, gameTime, calendar],
   );
   const participants = useMemo(
-    () => recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS),
+    () => recentParticipants(fullMessageHistory, IN_SCENE_TURNS),
     [fullMessageHistory],
   );
   // The world's shared placeholders: the combined list minus the ones an entity or a book owns.
@@ -3227,6 +3233,12 @@ const GameViewer = ({
         // Apply the authoritative scene list now (narration is done). Independent of turnParticipants, which
         // still feeds stored participation and choices.
         setVisibleEntities(reading.visibleEntities);
+        meetNamed(narration, turnLocation ?? currentLocation);
+        const plannedCast = sceneCast;
+        if (plannedCast) {
+          const isMet = metCheck(metEntities, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)));
+          setStrangerAliases((prev) => strangerAliasesFromCast(prev, plannedCast, allEntities, isMet));
+        }
         // Visitors affect the next turn's context (this turn's ctx already ran).
         const visitorLocation = turnLocation;
         if (visitorLocation) {
@@ -3248,7 +3260,7 @@ const GameViewer = ({
         const sceneEntities = presentSceneEntities(
           allEntities,
           turnParticipants,
-          recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
+          recentParticipants(fullMessageHistory, IN_SCENE_TURNS - 1),
         );
         return { sceneEntityTokens: sceneEntityOverride(turnLocation, sceneEntities) };
       };
@@ -5344,6 +5356,8 @@ const GameViewer = ({
     (newLocation: GameLocation) => {
       setCurrentLocation(newLocation);
       carryFollowersTo(newLocation.id);
+      // Read in the updater, so followers a move offer adds after this call keep their rows.
+      setVisibleEntities((rows) => sceneAfterMove(rows, currentFollowers(), allEntities));
 
       if (newLocation.ambientSound) {
         setAmbientSound(newLocation.ambientSound);
@@ -5351,7 +5365,7 @@ const GameViewer = ({
         setAmbientSound(null);
       }
     },
-    [setCurrentLocation, carryFollowersTo],
+    [setCurrentLocation, carryFollowersTo, setVisibleEntities, currentFollowers, allEntities],
   );
 
   const isInitialized = useRef(false);
@@ -5458,6 +5472,7 @@ const GameViewer = ({
       setEntityPositions(startPositions);
       setEntityFollowers([]);
       setMetEntities([]);
+      setStrangerAliases({});
       entityOfferRef.current = NO_ENTITY_OFFER;
       followerPeelRef.current = undefined;
       // The whole world, since the cast in state still reads the persona from before this seed.

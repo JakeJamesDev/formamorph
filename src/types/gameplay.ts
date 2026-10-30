@@ -358,6 +358,8 @@ export interface GameState {
   entityFollowers?: string[];
   /** The ids of the entities the player has met, in the order they met. Absent ⇒ none. */
   metEntities?: string[];
+  /** The latest alias each stranger was seen under, by entity id. Absent ⇒ none. */
+  strangerAliases?: Record<string, string>;
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
   /** Every Item Copy in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */

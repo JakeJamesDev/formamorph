@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AITurnResult, ChatMessage } from '@/types';
 import { dueDigests } from './backgroundPassQueue/backgroundPassQueue';
-import { parseTurnContent, serializeTurnContent, applyDigest, clearTurnDerived, applyDiary, collectCharacterDiary, recentParticipants, applyImportance } from './turnDigest';
+import { parseTurnContent, serializeTurnContent, applyDigest, clearTurnDerived, applyDiary, collectCharacterDiary, recentParticipants, recentSceneTurns, applyImportance } from './turnDigest';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -177,6 +177,17 @@ describe('recentParticipants', () => {
     const history = [...turn(['Outside']), ...turn(['Inside'])];
     expect(recentParticipants(history, 1)).toEqual(['Inside']);
     expect(recentParticipants([...turn(undefined), ...turn(['Only'])], 1)).toEqual(['Only']);
+  });
+});
+
+describe('recentSceneTurns', () => {
+  const turn = (entities?: string[], locationId?: string) => [user('a'), assistant({ turnId: 't', narration: 'n', entities, locationId })];
+
+  it('keeps the last turns oldest first, with each one’s place, and counts a turn with no participants', () => {
+    const history = [...turn(['Gone'], 'a'), ...turn(['Older'], 'a'), ...turn(undefined, 'b'), ...turn(['Newer'])];
+    expect(recentSceneTurns(history, 3)).toEqual([
+      { participants: ['Older'], locationId: 'a' }, { participants: [], locationId: 'b' }, { participants: ['Newer'] },
+    ]);
   });
 });
 
