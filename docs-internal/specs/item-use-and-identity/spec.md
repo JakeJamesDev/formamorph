@@ -65,6 +65,21 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 | Q27 | Uses left is part of the merge key. A Uses 1 copy at zero (Stays) splits off and never merges with full copies. Ticket 01 |
 | Q28 | Becomes: the used copy fires its After Use dose and `used`, not `lost`; the target copy fires `gained` and seeds like a new gain, with its own Uses. The target keeps the used copy's visibility, so a hidden copy Becomes a hidden one. Ticket 01 |
 | Q29 | A Becomes target missing in play still applies the use and removes the copy as Gone, with a diagnostic line. Ticket 01 |
+| Q31 | State is trimmed, and blank means no State. Stacking compares States trimmed and case-insensitive; a merged row keeps the text it already had. `change` to a blank State clears it. Ticket 02 |
+| Q32 | Changes State on the last use leaves the copy at zero uses, with Use off, under its new State. Ticket 02 |
+| Q33 | `change` works on runtime, hidden and location copies; it checks presence only. A `change` to the State a copy already has is skipped with a diagnostic. It fires no script event. Ticket 02 |
+| Q34 | The Inventory tab shows the State after the name in muted text, as authored. Items Here shows the State, then uses left (Q30 wording), then the existing marks. Ticket 02 |
+| Q35 | Formaquestion's player view lists one row per item and State, with a `state` field. The world player view and the world index facts show the Item's starting State. Ticket 02 |
+| Q36 | Scripts read a copy's `state` as the word or null. `setState` takes a string, and blank clears. The item entry does not expose the starting State. The editor's State field sits beside Uses, plain text with no cap. Ticket 02 |
+| Q37 | The copy flag is `unidentified` beside uses and State. Runtime items are never unidentified. Every new copy of an item with an unidentified field starts unidentified: seed, any gain, a Becomes target. A transfer keeps the flag. Ticket 03 |
+| Q38 | Items Here gives an unidentified copy both faces in full: the Unidentified Name and Unidentified Description as what the player sees, then the true name and its AI text marked unknown to the player. Ticket 06 measures the leak. Ticket 03 |
+| Q39 | An effect, trait-grant or timed log line names the unidentified face when every copy behind its source is unidentified, and the true name once any copy is identified. Only visible copies count toward the face; when every copy is hidden, "An item" still wins. Authoring diagnostics in the log use the face too. Ticket 03 |
+| Q45 | Requirement text that names a required item ("needs owning …") uses the unidentified face while the owner holds no identified copy of it. Ticket 05 |
+| Q40 | Formaquestion's player view splits rows per face: an unidentified copy is its own row under its unidentified face, even when another copy of the item is identified. Ticket 03 |
+| Q41 | The script item entry exposes `unidentifiedName` and `unidentifiedDescription` as authored, blank as "". Each copy exposes `unidentified`. In the player view these read as the face the player knows. Ticket 03 |
+| Q42 | `reveal` with a quantity on a visible unidentified stack identifies that many, splitting them off to merge into an identified stack in the same place. Ticket 03 |
+| Q43 | A pass name matches a copy by its true name, or by its unidentified name while it is unidentified. A gain by an Unidentified Name gains that authored item only when exactly one item has that name; otherwise it is a new runtime item. Pass `reveal` tries hidden copies first, then visible unidentified copies. Ticket 03 |
+| Q44 | The Inventory tab's unidentified face covers the name and the player description. Images follow image rules. Ticket 03 |
 | Q30 | The Inventory tab shows "N of M uses" on items with Uses 2 or more. A Uses 1 item shows no line while full, and "No uses left" at zero. Ticket 01 |
 
 ## User Stories

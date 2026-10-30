@@ -17,6 +17,7 @@ Spec: What each reader shows (Requirement Rows); Q22.
 - [ ] An item row can require identified or unidentified
 - [ ] Both combine with owned or equipped, the owner, and Not
 - [ ] The Requirement Row editor shows both fields on an item row
+- [ ] Requirement text that names a required item uses its unidentified face while the owner holds no identified copy (Q45)
 - [ ] The glossary entry for Item Condition and the wiki page that documents Requirement Rows describe the new checks
 
 ## Blocked by
