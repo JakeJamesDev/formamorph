@@ -12,6 +12,7 @@ An author sets an optional **Stranger Name** and **Stranger Description** on an 
 ## Acceptance criteria
 
 - [ ] The entity editor shows Stranger Name and Stranger Description fields and saves them to the entity.
+- [ ] Clearing either field stores it as absent, never as an empty string (spec Q48).
 - [ ] Placeholders and rolls work in both fields, as in the entity's other text fields.
 - [ ] Help copy follows the Writing Guide. The World Editor docs page describes the fields and the start-met rule.
 - [ ] The fields are reachable through a dev route. Frames `.scratch/frames/stranger-fields-light.png` and `.scratch/frames/stranger-fields-dark.png` at 1400 px wide show them.

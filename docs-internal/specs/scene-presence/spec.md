@@ -116,6 +116,18 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - Q38: stranger fields resolve placeholders and rolls.
 - Q39, Q40: test seams (see Testing Decisions).
 
+### Rulings (ticket 01 intent questions, 2026-10-30)
+
+- **Q41:** only the entity's resolved true name introduces it, including the name-part matching detection already does. Authored aliases do not count, because an alias can describe a stranger. Only an entity that is here that turn can be introduced. Hearing an absent stranger's name does not let the player recognize them.
+- **Q42:** taking part reads each assistant turn's stored participant list: the prose with quoted speech stripped, plus the planner cast. An entity is in scene when it is here and named in that list in one of the last 3 assistant turns. One shared constant holds the 3. A participant at turn T is in at T+2 and out at T+3.
+- **Q43:** the window stops at the first older turn whose stored location differs from the current one. A turn with no stored location, from an older save, does not cut it.
+- **Q44:** a follower is in scene when it took part in the last 3 turns, and the move cutoff is ignored for it. Following alone does not make it in scene.
+- **Q45:** the save field is `strangerAliases`, an entity id to alias map. It is written each turn from the planner cast's alias for a cast member the player has not met, and never cleared. A met entity's label ignores it.
+- **Q46:** the met-in-play list records every here entity the story names, whether the start rule already meets it or not. A later world edit that adds a Stranger Name then hides only people the player never saw named.
+- **Q47:** each set keeps cast order: authored entities, then runtime characters. Look Around puts In Scene first, then quiet. The played persona and the Custom Persona are in no set.
+- **Q48:** an authored Stranger Name that is blank or whitespace-only reads as absent, so the entity is met. Only a Stranger Name whose placeholders resolve blank gives an unlabeled stranger. The editor in ticket 06 stores a cleared field as absent.
+- **Q49:** a player's edit to the latest narration page introduces the here entities it names, like AI narration. An edit is the player writing the story.
+
 ### The Presence module
 
 - A new pure module computes presence. Its input is the game state, the authored and discovered entities, the locations with their connections and parents, the played persona, and the recent turns' scene records. Its output gives, for every entity:
