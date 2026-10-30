@@ -59,7 +59,7 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 | Q21 | Uses and When Empty are two settings. Blank Uses is unlimited. When Empty runs when the last use is spent. Charges become Uses |
 | Q22 | Requirement Rows can check a copy's State and whether it is identified |
 | Q23 | The pass prompt's done bar, on cloud at 12 runs per arm with in-batch controls: the state cases beat shipped by a margin whose CI excludes zero; the take-another and use-up guards hold their shipped rate; the base cases don't drop |
-| Q24 | The narrator's unidentified-name leak rate is measured on cloud first. The user sets its ceiling from those numbers |
+| Q24 | The narrator's unidentified-name leak rate is measured on cloud first. The user sets its ceiling from those numbers. Ruled 2026-10-30: the ceiling is 10% unprompted name leaks on cloud. Ticket 06 measured 0/48 (95% upper bound about 7%), so the narrator keeps both faces |
 | Q25 | The Effects tab always offers After Use rows, since an After Use row is one of the things that makes an item usable (Q20). Ticket 01 |
 | Q26 | When Uses is first set, When Empty defaults to Gone, which matches today's Consumable. Ticket 01 |
 | Q27 | Uses left is part of the merge key. A Uses 1 copy at zero (Stays) splits off and never merges with full copies. Ticket 01 |
@@ -78,6 +78,8 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 | Q46 | An item row gains optional `state` and `identity` (identified or unidentified). Every check on the row must hold on the same copy; hidden copies count as today; Not flips the whole row. State matches trimmed and case-insensitive. A row cannot require "no State". Ticket 05 |
 | Q48 | The leak probe's primary rate is the true name, scored by regex. The true nature is a second line, scored by keywords from the item's AI text and hand-checked. The control arm drops the true face, and any control hit is hand-checked as a scorer false positive. It reports rates per case and pooled, with Δ and a 95% CI. Four unprompted cases (carried, handled, equipped, lying here) set the primary rate; one baited case, where the player asks what the item is, is reported apart. Ticket 06 |
 | Q49 | The pass probe grades a state case as a hit when the item stays with its owner at the same quantity and nothing else moves; that rate carries the Q23 bar against shipped. The rate at which the State is set to a new word is reported beside it. Two arms, `shipped` (frozen, `consume` mapped to `use`) and `new`; base cases and replays run under both. `retouch-read` is the unseal case, and a new `read-open` case (a letter already "opened", reread, nothing changes) is the control. Ticket 04 |
+| Q50 | The `use` line says "as it is meant to be used", and `lose` names burned, broken or destroyed. On cloud the broader "any use" wording turned destroying an item into `use` (use-up guards 0/6). Ticket 04 |
+| Q51 | A pass item name with a trailing parenthetical that Items Here wrote (State, uses left, marks) reads as the name before it when that bare name is known, as the colon rule does. Ticket 04 |
 | Q47 | Requirement text puts the new checks in parentheses after the name, as Items Here shows State: "owning Lantern (lit)", "equipping Ring (unidentified)". The editor adds a State text field and an Identity select (Any, Identified, Unidentified) after Owned/Equipped. Ticket 05 |
 | Q40 | Formaquestion's player view splits rows per face: an unidentified copy is its own row under its unidentified face, even when another copy of the item is identified. Ticket 03 |
 | Q41 | The script item entry exposes `unidentifiedName` and `unidentifiedDescription` as authored, blank as "". Each copy exposes `unidentified`. In the player view these read as the face the player knows. Ticket 03 |
@@ -152,7 +154,7 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 ### The Inventory pass
 
 - The schema and the text line format gain `use` (in place of `consume`), `change`, a `state` field (the new State, for `change`) and an `after` field (`kept` or `used up`, for `use` on a runtime item). Fields an operation does not use are empty, as `to` is today.
-- The prompt's operation list describes `use` as any use of an item the story shows (drinking, reading, opening, blowing, spending a charge), `change` as an item whose look or state changes without being used, and `reveal` as a hidden item coming into view or an item's true nature becoming known.
+- The prompt's operation list describes `use` as an owner using an item as it is meant to be used (drinking, eating, reading, opening, blowing, spending a charge), and `lose` as an item burned, broken or destroyed (Q50), `change` as an item whose look or state changes without being used, and `reveal` as a hidden item coming into view or an item's true nature becoming known.
 - `applyInventoryPass` resolves a name against both faces of an unidentified item, so the pass can name it either way.
 - The prompt change ships with probe numbers against the Q23 bar. The existing re-gain probe's fixture holds the letter cases; it gains the state, use and reveal cases listed under Testing.
 
