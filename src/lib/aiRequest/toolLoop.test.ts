@@ -823,6 +823,32 @@ describe('streamAiToolLoop: a request with a response schema', () => {
     expect(roundsOf(events)).toEqual([expect.objectContaining({ index: 1, content: 'Gold: +5', calls: [] })]);
   });
 
+  it('retries a reply that leaves out keys when the schema is strict', async () => {
+    const transport = scripted([proseFrames('{}'), proseFrames(REPLY)]);
+
+    await run(transport, {}, schemaSpec());
+
+    expect(transport.sent).toHaveLength(2);
+  });
+
+  it('keeps a reply that leaves out keys when the schema is sparse, without its stray tool-call marker', async () => {
+    const transport = scripted([proseFrames('{"Global Stats": {}}<tool_call|>')]);
+
+    const events = await run(transport, {}, { ...schemaSpec(), sparseReply: true });
+
+    expect(transport.sent).toHaveLength(1);
+    expect(doneOf(events).content).toBe('{"Global Stats": {}}');
+  });
+
+  it('retries a sparse reply that names a key the schema lacks', async () => {
+    const transport = scripted([proseFrames('{"Wanderer": {"Gold": 5}}'), proseFrames(REPLY)]);
+
+    const events = await run(transport, {}, { ...schemaSpec(), sparseReply: true });
+
+    expect(transport.sent).toHaveLength(2);
+    expect(doneOf(events).content).toBe(REPLY);
+  });
+
   it('sends the schema itself when no Tool is offered', async () => {
     const transport = scripted([proseFrames(REPLY)]);
 

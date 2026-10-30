@@ -52,6 +52,14 @@ export function stripReasoning(text: string): string {
   return out;
 }
 
+// Gemma 4's tool-call markers. A round that offered Tools and made no call can leave one after its answer.
+const TOOL_CALL_MARKER = /<\|tool_call>|<tool_call\|>/g;
+
+/** The text without stray tool-call markers. Pure. */
+export function stripToolCallMarkers(text: string): string {
+  return text.replace(TOOL_CALL_MARKER, '');
+}
+
 /**
  * Streaming-safe variant: strips complete blocks, then truncates at a trailing opening tag
  * whose closing tag has not arrived yet — so an in-progress reasoning block isn't shown while

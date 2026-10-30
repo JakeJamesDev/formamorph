@@ -196,6 +196,8 @@ export function statRequestSchema(snapshot: StatRequestSnapshot): ResponseSchema
   }
   return {
     name: 'stat_changes',
+    // A reply without a stat's keys reads as no change to it.
+    sparse: true,
     schema: fixedObject(Object.fromEntries([...owners].map(([key, stats]) => [key, fixedObject(stats)]))),
   };
 }

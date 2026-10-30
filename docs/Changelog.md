@@ -53,6 +53,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
+
 ---
 
 <details>

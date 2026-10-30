@@ -276,6 +276,7 @@ describe('the stat request with a played persona that owns stats', () => {
           ],
           "type": "object",
         },
+        "sparse": true,
       }
     `);
   });

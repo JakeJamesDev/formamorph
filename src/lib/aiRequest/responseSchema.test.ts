@@ -121,4 +121,11 @@ describe('followsResponseSchema', () => {
   ])('refuses %s', (_label, text) => {
     expect(followsResponseSchema(text, schema)).toBe(false);
   });
+
+  it('accepts missing keys when sparse, and still refuses an extra key or a bad value', () => {
+    expect(followsResponseSchema('{}', schema, true)).toBe(true);
+    expect(followsResponseSchema('{"Hero": {}}', schema, true)).toBe(true);
+    expect(followsResponseSchema('{"Villain": {}}', schema, true)).toBe(false);
+    expect(followsResponseSchema('{"Hero": {"Health": 11}}', schema, true)).toBe(false);
+  });
 });
