@@ -141,7 +141,10 @@ A player without a pledge sees the preset locked, with a link to join on Patreon
 - A new account route returns the hosted state: tier key, state, window, `max_tokens` cap, the token estimate margin, a capability record (Tools, reasoning dialect, served model id), percent used, about-turns-left, reset time, and which warnings this account has acknowledged this month. It never returns dollar amounts.
 - Turns left uses the subject's average cost per turn over its recent turns, grouped by turn id. With too few recent turns it uses the tier's fallback figure.
 - A route acknowledges a warning for this month. Warnings are per account, so each shows once across devices.
-- The proxy sends the updated percent used and turns left as a final SSE event after the usage settles, and in a response header on non-streamed calls. The header is listed in CORS exposed headers.
+- The proxy sends the updated percent used and turns left as `event: usage` (`percentUsed`, `turnsLeft`, `resetAt`) after the usage settles and before the stream's final `[DONE]`, and as the `X-Formamorph-Usage` header on non-streamed calls. The header is listed in CORS exposed headers.
+- The hosted-state route answers 200 for every signed-in account, with state `locked` or `age-gate` when not entitled. The client derives signed-out, privacy, suspended and outdated from the existing refusals.
+- Entitlement is the highest tier among a live pledge and live grants; on a tie the pledge wins. The spend subject follows the winning source. Grants are deleted with their account; spend rows stay.
+- Each usage row records its model. Later calls of a turn use the turn's first model while it stays approved.
 - Staff routes: create, list and revoke grants; read a subject's month spend; read and lift the pause; read the spend-versus-estimate report. Settings routes, including the approved model list and the active-model picker, are admin-only.
 - The hosted state's capability record and served model id come from the active model entry.
 
