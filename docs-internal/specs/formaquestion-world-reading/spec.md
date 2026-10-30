@@ -151,7 +151,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - **Q29 (user, 2026-10-29):** the world pool gets its own AI pick request, sent in parallel with the guide pick request, which stays byte-equal. One shared request dropped guide recall@5 from 81.9% to 78.3% with Emberwatch open (cloud, 5 runs per arm). Above 400 world sections, the world pick request is skipped and keyword and semantic ranking carry the world pool.
 - The docs lookup function stays guide-only; the world block also rides in the lookup message. A bare question (every source off) sends no world block.
 - The answer and lookup prompts keep today's text. The guide-only relaxation rides the `worldEditor` rider, and the closing grounding line names world sections only when a world block is present. Both budgets start at 12,000 characters and 5 sections until ticket 07 tunes them.
-- The open-world registration gains `lean: 'editor' | 'game'`. Until ticket 05, a game registration sends no world block.
+- The open-world registration gains `lean: 'editor' | 'game'`.
 - World sections rank through the same keyword, AI pick and semantic sources as guide sections, as a second pool. Guide and world hits fill separate budgets (Q24); the baseline tunes both sizes.
 
 ### Request and prompts (Q2, Q6, Q19, Q23)
@@ -159,7 +159,6 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - The lean comes from the open-world registry: the newest registered world is either an editor world or a game world. The in-game World Editor registers over the game, so it gets the editor lean. No registered world means docs-only, as today.
 - The request carries a world block beside the docs block. Game requests carry the docs too (Q6).
 - The world rules join the help preset as two prompt keys, `worldEditor` and `worldGame`, each a plain rider like the code rider (ticket 03). `worldEditor` holds how-it-works; `worldGame` holds lore so far, opinion-not-solution and no speculation about unshown plot. The request sends only the key that matches its lean: ticket 04 sends `worldEditor`, ticket 05 sends `worldGame`. No probe ships with ticket 03; ticket 07's baseline measures both texts.
-- Ticket 04 relaxes the answer prompt's guide-only rule so that facts may come from the world block.
 - The preset file carries the switch as a top-level `readWorld` boolean, applied to the device setting on import. A stored custom preset that lacks the new texts gets the built-in defaults, the same rule as the file.
 - ⚠️ **Export shape:** the help preset file gains the world-rules prompt and the world-reading switch. The file has been in released builds since v3.2.0. The parser accepts a file without them and fills the built-in defaults; today it refuses a file that lacks any expected entry, so that rule changes for these two keys.
 - The AI Language directive keeps world names as the world writes them.
@@ -169,7 +168,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - Sources gain a world-item kind beside guide sections: kind, id and display name. One union `sources` list holds both, with no separate world field (ticket 02).
 - World-item kinds: entity, location, item, trait, stat, script, tool (a World Tool), dictionary, prompt. Later tickets may add kinds.
 - The follow-up topic rule takes either kind. Docs-page favoring applies only when the topic is a guide section.
-- The AI Context trace lists a world source as "<kind> · <name>", not clickable. Search rankings stay guide-only until ticket 04.
+- The AI Context trace lists a world source as "<kind> · <name>", not clickable.
 - In the editor, a world source opens its item, like Take Me There opens a docs target. In game, it is a plain name.
 - Follow-up history, its topic rule and the AI Context trace carry world sources the same way they carry guide sections.
 
