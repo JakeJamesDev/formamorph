@@ -11,6 +11,9 @@ vi.mock('@/services/AuthService', () => ({
   default: { API_URL: 'https://server.test/api', token: 'staff-token' },
 }));
 
+// The hosted AI panel reads its own routes and has its own tests.
+vi.mock('@/components/menu/HostedAiPanel', () => ({ HostedAiPanel: () => null }));
+
 // Whether the server has listing review; its switch follows it.
 const reviewMeta = vi.hoisted(() => ({ supported: false, enabled: false }));
 const recorded = vi.hoisted(() => vi.fn());

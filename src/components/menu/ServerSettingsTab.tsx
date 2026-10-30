@@ -6,6 +6,9 @@ import { Meta } from "@/components/ui/typography";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { markCatalogStale } from "@/lib/catalogStale";
 import { setListingReviewEnabled, useListingReviewMeta } from "@/lib/useListingReviewMeta";
+import { useDevRoute } from "@/lib/devRouter";
+import { HostedAiPanel } from "@/components/menu/HostedAiPanel";
+import HostedAiAdminService, { type HostedAiAdminApi } from "@/services/HostedAiAdminService";
 import ServerSettingsService, { ANONYMOUS_LIKES, LISTING_REVIEW, type ServerSettingKey } from "@/services/ServerSettingsService";
 
 /** One on/off setting with a control here. A second setting is another entry, not another component. */
@@ -119,14 +122,28 @@ function SettingRow({ setting, active }: { setting: ServerSetting; active: boole
 /** Admin Panel, Server tab. What the server does, changed without a deploy and applied at once. */
 export function ServerSettingsTab({ active }: { active: boolean }) {
   const review = useListingReviewMeta(active);
+  // DEV: `fixture=hostedAi` swaps the hosted AI routes for an in-memory stand-in.
+  const devRoute = useDevRoute();
+  const devFixture = import.meta.env.DEV && devRoute?.modal === 'adminPanel' && devRoute.tab === 'serverSettings' && devRoute.fixture === 'hostedAi';
+  const [devApi, setDevApi] = useState<HostedAiAdminApi | null>(null);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !devFixture || devApi) return;
+    let current = true;
+    void import('@/lib/devHostedAiSample').then((loaded) => { if (current) setDevApi(loaded.createDevHostedAiApi()); });
+    return () => { current = false; };
+  }, [devFixture, devApi]);
+
+  const hostedApi = import.meta.env.DEV && devFixture ? devApi : HostedAiAdminService;
 
   return (
-    <div className="py-4 min-w-0">
+    <div className="py-4 min-w-0 grid gap-8">
       <Section title="Server Settings" hint="Applies to everyone at once, with no deploy and no confirmation">
         {SETTINGS.filter((setting) => !setting.needsReview || review.supported).map((setting) => (
           <SettingRow key={setting.key} setting={setting} active={active} />
         ))}
       </Section>
+      {hostedApi && <HostedAiPanel active={active} api={hostedApi} />}
     </div>
   );
 }
