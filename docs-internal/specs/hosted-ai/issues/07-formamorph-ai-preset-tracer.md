@@ -19,6 +19,7 @@ Model rationale: threads a new endpoint kind through SettingsContext, per-prompt
 - [ ] Background passes never raise their own toast for a hosted refusal.
 - [ ] Locked, signed-out, age-gate, paused, outdated and unavailable states render with their action, with dev-route entries; frames in both themes at desktop width: `.scratch/frames/fai-locked-light.png`, `.scratch/frames/fai-locked-dark.png`, `.scratch/frames/fai-paused-dark.png`.
 - [ ] Seam 3 tests run the Request Transport and SettingsContext against a fake proxy with the existing SSE fixtures.
+- [ ] The client `CONTEXT.md` glossary gains entries for Formamorph AI and Hosted state.
 - [ ] A changelog fragment states what a Supporter gets; no export shape changes.
 - [ ] Help-window calls on Formamorph AI go through the same path and carry their own turn id.
 
