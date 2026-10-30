@@ -2,7 +2,7 @@ import type { AssistantToolCallMessage, RequestMessage, Tool, ToolCallPart, Wire
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
-import { answerStart, stripReasoning } from '@/lib/aiResponse';
+import { answerStart, stripReasoning, stripToolCallMarkers } from '@/lib/aiResponse';
 import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
 import { trimToLastSentence } from '@/lib/outputLength';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
@@ -25,7 +25,8 @@ import {
  *
  * A strict response schema forbids a call, so a request that carries one offers its Tools without it and holds
  * each such round whole. A reply from that round that breaks the schema is dropped, and one more round sends
- * the schema without Tools. A round that offered Tools and was cut inside a thought written into its content is
+ * the schema without Tools; a sparse schema lets that reply leave out keys. A round that offered Tools and made
+ * no call loses any stray tool-call marker from its content. A round that offered Tools and was cut inside a thought written into its content is
  * dropped the same way, since the offer is what drew that thought.
  *
  * Every round runs under the spec's Answer Cap, counted on that round's answer text alone. A round with a
@@ -253,8 +254,9 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
     // Offered Tools can draw a thought into the content where none was asked for; one cut there is retried without them.
     const spilled = offering && isCutThought(result) && answerStart(result.content) === null;
     if (isCutThought(result) && !spilled) throw cutThoughtFailure(roundSpec);
+    const content = offering ? stripToolCallMarkers(result.content) : result.content;
     if (spilled || (offering && schemaFormat && result.toolCalls.length === 0
-      && !followsResponseSchema(stripReasoning(result.content), schemaFormat.json_schema.schema))) {
+      && !followsResponseSchema(stripReasoning(content), schemaFormat.json_schema.schema, !!spec.sparseReply))) {
       if (options.captureRounds) {
         yield {
           type: 'toolRound',
@@ -267,7 +269,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
     }
     if (!offering || result.toolCalls.length === 0) {
       for (const event of held) yield event;
-      yield { type: 'done', result: finalResult(result, result.content, result.finishReason) };
+      yield { type: 'done', result: finalResult(result, content, result.finishReason) };
       return;
     }
 

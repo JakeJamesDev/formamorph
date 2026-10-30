@@ -78,7 +78,8 @@ describe('the stat request with entities', () => {
   });
 
   it('keys the schema by owner, every live stat of each required', () => {
-    const { schema } = statRequestSchema(snapshotFor([bram, odette]));
+    const { schema, sparse } = statRequestSchema(snapshotFor([bram, odette]));
+    expect(sparse).toBe(true);
     const required = (node: typeof schema, key: string) => node.type === 'object' && node.properties[key];
     expect(schema.type === 'object' && schema.required).toEqual([GLOBAL_STATS_HEADING, 'Bram', 'Odette']);
     expect(required(schema, 'Bram')).toMatchObject({ required: ['Trust', 'Trust max'] });

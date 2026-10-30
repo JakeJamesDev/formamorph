@@ -113,6 +113,8 @@ export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage, TT
   answerCap?: number;
   /** The functions the body offers, present exactly when the body carries `tools`. The loop runs calls against these. */
   tools?: readonly TTool[];
+  /** Set when the call's schema accepts a reply that leaves out keys. */
+  sparseReply?: true;
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
    *  carried none. Read by the observation, which asks what was in force rather than which key held it. */
   reasoningLevel?: ReasoningEffortField;
@@ -343,6 +345,7 @@ export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFuncti
     requestType: call.requestType,
     ...(reasoning.answerCap !== undefined && { answerCap: reasoning.answerCap }),
     ...(offeredTools(call, target) && { tools: call.tools }),
+    ...(call.responseSchema?.sparse && { sparseReply: true as const }),
     ...(reasoning.level !== null && { reasoningLevel: reasoning.level }),
     ...(reasoning.room && { thinkingRoom: reasoning.room }),
     ...(internalCapFor(snapshot, call) !== null
