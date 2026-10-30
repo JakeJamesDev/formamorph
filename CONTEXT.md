@@ -41,7 +41,7 @@ A Tool stored on a world (`World.tools`), edited in the World Editor's Tools tab
 _Avoid_: author Tool, custom Tool, bundled Tool
 
 **Formaquestion Tool**:
-A Tool of the player's own that the help answer request offers. A separate list from the gameplay Tools, with a switch per device and no prompt preset; the gameplay Tool store never holds one, and a gameplay Tool never shows in Formaquestion. It reads the open world in the game or the editor, and an empty Tool Snapshot on every other screen. Imports and exports with the Tool pack file. Cannot take a fixed function's name, such as the guide lookup's.
+A Tool of the player's own that the help answer request offers. A separate list from the gameplay Tools, with a switch per device and no prompt preset; the gameplay Tool store never holds one, and a gameplay Tool never shows in Formaquestion. It reads the full open world in the editor, the Player View in the game, and an empty Tool Snapshot on every other screen. Imports and exports with the Tool pack file. Cannot take a fixed function's name, such as the guide lookup's.
 _Avoid_: help Tool, custom Tool, assistant Tool
 
 **Tool Handler**:
@@ -53,7 +53,7 @@ Starter code with slots that a script box's **Templates** menu fills in and inse
 _Avoid_: snippet, preset, recipe, example
 
 **Formaquestion**:
-The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs, the current Surface, and world text from the open world while Read the World is on: in the World Editor, the sections of the World Index that match the question, unsaved edits included, in a world block with a budget of its own. A Formaquestion Tool the player turns on and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts, read the open world too (ADR-0011).
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs, the current Surface, and world text from the open world while Read the World is on: in the World Editor, the sections of the World Index that match the question, unsaved edits included, in a world block with a budget of its own; in game, the matching rows of the Player View, the dictionary entries that fire, and the story so far in a block of its own. A Formaquestion Tool the player turns on and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts, read the open world too: the full world in the editor, the Player View in game (ADR-0011, ADR-0014).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
 **World Index**:
