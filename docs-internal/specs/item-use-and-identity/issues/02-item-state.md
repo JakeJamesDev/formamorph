@@ -1,6 +1,6 @@
 # 02: Item State
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -15,16 +15,27 @@ Spec: Implementation Decisions under The Item and the Item Copy, The operation v
 
 ## Acceptance criteria
 
-- [ ] The Item has a State field in the editor, and seeding sets each copy's State from it
-- [ ] The validator's `change` sets one copy's State; on a stack the changed copy splits off, then merges with any row it now matches
-- [ ] State is part of the merge key
-- [ ] When Empty offers Changes State with a State word; on the last use it sets that word
-- [ ] The Inventory tab shows the State beside the name and has no control to change it
-- [ ] Items Here shows each copy's State and uses left beside the name
-- [ ] Scripts read `state` and set it with `setState`, through the validator
-- [ ] Formaquestion's player view shows the State
-- [ ] The glossary and the Items wiki page describe State
+- [x] The Item has a State field in the editor, and seeding sets each copy's State from it (WorldEditor.itemsListEditor "writes a Changes State word and the starting State"; state.test "starts each placed and gained copy")
+- [x] The validator's `change` sets one copy's State; on a stack the changed copy splits off, then merges with any row it now matches (state.test "splits one copy off a stack, then merges it")
+- [x] State is part of the merge key, trimmed and case-insensitive (state.test "never stacks", "differ only in case"; reinstating the bug turns 5 tests red)
+- [x] When Empty offers Changes State with a State word; on the last use it sets that word (state.test "sets the State word on the last use"; editor test)
+- [x] The Inventory tab shows the State beside the name and has no control to change it (GamePanels.inventory "shows each copy’s State beside its name")
+- [x] Items Here shows each copy's State and uses left beside the name (inventoryContext "gives each copy its State, then its uses left")
+- [x] Scripts read `state` and set it with `setState`, through the validator (statCodeTurn.itemScripts "reads a copy’s State and sets it"; statCodeExecutor.items)
+- [x] Formaquestion's player view shows the State (playerView "one row per item and State"; gameWorld.test; playerViewWorld; worldIndex)
+- [x] The glossary and the Items wiki page describe State (CONTEXT.md, docs/World-Editor-Items.md, docs/ScriptsGuide.md)
 
 ## Blocked by
 
 - 01
+
+## Landed
+
+**Not verified**
+
+- None. The Inventory tab's State label was checked in jsdom only, not in the live preview.
+
+**For you**
+
+- Open the World Editor's Items tab on an item: check the **State** field under **Uses**, and **Changes State** with its word under **When Empty**.
+- In a game, give the player a copy with a State: check the muted word beside the name in the **Inventory** tab.

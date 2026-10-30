@@ -2,7 +2,9 @@
  * The Inventory module: every change to Item Copies goes through here. Pure: no React, no AI, no storage. Ids
  * come from an injected maker, as the turn commit's do.
  */
-import { byEquipOrder, itemStackable, itemUsable, sameWhere, slotCapacity, slotSizeOf, usesLeft, whenEmptyOf } from '@/lib/items';
+import {
+  byEquipOrder, itemStackable, itemUsable, sameState, sameWhere, seededState, slotCapacity, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
+} from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
 import type {
   Entity, GameLocation, Item, ItemCopy, ItemCopyState, ItemCopyVisibility, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
@@ -81,18 +83,16 @@ export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined
     if (!item || !where || !(quantity > 0)) continue;
     const visibility = placement.hidden ? 'hidden' : 'visible';
     const ref = { kind: 'item', itemId: item.id } as const;
+    const state = seededState(item);
     if (itemStackable(item)) {
       const stack = copies.find((c) => c.item.kind === 'item' && c.item.itemId === item.id
         && c.visibility === visibility && sameWhere(c.where, where));
       if (stack) stack.quantity += quantity;
-      else copies.push({ id: newId(), item: ref, where, quantity, visibility });
+      else copies.push({ id: newId(), item: ref, where, quantity, visibility, ...(state && { state }) });
       continue;
     }
     for (let i = 0; i < quantity; i += 1) {
-      copies.push({
-        id: newId(), item: ref, where, quantity: 1, visibility,
-        ...(item.uses !== undefined && { state: { uses: item.uses } }),
-      });
+      copies.push({ id: newId(), item: ref, where, quantity: 1, visibility, ...(state && { state }) });
     }
   }
   return copies;
@@ -111,7 +111,9 @@ export type InventoryOp =
   | { kind: 'unequip'; copyId: string }
   | { kind: 'use'; copyId: string }
   | { kind: 'reveal'; copyId: string; quantity?: number }
-  | { kind: 'setUses'; copyId: string; uses: number };
+  | { kind: 'setUses'; copyId: string; uses: number }
+  /** Sets one copy's State; a blank `state` clears it. */
+  | { kind: 'change'; copyId: string; state: string };
 
 /** One Item Copy event an item's scripts of that timing run on (Q33). `where` is the owner or location it
  *  happened at; `quantity` is how many it moved. */
@@ -200,10 +202,11 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
     if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }) });
   };
   const itemOf = (copy: ItemCopy): Item | undefined => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
-  /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place and uses left (Q27). */
+  /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place, uses left (Q27) and State. */
   const sameRow = (c: ItemCopy, copy: ItemCopy): boolean => !c.equipped && sameRef(c.item, copy.item)
     && c.visibility === copy.visibility && sameWhere(c.where, copy.where)
-    && usesLeft(c, itemOf(c)) === usesLeft(copy, itemOf(copy));
+    && usesLeft(c, itemOf(c)) === usesLeft(copy, itemOf(copy))
+    && sameState(c, copy);
   /** The row `copy` ended in after a `put`: its own, or the stack it merged into. */
   const rowOf = (copy: ItemCopy): string => (list.some((c) => c.id === copy.id) ? copy.id
     : list.find((c) => sameRow(c, copy))?.id ?? copy.id);
@@ -223,7 +226,10 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   /** `list` with one copy of `copy`'s stack given `state`: in place when it is alone, else split off as its own
    *  row, which merges into any stack it now matches. */
   const withOneCopy = (copy: ItemCopy, state: ItemCopyState): ItemCopy[] => {
-    const changed = { ...copy, state: { ...copy.state, ...state } };
+    // An undefined field clears it; a copy with nothing left keeps no state.
+    const merged = Object.fromEntries(Object.entries({ ...copy.state, ...state }).filter(([, v]) => v !== undefined)) as ItemCopyState;
+    const { state: _old, ...bare } = copy;
+    const changed: ItemCopy = Object.keys(merged).length ? { ...bare, state: merged } : bare;
     if (copy.quantity <= 1) return put(list, changed);
     const rest = list.map((c) => (c === copy ? { ...c, quantity: c.quantity - 1 } : c));
     return put(rest, { ...changed, id: call.newId(), quantity: 1 });
@@ -243,18 +249,16 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       }
       if (!item) return `gain: no item ${op.itemId}`;
       const ref = { kind: 'item', itemId: item.id } as const;
+      const state = seededState(item);
       if (itemStackable(item)) {
-        const gained: ItemCopy = { id: call.newId(), item: ref, where: op.to, quantity, visibility: op.visibility ?? 'visible' };
+        const gained: ItemCopy = { id: call.newId(), item: ref, where: op.to, quantity, visibility: op.visibility ?? 'visible', ...(state && { state }) };
         list = put(list, gained);
         fire('gained', ref, rowOf(gained), op.to, quantity);
         return null;
       }
       const first = list.length;
       for (let i = 0; i < quantity; i += 1) {
-        list.push({
-          id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: op.visibility ?? 'visible',
-          ...(item.uses !== undefined && { state: { uses: item.uses } }),
-        });
+        list.push({ id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: op.visibility ?? 'visible', ...(state && { state }) });
       }
       fire('gained', ref, list[first].id, op.to, quantity);
       return null;
@@ -314,6 +318,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });
         else if (empty?.kind === 'stays') list = withOneCopy(copy, { uses: 0 });
+        else if (empty?.kind === 'changesState') list = withOneCopy(copy, { uses: 0, state: stateWord(empty.state) });
         else if (empty) {
           list = copy.quantity > 1 ? list.map((c) => (c === copy ? { ...copy, quantity: copy.quantity - 1 } : c)) : list.filter((c) => c !== copy);
           if (empty.kind === 'becomes') {
@@ -331,6 +336,13 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         const uses = Math.min(max, Math.max(0, Math.floor(op.uses)));
         // A copy that now matches a stack's uses merges into it.
         list = put(list, { ...copy, state: { ...copy.state, uses } });
+        return null;
+      }
+      case 'change': {
+        const state = stateWord(op.state);
+        if (sameState(copy, { state: { state } })) return `change: Item Copy ${copy.id} is already ${state ?? 'without a State'}`;
+        // One copy of a stack splits off and merges with any row it now matches.
+        list = withOneCopy(copy, { state });
         return null;
       }
       case 'unequip': {

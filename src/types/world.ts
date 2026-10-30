@@ -547,8 +547,9 @@ export interface ItemTraitEffect {
 /** What an item's value counts in: a stat (such as Gold), or free text. */
 export type ItemValueUnit = { kind: 'stat'; statId: string } | { kind: 'text'; text: string };
 
-/** What a copy's last use leaves: the copy at zero uses, nothing, or one copy of another authored item. */
-export type ItemWhenEmpty = { kind: 'stays' } | { kind: 'gone' } | { kind: 'becomes'; itemId: string };
+/** What a copy's last use leaves: the copy at zero uses, nothing, one copy of another authored item, or the copy
+ *  at zero uses with a new State. */
+export type ItemWhenEmpty = { kind: 'stays' } | { kind: 'gone' } | { kind: 'becomes'; itemId: string } | { kind: 'changesState'; state: string };
 
 /** An authored item kind. In play the save holds Item Copies of it. */
 export interface Item {
@@ -575,6 +576,8 @@ export interface Item {
   uses?: number;
   /** What a copy's last use leaves. Read only while `uses` is set; absent = Gone (Q26). */
   whenEmpty?: ItemWhenEmpty;
+  /** The State each Item Copy starts with: a short free-text word. Absent = none. */
+  state?: string;
   /** The player cannot drop or give its Item Copies. */
   bound?: boolean;
   /** The world slot it equips into. Absent = not equippable. */

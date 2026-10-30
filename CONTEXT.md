@@ -97,11 +97,11 @@ Any world inhabitant the narrator can reference — person, creature, plant, or 
 _Avoid_: character (too narrow)
 
 **Item**:
-An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Uses, When Empty, Bound and Slot. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
+An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Uses, When Empty, State, Bound and Slot. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
 _Avoid_: object, thing, entity (for an item)
 
 **Item Copy**:
-One item in play, kept in the save. It has an Owner or lies at a location, a quantity, an equipped state, a visibility and its uses left. Always written in full.
+One item in play, kept in the save. It has an Owner or lies at a location, a quantity, an equipped state, a visibility, its uses left and its State. Always written in full.
 _Avoid_: copy (that is a placeholder Copy), instance
 
 **Use**:
@@ -113,8 +113,12 @@ How many times one Item Copy can be used before it is empty. Blank means unlimit
 _Avoid_: charges, doses
 
 **When Empty**:
-What a copy's last use leaves: Stays (the copy at zero uses, ready for a recharge), Gone (removed) or Becomes (one carried copy of another authored item for the same owner). It applies only while Uses is set; blank reads as Gone.
+What a copy's last use leaves: Stays (the copy at zero uses, ready for a recharge), Gone (removed), Becomes (one carried copy of another authored item for the same owner) or Changes State (the copy at zero uses with a new State). It applies only while Uses is set; blank reads as Gone.
 _Avoid_: consumable, on empty
+
+**State**:
+A short free-text word one Item Copy holds, like an entity's Type: sealed, lit, soaked. The Item holds the starting State. The Inventory pass and scripts change it; the Inventory tab only shows it. Copies with different States never stack; the compare ignores case and surrounding spaces. Blank means none.
+_Avoid_: status, condition (that is a Requirement Row's)
 
 **Placement**:
 An authored starting Item Copy: where it goes (the Persona, an entity or a location), a quantity, Hidden, and a source. The source is one item. A new game's seed turns each Placement into Item Copies.

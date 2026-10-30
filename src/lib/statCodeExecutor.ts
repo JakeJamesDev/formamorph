@@ -1102,6 +1102,8 @@ export interface SandboxItemCopy {
   hidden: boolean;
   /** Uses left. Absent: the item has no Uses. */
   uses?: number;
+  /** The State word. Absent: none. */
+  state?: string;
 }
 
 /** One entry of the sandbox's `items`: an authored item, its owner node in the placeholder tree, and its Item
@@ -1125,7 +1127,7 @@ export interface SandboxItemEvent {
 }
 
 /** The fields on an Item Copy entry; none takes a write. */
-const ITEM_COPY_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'uses'] as const;
+const ITEM_COPY_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'uses', 'state'] as const;
 
 // The prelude's reader of the Item Copies at one owner or location, which entity and location entries call.
 const ITEMS_AT = '__formamorphItemsAt';
@@ -1151,7 +1153,7 @@ const itemsPrelude = (
   const named = [...new Map(items.map((item) => [item.name, item]))];
   const copyData = (item: SandboxItem, copy: SandboxItemCopy) => ({
     id: copy.id, item: item.name, owner: ownerName(copy.where), location: copy.where.kind === 'location' ? placeName.get(copy.where.id) ?? '' : '',
-    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, hidden: copy.hidden, uses: copy.uses ?? null,
+    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, hidden: copy.hidden, uses: copy.uses ?? null, state: copy.state ?? null,
     at: copy.where.kind === 'you' ? 'you' : `${copy.where.kind}:${copy.where.id}`,
   });
   const targets: [string, ItemCopyWhere][] = [
@@ -1205,6 +1207,10 @@ const itemsPrelude = (
     `    verb(out, path, 'setUses', (uses) => {`,
     `      if (typeof uses !== 'number' || !Number.isFinite(uses) || uses < 0) throw new TypeError(path + 'setUses needs a number, 0 or more');`,
     `      op('setUses', { uses });`,
+    `    });`,
+    `    verb(out, path, 'setState', (state) => {`,
+    `      if (typeof state !== 'string') throw new TypeError(path + 'setState needs a string');`,
+    `      op('change', { state });`,
     `    });`,
     `    Object.freeze(out);`,
     `    if (listed) (byPlace[data.at] || (byPlace[data.at] = [])).push(out);`,

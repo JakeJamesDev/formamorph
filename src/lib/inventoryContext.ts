@@ -1,4 +1,5 @@
 import { copiesAt } from './inventory';
+import { copyState, usesLeft } from './items';
 import type { ContextFormat } from './statContext';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { xmlEscape } from './utils';
@@ -18,11 +19,24 @@ export interface InventoryScene {
 }
 
 /** What the block reads of an item: an authored item, or a runtime item's name and description. */
-type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription'> & { runtimeDescription?: string };
+type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses'> & { runtimeDescription?: string };
 
-/** The name an Item Copy goes by in the block, its quantity and hidden state after it. */
+/** Uses left as the block reads them, as the Inventory tab shows them (Q30). Null when there is nothing to say. */
+function usesMark(item: Named, copy: ItemCopy): string | null {
+  const left = usesLeft(copy, item);
+  if (left === undefined || item.uses === undefined) return null;
+  if (item.uses > 1) return `${left} of ${item.uses} uses left`;
+  return left === 0 ? 'no uses left' : null;
+}
+
+/** The name an Item Copy goes by in the block: its State, uses left, quantity and hidden state after it. */
 function copyName(item: Named, copy: ItemCopy): string {
-  const marks = [...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(copy.visibility === 'hidden' ? ['hidden'] : [])];
+  const state = copyState(copy);
+  const uses = usesMark(item, copy);
+  const marks = [
+    ...(state ? [state] : []), ...(uses ? [uses] : []),
+    ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(copy.visibility === 'hidden' ? ['hidden'] : []),
+  ];
   return marks.length ? `${item.name} (${marks.join(', ')})` : item.name;
 }
 

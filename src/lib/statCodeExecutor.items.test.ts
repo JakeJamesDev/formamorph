@@ -26,7 +26,7 @@ const key: SandboxItem = {
 };
 const wand: SandboxItem = {
   id: 'i-wand', name: 'Wand', copies: [
-    { id: 'c-3', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', hidden: false, uses: 1 },
+    { id: 'c-3', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', hidden: false, uses: 1, state: 'charged' },
   ],
 };
 
@@ -45,6 +45,7 @@ describe('executeStatCode items', () => {
       const wand = items.Wand.copies[0];
       if (wand.owner !== 'Keeper' || !wand.equipped || wand.slot !== 'Hand' || wand.uses !== 1) throw new Error('wand');
       if (mine.uses !== null) throw new Error('uses');
+      if (wand.state !== 'charged' || mine.state !== null) throw new Error('state');
     `);
     expect(res.error).toBeNull();
   });
@@ -70,7 +71,7 @@ describe('executeStatCode items', () => {
       mine.lose();
       lying.reveal(1);
       const wand = items.Wand.copies[0];
-      wand.unequip(); wand.equip(); wand.use(); wand.setUses(3);
+      wand.unequip(); wand.equip(); wand.use(); wand.setUses(3); wand.setState('spent'); wand.setState('');
     `);
     expect(res.error).toBeNull();
     expect(res.worldWrites?.inventory).toEqual([
@@ -84,12 +85,20 @@ describe('executeStatCode items', () => {
       { kind: 'equip', copyId: 'c-3' },
       { kind: 'use', copyId: 'c-3' },
       { kind: 'setUses', copyId: 'c-3', uses: 3 },
+      { kind: 'change', copyId: 'c-3', state: 'spent' },
+      { kind: 'change', copyId: 'c-3', state: '' },
     ]);
   });
 
   it('fails the script on a target the game lacks and drops its writes', async () => {
     const res = await run('items.Wand.give(entities.Keeper); items.Wand.give("Moon");');
     expect(res.error).toMatch(/needs an entity, the persona or a location the game has, not "Moon"/);
+    expect(res.worldWrites).toBeUndefined();
+  });
+
+  it('fails the script on a setState that is not a string', async () => {
+    const res = await run('items.Wand.copies[0].setState(3);');
+    expect(res.error).toMatch(/setState needs a string/);
     expect(res.worldWrites).toBeUndefined();
   });
 

@@ -164,6 +164,14 @@ describe('buildPlayerView items', () => {
     expect(names(view({ chain: [held, state()] }).items)).toEqual(['key']);
   });
 
+  it('gives one row per item and State, from the latest snapshot the player met the item in', () => {
+    const lamp = (id: string, word: string) => ({ ...copy(id, 'key', { kind: 'you' }), state: { state: word } });
+    const before = state({ itemCopies: [lamp('c1', 'unlit')] });
+    const now = state({ itemCopies: [lamp('c1', 'Lit'), lamp('c2', 'lit'), lamp('c3', 'broken'), copy('c4', 'key', { kind: 'you' })] });
+    expect(view({ chain: [before, now] }).items.map((row) => row.state)).toEqual(['Lit', 'broken', undefined]);
+    expect(view({ chain: [now, before] }).items.map((row) => row.state)).toEqual(['unlit']);
+  });
+
   it('uses a runtime item description', () => {
     const v = view({ chain: [state({
       runtimeItems: [{ id: 'rt-rope', name: 'rope', description: 'A coil of rope.' }],

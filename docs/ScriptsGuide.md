@@ -303,7 +303,7 @@ An item's scripts use five timings of their own. Each runs once for each event o
 | **When Used** | An Item Copy is used. The last use runs this timing only, not When Lost. A **Becomes** result runs its own When Gained |
 
 - `self.event` holds `timing`, `quantity`, the number the event moved, and `copy`, the Item Copy's entry. Once the Item Copy is gone, `copy` reads it as it stood before the event.
-- Revealing an Item Copy and setting its uses run no timing. Starting items run none either.
+- Revealing an Item Copy, setting its uses and setting its State run no timing. Starting items run none either.
 - Their writes apply when each script ends, not at the end of the turn. A script's inventory write runs the item timings it causes, up to 3 levels deep. Past that, the write still applies, no timing runs, and the turn log says so.
 
 ### When Your Code Runs
@@ -956,7 +956,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **A user Tool can't write it.** The write is ignored and reported, as every user Tool write is.
 
 ### Items
-<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, use from code, reveal item, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
+<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
 
 `items` holds every item of the world by code name. Each entry has `id`, `name`, its own `placeholders`, and `copies`: its Item Copies in play.
 
@@ -972,6 +972,7 @@ Each Item Copy has these members. They are read-only.
 | `equipped` and `slot` | Whether it's equipped, and the slot's name |
 | `hidden` | True when the player can't see it |
 | `uses` | Uses left, or `null` when the item has no **Uses** |
+| `state` | Its **State** word, or `null` when it has none |
 
 An entity's entry, `persona` and a location's entry each have `items`: the Item Copies there.
 
@@ -991,6 +992,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 | `copy.use()` | Uses it once, as **Use** does |
 | `copy.reveal(n?)` | Makes it visible to the player |
 | `copy.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
+| `copy.setState(word)` | Sets its **State**. `''` clears it. |
 
 - The writes apply when the script ends, in run order, through the same checks as the panel. A check that fails skips that write and logs why.
 - **Bound** stops the player only. A script can remove or move a Bound Item Copy.

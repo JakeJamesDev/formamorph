@@ -186,6 +186,23 @@ describe('the item panel', () => {
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Greatsword']);
   });
 
+  it('writes a Changes State word and the starting State, and clears a blank State', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Items/);
+    openItem('Lamp');
+    itemFieldsTab('Properties');
+    fireEvent.change(screen.getByLabelText('Uses'), { target: { value: '1' } });
+    pickOption('When Empty', 'Changes State');
+    expect(ctx().items[0].whenEmpty).toEqual({ kind: 'changesState', state: '' });
+    fireEvent.change(screen.getByRole('textbox', { name: 'New State' }), { target: { value: 'spent' } });
+    expect(ctx().items[0].whenEmpty).toEqual({ kind: 'changesState', state: 'spent' });
+
+    fireEvent.change(screen.getByLabelText('State'), { target: { value: 'unlit' } });
+    expect(ctx().items[0].state).toBe('unlit');
+    fireEvent.change(screen.getByLabelText('State'), { target: { value: '' } });
+    expect(ctx().items[0].state).toBeUndefined();
+  });
+
   it('writes Bound', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);

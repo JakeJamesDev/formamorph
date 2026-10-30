@@ -59,6 +59,18 @@ describe('the Inventory chip', () => {
       .toContain('**equipped:** Notched Blade (hidden): A sword with a chipped edge.');
   });
 
+  it('gives each copy its State, then its uses left, before quantity and hidden', () => {
+    const wand = item('wand', 'Ash Wand', { uses: 3 });
+    const letter = item('letter', 'Letter', { uses: 1 });
+    const text = chipValues({ ...scene([]), items: [...ITEMS, wand, letter], itemCopies: [
+      copy('wand', { kind: 'you' }, { visibility: 'hidden', state: { uses: 2, state: 'lit' } }),
+      copy('wand', { kind: 'you' }),
+      copy('letter', { kind: 'you' }, { quantity: 2, state: { state: 'sealed' } }),
+      copy('letter', { kind: 'you' }, { state: { uses: 0, state: 'opened' } }),
+    ] })('<INVENTORY|markdown>');
+    expect(text).toContain('**carried:** Ash Wand (lit, 2 of 3 uses left, hidden), Ash Wand (3 of 3 uses left), Letter (sealed, ×2), Letter (opened, no uses left)');
+  });
+
   it('leaves out owners and places that are not here', () => {
     // Bell stands in the Boathouse, and the coin lies there.
     expect(render([

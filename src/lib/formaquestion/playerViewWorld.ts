@@ -7,6 +7,7 @@ import type { ChipScene } from '@/lib/chipValues/chipScene';
 import type { SandboxState, StatePlaces } from '@/lib/statCodeTurn';
 import type { StatCodeOwners } from '@/lib/statCodeTraits';
 import type { GateEntity, GateStats } from '@/lib/traitGates';
+import { stateWord } from '@/lib/items';
 import { statBlueprintIds } from '@/lib/statLinks';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import type { ToolMemorySource, ToolScriptSource } from '@/lib/tools/toolSnapshot';
@@ -134,10 +135,10 @@ const playerConnections = (met: Met, connections: readonly Connection[] = []): C
   .map((c) => ({ id: c.id, a: c.a, b: c.b, ...(c.aToB && { aToB: {} }), ...(c.bToA && { bToA: {} }) }));
 
 function playerItem(item: Item, row: PlayerViewItem): Item {
-  const { id, value, valueUnit, stackable, uses, whenEmpty, bound, slotId, slotSize, placeholders } = item;
+  const { id, value, valueUnit, stackable, uses, whenEmpty, state, bound, slotId, slotSize, placeholders } = item;
   return {
     id, name: row.name, playerDescription: row.description, aiDescription: row.description,
-    value, valueUnit, stackable, uses, whenEmpty, bound, slotId, slotSize, placeholders,
+    value, valueUnit, stackable, uses, whenEmpty, state: stateWord(state), bound, slotId, slotSize, placeholders,
     statEffects: [], traitEffects: [], equipRequires: [],
   };
 }
