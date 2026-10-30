@@ -9,7 +9,7 @@ import { hostedStateCopy, hostedUsageCopy, hostedWarningText } from './hostedCop
 import { parseHostedState, type HostedState } from './hostedState';
 
 const BASE = {
-  tier: 'supporter_plus', state: 'ready', window: 32000, maxTokens: 900, tokenMargin: 1000,
+  tier: 'supporter_plus', state: 'ready', window: 30000, maxTokens: 900, tokenMargin: 1000,
   model: { id: 'entry-2', capabilities: {} },
   percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[],
 };

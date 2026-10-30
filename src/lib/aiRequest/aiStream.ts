@@ -344,9 +344,8 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     // The live token alone decides signed-out; a held one is sent and the server judges it.
     const blocked = () => {
       const state = session.getSnapshot().presetState;
-      // A spent allowance never stops a turn the server already admitted.
-      if (state === 'exhausted' && turn.started) return null;
-      // A spent allowance never stops a turn the server already admitted.
+      // A spent allowance or a pause never stops a turn the server already admitted.
+      if ((state === 'exhausted' || state === 'paused') && turn.started) return null;
       return !session.credential() ? 'signed-out' : state === 'signed-out' || hostedStateSends(state) ? null : state;
     };
     const before = blocked();

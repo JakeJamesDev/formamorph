@@ -27,7 +27,7 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
     reason: 'Accept the current Privacy Policy to use Formamorph AI',
     action: { kind: 'privacy', label: 'Review Policy' },
   },
-  suspended: { reason: 'Your account is suspended, so you cannot use Formamorph AI', action: null },
+  suspended: { reason: "Your account is suspended, so you can't use Formamorph AI", action: null },
   'age-gate': { reason: 'Confirm that you are 18 or older to use Formamorph AI', action: { kind: 'ageGate', label: 'Confirm Age' } },
   locked: { reason: 'Join as a Supporter on Patreon to use Formamorph AI', action: { kind: 'patreon', label: 'Join on Patreon' } },
   exhausted: {
@@ -74,7 +74,7 @@ export function hostedUsageCopy(hosted: HostedState | null, tierLabel: string | 
 }
 
 /** The help line under the usage display. */
-export const HOSTED_USAGE_HELP = 'Counts every turn on every device, and resets on the 1st of the month (UTC)';
+export const HOSTED_USAGE_HELP = 'Counts turns on every device and resets on the 1st (UTC)';
 
 /** A threshold notice's text. */
 export function hostedWarningText(threshold: number, hosted: HostedState | null): string {
