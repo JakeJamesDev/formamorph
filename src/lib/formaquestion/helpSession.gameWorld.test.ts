@@ -88,7 +88,9 @@ function endpoint() {
   return { fetchImpl, answers };
 }
 
-const userMessage = (spy: FetchSpy) => (JSON.parse(spy.mock.calls[0][1].body as string) as SentBody).messages.at(-1)!.content;
+const messagesOf = (spy: FetchSpy) => (JSON.parse(spy.mock.calls[0][1].body as string) as SentBody).messages;
+const userMessage = (spy: FetchSpy) => messagesOf(spy).at(-1)!.content;
+const systemPrompt = (spy: FetchSpy) => messagesOf(spy)[0].content;
 const worldBlock = (spy: FetchSpy) => /<world>[\s\S]*?<\/world>/.exec(userMessage(spy))?.[0];
 const storyBlock = (spy: FetchSpy) => /<story>[\s\S]*?<\/story>/.exec(userMessage(spy))?.[0];
 /** What the request holds of the world: the world block and the story block. The question is the player's own. */
@@ -141,6 +143,12 @@ describe('a question in the game', () => {
     expect(userMessage(answers).endsWith(DEFAULT_WORLD_GAME_RULES)).toBe(true);
     expect(userMessage(answers)).toContain('Answer the question from the guide and world sections above.');
     expect(done(events).sources).toContainEqual({ kind: 'world', worldKind: 'entity', id: 'mara', name: 'Mara' });
+  });
+
+  it('keeps world names in the AI Language directive', async () => {
+    const { fetchImpl, answers } = endpoint();
+    await ask(fetchImpl, 'Who keeps the gate?', { language: 'Spanish', world: gameWorld(() => gameInput()) });
+    expect(systemPrompt(answers).endsWith(' Names from the world are proper names: write each one exactly as the world spells it, in its own language, inside every Spanish sentence too.')).toBe(true);
   });
 
   it('fires an entry whose keyword is in the question', async () => {

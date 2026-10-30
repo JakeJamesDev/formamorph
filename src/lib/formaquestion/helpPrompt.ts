@@ -113,11 +113,19 @@ export const HELP_PICK_SYSTEM_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.pic
 /** The default lookup prompt as the request carries it with no Voice. */
 export const HELP_LOOKUP_SYSTEM_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup);
 
-/** The help prompt for the AI Language: the fixed prompt, plus the language directive for answers when it is not English. */
-export function helpSystemPrompt(language: string, prompt = HELP_SYSTEM_PROMPT): string {
+/** The directive's sentence that keeps world names in a request that reads the world. */
+export const worldNamesLine = (language: string): string =>
+  `Names from the world are proper names: write each one exactly as the world spells it, in its own language, inside every ${language.trim()} sentence too.`;
+
+/**
+ * The help prompt for the AI Language: the fixed prompt, plus the language directive for answers when it is not
+ * English. When the request reads the world, the directive keeps world names too.
+ */
+export function helpSystemPrompt(language: string, prompt = HELP_SYSTEM_PROMPT, { world = false }: { world?: boolean } = {}): string {
   const directive = languageDirective('answers', language);
   if (!directive) return prompt;
-  return `${prompt}\n\n${directive} Keep each control name exactly as the guide writes it, in bold, so the player finds it on the screen.`;
+  const names = world ? ` ${worldNamesLine(language)}` : '';
+  return `${prompt}\n\n${directive} Keep each control name exactly as the guide writes it, in bold, so the player finds it on the screen.${names}`;
 }
 
 /** The page name as a reader says it: wiki page names join their words with hyphens. */

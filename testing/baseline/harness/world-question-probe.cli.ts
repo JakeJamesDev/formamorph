@@ -13,16 +13,25 @@
 // leak (a game answer names what its save keeps hidden), opinion. Sizes per case: the guide, world and story
 // blocks, the user message and the body, in characters, with `cut` where a budget dropped a section or a story band.
 //
+// `--language` asks the language cases in that AI Language, each question as a player who writes it would, and
+// adds names kept (each world name of the case appears as the world writes it) and translated (the answer uses a
+// Spanish rendering of the name, a gloss beside the kept name included). Its arms:
+//   shipped            the app's directive, world rules on
+//   rules-cleared      both world rules prompts cleared, so the directive alone keeps the names
+//   rules-cleared-old  the same with the directive's world-names sentence stripped: the control
+//
 // Usage: npx vite-node testing/baseline/harness/world-question-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4] [--only id,id] [--arms a,b] [--show]
+//          [--language Spanish]  the language cases and arms above; the question text is Spanish whatever the name
 //          [--rescore testing/baseline/runs/world-question-probe-<stamp>.json]  scores an earlier batch's answers again, asking nothing
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { sectionWithId } from '@/lib/docs/docsReader';
 import { firedLore, gameWorldIndex, type GameWorldInput } from '@/lib/formaquestion/gameWorld';
-import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { HELP_PICK_SYSTEM_PROMPT, worldNamesLine } from '@/lib/formaquestion/helpPrompt';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_SECTION_LIMIT, HELP_WORLD_CHAR_BUDGET, HELP_WORLD_SECTION_LIMIT } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_SETTINGS, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import type { HelpTrace, HelpTraceSource } from '@/lib/formaquestion/helpTrace';
 import type { OpenWorld } from '@/lib/formaquestion/helpWorld';
@@ -32,7 +41,7 @@ import { HELP_STORY_CHAR_BUDGET } from '@/lib/formaquestion/storySoFar';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { noUsage, pct, probeSnapshot, sessionFetch } from './help-probe-shared';
 import { bundledWorld, fullInputOf, GAME_SAVES, gameInputOf, uncutStory, WORLD_QUESTION_CASES, type WorldQuestionCase } from './world-question-cases';
-import { scoreWorldAnswer, summarizeWorldScores, type WorldAnswerScore } from './world-question-score';
+import { scoreWorldAnswer, summarizeWorldScores, type Check, type WorldAnswerScore } from './world-question-score';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -49,17 +58,71 @@ const armList = argVal('--arms', '').split(',').filter(Boolean);
 const show = args.includes('--show');
 const rescore = argVal('--rescore', '');
 
-type Arm = 'shipped' | 'off' | 'full';
-const ARMS = (['shipped', 'off', 'full'] as const).filter((arm) => !armList.length || armList.includes(arm));
-const cases = only.length ? WORLD_QUESTION_CASES.filter((c) => only.includes(c.id)) : WORLD_QUESTION_CASES;
+const language = argVal('--language', '');
+const check = (label: string, pattern: RegExp): Check => ({ label, pattern });
+
+type Arm = 'shipped' | 'off' | 'full' | 'rules-cleared' | 'rules-cleared-old';
+const ARMS = (language ? ['shipped', 'rules-cleared', 'rules-cleared-old'] as const : ['shipped', 'off', 'full'] as const)
+  .filter((arm) => !armList.length || armList.includes(arm));
+const ARM_PAD = Math.max(7, ...ARMS.map((arm) => arm.length));
+/**
+ * The language cases: each question as a Spanish-writing player asks it, its facts in either language, the world
+ * names its answer keeps, and the Spanish renderings that mark a name translated, a gloss beside the kept name included.
+ */
+const LANGUAGE_CASES: Record<string, { question: string; facts: Check[]; names: Check[]; translated: RegExp }> = {
+  'veil-what-moths': {
+    question: '¿Qué son las polillas que brillan?',
+    facts: [check('Lantern Moths', /lantern|linterna/i), check('harmless or a warning', /harmless|warn|scatter|inofensiv|advert|aviso|dispers/i)],
+    names: [check('Lantern Moth', /Lantern Moths?/)], translated: /polillas? linterna/i,
+  },
+  'val-who-coach': {
+    question: '¿Quién es el entrenador Daizen?',
+    facts: [check('PE teacher', /\bPE\b|gym|physical education|educación física|gimnasi/i), check('the chocolate rule', /chocolate|rule|regla/i)],
+    names: [check('Coach Daizen', /Coach Daizen/)], translated: /entrenador(a)? Daizen/i,
+  },
+  'veil-raptor': {
+    question: '¿Cuál es la debilidad del raptor de las sombras?',
+    facts: [check('cannot climb', /(can'?not|can't|unable to|doesn'?t|never) climb|no (puede|pueden|sabe|saben) (trepar|escalar)|incapaz de (trepar|escalar)/i)],
+    names: [check('Shadow Raptor', /Shadow Raptor/)], translated: /raptor(es)? (de las|de la|sombr)/i,
+  },
+  'sugar-saltlick': {
+    question: '¿Qué hacen las piedras de sal?',
+    facts: [check('Craving drops', /craving|hunger|curse|antojo|hambre|ansia|maldici/i), check('salt', /salt|\bsal\b/i)],
+    names: [check('Saltlick Stone', /Saltlick Stones?/)], translated: /piedras? (de )?(lamer|sal)\b/i,
+  },
+};
+const caseSet = language
+  ? WORLD_QUESTION_CASES.filter((c) => c.id in LANGUAGE_CASES).map((c) => ({ ...c, question: LANGUAGE_CASES[c.id].question, facts: LANGUAGE_CASES[c.id].facts }))
+  : WORLD_QUESTION_CASES;
+const cases = only.length ? caseSet.filter((c) => only.includes(c.id)) : caseSet;
 /** The full arm has nothing to add in the editor, which reads the full world already. */
 const armsOf = (c: WorldQuestionCase): Arm[] => ARMS.filter((arm) => arm !== 'full' || c.lean === 'game');
 
+const rulesCopy = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'no-rules', 'No World Rules');
+const noRules = { ...DEFAULT_HELP_SETTINGS, presets: editHelpPrompt(editHelpPrompt(rulesCopy, 'no-rules', 'worldEditor', ''), 'no-rules', 'worldGame', '') };
 const SETTINGS: Record<Arm, HelpSettings> = {
   shipped: DEFAULT_HELP_SETTINGS,
   off: { ...DEFAULT_HELP_SETTINGS, readWorld: false },
   full: DEFAULT_HELP_SETTINGS,
+  'rules-cleared': noRules,
+  'rules-cleared-old': noRules,
 };
+
+const WORLD_NAMES_SENTENCE = ` ${worldNamesLine(language)}`;
+/** A fetch that swaps the world-names sentence of the answer request for `replacement`. It ends the probe when the app sent none. */
+function withWorldNames(fetchImpl: typeof fetch, replacement: string): typeof fetch {
+  return ((url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as { messages: { content: unknown }[] };
+    const system = String(body.messages[0]?.content);
+    if (system.startsWith(HELP_PICK_SYSTEM_PROMPT)) return fetchImpl(url, init);
+    if (!system.includes(WORLD_NAMES_SENTENCE)) {
+      console.error('the answer request has no world-names sentence to swap');
+      process.exit(1);
+    }
+    body.messages[0].content = system.replace(WORLD_NAMES_SENTENCE, replacement);
+    return fetchImpl(url, { ...init, body: JSON.stringify(body) });
+  }) as typeof fetch;
+}
 const index = bundledDocsIndex();
 const snapshot = probeSnapshot({ endpoint, model, token });
 
@@ -118,22 +181,28 @@ interface Sample { answer: string; finish: string | null; sizes: Sizes }
 /** One answer against its case's keys. Only a game answer can leak: the editor reads the whole world by design. */
 const scoreOf = (c: WorldQuestionCase, answer: string): WorldAnswerScore =>
   scoreWorldAnswer(answer, { facts: c.facts, leaks: c.lean === 'game' ? GAME_SAVES[c.world]?.leaks : [], opinion: c.opinion });
+/** The language case's world names the answer writes as the world writes them, and those it does not. */
+function namesOf(caseId: string, answer: string): { kept: string[]; lost: string[] } {
+  const names = LANGUAGE_CASES[caseId]?.names ?? [];
+  return { kept: names.filter((n) => n.pattern.test(answer)).map((n) => n.label), lost: names.filter((n) => !n.pattern.test(answer)).map((n) => n.label) };
+}
 
 async function ask(c: WorldQuestionCase, arm: Arm): Promise<Sample> {
   const usage = noUsage();
   let finish: string | null = null;
   let message = '';
   let body = '';
-  const fetchImpl = sessionFetch(usage, (sent, completion) => {
+  const sessionFetchImpl = sessionFetch(usage, (sent, completion) => {
     if (String(sent.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) return;
     finish = completion.choices?.[0]?.finish_reason ?? null;
     message = String(sent.messages.at(-1)?.content ?? '');
     body = JSON.stringify(sent);
   });
+  const fetchImpl = arm === 'rules-cleared-old' ? withWorldNames(sessionFetchImpl, '') : sessionFetchImpl;
   const open = openWorldOf(c, arm);
   let trace: HelpTrace | null = null;
   let answer = '';
-  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index, fetchImpl, world: open.world })) {
+  for await (const event of askHelp({ question: c.question, language, settings: SETTINGS[arm], snapshot, index, fetchImpl, world: open.world })) {
     if (event.type === 'trace') trace = event.trace;
     if (event.type === 'done') answer = event.text;
   }
@@ -176,10 +245,13 @@ for (let run = 1; run <= runs; run++) {
         }
         // One line per answer as it lands, so a run in progress can be read and stopped.
         const s = out.score;
+        const lost = language && out.sample ? namesOf(c.id, out.sample.answer).lost : [];
         console.log(out.error
-          ? `  ${run} ${c.id.padEnd(20)} ${arm.padEnd(7)} FAILED ${out.error.slice(0, 80)}`
-          : `  ${run} ${c.id.padEnd(20)} ${arm.padEnd(7)} ${c.facts.length ? (s!.correct ? 'CORRECT' : `MISS ${s!.missing.join(', ')}`) : ''}`
+          ? `  ${run} ${c.id.padEnd(20)} ${arm.padEnd(ARM_PAD)} FAILED ${out.error.slice(0, 80)}`
+          : `  ${run} ${c.id.padEnd(20)} ${arm.padEnd(ARM_PAD)} ${c.facts.length ? (s!.correct ? 'CORRECT' : `MISS ${s!.missing.join(', ')}`) : ''}`
             + `${s!.leaks.length ? ` · LEAK ${s!.leaks.join(', ')}` : ''}${s!.opinion ? ` · opinion ${s!.opinion.ok ? 'ok' : s!.opinion.marked ? `flat ${s!.opinion.flatSolutions.join(', ')}` : 'unmarked'}` : ''}`
+            + `${language ? (lost.length ? ` · NAME LOST ${lost.join(', ')}` : ' · names kept') : ''}`
+            + `${language && out.sample && LANGUAGE_CASES[c.id]?.translated.test(out.sample.answer) ? ' · TRANSLATED' : ''}`
             + ` · world ${out.sample!.sizes.world} story ${out.sample!.sizes.story}${out.sample!.sizes.cut.length ? ` · CUT ${out.sample!.sizes.cut.join(',')}` : ''}`);
         return out;
       });
@@ -215,18 +287,24 @@ function cells(set: Row[]) {
   const facts = summarizeWorldScores(keyedScored.map((r) => r.score), keyed.length - keyedScored.length);
   const all = summarizeWorldScores(scored.map((r) => r.score), set.length - scored.length);
   return [`n=${set.length}`.padEnd(6), `correct ${percent(keyed.length ? facts.correct : null)}`, `facts ${percent(keyed.length ? facts.factShare : null)}`,
-    `leak ${percent(all.leak)}`, `opinion ${percent(all.opinion)}`].join('  ');
+    `leak ${percent(all.leak)}`, `opinion ${percent(all.opinion)}`,
+    // An answer counts as kept only when it writes every name of its case; a failed request keeps none.
+    ...(language ? [
+      `names kept ${percent(set.length ? set.filter((r) => r.sample && !namesOf(r.caseId, r.sample.answer).lost.length).length / set.length : null)}`,
+      `translated ${percent(set.length ? set.filter((r) => r.sample && LANGUAGE_CASES[r.caseId]?.translated.test(r.sample.answer)).length / set.length : null)}`,
+    ] : []),
+  ].join('  ');
 }
 const of = (keep: (r: Row) => boolean) => rows.filter(keep);
 
 console.log(`\n${'case'.padEnd(20)} arm`);
-for (const c of cases) for (const arm of armsOf(c)) console.log(`${c.id.padEnd(20)} ${arm.padEnd(7)} ${cells(of((r) => r.caseId === c.id && r.arm === arm))}`);
+for (const c of cases) for (const arm of armsOf(c)) console.log(`${c.id.padEnd(20)} ${arm.padEnd(ARM_PAD)} ${cells(of((r) => r.caseId === c.id && r.arm === arm))}`);
 
 console.log('\nTOTALS');
 for (const lean of ['editor', 'game'] as const) {
   for (const arm of ARMS) {
     const set = of((r) => r.lean === lean && r.arm === arm);
-    if (set.length) console.log(`${lean.padEnd(7)} ${arm.padEnd(7)} ${cells(set)}`);
+    if (set.length) console.log(`${lean.padEnd(7)} ${arm.padEnd(ARM_PAD)} ${cells(set)}`);
   }
 }
 

@@ -3,7 +3,10 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { emptyCodeWorld, isPickRequest, NO_PICK, openWorld } from '@/test/helpFixtures';
 import type { Entity } from '@/types';
+import { languageDirective } from '@/lib/languages';
 import { DEFAULT_WORLD_EDITOR_RULES } from './helpWorldRules';
+import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from './helpPresets';
+import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import { HELP_PICK_WORLD_LINES, PICK_WORLD_LINE } from './helpPicks';
 import type { HelpEmbedder } from './helpSemantic';
 import { askHelp, HELP_SECTION_LIMIT, HELP_WORLD_CHAR_BUDGET, type HelpEvent, type HelpQuestion } from './helpSession';
@@ -129,6 +132,44 @@ describe('a question that reads no world', () => {
 
   it('sends the world rules only with a world block', async () => {
     expect(await bodies(undefined)).not.toContain(DEFAULT_WORLD_EDITOR_RULES);
+  });
+
+  it('sends the AI Language body of today with no world block', async () => {
+    const { fetchImpl, answers } = endpoint();
+    await ask(fetchImpl, { language: 'Spanish', world: editorWorld(() => sedge()) }, { readWorld: false });
+    expect(bodyOf(answers).messages[0].content).toBe(`${HELP_SYSTEM_PROMPT}\n\n${languageDirective('answers', 'Spanish')} Keep each control name exactly as the guide writes it, in bold, so the player finds it on the screen.`);
+  });
+});
+
+describe('the AI Language with a world block', () => {
+  const NAMES = 'Names from the world are proper names: write each one exactly as the world spells it, in its own language, inside every Spanish sentence too.';
+  const systemPrompt = async (over: Partial<HelpQuestion>, settings: HelpSettingsChange = {}) => {
+    const { fetchImpl, answers } = endpoint();
+    await ask(fetchImpl, over, settings);
+    return bodyOf(answers).messages[0].content;
+  };
+
+  it('keeps world names after the control names', async () => {
+    const prompt = await systemPrompt({ language: 'Spanish', world: editorWorld(() => sedge()) });
+    expect(prompt.endsWith(`on the screen. ${NAMES}`)).toBe(true);
+  });
+
+  it('keeps world names when the world rules are cleared', async () => {
+    const copy = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'p-1', 'No Rules');
+    const { fetchImpl, answers } = endpoint();
+    await ask(fetchImpl, { language: 'Spanish', world: editorWorld(() => sedge()) }, { presets: editHelpPrompt(copy, 'p-1', 'worldEditor', '') });
+    expect(userMessage(answers)).not.toContain(DEFAULT_WORLD_EDITOR_RULES);
+    expect(bodyOf(answers).messages[0].content).toContain(NAMES);
+  });
+
+  it('keeps world names when the search missed and the world block is empty', async () => {
+    const prompt = await systemPrompt({ language: 'Spanish', question: 'zzqx', world: editorWorld(() => sedge([])) });
+    expect(prompt).toContain(NAMES);
+  });
+
+  it('adds nothing with no AI Language', async () => {
+    const prompt = await systemPrompt({ language: '', world: editorWorld(() => sedge()) });
+    expect(prompt).not.toContain(NAMES);
   });
 });
 
