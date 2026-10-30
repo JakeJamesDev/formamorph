@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderRightPanel, type Gameplay, type TurnFixture } from '@/test/gamePanels';
+import { renderInGame, renderRightPanel, type Gameplay, type TurnFixture } from '@/test/gamePanels';
+import { useInventoryPanel } from './useInventoryPanel';
+import type { InventoryTabProps } from './InventoryTab';
 import type { Entity, GameLocation, Item, ItemCopy, Slot } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -102,6 +104,31 @@ describe('RightPanel — Inventory tab', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
     expect(await screen.findByText('Nobody is in the scene.')).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Give to' })).toBeNull();
+  });
+
+  describe('the panel write guard', () => {
+    const crowd = [...entities, { id: 'ilsa', name: 'Ilsa', locations: ['yard'] }] as Entity[];
+    const give = (to: string) => [{ kind: 'transfer' as const, copyId: 'c', to: { kind: 'entity' as const, id: to }, quantity: 1 }];
+    const probe = () => {
+      let panel!: InventoryTabProps;
+      const Probe = () => { panel = useInventoryPanel(); return null; };
+      const h = renderInGame(<Probe />, { ...stage([copy('c', 'coin')], { inScene: ['Ilsa'] }), world: { items, slots, entities: crowd, locations: [yard, hall] } });
+      return { h, ops: (to: string) => act(() => panel.onOps(give(to))) };
+    };
+
+    it('refuses a give to a quiet entity that stands here', async () => {
+      const { h, ops } = probe();
+      await waitFor(() => expect(h.gameplay().itemCopies).toHaveLength(1));
+      ops('bram');
+      expect(h.gameplay().itemCopies.map((c) => c.where)).toEqual([you]);
+    });
+
+    it('applies a give to an entity in scene', async () => {
+      const { h, ops } = probe();
+      await waitFor(() => expect(h.gameplay().itemCopies).toHaveLength(1));
+      ops('ilsa');
+      expect(h.gameplay().itemCopies.map((c) => c.where)).toEqual([{ kind: 'entity', id: 'ilsa' }]);
+    });
   });
 
   describe('a stranger', () => {
