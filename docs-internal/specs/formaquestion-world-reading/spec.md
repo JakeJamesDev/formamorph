@@ -129,7 +129,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 
 ### Game request shape (ticket 05)
 
-- Player View rows form a game World Index, ranked like the editor pool (keyword, its own pick request, semantic) under the world budget. Fired dictionary entries always join, ahead of ranked rows, inside the same budget.
+- Player View rows form a game World Index, ranked like the editor pool (keyword, its own pick request, semantic) under the world budget. Fired dictionary entries join ahead of ranked rows, inside the same budget, and take at most 3 of the 5 sections; keyword-fired entries rank ahead of semantic ones (ticket 10).
 - The story so far is its own story block with its own 12,000-character budget, always sent in game, never ranked and never a source. It uses the narration's banded history (verbatim floor, milestone drop, oldest digest dropped first), without memory notes, rehydration, the now line or time stamps. With digests off, it holds the newest verbatim turns that fit.
 - Scan corpus: the question, the Player View text and the story digests as scene sources; the story's verbatim turns as history, honoring each entry's scan depth. Semantic activation embeds the question, gated by the Semantic Lore setting. Script lore toggles and placeholders apply.
 - Sources: the Player View rows that reached the block and each fired entry, as plain names.
