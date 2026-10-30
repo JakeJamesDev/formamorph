@@ -8,7 +8,7 @@ import {
 import { inCast, playsAs } from '@/lib/owners';
 import type {
   Entity, GameLocation, Item, ItemCopy, ItemCopyState, ItemCopyVisibility, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
-  RuntimeItem, Slot,
+  InventoryUseAfter, RuntimeItem, Slot,
 } from '@/types';
 import { timedTraitRow, type Dose } from './effects';
 
@@ -109,7 +109,8 @@ export type InventoryOp =
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
   | { kind: 'equip'; copyId: string }
   | { kind: 'unequip'; copyId: string }
-  | { kind: 'use'; copyId: string }
+  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). */
+  | { kind: 'use'; copyId: string; after?: InventoryUseAfter }
   | { kind: 'reveal'; copyId: string; quantity?: number }
   | { kind: 'setUses'; copyId: string; uses: number }
   /** Sets one copy's State; a blank `state` clears it. */
@@ -319,13 +320,13 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       }
       case 'use': {
         if (copy.where.kind === 'location') return `use: Item Copy ${copy.id} has no owner`;
-        // Runtime items can always be used, and a use removes one (Q56).
+        // Runtime items can always be used; a use removes one unless the pass says it was kept (Q10, Q56).
         if (item && !itemUsable(item)) return `use: Item Copy ${copy.id} can't be used`;
         const left = usesLeft(copy, item);
         if (left !== undefined && !(left > 0)) return `use: Item Copy ${copy.id} has no uses left`;
         if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }) });
         fire('used', copy.item, copy.id, copy.where, 1, copy);
-        const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : { kind: 'gone' as const };
+        const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : op.after === 'kept' ? undefined : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });
         else if (empty?.kind === 'stays') list = withOneCopy(copy, { uses: 0 });
         else if (empty?.kind === 'changesState') list = withOneCopy(copy, { uses: 0, state: stateWord(empty.state) });

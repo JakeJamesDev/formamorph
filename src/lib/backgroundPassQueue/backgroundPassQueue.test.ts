@@ -648,7 +648,7 @@ describe('one discover per name', () => {
 });
 
 describe('describe item (Q148)', () => {
-  const gain = (item: string): InventoryPassOp => ({ op: 'gain', item, quantity: 1, owner: '', to: 'you' });
+  const gain = (item: string): InventoryPassOp => ({ op: 'gain', item, quantity: 1, owner: '', to: 'you', state: '' });
   const stone: RuntimeItem = { id: 'r1', name: 'Odd Stone' };
   const found = historyOf(
     { id: 't1', narration: 'You find a smooth black pebble.', inventoryOps: [gain('odd stone')] },
@@ -700,7 +700,7 @@ describe('describe item (Q148)', () => {
 describe('priority across the kinds', () => {
   it('describes an item after the discover and before the digest', async () => {
     const h = host(
-      historyOf({ id: 't1', entities: ['Mira'], inventoryOps: [{ op: 'gain', item: 'Odd Stone', quantity: 1, owner: '', to: 'you' }] }),
+      historyOf({ id: 't1', entities: ['Mira'], inventoryOps: [{ op: 'gain', item: 'Odd Stone', quantity: 1, owner: '', to: 'you', state: '' }] }),
       { ...cast, memoryDigests: true, runtimeItems: [{ id: 'r1', name: 'Odd Stone' }] },
     );
     h.render();

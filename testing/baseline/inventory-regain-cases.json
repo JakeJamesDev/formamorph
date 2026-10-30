@@ -88,40 +88,58 @@
   "runtime": [
     {
       "id": "letter",
-      "name": "Sealed Letter",
-      "place": "A folded letter sealed with red wax, left on the crate by the ferry post.",
+      "name": "Letter",
       "object": "A folded letter of thick paper, sealed with red wax."
     },
     {
       "id": "whistle",
       "name": "Bone Whistle",
-      "place": "A small whistle of yellowed bone that hung from a nail on the ferry post.",
       "object": "A small whistle carved from yellowed bone."
     },
     {
       "id": "compass",
       "name": "Tin Compass",
-      "place": "A dented tin compass resting on the coil of rope at the end of the dock.",
       "object": "A dented tin compass with a cracked glass face."
     },
     {
       "id": "pebble",
       "name": "River Pebble",
-      "place": "A smooth gray pebble from the mud under the dock.",
       "object": "A smooth gray pebble that fits the palm."
+    },
+    {
+      "id": "box",
+      "name": "Tin Box",
+      "object": "A small tin box with a hinged lid, shut with a hook latch."
     }
   ],
   "cases": [
     {
-      "id": "retouch-read",
+      "id": "unseal",
       "copies": [
         {
           "runtime": "letter",
-          "where": "you"
+          "where": "you",
+          "state": "sealed"
         }
       ],
       "action": "I read the sealed letter again.",
       "narration": "You turn the sealed letter over in your hands and break the red wax at last. The paper is thick and damp at the corners. The message is short: the ferryman will not cross after the second bell. You fold the letter along its old creases and tuck it back inside your coat.",
+      "expect": [],
+      "group": "state",
+      "stateOf": "Letter"
+    },
+    {
+      "id": "read-open",
+      "group": "control",
+      "copies": [
+        {
+          "runtime": "letter",
+          "where": "you",
+          "state": "opened"
+        }
+      ],
+      "action": "I read the letter again.",
+      "narration": "You unfold the letter. The broken wax still clings to one edge. You read the short message a second time: the ferryman will not cross after the second bell. You fold it along its creases and tuck it back inside your coat.",
       "expect": []
     },
     {
@@ -134,7 +152,8 @@
       ],
       "action": "I ask Odette about the whistle.",
       "narration": "You hold up the bone whistle. Odette leans in and squints at it. \"The ferryman made those,\" she says. \"Blow it twice at the water and he comes. Blow it three times and he stays away.\" She sits back on her crate and pulls her shawl tighter.",
-      "expect": []
+      "expect": [],
+      "group": "retouch"
     },
     {
       "id": "described-held",
@@ -146,11 +165,121 @@
       ],
       "action": "I check my compass.",
       "narration": "You flip open the tin compass. The needle shivers, then swings toward the far bank. Odette reaches over, taps the cracked glass with one finger, and hands it back to you. \"That thing lies in the mist,\" she says. The coil of rope at the end of the dock creaks as the water moves.",
+      "expect": [],
+      "group": "retouch"
+    },
+    {
+      "id": "open-box",
+      "group": "state",
+      "stateOf": "Tin Box",
+      "copies": [
+        {
+          "runtime": "box",
+          "where": "you"
+        }
+      ],
+      "action": "I open the tin box.",
+      "narration": "You thumb the hook latch free and lift the lid of the tin box. Inside is nothing but a scrap of oiled cloth and the smell of old tobacco. You leave the lid open and hold the box on your knee while Odette watches the water.",
       "expect": []
     },
     {
+      "id": "light-lantern",
+      "group": "state",
+      "stateOf": "Hooded Lantern",
+      "copies": [],
+      "action": "I light my lantern.",
+      "narration": "You strike a match against the dock post and touch it to the wick of your hooded lantern. The flame catches and steadies. A stripe of yellow light leaks through the half-closed shutter and lies across the wet planks.",
+      "expect": []
+    },
+    {
+      "id": "soaked-cloak",
+      "group": "state",
+      "stateOf": "Oilskin Cloak",
+      "copies": [],
+      "action": "I lean out over the water to look for the ferry.",
+      "narration": "You lean out past the last piling. A wave slaps the dock and throws a sheet of cold river water over you. Your oilskin cloak is soaked through and heavy on your shoulders, and water runs from its hem onto the boards.",
+      "expect": []
+    },
+    {
+      "id": "drink-tonic",
+      "group": "use",
+      "copies": [
+        {
+          "item": "tonic",
+          "where": "you"
+        }
+      ],
+      "action": "I drink the bitter tonic.",
+      "narration": "You pull the cork and drink the bitter tonic in three swallows. It burns all the way down, and warmth spreads through your chest. You push the cork back into the empty bottle and keep it.",
+      "expect": [
+        {
+          "name": "Bitter Tonic",
+          "where": "you",
+          "quantity": 0
+        },
+        {
+          "name": "Empty Bottle",
+          "where": "you",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "blow-horn",
+      "group": "use",
+      "copies": [
+        {
+          "item": "horn",
+          "where": "you"
+        }
+      ],
+      "action": "I blow the ferry horn.",
+      "narration": "You lift the ferry horn and blow one long note across the river. It rolls out over the gray water and comes back faint from the far bank. Odette nods. \"He heard that,\" she says. You let the horn hang from its strap again.",
+      "expect": []
+    },
+    {
+      "id": "read-writ",
+      "group": "use",
+      "copies": [
+        {
+          "item": "writ",
+          "where": "you",
+          "state": "sealed"
+        }
+      ],
+      "action": "I break the seal on the ferry writ and read it.",
+      "narration": "You break the ferryman's wax seal and unfold the writ. It grants the bearer one crossing, paid in full. You fold the writ again and slide it into your coat.",
+      "expect": [
+        {
+          "name": "Ferry Writ",
+          "where": "you",
+          "quantity": 1,
+          "state": "opened"
+        }
+      ]
+    },
+    {
+      "id": "reveal-signet",
+      "group": "reveal",
+      "copies": [
+        {
+          "item": "signet",
+          "where": "you",
+          "unidentified": true
+        }
+      ],
+      "action": "I show Odette the iron ring.",
+      "narration": "You hold out the plain iron ring. Odette takes one look and goes still. \"That is the ferryman's own signet,\" she says. \"Show it at the landing and he takes you across for nothing.\" You turn the ring over and see the faint mark of an oar on its face.",
+      "expect": [
+        {
+          "name": "Ferryman's Signet",
+          "where": "you",
+          "quantity": 1
+        }
+      ]
+    },
+    {
       "id": "take-another",
-      "guard": true,
       "copies": [
         {
           "runtime": "pebble",
@@ -166,11 +295,11 @@
           "where": "you",
           "quantity": 3
         }
-      ]
+      ],
+      "group": "regain"
     },
     {
       "id": "second-eel",
-      "guard": true,
       "copies": [
         {
           "item": "eel",
@@ -189,6 +318,47 @@
           "name": "Smoked Eel",
           "where": "ent-odette",
           "quantity": 2
+        }
+      ],
+      "group": "regain"
+    },
+    {
+      "id": "burn-writ",
+      "group": "useGuard",
+      "noDose": [
+        "writ"
+      ],
+      "copies": [
+        {
+          "item": "writ",
+          "where": "you",
+          "state": "sealed"
+        }
+      ],
+      "action": "I burn the ferry writ.",
+      "narration": "You hold a corner of the sealed ferry writ to the lantern flame. The paper curls, catches and burns down to your fingers. You drop the last black flake into the river.",
+      "expect": [
+        {
+          "name": "Ferry Writ",
+          "where": "you",
+          "quantity": 0
+        }
+      ]
+    },
+    {
+      "id": "shatter-draught",
+      "group": "useGuard",
+      "noDose": [
+        "draught"
+      ],
+      "copies": [],
+      "action": "I throw a healing draught at the rat on the crate.",
+      "narration": "You hurl one healing draught at the rat. It misses and shatters against the crate, and green tonic runs down the wood into the cracks of the dock. The rat drops into the water and swims away.",
+      "expect": [
+        {
+          "name": "Healing Draught",
+          "where": "you",
+          "quantity": 1
         }
       ]
     }
@@ -233,6 +403,61 @@
       "id": "meromero-t17-cold-iron-knives",
       "name": "Cold Iron Knives",
       "narration": "You drive your blade downward with every ounce of your strength, \"**Yield to the light!**\" The flaming steel shears through his braced guard, slamming into the knight’s chest plate and buckling the rusted metal inward. The force shatters his posture, driving him onto one knee as a burst of holy fire erupts from the point of impact, searing through his armor and charring the dead flesh beneath.\n\nThe necrotic purple glow in the banner-pole flickers violently, like a dying candle fighting a gale. The knight lets out a hollow, rattling wheeze, his head lolling back as the heat of your blade boils the frost on his shoulders into thick, white steam. \n\nSylvie doesn't miss the opening. \"*Got you!*\" she shouts, launching herself forward and driving both cold iron knives deep into the exposed joints of his neck and shoulder. The blades sink in with a sickening crunch, and for a moment, the knight freezes, pinned between your searing light and her biting steel.\n\nBut as he falters, the purple energy doesn't vanish—it pulses outward in a sudden, violent shockwave. The burst knocks Sylvie back several feet and sends a ripple of necrotic frost through the ground, turning the earth beneath your boots into slick, black ice that threatens to pull you off balance.\n\nFrom the darkness beyond the circle of light, a long, mournful horn blast echoes across the barrow field. It isn't the keep's bell; it is deeper, older, and carries a weight of absolute cold that makes the air crystallize around your breath. \n\nThe knight’s head snaps forward, his empty sockets locking onto yours as he begins to pull himself up from one knee despite Sylvie's blades still embedded in him. \"**The master wakes,**\" he rasps, \"and you have rung the dinner bell.\""
+    }
+  ],
+  "shippedPrompt": "You are the inventory keeper for an interactive story. You read what happened this turn and record each change it made to who has which item. A separate step already wrote the story; you only record its item changes.\n<PERSONA|summary.markdown|header=\"Player Character\">\\\n<INVENTORY|markdown|header=\"Items Here\">\n## Operations\n- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.\n- lose: an owner loses an item for good - it is destroyed, used up off screen, or leaves the scene with no one present.\n- transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.\n- equip: an owner wields or wears an item they carry.\n- unequip: an owner puts away or takes off an item they had equipped.\n- consume: an owner uses up one dose or charge of an item they hold - eats it, drinks it, or spends one charge of it.\n- reveal: an item marked hidden comes into view because someone searches where it lies. It stays where it lies until someone takes it.\n\n## Fields\n- op: one operation from the list above.\n- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.\n- quantity: how many, a whole number from 1.\n- owner: who holds the item before the change. \"you\" for the player character, a person's name as Items Here shows it, or \"here\" for this place. Empty for gain.\n- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.\n\nRecord each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.\n\nItems Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it up, or puts it on or takes it off.",
+  "items": [
+    {
+      "id": "tonic",
+      "name": "Bitter Tonic",
+      "uses": 1,
+      "whenEmpty": {
+        "kind": "becomes",
+        "itemId": "bottle"
+      },
+      "aiSummary": "A stoppered glass bottle of dark, bitter tonic."
+    },
+    {
+      "id": "bottle",
+      "name": "Empty Bottle",
+      "aiSummary": "A small glass bottle with a cork stopper."
+    },
+    {
+      "id": "horn",
+      "name": "Ferry Horn",
+      "aiSummary": "A curled ram's horn on a leather strap, used to call the ferry.",
+      "statEffects": [
+        {
+          "id": "horn-resolve",
+          "statId": "stat-resolve",
+          "facet": "value",
+          "timing": "used",
+          "duration": {
+            "kind": "time",
+            "hours": 1
+          },
+          "amount": 1,
+          "op": "add"
+        }
+      ]
+    },
+    {
+      "id": "writ",
+      "name": "Ferry Writ",
+      "uses": 1,
+      "whenEmpty": {
+        "kind": "changesState",
+        "state": "opened"
+      },
+      "state": "sealed",
+      "aiSummary": "A folded writ of passage closed with the ferryman's wax seal."
+    },
+    {
+      "id": "signet",
+      "name": "Ferryman's Signet",
+      "unidentifiedName": "Plain Iron Ring",
+      "unidentifiedDescription": "A dull iron ring with a worn flat face.",
+      "aiSummary": "The ferryman's own signet. Whoever shows it crosses the river free."
     }
   ]
 }

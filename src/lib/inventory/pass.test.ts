@@ -32,19 +32,50 @@ const run = (copies: ItemCopy[], ops: InventoryPassOp[], over: Partial<PassScene
 
 describe('parseInventoryReply', () => {
   it('reads the schema reply, and a reply the schema shapes passes the schema check', () => {
-    const raw = JSON.stringify({ operations: [{ op: 'transfer', item: 'Iron Sword', quantity: 1, owner: 'you', to: 'Mara' }] });
+    const raw = JSON.stringify({ operations: [
+      { op: 'transfer', item: 'Iron Sword', quantity: 1, owner: 'you', to: 'Mara' },
+      { op: 'change', item: 'Iron Sword', quantity: 1, owner: 'Mara', to: '', state: 'bloodied' },
+      { op: 'use', item: 'Moonleaf', quantity: 1, owner: 'you', to: '', after: 'used up' },
+    ] });
     expect(followsResponseSchema(raw, inventoryPassSchema().schema)).toBe(true);
-    expect(parseInventoryReply(raw)).toEqual([op('transfer', 'Iron Sword', { owner: 'you', to: 'Mara' })]);
+    expect(parseInventoryReply(raw)).toEqual([
+      op('transfer', 'Iron Sword', { owner: 'you', to: 'Mara' }),
+      op('change', 'Iron Sword', { owner: 'Mara', state: 'bloodied' }),
+      op('use', 'Moonleaf', { owner: 'you', after: 'used up' }),
+    ]);
   });
 
-  it('rejects an operation outside the seven in the schema check', () => {
-    const raw = JSON.stringify({ operations: [{ op: 'sell', item: 'x', quantity: 1, owner: '', to: '' }] });
-    expect(followsResponseSchema(raw, inventoryPassSchema().schema)).toBe(false);
+  it('rejects an unknown op such as consume, and an unknown after, in the schema check', () => {
+    const row = { item: 'x', quantity: 1, owner: '', to: '', state: '' };
+    for (const bad of [{ ...row, op: 'sell' }, { ...row, op: 'consume' }, { ...row, op: 'use', after: 'eaten' }]) {
+      expect(followsResponseSchema(JSON.stringify({ operations: [bad] }), inventoryPassSchema().schema)).toBe(false);
+    }
   });
 
   it('reads the text lines, skipping prose and NONE, with a missing quantity as 1', () => {
-    expect(parseInventoryLines('Here are the changes:\n- gain | Rusty Key |  |  | you\nconsume | Tonic | 2 | you |\nNONE'))
-      .toEqual([op('gain', 'Rusty Key', { to: 'you' }), op('consume', 'Tonic', { quantity: 2, owner: 'you' })]);
+    expect(parseInventoryLines('Here are the changes:\n- gain | Rusty Key |  |  | you\nuse | Tonic | 2 | you |\nNONE'))
+      .toEqual([op('gain', 'Rusty Key', { to: 'you' }), op('use', 'Tonic', { quantity: 2, owner: 'you' })]);
+  });
+
+  it('reads the state and after fields from a text line, and after however the model joins it', () => {
+    expect(parseInventoryLines('change | Lantern | 1 | you |  | lit |\nuse | Honey Cake | 1 | you |  |  | Used_Up\nuse | Note | 1 | you |  |  | kept'))
+      .toEqual([
+        op('change', 'Lantern', { owner: 'you', state: 'lit' }),
+        op('use', 'Honey Cake', { owner: 'you', state: '', after: 'used up' }),
+        op('use', 'Note', { owner: 'you', state: '', after: 'kept' }),
+      ]);
+  });
+
+  it('tells a state the reply left out from an empty one', () => {
+    expect(parseInventoryReply(JSON.stringify({ operations: [{ op: 'change', item: 'Lantern', quantity: 1, owner: 'you', to: '' }] }))[0])
+      .not.toHaveProperty('state');
+    expect(parseInventoryReply(JSON.stringify({ operations: [{ op: 'change', item: 'Lantern', quantity: 1, owner: 'you', to: '', state: '' }] }))[0])
+      .toHaveProperty('state', '');
+    expect(parseInventoryLines('change | Lantern | 1 | you |')[0]).not.toHaveProperty('state');
+  });
+
+  it('drops a line whose op is unknown, such as consume', () => {
+    expect(parseInventoryLines('consume | Tonic | 1 | you |')).toEqual([]);
   });
 
   it('drops an operation on an item named "nothing", which a schema reply writes for a turn with no change', () => {
@@ -89,7 +120,7 @@ describe('applyInventoryPass', () => {
     expect(result.diagnostics).toEqual(['Inventory (pass) skipped gain "Rusty Key": the world has no item of that name']);
   });
 
-  it('applies each of the seven operations through the validator', () => {
+  it('applies each of the operations through the validator', () => {
     const start = [
       copy('s', 'sword', you), copy('t', 'tonic', you, { quantity: 3 }), copy('r', 'ring', cellar, { visibility: 'hidden' }),
     ];
@@ -97,7 +128,7 @@ describe('applyInventoryPass', () => {
       op('gain', 'Tonic', { to: 'Mara' }),
       op('equip', 'Iron Sword', { owner: 'you' }),
       op('unequip', 'Iron Sword', { owner: 'Ash' }),
-      op('consume', 'Tonic', { owner: 'you' }),
+      op('use', 'Tonic', { owner: 'you' }),
       op('lose', 'Tonic', { owner: 'you' }),
       op('reveal', 'Cursed Ring', { owner: 'here' }),
       op('transfer', 'Cursed Ring', { owner: 'Cellar', to: 'you' }),
@@ -118,13 +149,13 @@ describe('applyInventoryPass', () => {
     const result = run([copy('t', 'tonic', you)], [
       op('transfer', 'Tonic', { owner: 'you', to: 'Odette' }),
       op('equip', 'Tonic', { owner: 'you' }),
-      op('consume', 'Iron Sword', { owner: 'you' }),
+      op('use', 'Iron Sword', { owner: 'you' }),
       op('lose', 'Tonic', { owner: 'you' }),
     ]);
     expect(result.diagnostics).toEqual([
       'Inventory (pass) skipped transfer "Tonic": no one present is "Odette"',
       'Inventory (pass) skipped equip: Item Copy t has no slot',
-      'Inventory (pass) skipped consume "Iron Sword": none at "you"',
+      'Inventory (pass) skipped use "Iron Sword": none at "you"',
     ]);
     expect(result.copies).toEqual([]);
   });
@@ -201,12 +232,88 @@ describe('applyInventoryPass', () => {
     expect(result.copies).toEqual([copy('v', 'tonic', cellar, { quantity: 2 })]);
   });
 
-  it('consumes a runtime item the scene already holds', () => {
+  it('uses up a runtime item the scene already holds when after is empty', () => {
     const key: RuntimeItem = { id: 'k', name: 'Moonleaf' };
     const start: ItemCopy[] = [{ id: 'm', item: { kind: 'runtime', runtimeItemId: 'k' }, where: you, quantity: 2, visibility: 'visible' }];
-    const result = run(start, [op('consume', 'moonleaf', { owner: 'you' })], { runtimeItems: [key] });
+    const result = run(start, [op('use', 'moonleaf', { owner: 'you' })], { runtimeItems: [key] });
     expect(result.copies[0].quantity).toBe(1);
     expect(result.doses).toEqual([]);
+  });
+});
+
+describe('the pass\'s use, after and change (Q6, Q7, Q10)', () => {
+  const letter = item('letter', 'Sealed Letter', { uses: 1, whenEmpty: { kind: 'changesState', state: 'opened' } });
+  const cloak = item('cloak', 'Oilskin Cloak');
+  const note: RuntimeItem = { id: 'k', name: 'Torn Note' };
+  const items = [letter, cloak, tonic];
+  const noteCopy = (quantity: number): ItemCopy => ({ id: 'm', item: { kind: 'runtime', runtimeItemId: 'k' }, where: you, quantity, visibility: 'visible' });
+  const pass = (copies: ItemCopy[], ops: InventoryPassOp[]) =>
+    applyInventoryPass(copies, ops, scene({ items, runtimeItems: [note] }), { world: { items }, newId: ids() });
+  const states = (copies: ItemCopy[]) => copies.map((c) => ({ id: c.id, quantity: c.quantity, state: c.state?.state }));
+
+  it('keeps a runtime item a use leaves kept, and removes one a use leaves used up', () => {
+    expect(pass([noteCopy(2)], [op('use', 'Torn Note', { owner: 'you', after: 'kept' })]).copies).toEqual([noteCopy(2)]);
+    expect(pass([noteCopy(2)], [op('use', 'Torn Note', { owner: 'you', after: 'used up' })]).copies).toEqual([noteCopy(1)]);
+  });
+
+  it('follows an authored item\'s When Empty whatever after says', () => {
+    for (const after of ['used up', 'kept', undefined] as const) {
+      const result = pass([copy('l', 'letter', you)], [op('use', 'Sealed Letter', { owner: 'you', after })]);
+      expect(result.diagnostics).toEqual([]);
+      expect(states(result.copies)).toEqual([{ id: 'l', quantity: 1, state: 'opened' }]);
+    }
+    expect(pass([copy('t', 'tonic', you, { quantity: 2 })], [op('use', 'Tonic', { owner: 'you', after: 'kept' })]).copies)
+      .toEqual([copy('t', 'tonic', you, { quantity: 1 })]);
+  });
+
+  it('sets the named copy\'s State, splitting one off a stack', () => {
+    const result = pass([copy('c', 'cloak', you, { quantity: 2 })], [op('change', 'oilskin cloak', { owner: 'you', state: 'soaked' })]);
+    expect(result.diagnostics).toEqual([]);
+    expect(states(result.copies)).toEqual([{ id: 'c', quantity: 1, state: undefined }, { id: 'n0', quantity: 1, state: 'soaked' }]);
+  });
+
+  it('changes as many copies as the quantity names, passing over one already at that State', () => {
+    const start = [copy('a', 'cloak', you, { state: { state: 'Soaked' } }), copy('b', 'cloak', you, { quantity: 2 })];
+    const result = pass(start, [op('change', 'Oilskin Cloak', { owner: 'you', state: 'soaked', quantity: 2 })]);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.copies.reduce((n, c) => n + (c.state?.state?.toLowerCase() === 'soaked' ? c.quantity : 0), 0)).toBe(3);
+  });
+
+  it('skips a change to the State every copy already has, with a diagnostic', () => {
+    const start = [copy('a', 'cloak', you, { state: { state: 'soaked' } })];
+    const result = pass(start, [op('change', 'Oilskin Cloak', { owner: 'you', state: 'Soaked ' })]);
+    expect(result.copies).toEqual(start);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped change "Oilskin Cloak": every one at "you" is already Soaked']);
+  });
+
+  it('reads a name copied with its Items Here marks as the name before them', () => {
+    const start = [copy('a', 'cloak', you, { quantity: 2, state: { state: 'damp' } })];
+    const result = pass(start, [op('change', 'Oilskin Cloak (damp, ×2)', { owner: 'you', state: 'soaked' })]);
+    expect(result.diagnostics).toEqual([]);
+    expect(states(result.copies)).toEqual([{ id: 'a', quantity: 1, state: 'damp' }, { id: 'n0', quantity: 1, state: 'soaked' }]);
+  });
+
+  it('changes a runtime item\'s State, and skips a change to an item the owner lacks', () => {
+    const result = pass([noteCopy(1)], [op('change', 'Torn Note', { owner: 'you', state: 'damp' }), op('change', 'Oilskin Cloak', { owner: 'you', state: 'wet' })]);
+    expect(states(result.copies)).toEqual([{ id: 'm', quantity: 1, state: 'damp' }]);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped change "Oilskin Cloak": none at "you"']);
+  });
+
+  it('changes a copy lying here and a hidden one (Q33), the visible one first', () => {
+    const start = [copy('h', 'cloak', cellar, { visibility: 'hidden' }), copy('v', 'cloak', cellar)];
+    const one = pass(start, [op('change', 'Oilskin Cloak', { owner: 'here', state: 'torn' })]);
+    expect(one.diagnostics).toEqual([]);
+    expect(states(one.copies)).toEqual([{ id: 'h', quantity: 1, state: undefined }, { id: 'v', quantity: 1, state: 'torn' }]);
+    const both = pass(start, [op('change', 'Oilskin Cloak', { owner: 'Cellar', state: 'torn', quantity: 2 })]);
+    expect(both.copies.map((c) => [c.visibility, c.state?.state])).toEqual([['hidden', 'torn'], ['visible', 'torn']]);
+  });
+
+  it('skips a change that names no state, and clears the State on an empty one', () => {
+    const start = [copy('a', 'cloak', you, { state: { state: 'soaked' } })];
+    const missing = pass(start, [{ op: 'change', item: 'Oilskin Cloak', quantity: 1, owner: 'you', to: '' }]);
+    expect(missing.copies).toEqual(start);
+    expect(missing.diagnostics).toEqual(['Inventory (pass) skipped change "Oilskin Cloak": it names no state']);
+    expect(states(pass(start, [op('change', 'Oilskin Cloak', { owner: 'you', state: '' })]).copies)).toEqual([{ id: 'a', quantity: 1, state: undefined }]);
   });
 });
 
