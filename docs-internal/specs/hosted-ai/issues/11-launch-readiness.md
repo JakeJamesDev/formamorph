@@ -1,6 +1,7 @@
 # 11: Launch Readiness
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 8a45f46
 Blocked by: 05, 06
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -11,10 +12,19 @@ Model rationale: a load script and a checklist; the judgment is in reading the r
 
 **What to build:** before Supporters get access, the proxy is proven under load and the deploy has every piece it needs. A load script drives the proxy at the planned parallel load against a slow fake upstream and reports latency, errors, open rows and counter leaks. The deploy checklist covers the Caddy body cap, the new environment secrets and the closed beta on staff grants.
 
-- [ ] A load script runs the proxy against a fake upstream with configurable delay and reports p50/p90 time to first byte, error count, rows left `open` and parallel counters after the run.
-- [ ] After a run, every row is settled and every counter is back to zero.
-- [ ] The deploy docs list the Caddy request body cap check, each new environment variable, and the order: deploy, closed beta on staff grants, then open to Supporters.
-- [ ] The deploy docs state that the API must run as one process (admission and reservation share one synchronous transaction), and that `turnLimitSeconds` must exceed the longest call the idle limit allows, so the sweep never settles a live call (left open by ticket 04).
-- [ ] The script and docs hold no provider name or cost figure.
+- [x] A load script runs the proxy against a fake upstream with configurable delay and reports p50/p90 time to first byte, error count, rows left `open` and parallel counters after the run. (`npm run load:hosted-ai`, run by hand: p50 219 ms at 200 ms delay; `tests/hostedAiLoad.test.js`)
+- [x] After a run, every row is settled and every counter is back to zero. (test "settles every row and frees every slot"; removing the slot release turned 3 of 4 tests red)
+- [x] The deploy docs list the Caddy request body cap check, each new environment variable, and the order: deploy, closed beta on staff grants, then open to Supporters. (`docs-internal/server.md`, "Formamorph AI launch checklist")
+- [x] The deploy docs state that the API must run as one process (admission and reservation share one synchronous transaction), and that `turnLimitSeconds` must exceed the longest call the idle limit allows, so the sweep never settles a live call (left open by ticket 04). (checklist steps 4 and 5)
+- [x] The script and docs hold no provider name or cost figure. (read back; prices in the script are synthetic placeholders)
 
 For you: run the load script on the production host during a quiet window and decide when the closed beta ends.
+
+## Landed
+
+**Not verified**
+- Caddy streaming and body cap: the in-process script cannot see Caddy. Checklist step 2 holds the manual check.
+
+**For you**
+- Run the load script on the production host during a quiet window (`npm run load:hosted-ai`, checklist step 1) and decide when the closed beta ends.
+- Run the manual streamed-request check through Caddy on the real host (checklist step 2).
