@@ -22,6 +22,8 @@ import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { isQuarantined } from "@/lib/quarantine";
 import { ModerationMarker } from "@/components/community/ModerationMarker";
+import { LikesMarker } from "@/components/community/LikesMarker";
+import { likesMarkerOf } from "@/lib/likesMarker";
 import { pendingFaceOf } from "@/lib/listingModeration";
 import { usePendingThumbnail } from "@/lib/usePendingThumbnail";
 import WorldStorageService from "@/services/WorldStorageService";
@@ -91,6 +93,8 @@ interface RemoteWorldCardProps {
   onReject?: (world: WorldRecord) => void;
   /** Whether a review decision is in flight. */
   reviewBusy?: boolean;
+  /** Opens the likes audit from the Likes Marker. Staff surfaces only. */
+  onOpenLikes?: (world: WorldRecord) => void;
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
@@ -100,7 +104,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin, onToggleSupporterOnly,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav, inReviewGroup = false,
-  onApprove, onReject, reviewBusy = false,
+  onApprove, onReject, reviewBusy = false, onOpenLikes,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -313,6 +317,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
 
       <PinnedMark listing={world} className="mb-2" />
       <ModerationMarker listing={world} titleOnly={inReviewGroup} className="mb-2" />
+      {viewerIsStaff && onOpenLikes && <LikesMarker reasons={likesMarkerOf(world)} onOpen={() => onOpenLikes(world)} className="mb-2" />}
 
       {(onApprove || onReject || manageAddons || canPin || canMarkSupporterOnly || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">

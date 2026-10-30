@@ -49,6 +49,9 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import type { DownloadPlan } from "@/lib/useDownloadCoordinator";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { ModerationMarker } from "@/components/community/ModerationMarker";
+import { LikesMarker } from "@/components/community/LikesMarker";
+import { likesMarkerOf } from "@/lib/likesMarker";
+import type { LikesMarkerReason } from "@/types";
 import { PendingUpdateSection } from "@/components/community/PendingUpdateSection";
 import { heldChangelogEntries, type PendingUpdate } from "@/lib/listingModeration";
 import { placementsBy } from "@/lib/contests";
@@ -176,6 +179,9 @@ export function RemoteWorldDetailsModal({
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   // Whether the likers list is up. Staff only; nothing else can raise it.
   const [showLikers, setShowLikers] = useState(false);
+  // Whether the likers list was opened from the Likes Marker, which lands it on the audit.
+  const [auditLikers, setAuditLikers] = useState(false);
+  const [freshLikesMarker, setFreshLikesMarker] = useState<LikesMarkerReason[] | undefined>(undefined);
 
   // What this world requires and what it is offered as an add-on, read only while the listing is open.
   const downloadPlan = useWorldDownloadPlan(world, open && capabilities.localLibrary);
@@ -341,6 +347,8 @@ export function RemoteWorldDetailsModal({
       // The fresher answer about the setting: this response was read now, and the catalog may be a visit
       // old. Cached details and a failed request say nothing about it, so nothing is reported.
       onAnonymousLikes?.(fresh.details.anonymousLikes);
+      // Read now, never from the disk cache: a marker clears when the likes behind it age out.
+      setFreshLikesMarker(fresh.details.likesMarker);
       apply(fresh.details);
     } else if (fresh.status === 'gone' || !cached) {
       apply(null);
@@ -369,6 +377,7 @@ export function RemoteWorldDetailsModal({
       setAssociations(undefined);
       setListingVisibility(undefined);
       setPendingUpdate(undefined);
+      setFreshLikesMarker(undefined);
       tabPickedRef.current = false;
       setTab(seededChangelog === undefined ? 'comments' : defaultTabForCount(seededChangelog, downloadStateForWorld(world)));
       setReportTarget(null);
@@ -423,6 +432,8 @@ export function RemoteWorldDetailsModal({
   // Who liked something is a moderation surface, not a social one: an author does not get it on their
   // own listing, and nothing on screen tells anybody else it exists.
   const canSeeLikers = capabilities.moderation && isStaff(currentUser);
+  // The single-listing answer is newer than the catalog row it was opened from, so it wins once it lands.
+  const likesMarkerReasons = freshLikesMarker ?? likesMarkerOf(world);
 
   // The row's count says so at open; the details answer, once it lands, is the authority.
   const changelogUsable = hasChangelog(changelog ? changelog.length : detailsSettled ? undefined : seededChangelog, isOwnListing);
@@ -441,6 +452,7 @@ export function RemoteWorldDetailsModal({
   // likers list left open would reopen itself over whichever listing came next, unasked.
   useEffect(() => {
     setShowLikers(false);
+    setAuditLikers(false);
   }, [open, listingKey]);
 
   // DEV: `#dev?modal=likers` lands on the likers list without clicking through the catalog first. Runs
@@ -638,6 +650,9 @@ export function RemoteWorldDetailsModal({
           {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine onSelect={onOpenContest} />}
           {world && <PinnedMark listing={world} className="mr-8" />}
           {markedListing && <ModerationMarker listing={markedListing} showStaffQuarantine={false} className="mr-8" />}
+          {canSeeLikers && likesMarkerReasons.length > 0 && (
+            <LikesMarker reasons={likesMarkerReasons} onOpen={() => { setAuditLikers(true); setShowLikers(true); }} className="mr-8 w-auto self-start" />
+          )}
         </DialogHeader>
 
         {world && (
@@ -968,7 +983,8 @@ export function RemoteWorldDetailsModal({
         {canSeeLikers && (
           <LikersDialog
             open={showLikers}
-            onOpenChange={setShowLikers}
+            onOpenChange={(next) => { setShowLikers(next); if (!next) setAuditLikers(false); }}
+            auditOnOpen={auditLikers}
             listingId={world ? String(world._id || world.id) : null}
             listingName={world?.name}
             currentUser={currentUser}

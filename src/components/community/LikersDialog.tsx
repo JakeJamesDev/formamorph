@@ -13,13 +13,14 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { StatusPill } from "@/components/StatusPill";
 import { describeAccountAge, isFreshAccount } from "@/lib/accountAge";
+import { describeLikesMarker } from "@/lib/likesMarker";
 import { canModerate } from "@/lib/roles";
 import { formatServerDate, formatServerDateTime } from "@/lib/serverDate";
 import { cn } from "@/lib/utils";
 import WorldStorageService from "@/services/WorldStorageService";
 import type { WorldRecord } from "@/components/WorldDetails";
 import type {
-  AnonymousLikeRow, LikerAuditRow, LikerRow, LikesMarkerReason, LikesSummary, NetworkKind,
+  AnonymousLikeRow, LikerAuditRow, LikerRow, LikesSummary, NetworkKind,
 } from "@/types";
 
 /** What the audit knows about one liker, once it has been asked for. Keyed by account id. */
@@ -30,11 +31,6 @@ const KIND_COPY: Record<NetworkKind, { label: string; tip: string }> = {
   vpn: { label: 'VPN', tip: 'Liked from an address on a VPN list' },
   hosting: { label: 'Hosting', tip: 'Liked from an address on a hosting network list' },
   tor: { label: 'Tor', tip: 'Liked from an address on the Tor exit list' },
-};
-
-const REASON_COPY: Record<LikesMarkerReason, string> = {
-  burst: 'Burst',
-  flagged_share: 'Flagged share',
 };
 
 /** The badge a like wears when its address matched a list. Renders nothing for no kind. */
@@ -651,7 +647,7 @@ export function LikersDialog({
           <div data-bursts="true" className="space-y-1 rounded-md border bg-muted/30 p-2">
             {summary.reasons.length > 0 && (
               <p className="text-meta text-muted-foreground">
-                Marker fires on: {summary.reasons.map((reason) => REASON_COPY[reason]).join(' and ')}
+                Marker fires on: {describeLikesMarker(summary.reasons)}
               </p>
             )}
             {summary.bursts.length > 0 && (
@@ -660,7 +656,7 @@ export function LikersDialog({
                 <ul className="space-y-0.5">
                   {summary.bursts.map((burst) => (
                     <li key={burst.startedAt} className="text-meta text-muted-foreground">
-                      {formatServerDateTime(burst.startedAt)} — {burst.size} different likers
+                      {formatServerDateTime(burst.startedAt)} · {burst.size} likers
                     </li>
                   ))}
                 </ul>
