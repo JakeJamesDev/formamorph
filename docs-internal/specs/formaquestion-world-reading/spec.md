@@ -1,6 +1,7 @@
 # Spec: Formaquestion World Reading
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-30. Tickets 01–11 landed; the last landing is 864e62d18. Review: spec text corrected. Gates green on 2026-10-30.
 Spec session: formaquestion-world-reading — spec
 
 ## Problem Statement
@@ -148,6 +149,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - The index rebuilds from live editor state when the world changes, debounced. If rebuilds cost too much on large worlds, fall back to the last saved world (Q8).
 - One section per authored item: entity (both descriptions), location, item, trait, stat with its code, each script, each World Tool, each dictionary entry, each world prompt. An entity's own stats and traits are their own sections (ticket 04).
 - The index rebuilds in under 50 ms on the largest bundled world, debounced 500 ms. Section embeddings are computed lazily at question time and cached by text hash. Switching to the last saved world (Q8) is a design change that needs a spec ruling, not runtime switching.
+- In game, the world pick request's lead line names what the player has met; the editor line is unchanged (ticket 08).
 - **Q29 (user, 2026-10-29):** the world pool gets its own AI pick request, sent in parallel with the guide pick request, which stays byte-equal. One shared request dropped guide recall@5 from 81.9% to 78.3% with Emberwatch open (cloud, 5 runs per arm). Above 400 world sections, the world pick request is skipped and keyword and semantic ranking carry the world pool.
 - The docs lookup function stays guide-only; the world block also rides in the lookup message. A bare question (every source off) sends no world block.
 - The answer and lookup prompts keep today's text. The guide-only relaxation rides the `worldEditor` rider, and the closing grounding line names world sections only when a world block is present. Both budgets start at 12,000 characters and 5 sections until ticket 07 tunes them.
@@ -161,7 +163,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - The world rules join the help preset as two prompt keys, `worldEditor` and `worldGame`, each a plain rider like the code rider (ticket 03). `worldEditor` holds how-it-works; `worldGame` holds lore so far, opinion-not-solution and no speculation about unshown plot. The request sends only the key that matches its lean: ticket 04 sends `worldEditor`, ticket 05 sends `worldGame`. No probe ships with ticket 03; ticket 07's baseline measures both texts.
 - The preset file carries the switch as a top-level `readWorld` boolean, applied to the device setting on import. A stored custom preset that lacks the new texts gets the built-in defaults, the same rule as the file.
 - ⚠️ **Export shape:** the help preset file gains the world-rules prompt and the world-reading switch. The file has been in released builds since v3.2.0. The parser accepts a file without them and fills the built-in defaults; today it refuses a file that lacks any expected entry, so that rule changes for these two keys.
-- The AI Language directive keeps world names as the world writes them.
+- The AI Language directive keeps world names as the world writes them. The sentence goes out only with a non-empty AI Language and a world block, an empty block included (ticket 11, Q31).
 
 ### Sources and follow-ups (Q17)
 
@@ -169,7 +171,7 @@ Settled with the user on 2026-10-29 in the grill. Q20–Q27 came from a gap revi
 - World-item kinds: entity, location, item, trait, stat, script, tool (a World Tool), dictionary, prompt. Later tickets may add kinds.
 - The follow-up topic rule takes either kind. Docs-page favoring applies only when the topic is a guide section.
 - The AI Context trace lists a world source as "<kind> · <name>", not clickable.
-- In the editor, a world source opens its item, like Take Me There opens a docs target. In game, it is a plain name.
+- In the editor, a world source opens its item, like Take Me There opens a docs target. In game, it is a plain name. Each answer keeps the lean it was asked under: game sources stay plain names on every screen, and editor sources link only while an editor world is open (ticket 09).
 - Follow-up history, its topic rule and the AI Context trace carry world sources the same way they carry guide sections.
 
 ### Settings (Q7)
