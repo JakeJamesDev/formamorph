@@ -14,6 +14,7 @@ import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
 import type { OpenWorld } from './helpWorld';
 import type { HelpEmbedder } from './helpSemantic';
+import { isWorldSource } from './helpWorldSource';
 import { buildPlayerView, type PlayerView } from './playerView';
 import { storySoFar } from './storySoFar';
 import { entryVectorKey } from '@/lib/semanticDictionary';
@@ -31,6 +32,14 @@ const PACT: DictionaryEntry = { id: 'pact', name: 'Ashen Pact', key: ['ashen pac
 const BELL: DictionaryEntry = { id: 'bell', name: 'Drowned Bell', key: ['drowned bell'], value: 'A bell rung under the lake.' };
 const CROWN: DictionaryEntry = { id: 'crown', name: 'Cinder Crown', key: ['cinder crown'], value: 'The crown the heir will claim.' };
 const LORE = [PACT, BELL, CROWN];
+const ROAD: DictionaryEntry = { id: 'road', name: 'Salt Road', key: ['salt road'], value: 'A road paved with salt.' };
+const OATH: DictionaryEntry = { id: 'oath', name: 'Iron Oath', key: ['iron oath'], value: 'An oath kept in iron.' };
+/** Five entries, and a question that fires four of them; the story fires the bell. */
+const FIVE = [PACT, BELL, CROWN, ROAD, OATH];
+const FOUR_KEYS = 'What of the ashen pact, the cinder crown, the salt road and the iron oath?';
+/** Lore that fires by meaning: the question and each entry share one vector. */
+const NEAR = new Float32Array([1, 0]);
+const nearEmbedder: HelpEmbedder = { open: async () => true, embed: async () => [NEAR], vectors: async () => ({ model: '', sections: [] }) as never };
 
 const state = (extra: Partial<GameState> = {}): GameState => ({
   globalStats: STATS, globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
@@ -56,13 +65,13 @@ const fullView = (): PlayerView => ({
   stats: STATS.map((s) => ({ kind: 'stat', id: s.id, name: s.name, type: s.type, value: s.value, min: s.min, max: s.max, band: '' })),
 });
 
-function gameInput({ history = HISTORY, chain = CHAIN, memoryDigests = true, view }: {
-  history?: ChatMessage[]; chain?: GameState[]; memoryDigests?: boolean; view?: PlayerView;
+function gameInput({ history = HISTORY, chain = CHAIN, memoryDigests = true, view, lore = LORE }: {
+  history?: ChatMessage[]; chain?: GameState[]; memoryDigests?: boolean; view?: PlayerView; lore?: DictionaryEntry[];
 } = {}): GameWorldInput {
   return {
     view: view ?? buildPlayerView({ world: WORLD, chain, history, persona: null, resolve: (text) => text }),
     story: storySoFar({ turns: parseTurns(history), memoryDigests, verbatimFloor: 1, milestoneDrop: null, stripMedia: false }),
-    lore: LORE,
+    lore,
     loreVectors: null,
     resolve: (text) => text,
   };
@@ -154,9 +163,8 @@ describe('a question in the game', () => {
   });
 
   it('fires an entry by meaning against the question while Semantic Lore has vectors', async () => {
-    const near = new Float32Array([1, 0]);
-    const embedder: HelpEmbedder = { open: async () => true, embed: async () => [near], vectors: async () => ({ model: '', sections: [] }) as never };
-    const input = () => ({ ...gameInput(), loreVectors: new Map([[entryVectorKey(CROWN), near]]) });
+    const embedder = nearEmbedder;
+    const input = () => ({ ...gameInput(), loreVectors: new Map([[entryVectorKey(CROWN), NEAR]]) });
     const { fetchImpl, answers } = endpoint();
     await ask(fetchImpl, 'Who will rule after the queen?', { world: gameWorld(input), embedder });
     expect(worldBlock(answers)).toContain('The crown the heir will claim.');
@@ -204,11 +212,65 @@ describe('a question in the game', () => {
   });
 });
 
+describe('fired lore and met rows in one world block', () => {
+  const MARA_AND_FOUR_KEYS = `Who is Mara? ${FOUR_KEYS}`;
+  const MARA_ROW = 'A widow who keeps the gate.';
+  const loreIn = (block: string | undefined, entries: DictionaryEntry[]) => entries.filter((entry) => block?.includes(`# ${entry.name}\n`)).map((entry) => entry.id);
+
+  /** The world block and sources of one question; `semantic` gives the listed entries the question's vector. */
+  async function blockFor(question: string, lore: DictionaryEntry[], { semantic = [] }: { semantic?: DictionaryEntry[] } = {}) {
+    const loreVectors = semantic.length ? new Map(semantic.map((entry) => [entryVectorKey(entry), NEAR])) : null;
+    const { fetchImpl, answers } = endpoint();
+    const events = await ask(fetchImpl, question, { world: gameWorld(() => ({ ...gameInput({ lore }), loreVectors })), embedder: nearEmbedder });
+    return { block: worldBlock(answers), sources: done(events).sources };
+  }
+
+  it('keeps the met row the question names when five entries fire', async () => {
+    const { block, sources } = await blockFor(MARA_AND_FOUR_KEYS, FIVE);
+    expect(block).toContain(MARA_ROW);
+    // The first three fired entries in declaration order; the story fires the bell.
+    expect(loreIn(block, FIVE)).toEqual(['pact', 'bell', 'crown']);
+    expect(sources.filter(isWorldSource).filter((source) => source.worldKind === 'dictionary').map((source) => source.id)).toEqual(['pact', 'bell', 'crown']);
+  });
+
+  it('keeps the met row when five lore pages outrank it', async () => {
+    // Each entry also says who keeps it, so all five pages outrank her own row.
+    const crowded = FIVE.map((entry) => ({ ...entry, value: `${entry.value} Mara keeps it at the gate.` }));
+    const { block } = await blockFor(`Who keeps the gate? ${FOUR_KEYS}`, crowded);
+    expect(block).toContain(MARA_ROW);
+    expect(loreIn(block, crowded)).toEqual(['pact', 'bell', 'crown']);
+  });
+
+  it('caps fired lore at three sections with no met row ranked', async () => {
+    const { block } = await blockFor(FOUR_KEYS, FIVE);
+    expect(loreIn(block, FIVE)).toEqual(['pact', 'bell', 'crown']);
+  });
+
+  it('ranks keyword fires ahead of a semantic fire declared first', async () => {
+    const DREAM: DictionaryEntry = { id: 'dream', name: 'Waking Dream', key: ['waking dream'], value: 'A dream that walks.' };
+    const crowded = await blockFor('What of the ashen pact and the cinder crown?', [DREAM, PACT, BELL, CROWN], { semantic: [DREAM] });
+    expect(loreIn(crowded.block, [DREAM, PACT, BELL, CROWN])).toEqual(['pact', 'bell', 'crown']);
+    // With room under the cap, the semantic fire joins after the keyword fires.
+    const roomy = await blockFor('What of the ashen pact?', [DREAM, PACT, BELL], { semantic: [DREAM] });
+    expect(loreIn(roomy.block, [DREAM, PACT, BELL])).toEqual(['dream', 'pact', 'bell']);
+    expect(roomy.block!.indexOf('A dream that walks.')).toBeGreaterThan(roomy.block!.indexOf('A bell rung under the lake.'));
+  });
+
+  it('drops lore from the end so the top met row fits the budget', async () => {
+    const long = (entry: DictionaryEntry): DictionaryEntry => ({ ...entry, value: `${entry.value} ${'Ash and smoke. '.repeat(330)}` });
+    const lore = [PACT, BELL, CROWN].map(long);
+    const { block } = await blockFor('Who is Mara, and what of the ashen pact and the cinder crown?', lore);
+    expect(block).toContain(MARA_ROW);
+    expect(loreIn(block, lore)).toEqual(['pact', 'bell']);
+  });
+});
+
 describe('a Formaquestion Tool in the game', () => {
   const reasoning: ReasoningCapability = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } };
   const tool = helpTool();
 
-  it("builds its snapshot with the question's fired entries", async () => {
+  /** Asks with the Tool on; the model calls it once, so the snapshot is built. */
+  async function askWithTool(question: string, lore?: DictionaryEntry[]) {
     const snapshot = vi.fn(openWorld().snapshot);
     let request = 0;
     const replies = [
@@ -216,9 +278,17 @@ describe('a Formaquestion Tool in the game', () => {
       sseReply('Mara keeps the gate.'),
     ];
     const fetchImpl = ((_url: string, init: RequestInit) => sseResponse(isPickRequest(init) ? sseReply(NO_PICK) : replies[request++])) as unknown as typeof fetch;
-    await ask(fetchImpl, 'What is the Ashen Pact?', { world: gameWorld(() => gameInput(), { snapshot }), snapshot: textSnapshot(textTarget({ reasoning })) },
+    await ask(fetchImpl, question, { world: gameWorld(() => gameInput({ lore }), { snapshot }), snapshot: textSnapshot(textTarget({ reasoning })) },
       { tools: [tool], toolSwitches: { [tool.id]: true } });
+    return snapshot;
+  }
+
+  it("builds its snapshot with the question's fired entries", async () => {
     // The question fires the pact; the story fires the bell.
-    expect(snapshot).toHaveBeenCalledWith([PACT, BELL]);
+    expect(await askWithTool('What is the Ashen Pact?')).toHaveBeenCalledWith([PACT, BELL]);
+  });
+
+  it('builds its snapshot with every fired entry past the block cap', async () => {
+    expect(await askWithTool(FOUR_KEYS, FIVE)).toHaveBeenCalledWith(FIVE);
   });
 });

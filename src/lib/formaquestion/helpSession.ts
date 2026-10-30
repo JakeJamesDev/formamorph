@@ -72,6 +72,9 @@ export const HELP_WORLD_SECTION_LIMIT = 5;
 /** The most characters of world section text one help request holds, apart from the docs budget. */
 export const HELP_WORLD_CHAR_BUDGET = 12_000;
 
+/** The most world sections fired dictionary entries take in a game world block. */
+export const HELP_FIRED_LORE_SECTION_LIMIT = 3;
+
 /** An earlier question of the conversation and the answer text it got. */
 export interface EarlierExchange {
   question: string;
@@ -480,6 +483,16 @@ function withinWorldBudget(sections: readonly DocSection[]): DocSection[] {
   }
   return kept;
 }
+
+/** The game world block: capped fired lore ahead of the ranked rows; lore drops from the end until the top row fits. */
+function gameWorldSections(index: WorldIndex, fired: readonly DictionaryEntry[], rows: readonly DocSection[]): DocSection[] {
+  const lore = fired.flatMap((entry) => index.sectionsOf(loreSource(entry))).slice(0, HELP_FIRED_LORE_SECTION_LIMIT);
+  const top = rows[0];
+  const size = (sections: readonly DocSection[]) => sections.reduce((sum, section) => sum + section.markdown.length, 0);
+  while (top && lore.length > 0 && size(lore) + top.markdown.length > HELP_WORLD_CHAR_BUDGET) lore.pop();
+  return withinWorldBudget([...lore, ...rows]);
+}
+
 /** The items the world block holds, once each, in block order. */
 function worldSourcesOf(index: WorldIndex, sections: readonly DocSection[]): WorldSource[] {
   const items = new Map<string, WorldSource>();
@@ -558,10 +571,7 @@ export async function* askHelp({
   const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead, pinned, howToRule });
   // The world pool fills its own budget, so a full world block never pushes out a guide section.
   const ranked = searches.world ? helpSections(searches.world, question, { history: kept, budget: HELP_WORLD_CHAR_BUDGET, limit: HELP_WORLD_SECTION_LIMIT }) : [];
-  // In game the fired entries go ahead of the ranked rows, inside the same budget.
-  const worldInPrompt = game && worldIndex
-    ? withinWorldBudget([...game.fired.flatMap((entry) => worldIndex.sectionsOf(loreSource(entry))), ...ranked])
-    : ranked;
+  const worldInPrompt = game && worldIndex ? gameWorldSections(worldIndex, game.fired, ranked) : ranked;
   const worldBlock: WorldBlockSection[] | undefined = worldIndex && worldInPrompt.flatMap((section) => {
     const source = worldIndex.sourceOf(section);
     return source ? [{ kind: source.worldKind, markdown: section.markdown }] : [];
