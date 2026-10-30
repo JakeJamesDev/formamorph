@@ -137,6 +137,8 @@ export function EditorRow({
         'cursor-pointer transition-colors flex items-center gap-1',
         attached ? 'rounded-t-md' : 'rounded-md',
         selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary',
+        // A light rule under each row keeps the entries of a list apart.
+        !selected && !attached && 'border-b border-border/50',
         className,
       )}
     >
