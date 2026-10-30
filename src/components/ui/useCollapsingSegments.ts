@@ -21,7 +21,7 @@ export interface CollapsingSegments {
   measureRef: RefObject<HTMLDivElement | null>;
   /** True once the measuring rows have a width; before that the segments keep their own styles. */
   ready: boolean;
-  /** True from the frame after `ready`, so the pill lands without a slide. */
+  /** True from the frame after `ready` for the current labels, so the pill lands without a slide. */
   animate: boolean;
   fold: SegmentFold;
   layout: SegmentLayout;
@@ -44,8 +44,10 @@ export function useCollapsingSegments({ labels, active, fold: hostFold, onStepWi
   const rootRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<Measured | null>(null);
-  const [animate, setAnimate] = useState(false);
   const labelKey = labels.join('\u0000');
+  // Motion belongs to one label set, so tabs that arrive or rename land on their step without a slide.
+  const [animatedKey, setAnimatedKey] = useState<string | null>(null);
+  const animate = animatedKey === labelKey;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -75,9 +77,9 @@ export function useCollapsingSegments({ labels, active, fold: hostFold, onStepWi
   const ready = !!measured && measured.full.some((w) => w > 0);
   useLayoutEffect(() => {
     if (!ready || animate) return;
-    const frame = requestAnimationFrame(() => setAnimate(true));
+    const frame = requestAnimationFrame(() => setAnimatedKey(labelKey));
     return () => cancelAnimationFrame(frame);
-  }, [ready, animate]);
+  }, [ready, animate, labelKey]);
 
   const full = measured?.full;
   const icon = measured?.icon;

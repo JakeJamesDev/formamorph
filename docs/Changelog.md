@@ -60,7 +60,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Main Menu:**
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
-  - **World Editor panel tabs show every label when they fit, then only the selected tab's, then icons alone.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
+  - **World Editor and game side panel tabs show every label when they fit, then the selected tab's, then icons alone.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
