@@ -14,6 +14,7 @@ Model rationale: a load script and a checklist; the judgment is in reading the r
 - [ ] A load script runs the proxy against a fake upstream with configurable delay and reports p50/p90 time to first byte, error count, rows left `open` and parallel counters after the run.
 - [ ] After a run, every row is settled and every counter is back to zero.
 - [ ] The deploy docs list the Caddy request body cap check, each new environment variable, and the order: deploy, closed beta on staff grants, then open to Supporters.
+- [ ] The deploy docs state that the API must run as one process (admission and reservation share one synchronous transaction), and that `turnLimitSeconds` must exceed the longest call the idle limit allows, so the sweep never settles a live call (left open by ticket 04).
 - [ ] The script and docs hold no provider name or cost figure.
 
 For you: run the load script on the production host during a quiet window and decide when the closed beta ends.
