@@ -4,6 +4,7 @@ import type { AiEndpointTarget } from '@/lib/aiRequest/aiRequestSpec';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { probeEndpoint, type EndpointProbe } from '@/lib/textEndpointProbe';
 import { isDesktop, listLocalModels, localLlmStatus } from '@/lib/imageGen/desktop';
+import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
 
 /** Which AI the app is pointed at: the desktop's bundled engine, or any user-configured endpoint. */
 export type AiMode = 'local' | 'custom';
@@ -47,19 +48,21 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
   const model = target ? target.model : settings.activeModelName;
   const engine = useLocalLlmStatus();
   const mode: AiMode = localEngine ? 'local' : 'custom';
+  // Formamorph AI is never probed: the server answers every call and its state names any refusal.
+  const hosted = mode === 'custom' && isHostedChatUrl(url);
   const [nonce, setNonce] = useState(0);
   const recheck = useCallback(() => setNonce((n) => n + 1), []);
 
   // Custom endpoint: probe, re-running whenever the endpoint identity changes or a recheck is asked for.
   const [probe, setProbe] = useState<EndpointProbe | null>(null);
   useEffect(() => {
-    if (mode !== 'custom' || !enabled) return;
+    if (mode !== 'custom' || !enabled || hosted) return;
     let active = true;
     setProbe(null);
     probeEndpoint(url, apiToken, model)
       .then((result) => { if (active) setProbe(result); });
     return () => { active = false; };
-  }, [mode, enabled, url, apiToken, model, nonce]);
+  }, [mode, enabled, hosted, url, apiToken, model, nonce]);
 
   // Local engine: whether any GGUF is on disk at all. Distinguishes "nothing downloaded" (offer a download)
   // from "downloaded but won't load" (send them to the panel) — and keeps us at `null` until it's known,
@@ -77,6 +80,7 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
   // Fresh point-in-time check that bypasses the cached probe/engine state — the launch guard calls this so a
   // stale answer can't gate a working setup. Also seeds the cached state so the UI catches up. Never throws.
   const revalidate = useCallback(async (): Promise<boolean> => {
+    if (hosted) return true;
     if (mode === 'custom') {
       const result = await probeEndpoint(url, apiToken, model);
       setProbe(result);
@@ -85,8 +89,9 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
     if (!isDesktop()) return false;
     const st = await localLlmStatus().catch(() => null);
     return st?.status === 'ready';
-  }, [mode, url, apiToken, model]);
+  }, [hosted, mode, url, apiToken, model]);
 
+  if (hosted) return { reachable: true, mode, blocker: null, recheck, revalidate };
   if (mode === 'custom') {
     return {
       reachable: probe === null ? null : probe === 'ok',

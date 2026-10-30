@@ -1,6 +1,6 @@
 import { DEFAULT_CONTEXT_WINDOW } from '@/contexts/settingsDefaults';
 import type { EndpointSampler, EndpointSamplerOverride } from '@/lib/endpointSamplers';
-import { BUILTIN_ENGINE_PRESET_ID, isDemoAI, type TextEndpointValues } from '@/lib/textEndpointPresets';
+import { BUILTIN_ENGINE_PRESET_ID, isDemoAI, isFormamorphAiId, type TextEndpointValues } from '@/lib/textEndpointPresets';
 import type { PresetEditorSource, TextEndpointSource } from './settingsSource';
 
 type S = TextEndpointSource;
@@ -14,6 +14,8 @@ export interface EditedTextPreset {
   demoAI: boolean;
   /** The bundled engine, whose runtime panel stands in for the fields. */
   engine: boolean;
+  /** Formamorph AI, whose status stands in for the fields. */
+  hosted: boolean;
 }
 
 /** What the text-endpoint editor reads and calls. The caller decides which preset it edits. */
@@ -45,6 +47,7 @@ export function activePresetEditor(s: TextEndpointSource): TextEndpointEditorMod
       builtIn: s.activeTextEndpointPresetIsBuiltIn,
       demoAI: s.activeTextEndpointIsDemoAI,
       engine: s.localModelActive,
+      hosted: isFormamorphAiId(s.activeTextEndpointPresetId),
     },
     fields: {
       endpointUrl: s.endpointUrl,
@@ -105,7 +108,7 @@ export function presetEditor(s: PresetEditorSource, id: string, view: PresetEdit
   }));
   return {
     presets: { builtIn: s.builtinTextEndpointPresets, user: s.textEndpointPresets },
-    edited: { id, name, builtIn, demoAI: isDemoAI({ endpointId: id, endpoint: values.endpoint }), engine: id === BUILTIN_ENGINE_PRESET_ID },
+    edited: { id, name, builtIn, demoAI: isDemoAI({ endpointId: id, endpoint: values.endpoint }), engine: id === BUILTIN_ENGINE_PRESET_ID, hosted: isFormamorphAiId(id) },
     fields: {
       endpointUrl: values.endpoint,
       apiToken: values.apiToken,

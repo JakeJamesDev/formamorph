@@ -9,11 +9,17 @@ import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
 import { noteUnusableExtraParams } from './extraParamsWarning';
 import { reasoningOverrun } from './reasoningOverrun';
+import { hostedSession as appHostedSession, type HostedSession } from '@/lib/hostedAi/hostedSession';
+import { HostedTurn, type HostedTurnClaim } from '@/lib/hostedAi/hostedTurn';
+import { parseHostedUsage } from '@/lib/hostedAi/hostedState';
+import { TURN_HEADER } from '@/lib/hostedAi/hostedUrls';
+import { hostedStateCopy } from '@/lib/hostedAi/hostedCopy';
+import { hostedStateSends, readHostedRefusal, type HostedPresetState, type HostedRefusal } from '@/lib/hostedAi/refusals';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
  *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
- *  on its token limit before any answer or call. */
-export type AiStreamErrorKind = 'http' | 'no-body' | 'parse' | 'cut-thought';
+ *  on its token limit before any answer or call. `hosted`: Formamorph AI's state refused the call unsent. */
+export type AiStreamErrorKind = 'http' | 'no-body' | 'parse' | 'cut-thought' | 'hosted';
 
 /** Structured detail an endpoint returned with an HTTP failure, when it supplied an OpenAI-style error body. */
 export interface AiServerError {
@@ -30,9 +36,11 @@ export class AiStreamError extends Error {
   readonly serverError?: AiServerError;
   /** The Error Details text: the request, the status, the server's fields and its raw body. */
   readonly details?: string;
+  /** What Formamorph AI refused, on a call to it. */
+  readonly hosted?: HostedRefusal;
 
   constructor(kind: AiStreamErrorKind, message: string, detail?: {
-    status?: number; response?: Response; serverError?: AiServerError; details?: string; cause?: unknown;
+    status?: number; response?: Response; serverError?: AiServerError; details?: string; cause?: unknown; hosted?: HostedRefusal;
   }) {
     super(message, { cause: detail?.cause });
     this.name = 'AiStreamError';
@@ -41,6 +49,7 @@ export class AiStreamError extends Error {
     this.response = detail?.response;
     this.serverError = detail?.serverError;
     this.details = detail?.details;
+    this.hosted = detail?.hosted;
   }
 }
 
@@ -100,6 +109,7 @@ async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiSt
     if (typeof response.text === 'function') raw = await response.text();
   } catch { /* An unreadable body leaves only the status. */ }
   const serverError = parseServerError(raw);
+  const hosted = spec.target?.hosted ? readHostedRefusal(response.status, parseJson(raw)) : undefined;
   const lines = [
     ...requestLines(spec),
     `Status: ${[response.status, response.statusText].filter(Boolean).join(' ')}`,
@@ -108,11 +118,34 @@ async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiSt
     serverError?.type && `Type: ${serverError.type}`,
     serverError?.code && `Code: ${serverError.code}`,
   ].filter(Boolean);
-  return new AiStreamError('http', `HTTP ${response.status}`, {
+  return new AiStreamError('http', hosted?.message || `HTTP ${response.status}`, {
     status: response.status,
     response,
     serverError,
+    hosted,
     details: [...lines, '', 'Response:', describeResponseBody(raw)].join('\n'),
+  });
+}
+
+function parseJson(raw: string): unknown {
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+/** The error for a Formamorph AI call its preset state refuses before it is sent. */
+function hostedStateFailure(spec: AiStreamSpec, state: HostedPresetState): AiStreamError {
+  return new AiStreamError('hosted', hostedStateCopy(state)?.reason ?? "Formamorph AI can't take this request", {
+    hosted: { status: 0, code: null, message: '', presetState: state },
+    details: [...requestLines(spec), `Formamorph AI: ${state}`].join('\n'),
+  });
+}
+
+/** A mid-stream `event: error` from Formamorph AI. */
+function hostedStreamFailure(spec: AiStreamSpec, refusal: HostedRefusal): AiStreamError {
+  return new AiStreamError('http', refusal.message || 'Formamorph AI stopped the reply', {
+    status: refusal.status,
+    hosted: refusal,
+    details: [...requestLines(spec), refusal.code && `Code: ${refusal.code}`, refusal.message && `Message: ${refusal.message}`]
+      .filter(Boolean).join('\n'),
   });
 }
 
@@ -168,6 +201,10 @@ export interface AiStreamOptions {
   now?: () => number;
   /** Live-reasoning cadence; 0 emits every reasoning token. */
   reasoningThrottleMs?: number;
+  /** The Formamorph AI turn this call belongs to. Absent, a call to it is a turn of its own. */
+  hostedTurn?: HostedTurn;
+  /** Tests pass their own; the app uses its one session. */
+  hostedSession?: HostedSession;
 }
 
 /** One streamed piece of a tool call. The first piece names the call; later pieces extend its arguments. */
@@ -298,15 +335,44 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   yield { type: 'debug', debug: { kind: 'request', url: spec.url, body: spec.body, startedAt } };
   noteUnusableExtraParams(spec.target?.extraParams);
 
+  // Formamorph AI: its state may refuse at once; the token is read now, and the turn id joins the headers.
+  const session = spec.target?.hosted ? options.hostedSession ?? appHostedSession : null;
+  let headers = spec.headers;
+  let claim: HostedTurnClaim | null = null;
+  if (session) {
+    // The live token alone decides signed-out; a held one is sent and the server judges it.
+    const blocked = () => {
+      const state = session.getSnapshot().presetState;
+      return !session.credential() ? 'signed-out' : state === 'signed-out' || hostedStateSends(state) ? null : state;
+    };
+    const before = blocked();
+    if (before) throw hostedStateFailure(spec, before);
+    claim = await (options.hostedTurn ?? new HostedTurn()).claim(signal);
+    if (!claim) {
+      finishReason = ABORTED_FINISH_REASON;
+      yield* finish();
+      return;
+    }
+    // Read after the wait, so a sign-out while this call queued behind the turn's first never sends the old token.
+    const token = session.credential();
+    const after = blocked();
+    if (after || !token) {
+      claim.failed();
+      throw hostedStateFailure(spec, after ?? 'signed-out');
+    }
+    headers = { ...spec.headers, Authorization: `Bearer ${token}`, ...(claim.turnId && { [TURN_HEADER]: claim.turnId }) };
+  }
+
   let response: Response;
   try {
     response = await doFetch(spec.url, {
       method: 'POST',
-      headers: spec.headers,
+      headers,
       body: JSON.stringify(spec.body),
       signal,
     });
   } catch (error) {
+    claim?.failed();
     if (signal?.aborted || (error as Error).name === 'AbortError') {
       finishReason = ABORTED_FINISH_REASON;
       yield* finish();
@@ -315,7 +381,13 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     throw error;
   }
 
-  if (!response.ok) throw await httpFailure(response, spec);
+  if (!response.ok) {
+    claim?.failed();
+    const failure = await httpFailure(response, spec);
+    if (failure.hosted) session?.noteRefusal(failure.hosted);
+    throw failure;
+  }
+  claim?.opened(response.headers.get(TURN_HEADER));
   noteImagesDropped(response);
   if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream');
 
@@ -330,8 +402,27 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   const decoder = new TextDecoder();
   let buffer = '';
   const pending: AiStreamEvent[] = [];
+  // Formamorph AI's named events: the settled usage, and a failure after the stream opened.
+  let namedEvent: string | null = null;
+  let hostedFailure: HostedRefusal | null = null;
+
+  /** Reads a line of a named event; false hands the line to the frame reader. */
+  const consumeNamed = (line: string): boolean => {
+    if (line.startsWith('event: ')) { namedEvent = line.slice(7).trim(); return true; }
+    if (!line.trim()) { namedEvent = null; return true; }
+    if (namedEvent === null || !line.startsWith('data: ')) return false;
+    const data = parseJson(line.slice(6));
+    if (namedEvent === 'usage') {
+      const usage = parseHostedUsage(data);
+      if (usage) session?.noteUsage(usage);
+    } else if (namedEvent === 'error') {
+      hostedFailure = readHostedRefusal(502, data);
+    }
+    return true;
+  };
 
   const consume = (line: string) => {
+    if (session && consumeNamed(line)) return;
     let frame: FrameDelta | null;
     try {
       frame = parseFrame(line);
@@ -385,6 +476,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
       buffer = lines.pop() ?? '';
       for (const line of lines) consume(line);
       while (pending.length) yield pending.shift() as AiStreamEvent;
+      if (hostedFailure) break;
     }
 
     if (signal?.aborted) {
@@ -397,6 +489,11 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     buffer += decoder.decode();
     if (buffer.trim()) consume(buffer.trim());
     while (pending.length) yield pending.shift() as AiStreamEvent;
+    if (hostedFailure) {
+      reader.cancel().catch(() => {});
+      session?.noteRefusal(hostedFailure);
+      throw hostedStreamFailure(spec, hostedFailure);
+    }
 
     yield* finish();
   } finally {

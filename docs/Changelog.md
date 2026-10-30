@@ -29,6 +29,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items now have a State word, such as sealed or lit, shown beside the name in the Inventory tab.** The story and scripts change it, and a letter can turn "opened" on its last use. Copies with different States never stack.
     - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
     - **The Inventory prompt now records a use, a change of State, and an item's true nature becoming known.** Opening a letter or lighting a lantern keeps the item. Burning or shattering one still removes it with no effect.
+  - **Formamorph AI:**
+    - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Supporter tier sets the context window.
 
 ### Minor Changes
 

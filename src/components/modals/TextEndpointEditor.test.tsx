@@ -32,7 +32,7 @@ function Editor({ onOpenConnectionGuide = () => {} }: { onOpenConnectionGuide?: 
 function modelOn(id: string): TextEndpointEditorModel {
   return {
     presets: { builtIn: [{ id: 'default', name: 'Default' }], user: [{ id: 'llama', name: 'llama' }, { id: 'vllm', name: 'vllm' }] },
-    edited: { id, name: id, builtIn: false, demoAI: false, engine: false },
+    edited: { id, name: id, builtIn: false, demoAI: false, engine: false, hosted: false },
     fields: {
       endpointUrl: `http://${id}.test/v1`, apiToken: '', modelName: 'local', maxTokens: 512, maxOutputOverrideEnabled: false,
       contextWindow: 8192, contextWindowOverride: null, detectedContextWindow: null, detectStatus: 'idle',

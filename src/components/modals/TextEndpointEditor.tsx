@@ -22,6 +22,8 @@ import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
 import { PresetNameDialog } from './PresetNameDialog';
+import { HostedPresetStatus } from './HostedPresetStatus';
+import type { HostedPresetState } from '@/lib/hostedAi/refusals';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import type { TextEndpointEditorModel } from './textEndpointEditorModel';
 
@@ -56,8 +58,10 @@ function EditedPresetBadge({ url, apiToken, model }: { url: string; apiToken: st
  * prompt can be routed to it. The select stays visible for every preset, including the engine, or there'd be
  * no way back. A `heading` swaps the select for a title.
  */
-export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, presetDescription = SETTINGS_COPY.textPreset.description, heading }: {
+export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, presetDescription = SETTINGS_COPY.textPreset.description, heading, hostedState }: {
   model: TextEndpointEditorModel;
+  /** Formamorph AI's state to show in place of the live one: the dev-router. */
+  hostedState?: HostedPresetState;
   advanced: boolean;
   onOpenConnectionGuide: () => void;
   /** The help line under the preset select or heading. */
@@ -92,7 +96,8 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
   // A copy needs no name dialog. The model's `onAdd` clones the edited preset and moves the caller to the copy.
   // The engine has no fields to vary, so a copy of it is just a second engine.
   const presetActions = presetHeaderActions(builtIn, {
-    duplicate: edited.engine ? undefined : () => onAdd(`${edited.name} (copy)`),
+    // Formamorph AI's connection is the account's, so a copy of it could never send.
+    duplicate: edited.engine || edited.hosted ? undefined : () => onAdd(`${edited.name} (copy)`),
     rename: () => setPresetDialog({ mode: 'rename' }),
     reset: {
       run: () => onReset(edited.id),
@@ -186,15 +191,15 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
             : { heading })}
         />
       </div>
-      {/* The engine has no URL to probe. */}
-      {!edited.engine && (
+      {/* The engine has no URL to probe; Formamorph AI reports its own state. */}
+      {!edited.engine && !edited.hosted && (
         <div className="flex-shrink-0 pt-1">
           <EditedPresetBadge key={edited.id} url={endpointUrl} apiToken={apiToken} model={modelName} />
         </div>
       )}
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
-      {edited.engine ? <LocalModelPanel /> : (
+      {edited.engine ? <LocalModelPanel /> : edited.hosted ? <HostedPresetStatus state={hostedState} /> : (
         <ScrollArea landingRoom className="flex-1 min-h-0">
           <div className="grid gap-4 py-4">
             <Row top htmlFor="endpointUrl" target={targetAttribute('settingsEndpoints.text', 'endpoint-url')} {...rowCopy('endpointUrl')}>
@@ -315,7 +320,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
           </div>
         </ScrollArea>
       )}
-      {!edited.engine && (
+      {!edited.engine && !edited.hosted && (
         <div className="flex flex-wrap justify-start items-center gap-2 flex-shrink-0 pt-4">
           <ConfirmDialog
             {...SETTINGS_CONFIRMS.resetAiEndpoint}

@@ -72,7 +72,10 @@ import { EndpointRouteField } from './EndpointRouteField';
 import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
 import { imageReachabilityTarget } from '@/lib/imageGen/probe';
 import { TextEndpointEditor } from './TextEndpointEditor';
-import { activePresetEditor } from './textEndpointEditorModel';
+import { activePresetEditor, presetEditor, type PresetEditorView } from './textEndpointEditorModel';
+import { FORMAMORPH_AI_PRESET_ID } from '@/lib/textEndpointPresets';
+import { HOSTED_PRESET_STATES, type HostedPresetState } from '@/lib/hostedAi/refusals';
+
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
 import { DevChipOptions } from '@/components/prompt/DevChipOptions';
@@ -109,6 +112,17 @@ import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
 
 /** One editable prompt template: its text, its shipped default, its setter and its chip palette. */
+/** The `fixture=fai-<state>` dev route's state, or undefined. */
+function devHostedStateOf(fixture: string | undefined): HostedPresetState | undefined {
+  const state = fixture?.startsWith('fai-') ? fixture.slice(4) : '';
+  return HOSTED_PRESET_STATES.find((s) => s === state);
+}
+
+/** The dev route's editor shows Formamorph AI and changes nothing. */
+const DEV_HOSTED_VIEW: PresetEditorView = {
+  onSelect: () => {}, onAdd: () => {}, detectStatus: 'idle', detectContextWindow: async () => {},
+};
+
 type EditablePrompt = { value: string; def: string; set: (s: string) => void; variables: PromptVariable[] };
 
 /** The chip families of the Messages fields, for their compare views. */
@@ -242,6 +256,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   forcedMode?: SettingsMode;
 }) => {
   const devRoute = useDevRoute();
+  // DEV dev-router: `fixture=fai-<state>` shows Formamorph AI's editor in that state, selecting nothing.
+  const devHostedState = import.meta.env.DEV ? devHostedStateOf(devRoute?.fixture) : undefined;
   // DEV dev-router: `#dev?modal=settingsCompare` opens the compare view on a canned Narration edit.
   const [devCompare, setDevCompare] = useState(false);
   useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'settingsCompare') setDevCompare(true); }, [devRoute]);
@@ -1155,7 +1171,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 {visibleEndpointTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <TextEndpointEditor model={activePresetEditor(settings)} advanced={advanced} onOpenConnectionGuide={() => setConnectionGuideOpen(true)} />
+                <TextEndpointEditor
+                  model={devHostedState ? presetEditor(settings, FORMAMORPH_AI_PRESET_ID, DEV_HOSTED_VIEW) : activePresetEditor(settings)}
+                  hostedState={devHostedState}
+                  advanced={advanced}
+                  onOpenConnectionGuide={() => setConnectionGuideOpen(true)}
+                />
               </TabsContent>
               <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}

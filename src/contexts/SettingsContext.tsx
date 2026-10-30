@@ -1,5 +1,9 @@
 import { randomUUID } from "@/lib/uuid";
-import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import AuthService from '@/services/AuthService';
+import { hostedSession, type HostedSnapshot } from '@/lib/hostedAi/hostedSession';
+import { hostedPromptWindow } from '@/lib/hostedAi/hostedState';
+import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
 import { PROMPT_TEXT_DEFAULTS } from '../components/game/GamePrompts';
 import { EXPERIMENTAL_PROMPT_VALUES } from '../components/game/ExperimentalPrompts';
 import { DEFAULT_EDITOR_AUTO_SAVE_IDLE_S, clampEditorAutoSaveIdle, DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_CONTEXT_OVERFLOW, LOCAL_CONTEXT_OVERFLOW_POLICIES, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, DEFAULT_TOOLS_ENABLED, DEFAULT_EDITOR_AUTO_SAVE, type LocalCacheType, type LocalContextOverflow, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
@@ -16,7 +20,7 @@ import {
 } from '../lib/imageEndpointPresets';
 import {
   textEndpointPresetCodec, emptyStore as emptyTextStore, presetStoreFromEnv as textPresetStoreFromEnv,
-  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets, textPresetName, canonicalPresetId, isDemoAI,
+  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets, textPresetName, canonicalPresetId, isDemoAI, isFormamorphAiId,
   activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive,
   valuesForId as textValuesForId,
   isEngineActive as isTextEngineActive, setActive as textSetActive,
@@ -557,6 +561,18 @@ function useProvideSettings() {
   }, [setTextPresetStore]);
   const textIsBuiltInActive = isTextBuiltInActive(textPresetStore);
 
+  // Formamorph AI: its window, cap, model and capabilities come only from the hosted state, never a probe.
+  const hostedSnapshot: HostedSnapshot = useSyncExternalStore(hostedSession.subscribe, hostedSession.getSnapshot);
+  const hostedActive = isFormamorphAiId(textPresetStore.activeId);
+  const hostedState = hostedSnapshot.hosted;
+  const hostedWindow = hostedPromptWindow(hostedState) ?? DEFAULT_CONTEXT_WINDOW;
+  const hostedModelId = hostedState?.model?.id ?? '';
+  const hostedCapability = hostedSnapshot.capability;
+  const hostedTarget = useMemo(() => ({
+    maxTokens: Math.min(DEFAULT_MAX_TOKENS, hostedState?.maxTokens ?? DEFAULT_MAX_TOKENS),
+    modelId: hostedModelId,
+  }), [hostedState?.maxTokens, hostedModelId]);
+
   // The bundled engine is an endpoint preset now, not a mode, so "am I on my own endpoint" is simply
   // "is a user preset selected" — no separate flag. The old `useCustomEndpoint` checkbox is gone;
   // `migrateEngineToPreset` (above) turns whatever it was set to into the equivalent preset selection, once.
@@ -647,6 +663,8 @@ function useProvideSettings() {
   // value, falling back to the built-in default.
   const contextWindow = localModelActive
     ? localContextSize
+    : hostedActive
+    ? hostedWindow
     : onUserEndpoint
     ? (contextWindowOverride ?? detectedContextWindow ?? DEFAULT_CONTEXT_WINDOW)
     : DEFAULT_CONTEXT_WINDOW;
@@ -722,7 +740,9 @@ function useProvideSettings() {
       serialize: (v) => JSON.stringify(v),
     });
   // A signature with no probe answer yet has no record.
-  const reasoningCapability = (reasoningCapabilityCache[reasoningCapabilitySig] as ReasoningCapability | undefined) ?? null;
+  const reasoningCapability = hostedActive
+    ? hostedCapability
+    : (reasoningCapabilityCache[reasoningCapabilitySig] as ReasoningCapability | undefined) ?? null;
 
   /** One record into the cache, dropping the oldest entry once the cache is over its cap. */
   const storeCapability = useCallback(
@@ -798,6 +818,7 @@ function useProvideSettings() {
   /** Resolves a target's record under its served-model key, reading the served model first. `force` skips the needs check. */
   const resolveTargetCapability = useCallback(async (target: CapabilityTarget, force = false) => {
     const { url, apiToken, model, localEngine } = target;
+    if (isHostedChatUrl(url)) return;
     if (!servedModelKnown(url, model, localEngine)) await probeTextEndpoint(url, apiToken, model);
     if (unmountRef.current?.signal.aborted) return;
     const served = servedModel(url, model, localEngine);
@@ -827,6 +848,8 @@ function useProvideSettings() {
   /** Reads the served model again, forgets everything known about it, and resolves it afresh. */
   const recheckCapability = useCallback(async (target?: CapabilityTarget) => {
     const t = target ?? { url: activeEndpointUrl, apiToken: activeApiToken, model: activeModelName, localEngine: localModelActive };
+    // Formamorph AI's record is the hosted state's, so a recheck reads that again.
+    if (isHostedChatUrl(t.url)) { await hostedSession.refresh(); return; }
     if (!t.localEngine) await probeTextEndpoint(t.url, t.apiToken, t.model);
     if (unmountRef.current?.signal.aborted) return;
     const served = servedModel(t.url, t.model, t.localEngine);
@@ -1016,7 +1039,7 @@ function useProvideSettings() {
   // answer, and only where a reply is allowed to correct the source that answered.
   const observedSignatures = useRef(new Set<string>());
   useEffect(() => {
-    if (!reasoningEngaged) return;
+    if (hostedActive || !reasoningEngaged) return;
     const sig = reasoningCapabilitySig;
     const observation = reasoningObservationsRef.current[sig];
     const answer = observationAnswer(observation);
@@ -1039,7 +1062,7 @@ function useProvideSettings() {
     }).catch(() => { /* an unreachable endpoint surfaces as a request failure, not here */ });
     return () => controller.abort();
   }, [
-    reasoningObserved, reasoningEngaged, reasoningCapabilitySig, reasoningCapability,
+    hostedActive, reasoningObserved, reasoningEngaged, reasoningCapabilitySig, reasoningCapability,
     activeEndpointUrl, activeApiToken, activeModelName, activeServed.id, cacheReasoningCapability,
   ]);
 
@@ -1395,7 +1418,18 @@ function useProvideSettings() {
     activeId: textPresetStore.activeId,
     values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive,
     maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens, engineModelId: engineState.modelId ?? '',
-  }), [textPresetStore.activeId, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens, localMaxTokens, engineState.modelId]);
+    hosted: hostedTarget,
+  }), [textPresetStore.activeId, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens, localMaxTokens, engineState.modelId, hostedTarget]);
+
+  // Formamorph AI's state is read while any prompt can send to it, and again for every account change.
+  const hostedInUse = hostedActive || Object.values(promptEndpoints).some((id) => id !== undefined && isFormamorphAiId(id));
+  useEffect(() => {
+    if (!hostedInUse) return;
+    void hostedSession.refresh();
+    // The session drops the old account's state itself; this reads the new one's.
+    return AuthService.onSessionChanged(() => { void hostedSession.refresh(); });
+  }, [hostedInUse]);
+  const refreshHostedState = useCallback(() => hostedSession.refresh(), []);
 
   /** The routing step alone: which preset a kind resolves to and its display name. No probes. */
   const routeForKind = useCallback((kind: AIRequestType, routes?: readonly string[]) => {
@@ -1438,6 +1472,8 @@ function useProvideSettings() {
     if (resolved.presetId === null) {
       return { ...resolved, url, presetName, contextWindow, reasoning: withEngineBudget(reasoningCapability) };
     }
+    // Formamorph AI is never probed: the hosted state holds its window and capabilities.
+    if (resolved.hosted) return { ...resolved, url, presetName, contextWindow: hostedWindow, reasoning: hostedCapability };
     const sig = endpointSignature(url, resolved.model);
     // Probe a routed target's real window. Fire-and-forget: this turn uses the preset's override (or the
     // shipped default) and the detected value applies from the next request on. The active endpoint's own
@@ -1471,7 +1507,7 @@ function useProvideSettings() {
   }, [
     routeForKind, activeContextSig,
     contextWindow, reasoningCapability, contextCache, reasoningCapabilityCache, localContextSize,
-    rememberContext, resolveTargetCapability, servedVersion,
+    rememberContext, resolveTargetCapability, servedVersion, hostedWindow, hostedCapability,
   ]);
 
   /** The routed-cache signature of the preset `id` names. */
@@ -1487,6 +1523,7 @@ function useProvideSettings() {
   /** Ask a preset that is not the active one for its context window, and remember the answer. */
   const detectContextWindowFor = useCallback(async (id: string): Promise<number | null> => {
     const { values, sig } = presetSignature(id);
+    if (isHostedChatUrl(values.endpoint)) return null;
     const detected = await fetchContextLength(normalizeEndpointUrl(values.endpoint), values.apiToken, values.model);
     if (detected !== null && !unmountRef.current?.signal.aborted) rememberContext(sig, detected);
     return detected;
@@ -1818,6 +1855,8 @@ function useProvideSettings() {
     activeTextEndpointPresetIsBuiltIn,
     activeTextEndpointPresetName,
     activeTextEndpointIsDemoAI,
+    hostedAi: hostedSnapshot,
+    refreshHostedState,
     narrationIsDemoAI,
     selectTextEndpointPreset,
     addTextEndpointPreset,

@@ -118,6 +118,7 @@ import { DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { useAiSettingsSnapshot } from "../lib/aiRequest/useAiSettingsSnapshot";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { transportRequest, type TransportContext, type TransportRequest, type TransportSink } from "../lib/aiRequest/requestTransport";
+import { hostedSession } from "../lib/hostedAi/hostedSession";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { schemaAccepted, toolsSupported } from "../lib/reasoningEffort";
 import { completeSentenceCount, completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
@@ -467,6 +468,8 @@ interface ViewRequest extends TransportRequest {
   quiet?: boolean;
   /** Answers the request in place of the network, for a scripted turn. */
   fetchImpl?: typeof fetch;
+  /** The player turn a pipeline pass belongs to; a call with none and no `attachTurnId` is a Formamorph AI turn of its own. */
+  turnKey?: string;
 }
 
 /** A scripted turn's stand-in replies: its narration and choices streams. */
@@ -3458,7 +3461,7 @@ const GameViewer = ({
       /** The pipeline's request seam, filled by the Request Transport. */
       // Each call reads the executor at call time, so a later call in the same request sees an earlier one's move.
       const request: TurnRequestAdapter = (spec, context) => pendingRequests.track(spec.type, () => sendAiRequest({
-        ...spec, signal: context.signal, executeTool: (tool, args) => executeTool(tool, args),
+        ...spec, signal: context.signal, executeTool: (tool, args) => executeTool(tool, args), turnKey: turnId,
         fetchImpl: spec.type === "narration" ? script?.narration : spec.type === "choices" ? script?.choices : undefined,
       }));
 
@@ -4400,7 +4403,7 @@ const GameViewer = ({
   };
 
   /** Sends one request through the Request Transport, with the sinks its type reports to. */
-  const sendAiRequest = async ({ fetchImpl, ...args }: ViewRequest): Promise<string> => {
+  const sendAiRequest = async ({ fetchImpl, turnKey, ...args }: ViewRequest): Promise<string> => {
     const { type: requestType, silent = false, quiet = false } = args;
     if (!silent && !quiet) setAiRequestType(requestType);
     const lookups = lookupSink();
@@ -4409,7 +4412,10 @@ const GameViewer = ({
     if (narration) sinks.push(narration.sink);
     if (requestType === "choices") sinks.push(choicesSink);
     try {
-      const text = await transportRequest(args, { ...transportContext(), ...(fetchImpl && { fetchImpl }) }, fanOut(sinks));
+      // Every pass of a turn shares its Formamorph AI turn, a background pass the turn it belongs to.
+      const key = turnKey ?? args.attachTurnId;
+      const hostedTurn = key ? hostedSession.turnFor(key) : undefined;
+      const text = await transportRequest(args, { ...transportContext(), hostedTurn, ...(fetchImpl && { fetchImpl }) }, fanOut(sinks));
       // The turn reads the narration its scripts left, which is what the screen and the save already hold.
       return (narration && text ? await narration.settled() : undefined) ?? text;
     } finally {

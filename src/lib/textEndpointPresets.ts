@@ -3,6 +3,7 @@ import type { Codec } from './usePersistentState';
 import { isDesktop, DEFAULT_LOCAL_LLM_ENDPOINT } from '@/lib/imageGen/desktop';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, HOSTED_ENDPOINT } from '../contexts/settingsDefaults';
 import { normalizeEndpointUrl } from './endpointUrl';
+import { HOSTED_CHAT_URL } from './hostedAi/hostedUrls';
 import {
   coerceEndpointSamplerOverrides,
   coerceEndpointMaxOutputOverride,
@@ -67,6 +68,19 @@ export const BUILTIN_ENGINE_VALUES: TextEndpointValues = {
   samplerOverrides: defaultEndpointSamplerOverrides(),
 };
 
+/** Formamorph AI, the endpoint for Supporters. Its window, model and capabilities come from the hosted state. */
+export const FORMAMORPH_AI_PRESET_ID = 'formamorph-ai';
+
+/** Formamorph AI's fixed connection. The model name is nominal: the server picks the model. */
+export const FORMAMORPH_AI_VALUES: TextEndpointValues = {
+  endpoint: HOSTED_CHAT_URL,
+  apiToken: '',
+  model: 'formamorph-ai',
+  contextWindowOverride: null,
+  maxOutputOverride: { enabled: true, value: DEFAULT_MAX_TOKENS },
+  samplerOverrides: defaultEndpointSamplerOverrides(),
+};
+
 /** Whether an endpoint URL is the hosted service, in either the base or the completed spelling. */
 export function isHostedEndpoint(endpoint: string): boolean {
   return normalizeEndpointUrl(endpoint) === normalizeEndpointUrl(HOSTED_ENDPOINT);
@@ -90,9 +104,16 @@ export function defaultPresetName(): string {
 /** The read-only presets available on this platform, in dropdown order. */
 export function builtinTextPresets(): { id: string; name: string }[] {
   const defaultPreset = { id: DEFAULT_TEXT_PRESET_ID, name: defaultPresetName() };
+  // A build with no community server has no proxy to reach.
+  const hosted = HOSTED_CHAT_URL ? [{ id: FORMAMORPH_AI_PRESET_ID, name: 'Formamorph AI' }] : [];
   return isDesktop()
-    ? [{ id: BUILTIN_ENGINE_PRESET_ID, name: 'Built-In Engine' }, defaultPreset]
-    : [defaultPreset];
+    ? [{ id: BUILTIN_ENGINE_PRESET_ID, name: 'Built-In Engine' }, defaultPreset, ...hosted]
+    : [defaultPreset, ...hosted];
+}
+
+/** Whether `id` names Formamorph AI on this build. */
+export function isFormamorphAiId(id: string): boolean {
+  return id === FORMAMORPH_AI_PRESET_ID && HOSTED_CHAT_URL !== '';
 }
 
 /** A preset's display name. A ghost id takes the Default preset's name, as it resolves to the Default values. */
@@ -216,6 +237,7 @@ export function isEngineActive(store: TextEndpointPresetStore): boolean {
  *  preset missing a future key falls back cleanly. An unknown id resolves to Default. */
 export function valuesForId(store: TextEndpointPresetStore, id: string): TextEndpointValues {
   if (id === BUILTIN_ENGINE_PRESET_ID) return BUILTIN_ENGINE_VALUES;
+  if (isFormamorphAiId(id)) return FORMAMORPH_AI_VALUES;
   if (id === DEFAULT_TEXT_PRESET_ID) return {
     ...DEFAULT_TEXT_ENDPOINT_VALUES,
     samplerOverrides: coerceEndpointSamplerOverrides(store.defaultSamplerOverrides),
@@ -276,7 +298,7 @@ export function updateSamplerOverride(
   sampler: EndpointSampler,
   override: EndpointSamplerOverride,
 ): TextEndpointPresetStore {
-  if (id === BUILTIN_ENGINE_PRESET_ID) return store;
+  if (id === BUILTIN_ENGINE_PRESET_ID || isFormamorphAiId(id)) return store;
   const current = id === DEFAULT_TEXT_PRESET_ID
     ? coerceEndpointSamplerOverrides(store.defaultSamplerOverrides)
     : coerceEndpointSamplerOverrides(store.presets.find((preset) => preset.id === id)?.values.samplerOverrides);
@@ -296,7 +318,7 @@ export function updateMaxOutputOverride(
   id: string,
   override: EndpointMaxOutputOverride,
 ): TextEndpointPresetStore {
-  if (id === BUILTIN_ENGINE_PRESET_ID || id === DEFAULT_TEXT_PRESET_ID) return store;
+  if (id === BUILTIN_ENGINE_PRESET_ID || id === DEFAULT_TEXT_PRESET_ID || isFormamorphAiId(id)) return store;
   return {
     ...store,
     presets: store.presets.map((preset) => (preset.id === id
@@ -316,7 +338,7 @@ export function updateValue<K extends TextEndpointValueKey>(store: TextEndpointP
 
 /**
  * Apply a change to the preset `id` names, active or not. The change reads that preset's current values. The
- * built-ins keep their connection fields: the Default takes only sampler changes, the engine takes none.
+ * built-ins keep their connection fields: the Default takes only sampler changes, the engine and Formamorph AI none.
  */
 export function editPreset(
   store: TextEndpointPresetStore,

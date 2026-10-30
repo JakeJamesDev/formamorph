@@ -32,6 +32,8 @@ export interface AiEndpointTarget {
   maxTokens: number | undefined;
   /** Send the desktop bundled engine's body shape (top_p/top_k/min_p, token-budget reasoning). */
   localEngine: boolean;
+  /** Formamorph AI: the stream sends the account token and the turn id. */
+  hosted?: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
   samplerOverrides: EndpointSamplerOverrides;
   /** The endpoint's Extra Parameters, as written; merged first into the body, under the app's fields (lib/extraParams). */
@@ -339,7 +341,9 @@ export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFuncti
   const reasoning = resolveReasoning(snapshot, call, target);
   return {
     url: target.url,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${target.apiToken}` },
+    headers: target.hosted
+      ? { 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json', Authorization: `Bearer ${target.apiToken}` },
     body: bodyForTarget(snapshot, call, target),
     target,
     requestType: call.requestType,
