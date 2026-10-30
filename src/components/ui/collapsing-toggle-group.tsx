@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
-import { segmentFold, segmentLayout } from '@/lib/collapsingSegments';
+import { segmentFold, segmentLayout, segmentStepWidths, type SegmentFold } from '@/lib/collapsingSegments';
 import { cn } from '@/lib/utils';
 
 export interface CollapsingToggleOption<V extends string> {
@@ -18,6 +18,10 @@ interface CollapsingToggleGroupProps<V extends string> {
   onValueChange: (value: V) => void;
   'aria-label': string;
   className?: string;
+  /** A step chosen by the host, such as a top bar that folds its controls in order. Unset, the group picks by its own room. */
+  fold?: SegmentFold;
+  /** Receives the group's width at each step whenever the measurements change. */
+  onStepWidths?: (widths: Record<SegmentFold, number>) => void;
 }
 
 /** The group's `p-1`, on each side. */
@@ -39,9 +43,9 @@ const sameNumbers = (a: number[], b: number[]) => a.length === b.length && a.eve
  * option keeps its label, and with less room still, every option shows its icon alone. One pill slides to
  * the selection.
  *
- * It fills its parent's width and folds by that room, not by the viewport.
+ * It fills its parent's width and folds by that room, not by the viewport, unless the host passes `fold`.
  */
-export function CollapsingToggleGroup<V extends string>({ options, value, onValueChange, className, ...aria }: CollapsingToggleGroupProps<V>) {
+export function CollapsingToggleGroup<V extends string>({ options, value, onValueChange, className, fold: hostFold, onStepWidths, ...aria }: CollapsingToggleGroupProps<V>) {
   const rootRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<Measured | null>(null);
@@ -54,8 +58,16 @@ export function CollapsingToggleGroup<V extends string>({ options, value, onValu
     if (!root || !rows || rows.length < 2) return;
     const widths = (row: Element) => Array.from(row.children, (c) => (c as HTMLElement).offsetWidth);
     const read = () => {
-      const next = { full: widths(rows[0]), icon: widths(rows[1]), room: root.offsetWidth };
-      setMeasured((held) => (held && held.room === next.room && sameNumbers(held.full, next.full) && sameNumbers(held.icon, next.icon) ? held : next));
+      const full = widths(rows[0]);
+      const icon = widths(rows[1]);
+      const room = root.offsetWidth;
+      // Held arrays stay identical while their numbers do, so a resize alone never re-reports step widths.
+      setMeasured((held) => {
+        const sameFull = !!held && sameNumbers(held.full, full);
+        const sameIcon = !!held && sameNumbers(held.icon, icon);
+        if (held && sameFull && sameIcon && held.room === room) return held;
+        return { full: held && sameFull ? held.full : full, icon: held && sameIcon ? held.icon : icon, room };
+      });
     };
     read();
     // jsdom has no ResizeObserver in every suite; the first read is what those runs get.
@@ -73,12 +85,22 @@ export function CollapsingToggleGroup<V extends string>({ options, value, onValu
     return () => cancelAnimationFrame(frame);
   }, [ready, animate]);
 
+  const full = measured?.full;
+  const icon = measured?.icon;
+  const reportRef = useRef(onStepWidths);
+  reportRef.current = onStepWidths;
+  useEffect(() => {
+    if (ready && full && icon) reportRef.current?.(segmentStepWidths(full, icon, INSET));
+  }, [ready, full, icon]);
+
   const active = Math.max(0, options.findIndex((o) => o.value === value));
-  const full = measured?.full ?? [];
-  const icon = measured?.icon ?? [];
-  const fold = ready && measured !== null && measured.room > 0 ? segmentFold(full, icon, measured.room, INSET) : 'full';
-  const layout = segmentLayout(full, icon, active, fold, INSET);
-  const minWidth = ready ? segmentLayout(full, icon, active, 'icons', INSET).total : undefined;
+  const fullWidths = full ?? [];
+  const iconWidths = icon ?? [];
+  const ownFold = ready && measured !== null && measured.room > 0 ? segmentFold(fullWidths, iconWidths, measured.room, INSET) : 'full';
+  const fold = hostFold ?? ownFold;
+  const layout = segmentLayout(fullWidths, iconWidths, active, fold, INSET);
+  // A host-chosen step holds its own width open, so the host's row can push the cells beside it.
+  const minWidth = ready ? (hostFold ? layout.total : segmentLayout(fullWidths, iconWidths, active, 'icons', INSET).total) : undefined;
 
   return (
     <div ref={rootRef} data-collapsing-root="" className={cn('relative flex w-full min-w-0 [contain:inline-size]', className)} style={{ minWidth }}>

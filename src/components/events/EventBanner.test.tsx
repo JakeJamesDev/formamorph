@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { EventBanner, EventBannerChips } from './EventBanner';
+import { EventBanner, EventBannerChips, EventBannerCount } from './EventBanner';
 import { useEventBanners } from './useEventBanners';
 import { isEventBannerDismissed, markEventBannerDismissed } from '@/lib/eventSeenStore';
 import { daysFrom, serverEvent as event } from '@/test/serverEvents';
@@ -228,5 +228,38 @@ describe('when several events run at once', () => {
     expect(within(topBar()).getByRole('button', { name: /Winter World-Building Contest/ })).toBeInTheDocument();
     expect(within(topBar()).getByRole('button', { name: /Server Maintenance/ })).toBeInTheDocument();
     expect(bannerRow()).toBeEmptyDOMElement();
+  });
+});
+
+/** A host whose top bar has folded its badges into the count. */
+function FoldedBanners({ events, onOpenEvent }: { events: ServerEvent[]; onOpenEvent?: (event: ServerEvent) => void }) {
+  const banners = useEventBanners(events);
+  return (
+    <div>
+      <div data-testid="top-bar"><EventBannerCount banners={banners} onOpenEvent={onOpenEvent} /></div>
+      <div data-testid="banner-row"><EventBanner banners={banners} onOpenEvent={onOpenEvent} /></div>
+    </div>
+  );
+}
+
+describe('EventBannerCount', () => {
+  const notice = event({ id: 'e2', type: 'announcement', title: 'Server Maintenance' });
+
+  it('shows nothing until a banner is dismissed', () => {
+    render(<FoldedBanners events={[event(), notice]} />);
+    expect(within(topBar()).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('counts the dismissed banners, and lists their chips when opened', async () => {
+    const onOpenEvent = vi.fn();
+    render(<FoldedBanners events={[event(), notice]} onOpenEvent={onOpenEvent} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    const count = within(topBar()).getByRole('button', { name: 'Events, 2' });
+    expect(count).toHaveTextContent('2');
+    fireEvent.click(count);
+    fireEvent.click(await screen.findByRole('button', { name: /Winter World-Building Contest/ }));
+    expect(onOpenEvent).toHaveBeenCalledWith(expect.objectContaining({ title: 'Winter World-Building Contest' }));
   });
 });

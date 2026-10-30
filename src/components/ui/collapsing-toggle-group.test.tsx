@@ -117,4 +117,26 @@ describe('CollapsingToggleGroup', () => {
     await new Promise((r) => setTimeout(r, TOOLTIP_DELAY_MS + 100));
     expect(screen.queryByText('Worlds', { selector: 'div' })).toBeNull();
   });
+
+  it('takes a step chosen by its host over its own room, and holds the width of that step open', () => {
+    room = 400;
+    render(
+      <TooltipProvider>
+        <CollapsingToggleGroup options={OPTIONS} value="worlds" onValueChange={() => {}} aria-label="Library" fold="icons" />
+      </TooltipProvider>,
+    );
+    expect(OPTIONS.map((o) => labelShown(o.label))).toEqual([false, false, false]);
+    expect(screen.getByRole('radiogroup', { name: 'Library' }).parentElement!.style.minWidth).toBe('128px');
+  });
+
+  it('reports its width at each step, the middle one sized for the widest label', () => {
+    room = 400;
+    const onStepWidths = vi.fn();
+    render(
+      <TooltipProvider>
+        <CollapsingToggleGroup options={OPTIONS} value="worlds" onValueChange={() => {}} aria-label="Library" onStepWidths={onStepWidths} />
+      </TooltipProvider>,
+    );
+    expect(onStepWidths).toHaveBeenLastCalledWith({ full: 338, active: 218, icons: 128 });
+  });
 });
