@@ -60,6 +60,12 @@ Settled with the user on 2026-10-30, from a cloud play test and the re-gain prob
 | Q22 | Requirement Rows can check a copy's State and whether it is identified |
 | Q23 | The pass prompt's done bar, on cloud at 12 runs per arm with in-batch controls: the state cases beat shipped by a margin whose CI excludes zero; the take-another and use-up guards hold their shipped rate; the base cases don't drop |
 | Q24 | The narrator's unidentified-name leak rate is measured on cloud first. The user sets its ceiling from those numbers |
+| Q25 | The Effects tab always offers After Use rows, since an After Use row is one of the things that makes an item usable (Q20). Ticket 01 |
+| Q26 | When Uses is first set, When Empty defaults to Gone, which matches today's Consumable. Ticket 01 |
+| Q27 | Uses left is part of the merge key. A Uses 1 copy at zero (Stays) splits off and never merges with full copies. Ticket 01 |
+| Q28 | Becomes: the used copy fires its After Use dose and `used`, not `lost`; the target copy fires `gained` and seeds like a new gain, with its own Uses. The target keeps the used copy's visibility, so a hidden copy Becomes a hidden one. Ticket 01 |
+| Q29 | A Becomes target missing in play still applies the use and removes the copy as Gone, with a diagnostic line. Ticket 01 |
+| Q30 | The Inventory tab shows "N of M uses" on items with Uses 2 or more. A Uses 1 item shows no line while full, and "No uses left" at zero. Ticket 01 |
 
 ## User Stories
 
