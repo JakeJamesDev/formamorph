@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
+  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, ItemRequirement, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
   StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
@@ -236,7 +236,12 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   }
   if (raw.kind === 'item') {
     if (raw.status !== 'owned' && raw.status !== 'equipped') return [];
-    return [{ kind: 'item', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), status: raw.status, ...not }];
+    const state = typeof raw.state === 'string' ? raw.state.trim() : '';
+    const identity: ItemRequirement['identity'] = raw.identity === 'identified' ? 'identified' : raw.identity === 'unidentified' ? 'unidentified' : undefined;
+    return [{
+      kind: 'item', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), status: raw.status,
+      ...(state && { state }), ...(identity && { identity }), ...not,
+    }];
   }
   if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
   return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), ...not }];

@@ -5,7 +5,7 @@ import {
 import { NO_ACTIVE, gateStates } from './traitGates';
 import { conditionsOf } from './requirementRows';
 import { traitOwners } from './ownedTraits';
-import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
+import type { Entity, ItemRequirement, Trait, TraitGroup, TraitRequirement } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const group = (id: string, name: string): TraitGroup => ({ id, name, parentId: null });
@@ -410,5 +410,13 @@ describe('Not Conditions on owned traits', () => {
       const { not: _, ...plain } = req;
       expect(comparableOwnedTraits(ash([req]))).not.toEqual(comparableOwnedTraits(ash([plain as TraitRequirement])));
     }
+  });
+
+  it('tells item Conditions apart by State and identity, ignoring State case', () => {
+    const item = (extra: Partial<ItemRequirement> = {}): TraitRequirement => ({ kind: 'item', id: 'lamp', status: 'owned', ...extra });
+    const of = (req: TraitRequirement) => comparableOwnedTraits(ash([req]));
+    expect(of(item({ state: 'lit' }))).not.toEqual(of(item()));
+    expect(of(item({ identity: 'identified' }))).not.toEqual(of(item({ identity: 'unidentified' })));
+    expect(of(item({ state: ' Lit ' }))).toEqual(of(item({ state: 'lit' })));
   });
 });

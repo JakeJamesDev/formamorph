@@ -331,6 +331,15 @@ An **item condition** holds while an owner has an item. It reads one of two stat
 2. Under **Requires**, select **Add Requirement**, then pick **Items**.
 3. Pick the item from **Owned** or **Equipped**, then pick the owner.
 
+An item chip also has two optional checks. They narrow the condition to one copy that passes every check:
+
+- **State** holds only for a copy with that State word, such as *lit*. Case and spaces at the ends don't matter. A blank State checks nothing.
+- **Identity** holds only for an **Identified** or an **Unidentified** copy. **Any** checks nothing.
+
+The chip reads the checks in parentheses: *owning Lantern (lit)*, or *equipping Ring (lit, unidentified)*. A lantern can grant *Darkvision* only while its State is *lit*.
+
+The player reads an unidentified item's Unidentified Name in the lock line while the owner has no visible identified copy of it.
+
 The owner is **Same Owner**, the **Persona**, or an entity. On a global trait, **Same Owner** reads the Persona. A hidden copy still counts. Use the swap button to require that the owner doesn't have the item.
 
 In an item's image rule, a condition with no owner reads the owner of that copy. While the copy lies at a location, the condition doesn't hold, with or without Not.
