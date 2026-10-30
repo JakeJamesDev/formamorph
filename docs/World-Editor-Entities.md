@@ -65,7 +65,7 @@ Select an entity to open its panel.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Profile** | **Name**, **Pronouns**, **Locations** and the **Image**. In Advanced mode, also **Aliases**, the **Persona** control, **Type**, **Image Tags**, the **3D Model** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). | Simple and Advanced |
+| **Profile** | **Name**, **Pronouns**, **Locations** and the **Image**. In Advanced mode, also **Aliases**, [**Stranger Name** and **Stranger Description**](#strangers), the **Persona** control, **Type**, **Image Tags**, the **3D Model** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). | Simple and Advanced |
 | **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also **AI-Facing Summary**. | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
@@ -135,6 +135,25 @@ Two more rules:
 
 - **Don't use general job titles.** `knight`, `alchemist` or `apprentice` match every person of that trade, and the wrong entity joins the scene.
 - **Don't use a role the story gives to someone absent.** Quoted dialogue is ignored, but plain narration isn't. If the prose says *"she was sent by the Warchief"*, the alias `Warchief` marks the Warchief as present.
+
+## Strangers
+<!-- keywords: stranger name, stranger description, hidden identity, unknown npc, meet, met, start met, hooded figure, known in, introduction -->
+<!-- route: worldEditorEntity.profile -->
+
+A **stranger** is an entity the player doesn't know yet. Give an entity a **Stranger Name** and the player sees that name, for example "a hooded figure", until the story names the entity. The AI uses the Stranger Name too. The optional **Stranger Description** is the only text the player reads about a stranger. Both fields show in Advanced mode, in the World Editor only. Both take placeholders and rolls. Clear a field to remove it.
+
+An entity with no Stranger Name starts **met**. Your existing worlds play as before.
+
+An entity with a Stranger Name starts as a stranger, unless one of these is true:
+
+| Rule | Result |
+|---|---|
+| A relationship joins the entity to the persona the player plays, on either side | Starts met |
+| One of the entity's **Known In** picks covers a place where the persona lives | Starts met. Child places of the pick count. |
+| **Known In** is on its **Nearby** default | Nobody starts met from it |
+| The persona lives nowhere, such as the Custom Persona | Every stranger starts unmet |
+
+A stranger turns met when the story uses the entity's real name, in dialogue too. Aliases don't count. Met stays met for the rest of the game.
 
 ## Locations
 <!-- keywords: where npc lives, assign to place, put in room, vanished after delete, several places, too many npcs, crowded scene, orphaned -->

@@ -98,6 +98,40 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           placeholder="she/her, he/him, it/its"
         />
       </div>
+      {advanced && home === 'world' && (
+        <>
+          <div className="space-y-2" {...fieldFrame('strangerName')}>
+            <div className="flex items-center gap-2">
+              <Label>Stranger Name</Label>
+              <HelpButton topicId="worldEditor.strangerName" className="h-6 w-6" />
+            </div>
+            <Hint id={`entity-stranger-name-hint-${value.id}`}>
+              Shows this name until the story names the entity. Blank means the player knows the entity from the start.
+            </Hint>
+            <PlaceholderNameField
+              value={value.strangerName ?? ''}
+              onChange={(v) => onChange('strangerName', v.trim() ? v : undefined)}
+              placeholders={placeholders}
+              ownerId={ownerId}
+              ariaLabel="Stranger Name"
+              ariaDescribedBy={`entity-stranger-name-hint-${value.id}`}
+              placeholder="a hooded figure"
+            />
+          </div>
+          <PlaceholderField
+            label="Stranger Description"
+            ariaLabel="Stranger Description"
+            historyField="strangerDescription"
+            hint="Shows this text when the player looks at the entity before they know it. Blank shows nothing."
+            value={value.strangerDescription ?? ''}
+            onChange={(v) => onChange('strangerDescription', v.trim() ? v : undefined)}
+            placeholders={placeholders}
+            ownerId={ownerId}
+            ownerName={value.name}
+            resizable
+          />
+        </>
+      )}
       <EntityPersonaField value={value} onChange={onChange} placeholders={placeholders} home={home} customPersonaEntityName={customPersonaEntityName} />
       {advanced && (
         <div className="space-y-2" {...fieldFrame('type')}>
