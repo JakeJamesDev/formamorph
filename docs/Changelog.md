@@ -43,7 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Formaquestion Settings gain a Read the World switch and two world rules prompts.** The switch is on by default. Custom presets can edit the **Editor World** and **Game World** prompts. Older preset files still import.
     - **In game, Formaquestion Tools and the code test see only what you have met.** They read player descriptions and visible stats, never AI descriptions, diaries, hidden stats or unmet characters and places.
     - **In the World Editor, Formaquestion answers about your open world as well as the guide.** It reads your unsaved edits. Each world source under an answer opens its item in the editor.
-    - **In game, Formaquestion answers about the story so far and the characters, places, items and lore you have met.** It never reads unmet characters, AI descriptions, diaries or hidden stats. Sources show as plain names.
+    - **In game, Formaquestion answers about the story so far and the characters, places, items and lore you have met.** It never reads AI descriptions, diaries, hidden stats or the entries of characters you haven't met. Sources show as plain names.
     - **With an AI Language set, Formaquestion keeps names from your world as the world writes them.** This works even after you clear the world rules prompts.
 - **🛠️ Developer tooling**
   - **Inventory:**
