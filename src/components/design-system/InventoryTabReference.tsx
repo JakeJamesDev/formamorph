@@ -33,7 +33,7 @@ const TIMED: TimedEffectView[] = [
   { key: 'tonic-ward', itemName: 'Healing Tonic', effect: 'Warded', hoursLeft: 26 },
   { key: 'hidden', itemName: null, effect: 'Max Health -5', hoursLeft: 0.25 },
 ];
-const PRESENT = [{ id: 'courier', name: 'Courier', inScene: true }, { id: 'archivist', name: 'Archivist' }];
+const PRESENT = [{ id: 'courier', name: 'Courier' }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
 const STATUS_TABS = [
   { value: 'stats', icon: StatIcon, label: 'Stats' },

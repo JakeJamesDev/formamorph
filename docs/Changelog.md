@@ -62,6 +62,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
   - **Scene Presence:**
     - **The Entities tab lists everyone here, strangers by label.** People in the scene come first. Click a stranger for a popup with the label, image and description only.
+    - **Give offers only people in the scene, strangers by label.** A stranger never shows a true name there. Someone with no label isn't offered.
   - **World Editor and game side panel tabs show every label when they fit, then the selected tab's, then icons alone.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
 - **🛠️ Developer tooling**
   - **Inventory:**

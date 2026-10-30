@@ -2187,7 +2187,7 @@ Editor detail panels and the game's side panels use the same three steps on a st
 - 🎒 **Carried.** One row per Item Copy: the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 copy). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
 - ✨ **Use.** A sparkles icon button on carried and equipped rows. It spends one use, and turns off at zero uses.
 - ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
-- 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the present entities as `CompactSelectionRow`s, or "Nobody is here."
+- 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the entities in the scene, each under its label, as `CompactSelectionRow`s, or "Nobody is in the scene."
 - 🔒 **Bound.** Drop and Give stay in place, disabled, with the reason in their tooltips.
 - 🏷️ **Tab strip.** The side panels' strips are [collapsing tab strips](#as-a-tab-strip): every label, then only the selected tab's, then icons alone. A folded tab's tooltip names it.
 

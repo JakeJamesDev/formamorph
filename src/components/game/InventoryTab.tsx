@@ -5,7 +5,6 @@ import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { formatTimeLeft } from '@/lib/gameClock';
 import { byEquipOrder, copyFace, copyState, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
@@ -26,8 +25,8 @@ export interface InventoryTabProps {
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
   slots: readonly Slot[];
-  /** The entities Give can pick (Q20). Give lists the In Scene ones first. */
-  present: readonly { id: string; name: string; inScene?: boolean }[];
+  /** The In Scene entities Give can pick, each under its label (Q59). */
+  present: readonly { id: string; name: string }[];
   locationId: string | null | undefined;
   /** The current location's name for the Here card's header. Null or absent reads Here. */
   locationName?: string | null;
@@ -112,19 +111,12 @@ function MoveButton({ verb, icon, copy, name, disabled, onMove }: {
   );
 }
 
-/** Give: pick a present entity, and a count for a stack. A divider sets the In Scene entities above the rest. */
+/** Give: pick an In Scene entity by its label, and a count for a stack. */
 function GiveButton({ copy, name, present, disabled, onGive }: {
   copy: ItemCopy; name: string; present: InventoryTabProps['present']; disabled: boolean;
   onGive: (entityId: string, quantity: number) => void;
 }) {
   const { open, onOpenChange, close, text, setText } = useCountPopover(disabled);
-  const inScene = present.filter((entity) => entity.inScene);
-  const rest = present.filter((entity) => !entity.inScene);
-  const rows = (entities: InventoryTabProps['present']) => entities.map((entity) => (
-    <CompactSelectionRow key={entity.id} onClick={() => { onGive(entity.id, countOf(text, copy.quantity)); close(); }}>
-      {entity.name}
-    </CompactSelectionRow>
-  ));
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
@@ -134,12 +126,14 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
         <p className="text-label font-medium">Give {name}</p>
         {copy.quantity > 1 && <CountField max={copy.quantity} text={text} onChange={setText} />}
         {present.length === 0 ? (
-          <p role="status" className="text-meta text-muted-foreground">Nobody is here.</p>
+          <p role="status" className="text-meta text-muted-foreground">Nobody is in the scene.</p>
         ) : (
           <div role="list" aria-label="Give to">
-            {rows(inScene)}
-            {inScene.length > 0 && rest.length > 0 && <Separator className="my-1" />}
-            {rows(rest)}
+            {present.map((entity) => (
+              <CompactSelectionRow key={entity.id} onClick={() => { onGive(entity.id, countOf(text, copy.quantity)); close(); }}>
+                {entity.name}
+              </CompactSelectionRow>
+            ))}
           </div>
         )}
       </PopoverContent>
