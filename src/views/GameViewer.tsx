@@ -79,6 +79,7 @@ import { statTextFor } from "@/lib/statTextPrompts";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
 import { EntityModal } from "../components/modals/EntityModal";
+import { StrangerModal } from "../components/modals/StrangerModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { asSettingsTab, type SettingsTabId } from "../components/modals/settingsTabs";
@@ -1166,6 +1167,7 @@ const GameViewer = ({
   };
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
+  const [selectedStranger, setSelectedStranger] = useState<{ entityId: string; label: string } | null>(null);
   const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   // Filing needs an account, so the in-game entry point is only offered to someone signed in.
@@ -5733,6 +5735,9 @@ const GameViewer = ({
         setSelectedEntity(entityId);
         setIsEntityModalOpen(true);
       }}
+      onStrangerClick={(entityId, label) => {
+        setSelectedStranger({ entityId, label });
+      }}
       onRegenerateMemory={regenerateMemory}
       narrationPrompt={systemPrompt}
       requestedTab={surfaceNav.tab('gameViewer')}
@@ -5968,6 +5973,15 @@ const GameViewer = ({
           onOpenChange={setShowReadmeModal}
           show={showReadme(worldId)}
           onShowChange={(s) => setShowReadme(worldId, s)}
+        />
+      )}
+
+      {selectedStranger && (
+        <StrangerModal
+          entity={allEntities.find((e) => e.id === selectedStranger.entityId) ?? null}
+          label={selectedStranger.label}
+          isOpen
+          onOpenChange={(open) => { if (!open) setSelectedStranger(null); }}
         />
       )}
 

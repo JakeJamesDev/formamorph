@@ -13,10 +13,11 @@ vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
 const PICTURE = 'data:image/png;base64,AAAA';
-const bram = { id: 'bram', name: 'Bram', image: PICTURE };
-const odette = { id: 'odette', name: 'Odette', image: PICTURE };
-const wick = { id: 'wick', name: 'Wick', image: PICTURE };
-const world = { entities: [bram, odette, wick] } as never;
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+const bram = { id: 'bram', name: 'Bram', image: PICTURE, locations: ['yard'] };
+const odette = { id: 'odette', name: 'Odette', image: PICTURE, locations: ['yard'] };
+const wick = { id: 'wick', name: 'Wick', image: PICTURE, locations: ['yard'], strangerName: 'a thin runner' };
+const world = { entities: [bram, odette, wick], locations: [YARD] } as never;
 
 const values: EntityStatValues = {
   bram: [statFixture('Trust', 40), statFixture('Secret', 9, { hidden: true }), statFixture('Dormant', 3, { enabled: false })],
@@ -33,7 +34,7 @@ const turns: TurnFixture[] = [
 ];
 const stage = {
   world, turns, stats: [statFixture('Vigor', 50)],
-  seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(now); },
+  seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(now); g.setCurrentLocation(YARD as never); },
 };
 
 const choose = async (label: string) => {
@@ -249,9 +250,9 @@ describe('the entity view and the stat panel', () => {
   it('moves the dropdown when the entity list picks', async () => {
     both();
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    fireEvent.click(await screen.findByText('a thin runner'));
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('a thin runner');
-    expect(within(section()!).getByText('Nerve')).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('Odette'));
+    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Odette');
+    expect(within(section()!).getByText('Stock')).toBeInTheDocument();
   });
 
   it('leaves the entity view on its fallback while the dropdown reads (None)', async () => {

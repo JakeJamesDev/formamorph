@@ -33,19 +33,25 @@ const plainWren = { ...wren, vrmPick: undefined } as Entity;
 const custom: CharacterData = { bodyMorphs: { Belly: 0.1 }, currentHairStyle: 'long', hairLength: 0.5, hairColor: '#ff0000' };
 const golemStats = (value: number): EntityStatValues => ({ golem: [{ ...cracks, value }] });
 
-const show = ({ cast, scene, overview = {}, seed }: {
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+/** Everyone stands in the one place the player is. */
+const hereAll = (cast: Entity[]) => cast.map((e) => ({ ...e, locations: ['yard'] })) as Entity[];
+
+const show = ({ cast: authored, scene, overview = {}, seed }: {
   cast: Entity[];
   scene: SceneEntity[];
   overview?: Record<string, unknown>;
   seed?: (g: Gameplay) => void;
 }) => {
   const onEntityClick = vi.fn();
+  const cast = hereAll(authored);
   const view = renderInGame(
     <LeftPanel entities={cast} onEntityClick={onEntityClick} narrationPrompt={defaultSystemPrompt} />,
     {
-      world: { entities: cast, worldOverview: { ...worldFixture().worldOverview, vrmStore: store, ...overview } } as never,
+      world: { entities: cast, locations: [YARD], worldOverview: { ...worldFixture().worldOverview, vrmStore: store, ...overview } } as never,
       seed: (g) => {
         g.setVisibleEntities(scene);
+        g.setCurrentLocation(YARD as never);
         g.setCharacterData(custom);
         g.setBodyMorphValues({ Belly: 0.3 });
         g.setEntityStats(golemStats(40));

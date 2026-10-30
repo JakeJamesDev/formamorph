@@ -40,6 +40,8 @@ export interface ResolvedWorld {
   /** The cast: the authored entities without the one the player plays (see lib/persona), each positioned one
    *  listing only its position. */
   entities: Entity[];
+  /** The same cast before any play position applies, so a past turn's positions can be laid over it. */
+  authoredCast: Entity[];
   /** Who the player plays, or null. */
   persona: ResolvedPersona | null;
   /** The persona's name and aliases, which the planner reads as the player. */
@@ -339,7 +341,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
+    entities, authoredCast: cast, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,

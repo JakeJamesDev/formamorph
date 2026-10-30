@@ -198,47 +198,119 @@ describe('LeftPanel', () => {
 
   // The bug this guards: the list resolved a scene name to an entity by bare substring, either way round,
   // so "Wolf" and "Direwolf" were interchangeable — the row label came from whichever was authored first.
-  it('labels two present entities whose names share a word with their own names', () => {
-    const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
-    renderLeftPanel({ entities: cast as never }, {
-      world: { entities: cast } as never,
-      seed: (gameplay) => gameplay.setVisibleEntities([
-        { name: 'Wolf', revealed: true },
-        { name: 'Direwolf', revealed: true },
-      ]),
+  // The cast stands at the one location the player is at; `at` places entities elsewhere.
+  const HERE_ID = 'yard';
+  const LOOK_WORLD = (cast: object[]) => ({
+    entities: cast.map((e) => ({ locations: [HERE_ID], ...e })),
+    locations: [{ id: HERE_ID, name: 'Gate Yard', isStarting: true }, { id: 'smithy', name: 'Smithy' }],
+  });
+  const stageYard = (gameplay: Gameplay) => gameplay.setCurrentLocation({ id: HERE_ID, name: 'Gate Yard', isStarting: true } as never);
+  const openEntitiesTab = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+  const rowNames = () => Array.from(screen.getByRole('tabpanel').querySelectorAll('.truncate')).map((n) => n.textContent);
+
+  it('lists the In Scene entities first, then the quiet ones, in cast order within each', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Hesk' }, { id: 'e2', name: 'Bram' }, { id: 'e3', name: 'Mara' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [{ narration: 'Mara waves.', entities: ['Mara'] }],
+      seed: stageYard,
     });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('Wolf')).toBeInTheDocument();
-    expect(screen.getByText('Direwolf')).toBeInTheDocument();
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Mara', 'Hesk', 'Bram']);
+  });
+
+  it('labels two present entities whose names share a word with their own names', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }]);
+    renderLeftPanel({ entities: world.entities as never }, { world: world as never, seed: stageYard });
+
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Wolf', 'Direwolf']);
+  });
+
+  it('lists nobody who stands elsewhere', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk', locations: ['smithy'] }]);
+    renderLeftPanel({ entities: world.entities as never }, { world: world as never, seed: stageYard });
+
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Bram']);
   });
 
   it('marks the entities following the player, and no one else', () => {
-    const cast = [{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }];
-    renderLeftPanel({ entities: cast as never }, {
-      world: { entities: cast } as never,
-      seed: (gameplay) => {
-        gameplay.setVisibleEntities([{ name: 'Bram', revealed: true }, { name: 'Hesk', revealed: true }]);
-        gameplay.setEntityFollowers(['e1']);
-      },
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      seed: (gameplay) => { stageYard(gameplay); gameplay.setEntityFollowers(['e1']); },
     });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    openEntitiesTab();
     const mark = screen.getByRole('img', { name: 'Following you' });
     expect(screen.getByText('Bram').closest('div')!.contains(mark)).toBe(true);
     expect(screen.getAllByRole('img', { name: 'Following you' })).toHaveLength(1);
   });
 
-  it('labels a lone longer-named entity as itself, not as the shorter name it contains', () => {
-    const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
-    renderLeftPanel({ entities: cast as never }, {
-      world: { entities: cast } as never,
-      seed: (gameplay) => gameplay.setVisibleEntities([{ name: 'Direwolf', revealed: true }]),
+  describe('a stranger', () => {
+    const SYLVIE = { id: 'e1', name: 'Sylvie Thornwhistle', strangerName: 'a hooded figure', strangerDescription: 'Face hidden.' };
+    const WORLD = LOOK_WORLD([SYLVIE, { id: 'e2', name: 'Bram' }]);
+
+    it('shows by its label and never by its true name', () => {
+      renderLeftPanel({ entities: WORLD.entities as never }, { world: WORLD as never, seed: stageYard });
+
+      openEntitiesTab();
+      expect(rowNames()).toEqual(['a hooded figure', 'Bram']);
+      expect(screen.queryByText('Sylvie Thornwhistle')).toBeNull();
     });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('Direwolf')).toBeInTheDocument();
-    expect(screen.queryByText('Wolf')).not.toBeInTheDocument();
+    it('is not listed with no label at all', () => {
+      // A Stranger Name whose placeholders resolved blank.
+      const unlabeled = LOOK_WORLD([{ ...SYLVIE, strangerName: ' ' }, { id: 'e2', name: 'Bram' }]);
+      renderLeftPanel({ entities: unlabeled.entities as never }, { world: unlabeled as never, seed: stageYard });
+
+      openEntitiesTab();
+      expect(rowNames()).toEqual(['Bram']);
+    });
+
+    it('opens the stranger popup by id and label, and never the full popup', () => {
+      const view = renderLeftPanel({ entities: WORLD.entities as never }, { world: WORLD as never, seed: stageYard });
+
+      openEntitiesTab();
+      fireEvent.click(screen.getByText('a hooded figure'));
+      expect(view.props.onStrangerClick).toHaveBeenCalledWith('e1', 'a hooded figure');
+      expect(view.props.onEntityClick).not.toHaveBeenCalled();
+      expect(view.gameplay().selectedEntityId).toBeUndefined();
+    });
+
+    it('opens the full popup once the story has named it', () => {
+      const view = renderLeftPanel({ entities: WORLD.entities as never }, {
+        world: WORLD as never,
+        seed: (gameplay) => { stageYard(gameplay); gameplay.setMetEntities(['e1']); },
+      });
+
+      openEntitiesTab();
+      fireEvent.click(screen.getByText('Sylvie Thornwhistle'));
+      expect(view.props.onEntityClick).toHaveBeenCalledWith('Sylvie Thornwhistle');
+    });
+  });
+
+  it('shows who stood here on a past page, not who stands here now', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [
+        { narration: 'Bram nods.', entities: ['Bram'] },
+        { narration: 'Hesk leaves.', entities: ['Hesk'] },
+      ],
+      page: 1,
+      seed: (gameplay) => {
+        stageYard(gameplay);
+        // Live: Bram has gone to the smithy. On page 1 he still stood here.
+        gameplay.setEntityPositions({ e1: 'smithy' });
+        gameplay.setGameStates((states) => states.map((s) => ({ ...s, locationId: HERE_ID })));
+      },
+    });
+
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Bram', 'Hesk']);
   });
 
   it('lists the persona first in every scene, marked as the player, and opens it like any entity', () => {

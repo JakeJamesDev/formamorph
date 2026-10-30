@@ -7,7 +7,8 @@ import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
 import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
-import { resolveEntityByName } from '@/lib/entityMatch';
+import { usePresence } from '@/lib/usePresence';
+import type { EntityPresence } from '@/lib/presence';
 import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
 import { narrationOf } from '@/lib/aiResponse';
 import { usePlayAvatars } from '@/lib/usePlayAvatars';
@@ -77,7 +78,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
 import { visibleItemImage } from '@/lib/imageVisibility';
-import type { Entity, ItemCopy, PersonaRef, SceneEntity, Stat, StatGroup, Trait } from '@/types';
+import type { Entity, ItemCopy, PersonaRef, Stat, StatGroup, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
@@ -113,13 +114,15 @@ type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' }
 const PLAYED_SIDE: Pick<Entity, 'id' | 'name'> = { id: '__you', name: 'You' };
 
 
-export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
+export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
   entities: Entity[];
   /** A tab an outside request selects. */
   requestedTab?: string;
   /** Changes with each outside request, so a repeat request selects its tab again. */
   requestKey?: string;
   onEntityClick: (entityId: string) => void;
+  /** A stranger's row opened: its entity id and the label the player sees. */
+  onStrangerClick?: (entityId: string, label: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
   onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
   /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
@@ -175,6 +178,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const showable = (entity: Entity | undefined): entity is Entity => !!entity && avatars.shows(entity);
   // First present entity with something to show (the image shows whether or not the name is revealed yet).
   const firstShowable = firstShowableEntity(visibleEntities, entities, showable);
+  const { currentPage, isViewingPast } = useGameplay();
+  const { lookAround } = usePresence(isViewingPast ? currentPage : undefined);
   const isMobile = useIsMobile();
   const [showEntityView, setShowEntityView] = React.useState(true);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
@@ -198,10 +203,13 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   // Clicking an entity with something to show selects it, so the view swaps to it. The popup opens on mobile,
   // and in landscape when the view is hidden or already on that entity. A not-yet-revealed entity can show
   // its image but never opens the detail popup: that would spoil the name the scene is withholding.
-  const handleEntityListClick = (se: SceneEntity) => {
-    const match = resolveEntityByName(se.name, entities);
-    if (!match) return; // un-named (ad-hoc) participant — nothing to show
-    openEntity(match, se.revealed);
+  // A stranger opens its reduced popup instead and never selects in the view.
+  const handleLookAroundClick = (row: EntityPresence) => {
+    if (!row.met) {
+      if (row.label) onStrangerClick?.(row.entity.id, row.label);
+      return;
+    }
+    openEntity(row.entity, true);
   };
 
   const openEntity = (match: Entity, revealed: boolean) => {
@@ -315,30 +323,17 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
               )}
               {/* No pick falls back to the played side, which is what selecting You means. */}
               {youRow && <EntityListRow label={PLAYED_SIDE.name} onClick={() => setSelectedEntityId(undefined)} />}
-              {visibleEntities.length > 0 ? (
-                visibleEntities.map((se, index) => {
-                  const entityItem = resolveEntityByName(se.name, entities);
-                  // Show the real name only once revealed; before that, how the player currently knows them.
-                  const label = se.revealed ? (entityItem?.name ?? se.name) : (se.alias ?? 'Unknown');
-                  // A name the story invented has no entity behind it until (and unless) a description is
-                  // written for it, so it reads as a normal row that simply doesn't open — not as a
-                  // broken one. Only an authored entry we failed to resolve is genuinely disabled.
-                  const isAuthored = authoredNames.has(label);
-                  const isDisabled = !entityItem && isAuthored;
-                  // Anything the story invented is removable, whether or not it got a description.
-                  // Authored characters belong to the world and are never deletable from play.
-                  const isRemovable = !isAuthored;
-                  return (
-                    <EntityListRow
-                      key={index}
-                      label={label}
-                      following={!!entityItem && entityFollowers.includes(entityItem.id)}
-                      disabled={isDisabled}
-                      onClick={() => handleEntityListClick(se)}
-                      onRemove={isRemovable ? () => setPendingRemoval(label) : undefined}
-                    />
-                  );
-                })
+              {lookAround.length > 0 ? (
+                lookAround.map((row) => (
+                  <EntityListRow
+                    key={row.entity.id}
+                    label={row.label ?? ''}
+                    following={entityFollowers.includes(row.entity.id)}
+                    onClick={() => handleLookAroundClick(row)}
+                    // Runtime characters are the story's; authored ones belong to the world and never delete from play.
+                    onRemove={row.met && !authoredNames.has(row.entity.name) ? () => setPendingRemoval(row.entity.name) : undefined}
+                  />
+                ))
               ) : personaEntity || youRow ? null : (
                 <p>No entity visible.</p>
               )}
