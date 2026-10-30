@@ -1,6 +1,7 @@
 import { useEndpointReachable, type ReachabilityTarget } from '@/lib/useEndpointReachable';
 import type { EndpointProbe } from '@/lib/useAiReachable';
 import { cn } from '@/lib/utils';
+import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
 
 /**
  * One probe outcome as a dot, a line and Recheck. `unknownModel` is a reachable server that can't serve the
@@ -52,9 +53,11 @@ export function RecheckButton({ onClick, disabled, children }: { onClick: () => 
 
 /** Whether one named endpoint is actually answering. A disabled target draws nothing and sends no probe. */
 export function EndpointReachabilityBadge({ target }: { target: ReachabilityTarget }) {
+  // Formamorph AI reports its own state instead.
+  const enabled = target.enabled && !((target.provider ?? 'text') === 'text' && isHostedChatUrl(target.url));
   const { status, checking, recheck } = useEndpointReachable(
-    target.url, target.apiToken, target.model, target.enabled, target.provider ?? 'text',
+    target.url, target.apiToken, target.model, enabled, target.provider ?? 'text',
   );
-  if (!target.enabled) return null;
+  if (!enabled) return null;
   return <EndpointReachabilityView status={status} checking={checking} model={target.model} onRecheck={recheck} />;
 }

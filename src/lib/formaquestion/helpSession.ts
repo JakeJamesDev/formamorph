@@ -5,6 +5,7 @@
 import { buildAiRequestSpec, type AiRequestBody, type AiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { ABORTED_FINISH_REASON, type AiStreamResult } from '@/lib/aiRequest/aiStream';
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from '@/lib/aiRequest/toolLoop';
+import { HostedTurn } from '@/lib/hostedAi/hostedTurn';
 import { extractReasoningLive, stripReasoningLive } from '@/lib/aiResponse';
 import { snapshotToolExecutor } from '@/lib/tools/toolOffer';
 import { isTool, type OfferedFunction } from '@/lib/tools/toolSchema';
@@ -122,6 +123,8 @@ export interface HelpQuestion {
   /** Stop: the stream ends and the answer so far is kept. */
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
+  /** The question's Formamorph AI turn; absent, the question opens its own. */
+  hostedTurn?: HostedTurn;
 }
 
 /**
@@ -334,7 +337,7 @@ function historyMessages(kept: readonly EarlierExchange[]): RequestMessage[] {
   ]);
 }
 
-export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'settings' | 'snapshot' | 'index' | 'screenRule' | 'embedder' | 'semanticFloor' | 'signal' | 'fetchImpl'> {
+export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'settings' | 'snapshot' | 'index' | 'screenRule' | 'embedder' | 'semanticFloor' | 'signal' | 'fetchImpl' | 'hostedTurn'> {
   /** The open screen and its section. */
   hint?: SurfaceHint | null;
   /** Gets each source's ranking of each query, and the pick request, for the trace. */
@@ -379,7 +382,7 @@ function poolSearch(index: DocsIndex, on: HelpSettings['sources'], picks: readon
  * The searches of one question: the guide's, and the world's when a world index is given. Each pool gets its
  * own pick request, sent in parallel, so the guide's request is the same with or without a world.
  */
-export async function helpSearches({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, semanticFloor = HELP_SEMANTIC_FLOOR, signal, fetchImpl, record, world, worldRecord }: HelpSearchQuestion): Promise<{ guide: DocsIndex; world?: DocsIndex }> {
+export async function helpSearches({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, semanticFloor = HELP_SEMANTIC_FLOOR, signal, fetchImpl, hostedTurn, record, world, worldRecord }: HelpSearchQuestion): Promise<{ guide: DocsIndex; world?: DocsIndex }> {
   const on = settings.sources;
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
@@ -394,8 +397,8 @@ export async function helpSearches({ question, history = [], settings, snapshot,
   const sampling = activeHelpOptions(settings.presets).pick;
   const queries = helpQueries(question, previous);
   const [guidePicks, worldPicks, semantic, worldSemantic] = await Promise.all([
-    on.aiPicks ? requestPicks(index, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe }).catch(() => []) : [],
-    on.aiPicks && world ? requestWorldPicks(world.index.pickList(), world.lean, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe: observeWorld }).catch(() => []) : [],
+    on.aiPicks ? requestPicks(index, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, hostedTurn, observe }).catch(() => []) : [],
+    on.aiPicks && world ? requestWorldPicks(world.index.pickList(), world.lean, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, hostedTurn, observe: observeWorld }).catch(() => []) : [],
     on.semantic ? Promise.race([semanticRanking(index, queries, { embedder, floor: semanticFloor }), stopped]) : null,
     on.semantic && world ? Promise.race([worldSemanticRanking(world.index, queries, { embedder, floor: semanticFloor }), stopped]) : null,
   ]);
@@ -527,6 +530,7 @@ function worldSearchTraceOf(index: WorldIndex, record: HelpSearchRecord, sent: r
  */
 export async function* askHelp({
   question, history = [], language = '', settings, snapshot, index, surface, focus, images = [], world, screenRule, howToRule, embedder, semanticFloor, signal, fetchImpl,
+  hostedTurn = new HostedTurn(),
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   // The Code tab and the focus count only while the open screen does.
   const openSurface = settings.openScreen ? surface : null;
@@ -552,7 +556,7 @@ export async function* askHelp({
   const game = read?.game;
   const worldRecord = worldIndex && record ? emptySearchRecord(record.on) : undefined;
   const searches = record
-    ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record, world: worldIndex && { index: worldIndex, lean: game ? 'game' : 'editor' }, worldRecord })
+    ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, hostedTurn, record, world: worldIndex && { index: worldIndex, lean: game ? 'game' : 'editor' }, worldRecord })
     : { guide: index };
   const search = searches.guide;
   if (signal?.aborted) {
@@ -637,7 +641,7 @@ export async function* askHelp({
   let content = '';
   let reasoning = '';
   const reasoningNow = () => joinReasoning(native, earlierInline, extractReasoningLive(content));
-  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, captureRounds: true, ...(offered.length > 0 && { execute }) })) {
+  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, hostedTurn, captureRounds: true, ...(offered.length > 0 && { execute }) })) {
     if (event.type === 'toolRound') {
       for (const id of face?.takeFaces() ?? []) yield { type: 'face', face: id };
       rounds.push(event.round);

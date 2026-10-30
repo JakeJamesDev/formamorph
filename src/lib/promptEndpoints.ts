@@ -1,7 +1,7 @@
 import type { AIRequestType } from '@/types';
 import {
-  DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES,
-  canonicalPresetId, isBuiltInPresetId, valuesForId,
+  DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES, FORMAMORPH_AI_VALUES,
+  canonicalPresetId, isBuiltInPresetId, isFormamorphAiId, valuesForId,
   type TextEndpointPresetStore, type TextEndpointValues,
 } from './textEndpointPresets';
 import type { EndpointSamplerOverrides } from './endpointSamplers';
@@ -37,6 +37,8 @@ export interface ResolvedPromptEndpoint {
   isBuiltIn: boolean;
   /** Send the desktop bundled engine's body shape (top_p/top_k/min_p, token-budget reasoning). */
   localEngine: boolean;
+  /** The target is Formamorph AI. */
+  hosted: boolean;
 }
 
 /** The globally-active endpoint state an unpinned kind resolves to. */
@@ -54,6 +56,8 @@ export interface ActiveEndpointState {
    *  loaded regardless of the name asked for, but sending the real id keeps `/models` probes and the
    *  AI-context viewer honest about which model actually answered. */
   engineModelId: string;
+  /** Formamorph AI's output cap and served model, from the hosted state. */
+  hosted?: { maxTokens: number; modelId: string };
 }
 
 /**
@@ -98,6 +102,22 @@ export function resolvePromptEndpoint(
   // An unpinned kind resolves to whatever the active selection is, reported under that preset's own id.
   const id = routed ?? active.activeId;
 
+  if (isFormamorphAiId(id)) {
+    const v = FORMAMORPH_AI_VALUES;
+    return {
+      presetId: routed,
+      endpointId: id,
+      endpoint: v.endpoint,
+      apiToken: v.apiToken,
+      model: active.hosted?.modelId || v.model,
+      maxTokens: active.hosted?.maxTokens ?? v.maxOutputOverride.value,
+      samplerOverrides: v.samplerOverrides,
+      contextWindowOverride: null,
+      isBuiltIn: true,
+      localEngine: false,
+      hosted: true,
+    };
+  }
   if (id === BUILTIN_ENGINE_PRESET_ID) {
     const e = BUILTIN_ENGINE_VALUES;
     return {
@@ -113,6 +133,7 @@ export function resolvePromptEndpoint(
       contextWindowOverride: e.contextWindowOverride,
       isBuiltIn: true,
       localEngine: true,
+      hosted: false,
     };
   }
   if (routed === null) {
@@ -128,6 +149,7 @@ export function resolvePromptEndpoint(
       contextWindowOverride: active.values.contextWindowOverride,
       isBuiltIn: active.isBuiltIn,
       localEngine: false,
+      hosted: false,
     };
   }
   const values = valuesForId(store, routed);
@@ -143,6 +165,7 @@ export function resolvePromptEndpoint(
     contextWindowOverride: values.contextWindowOverride,
     isBuiltIn: routed === DEFAULT_TEXT_PRESET_ID,
     localEngine: false,
+    hosted: false,
   };
 }
 

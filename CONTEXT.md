@@ -194,6 +194,14 @@ _Avoid_: hall of fame, donor list, credits
 The tie between one Formamorph account and one Patreon user, made in the account settings after the member approves it on Patreon. Unlink removes it at once.
 _Avoid_: Patreon login, connection (the AI endpoint word), integration
 
+**Formamorph AI**:
+The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a monthly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed.
+_Avoid_: hosted tier (in copy), premium AI, the proxy
+
+**Hosted state**:
+What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, locked or age gate), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
+_Avoid_: usage, quota, entitlement (the Patreon word)
+
 **Permissive License**:
 The verdict that a VRM's embedded 1.0 metadata grants every right the community catalog needs — everyone may use it, it may be redistributed, modified copies may be redistributed, and commercial use is allowed. Read from the file, never declared. A gate on publishing, not a badge.
 _Avoid_: license check (the act), open license, free

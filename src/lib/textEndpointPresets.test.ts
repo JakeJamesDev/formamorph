@@ -188,12 +188,12 @@ describe('the Default preset name follows the hosted URL', () => {
 
   it('reads Demo AI in the preset list on the hosted URL', async () => {
     const m = await load('');
-    expect(m.builtinTextPresets()).toEqual([{ id: m.DEFAULT_TEXT_PRESET_ID, name: 'Demo AI' }]);
+    expect(m.builtinTextPresets()).toEqual([{ id: m.DEFAULT_TEXT_PRESET_ID, name: 'Demo AI' }, { id: m.FORMAMORPH_AI_PRESET_ID, name: 'Formamorph AI' }]);
   });
 
   it('reads Default in the preset list when the build overrides the default endpoint', async () => {
     const m = await load('http://localhost:1234/v1');
-    expect(m.builtinTextPresets()).toEqual([{ id: m.DEFAULT_TEXT_PRESET_ID, name: 'Default' }]);
+    expect(m.builtinTextPresets()).toEqual([{ id: m.DEFAULT_TEXT_PRESET_ID, name: 'Default' }, { id: m.FORMAMORPH_AI_PRESET_ID, name: 'Formamorph AI' }]);
   });
 
   it('treats the hosted URL written in full as the hosted build', async () => {
@@ -218,7 +218,7 @@ describe('the Default preset name follows the hosted URL', () => {
   it('keeps the engine named Built-In Engine beside the Demo AI on desktop', async () => {
     setDesktop(true);
     const m = await load('');
-    expect(m.builtinTextPresets().map((p) => p.name)).toEqual(['Built-In Engine', 'Demo AI']);
+    expect(m.builtinTextPresets().map((p) => p.name)).toEqual(['Built-In Engine', 'Demo AI', 'Formamorph AI']);
     expect(m.textPresetName(m.emptyStore, m.BUILTIN_ENGINE_PRESET_ID)).toBe('Built-In Engine');
   });
 
@@ -228,5 +228,38 @@ describe('the Default preset name follows the hosted URL', () => {
     expect(m.DEFAULT_TEXT_PRESET_ID).toBe('default');
     expect(m.isBuiltInActive(stored)).toBe(true);
     expect(m.activeValues(stored).endpoint).toBe(HOSTED_ENDPOINT);
+  });
+});
+
+describe('the Formamorph AI preset', () => {
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  it('sits next to the Demo AI as a built-in that is never stored', async () => {
+    const m = await import('./textEndpointPresets');
+    const store = m.setActive(m.emptyStore, m.FORMAMORPH_AI_PRESET_ID);
+    expect(m.isBuiltInActive(store)).toBe(true);
+    expect(store.presets).toEqual([]);
+    expect(m.activeValues(store)).toBe(m.FORMAMORPH_AI_VALUES);
+    expect(m.FORMAMORPH_AI_VALUES.endpoint).toMatch(/\/hosted-ai\/chat\/completions$/);
+    expect(m.FORMAMORPH_AI_VALUES.extraParams).toBeUndefined();
+  });
+
+  it('takes no edit to its endpoint, model, window, output limit or samplers', async () => {
+    const m = await import('./textEndpointPresets');
+    const id = m.FORMAMORPH_AI_PRESET_ID;
+    const store = m.setActive(m.emptyStore, id);
+    expect(m.editPreset(store, id, () => ({ endpoint: 'https://elsewhere.test/v1', model: 'x', contextWindowOverride: 99999, extraParams: '{}' }))).toBe(store);
+    expect(m.updateValue(store, 'endpoint', 'https://elsewhere.test/v1')).toBe(store);
+    expect(m.updateMaxOutputOverride(store, id, { enabled: false, value: 1 })).toBe(store);
+    expect(m.updateSamplerOverride(store, id, 'temperature', { enabled: true, value: 2 })).toBe(store);
+  });
+
+  it('is absent from a build with no community server', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_API_URL_DEV', '');
+    vi.stubEnv('VITE_API_URL_PROD', '');
+    const m = await import('./textEndpointPresets');
+    expect(m.builtinTextPresets().map((p) => p.id)).not.toContain(m.FORMAMORPH_AI_PRESET_ID);
+    expect(m.isBuiltInPresetId(m.FORMAMORPH_AI_PRESET_ID)).toBe(false);
   });
 });

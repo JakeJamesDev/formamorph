@@ -3,7 +3,7 @@ import { buildAiRequestSpec, type AiCall, type AiRequestSpec, type AiSettingsSna
 import { ABORTED_FINISH_REASON, type AiStreamOptions, type AiStreamResult } from './aiStream';
 import { streamAiToolLoop } from './toolLoop';
 
-export interface AiTextOptions extends Pick<AiStreamOptions, 'signal' | 'fetchImpl'> {
+export interface AiTextOptions extends Pick<AiStreamOptions, 'signal' | 'fetchImpl' | 'hostedTurn'> {
   /** Gets the request as sent and what came back, once the stream ends or fails, for an AI Context viewer. */
   observe?: (spec: AiRequestSpec, result: AiStreamResult | undefined) => void;
 }
