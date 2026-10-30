@@ -2,6 +2,7 @@ import type { Connection, Entity, EntityPositions, GameLocation } from '@/types'
 import { ancestors, parentLookup } from './ancestors';
 import { entitiesInPlay } from './entityPresence';
 import { findNameMatches } from './entityMatch';
+import type { StrangerLabels } from './locationContext';
 
 /**
  * Scene Presence: for every entity, where it is, whether the player has met it, whether it is in scene, and
@@ -134,6 +135,45 @@ function participantIds(
   return out;
 }
 
+/** What an unmet entity shows as: its latest story alias, else its Stranger Name, else nothing. */
+function strangerLabel(entity: Entity, aliases: StrangerLabels): string | null {
+  return aliases[entity.id]?.trim() || entity.strangerName?.trim() || null;
+}
+
+/** How the planner names each entity that has a Stranger Name, by true name. Absent for everyone else, who
+ *  keeps the narration test. */
+export interface StrangerReveal {
+  met: boolean;
+  /** The label an unmet stranger is cast under; null when it has none. */
+  label: string | null;
+}
+
+/** How the planner sees the entities that have a Stranger Name. */
+export interface PlannerStrangers {
+  /** The label each unmet stranger prints in the planner's roster, by entity id. */
+  labels: StrangerLabels;
+  /** A lookup by true name: whether the entity is met, and its label while unmet. */
+  reveal: (realName: string) => StrangerReveal | undefined;
+}
+
+/** The planner's view of every entity that has a Stranger Name. */
+export function plannerStrangers(
+  entities: readonly Entity[],
+  isMet: (entity: Entity) => boolean,
+  aliases: StrangerLabels,
+): PlannerStrangers {
+  const labels: Record<string, string> = {};
+  const byName = new Map<string, StrangerReveal>();
+  for (const entity of entities) {
+    if (entity.strangerName === undefined) continue;
+    const met = isMet(entity);
+    const label = met ? null : strangerLabel(entity, aliases);
+    if (label) labels[entity.id] = label;
+    if (!byName.has(nameKey(entity.name))) byName.set(nameKey(entity.name), { met, label });
+  }
+  return { labels, reveal: (realName) => byName.get(nameKey(realName)) };
+}
+
 /** Every entity's presence and the three named sets, in cast order. */
 export function computePresence(input: PresenceInput): Presence {
   const { persona, locationId, locations } = input;
@@ -149,8 +189,7 @@ export function computePresence(input: PresenceInput): Presence {
     const where: Where = locationId && places.includes(locationId) ? 'here'
       : places.some((id) => near.has(id)) ? 'connected' : 'elsewhere';
     const met = isMet(entity);
-    const label = met ? entity.name
-      : input.strangerAliases[entity.id]?.trim() || entity.strangerName?.trim() || null;
+    const label = met ? entity.name : strangerLabel(entity, input.strangerAliases);
     byId.set(entity.id, { entity, where, met, inScene: where === 'here' && recentIds.has(entity.id), label });
   }
   const all = [...byId.values()];

@@ -4,6 +4,7 @@ import {
   buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableLocationsContext,
   buildSublocationsContext, chipFamilyRuns, chipFamilyValues, chipFormat, entityRosterRuns, hasOnlyWith, ownedStatLines,
   knownEntityIds, knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
+  type StrangerLabels,
 } from '../locationContext';
 import { relatedIds, relationshipCast, relationshipLines } from '../entityRelationships';
 import { buildInventoryContext, type InventoryScene } from '../inventoryContext';
@@ -12,7 +13,7 @@ import { personaContextValues } from '../personaContext';
 import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { variableForToken, type PromptVariable } from '../promptVariables';
-import { fromMarked, mapValues, readMarked, withMarked, type ValueLookup } from '../promptValues';
+import { fromMarked, mapValues, readMarked, withMarked, type TokenValues, type ValueLookup } from '../promptValues';
 import { statContextRuns, type StatChipPart, type StatPlacement } from '../statContext';
 import { statKeys } from '../statKeys';
 import { stripMarkdown } from '../stripMarkdown';
@@ -171,7 +172,9 @@ const pulledIdsOver = (cast: readonly Entity[], scene: Pick<ChipScene, 'persona'
 };
 
 /** The Entities chip's scope builders over one scene and its relationship ends. */
-function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Record<string, (opts: ContextOpts) => MarkedText> {
+function entityScopes(
+  scene: ChipScene, cast = sceneRelationshipCast(scene), strangerLabels?: StrangerLabels,
+): Record<string, (opts: ContextOpts) => MarkedText> {
   const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable > known. A character shows only in the highest scope
@@ -186,7 +189,7 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const inSceneLines = relationshipLines(cast, inSceneIds, personaId);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
-  const roster = (opts: ContextOpts, lines = chainLines) => ({ ...opts, ownedTraits, ownedStats, relationshipLines: lines });
+  const roster = (opts: ContextOpts, lines = chainLines) => ({ ...opts, ownedTraits, ownedStats, relationshipLines: lines, strangerLabels });
   // Here and In Scene list stats unless the chip switches them off; the lower scopes only when it switches them on.
   const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {
@@ -212,6 +215,16 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
 export function sceneEntityChipValues(scene: ChipScene, sceneIds: string[]): ValueLookup {
   const { '': here } = entityScopes({ ...scene, presentIds: sceneIds });
   return mapValues(scopedChipRuns(ENTITIES.token, { '': here }), (value) => scene.resolve(value));
+}
+
+/**
+ * The planner's override: every Entities token, with each unmet stranger's block printing its label. Empty
+ * when no stranger has one, so the planner reads the base values.
+ */
+export function plannerEntityChipValues(scene: ChipScene, strangerLabels: StrangerLabels): TokenValues {
+  if (!Object.keys(strangerLabels).length) return {};
+  const scopes = entityScopes(scene, sceneRelationshipCast(scene), strangerLabels);
+  return mapValues(scopedChipRuns(ENTITIES.token, scopes), (value) => scene.resolve(value));
 }
 
 /** An entity's stats field in the scene, as the Entities chip's markdown form renders it, or '' when it holds

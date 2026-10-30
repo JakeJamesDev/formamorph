@@ -10,7 +10,9 @@ import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ow
 import { samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
 import { usePresence } from '@/lib/usePresence';
-import { IN_SCENE_TURNS, introducedIds, metCheck, sceneAfterMove, strangerAliasesFromCast, withMet } from '@/lib/presence';
+import {
+  IN_SCENE_TURNS, introducedIds, metCheck, plannerStrangers, sceneAfterMove, strangerAliasesFromCast, withMet,
+} from '@/lib/presence';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
@@ -132,7 +134,7 @@ import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
-import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
+import { chipValues, entityStatsField, plannerEntityChipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
@@ -702,6 +704,7 @@ const GameViewer = ({
     currentFollowers,
     metEntities,
     setMetEntities,
+    strangerAliases,
     setStrangerAliases,
     setSelectedEntityId,
     codePins,
@@ -2963,6 +2966,9 @@ const GameViewer = ({
     let turnWorldWrites: WorldWrites | undefined;
     let actionVec: Float32Array | null = null;
     let priorNarration = "";
+    // Who the player has met as the turn starts: the planner casts each unmet stranger under its label.
+    const isMetAtStart = metCheck(metEntities, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)));
+    const strangers = plannerStrangers(allEntities, isMetAtStart, strangerAliases);
     // Staged/precall candidates the narration confirms afterward: ad-hoc = planner-invented (no entity
     // record, strict match); director = defined entities the planner cast (loose match, since it already
     // vouched they're present — "the tank" can confirm a "Battle Tank").
@@ -3155,12 +3161,15 @@ const GameViewer = ({
 
         // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
         const lastStory = [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
+        const plannerEntityTokens = thinkingMode === "precall"
+          ? plannerEntityChipValues(liveScene(turnLocation, sceneBox()), strangers.labels)
+          : {};
         const plannerTurns = thinkingMode === "precall" && memoryDigests ? parseEffectiveTurns(fullMessageHistory) : null;
         const band = plannerTurns
           ? buildPlannerBand({
               turns: plannerTurns,
               template: thinkingPrompt,
-              ctx,
+              ctx: layerValues(ctx, plannerEntityTokens),
               contextWindow: resolveEndpointForKind('thinking').contextWindow,
               verbatimFloor: thinkingVerbatimTurns,
               milestoneDrop: getMilestoneDrop(plannerTurns),
@@ -3176,6 +3185,7 @@ const GameViewer = ({
 
         return {
           ctx,
+          plannerEntityTokens,
           narrationSystemPrompt: prompt,
           narrationSystemPromptRuns: runs,
           trimmedHistory,
@@ -3237,10 +3247,7 @@ const GameViewer = ({
         setVisibleEntities(reading.visibleEntities);
         meetNamed(narration, turnLocation ?? currentLocation);
         const plannedCast = sceneCast;
-        if (plannedCast) {
-          const isMet = metCheck(metEntities, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)));
-          setStrangerAliases((prev) => strangerAliasesFromCast(prev, plannedCast, allEntities, isMet));
-        }
+        if (plannedCast) setStrangerAliases((prev) => strangerAliasesFromCast(prev, plannedCast, allEntities, isMetAtStart));
         // Visitors affect the next turn's context (this turn's ctx already ran).
         const visitorLocation = turnLocation;
         if (visitorLocation) {
@@ -3411,8 +3418,14 @@ const GameViewer = ({
             if (!first.raw) return;
             classifyPlannerCast((first.parsed as ParsedDirector).cast);
             // Keep a name the player has not yet heard out of the plan the narrator reads (code backstop for
-            // the prompt's alias rule). A name is "revealed" once it appears in any past narration.
-            return { turnPlan: sanitizePlanForReveal(first.raw, (name) => matchNames(priorNarration, [name]).length > 0) };
+            // the prompt's alias rule). A stranger is revealed once met; anyone else once past narration names them.
+            return {
+              turnPlan: sanitizePlanForReveal(
+                first.raw,
+                (name) => strangers.reveal(name)?.met ?? matchNames(priorNarration, [name]).length > 0,
+                { labelFor: (name) => strangers.reveal(name)?.label, otherNames: [...allEntities.map((e) => e.name), ...playerNames] },
+              ),
+            };
           }
           case "director": {
             const { scene, cast } = first.parsed as ParsedDirector;

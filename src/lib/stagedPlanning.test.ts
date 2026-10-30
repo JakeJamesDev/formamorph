@@ -270,6 +270,45 @@ describe('sanitizePlanForReveal', () => {
     expect(out).toContain('someone the player has not yet identified');
   });
 
+  it('fills a missing alias with the stranger label, and keeps an alias the planner gave', () => {
+    const labelFor = (name: string) => (name === 'Gareth' ? 'a gate guard' : null);
+    const bare = ['Cast:', '- Gareth - blocking the exit', 'Beats: Gareth draws a blade.'].join('\n');
+    const out = sanitizePlanForReveal(bare, revealNone, { labelFor });
+    expect(out).not.toMatch(/Gareth|not yet identified/);
+    expect(out).toContain('a gate guard draws a blade');
+    const aliased = ['Cast:', '- Gareth (the scarred guard) - blocking the exit'].join('\n');
+    expect(sanitizePlanForReveal(aliased, revealNone, { labelFor })).toContain('- the scarred guard - blocking');
+  });
+
+  it('swaps a lone first name in the Beats, whole words only', () => {
+    const plan = [
+      'Cast:',
+      '- Corvin Ashby (a gaunt man) - hunched in the corner',
+      'Beats: Corvin does not look up. Corvinus the cat sleeps on.',
+    ].join('\n');
+    const out = sanitizePlanForReveal(plan, revealNone);
+    expect(out).not.toMatch(/\bCorvin\b|Ashby/);
+    expect(out).toContain('Beats: a gaunt man does not look up. Corvinus the cat sleeps on.');
+  });
+
+  it('leaves a word another name shares, so siblings never rewrite each other', () => {
+    const plan = [
+      'Cast:',
+      '- Ann Oakes (a tall girl) - by the well',
+      '- Tom Oakes - drawing water',
+      'Beats: Ann waves. The Oakes pail tips over.',
+    ].join('\n');
+    const out = sanitizePlanForReveal(plan, (name) => name === 'Tom Oakes');
+    expect(out).toContain('Beats: a tall girl waves. The Oakes pail tips over.');
+    expect(out).toContain('- Tom Oakes - drawing water');
+    // A shared word with a name outside the cast holds too.
+    const solo = ['Cast:', '- Ann Oakes (a tall girl) - by the well', 'Beats: Oakes land ends here.'].join('\n');
+    expect(sanitizePlanForReveal(solo, revealNone, { otherNames: ['Tom Oakes'] })).toContain('Beats: Oakes land ends here.');
+    expect(sanitizePlanForReveal(solo, revealNone)).toContain('Beats: a tall girl land ends here.');
+    const hyphen = ['Cast:', '- Ann Oakes-Hale (a tall girl) - by the well', 'Beats: Oakes-Hale waves.'].join('\n');
+    expect(sanitizePlanForReveal(hyphen, revealNone, { otherNames: ['Tom Oakes'] })).toContain('Beats: Oakes-Hale waves.');
+  });
+
   it('never rewrites the player or empty-cast sentinels', () => {
     const plan = ['Cast:', '- Player Character - waiting', '- None'].join('\n');
     expect(sanitizePlanForReveal(plan, revealNone)).toBe(plan);
