@@ -202,6 +202,10 @@ _Avoid_: hosted tier (in copy), premium AI, the proxy
 What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, locked or age gate), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
 _Avoid_: usage, quota, entitlement (the Patreon word)
 
+**Spend subject**:
+What Formamorph AI spend is counted against: the Patreon membership for a pledge, or the grant for a staff grant. It is not the account, so relinking Patreon or making a new account keeps the month's spend.
+_Avoid_: account (for spend), payer, customer
+
 **Permissive License**:
 The verdict that a VRM's embedded 1.0 metadata grants every right the community catalog needs — everyone may use it, it may be redistributed, modified copies may be redistributed, and commercial use is allowed. Read from the file, never declared. A gate on publishing, not a badge.
 _Avoid_: license check (the act), open license, free
