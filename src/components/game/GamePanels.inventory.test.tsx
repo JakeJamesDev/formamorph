@@ -32,14 +32,16 @@ const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCop
   ({ id, item: { kind: 'item', itemId }, where: you, quantity: 1, visibility: 'visible', ...over });
 
 const turns: TurnFixture[] = [{ narration: 'One.', turnId: 't1' }, { narration: 'Two.', turnId: 't2' }];
-const stage = (copies: ItemCopy[], over: { page?: number } = {}) => ({
+/** `inScene` names who took part in the latest turn, which puts them In Scene when they stand here. */
+const stage = (copies: ItemCopy[], over: { page?: number; inScene?: string[]; met?: string[] } = {}) => ({
   world: { items, slots, entities, locations: [yard, hall] },
-  turns,
-  ...over,
+  turns: over.inScene ? [turns[0], { ...turns[1], entities: over.inScene }] : turns,
+  ...(over.page !== undefined && { page: over.page }),
   seed: (g: Gameplay) => {
     g.setCurrentLocation(yard);
     g.setItemCopies(copies);
     g.setActiveTab('inventory');
+    if (over.met) g.setMetEntities(over.met);
   },
 });
 
@@ -71,8 +73,8 @@ describe('RightPanel — Inventory tab', () => {
     expect(within(within(carried()).getByRole('listitem', { name: 'Head' })).getByText('Empty')).toBeInTheDocument();
   });
 
-  it('gives only to the entities at the location, and a count of the stack', async () => {
-    const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 5 })]));
+  it('gives a count of the stack to an entity in scene', async () => {
+    const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 5 })], { inScene: ['Bram'] }));
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
     const list = await screen.findByRole('list', { name: 'Give to' });
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Bram']);
@@ -83,20 +85,63 @@ describe('RightPanel — Inventory tab', () => {
     expect(h.gameplay().itemCopies.map((c) => [c.where, c.quantity])).toEqual([[you, 3], [{ kind: 'entity', id: 'bram' }, 2]]);
   });
 
-  it('lists the entities in scene first, then the rest at the location', async () => {
+  it('offers only the entities in scene, never a quiet one here or one named from the hall', async () => {
     const crowd = [...entities, { id: 'ilsa', name: 'Ilsa', locations: ['yard'] }, { id: 'odo', name: 'Odo', locations: ['hall'] }] as Entity[];
     renderRightPanel(
-      { inventorySettle: { requirement: () => null, commit: vi.fn(), participants: ['Ilsa', 'Odo'] } },
-      { ...stage([copy('c', 'coin')]), world: { items, slots, entities: crowd, locations: [yard, hall] } },
+      {},
+      { ...stage([copy('c', 'coin')], { inScene: ['Ilsa', 'Odo'] }), world: { items, slots, entities: crowd, locations: [yard, hall] } },
     );
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
     const list = await screen.findByRole('list', { name: 'Give to' });
-    // Odo is named in the scene but stands in the hall, so Give never offers him.
-    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Ilsa', 'Bram']);
+    // Bram stands here but took no part; Odo took part but stands in the hall.
+    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Ilsa']);
+  });
+
+  it('says nobody is in the scene when people stand here but none took part', async () => {
+    renderRightPanel({}, stage([copy('c', 'coin')]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
+    expect(await screen.findByText('Nobody is in the scene.')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Give to' })).toBeNull();
+  });
+
+  describe('a stranger', () => {
+    const withStranger = (strangerName: string | undefined, over: Partial<Entity> = {}) => ({
+      ...stage([copy('c', 'coin')], { inScene: ['Sylvie Thornwhistle'] }),
+      world: {
+        items, slots, locations: [yard, hall],
+        entities: [{ id: 'sylvie', name: 'Sylvie Thornwhistle', locations: ['yard'], ...(strangerName !== undefined && { strangerName }), ...over }] as Entity[],
+      },
+    });
+
+    it('is offered by the Stranger Name and never by the true name', async () => {
+      const h = renderRightPanel({}, withStranger('a hooded figure'));
+      await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
+      const list = await screen.findByRole('list', { name: 'Give to' });
+      expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['a hooded figure']);
+      expect(screen.queryByText('Sylvie Thornwhistle')).toBeNull();
+      await userEvent.click(within(list).getByRole('button', { name: 'a hooded figure' }));
+      expect(h.gameplay().itemCopies[0].where).toEqual({ kind: 'entity', id: 'sylvie' });
+    });
+
+    it('is offered under its true name once met', async () => {
+      renderRightPanel({}, {
+        ...withStranger('a hooded figure'),
+        ...stage([copy('c', 'coin')], { inScene: ['Sylvie Thornwhistle'], met: ['sylvie'] }),
+        world: withStranger('a hooded figure').world,
+      });
+      await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
+      expect(within(await screen.findByRole('list', { name: 'Give to' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sylvie Thornwhistle']);
+    });
+
+    it('is not offered with no label', async () => {
+      renderRightPanel({}, withStranger(' '));
+      await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
+      expect(await screen.findByText('Nobody is in the scene.')).toBeInTheDocument();
+    });
   });
 
   it('gives a whole stack with All', async () => {
-    const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 5 })]));
+    const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 5 })], { inScene: ['Bram'] }));
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
     await userEvent.click(screen.getByRole('button', { name: 'All' }));
     await userEvent.click(screen.getByRole('button', { name: 'Bram' }));
@@ -137,7 +182,7 @@ describe('RightPanel — Inventory tab', () => {
   });
 
   it('closes an open Give popover when a turn starts, so it cannot write mid-turn', async () => {
-    const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 2 })]));
+    const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 2 })], { inScene: ['Bram'] }));
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
     await screen.findByRole('list', { name: 'Give to' });
     act(() => h.gameplay().setIsWaitingForAI(true));
