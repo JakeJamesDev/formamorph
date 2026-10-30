@@ -1,6 +1,6 @@
 # 09: World Source Links Follow the Answer
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,6 +15,14 @@ Found in the close review. Spec: "In the editor, a world source opens its itemâ€
 
 ## Acceptance criteria
 
-- [ ] A game answer's world sources stay plain names after the in-game World Editor opens
-- [ ] An editor answer's world sources link while the editor is open, and show as plain names once no editor is open
-- [ ] The test fails when the chip reads the registered world's lean again
+- [x] A game answer's world sources stay plain names after the in-game World Editor opens (`stays a plain name for a game answer after the editor opens`)
+- [x] An editor answer's world sources link while the editor is open, and show as plain names once no editor is open (`opens its item for an editor answerâ€¦`, `is a plain name for an editor answer once no editor is open`)
+- [x] The test fails when the chip reads the registered world's lean again (reinstated `registered?.open`: the game-after-editor test went red; restored)
+
+## Landed
+
+**Not verified**
+- Not checked in the running app: no real editor-over-game session was driven. Component tests only.
+
+**For you**
+- Ask a question in game, open the in-game World Editor, and check the earlier answer's world sources stay plain names. Ask one in the editor, close it, and check that answer's sources turn plain.

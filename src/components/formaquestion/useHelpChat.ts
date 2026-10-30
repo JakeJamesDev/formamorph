@@ -7,7 +7,7 @@ import { askHelp, type HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import type { HelpTrace } from '@/lib/formaquestion/helpTrace';
 import type { AnswerSource } from '@/lib/formaquestion/helpWorldSource';
-import { helpWorld } from '@/lib/formaquestion/helpWorld';
+import { helpWorld, type WorldLean } from '@/lib/formaquestion/helpWorld';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -38,6 +38,8 @@ export interface HelpExchange {
   /** How long the reasoning took, from its first text to the answer's first text. Absent while it runs. */
   reasoningMs?: number;
   status: HelpStatus;
+  /** The screen's world lean when the question was sent; absent when no world was open. Its world sources follow it. */
+  lean?: WorldLean;
   /** The docs sections that reached the model. */
   sources: readonly AnswerSource[];
   /** The open screen's section among the sources. */
@@ -108,7 +110,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
     const change = (fields: Partial<HelpExchange>) => {
       if (mountedRef.current) setExchanges((all) => all.map((entry) => (entry.id === id ? { ...entry, ...fields } : entry)));
     };
-    setExchanges((all) => [...all, { id, question, images, answer: '', reasoning: '', status: 'writing', sources: [], flagged: false, nearest: [] }]);
+    setExchanges((all) => [...all, { id, question, images, answer: '', reasoning: '', status: 'writing', lean: world?.lean, sources: [], flagged: false, nearest: [] }]);
 
     void (async () => {
       try {
