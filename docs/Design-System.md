@@ -2148,6 +2148,22 @@ The Selected step is sized for the widest label, so a new pick never changes the
 
 Open `#dev?modal=designSystem&tab=collapsing-segmented` for the library tabs in a wide and a narrow cell, with local state.
 
+### In the main menu top bar
+
+✅ Approved by the user on 2026-10-30.
+
+The top bar folds its parts together, in a fixed order, by whether its three cells fit side by side. No part folds by its own leftover room.
+
+| Order | Part | Steps |
+|---|---|---|
+| 1 | Library tabs | Every label → selected label → icons |
+| 2 | Action buttons | A row → one menu button. The right menu joins that menu. |
+| 3 | Event badges | One chip per event → one chip with a count, which opens the chips in a list |
+
+- 🎯 **Center drifts first.** The action buttons sit at the bar's center while there is room. They slide toward the side with free space before anything folds.
+- 📏 **Widest labels.** The action buttons are measured at the library tab with the longest button labels, so a new pick never changes a step.
+- 🧩 **Component.** `useHeaderFold` in [`useHeaderFold.ts`](../src/lib/useHeaderFold.ts) measures hidden copies of every step. `headerFold` in [`headerFold.ts`](../src/lib/headerFold.ts) holds the order. `EventBannerCount` in [`EventBanner.tsx`](../src/components/events/EventBanner.tsx) is the badges' count step.
+
 ## Pattern: Inventory Tab
 
 **Purpose:** Show the player's equipment and carried items in the game's side panel, and act on them in one click.

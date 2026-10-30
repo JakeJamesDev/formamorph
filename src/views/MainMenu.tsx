@@ -10,6 +10,9 @@ import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { CollapsingToggleGroup } from '@/components/ui/collapsing-toggle-group';
+import type { SegmentFold } from '@/lib/collapsingSegments';
+import { useHeaderFold } from '@/lib/useHeaderFold';
+import { KIND_BY_CARD_TYPE, KIND_LABELS } from '@/lib/catalogKinds';
 import { MAIN_MENU_CARD_OPTIONS, MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { clearLibraryModelPicks, deleteModelDescription, findModelUsage, type ModelUsage } from '@/lib/libraryVrmDelete';
 import { DEFAULT_AVATAR_URL, clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
@@ -129,7 +132,7 @@ import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
 import { isContestEvent } from "@/lib/serverEvents";
 import { placementsBy, judgingContestsOf } from "@/lib/contests";
 import { useContests } from "@/lib/useContests";
-import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
+import { EventBanner, EventBannerChips, EventBannerCount } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
@@ -1625,6 +1628,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   const banners = useEventBanners(activeEvents);
 
+  // The top bar folds its parts in order by whether they fit side by side; see `headerFold`.
+  const topBarRef = useRef<HTMLDivElement>(null);
+  const [tabSteps, setTabSteps] = useState<Record<SegmentFold, number> | null>(null);
+  const topBarFold = useHeaderFold(topBarRef, tabSteps, `${COMMUNITY_ENABLED && banners.chips.length > 0}:${isAuthenticated && isStaff(currentUser)}`);
+
   // The staff half of the badge story. Its own channel because it counts work rather than news: it is
   // the same number for every staff member, and it clears when somebody — anybody — resolves a group.
   useEffect(() => {
@@ -1770,30 +1778,26 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     ? `From group “${selectedGroupPreset.group.name}”: ${selectedGroupPreset.name}`
     : null;
 
-  // The singular noun for the selected card type — drives the contextual New/Import button labels.
-  const cardNoun = cardType === 'worlds' ? 'World'
-    : cardType === 'entities' ? 'Entity'
-    : cardType === 'models' ? 'Avatar'
-    : 'Dictionary';
-
   // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
-  // New/Import are contextual to the selected card type.
-  const actionButtons = (
+  // New/Import are contextual to the card type. A `measuring` copy is inert and carries no landing target.
+  const renderActionButtons = (tab: MainMenuCardTab, measuring = false) => {
+    const cardNoun = KIND_LABELS[KIND_BY_CARD_TYPE[tab]].one;
+    return (
     <>
       {COMMUNITY_ENABLED && (
         <GradientButton
           tone="indigo"
-          onClick={() => openCommunityBrowser()}
+          onClick={measuring ? undefined : () => openCommunityBrowser()}
         >
           <Globe className="mr-2 h-4 w-4" /> Community Creations
         </GradientButton>
       )}
 
       {/* Models are import-only: a VRM is authored in modelling software, so there's nothing to create here. */}
-      {cardType !== 'models' && (
+      {tab !== 'models' && (
         <GradientButton
           tone="amber"
-          onClick={() => {
+          onClick={measuring ? undefined : () => {
             if (cardType === 'worlds') handleCreateNewWorld();
             else if (cardType === 'entities') handleCreateNewEntity();
             else if (cardType === 'dictionaries') handleCreateNewDictionary();
@@ -1805,8 +1809,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       <GradientButton
         tone="green"
-        {...IMPORT_TARGET[cardType]}
-        onClick={() => {
+        {...(measuring ? {} : IMPORT_TARGET[tab])}
+        onClick={measuring ? undefined : () => {
           if (cardType === 'worlds') fileInputRef.current?.click();
           else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();
           else if (cardType === 'entities') entityImportRef.current?.click();
@@ -1819,7 +1823,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {isAuthenticated && isStaff(currentUser) && (
         <GradientButton
           tone="purple"
-          onClick={() => setShowAdminPanel(true)}
+          onClick={measuring ? undefined : () => setShowAdminPanel(true)}
         >
           <Shield className="mr-2 h-4 w-4" /> Admin Panel
           {/* Reports and the review queue are the things in this panel that wait on somebody. The count
@@ -1833,7 +1837,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </GradientButton>
       )}
     </>
-  );
+    );
+  };
+  const actionButtons = renderActionButtons(cardType);
 
   // One place in the tree, so the entry draft survives the Avatar step taking the whole screen.
   const flow = (
@@ -1867,22 +1873,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
           settings (right). items-center keeps every control on the settings cog's centerline (the cog is
           tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
-          there's room; it only shifts/wraps once the sides can't yield more space. */}
-      <div className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
-        {/* Card-type switcher: folds to icons by its own cell's room, so the centered buttons keep their
-            labels longer. Hidden on mobile, where the bottom tab bar takes over. No min-w-0: the cell keeps
-            the switcher's folded width so it never overflows onto the centered buttons. */}
-        <div className="flex-1 hidden md:flex items-center justify-start">
-          <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" />
+          there's room, and drifts off center before anything folds. `useHeaderFold` folds the parts in order
+          once the cells no longer fit side by side: library tabs, then action buttons, then event badges. */}
+      <div ref={topBarRef} className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
+        {/* Card-type switcher, at the step the bar picks. Hidden on mobile, where the bottom tab bar takes
+            over. No min-w-0: the cell keeps the switcher's width, which pushes the center off center. */}
+        <div data-fold-left="" className="flex-1 hidden md:flex items-center justify-start">
+          <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" fold={topBarFold.tabs} onStepWidths={setTabSteps} />
         </div>
 
-        {/* Action buttons — full row on wide viewports, collapsed into a hamburger below 1000px. Auto width so
-            it centers between the flex-1 side cells; wraps only as a last resort. When collapsed, the right-cell
-            menu (Load Game / Settings) folds into this same popover so there's one menu, not two. */}
-        <div className="hidden min-[1000px]:flex items-center gap-4 flex-wrap justify-center">
+        {/* Action buttons: a row, or one menu button once the bar folds them. Folded, the right-cell menu
+            (Load Game / Settings) joins this same popover so there's one menu, not two. */}
+        <div className={topBarFold.center === 'full' ? 'flex items-center gap-4 justify-center' : 'hidden'}>
           {actionButtons}
         </div>
-        <div className="flex min-[1000px]:hidden">
+        <div className={topBarFold.center === 'menu' ? 'flex' : 'hidden'}>
           <Popover>
             <PopoverTrigger asChild>
               <GradientButton
@@ -1908,20 +1913,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </Popover>
         </div>
 
-        {/* Grid/detailed view toggle + settings (cog stays right-most). min-w-0 so a chip beside them can
-            be squeezed rather than pushing the cell past the bar's right edge. */}
-        <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
+        {/* Event badges + grid/detailed view toggle + menu (right-most). No min-w-0: every part keeps its
+            width, and the bar folds a step instead of squeezing one. */}
+        <div className="flex-1 flex items-center justify-end gap-2">
           {/* Dismissed banners, centered in the slack this cell was already holding rather than pushed
-              against the buttons beside it. It takes the free width and gives it back as it shrinks, so
-              a chip costs the bar no row and never crowds the controls it sits between. */}
-          {COMMUNITY_ENABLED && (
-            <EventBannerChips banners={banners} onOpenEvent={openEvent} className="grow justify-center" />
-          )}
+              against the buttons beside it; one count chip once the bar folds them. */}
+          {COMMUNITY_ENABLED && (topBarFold.badges === 'full'
+            ? <EventBannerChips banners={banners} onOpenEvent={openEvent} className="grow justify-center min-w-max" />
+            : <EventBannerCount banners={banners} onOpenEvent={openEvent} />)}
           <ToggleGroup
             type="single"
             value={layoutMode}
-            // shrink-0 here and on the menu beside it: a chip in this cell is the one thing that may give
-            // width back, so the controls it sits beside keep theirs at every viewport.
+            data-fold-live="toggle"
             className="shrink-0"
             // Clicking the active item again would otherwise clear the layout mode, which has no empty state.
             onValueChange={(v) => { if (v) setLayoutMode(v as 'grid' | 'detailed'); }}
@@ -1937,9 +1940,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </ToggleGroupItem>
             </Tip>
           </ToggleGroup>
-          {/* Right menu — hidden below 1000px, where its items fold into the center hamburger; the view toggle
+          {/* Right menu: gone once the action buttons fold, since its items join that menu; the view toggle
               then becomes the right-most control. */}
-          <div className="hidden min-[1000px]:block shrink-0">
+          <div className={topBarFold.center === 'full' ? 'block shrink-0' : 'hidden'}>
             <Popover>
               <Tip tip="Menu">
                 <PopoverTrigger asChild>
@@ -1964,6 +1967,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+
+        {/* Hidden copies of every step the bar can fold to, for `useHeaderFold` to measure. The action
+            buttons come once per library tab, so a new pick never changes the fold. */}
+        <div aria-hidden data-fold-measure-layer="" className="pointer-events-none invisible absolute left-0 top-0 h-0 overflow-hidden">
+          {MAIN_MENU_CARD_TABS.map((tab) => (
+            <div key={tab} data-fold-measure="center" className="flex w-max items-center gap-4">{renderActionButtons(tab, true)}</div>
+          ))}
+          <GradientButton data-fold-measure="center-menu" tone="purple" tabIndex={-1}><Menu className="h-5 w-5" /></GradientButton>
+          <span data-fold-measure="right-menu" className="block w-max p-3"><Menu className="h-6 w-6" /></span>
+          {COMMUNITY_ENABLED && banners.chips.length > 0 && (
+            <>
+              <div data-fold-measure="badges-full" className="w-max"><EventBannerChips banners={banners} /></div>
+              <div data-fold-measure="badges-count" className="w-max"><EventBannerCount banners={banners} /></div>
+            </>
+          )}
         </div>
       </div>
 
