@@ -14,7 +14,7 @@ Model rationale: UI and state wiring on top of ticket 07's preset; copy and timi
 - [ ] The exhausted state names the reset date, switches back to the recorded previous preset in one click, and links to upgrade.
 - [ ] On first entitlement on a device, the app selects Formamorph AI once, records it locally with the previous preset, and never switches again on that device.
 - [ ] Dev-route entries exist for both notices and the exhausted state; frames in both themes: `.scratch/frames/fai-usage-light.png`, `.scratch/frames/fai-warning-dark.png`, `.scratch/frames/fai-exhausted-light.png`.
-- [ ] Copy follows the Writing Guide; the help line for the usage display passes the copy sweep.
+- [ ] Copy follows the Writing Guide; the help line for the usage display passes the copy sweep, and so does ticket 07's preset state copy (it landed unswept).
 - [ ] The wiki page for AI setup describes Formamorph AI and its allowance without any numbers.
 
 For you: read the notice and exhausted copy in play and judge the timing of the notices.
