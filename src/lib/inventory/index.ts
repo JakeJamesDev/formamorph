@@ -10,10 +10,10 @@ import type {
   Entity, GameLocation, Item, ItemCopy, ItemCopyState, ItemCopyVisibility, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
   InventoryUseAfter, RuntimeItem, Slot,
 } from '@/types';
-import { timedTraitRow, type Dose } from './effects';
+import { timedTraitRow, type ItemUse } from './effects';
 
 export {
-  itemEffectLine, itemEffectLog, settleItemEffects, timedEffectViews, timedKey, type Dose, type ItemEffectChange,
+  itemEffectLine, itemEffectLog, settleItemEffects, timedEffectViews, timedKey, type ItemUse, type ItemEffectChange,
   type TimedEffectNames, type TimedEffectView, type ItemEffectResult, type ItemEffectWorld, type OwnerStatTraits,
 } from './effects';
 export {
@@ -154,7 +154,7 @@ export interface InventoryCall {
 export interface InventoryResult {
   copies: ItemCopy[];
   /** One per use of an authored item, in order: what starts its After Use effects. */
-  doses: Dose[];
+  itemUses: ItemUse[];
   /** One line per skipped operation (Q22). */
   diagnostics: string[];
   /** The events of authored items, in order. Runtime items have no scripts. */
@@ -203,7 +203,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   const slots = new Map((call.world.slots ?? []).map((slot) => [slot.id, slot]));
   let list: ItemCopy[] = [...copies];
   const diagnostics: string[] = [];
-  const doses: Dose[] = [];
+  const itemUses: ItemUse[] = [];
   const events: ItemScriptEvent[] = [];
   /** Records an event of `ref`'s item; none for a runtime item. */
   const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy) => {
@@ -324,7 +324,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         if (item && !itemUsable(item)) return `use: Item Copy ${copy.id} can't be used`;
         const left = usesLeft(copy, item);
         if (left !== undefined && !(left > 0)) return `use: Item Copy ${copy.id} has no uses left`;
-        if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }) });
+        if (item) itemUses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }) });
         fire('used', copy.item, copy.id, copy.where, 1, copy);
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : op.after === 'kept' ? undefined : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });
@@ -411,7 +411,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
     const skipped = one(op);
     if (skipped) diagnostics.push(`Inventory (${call.source}) skipped ${skipped}`);
   }
-  return { copies: list, doses, diagnostics, events };
+  return { copies: list, itemUses, diagnostics, events };
 }
 
 /** What still exists for Item Copies to point at. */

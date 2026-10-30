@@ -8,7 +8,7 @@ import {
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
-import type { Dose, InventoryOp, InventoryResult, ItemScriptEvent } from './inventory';
+import type { ItemUse, InventoryOp, InventoryResult, ItemScriptEvent } from './inventory';
 import { faceName, isUnidentified } from './items';
 import { statCodeNamed } from './statCodeNames';
 import type { StatCodePlaceholderSet } from './statCodePlaceholders';
@@ -495,14 +495,14 @@ export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnRes
 export const ITEM_EVENT_DEPTH = 3;
 
 /** Lays inventory writes onto Item Copies through the Inventory module, with the events they fire. */
-export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly InventoryOp[]) => Pick<InventoryResult, 'copies' | 'events' | 'diagnostics' | 'doses'>;
+export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly InventoryOp[]) => Pick<InventoryResult, 'copies' | 'events' | 'diagnostics' | 'itemUses'>;
 
 /**
- * The inventory settle over `copies`, as if the runs had stopped there: `doses` are every use so far, and
+ * The inventory settle over `copies`, as if the runs had stopped there: `itemUses` are every use so far, and
  * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, their
  * events, and the settle's log lines.
  */
-export type SettleCopies = (copies: readonly ItemCopy[], doses: readonly Dose[], so: StatCodeTurnResult) =>
+export type SettleCopies = (copies: readonly ItemCopy[], itemUses: readonly ItemUse[], so: StatCodeTurnResult) =>
   { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[]; log: readonly string[] };
 
 /** Where a batch of item events starts, and how it settles after each write. */
@@ -522,7 +522,7 @@ export interface ItemRunsResult {
   /** The module's skips, the settles' log lines, and one line per event past the depth cap. */
   diagnostics: string[];
   /** The uses the runs' writes made, which start their After Use effects. */
-  doses: Dose[];
+  itemUses: ItemUse[];
   /** Every inventory write the runs landed, the settle's unequips among them, in order, for a caller whose Item
    *  Copies moved meanwhile. */
   ops: InventoryOp[];
@@ -541,7 +541,7 @@ export async function runItemScripts(
   const byId = new Map(items.map((item) => [item.id, item]));
   const steps: StatCodeTurnResult[] = [];
   const diagnostics: string[] = [];
-  const doses: Dose[] = [];
+  const itemUses: ItemUse[] = [];
   const landedOps: InventoryOp[] = [];
   const level = async (at: StatCodeTurn, batch: readonly ItemScriptEvent[], depth: number): Promise<StatCodeTurn> => {
     let now = at;
@@ -565,8 +565,8 @@ export async function runItemScripts(
       const landed = apply(now.state.itemCopies ?? [], ops);
       landedOps.push(...ops);
       diagnostics.push(...landed.diagnostics);
-      doses.push(...landed.doses);
-      const settled = settle?.(landed.copies, doses, chainedResult(turn, steps, now)) ?? { copies: landed.copies, events: [], log: [] };
+      itemUses.push(...landed.itemUses);
+      const settled = settle?.(landed.copies, itemUses, chainedResult(turn, steps, now)) ?? { copies: landed.copies, events: [], log: [] };
       diagnostics.push(...settled.log);
       landedOps.push(...settled.events.map((e): InventoryOp => ({ kind: 'unequip', copyId: e.copyId })));
       now = { ...now, state: { ...now.state, itemCopies: settled.copies } };
@@ -576,7 +576,7 @@ export async function runItemScripts(
   };
   const end = await level(turn, events, depth);
   return {
-    result: steps.length ? chainedResult(turn, steps, end) : null, copies: end.state.itemCopies ?? [], diagnostics, doses, ops: landedOps,
+    result: steps.length ? chainedResult(turn, steps, end) : null, copies: end.state.itemCopies ?? [], diagnostics, itemUses, ops: landedOps,
   };
 }
 

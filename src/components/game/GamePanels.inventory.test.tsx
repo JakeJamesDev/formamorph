@@ -167,13 +167,13 @@ describe('RightPanel — Inventory tab', () => {
     expect(within(carried()).queryByText('Iron Helm')).not.toBeInTheDocument();
   });
 
-  it('uses one Tonic from a stack of three, and sends the dose to the settle', async () => {
+  it('uses one Tonic from a stack of three, and sends the use to the settle', async () => {
     const commit = vi.fn();
     renderRightPanel({ inventorySettle: { requirement: () => null, commit } }, stage([copy('t', 'tonic', { quantity: 3 })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Use Tonic' }));
-    const [copies, , , doses] = commit.mock.calls[0];
+    const [copies, , , itemUses] = commit.mock.calls[0];
     expect(copies.map((c: ItemCopy) => c.quantity)).toEqual([2]);
-    expect(doses).toEqual([{ itemId: 'tonic', where: you, hidden: false }]);
+    expect(itemUses).toEqual([{ itemId: 'tonic', where: you, hidden: false }]);
   });
 
   it('spends a use on an equipped wand, and turns Use off at zero uses', async () => {
@@ -191,7 +191,7 @@ describe('RightPanel — Inventory tab', () => {
     expect(within(carried()).queryByText(/uses/)).not.toBeInTheDocument();
   });
 
-  it('shows an unidentified copy by its unidentified name everywhere in the tab, and sends the dose unidentified (Q17)', async () => {
+  it('shows an unidentified copy by its unidentified name everywhere in the tab, and sends the use unidentified (Q17)', async () => {
     const commit = vi.fn();
     renderRightPanel({ inventorySettle: { requirement: () => null, commit } }, stage([copy('r', 'ring', { state: { unidentified: true } })]));
     expect(await within(carried()).findByText('Plain Ring')).toBeInTheDocument();

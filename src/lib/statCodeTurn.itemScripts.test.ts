@@ -194,6 +194,6 @@ describe('runItemScripts', () => {
     const plain = item('i-plain', 'Plain', []);
     const start = [copy('c-1', 'i-plain', { kind: 'you' })];
     const out = await runItemScripts(turnOf([plain], start), [event('gained', 'i-plain', 'c-1', { kind: 'you' })], [plain], applyWith([plain]), (i) => i.name);
-    expect(out).toEqual({ result: null, copies: start, diagnostics: [], doses: [], ops: [] });
+    expect(out).toEqual({ result: null, copies: start, diagnostics: [], itemUses: [], ops: [] });
   });
 });

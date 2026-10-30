@@ -169,7 +169,7 @@ describe("Haldren's Crown scripts", () => {
   const copyOf = (item: Item, where: ItemCopyWhere): ItemCopy =>
     ({ id: `copy-${item.id}`, item: { kind: 'item', itemId: item.id }, where, quantity: 1, visibility: 'visible' });
   // The crown scripts write no inventory, so no operation ever reaches this.
-  const applyNothing: ApplyInventory = (copies) => ({ copies: [...copies], diagnostics: [], events: [], doses: [] });
+  const applyNothing: ApplyInventory = (copies) => ({ copies: [...copies], diagnostics: [], events: [], itemUses: [] });
 
   /** The lore writes after `arrived` lands at `where`, with the other half at `otherAt`. */
   const crownWrites = async (arrived: Item, where: ItemCopyWhere, otherAt: ItemCopyWhere) => {

@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingStateOf } from '@/lib/openingState';
 import {
-  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, statEffectItems, timedEffectViews, type Dose, type InventoryOp, type ItemScriptEvent,
+  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, statEffectItems, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { playedEntityIds } from '@/lib/scope';
@@ -5146,11 +5146,11 @@ const GameViewer = ({
   /** `copies` settled over the live state and committed, `previous` naming the items whose grants leave; the
    *  settle fires the switch scripts. Hands back the settle's auto-unequip events. */
   const commitItemCopies = useCallback(
-    (copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], doses: readonly Dose[]): ItemScriptEvent[] => {
+    (copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], itemUses: readonly ItemUse[]): ItemScriptEvent[] => {
       const live = liveTraitStateRef.current;
       const world = gatedWorld();
       const settled = settleInventory(
-        { copies, previous, traits: live, ledger: liveItemsRef.current.effects, doses, now: gameTime }, settleWorldOf(world),
+        { copies, previous, traits: live, ledger: liveItemsRef.current.effects, itemUses, now: gameTime }, settleWorldOf(world),
       );
       liveItemsRef.current = { copies: settled.copies, effects: settled.ledger };
       if (settled.traits !== live) commitTraitState(settled.traits);
@@ -5183,8 +5183,8 @@ const GameViewer = ({
       const start = turn.state.itemCopies ?? [];
       const generation = itemRunGenerationRef.current;
       // Each write's automatic unequips fire one level below it, settled over what the runs so far left.
-      const settle: SettleCopies = (copies, doses, so) => settleInventory({
-        copies, previous: start, traits: codeStateOver(prepared.writtenBy(so), live, traits), ledger, doses, now: gameTime,
+      const settle: SettleCopies = (copies, itemUses, so) => settleInventory({
+        copies, previous: start, traits: codeStateOver(prepared.writtenBy(so), live, traits), ledger, itemUses, now: gameTime,
       }, settleWorldOf(gatedWorld()));
       const ran = await runItemScripts(turn, events, worldItems ?? [], applyScriptOps, (item) => resolvePH(item.name), { depth, settle });
       // A discarded turn takes the runs it started with it.
@@ -5197,7 +5197,7 @@ const GameViewer = ({
       // Item Copies that moved during the runs take their writes again, on top.
       const liveCopies = liveItemsRef.current.copies;
       const landed = liveCopies === start ? ran : { ...ran, ...applyScriptOps(liveCopies, ran.ops) };
-      const unequips = commitItemCopies(landed.copies, liveCopies, landed.diagnostics, landed.doses);
+      const unequips = commitItemCopies(landed.copies, liveCopies, landed.diagnostics, landed.itemUses);
       if (unequips.length) await runItemEvents(unequips, depth + 1);
     } catch (error) {
       console.error("Error running item scripts:", error);
@@ -5208,7 +5208,7 @@ const GameViewer = ({
   const landScriptInventory = useCallback((ops: readonly InventoryOp[]) => {
     const start = liveItemsRef.current.copies;
     const applied = applyScriptOps(start, ops);
-    const unequips = commitItemCopies(applied.copies, start, applied.diagnostics, applied.doses);
+    const unequips = commitItemCopies(applied.copies, start, applied.diagnostics, applied.itemUses);
     void runItemEvents([...applied.events, ...unequips]);
   }, [applyScriptOps, commitItemCopies, runItemEvents]);
   landScriptInventoryRef.current = landScriptInventory;
@@ -5220,8 +5220,8 @@ const GameViewer = ({
     const settleWorld = settleWorldOf(world);
     return {
       requirement: equipRequirement({ traits: traitState, ledger: itemEffects, now: gameTime }, settleWorld),
-      commit: (copies, previous, lines, doses, events) => {
-        void runItemEvents([...events, ...commitItemCopies(copies, previous, lines, doses)]);
+      commit: (copies, previous, lines, itemUses, events) => {
+        void runItemEvents([...events, ...commitItemCopies(copies, previous, lines, itemUses)]);
       },
       timed: personaRef ? timedEffectViews(itemEffects, worldItems, playedEntityIds(personaRef, traitEntities), gameTime, {
         stat: (ownerId, statId) => traitState.entityStats?.[ownerId]?.find((s) => s.id === statId)?.name ?? statId,
@@ -5283,7 +5283,7 @@ const GameViewer = ({
     if (result.runtimeItems.length !== from.runtimeItems.length) setRuntimeItems(result.runtimeItems);
     if (JSON.stringify(result.copies) === JSON.stringify(from.copies)) return null;
     const settled = settleInventory(
-      { copies: result.copies, previous: from.copies, traits: traitsBefore, ledger: from.ledger, doses: result.doses, now: gameTime },
+      { copies: result.copies, previous: from.copies, traits: traitsBefore, ledger: from.ledger, itemUses: result.itemUses, now: gameTime },
       settleWorld,
     );
     commitTraitState(settled.traits);

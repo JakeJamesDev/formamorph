@@ -134,7 +134,7 @@ describe('applyInventoryPass', () => {
       op('transfer', 'Cursed Ring', { owner: 'Cellar', to: 'you' }),
     ]);
     expect(result.diagnostics).toEqual([]);
-    expect(result.doses).toEqual([{ itemId: 'tonic', where: you, hidden: false }]);
+    expect(result.itemUses).toEqual([{ itemId: 'tonic', where: you, hidden: false }]);
     const at = (id: string) => result.copies.filter((c) => c.item.kind === 'item' && c.item.itemId === id)
       .map(({ where, quantity, visibility, equipped }) => ({ where, quantity, visibility, equipped: !!equipped }));
     expect(at('tonic')).toEqual([
@@ -248,7 +248,7 @@ describe('applyInventoryPass', () => {
     const start: ItemCopy[] = [{ id: 'm', item: { kind: 'runtime', runtimeItemId: 'k' }, where: you, quantity: 2, visibility: 'visible' }];
     const result = run(start, [op('use', 'moonleaf', { owner: 'you' })], { runtimeItems: [key] });
     expect(result.copies[0].quantity).toBe(1);
-    expect(result.doses).toEqual([]);
+    expect(result.itemUses).toEqual([]);
   });
 });
 

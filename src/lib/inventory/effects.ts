@@ -4,7 +4,7 @@
  * Item Copies as trait contributions do (Q51), and a cap carry rides on the value record (Q110). The seed,
  * the panel and the orphan drop share it. Pure.
  */
-import { faceName, foldSighting, isUnidentified, seenItemName } from '@/lib/items';
+import { copySighting, faceName, foldSighting, isUnidentified, seenItemName, storedSighting, type StoredSighting } from '@/lib/items';
 import { deriveEffectiveStats, movement, negated, settleValues } from '@/lib/traitRuntime';
 import { playedEntityIds } from '@/lib/scope';
 import { formatStatDelta } from '@/lib/statBar';
@@ -14,7 +14,7 @@ import type {
 } from '@/types';
 
 /** One use of an authored item: what starts its After Use effects on the Item Copy's owner. */
-export interface Dose {
+export interface ItemUse {
   itemId: string;
   where: ItemCopyWhere;
   hidden: boolean;
@@ -36,7 +36,7 @@ export interface ItemEffectState {
   entityStats: EntityStatValues;
   ledger: ItemEffectLedger | undefined;
   /** The uses to start this settle. */
-  doses?: readonly Dose[];
+  itemUses?: readonly ItemUse[];
   /** The story clock's `gameTime`. Absent: no timed effect ends. */
   now?: number;
 }
@@ -98,17 +98,16 @@ function wantedSources(copies: readonly ItemCopy[], items: ReadonlyMap<string, I
     const item = items.get(copy.item.itemId);
     const ownerId = statOwnerOf(copy.where, world, entityStats);
     if (!item || ownerId === null) continue;
-    const hidden = copy.visibility === 'hidden';
-    const unidentified = isUnidentified(copy);
+    const sighting = copySighting(copy);
     if (rowsOf(item, 'owned').length) {
       const key = `owned:${ownerId}:${item.id}`;
       const seen = wanted.get(key);
-      if (seen) foldSighting(seen, hidden, unidentified);
-      else wanted.set(key, { key, ownerId, item, timing: 'owned', hidden, unidentified });
+      if (seen) foldSighting(seen, sighting);
+      else wanted.set(key, { key, ownerId, item, timing: 'owned', ...sighting });
     }
     if (copy.equipped && rowsOf(item, 'equipped').length) {
       const key = `equipped:${ownerId}:${copy.id}`;
-      wanted.set(key, { key, ownerId, item, timing: 'equipped', hidden, unidentified });
+      wanted.set(key, { key, ownerId, item, timing: 'equipped', ...sighting });
     }
   }
   return wanted;
@@ -144,7 +143,7 @@ function boundDeltas(
   return out;
 }
 
-/** The key a running After Use row has on its owner. A second dose finds it (Q64). */
+/** The key a running After Use row has on its owner. A second use finds it (Q64). */
 export const timedKey = (ownerId: string, itemId: string, rowId: string): string => `${ownerId}:${itemId}:${rowId}`;
 
 /** `stats` carrying exactly `deltas` as their item bound deltas. */
@@ -205,7 +204,7 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     if (still) {
       if (!!entry.hidden !== still.hidden || !!entry.unidentified !== still.unidentified) {
         const { hidden: _was, unidentified: _wasUnidentified, ...rest } = entry;
-        applied[key] = { ...rest, ...(still.hidden && { hidden: true }), ...(still.unidentified && { unidentified: true }) };
+        applied[key] = { ...rest, ...storedSighting(still) };
       }
       continue;
     }
@@ -213,7 +212,7 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     const item = items.get(entry.itemId);
     const moved = settleOwner(entry.ownerId, negated(Object.entries(entry.values)), false);
     const bounds = rowsOf(item, entry.timing).filter((row) => row.facet !== 'value' && entityStats[entry.ownerId]?.some((s) => s.id === row.statId));
-    logMoves(item ? seenItemName(item, !!entry.hidden, !!entry.unidentified) : null, entry.ownerId, moved, bounds, -1);
+    logMoves(item ? seenItemName(item, entry) : null, entry.ownerId, moved, bounds, -1);
   }
 
   for (const source of wanted.values()) {
@@ -221,15 +220,15 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     const rows = ownedRows(source.item, source.ownerId, rowsOf(source.item, source.timing), source.unidentified);
     applied[source.key] = {
       ownerId: source.ownerId, itemId: source.item.id, timing: source.timing, values: {},
-      ...(source.hidden && { hidden: true }), ...(source.unidentified && { unidentified: true }),
+      ...storedSighting(source),
     };
     const values = settleOwner(source.ownerId, valueRowDeltas(rows), true);
     applied[source.key] = { ...applied[source.key], values };
-    logMoves(seenItemName(source.item, source.hidden, source.unidentified), source.ownerId, values, rows.filter((row) => row.facet !== 'value'), 1);
+    logMoves(seenItemName(source.item, source), source.ownerId, values, rows.filter((row) => row.facet !== 'value'), 1);
   }
 
   /** Rows that act for good: bounds move the stat's bases, and nothing records them (Q111). */
-  const applyForGood = (ownerId: string, item: Item, rows: readonly ItemStatEffect[], hidden: boolean, unidentified: boolean) => {
+  const applyForGood = (ownerId: string, item: Item, rows: readonly ItemStatEffect[], seen: StoredSighting) => {
     const stats = entityStats[ownerId];
     if (!stats || !rows.length) return;
     const rebased = stats.map((stat) => {
@@ -246,7 +245,7 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     const derived = deriveEffectiveStats(withItemDeltas(rebased, boundDeltas(applied, timed, ownerId, items)), traitsOf(ownerId));
     const next = settleValues(stats, derived, valueRowDeltas(rows), true);
     entityStats = { ...entityStats, [ownerId]: next };
-    logMoves(seenItemName(item, hidden, unidentified), ownerId, movement(stats, next), rows.filter((row) => row.facet !== 'value'), 1);
+    logMoves(seenItemName(item, seen), ownerId, movement(stats, next), rows.filter((row) => row.facet !== 'value'), 1);
   };
 
   for (const copy of state.copies) {
@@ -257,7 +256,7 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     const stats = ownerId === null ? undefined : entityStats[ownerId];
     if (!item || ownerId === null || !stats || firstObtained[ownerId]?.includes(item.id) || !rowsOf(item, 'firstObtain').length) continue;
     firstObtained[ownerId] = [...firstObtained[ownerId] ?? [], item.id];
-    applyForGood(ownerId, item, ownedRows(item, ownerId, rowsOf(item, 'firstObtain'), isUnidentified(copy)), copy.visibility === 'hidden', isUnidentified(copy));
+    applyForGood(ownerId, item, ownedRows(item, ownerId, rowsOf(item, 'firstObtain'), isUnidentified(copy)), copySighting(copy));
   }
 
   // A timed effect ends once the clock reaches its end, or once its item or owner is gone, and reverses what it moved.
@@ -270,16 +269,16 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     if (gone) orphaned.push(key);
     const moved = settleOwner(entry.ownerId, negated(Object.entries(entry.values ?? {})), false);
     const item = items.get(entry.itemId);
-    logMoves(item ? seenItemName(item, !!entry.hidden, !!entry.unidentified) : null, entry.ownerId, moved, row && row.facet !== 'value' ? [row] : [], -1);
+    logMoves(item ? seenItemName(item, entry) : null, entry.ownerId, moved, row && row.facet !== 'value' ? [row] : [], -1);
   }
 
-  // A dose starts each After Use row; a row already running restarts its timer instead (Q64).
-  for (const dose of state.doses ?? []) {
-    const item = items.get(dose.itemId);
-    const ownerId = item ? statOwnerOf(dose.where, world, entityStats) : null;
+  // A use starts each After Use row; a row already running restarts its timer instead (Q64).
+  for (const itemUse of state.itemUses ?? []) {
+    const item = items.get(itemUse.itemId);
+    const ownerId = item ? statOwnerOf(itemUse.where, world, entityStats) : null;
     if (!item || ownerId === null) continue;
     const forGood: ItemStatEffect[] = [];
-    for (const row of ownedRows(item, ownerId, rowsOf(item, 'used'), !!dose.unidentified)) {
+    for (const row of ownedRows(item, ownerId, rowsOf(item, 'used'), !!itemUse.unidentified)) {
       if (row.duration?.kind !== 'time') {
         forGood.push(row);
         continue;
@@ -292,13 +291,13 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
       }
       timed[key] = {
         row: 'stat', ownerId, itemId: item.id, rowId: row.id, endsAt, values: {},
-        ...(dose.hidden && { hidden: true }), ...(dose.unidentified && { unidentified: true }),
+        ...storedSighting(itemUse),
       };
       const values = settleOwner(ownerId, valueRowDeltas([row]), true);
       timed[key] = { ...timed[key], values };
-      logMoves(seenItemName(item, dose.hidden, !!dose.unidentified), ownerId, values, row.facet === 'value' ? [] : [row], 1);
+      logMoves(seenItemName(item, itemUse), ownerId, values, row.facet === 'value' ? [] : [row], 1);
     }
-    applyForGood(ownerId, item, forGood, dose.hidden, !!dose.unidentified);
+    applyForGood(ownerId, item, forGood, itemUse);
   }
 
   const ledger: ItemEffectLedger = {
@@ -328,7 +327,7 @@ export function itemEffectLine(change: ItemEffectChange, resolve: (text: string)
 /** One running timed effect as the panel shows it. */
 export interface TimedEffectView {
   key: string;
-  /** Null for a dose from a hidden Item Copy (Q63); the unidentified face for an unidentified one. */
+  /** Null for a use from a hidden Item Copy (Q63); the unidentified face for an unidentified one. */
   itemName: string | null;
   /** "Strength +2", or the granted trait's name. */
   effect: string;
@@ -359,7 +358,7 @@ export function timedEffectViews(
       const row = timedTraitRow(entry, byId);
       if (row) effect = names.trait(entry.ownerId, row.traitId);
     }
-    if (effect) views.push({ key, itemName: seenItemName(item, !!entry.hidden, !!entry.unidentified), effect, hoursLeft: Math.max(0, entry.endsAt - now) });
+    if (effect) views.push({ key, itemName: seenItemName(item, entry), effect, hoursLeft: Math.max(0, entry.endsAt - now) });
   }
   return views.sort((a, b) => a.hoursLeft - b.hoursLeft);
 }

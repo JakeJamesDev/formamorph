@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, ItemRequirement, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
+  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
   StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
@@ -26,6 +26,7 @@ import { portableImages, portableOwnedTraits, type TraitWorld } from './portable
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
 import { daypartSet, isDaypart } from './gameClock';
+import { itemIdentity } from './items';
 import { adoptCarriedVrm, withCarriedVrm, type CarriedVrm, type PortableEntity } from './entityVrmCarry';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
@@ -237,7 +238,7 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   if (raw.kind === 'item') {
     if (raw.status !== 'owned' && raw.status !== 'equipped') return [];
     const state = typeof raw.state === 'string' ? raw.state.trim() : '';
-    const identity: ItemRequirement['identity'] = raw.identity === 'identified' ? 'identified' : raw.identity === 'unidentified' ? 'unidentified' : undefined;
+    const identity = itemIdentity(raw.identity);
     return [{
       kind: 'item', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), status: raw.status,
       ...(state && { state }), ...(identity && { identity }), ...not,

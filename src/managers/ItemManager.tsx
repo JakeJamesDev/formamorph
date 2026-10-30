@@ -24,6 +24,7 @@ import { itemPanelTabsFor, type ItemPanelTab } from '@/views/itemPanelTabs';
 import type { Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
 
 const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes', 'changesState'] as const satisfies readonly ItemWhenEmpty['kind'][];
+const isWhenEmptyKind = (value: string): value is ItemWhenEmpty['kind'] => (WHEN_EMPTY_KINDS as readonly string[]).includes(value);
 
 const NO_UNIT = 'none';
 const TEXT_UNIT = 'text';
@@ -161,7 +162,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
           <Label id={id('when-empty-label')}>When Empty</Label>
           <Hint>Picks what happens to an Item Copy after its last use</Hint>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={empty.kind} onValueChange={(kind) => pickEmpty(kind as ItemWhenEmpty['kind'])}>
+            <Select value={empty.kind} onValueChange={(kind) => { if (isWhenEmptyKind(kind)) pickEmpty(kind); }}>
               <SelectTrigger className="w-48" aria-labelledby={id('when-empty-label')}>
                 <SelectValue />
               </SelectTrigger>
