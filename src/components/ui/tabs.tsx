@@ -42,10 +42,11 @@ const TabsList = React.forwardRef<
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
+// Radix's own id ties the tab to its panel's `aria-labelledby`, so an id a wrapping `Tip` passes is dropped.
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, id: _id, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(

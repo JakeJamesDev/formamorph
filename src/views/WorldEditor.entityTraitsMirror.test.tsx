@@ -91,7 +91,8 @@ const backArrow = () => screen.queryByRole('button', { name: 'Back to Traits' })
 /** Whether the back arrow named `name` shares a row with the strip named `strip`, left of it. */
 const leadsStrip = (name: string, strip: string) => {
   const list = screen.getByRole('tablist', { name: strip });
-  const arrow = within(list.parentElement!).queryByRole('button', { name });
+  // The strip's measuring box is what shares the arrow's row.
+  const arrow = within(list.closest('[data-collapsing-root]')!.parentElement!).queryByRole('button', { name });
   return !!arrow && !list.contains(arrow) && !!(arrow.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
 };
 const entity = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!;

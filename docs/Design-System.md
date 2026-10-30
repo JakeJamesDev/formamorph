@@ -833,9 +833,9 @@ The foundation's [review record](../docs-internal/designs/design-system/workflow
 
 **Rule:**
 
-- The strip is one row of equal columns. Every tab gets the same width, whatever its label's length.
+- The strip fills its row. Each tab takes its own width, and the spare room is shared evenly between them.
 - Each tab carries an icon and a name. The name is always on `aria-label`, so it reaches assistive technology and role queries whether or not it is drawn.
-- The label gives way to its icon wherever the pane is narrow. The icon never shrinks.
+- Labels fold by the strip's own room, as in the [Collapsing Segmented Control](#pattern-collapsing-segmented-control): every label, then the selected tab's, then icons. The icon never shrinks.
 - The strip is named, because the editor's own strip is on the same screen and can carry a tab of the same name.
 - The strip is a fixed header row. Only the tab's body scrolls, below it, so the tabs never leave the panel.
 - Mode-only tabs are filtered out of the registry before the strip renders, not disabled in place.
@@ -2163,6 +2163,13 @@ The top bar folds its parts together, in a fixed order, by whether its three cel
 - 🎯 **Center drifts first.** The action buttons sit at the bar's center while there is room. They slide toward the side with free space before anything folds.
 - 📏 **Widest labels.** The action buttons are measured at the library tab with the longest button labels, so a new pick never changes a step.
 - 🧩 **Component.** `useHeaderFold` in [`useHeaderFold.ts`](../src/lib/useHeaderFold.ts) measures hidden copies of every step. `headerFold` in [`headerFold.ts`](../src/lib/headerFold.ts) holds the order. `EventBannerCount` in [`EventBanner.tsx`](../src/components/events/EventBanner.tsx) is the badges' count step.
+
+### As a tab strip
+
+Editor detail panels use the same three steps on a strip of tabs, through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)).
+
+- 🧩 **Component.** `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) keeps the tab and panel roles. It shares its measuring with the segmented control through `useCollapsingSegments`.
+- ↔️ **Fills its row.** Unlike the segmented control, the tabs stretch to the strip's full width.
 
 ## Pattern: Inventory Tab
 

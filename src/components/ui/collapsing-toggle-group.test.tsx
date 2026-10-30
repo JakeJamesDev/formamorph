@@ -88,6 +88,16 @@ describe('CollapsingToggleGroup', () => {
     expect(await screen.findByText('Worlds', { selector: 'div' })).toBeInTheDocument();
   });
 
+  it('lands on its measured step without a slide, and slides from the next frame on', async () => {
+    room = 150;
+    render(<Harness />);
+    const motion = () => OPTIONS.map((o) => screen.getByRole('radio', { name: o.label }).querySelector('.grid')!.className.includes('transition-'));
+    expect(motion()).toEqual([false, false, false]);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(motion()).toEqual([true, true, true]);
+  });
+
   it('moves the label and the pill to a newly picked option', async () => {
     room = 300;
     const onChange = vi.fn();

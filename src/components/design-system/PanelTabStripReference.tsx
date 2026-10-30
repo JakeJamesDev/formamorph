@@ -50,7 +50,7 @@ function Strip({ tabs, stripLabel, body }: {
   const [tab, setTab] = useState(tabs[0].value);
   return (
     <Tabs value={tab} onValueChange={setTab} className="space-y-3">
-      <PanelTabsList tabs={tabs} stripLabel={stripLabel} />
+      <PanelTabsList tabs={tabs} value={tab} stripLabel={stripLabel} />
       {tabs.map(({ value }) => (
         <TabsContent key={value} value={value}>
           <p className="text-body text-muted-foreground">{body[value]}</p>

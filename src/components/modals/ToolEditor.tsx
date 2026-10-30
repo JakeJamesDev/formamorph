@@ -600,7 +600,7 @@ export function ToolEditor({
         )}
       >
         <div className="flex flex-col min-h-0 gap-3">
-          <PanelTabsList tabs={tabs} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
+          <PanelTabsList tabs={tabs} value={shownTab} stripLabel="Tool Fields" />
           <ScrollArea className={cn('flex-1 min-h-0', tryItOpen && 'hidden')}>
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
