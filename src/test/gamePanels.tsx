@@ -352,7 +352,7 @@ export function renderLeftPanel(
   overrides: Partial<LeftPanelProps> = {},
   options: PanelHarnessOptions = {},
 ): PanelHarness<LeftPanelProps> {
-  const defaults: LeftPanelProps = { entities: [], onEntityClick: vi.fn(), narrationPrompt: defaultSystemPrompt };
+  const defaults: LeftPanelProps = { entities: [], onEntityClick: vi.fn(), onStrangerClick: vi.fn(), narrationPrompt: defaultSystemPrompt };
   return renderPanel(defaults, overrides, options, (props) => <LeftPanel {...props} />);
 }
 

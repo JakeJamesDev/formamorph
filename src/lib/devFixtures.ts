@@ -109,6 +109,8 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
   // Relationships rows for the entity panel's Profile tab: one long label, one blank.
   {
     id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID],
+    // The one stranger here: the Entities tab lists it by this label.
+    strangerName: 'a stooped scholar', strangerDescription: 'Ink-stained fingers and a satchel of scrolls.',
     relationships: [['dev-warden', 'mentor and former employer'], ['dev-queen', '']].map(([targetId, label]) => ({ targetId, label })),
   },
   { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
