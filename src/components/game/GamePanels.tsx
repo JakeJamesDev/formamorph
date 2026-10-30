@@ -99,7 +99,7 @@ import { PersonaRow } from './PersonaRow';
 import { YouMark } from './YouMark';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
-import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntities';
+import type { StatPanelOption } from '@/lib/statPanelEntities';
 import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
@@ -138,7 +138,6 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   const {
     // Aliased to the viewed-page values so paging back shows that turn's scene (they equal the live values
     // on the latest page).
-    viewVisibleEntities: visibleEntities,
     viewEntityFollowers: entityFollowers,
     logEntries,
     calendar,
@@ -176,10 +175,10 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   // The played side with no played entity: the legacy fallback's Avatar, shown through the You row.
   const youRow = !personaEntity && !!avatars.played;
   const showable = (entity: Entity | undefined): entity is Entity => !!entity && avatars.shows(entity);
-  // First present entity with something to show (the image shows whether or not the name is revealed yet).
-  const firstShowable = firstShowableEntity(visibleEntities, entities, showable);
   const { currentPage, isViewingPast } = useGameplay();
   const { lookAround } = usePresence(isViewingPast ? currentPage : undefined);
+  // First met entity in Look Around with something to show. A stranger never heads the view: its art gives it away.
+  const firstShowable = lookAround.find((row) => row.met && showable(row.entity))?.entity;
   const isMobile = useIsMobile();
   const [showEntityView, setShowEntityView] = React.useState(true);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { DiscoveredEntity } from '@/types';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
@@ -6,6 +7,8 @@ import { recentSceneTurns } from '@/lib/turnDigest';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 
 const NONE: readonly string[] = [];
+const NO_RUNTIME: readonly DiscoveredEntity[] = [];
+const NO_POSITIONS: Readonly<Record<string, string>> = {};
 const NO_ALIASES: Readonly<Record<string, string>> = {};
 
 /**
@@ -26,13 +29,14 @@ export function usePresence(viewedPage?: number): Presence {
       : fullMessageHistory),
     [snapshot, viewedPage, fullMessageHistory],
   );
-  const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? []) : discoveredEntities;
+  const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
   const runtime = useMemo(() => runtimeSource.map((d) => d.entity), [runtimeSource]);
-  const positions = snapshot ? (snapshot.entityPositions ?? {}) : entityPositions;
+  const positions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
   const followers = snapshot ? (snapshot.entityFollowers ?? NONE) : entityFollowers;
   const met = snapshot ? (snapshot.metEntities ?? NONE) : metEntities;
   const aliases = snapshot ? (snapshot.strangerAliases ?? NO_ALIASES) : strangerAliases;
-  const locationId = snapshot ? snapshot.locationId : currentLocation?.id;
+  // A snapshot from an older save carries no location; the live one stands in, as the viewed location does.
+  const locationId = snapshot?.locationId ?? currentLocation?.id;
   const personaEntity = persona?.entity ?? null;
 
   return useMemo(() => computePresence({

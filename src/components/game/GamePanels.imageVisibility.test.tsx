@@ -5,7 +5,7 @@ import { LeftPanel } from './GamePanels';
 import { PersonaRow } from './PersonaRow';
 import { EntityModal } from '@/components/modals/EntityModal';
 import { defaultSystemPrompt } from './GamePrompts';
-import { renderInGame, statFixture, type TurnFixture } from '@/test/gamePanels';
+import { renderInGame, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { Entity, EntityStatValues, GalleryImage, SceneEntity, StatRequirement } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -35,9 +35,11 @@ const turns: TurnFixture[] = [
   { narration: 'Ash rests.', turnId: 't1', scene, entityStats: at(90) },
   { narration: 'Ash takes a blow.', turnId: 't2', scene, entityStats: at(10) },
 ];
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
 const stage = (entity: Entity, page?: number, live = 10) => ({
-  world: { entities: [entity] } as never, turns, page,
-  seed: (g: { setEntityStats: (v: EntityStatValues) => void; setVisibleEntities: (v: SceneEntity[]) => void }) => {
+  world: { entities: [{ ...entity, locations: ['yard'] }], locations: [YARD] } as never, turns, page,
+  seed: (g: Gameplay) => {
+    g.setCurrentLocation(YARD as never);
     g.setEntityStats(at(live));
     g.setVisibleEntities(scene);
   },
@@ -82,8 +84,8 @@ describe('the entity panel in play', () => {
     const { container } = renderInGame(
       <LeftPanel entities={[golem]} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />,
       {
-        world: { entities: [golem] } as never, turns,
-        seed: (g) => { g.setEntityStats(at(90)); g.setVisibleEntities(scene); g.setEntityVisualPreference({ ash: 'image' }); },
+        world: { entities: [{ ...golem, locations: ['yard'] }], locations: [YARD] } as never, turns,
+        seed: (g) => { g.setCurrentLocation(YARD as never); g.setEntityStats(at(90)); g.setVisibleEntities(scene); g.setEntityVisualPreference({ ash: 'image' }); },
       },
     );
     expect(picturesOf(container)).toEqual([]);
