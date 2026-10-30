@@ -140,7 +140,7 @@ export const DEV_MODAL_TABS = {
   settingsEndpoints: ['text', 'image', 'tagPrompt'],
   worldEditor: ['overview', 'media', 'entities', 'items', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts', 'tools'],
   // The Game Editor over the running game (`#dev?modal=gameEditor&tab=entities`).
-  gameEditor: ['overview', 'entities'],
+  gameEditor: ['overview', 'entities', 'active', 'inactive'],
   // Its entity panel's own tabs, reached with `subtab=…` over the Entities tab.
   gameEditorEntity: ['profile', 'descriptions', 'stats'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the

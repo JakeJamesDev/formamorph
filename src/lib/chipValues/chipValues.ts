@@ -179,6 +179,20 @@ export function reachableRosterIds(scene: Pick<ChipScene, 'location' | 'location
   return reachableEntityIds(location, locations, connections, outer).filter((id) => !higher.has(id));
 }
 
+/** The ids any scope of the Entities chip can list for a scene: here, in the scene, the sub-locations, the reachable places
+ *  and the known roster with the relationships it pulls in. The rest of the cast is out of the model's sight. */
+export function sceneRosterIds(scene: ChipScene): string[] {
+  const { location, locations, connections, presentIds } = scene;
+  const outer = scene.outerScopeEntities ?? scene.entities;
+  return [...new Set([
+    ...presentIds,
+    ...scene.inSceneIds,
+    ...sublocationEntityIds(location, locations, outer),
+    ...reachableEntityIds(location, locations, connections, outer),
+    ...knownEntityIds(location, locations, outer, knownPulledIds(scene)),
+  ])];
+}
+
 /** The Entities chip's scope builders over one scene and its relationship ends. */
 function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Record<string, (opts: ContextOpts) => MarkedText> {
   const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;

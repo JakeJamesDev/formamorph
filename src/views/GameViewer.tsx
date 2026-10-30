@@ -52,7 +52,7 @@ import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, NotebookPen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
+import { Music, NotebookPen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
@@ -131,7 +131,7 @@ import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
-import { chipValues, entityStatsField, reachableRosterIds, sceneEntityChipValues } from "../lib/chipValues/chipValues";
+import { chipValues, entityStatsField, reachableRosterIds, sceneEntityChipValues, sceneRosterIds } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
@@ -208,7 +208,7 @@ import { selectSemanticRehydrations } from "../lib/semanticRehydration";
 import { pickHistoryRecall, type HistoryPicks } from "../lib/historyRecall";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
-import { findEntityNames, matchNames, sameCharacterName } from "../lib/entityMatch";
+import { findEntityNames, matchNames, resolveEntityByName, sameCharacterName } from "../lib/entityMatch";
 import { keepSameRows, parseChoices, parseStreamingChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
@@ -2391,6 +2391,11 @@ const GameViewer = ({
     itemCopies,
     runtimeItems,
   });
+
+  // Who the scene list has now, as the side panel shows them.
+  const gameEditorSceneIds = gameEditorOpen
+    ? visibleEntities.flatMap((se) => resolveEntityByName(se.name, allEntities)?.id ?? [])
+    : [];
 
   // The Game Editor's Nearby list: who `<ENTITIES|reachable>` would send the AI from the player's location,
   // the persona left out.
@@ -6015,8 +6020,11 @@ const GameViewer = ({
         onOpenChange={setGameEditorOpen}
         request={gameEditorRequest}
         worldName={worldOverview?.name ?? ''}
-        player={{ name: persona?.entity.name ?? "You" }}
+        player={{ name: persona?.entity.name ?? "You", persona: gameEditorOpen && persona ? resolveEntityTexts([persona.entity], resolveEntityText)[0] : undefined }}
         locations={locations}
+        worldEntities={gameEditorOpen ? resolveEntityTexts(entities.filter((e) => e.id !== persona?.entity.id), resolveEntityText) : undefined}
+        activeEntityIds={gameEditorOpen ? [...sceneRosterIds(liveScene()), ...gameEditorSceneIds] : undefined}
+        sceneEntityIds={gameEditorSceneIds}
         scene={{
           locationName: currentLocation?.name,
           timeLabel: formatClock(gameTime, calendar),

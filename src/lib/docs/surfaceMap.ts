@@ -167,6 +167,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
 
   'gameEditor.overview': { page: 'Game-Editor', anchor: 'overview' },
   'gameEditor.entities': { page: 'Game-Editor', anchor: 'entities' },
+  'gameEditor.active': { page: 'Game-Editor', anchor: 'entities' },
+  'gameEditor.inactive': { page: 'Game-Editor', anchor: 'entities' },
   'gameEditorEntity.profile': { page: 'Game-Editor', anchor: 'entities' },
   'gameEditorEntity.descriptions': { page: 'Game-Editor', anchor: 'entities' },
   'gameEditorEntity.stats': { page: 'Game-Editor', anchor: 'entities' },

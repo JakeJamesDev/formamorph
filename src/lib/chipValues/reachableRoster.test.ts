@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Connection, Entity, GameLocation } from '@/types';
-import { reachableRosterIds } from './chipValues';
+import { reachableRosterIds, sceneRosterIds } from './chipValues';
 
 const LOCATIONS: GameLocation[] = [
   { id: 'town', name: 'Town' },
@@ -29,5 +29,13 @@ describe('reachableRosterIds', () => {
   it('adds the places one Connection away when the location sets Nearby Through Connections', () => {
     expect(reachableRosterIds(scene({ ...LOCATIONS[1], nearbyUsesConnections: true }))).toEqual(expect.arrayContaining(['baker', 'farmer']));
     expect(reachableRosterIds(scene({ ...LOCATIONS[1], nearbyUsesConnections: true }))).not.toContain('rat');
+  });
+});
+
+describe('sceneRosterIds', () => {
+  it('holds who is here, below and reachable, and leaves out the far and the unknown', () => {
+    const ids = sceneRosterIds({ ...scene(LOCATIONS[1]), inSceneIds: [] } as never);
+    expect(ids).toEqual(expect.arrayContaining(['keeper', 'rat', 'baker']));
+    expect(ids).not.toContain('hermit');
   });
 });

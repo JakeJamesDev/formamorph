@@ -25,7 +25,7 @@ export interface GameEditorContext {
   readOnly: boolean;
   /** The invented entities as the draft shows them. */
   entities: readonly DiscoveredEntity[];
-  /** The id on the Active tab's panel: an entity's, `GAME_EDITOR_PLAYER`, or null. */
+  /** The id on the Entities tab's panel: an entity's, `GAME_EDITOR_PLAYER`, or null. */
   selectedId: string | null;
   openTab: (tab: string) => void;
   openEntity: (id: string) => void;

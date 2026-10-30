@@ -1,4 +1,4 @@
-import { AlignLeft, LayoutDashboard } from 'lucide-react';
+import { AlignLeft, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import type { NavRailGroup, NavRailTab } from '@/components/NavRail';
@@ -21,7 +21,9 @@ export interface GameEditorTab extends NavRailTab {
 /** The Game Editor's top-level tabs, in order. The rail and the mobile Sections bar render from this. */
 export const GAME_EDITOR_TABS = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { value: 'entities', label: 'Active', group: 'entities', icon: ELEMENT_ICONS.entities },
+  { value: 'entities', label: 'Entities', icon: ELEMENT_ICONS.entities },
+  { value: 'active', label: 'Active', icon: Eye, nested: true },
+  { value: 'inactive', label: 'Inactive', icon: EyeOff, nested: true },
 ] as const satisfies readonly GameEditorTab[];
 
 export type GameEditorTabValue = (typeof GAME_EDITOR_TABS)[number]['value'];

@@ -22,9 +22,11 @@ const NO_PLACE = '__nowhere__';
 /** The player's entry holds stats only, unless an extension keeps their fields in the save. */
 const STATS_TAB = GAME_ENTITY_PANEL_TABS.filter((t) => t.value === 'stats');
 
-/** Whose entry the panel shows: the player's stats, or an invented entity. */
+/** Whose entry the panel shows: the player's stats, an entity of the world, or an invented entity. A world
+ *  entity's text belongs to the world; its stats, and where it stands when it has one place, are this game's. */
 export type GameEntitySubject =
-  | { kind: 'player' }
+  | { kind: 'player'; persona?: Entity }
+  | { kind: 'world'; entity: Entity; position: string | undefined; listed: readonly string[]; onMove: (locationId: string) => void }
   | { kind: 'entity'; record: DiscoveredEntity; live: DiscoveredEntity | undefined };
 
 export interface GameEntityEditorProps {
@@ -54,15 +56,19 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
   const { subject, readOnly, locations, tab, onTabChange, parts } = props;
   const record = subject?.kind === 'entity' ? subject.record : null;
   const player = subject?.kind === 'player';
-  const id = record?.entity.id ?? '';
+  const world = subject?.kind === 'world' ? subject : null;
+  const id = record?.entity.id ?? world?.entity.id ?? '';
   const entry = player ? parts.player : undefined;
-  const entity: Partial<Entity> = record?.entity ?? entry?.fields ?? {};
+  const persona = subject?.kind === 'player' ? subject.persona : undefined;
+  const entity: Partial<Entity> = record?.entity ?? world?.entity ?? entry?.fields ?? persona ?? {};
   const name = entity.name ?? '';
   const pronouns = entity.pronouns ?? '';
   const aliases = entity.aliases ?? [];
   const note = entity.aiDescription ?? '';
   const playerDescription = entity.playerDescription ?? '';
   const summary = entity.aiSummary ?? '';
+
+  const locked = readOnly || !!world || (!!persona && !entry);
 
   const edit = (patch: Partial<Entity>) => {
     if (record) props.onEntityChange({ ...record, entity: { ...record.entity, ...patch } });
@@ -178,8 +184,28 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
       </div>
     );
 
+  const worldNote = world && (
+    <div className="mb-3 space-y-3">
+      <Hint>From the world. Its text stays as the world has it; its stats and where it stands are this game&apos;s.</Hint>
+      <div className="space-y-2">
+        <Label id={`game-entity-place-${id}`}>Location</Label>
+        <Hint>Moves this entity in this game</Hint>
+        <Select disabled={readOnly} value={world.position ?? (world.listed.length === 1 ? world.listed[0] : '')} onValueChange={world.onMove}>
+          <SelectTrigger aria-labelledby={`game-entity-place-${id}`}><SelectValue placeholder={world.listed.length ? 'Several places' : 'Nowhere'} /></SelectTrigger>
+          <SelectContent>
+            {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  const personaNote = persona && !entry && (
+    <Hint className="mb-3">Your persona. Its text stays as it is outside this game; your stats are this game&apos;s.</Hint>
+  );
+
   // The panel's tabs: the fields when there are any, an extension's tabs, then the stats.
-  const fieldTabs = record || entry ? GAME_ENTITY_PANEL_TABS.filter((t) => t.value !== 'stats') : [];
+  const fieldTabs = record || world || entry || persona ? GAME_ENTITY_PANEL_TABS.filter((t) => t.value !== 'stats') : [];
   const extraTabs = parts.entityTabs ?? [];
   const tabs = [...fieldTabs, ...extraTabs, ...STATS_TAB];
   const detail = (
@@ -192,8 +218,8 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
     >
       {fieldTabs.length > 0 && (
         <>
-          <PanelTabContent value="profile"><fieldset disabled={readOnly} className="contents">{profile}</fieldset></PanelTabContent>
-          <PanelTabContent value="descriptions"><fieldset disabled={readOnly} className="contents">{descriptions}</fieldset></PanelTabContent>
+          <PanelTabContent value="profile">{worldNote}{personaNote}<fieldset disabled={locked} className="contents">{profile}</fieldset></PanelTabContent>
+          <PanelTabContent value="descriptions"><fieldset disabled={locked} className="contents">{descriptions}</fieldset></PanelTabContent>
         </>
       )}
       {extraTabs.map((t) => <PanelTabContent key={t.value} value={t.value}>{t.body}</PanelTabContent>)}

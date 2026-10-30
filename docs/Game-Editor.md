@@ -20,7 +20,9 @@ The **Overview** tab shows the game as it stands: the world, the turn, the time 
 <!-- keywords: active, list every character, invented characters, edit npc, fix pronouns, move a character, rename -->
 <!-- route: gameEditor.entities -->
 
-The **Active** tab lists you first, then every entity the story invented, wherever they are. Select one to edit it.
+The **Entities** tab lists you first, then the entities **In the Game**, which the story invented, wherever they are, and the entities **From the World**. Select one to edit it.
+
+Under **Entities** on the left, **Active** shows you and the entities the model can be told about this turn: here, in sub-locations, in reachable places, and known here. **Inactive** shows the rest. A mark beside a name says they are in the scene, as the game's side panel lists them.
 
 | Tab | Holds |
 | --- | --- |
@@ -29,6 +31,8 @@ The **Active** tab lists you first, then every entity the story invented, wherev
 | **Stats** | The entity's stats in this game, or your own |
 
 A new name keeps the old one under **Aliases**, so the story can still use it. **Location** moves the entity: the scene follows. **Remove** takes an invented entity out of the game and stops the story bringing it back.
+
+Your entry shows your persona's text and pictures, read only, with your stats beside them. A world entity's text and pictures belong to the world, so they read only here: change them with **Edit World**. Its stats and its **Location** are this game's own.
 
 ## Saving and History
 <!-- keywords: save, discard, undo, redo, history, search, find, replace, earlier turn, read only -->

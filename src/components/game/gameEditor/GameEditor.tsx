@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronRight, Undo2 } from 'lucide-react';
+import { ChevronRight, Clapperboard, Undo2 } from 'lucide-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -13,6 +13,7 @@ import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { TruncatedText } from '@/components/TruncatedText';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { SearchField } from '@/components/ui/search-field';
+import { Tip } from '@/components/ui/tooltip';
 import { useListSearch } from '@/components/listToolbarHooks';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
@@ -31,7 +32,7 @@ import { useElementSize } from '@/lib/useElementSize';
 import { useIsMobile } from '@/lib/useIsMobile';
 import {
   EMPTY_DRAFT_HISTORY, GAME_EDITOR_PLAYER, changedField, draftAt, draftHasChanges, draftedEntities, draftedStats, savedEntities,
-  withDraftEntity, withDraftExtra, withDraftRemoved, withDraftStat, withStep, type DraftHistory, type GameEditorDraft,
+  withDraftEntity, withDraftExtra, withDraftPosition, withDraftRemoved, withDraftStat, withStep, type DraftHistory, type GameEditorDraft,
 } from '@/lib/gameEditorDraft';
 import { NO_PLACES, stepPlace, withPlace, type GameEditorPlaces } from '@/lib/gameEditorPlaces';
 import { gameEntityTabFor, gameSearchTargets } from '@/lib/gameEditorSearch';
@@ -43,9 +44,12 @@ import { RAIL_ROOM_PX } from '@/views/worldEditorTabs';
 import { GAME_EDITOR_TABS, gameEditorTabGroups, type GameEditorTabValue } from '@/views/gameEditorTabs';
 import type { GameEditorContext, GameEditorParts, GameEditorSection, UseGameEditorExtension } from './gameEditorExtension';
 import { useGameEntityEditor } from './useGameEntityEditor';
-import type { DiscoveredEntity, GameLocation, Placeholder, PlayerStat } from '@/types';
+import type { DiscoveredEntity, Entity, GameLocation, Placeholder, PlayerStat } from '@/types';
 
 const RAIL_STORAGE_KEY = 'formamorph.gameEditor.navRail';
+/** The rail tabs that show the entity list: everyone, then the two views of the model's sight. */
+const ENTITY_LIST_TABS: readonly string[] = ['entities', 'active', 'inactive'];
+const NO_ENTITIES: readonly Entity[] = [];
 const NO_EXTENSIONS: readonly UseGameEditorExtension[] = [];
 const NO_PLACEHOLDERS: Placeholder[] = [];
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -73,9 +77,15 @@ export interface GameEditorProps {
   onOpenChange: (open: boolean) => void;
   request: GameEditorRequest;
   worldName: string;
-  /** The player, listed first, with their stats. */
-  player?: { name: string };
+  /** The player, listed first. Their persona's fields read only; their stats are the game's. */
+  player?: { name: string; persona?: Entity };
   locations: readonly GameLocation[];
+  /** The entities the prompts can list for the scene now: the Active filter. Absent ⇒ no filter. */
+  activeEntityIds?: readonly string[];
+  /** Who the scene list has now, as the game's side panel shows them. */
+  sceneEntityIds?: readonly string[];
+  /** The world's own entities, chips filled in, the played one left out. */
+  worldEntities?: readonly Entity[];
   scene: GameEditorScene;
   /** Pages the game to a turn, as the game's own pager does. */
   onPageChange: (page: number) => void;
@@ -89,11 +99,12 @@ export interface GameEditorProps {
  * shows the game as that turn left it and reads only.
  */
 export function GameEditor(props: GameEditorProps) {
-  const { open, onOpenChange, request, worldName, player, locations, scene, onPageChange, extensions = NO_EXTENSIONS } = props;
+  const { open, onOpenChange, request, worldName, player, locations, worldEntities = NO_ENTITIES, activeEntityIds, sceneEntityIds, scene, onPageChange, extensions = NO_EXTENSIONS } = props;
   const {
     discoveredEntities: liveDiscovered, setDiscoveredEntities,
     currentPage, totalPages, isViewingPast, viewDiscoveredEntities,
     globalStats, viewStats, entityStats, viewEntityStats, commitManualStatEdit, commitManualEntityStatEdit,
+    entityPositions, setEntityPositions,
   } = useGameplay();
   const past = isViewingPast;
   const isMobile = useIsMobile();
@@ -138,22 +149,45 @@ export function GameEditor(props: GameEditorProps) {
   );
 
   const placeName = (id?: string) => locations.find((l) => l.id === id)?.name ?? 'Nowhere';
+  // Without a position, a world entity is at every location it lists.
+  const worldPlace = (e: Entity) => {
+    const listed = e.locations ?? [];
+    const at = draft.positions?.[e.id] ?? entityPositions[e.id];
+    return listed.length > 1 && !at ? 'Several places' : placeName(at ?? listed[0]);
+  };
   const term = search.typed.toLowerCase();
   const matches = (name: string, aliases?: readonly string[]) =>
     !term || [name, ...(aliases ?? [])].some((n) => n.toLowerCase().includes(term));
-  const listedEntities = shownDiscovered.filter((d) => matches(d.entity.name, d.entity.aliases));
+  // The turn on show is the one the model has seen; an earlier one has no roster of its own here.
+  const filtering = !past && activeEntityIds !== undefined && tab !== 'entities' && ENTITY_LIST_TABS.includes(tab);
+  const inRoster = (id: string) => !filtering || activeEntityIds.includes(id) === (tab === 'active');
+  const listedEntities = shownDiscovered.filter((d) => inRoster(d.entity.id) && matches(d.entity.name, d.entity.aliases));
+  // A world entity the save holds a copy of lists once, as the save's.
+  const worldRows = worldEntities.filter((e) => !shownDiscovered.some((d) => d.entity.id === e.id));
+  const listedWorld = worldRows.filter((e) => inRoster(e.id) && matches(e.name, e.aliases));
   const playerName = player?.name || 'You';
-  const playerListed = !!player && matches(playerName);
+  // The player is always in the model's sight.
+  const playerListed = !!player && matches(playerName) && !(filtering && tab === 'inactive');
 
   // The detail falls back to the player, or the first entity, so the panel is never empty beside a list.
-  const fallbackId = player ? GAME_EDITOR_PLAYER : shownDiscovered[0]?.entity.id ?? null;
+  const fallbackId = playerListed ? GAME_EDITOR_PLAYER : listedEntities[0]?.entity.id ?? listedWorld[0]?.id ?? null;
   const detailId = selectedId ?? (isMobile ? null : fallbackId);
   const selectedRecord = shownDiscovered.find((d) => d.entity.id === detailId);
+  const selectedWorld = worldRows.find((e) => e.id === detailId);
   const subject = detailId === GAME_EDITOR_PLAYER && player
-    ? { kind: 'player' as const }
+    ? { kind: 'player' as const, persona: player.persona }
     : selectedRecord
       ? { kind: 'entity' as const, record: selectedRecord, live: liveDiscovered.find((d) => d.entity.id === selectedRecord.entity.id) }
-      : null;
+      : selectedWorld
+        ? {
+          kind: 'world' as const,
+          entity: selectedWorld,
+          position: draft.positions?.[selectedWorld.id] ?? entityPositions[selectedWorld.id],
+          listed: selectedWorld.locations ?? [],
+          onMove: (locationId: string) => edit({ verb: 'Edit', type: 'Entity', name: selectedWorld.name, field: 'Location' }, `${selectedWorld.id}:Location`,
+            (d) => withDraftPosition(d, entityPositions[selectedWorld.id], selectedWorld.id, locationId)),
+        }
+        : null;
 
   // The extensions, called in the list's fixed order. Their parts lay over the editor's own.
   const stepHistory = (delta: -1 | 1) => {
@@ -200,7 +234,7 @@ export function GameEditor(props: GameEditorProps) {
     : (past ? viewEntityStats : entityStats)[id] ?? []);
   const editStat = (id: string, statId: string, value: number) => {
     const stat = liveStatsOf(id).find((s) => s.id === statId);
-    const name = id === GAME_EDITOR_PLAYER ? playerName : shownDiscovered.find((d) => d.entity.id === id)?.entity.name;
+    const name = id === GAME_EDITOR_PLAYER ? playerName : shownDiscovered.find((d) => d.entity.id === id)?.entity.name ?? selectedWorld?.name;
     edit({ verb: 'Edit', type: 'Entity', name, field: stat?.name ?? 'Stat' }, `${id}:stat:${statId}`,
       (d) => withDraftStat(d, stat?.value, id, statId, value));
   };
@@ -228,6 +262,7 @@ export function GameEditor(props: GameEditorProps) {
       if (id === GAME_EDITOR_PLAYER) commitManualStatEdit(draftedStats(globalStats, draft, id));
       else for (const [statId, value] of Object.entries(values)) commitManualEntityStatEdit(id, statId, value);
     }
+    if (Object.keys(draft.positions ?? {}).length) setEntityPositions((prev) => ({ ...prev, ...draft.positions }));
     for (const part of added) part.onSave?.();
     setHistory(EMPTY_DRAFT_HISTORY);
     return true;
@@ -272,6 +307,12 @@ export function GameEditor(props: GameEditorProps) {
   const removingRecord = shownDiscovered.find((d) => d.entity.id === removing);
 
   // ── Entities ──
+  // A mark in the row's empty grip slot says who is in the scene.
+  const sceneMark = (id: string) => (sceneEntityIds?.includes(id) ? (
+    <Tip tip="In the scene right now">
+      <span role="img" aria-label="In the scene" className="inline-flex"><Clapperboard aria-hidden className="h-3.5 w-3.5" /></span>
+    </Tip>
+  ) : undefined);
   const entityList = (
     <EditorRowList aria-label="Game entities">
       {playerListed && player && (
@@ -281,9 +322,9 @@ export function GameEditor(props: GameEditorProps) {
           onSelect={() => setSelectedId(GAME_EDITOR_PLAYER)}
           selectionLabel={playerName}
           label={<>{playerName}<YouMark onFill={detailId === GAME_EDITOR_PLAYER} /></>}
-          meta="Your stats"
         />
       )}
+      {(listedEntities.length > 0 || (!term && !filtering)) && <SectionTitle className="px-2 pt-3">In the Game</SectionTitle>}
       {listedEntities.map((d) => (
         <EditorRow
           key={d.entity.id}
@@ -291,14 +332,28 @@ export function GameEditor(props: GameEditorProps) {
           selected={detailId === d.entity.id}
           onSelect={() => setSelectedId(d.entity.id)}
           selectionLabel={d.entity.name}
+          gripSlot={sceneMark(d.entity.id)}
           label={d.entity.name}
           meta={placeName(d.locationId)}
         />
       ))}
-      {shownDiscovered.length === 0 && !term && (
+      {shownDiscovered.length === 0 && !term && !filtering && (
         <Hint className="px-2 py-3">The story hasn&apos;t invented any entities yet.</Hint>
       )}
-      {term && !playerListed && listedEntities.length === 0 && <Hint className="px-2 py-3">No matches</Hint>}
+      {listedWorld.length > 0 && <SectionTitle className="px-2 pt-3">From the World</SectionTitle>}
+      {listedWorld.map((e) => (
+        <EditorRow
+          key={e.id}
+          grip={false}
+          selected={detailId === e.id}
+          onSelect={() => setSelectedId(e.id)}
+          selectionLabel={e.name}
+          gripSlot={sceneMark(e.id)}
+          label={e.name}
+          meta={worldPlace(e)}
+        />
+      ))}
+      {(term || filtering) && !playerListed && listedEntities.length === 0 && listedWorld.length === 0 && <Hint className="px-2 py-3">No matches</Hint>}
     </EditorRowList>
   );
   const entityToolbar = (
@@ -313,10 +368,10 @@ export function GameEditor(props: GameEditorProps) {
     ...(scene.timeLabel ? [['Time', scene.timeLabel] as [string, ReactNode]] : []),
     ['Location', scene.locationName ?? 'Nowhere'],
   ];
-  // The player's stats as the turn on show has them; editing is on Active.
+  // The player's stats as the turn on show has them; editing is on Entities.
   const playerStats = player ? (past ? liveStatsOf(GAME_EDITOR_PLAYER) : draftedStats(liveStatsOf(GAME_EDITOR_PLAYER), draft, GAME_EDITOR_PLAYER)).filter((s) => !s.hidden) : [];
   const jumps: [string, string, string][] = [
-    ['entities', 'Active', count(shownDiscovered.length + (player ? 1 : 0), 'entity', 'entities')],
+    ['entities', 'Entities', count(shownDiscovered.length + worldRows.length + (player ? 1 : 0), 'entity', 'entities')],
     ...extraTabs.flatMap(({ tab: t, jump }): [string, string, string][] => (jump ? [[t.value, t.label, jump]] : [])),
   ];
   const overviewList = (
@@ -341,7 +396,7 @@ export function GameEditor(props: GameEditorProps) {
         <section className="space-y-3">
           <SectionTitle>You</SectionTitle>
           <EditorRowList>
-            <EditorRow grip={false} selected={false} onSelect={() => openEntity(GAME_EDITOR_PLAYER)} selectionLabel={playerName} label={<>{playerName}<YouMark /></>} meta="Edit on Active" />
+            <EditorRow grip={false} selected={false} onSelect={() => openEntity(GAME_EDITOR_PLAYER)} selectionLabel={playerName} label={<>{playerName}<YouMark /></>} meta="Edit on Entities" />
           </EditorRowList>
           {playerStats.length > 0 && (
             <div className="space-y-3">
@@ -368,7 +423,8 @@ export function GameEditor(props: GameEditorProps) {
       {added.map((p, i) => <Fragment key={i}>{p.overviewList}</Fragment>)}
     </div>
   );
-  const editableIds = new Set(shownDiscovered.map((d) => d.entity.id));
+  const openableIds = new Set([...shownDiscovered.map((d) => d.entity.id), ...worldRows.map((e) => e.id)]);
+  const worldIds = new Set(worldRows.map((e) => e.id));
   const overviewDetail = (
     <div className="space-y-6">
     <section className="space-y-3">
@@ -377,16 +433,16 @@ export function GameEditor(props: GameEditorProps) {
       {scene.here.length === 0 ? <Hint>Nobody else is here</Hint> : (
         <EditorRowList>
           {scene.here.map((e) => {
-            const editable = editableIds.has(e.id);
+            const openable = openableIds.has(e.id);
             return (
               <EditorRow
                 key={e.id}
                 grip={false}
                 selected={false}
-                onSelect={() => { if (editable) openEntity(e.id); }}
+                onSelect={() => { if (openable) openEntity(e.id); }}
                 selectionLabel={e.name}
                 label={e.name}
-                meta={editable ? undefined : 'World entity'}
+                meta={worldIds.has(e.id) ? 'From the world' : undefined}
               />
             );
           })}
@@ -399,16 +455,16 @@ export function GameEditor(props: GameEditorProps) {
       {(scene.nearby ?? []).length === 0 ? <Hint>Nobody is nearby</Hint> : (
         <EditorRowList aria-label="Nearby">
           {(scene.nearby ?? []).map((e) => {
-            const editable = editableIds.has(e.id);
+            const openable = openableIds.has(e.id);
             return (
               <EditorRow
                 key={e.id}
                 grip={false}
                 selected={false}
-                onSelect={() => { if (editable) openEntity(e.id); }}
+                onSelect={() => { if (openable) openEntity(e.id); }}
                 selectionLabel={e.name}
                 label={e.name}
-                meta={editable ? undefined : 'World entity'}
+                meta={worldIds.has(e.id) ? 'From the world' : undefined}
               />
             );
           })}
@@ -420,10 +476,10 @@ export function GameEditor(props: GameEditorProps) {
   );
 
 
-  const section: GameEditorSection = extraTabs.find((t) => t.tab.value === tab)?.section ?? (tab === 'entities'
+  const section: GameEditorSection = extraTabs.find((t) => t.tab.value === tab)?.section ?? (ENTITY_LIST_TABS.includes(tab)
     ? {
       toolbar: entityToolbar, list: entityList, detail: entityDetail ?? noEntity, footer: entityFooter, detailScrolls: !!entityDetail,
-      push: { showDetail: !!selectedId, onBack: () => setSelectedId(null), backLabel: 'Active' },
+      push: { showDetail: !!selectedId, onBack: () => setSelectedId(null), backLabel: GAME_EDITOR_TABS.find((t) => t.value === tab)?.label ?? 'Entities' },
     }
     : { list: overviewList, detail: overviewDetail });
 

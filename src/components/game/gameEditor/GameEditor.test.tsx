@@ -21,6 +21,8 @@ const state = vi.hoisted(() => ({
   viewEntityStats: {} as Record<string, PlayerStat[]>,
   commitManualStatEdit: vi.fn(),
   commitManualEntityStatEdit: vi.fn(),
+  entityPositions: {} as Record<string, string>,
+  setEntityPositions: vi.fn(),
 }));
 vi.mock('@/contexts/GameplayContext', () => ({ useGameplay: () => state }));
 // The generate buttons have their own tests; here they only need to be there.
@@ -202,6 +204,14 @@ describe('the Game Editor', () => {
     expect(screen.getByText('This world gives you no stats')).toBeTruthy();
   });
 
+  it("shows the player's persona, read only", async () => {
+    const user = userEvent.setup();
+    renderEditor({ request: { tab: 'entities', key: 1 }, player: { name: 'Natmon', persona: { id: 'n', name: 'Natmon', aiDescription: 'A tall ranger.' } } });
+    expect(screen.getByLabelText('Name')).toBeDisabled();
+    await openTab(user, 'Descriptions');
+    expect(screen.getByLabelText('AI-Facing Description')).toHaveProperty('value', 'A tall ranger.');
+  });
+
   it("edits the player's stats, kept on Save", async () => {
     const user = userEvent.setup();
     const health = { id: 'hp', name: 'Health', type: 'number', description: '', min: 0, max: 10, value: 7, regen: 0, descriptors: [] } as unknown as PlayerStat;
@@ -311,9 +321,101 @@ describe('the Game Editor Overview', () => {
     expect(screen.getByText('Health')).toBeTruthy();
     expect(screen.getByLabelText('Jump to a tab').textContent).toContain('3 entities');
     expect(screen.getByLabelText('Nearby').textContent).toContain('Grukk');
-    await user.click(within(screen.getByLabelText('Jump to a tab')).getByRole('button', { name: 'Active' }));
+    await user.click(within(screen.getByLabelText('Jump to a tab')).getByRole('button', { name: 'Entities' }));
     expect(list()).toBeTruthy();
     state.globalStats = [];
+  });
+});
+
+describe('world entities in the Game Editor', () => {
+  const REN = { id: 'ren', name: 'Ren', aiDescription: 'The ferryman.' };
+
+  it('lists them under From the World, and opens them from Here Now', async () => {
+    const user = userEvent.setup();
+    renderEditor({
+      worldEntities: [REN],
+      request: { tab: 'overview', key: 1 },
+      scene: { locationName: 'The Hut', here: [{ id: 'ren', name: 'Ren' }] },
+    });
+    await user.click(screen.getByRole('button', { name: 'Ren' }));
+    expect(list().textContent).toContain('From the World');
+    expect(list().textContent).toContain('In the Game');
+    expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Ren');
+  });
+
+  it('locks their text, and offers no Remove', async () => {
+    const user = userEvent.setup();
+    renderEditor({ worldEntities: [REN], request: { tab: 'entities', entityId: 'ren', key: 2 } });
+    expect(screen.getByLabelText('Name')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    await openTab(user, 'Descriptions');
+    expect(screen.getByLabelText('AI-Facing Description')).toBeDisabled();
+  });
+
+  it('edits their stats, kept on Save', async () => {
+    const user = userEvent.setup();
+    const trust = { id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, value: 40, regen: 0, descriptors: [] } as unknown as PlayerStat;
+    state.entityStats = { ren: [trust] };
+    renderEditor({ worldEntities: [REN], request: { tab: 'entities', entityId: 'ren', key: 2 } });
+    await openTab(user, 'Stats');
+    const field = screen.getByRole('spinbutton', { name: 'Trust' });
+    await user.clear(field);
+    await user.type(field, '75');
+    await user.click(save());
+    expect(state.commitManualEntityStatEdit).toHaveBeenLastCalledWith('ren', 'trust', 75);
+    state.entityStats = {};
+  });
+
+  it('moves one listed at several places to one of them, on Save', async () => {
+    const user = userEvent.setup();
+    renderEditor({
+      worldEntities: [{ ...REN, locations: ['hut', 'well'] }],
+      locations: [{ id: 'hut', name: 'The Hut' } as never, { id: 'well', name: 'The Well' } as never],
+      request: { tab: 'entities', entityId: 'ren', key: 2 },
+    });
+    expect(list().textContent).toContain('Several places');
+    await user.click(screen.getByRole('combobox', { name: 'Location' }));
+    await user.click(screen.getByRole('option', { name: 'The Well' }));
+    await user.click(save());
+    const update = state.setEntityPositions.mock.calls[0][0] as (prev: Record<string, string>) => Record<string, string>;
+    expect(update({})).toEqual({ ren: 'well' });
+  });
+
+  it('moves one that stands at one place, on Save', async () => {
+    const user = userEvent.setup();
+    state.entityPositions = { ren: 'hut' };
+    renderEditor({
+      worldEntities: [REN],
+      locations: [{ id: 'hut', name: 'The Hut' } as never, { id: 'well', name: 'The Well' } as never],
+      request: { tab: 'entities', entityId: 'ren', key: 2 },
+    });
+    await user.click(screen.getByRole('combobox', { name: 'Location' }));
+    await user.click(screen.getByRole('option', { name: 'The Well' }));
+    await user.click(save());
+    const update = state.setEntityPositions.mock.calls[0][0] as (prev: Record<string, string>) => Record<string, string>;
+    expect(update({ ren: 'hut' })).toEqual({ ren: 'well' });
+    state.entityPositions = {};
+  });
+});
+
+describe('the Active and Inactive tabs', () => {
+  it('shows everyone under Entities, then who the model can be told about, then the rest', async () => {
+    const user = userEvent.setup();
+    renderEditor({ activeEntityIds: ['suya'], sceneEntityIds: ['suya'], worldEntities: [{ id: 'ren', name: 'Ren' }], player: { name: 'Natmon' } });
+    expect(list().textContent).toContain('Grukk');
+    expect(list().textContent).toContain('Ren');
+    expect(within(list()).getAllByRole('img', { name: 'In the scene' })).toHaveLength(1);
+    await openTab(user, 'Active');
+    expect(within(list()).getAllByRole('img', { name: 'In the scene' })).toHaveLength(1);
+    expect(list().textContent).toContain('Natmon');
+    expect(list().textContent).toContain('Suya');
+    expect(list().textContent).not.toContain('Grukk');
+    expect(list().textContent).not.toContain('Ren');
+    await openTab(user, 'Inactive');
+    expect(list().textContent).not.toContain('Natmon');
+    expect(list().textContent).not.toContain('Suya');
+    expect(list().textContent).toContain('Grukk');
+    expect(list().textContent).toContain('Ren');
   });
 });
 

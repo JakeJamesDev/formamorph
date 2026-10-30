@@ -69,6 +69,8 @@ export interface EditorRowProps {
 
   /** The enabled toggle, where the surface offers one. */
   checkbox?: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel?: string; disabled?: boolean; field?: string };
+  /** A mark in the slot `grip={false}` leaves, so it moves no label. */
+  gripSlot?: ReactNode;
   /** Between the grip and the label (e.g. a folder glyph on group rows). */
   icon?: ReactNode;
   label: ReactNode;
@@ -101,6 +103,7 @@ export function EditorRow({
   gripProps,
   gripTitle = 'Drag to reorder',
   grip = true,
+  gripSlot,
   selected,
   onSelect,
   selectionLabel,
@@ -164,7 +167,7 @@ export function EditorRow({
           </span>
         </Tip>
       ) : (
-        <span className="w-6 shrink-0" aria-hidden="true" />
+        <span className="flex w-6 shrink-0 items-center justify-center">{gripSlot}</span>
       )}
       {checkbox && (
         <Tip tip={checkbox.checked ? 'Enabled — click to disable' : 'Disabled — click to enable'}>

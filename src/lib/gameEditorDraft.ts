@@ -16,6 +16,8 @@ export interface GameEditorDraft {
   removed: readonly string[];
   /** Stat values as edited, by owner id (`player` for the player's stats) and stat id. Absent ⇒ none. */
   stats?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  /** Where world entities now stand, by entity id. */
+  positions?: Readonly<Record<string, string>>;
   /** What the editor's extensions hold, by key. */
   extras?: Readonly<Record<string, unknown>>;
 }
@@ -25,6 +27,7 @@ export const EMPTY_GAME_EDITOR_DRAFT: GameEditorDraft = { entities: {}, removed:
 /** Whether the draft holds anything to save. */
 export function draftHasChanges(draft: GameEditorDraft): boolean {
   return Object.keys(draft.entities).length > 0 || draft.removed.length > 0 || Object.keys(draft.stats ?? {}).length > 0
+    || Object.keys(draft.positions ?? {}).length > 0
     || Object.keys(draft.extras ?? {}).length > 0;
 }
 
@@ -43,6 +46,14 @@ export function withDraftStat(draft: GameEditorDraft, liveValue: number | undefi
   if (Object.keys(own).length) stats[owner] = own;
   else delete stats[owner];
   return { ...draft, stats };
+}
+
+/** The draft with one world entity moved. A move back to where it stands drops out of the draft. */
+export function withDraftPosition(draft: GameEditorDraft, live: string | undefined, id: string, locationId: string): GameEditorDraft {
+  const positions = { ...(draft.positions ?? {}) };
+  if (locationId === live) delete positions[id];
+  else positions[id] = locationId;
+  return { ...draft, positions };
 }
 
 /** The draft with one extension's slice set, or dropped by `undefined`. */

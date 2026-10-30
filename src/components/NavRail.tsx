@@ -8,6 +8,8 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
 export interface NavRailTab {
+  /** Sits under the tab before it, indented, as a narrower view of it. */
+  nested?: boolean;
   value: string;
   label: string;
   icon: LucideIcon;
@@ -89,12 +91,12 @@ export function NavRail({
                 {group.caption}
               </div>
             )}
-            {group.tabs.map(({ value: tab, label: name, icon: Icon }) => (
+            {group.tabs.map(({ value: tab, label: name, icon: Icon, nested }) => (
               <Tip key={tab} tip={name} side="right" labelsChild={false} disabled={expanded}>
                 <TabsPrimitive.Trigger
                   value={tab}
                   disabled={disabled}
-                  className={cn(ROW, NAV_TAB_STATES, 'disabled:pointer-events-none')}
+                  className={cn(ROW, NAV_TAB_STATES, 'disabled:pointer-events-none', nested && expanded && 'pl-6')}
                 >
                   {tab === value && (
                     <span aria-hidden data-rail-accent className="absolute inset-y-1.5 -left-1.5 w-0.5 rounded-r bg-foreground" />
