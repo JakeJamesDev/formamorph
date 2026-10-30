@@ -27,6 +27,20 @@ describe('SupportersPage', () => {
     expect(within(plus).queryByText('Bo')).toBeNull();
   });
 
+  it('lists the top tier first, with its name in the tier color', async () => {
+    wallIs([
+      row('1', 'Ada', 'supporter_plus'),
+      row('2', 'Bo', 'supporter'),
+      row('3', 'Cy', 'supporter_top'),
+    ]);
+    render(<SupportersPage />);
+
+    await screen.findByRole('region', { name: 'Supporter++' });
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(['Supporter++', 'Supporter+', 'Supporter']);
+    expect(screen.getByRole('link', { name: 'Cy' })).toHaveClass('text-supporter-top');
+  });
+
   it('links a spaced name in its underscore form', async () => {
     wallIs([row('1', 'Jake James', 'supporter')]);
     render(<SupportersPage />);

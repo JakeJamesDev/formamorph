@@ -1,5 +1,5 @@
 /** The Patreon tiers that carry Supporter Flair. */
-export type SupporterTier = 'supporter' | 'supporter_plus';
+export type SupporterTier = 'supporter' | 'supporter_plus' | 'supporter_top';
 
 /** The `supporter` field of an author object. The server sends null for no flair, staff included. */
 export interface SupporterFlair {

@@ -22,20 +22,27 @@ const name = (supporter: SupporterFlair | null | undefined, role?: string) =>
     </UserProfileContext.Provider>,
   );
 
+const EXPECTED = {
+  supporter: { label: 'Supporter', text: 'text-supporter', ring: 'ring-supporter' },
+  supporter_plus: { label: 'Supporter+', text: 'text-supporter-plus', ring: 'ring-supporter-plus' },
+  supporter_top: { label: 'Supporter++', text: 'text-supporter-top', ring: 'ring-supporter-top' },
+} as const;
+
 describe.each(SUPPORTER_TIERS)('a %s name', (tier) => {
+  const { label, text, ring } = EXPECTED[tier];
+
   it('shows the tier badge and the tier color', () => {
     name({ tier, since: null });
 
-    expect(screen.getByText(tier === 'supporter' ? 'Supporter' : 'Supporter+')).toBeTruthy();
-    expect(screen.getByRole('button', { name: "View river-quill's profile" }).className)
-      .toContain(tier === 'supporter' ? 'text-supporter' : 'text-supporter-plus');
+    expect(screen.getByText(label)).toBeTruthy();
+    const classes = screen.getByRole('button', { name: "View river-quill's profile" }).className.split(/\s+/);
+    expect(classes).toContain(text);
   });
 
   it('draws the tier ring on the Profile Image', () => {
     const { container } = render(<UserAvatar username="river-quill" supporter={{ tier, since: null }} size="md" />);
 
-    expect((container.firstElementChild as HTMLElement).className)
-      .toContain(tier === 'supporter' ? 'ring-supporter' : 'ring-supporter-plus');
+    expect((container.firstElementChild as HTMLElement).className.split(/\s+/)).toContain(ring);
   });
 });
 

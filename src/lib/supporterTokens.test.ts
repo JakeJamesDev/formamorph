@@ -60,7 +60,7 @@ const STRONGEST_TINT = Math.max(
 );
 const TEXT_CONTRAST = 4.5;
 
-describe.each(['supporter', 'supporter-plus'])('the %s color token', (token) => {
+describe.each(['supporter', 'supporter-plus', 'supporter-top'])('the %s color token', (token) => {
   it.each(['light', 'dark'] as const)('reads as text on every %s palette surface, bare and under its badge tint', (mode) => {
     const failures: string[] = [];
     for (const { name, vars } of palettes(mode)) {
