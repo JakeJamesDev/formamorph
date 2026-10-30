@@ -22,6 +22,7 @@ A staff-only **Likes Marker** shows on the community browser card and in the lis
 - [ ] Flagged Likes and Quarantined on together show only listings that are both.
 - [ ] On the contest tab the Moderation button shows with Flagged Likes only, on desktop and mobile.
 - [ ] A dev-route entry shows a marked card for a staff user.
+- [ ] Carried from ticket 05: the staff dev fixture opens the likes audit with seeded rows covering all three kinds and one Burst; frames `.scratch/frames/audit-kinds-dark.png` and `.scratch/frames/audit-kinds-light.png` at a realistic desktop width; the audit's badge tips, summary and Burst copy pass the `copy-sweep` skill.
 - [ ] Frames: `.scratch/frames/likes-marker-card-dark.png`, `.scratch/frames/likes-marker-card-light.png`, `.scratch/frames/likes-marker-details-dark.png` at a realistic desktop width; `.scratch/frames/likes-marker-card-mobile-dark.png` at 390px.
 
 For you: browse as staff and check the marker is noticeable without crowding the card.
