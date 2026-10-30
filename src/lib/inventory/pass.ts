@@ -4,7 +4,7 @@
  */
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import { sameCharacterName } from '@/lib/entityMatch';
-import { isUnidentified, sameState, sameWhere, stateWord } from '@/lib/items';
+import { isUnidentified, sameState, sameWhere, stateWord, usesLeft } from '@/lib/items';
 import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
@@ -202,6 +202,12 @@ export function applyInventoryPass(
       case 'unequip': return here.filter((c) => c.equipped).sort((a, b) => rank(a) - rank(b));
       // A copy already at the new State is not changed again.
       case 'change': return here.filter((c) => !sameState(c, { state: { state } })).sort((a, b) => rank(a) - rank(b));
+      // A spent copy goes last, so a charged one beside it is used first.
+      case 'use': {
+        const spent = (c: ItemCopy) => (c.item.kind === 'item'
+          && usesLeft(c, authored.find((a) => c.item.kind === 'item' && a.item.id === c.item.itemId)?.item) === 0 ? 4 : 0);
+        return here.sort((a, b) => spent(a) + rank(a) - spent(b) - rank(b));
+      }
       default: return here.sort((a, b) => rank(a) - rank(b));
     }
   };
