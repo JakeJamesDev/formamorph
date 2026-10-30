@@ -128,6 +128,27 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q48:** an authored Stranger Name that is blank or whitespace-only reads as absent, so the entity is met. Only a Stranger Name whose placeholders resolve blank gives an unlabeled stranger. The editor in ticket 06 stores a cleared field as absent.
 - **Q49:** a player's edit to the latest narration page introduces the here entities it names, like AI narration. An edit is the player writing the story.
 
+### Rulings (ticket 02 intent questions, 2026-10-30)
+
+- **Q50:** a surface showing a past page reads presence from that page's snapshot, not the live state, so paging back shows who was there then. The Presence module is pure over a state, so the viewed snapshot is its input.
+- **Q51:** the Entities tab drops rows with no entity (Q9). Runtime-character rows keep their remove control and the following marker.
+- **Q52:** clicking a stranger opens the reduced popup only. It does not select the stranger in the Entity View, which can show the true name.
+- **Q53:** the persona's own row stays above Look Around, as today.
+
+### Rulings (ticket 03 intent questions, 2026-10-30)
+
+- **Q54:** ticket 02 owns the one panel hook, `usePresence(viewedPage?)`. It returns the Presence result for the viewed page (Q50), or the live state with no page. Tickets 03 and 04 build against that shape and import it after 02 lands. No other ticket builds its own.
+- **Q55:** the stat picker drops its keep-the-selection rule. A selected entity that leaves the scene falls back to the first showable entity.
+- **Q56:** no true name appears anywhere for a stranger. Every place a surface shows or resolves the entity's name uses the label instead: the Character Name placeholder in stat and trait text, the Traits owner node, and the "X's trait" prefix. A stranger in scene still shows stat rows and traits under the label.
+- **Q57:** the played persona's Traits node and library owners stay, whatever Presence says.
+- **Q58:** two strangers with the same label keep the picker's numbered suffix, such as "a gate guard (2)".
+
+### Rulings (ticket 04 intent questions, 2026-10-30)
+
+- **Q59:** Give drops its quiet group, its divider and the in-scene flag. Each entry shows the label.
+- **Q60:** the Inventory tab's own writes accept only In Scene owners, so a give to a quiet or absent entity is refused. Inventory pass writes keep "at location" (Q26).
+- **Q61:** Give's empty text reads "Nobody is in the scene." The inventory panel's participants input is removed once nothing reads it.
+
 ### The Presence module
 
 - A new pure module computes presence. Its input is the game state, the authored and discovered entities, the locations with their connections and parents, the played persona, and the recent turns' scene records. Its output gives, for every entity:
