@@ -28,7 +28,7 @@ const copy = (id: string, itemId: string, where: ItemCopy['where'], visibility: 
 const WARDEN = entity('warden', 'Warden', {
   aliases: ['The Butcher'], stats: [stat('w-grit'), stat('w-rage', { hidden: true })], traits: [trait('w-oath')],
 });
-const STRANGER = entity('stranger', 'Stranger');
+const STRANGER = entity('stranger', 'Stranger', { strangerName: 'a passer-by' });
 const LOCATIONS: GameLocation[] = [
   { id: 'gate', name: 'Gate', playerDescription: 'Gate player text.', aiDescription: 'Gate AI secret.' },
   { id: 'hall', name: 'Hall', playerDescription: 'Hall player text.', aiDescription: 'Hall AI secret.', parentId: 'vault' },

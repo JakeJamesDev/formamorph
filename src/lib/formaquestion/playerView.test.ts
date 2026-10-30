@@ -6,11 +6,11 @@ const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity =
   id, name, playerDescription: `${name} player text.`, aiDescription: `${name} AI secret.`, aiSummary: `${name} AI summary.`, ...extra,
 });
 
-const WARDEN = entity('warden', 'Warden');
-const STRANGER = entity('stranger', 'Stranger');
-const VEILED = entity('veiled', 'Veiled Figure');
+const WARDEN = entity('warden', 'Warden', { strangerName: 'a gate guard' });
+const STRANGER = entity('stranger', 'Stranger', { strangerName: 'a passer-by' });
+const VEILED = entity('veiled', 'Veiled Figure', { strangerName: 'a veiled figure' });
 const HEIR = entity('heir', 'Heir', { persona: true, personaOnly: true });
-const PLAYED = entity('played', 'Rover', { persona: true });
+const PLAYED = entity('played', 'Rover', { persona: true, strangerName: 'a drifter' });
 
 const stat = (id: string, extra: Partial<PlayerStat> = {}): PlayerStat => ({
   id, name: id, type: 'number', description: `${id} AI meaning.`, min: 0, max: 10, value: 3, regen: 0,
@@ -114,8 +114,29 @@ describe('buildPlayerView entities', () => {
     const pick: DiscoveredEntity = { entity: STRANGER, locationId: 'gate', sourceTurnId: 'initial' };
     const visitor: DiscoveredEntity = { entity: WARDEN, locationId: 'gate', sourceTurnId: 't2' };
     const libraryPick: DiscoveredEntity = { entity: entity('lib-1', 'Drifter'), locationId: 'gate', sourceTurnId: 'initial' };
-    const v = view({ chain: [state({ discoveredEntities: [pick, visitor, libraryPick] })] });
+    // Authored entities without a Stranger Name start met; the library pick is a runtime character.
+    const known = { ...WORLD, entities: [entity('stranger', 'Stranger'), entity('warden', 'Warden')] };
+    const v = view({ world: known, chain: [state({ discoveredEntities: [pick, visitor, libraryPick] })] });
     expect(v.entities.map((e) => e.description)).toEqual(['Stranger player text.', 'Warden player text.', 'Drifter player text.']);
+  });
+
+  it('holds an entity without a Stranger Name as met on a save with an empty met list', () => {
+    const known = { ...WORLD, entities: [entity('mara', 'Mara'), WARDEN] };
+    expect(names(view({ world: known, chain: [state()] }).entities)).toEqual(['Mara']);
+  });
+
+  it('holds a stranger the played persona has a relationship with, on either side', () => {
+    const tied = { ...WORLD, entities: [{ ...WARDEN, relationships: [{ targetId: 'played', label: 'friend' }] }, STRANGER] };
+    const v = view({ world: tied, chain: [state()], persona: PLAYED });
+    expect(names(v.entities)).toEqual(['Rover', 'Warden']);
+    const reverse = { ...PLAYED, relationships: [{ targetId: 'stranger', label: 'friend' }] };
+    expect(names(view({ world: WORLD, chain: [state()], persona: reverse }).entities)).toEqual(['Rover', 'Stranger']);
+  });
+
+  it('keeps an unmet stranger out of the view, true name included', () => {
+    const v = view({ chain: [state()] });
+    expect(v.entities).toEqual([]);
+    expect(JSON.stringify(v)).not.toContain('Warden');
   });
 
   it('holds the played persona and leaves an unplayed persona-only entity out', () => {

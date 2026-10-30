@@ -210,13 +210,20 @@ const loreOf = (world: World): DictionaryEntry[] => flattenEnabledBookEntries(wo
 /** The story options GameViewer.helpGameWorld passes: digests on, the default verbatim floor, no milestone selection run. */
 const STORY = { memoryDigests: true, verbatimFloor: 3, milestoneDrop: null, stripMedia: false } as const;
 
+/** `world` as an author who hides the cast writes it: every entity the save has not met is a stranger, because the
+ *  bundled casts carry no Stranger Names yet and an entity without one starts met. */
+function withHiddenCast(world: World, save: Save): World {
+  const met = new Set(save.met);
+  return { ...world, entities: world.entities.map((e) => (met.has(e.name) ? e : { ...e, strangerName: 'an unknown figure' })) };
+}
+
 /** The game input of a save, as GameViewer.helpGameWorld builds it. */
 export function gameInputOf(world: World, save: Save): GameWorldInput {
   const resolve = resolverOf(world);
   const history = historyOf(world, save);
   const turns = parseTurns(history);
   return {
-    view: buildPlayerView({ world, chain: chainOf(world, save, history), history, persona: personaOf(world), resolve }),
+    view: buildPlayerView({ world: withHiddenCast(world, save), chain: chainOf(world, save, history), history, persona: personaOf(world), resolve }),
     story: storySoFar({ turns, ...STORY }),
     lore: loreOf(world),
     loreVectors: null,

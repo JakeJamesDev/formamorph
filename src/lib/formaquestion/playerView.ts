@@ -10,7 +10,8 @@ import { copyFace, copyState, isUnidentified, stateKey } from '@/lib/items';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
-import { INITIAL_SOURCE_TURN_ID } from '@/lib/runtimeCharacters';
+import { INITIAL_SOURCE_TURN_ID, discoveredAsEntities } from '@/lib/runtimeCharacters';
+import { computePresence } from '@/lib/presence';
 
 export interface PlayerViewEntity {
   kind: 'entity';
@@ -75,7 +76,7 @@ export interface PlayerView {
 }
 
 export interface PlayerViewInput {
-  world: Pick<World, 'entities' | 'locations' | 'traits'> & Partial<Pick<World, 'items'>>;
+  world: Pick<World, 'entities' | 'locations' | 'traits'> & Partial<Pick<World, 'items' | 'connections'>>;
   /** The snapshots from the first to the current, oldest first. The last is the current one. */
   chain: readonly GameState[];
   /** The message history as the current snapshot holds it. */
@@ -129,6 +130,24 @@ function seenAliasesInChain(chain: readonly GameState[], candidates: readonly En
   return seen;
 }
 
+/** The ids of the Met set in cast order, read from the Presence module on `current` and the history up to it. */
+function metIds(input: PlayerViewInput, current: GameState, cast: readonly Entity[], discovered: readonly DiscoveredEntity[]): string[] {
+  const { world, persona, resolve } = input;
+  const worldIds = new Set(world.entities.map((e) => e.id));
+  const poolIds = new Set(cast.map((e) => e.id));
+  // A record of an authored entity is not a new character: the start rule still decides its Met.
+  const authored = cast.filter((e) => worldIds.has(e.id)).map((e) => ({
+    ...e, name: resolve(e.name), ...(e.strangerName !== undefined && { strangerName: resolve(e.strangerName) }),
+  }));
+  const runtime = discovered.filter((d) => !worldIds.has(d.entity.id) && poolIds.has(d.entity.id));
+  return computePresence({
+    entities: authored, runtime: discoveredAsEntities(runtime), positions: current.entityPositions ?? {},
+    followers: current.entityFollowers ?? [], locationId: current.locationId, locations: world.locations,
+    connections: world.connections ?? [], persona, met: current.metEntities ?? [],
+    strangerAliases: current.strangerAliases ?? {}, turns: [],
+  }).met.map((p) => p.entity.id);
+}
+
 function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEntity[] {
   const { world, persona, resolve } = input;
   const personaId = persona?.id ?? null;
@@ -145,7 +164,8 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
     pool.set(record.entity.id, record.entity);
     texts.set(record.entity.id, discoveredText(record, worldById));
   }
-  const met = new Set(current.metEntities ?? []);
+  const metList = metIds(input, current, [...pool.values()], discovered);
+  const met = new Set(metList);
   // An entity known only by an alias shows the alias alone: its player description could name it.
   const aliases = aliasesInChain(input.chain, [...pool.values()], met);
   const seenAliases = seenAliasesInChain(input.chain, [...pool.values()]);
@@ -166,7 +186,7 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
   if (persona) {
     rows.push({ kind: 'entity', id: persona.id, name: resolve(persona.name), description: textOf(resolve, persona.playerDescription), player: true });
   }
-  for (const id of [...met, ...discovered.map((d) => d.entity.id), ...aliases.keys()]) {
+  for (const id of [...met, ...aliases.keys()]) {
     const entity = pool.get(id);
     if (entity) add(entity);
   }
