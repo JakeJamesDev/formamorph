@@ -14,7 +14,7 @@ import { worldIndexOf, type WorldIndexInput } from './worldIndex';
 /** What a Tool reads. In game, `fired` fills each dictionary book's script entries with the question's fired entries. */
 export type ToolSnapshotSource = (fired?: readonly DictionaryEntry[]) => ToolSnapshot;
 
-/** The open world's authored data, with no playthrough. */
+/** The open world's authored data: the full world in the editor, the Player View in game. */
 export type StatCodeWorldSource = () => StatCodeWorld;
 
 /** The screen a world is open on: it sets how Formaquestion reads the world. */
@@ -25,7 +25,7 @@ export interface OpenWorld {
   lean: WorldLean;
   /** What a Formaquestion Tool reads. */
   snapshot: ToolSnapshotSource;
-  /** The authored world, with no playthrough: what the code test reads. */
+  /** The authored world the code test reads. */
   authored: StatCodeWorldSource;
   /** The editor's live world, unsaved edits included: what the World Index reads. */
   world?: () => WorldIndexInput;

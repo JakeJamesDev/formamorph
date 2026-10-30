@@ -26,9 +26,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now grant traits, and an item's Requirements tab sets what its owner needs to equip it.** A granted trait comes from the owner's own list and leaves the owner's own picks alone. An item unequips on its own once its requirement stops holding; its own bonus never counts.
     - **Items can now be used up: the Inventory tab has a Use button for Consumable and charged items.** After Consumed effects last a set story time or for good, and the tab lists them with time left. A second dose restarts the timer.
     - **Items can now run scripts when an Item Copy is gained, lost, equipped, unequipped or used.** Scripts read who owns what through `items` and can give, take, move, equip, use, reveal and recharge items.
-- **🛠️ Developer tooling**
-  - **Formaquestion:**
-    - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 ### Minor Changes
 
@@ -52,6 +49,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
     - **`inventory-regain-probe.cli.ts` scores the Inventory pass on items the player already carries.** It replays five real duplicate turns, checks retouch cases and two take-another guards, and scores runtime item descriptions for place words.
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
+  - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 ---
 

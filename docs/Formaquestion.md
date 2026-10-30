@@ -62,7 +62,7 @@ In the game, your AI gets only what you have met, together with the guide sectio
 - 🧭 **What you have met.** The characters, places and items you have met, with the descriptions the game shows you. Your visible stats and your own traits.
 - 📚 **Lore.** The dictionary entries whose keywords are in your question, the story so far or what you have met. With **Semantic Lore** on, an entry close in meaning to your question also counts.
 
-Your AI never gets a character you have not met, an AI description, a diary, a hidden stat or a hidden trait. When you undo a turn, it forgets what that turn showed. When you ask what to do next, it gives what it would try as its own opinion, not the solution. The names under **Sources** do not open the editor, so selecting one can't show you spoilers.
+Your AI never gets an AI description, a diary, a hidden stat or a hidden trait. It gets only the characters, places and items you have met, plus the world's lore entries that your question or the story brings up. A lore entry can name something you have not met yet. When you undo a turn, it forgets what that turn showed. When you ask what to do next, it gives what it would try as its own opinion, not the solution. The names under **Sources** do not open the editor, so selecting one can't show you spoilers.
 
 The story so far has a size limit of its own. **Read the World** turns all of this off too. Open Chat worlds follow the same rules.
 
