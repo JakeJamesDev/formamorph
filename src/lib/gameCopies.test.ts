@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import type { Entity } from '@/types';
-import { NO_GAME_COPIES, hasCopies, savedCopy, withCopyOf, withEntityCopies, withEntityCopy, withLiveCopies } from './gameCopies';
+import { NO_GAME_COPIES, hasCopies, savedCopy, takeCopy, withCopyOf, withEntityCopies, withEntityCopy, withLiveCopies } from './gameCopies';
 
 const REN = { id: 'ren', name: 'Ren', aiDescription: 'The ferryman.', images: [{ data: 'data:r' }] };
 
 describe('game copies', () => {
-  it('lies over the source, which keeps every field the copy leaves alone', () => {
+  it('lies over the source, whose pictures stay until the copy has its own', () => {
     expect(withEntityCopy(REN, { aiDescription: 'A tired ferryman.' })).toEqual({ ...REN, aiDescription: 'A tired ferryman.' });
+  });
+
+  it('takes all the text and no pictures', () => {
+    const copy = takeCopy(REN);
+    expect(copy).toMatchObject({ name: 'Ren', aiDescription: 'The ferryman.' });
+    expect('images' in copy).toBe(false);
   });
 
   it('hands back the same list when nothing has a copy', () => {
@@ -20,9 +26,8 @@ describe('game copies', () => {
     expect(savedCopy({ name: 'Bram', aliases: ['ren'] }, REN).aliases).toEqual(['ren']);
   });
 
-  it('drops a blank or unchanged name', () => {
-    expect(savedCopy({ name: ' ', pronouns: 'he/him' }, REN)).toEqual({ pronouns: 'he/him' });
-    expect(savedCopy({ name: 'Ren' }, REN)).toEqual({});
+  it('keeps the source name for a blank one, with no alias', () => {
+    expect(savedCopy({ name: ' ', pronouns: 'he/him' }, REN)).toEqual({ name: 'Ren', pronouns: 'he/him' });
   });
 
   it('sets and drops one copy, and says when nothing is left', () => {

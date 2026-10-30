@@ -1,10 +1,10 @@
 import type { Entity } from '@/types';
 
 /**
- * What this game changed of the world, in one place. A copy holds only the fields the player edited, chips
- * filled in, and lies over its source: the rest keeps reading the world, the library or the persona, so a save
- * stays small and an authored change still reaches every field the player left alone. It sits on each turn's
- * snapshot, so a rollback takes it back, and the world itself is never written.
+ * What this game made its own, in one place. The first edit of a world entity or the persona takes all its text,
+ * chips filled in, so from then on an authored change never reaches it. Pictures stay with the source until the
+ * player changes them, so a copy costs a save almost nothing. It sits on each turn's snapshot, so a rollback
+ * takes it back, and the world itself is never written.
  */
 
 /** The fields of an entity or persona a game can hold its own version of. */
@@ -29,6 +29,12 @@ export interface GameCopies {
 
 export const NO_GAME_COPIES: GameCopies = {};
 
+/** The text of `entity`, which a copy starts from. Pictures are left out. */
+export function takeCopy(entity: Entity): EntityCopy {
+  const { name, aliases, pronouns, playerDescription, aiDescription, aiSummary } = entity;
+  return { name, aliases, pronouns, playerDescription, aiDescription, aiSummary };
+}
+
 /** `entity` as this game plays it. The same object without a copy. */
 export const withEntityCopy = <E extends Entity>(entity: E, copy: EntityCopy | undefined): E =>
   (copy ? { ...entity, ...copy } : entity);
@@ -43,12 +49,11 @@ export function withEntityCopies<E extends Entity>(entities: E[], copies: GameCo
 /** A copy as Save keeps it. A new name takes over and the source's joins Aliases, so the story's earlier word
  *  for the entity still finds it; a blank name keeps the source's. */
 export function savedCopy(copy: EntityCopy, source: Pick<Entity, 'name' | 'aliases'>): EntityCopy {
-  const { name: edited, ...rest } = copy;
-  const name = edited?.trim();
-  if (!name || name === source.name) return rest;
-  const aliases = rest.aliases ?? source.aliases ?? [];
+  const name = copy.name?.trim() || source.name;
+  if (name === source.name) return { ...copy, name };
+  const aliases = copy.aliases ?? source.aliases ?? [];
   const known = aliases.some((a) => a.toLowerCase() === source.name.toLowerCase());
-  return { ...rest, name, aliases: known ? aliases : [...aliases, source.name] };
+  return { ...copy, name, aliases: known ? aliases : [...aliases, source.name] };
 }
 
 /** `copies` with one entity's copy set, or dropped by `null`. */

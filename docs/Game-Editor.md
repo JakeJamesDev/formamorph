@@ -32,7 +32,7 @@ Under **Entities** on the left, **Active** shows you and the entities the model 
 
 A new name keeps the old one under **Aliases**, so the story can still use it. **Location** moves the entity: the scene follows. **Remove** takes an invented entity out of the game and stops the story bringing it back.
 
-A world entity and your persona start out reading their source. Your first edit makes this game a copy of what you changed, and a world entity moves to **In the Game**, marked **From the world**. Fields you leave alone keep following the source. **Reset to World** or **Reset to Persona** drops the copy. The world, the library and your other games never change, and a rollback takes a copy back with its turn.
+A world entity and your persona start out reading their source. Your first edit makes them this game's own: their text is copied into the save, and a world entity moves to **Game Entities**, so later changes to the world don't reach it. Pictures keep following the source until you change one. **Reset to World** or **Reset to Persona** goes back to the original. The world, the library and your other games never change, and a rollback takes a copy back with its turn.
 
 ## Saving and History
 <!-- keywords: save, discard, undo, redo, history, search, find, replace, earlier turn, read only -->

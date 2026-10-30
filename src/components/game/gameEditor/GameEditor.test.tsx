@@ -214,7 +214,7 @@ describe('the Game Editor', () => {
     renderEditor({ request: { tab: 'entities', key: 1 }, player: { name: 'Natmon', persona } });
     await user.type(screen.getByLabelText('Pronouns'), 'they/them');
     await user.click(save());
-    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ entities: { n: { pronouns: 'they/them' } } });
+    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ entities: { n: expect.objectContaining({ aiDescription: 'A tall ranger.', pronouns: 'they/them' }) } });
   });
 
   it("edits the player's stats, kept on Save", async () => {
@@ -357,15 +357,14 @@ describe('world entities in the Game Editor', () => {
     expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Ren');
   });
 
-  it('makes a copy on the first edit, keeps only that field, and leaves the world alone', async () => {
+  it('makes a copy of the whole text on the first edit, and leaves the world alone', async () => {
     const user = userEvent.setup();
     renderEditor({ worldEntities: [REN], request: { tab: 'entities', entityId: 'ren', key: 2 } });
-    expect(screen.getByText('From the world. An edit makes this game a copy.')).toBeTruthy();
+    expect(screen.getByText("A world entity. An edit makes it this game's own.")).toBeTruthy();
     await user.type(screen.getByLabelText('Pronouns'), 'he/him');
-    expect(list().textContent).toContain('From the world · ');
     expect(state.commitManualGameCopies).not.toHaveBeenCalled();
     await user.click(save());
-    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ entities: { ren: { pronouns: 'he/him' } } });
+    expect(state.commitManualGameCopies).toHaveBeenCalledWith({ entities: { ren: expect.objectContaining({ name: 'Ren', aiDescription: 'The ferryman.', pronouns: 'he/him' }) } });
   });
 
   it('offers no Remove, and Reset to World drops the copy on Save', async () => {
@@ -387,7 +386,7 @@ describe('world entities in the Game Editor', () => {
     await user.type(screen.getByLabelText('Pronouns'), 'he/him');
     await user.click(screen.getByRole('button', { name: /^Undo/ }));
     expect(save()).toBeDisabled();
-    expect(list().textContent).toContain('From the World');
+    expect(list().textContent).toContain('World Entities');
   });
 
   it('edits their stats, kept on Save', async () => {

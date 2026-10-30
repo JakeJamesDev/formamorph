@@ -37,7 +37,7 @@ import {
   EMPTY_DRAFT_HISTORY, GAME_EDITOR_PLAYER, changedField, draftAt, draftHasChanges, draftedEntities, draftedStats, savedEntities,
   patchField, withDraftCopy, withDraftEntity, withDraftExtra, withDraftPosition, withDraftRemoved, withDraftStat, withStep, type DraftHistory, type GameEditorDraft,
 } from '@/lib/gameEditorDraft';
-import { savedCopy, withCopyOf, withEntityCopy, type EntityCopy, type GameCopies, type WorldCopy } from '@/lib/gameCopies';
+import { savedCopy, takeCopy, withCopyOf, withEntityCopy, type EntityCopy, type GameCopies, type WorldCopy } from '@/lib/gameCopies';
 import { NO_PLACES, stepPlace, withPlace, type GameEditorPlaces } from '@/lib/gameEditorPlaces';
 import { gameEntityTabFor, gameSearchTargets } from '@/lib/gameEditorSearch';
 import { EMPTY_LETTERS } from '@/lib/placementLetters';
@@ -189,10 +189,10 @@ export function GameEditor(props: GameEditorProps) {
   const detailId = selectedId ?? (isMobile ? null : fallbackId);
   const selectedRecord = shownDiscovered.find((d) => d.entity.id === detailId);
   const selectedWorld = worldRows.find((e) => e.id === detailId);
-  // A copy is taken by the first edit: the patch goes over what the copy holds so far, and only it is kept.
-  const editCopy = (id: string, name: string, patch: Partial<Entity>) => {
+  // The first edit takes the copy: the entity's whole text, with the edit over it.
+  const editCopy = (source: Entity, name: string, patch: Partial<Entity>) => {
     const field = patchField(patch);
-    edit({ verb: 'Edit', type: 'Entity', name, field }, `${id}:${field}`, (d) => withDraftCopy(d, id, { ...copyOf(id), ...patch }));
+    edit({ verb: 'Edit', type: 'Entity', name, field }, `${source.id}:${field}`, (d) => withDraftCopy(d, source.id, { ...(copyOf(source.id) ?? takeCopy(source)), ...patch }));
   };
   const resetCopy = (id: string, name: string) => edit({ verb: 'Reset', type: 'Entity', name }, `reset:${id}`, (d) => withDraftCopy(d, id, null));
   const personaId = player?.persona?.id;
@@ -201,7 +201,7 @@ export function GameEditor(props: GameEditorProps) {
       kind: 'player' as const,
       persona: player.persona && withEntityCopy(player.persona, copyOf(player.persona.id)),
       copied: !!personaId && !!copyOf(personaId),
-      onCopy: personaId ? (patch: Partial<Entity>) => editCopy(personaId, playerName, patch) : undefined,
+      onCopy: player.persona ? (patch: Partial<Entity>) => editCopy(player.persona!, playerName, patch) : undefined,
       onReset: personaId ? () => resetCopy(personaId, playerName) : undefined,
     }
     : selectedRecord
@@ -215,7 +215,7 @@ export function GameEditor(props: GameEditorProps) {
           onMove: (locationId: string) => edit({ verb: 'Edit', type: 'Entity', name: selectedWorld.name, field: 'Location' }, `${selectedWorld.id}:Location`,
             (d) => withDraftPosition(d, entityPositions[selectedWorld.id], selectedWorld.id, locationId)),
           copied: !!copyOf(selectedWorld.id),
-          onCopy: (patch: Partial<Entity>) => editCopy(selectedWorld.id, selectedWorld.name, patch),
+          onCopy: (patch: Partial<Entity>) => editCopy(worldEntities.find((e) => e.id === selectedWorld.id)!, selectedWorld.name, patch),
           onReset: () => resetCopy(selectedWorld.id, selectedWorld.name),
         }
         : null;
@@ -390,7 +390,7 @@ export function GameEditor(props: GameEditorProps) {
           onSelect={() => setSelectedId(e.id)}
           selectionLabel={e.name}
           label={e.name}
-          meta={`From the world · ${worldPlace(e)}`}
+          meta={worldPlace(e)}
         />
       ))}
       {shownDiscovered.length === 0 && copiedRows.length === 0 && !term && !filtering && (
