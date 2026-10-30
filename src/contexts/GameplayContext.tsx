@@ -138,8 +138,12 @@ function useProvideGameplay() {
     entityFollowersRef.current = followers;
     setFollowersState(followers);
   }, []);
+  /** The followers as the latest write left them, ahead of the render. */
+  const currentFollowers = useCallback(() => entityFollowersRef.current, []);
   // The ids of the entities the player has met. Snapshotted per turn too.
   const [metEntities, setMetEntities] = useState<readonly string[]>([]);
+  // The latest alias each stranger was seen under, by entity id. Snapshotted per turn too.
+  const [strangerAliases, setStrangerAliases] = useState<Readonly<Record<string, string>>>({});
   // The runtime character ids, so a join can tell their positions from the world entities'. A join adds its
   // peeled ids at once, so a move in the same batch reads them.
   const runtimeIdsRef = useRef<ReadonlySet<string>>(new Set());
@@ -356,6 +360,7 @@ function useProvideGameplay() {
       ...(Object.keys(entityPositions).length ? { entityPositions } : {}),
       ...(entityFollowers.length ? { entityFollowers: [...entityFollowers] } : {}),
       ...(metEntities.length ? { metEntities: [...metEntities] } : {}),
+      ...(Object.keys(strangerAliases).length ? { strangerAliases: { ...strangerAliases } } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
@@ -382,7 +387,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -410,6 +415,7 @@ function useProvideGameplay() {
       setEntityPositions(gameState.entityPositions ?? {});
       setEntityFollowers(gameState.entityFollowers ?? []);
       setMetEntities(gameState.metEntities ?? []);
+      setStrangerAliases(gameState.strangerAliases ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
       setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
@@ -933,9 +939,12 @@ function useProvideGameplay() {
     setEntityFollowers,
     carryFollowersTo,
     applyFollowerState,
+    currentFollowers,
     viewEntityFollowers,
     metEntities,
     setMetEntities,
+    strangerAliases,
+    setStrangerAliases,
     codePins,
     setCodePins,
     loreToggles,

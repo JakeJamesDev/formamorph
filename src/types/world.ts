@@ -396,6 +396,10 @@ export interface Entity {
    *  implies persona-only. */
   customPersona?: boolean;
   type?: string;
+  /** What the player calls the entity before meeting it. Absent, the entity starts met (see lib/presence). */
+  strangerName?: string;
+  /** What the player reads about the entity before meeting it. */
+  strangerDescription?: string;
   /** Shown to the player in game. */
   playerDescription?: string;
   /** Full description sent to the AI. */

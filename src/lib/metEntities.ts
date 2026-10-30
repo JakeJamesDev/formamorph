@@ -1,21 +1,4 @@
-import type { DiscoveredEntity, Entity, EntityPositions, SceneEntity } from '@/types';
-import { resolveEntityByName } from '@/lib/entityMatch';
-
-/** `met` plus each entity the scene lists by its revealed name, in scene order. The same array when nobody
- *  new is met. */
-export function metFromScene(met: readonly string[], scene: readonly SceneEntity[], entities: readonly Entity[]): readonly string[] {
-  const known = new Set(met);
-  const added: string[] = [];
-  for (const row of scene) {
-    if (!row.revealed) continue;
-    const id = resolveEntityByName(row.name, entities)?.id;
-    if (id && !known.has(id)) {
-      known.add(id);
-      added.push(id);
-    }
-  }
-  return added.length ? [...met, ...added] : met;
-}
+import type { DiscoveredEntity, Entity, EntityPositions } from '@/types';
 
 /** Each runtime character's position: the location it was met at. */
 export function runtimeCharacterPositions(discovered: readonly DiscoveredEntity[]): EntityPositions {

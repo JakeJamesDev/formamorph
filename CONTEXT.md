@@ -96,6 +96,28 @@ _Avoid_: auto layout (as a live behavior), nudge
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
 
+**Stranger**:
+An entity the player has not met. Only an entity with a Stranger Name can be one. The player sees it under the latest alias the story gave it, else its Stranger Name, and never its true name. With neither it has no label and no player surface shows it.
+_Avoid_: unknown entity, hidden entity
+
+**Met**:
+Whether the player knows who an entity is. An entity starts met in any of these cases:
+- It has no Stranger Name.
+- It has a relationship with the played persona, on either side.
+- One of its Known In picks holds a place the persona lists, child places included.
+- It is a runtime character.
+
+Otherwise the player meets it when the story names it while it is here. A name inside dialogue counts. A met entity stays met. The Met set lists every met entity, wherever it is. It feeds the map and the Help window.
+_Avoid_: known, discovered, revealed
+
+**In Scene**:
+The entities here that took part in the story in one of the last 3 turns. An entity takes part when the prose shows it or the planner casts it. A name inside dialogue does not count. When the player moves, only followers keep the turns from before the move. An entity that leaves the player's place is out of scene at once. The In Scene set feeds the stat picker, the Traits tab and Give.
+_Avoid_: present, visible, participants
+
+**Look Around**:
+Everyone here the player would see if they looked around: In Scene first, then the quiet ones, each under their label. It feeds the Entities tab.
+_Avoid_: scene list, roster
+
 **Item**:
 An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Uses, When Empty, State, Bound, Slot, Unidentified Name and Unidentified Description. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
 _Avoid_: object, thing, entity (for an item)
