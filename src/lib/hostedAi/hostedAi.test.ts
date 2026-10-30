@@ -5,7 +5,7 @@ import { hostedPromptWindow, hostedReasoningCapability, parseHostedState } from 
 import { HOSTED_STATE_URL } from './hostedUrls';
 
 const STATE = {
-  tier: 'supporter_plus', state: 'ready', window: 32000, maxTokens: 900, tokenMargin: 1000,
+  tier: 'supporter_plus', state: 'ready', window: 30000, maxTokens: 900, tokenMargin: 1000,
   model: { id: 'entry-2', capabilities: { tools: true, reasoning: 'openrouter', budget: true, efforts: ['low', 'high', 'bogus'] } },
   percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [75],
 };
@@ -75,7 +75,7 @@ describe('the preset state from the hosted state', () => {
     fail = true;
     await session.refresh();
     expect(session.getSnapshot().presetState).toBe('unavailable');
-    expect(session.getSnapshot().hosted?.window).toBe(32000);
+    expect(session.getSnapshot().hosted?.window).toBe(30000);
   });
 
   it('is signed-out after a 401 on the state route', async () => {
@@ -87,7 +87,7 @@ describe('the preset state from the hosted state', () => {
 
 describe('the window and capabilities from the hosted state', () => {
   it('budgets prompts to the window less the margin', () => {
-    expect(hostedPromptWindow(parseHostedState(STATE))).toBe(31000);
+    expect(hostedPromptWindow(parseHostedState(STATE))).toBe(29000);
     expect(hostedPromptWindow(parseHostedState({ ...STATE, window: null }))).toBeNull();
   });
 
