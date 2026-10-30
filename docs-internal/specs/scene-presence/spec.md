@@ -161,6 +161,25 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q66:** both fields show in Advanced mode only, and only in the World Editor. Library entities get neither.
 - **Q67:** one help topic on Stranger Name states the start-met rule with the existing field names, plus a section on the World Editor entities docs page. The changelog fragment is a user-facing Minor Added entry, in the same group as the Entities tab and Give entries.
 
+### Rulings (ticket 07 intent questions, 2026-10-30)
+
+- **Q68:** an unmet entity with a Stranger Name gets one roster field that carries its label. The planner's alias rule tells it to use that text as the parenthetical alias. A met entity, or one without a Stranger Name, gets no field and is cast as today.
+- **Q69:** only the planner's request renders that field. Every other prompt's roster stays byte-equal to today. A custom planner prompt still gets it, because it rides in the Entities chip.
+- **Q70:** the field carries the Presence label: the latest story alias, else the Stranger Name. This follows Q27, where the story's alias wins once seen.
+- **Q71:** for an entity with a Stranger Name, met decides whether the name may appear, in the prompt rule and the code backstop alike. A name spoken elsewhere does not reveal it (Q41). Entities without a Stranger Name keep today's narration test.
+- **Q72:** the backstop fills a missing alias with the label in place of the generic fallback. It does not overwrite an alias the planner invented. The staged-mode director prompt is out of scope.
+- **Q73:** after the full-name swap, the backstop also swaps each distinctive word of an unrevealed name for the alias. It uses the same distinctive words that name-part detection uses (Q41). This applies to every unrevealed name, strangers and narration-test names alike, so hiding matches revealing. A word shared with another cast entity's name is never swapped, and only whole words match.
+### Rulings (ticket 08 intent questions, 2026-10-30)
+
+- **Q74:**
+  - `meet()` introduces any cast entity, here or not, because the author calls it on purpose.
+  - A later `met` read in the same run sees it. The met-in-play append lands when the run commits.
+  - `persona.met` is always true, and the persona has no `meet()`.
+  - A blank entry reads `met: false`, and its `meet()` stops the script.
+  - `met` ships wherever entity entries do. `meet()` ships only where entity writes are allowed, so a read-only run, such as a user Tool, has `met` and no `meet()`.
+
+- **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
+
 ### The Presence module
 
 - A new pure module computes presence. Its input is the game state, the authored and discovered entities, the locations with their connections and parents, the played persona, and the recent turns' scene records. Its output gives, for every entity:
