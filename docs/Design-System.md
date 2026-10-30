@@ -2124,6 +2124,30 @@ A segmented control whose options turn on and off one by one, for a short pick-m
 
 Open `#dev?modal=designSystem&tab=segmented-multi-select` for the time chip's controls with local state.
 
+## Pattern: Collapsing Segmented Control
+
+✅ Approved by the user on 2026-10-30 (collapsing tabs prototype, variant C).
+
+A pick-one segmented control for a short set of options with icons, such as the main menu's library tabs. It shows as many labels as its cell holds, in three steps:
+
+| Step | Shows | When |
+|---|---|---|
+| Full | Every icon and label | Every label fits |
+| Selected | Icons, plus the selected option's label | The widest label alone fits, beside the other icons |
+| Icons | Icons only | Anything narrower |
+
+The Selected step is sized for the widest label, so a new pick never changes the step.
+
+- 🧩 **Component.** `CollapsingToggleGroup` in [`collapsing-toggle-group.tsx`](../src/components/ui/collapsing-toggle-group.tsx), built on `ToggleGroup` at its `h-10` size. The production use is the main menu's top bar in [`MainMenu.tsx`](../src/views/MainMenu.tsx).
+- 📏 **Room, not viewport.** It fills its parent and folds by that width. It never takes less than its icons-only width, so it can't overlap the controls beside it.
+- 💊 **One pill.** A single pill slides and resizes to the selected option. Labels open and close on the same 200 ms `cubic-bezier(0.2, 0, 0, 1)` as the Nav Rail. With reduced motion, both change at once.
+- 💬 **Tips.** An option that shows only its icon shows its name in a `Tip` on hover or focus. An option whose label shows has no tip.
+- 🎨 **Icons.** Options use the app's shared icons for each type, such as `KIND_TAB_ICONS` for library types.
+- 📱 **Mobile.** Below `md`, the main menu uses its bottom tab bar instead.
+- 🔊 **Name.** The group carries an `aria-label`. Each option keeps its label text, so a screen reader reads it when the label is folded.
+
+Open `#dev?modal=designSystem&tab=collapsing-segmented` for the library tabs in a wide and a narrow cell, with local state.
+
 ## Pattern: Inventory Tab
 
 **Purpose:** Show the player's equipment and carried items in the game's side panel, and act on them in one click.

@@ -9,8 +9,8 @@ import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
-import { ELEMENT_ICONS } from '@/lib/elementIcons';
-import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
+import { CollapsingToggleGroup } from '@/components/ui/collapsing-toggle-group';
+import { MAIN_MENU_CARD_OPTIONS, MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { clearLibraryModelPicks, deleteModelDescription, findModelUsage, type ModelUsage } from '@/lib/libraryVrmDelete';
 import { DEFAULT_AVATAR_URL, clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
@@ -192,12 +192,7 @@ const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
 
 /** The library's card-type tabs, with their icon + label, so the top switcher and the mobile bottom bar
  *  render from one source and can't drift. */
-const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] = [
-  { value: 'worlds', label: 'Worlds', Icon: ELEMENT_ICONS.world },
-  { value: 'entities', label: 'Entities', Icon: ELEMENT_ICONS.entities },
-  { value: 'dictionaries', label: 'Dictionaries', Icon: ELEMENT_ICONS.dictionary },
-  { value: 'models', label: 'Avatars', Icon: ELEMENT_ICONS.avatar },
-];
+const CARD_TABS = MAIN_MENU_CARD_OPTIONS;
 
 /** The Import button's Take Me There target on each tab. */
 const IMPORT_TARGET: Record<MainMenuCardTab, TargetAttribute> = {
@@ -1874,27 +1869,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
           there's room; it only shifts/wraps once the sides can't yield more space. */}
       <div className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
-        {/* Card-type switcher: text labels at >=1040px, icon-only below — collapsing it (not the action
-            buttons) reclaims the width so the centered buttons keep their labels longer. Hidden on mobile,
-            where the bottom tab bar takes over (adding a 4th tab left the top row too cramped in portrait).
-            No min-w-0: the cell keeps its real width so it never overflows onto the centered buttons. */}
+        {/* Card-type switcher: folds to icons by its own cell's room, so the centered buttons keep their
+            labels longer. Hidden on mobile, where the bottom tab bar takes over. No min-w-0: the cell keeps
+            the switcher's folded width so it never overflows onto the centered buttons. */}
         <div className="flex-1 hidden md:flex items-center justify-start">
-          <ToggleGroup
-            type="single"
-            value={cardType}
-            // A single ToggleGroup clears its value when the active item is clicked again; a card type is
-            // always required, so an empty result is ignored rather than stored.
-            onValueChange={(v) => { if (v) setCardType(v as typeof cardType); }}
-          >
-            {CARD_TABS.map(({ value, label, Icon }) => (
-              <Tip key={value} tip={label}>
-                <ToggleGroupItem value={value}>
-                  <Icon className="h-5 w-5 min-[1100px]:hidden" />
-                  <span className="hidden min-[1100px]:inline">{label}</span>
-                </ToggleGroupItem>
-              </Tip>
-            ))}
-          </ToggleGroup>
+          <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" />
         </div>
 
         {/* Action buttons — full row on wide viewports, collapsed into a hamburger below 1000px. Auto width so
@@ -2272,7 +2251,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           top row. In-flow rather than fixed so it stacks above the footer instead of covering it; it caps the
           scroll frame the same way the footer does. Hidden at md+, where the top switcher returns. */}
       <nav className="md:hidden shrink-0 flex border-t bg-background">
-        {CARD_TABS.map(({ value, label, Icon }) => (
+        {CARD_TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             onClick={() => setCardType(value)}
