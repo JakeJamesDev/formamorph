@@ -1,7 +1,8 @@
 import AuthService from '@/services/AuthService';
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
-import { hostedReasoningCapability, parseHostedState, type HostedState, type HostedUsage } from './hostedState';
-import { HOSTED_STATE_URL } from './hostedUrls';
+import { hostedReasoningCapability, parseHostedState, recordOf, type HostedState, type HostedUsage } from './hostedState';
+import { HOSTED_STATE_URL, hostedAckUrl } from './hostedUrls';
+import { WARN_THRESHOLDS } from './hostedAllowance';
 import { hostedStateSends, readHostedRefusal, type HostedPresetState, type HostedRefusal } from './refusals';
 import { HostedTurn, HostedTurnRegistry } from './hostedTurn';
 
@@ -62,11 +63,20 @@ export class HostedSession {
   };
 
   private builtFor: string | null = null;
+  /** A call settled its usage and no commit has raised its notice yet. */
+  private usageNoted = false;
+  /** Warnings shown in this session, so a slow or failed ack never shows one twice. */
+  private readonly shown = new Set<number>();
+  private exhaustedShownFor: string | null = null;
 
   private forget() {
     this.hosted = null;
     this.stale = true;
     this.refused = null;
+    // Notices are per account, so the next account starts with none shown.
+    this.shown.clear();
+    this.exhaustedShownFor = null;
+    this.usageNoted = false;
     this.snapshot = this.build();
   }
 
@@ -154,6 +164,66 @@ export class HostedSession {
   noteUsage(usage: HostedUsage) {
     if (!this.hosted) return;
     this.hosted = { ...this.hosted, ...usage };
+    this.usageNoted = true;
+    this.changed();
+  }
+
+  /**
+   * Moves the state to where the meter says it is, once a turn has committed. Mid-turn the state holds, so
+   * the turn's remaining passes still send.
+   */
+  settleTurn() {
+    const hosted = this.hosted;
+    if (!hosted || (hosted.state !== 'ready' && hosted.state !== 'warned') || hosted.percentUsed === null) return;
+    const state = hosted.percentUsed >= 100 ? 'exhausted'
+      : hosted.percentUsed >= WARN_THRESHOLDS[0] ? 'warned' : hosted.state;
+    if (state === hosted.state) return;
+    this.hosted = { ...hosted, state };
+    this.changed();
+  }
+
+  /** True once after a call settled its usage, so a turn on another preset raises no notice. */
+  takeUsageNoted(): boolean {
+    const noted = this.usageNoted;
+    this.usageNoted = false;
+    return noted;
+  }
+
+  /** The thresholds shown in this session. */
+  shownWarnings(): ReadonlySet<number> {
+    return this.shown;
+  }
+
+  /** True once per reset date, so the exhausted notice shows once per month. */
+  claimExhaustedNotice(): boolean {
+    const key = this.hosted?.resetAt ?? 'unknown';
+    if (this.exhaustedShownFor === key) return false;
+    this.exhaustedShownFor = key;
+    return true;
+  }
+
+  /**
+   * Marks a warning as shown and acknowledges it, and every lower one, on the server so no device shows it
+   * again this month. A refusal of the ack keeps the warning hidden for this session only.
+   */
+  async acknowledgeWarning(threshold: number): Promise<void> {
+    const token = this.credential();
+    const crossed = [...WARN_THRESHOLDS].filter((t) => t <= threshold);
+    crossed.forEach((t) => this.shown.add(t));
+    if (!token) return;
+    for (const t of crossed) {
+      if (this.hosted?.acknowledged.includes(t)) continue;
+      try {
+        const response = await this.fetchImpl()(hostedAckUrl(t), { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        const body: unknown = await response.json().catch(() => null);
+        const list = recordOf(recordOf(body)?.data)?.acknowledged;
+        if (response.ok && Array.isArray(list) && this.hosted && this.credential() === token) {
+          this.hosted = { ...this.hosted, acknowledged: list.filter((n): n is number => typeof n === 'number') };
+        }
+      } catch {
+        // The warning stays hidden for this session; the next session asks the server again.
+      }
+    }
     this.changed();
   }
 

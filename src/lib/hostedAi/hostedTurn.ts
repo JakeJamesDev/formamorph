@@ -19,6 +19,11 @@ export class HostedTurn {
   private pending: Promise<void> | null = null;
   private messageShown = false;
 
+  /** The turn has its server-issued id, so the server admits its remaining calls whatever the allowance. */
+  get started(): boolean {
+    return this.id !== null;
+  }
+
   /** Waits for the turn's id, or takes the turn when no call holds it. Null when `signal` stops the wait. */
   async claim(signal?: AbortSignal): Promise<HostedTurnClaim | null> {
     const stopped = new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve(), { once: true }));

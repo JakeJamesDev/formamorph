@@ -24,6 +24,7 @@ import { AgeGateProvider } from './contexts/AgeGateContext';
 import { PrivacyPolicyProvider } from './contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from './contexts/AccountDeletionContext';
 import { UpdateRequiredGate } from './components/modals/UpdateRequiredDialog';
+import { HostedAiAutoSwitch } from './components/HostedAiAutoSwitch';
 import { UsernameRenameGate } from './components/modals/UsernameRenameDialog';
 import { SignInHost } from './components/SignInHost';
 import { EXIT_TO_MENU_PROMPT } from './lib/leavePrompts';
@@ -279,6 +280,7 @@ function App() {
                           made from either screen, and sibling effects run in order — so the header this
                           installs is on `fetch` before any screen's mount effect asks for anything. */}
                       <UpdateRequiredGate />
+                      <HostedAiAutoSwitch />
                       {COMMUNITY_ENABLED && <UsernameRenameGate />}
                       {/* One sign-in for every view, inside the age gate and the privacy prompt it
                           answers to. A view swap never remounts it. */}

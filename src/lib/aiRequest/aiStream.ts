@@ -339,15 +339,19 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   const session = spec.target?.hosted ? options.hostedSession ?? appHostedSession : null;
   let headers = spec.headers;
   let claim: HostedTurnClaim | null = null;
+  const turn = options.hostedTurn ?? new HostedTurn();
   if (session) {
     // The live token alone decides signed-out; a held one is sent and the server judges it.
     const blocked = () => {
       const state = session.getSnapshot().presetState;
+      // A spent allowance never stops a turn the server already admitted.
+      if (state === 'exhausted' && turn.started) return null;
+      // A spent allowance never stops a turn the server already admitted.
       return !session.credential() ? 'signed-out' : state === 'signed-out' || hostedStateSends(state) ? null : state;
     };
     const before = blocked();
     if (before) throw hostedStateFailure(spec, before);
-    claim = await (options.hostedTurn ?? new HostedTurn()).claim(signal);
+    claim = await turn.claim(signal);
     if (!claim) {
       finishReason = ABORTED_FINISH_REASON;
       yield* finish();

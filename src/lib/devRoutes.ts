@@ -136,7 +136,7 @@ export const DEV_MODAL_TABS = {
   settingsToolEdit: ['definition', 'parameters', 'handler', 'tryIt'],
   // Settings → Endpoints opens its own tab with the same `subtab=…` (`#dev?modal=settings&tab=endpoints&subtab=image`).
   // `tagPrompt` is Advanced only and hidden while image generation is off. `fixture=fai-<state>` shows the
-  // Formamorph AI preset in one of its states and selects nothing (`#dev?modal=settings&tab=endpoints&subtab=text&fixture=fai-locked`).
+  // Formamorph AI preset in one of its states and selects nothing (`#dev?modal=settings&tab=endpoints&subtab=text&fixture=fai-locked`). `fixture=fai-notice-75`, `fai-notice-90` and `fai-notice-exhausted` raise the allowance notices.
   settingsEndpoints: ['text', 'image', 'tagPrompt'],
   worldEditor: ['overview', 'media', 'entities', 'items', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts', 'tools'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
