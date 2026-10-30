@@ -480,7 +480,7 @@ A Condition that compares an owner's stat to a number with one of six operators 
 _Avoid_: stat gate, stat requirement, threshold (a descriptor's word)
 
 **Item Condition**:
-A Condition that holds while an owner has an Item Copy of an item, owned (carried or equipped, hidden copies included) or equipped. Traits and image Visibility rules share it. With no owner it reads the host's owner; on a global trait or a location rule that is the Persona. On an item's rule it reads the Item Copy's owner, and never holds while the copy lies at a location, Not included.
+A Condition that holds while an owner has an Item Copy of an item, owned (carried or equipped, hidden copies included) or equipped. Traits and image Visibility rules share it. With no owner it reads the host's owner; on a global trait or a location rule that is the Persona. On an item's rule it reads the Item Copy's owner, and never holds while the copy lies at a location, Not included. It can also require a State word (trimmed, any case) and require the copy identified or unidentified. Owner, status, State and identity must all hold on one copy. Its text reads the checks in parentheses after the name, "owning Lantern (lit)", and names the item's unidentified face while the owner holds no visible identified copy.
 _Avoid_: item gate, inventory check
 
 **Time Condition**:

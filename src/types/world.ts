@@ -223,13 +223,16 @@ export type TraitRequirement =
 
 /** An item Condition: an owner has a copy of the item, or has one equipped. `name` is the item's name when it
  *  was stored, so an unresolved one still reads. An owner-less one means the host's owner; on an item it is
- *  the Item Copy's owner, and never holds while the copy lies at a location. */
+ *  the Item Copy's owner, and never holds while the copy lies at a location. `state` and `identity` narrow it
+ *  to a copy with that State word (trimmed, any case) or that identity (Q22). */
 export interface ItemRequirement {
   kind: 'item';
   id: string;
   name?: string;
   owner?: RequirementOwner;
   status: 'owned' | 'equipped';
+  state?: string;
+  identity?: 'identified' | 'unidentified';
   not?: true;
 }
 

@@ -21,7 +21,7 @@ export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'>
   (item?.uses === undefined ? undefined : copy.state?.uses ?? item.uses);
 
 /** Its copies start unidentified: it has an Unidentified Name or Unidentified Description (Q16). */
-export const itemHasUnidentifiedFace = (item: Item): boolean => !!item.unidentifiedName?.trim() || !!item.unidentifiedDescription?.trim();
+export const itemHasUnidentifiedFace = (item: Pick<Item, 'unidentifiedName' | 'unidentifiedDescription'>): boolean => !!item.unidentifiedName?.trim() || !!item.unidentifiedDescription?.trim();
 
 /** The Item Copy shows the unidentified face. */
 export const isUnidentified = (copy: Pick<ItemCopy, 'state'>): boolean => copy.state?.unidentified === true;

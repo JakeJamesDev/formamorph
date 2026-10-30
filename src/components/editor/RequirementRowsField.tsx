@@ -9,9 +9,10 @@ import {
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { StatConditionControls } from '@/components/editor/StatConditionControls';
 import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
+import { ItemConditionControls } from '@/components/editor/ItemConditionControls';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  requirementOwnerKey, requirementOwnerOf, flipped, sameRequirement, statTail, withRequirementOwner,
+  requirementOwnerKey, requirementOwnerOf, flipped, itemChecks, sameRequirement, statTail, withRequirementOwner,
   type ConditionState, type RequirementOwnerOption, type RequirementOption, type RequirementOptions, type RowState,
 } from '@/lib/traitGates';
 import { soleOwnerRequirement } from '@/lib/requirementOwners';
@@ -202,17 +203,21 @@ export function RequirementRowsField({
     const stat = requirement.kind === 'stat' ? requirement : null;
     const tail = stat ? ` ${statTail(stat)}` : '';
     const statName = targetText.endsWith(tail) ? targetText.slice(0, targetText.length - tail.length) : targetText;
+    // An item chip shows the item's name, with its State and identity checks in their controls.
+    const item = requirement.kind === 'item' && !unresolved ? requirement : null;
+    const itemTail = item ? itemChecks(item) : '';
+    const itemName = itemTail && targetText.endsWith(itemTail) ? targetText.slice(0, targetText.length - itemTail.length) : targetText;
     // A time chip is its daypart toggles; the complement is the other dayparts, so it has no Not.
     const time = requirement.kind === 'time' ? requirement : null;
     return (
       <span
-        role={stat || time ? 'group' : undefined}
-        aria-label={stat || time ? ruleLabel : undefined}
+        role={stat || time || item ? 'group' : undefined}
+        aria-label={stat || time || item ? ruleLabel : undefined}
         data-unresolved={unresolved || undefined}
         data-not={requirement.not || undefined}
         className={cn(
           'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
-          (stat || time) && 'flex-wrap gap-y-1',
+          (stat || time || item) && 'flex-wrap gap-y-1',
           time && 'flex-nowrap rounded-2xl',
           requirement.not && 'border-dashed',
           unresolved && 'border-destructive text-destructive',
@@ -229,6 +234,13 @@ export function RequirementRowsField({
                 accepts={edit.accepts}
                 onChange={edit.replace}
               />
+            </span>
+          </>
+        ) : item ? (
+          <>
+            <span className="min-w-0 truncate">{mark}<PlaceholderText text={itemName} placeholders={placeholders} /></span>
+            <span className="ml-1.5 inline-flex items-center gap-1.5 text-foreground">
+              <ItemConditionControls requirement={item} accepts={edit.accepts} onChange={edit.replace} />
             </span>
           </>
         ) : unresolved || requirement.kind === 'item' || !opens(requirement) ? (

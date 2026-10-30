@@ -113,6 +113,87 @@ describe('item Conditions', () => {
   });
 });
 
+describe('item Condition State and identity (Q22, Q45)', () => {
+  const lantern = (status: ItemRequirement['status'] = 'owned', extra: Partial<ItemRequirement> = {}): ItemRequirement =>
+    ({ kind: 'item', id: 'ring', status, ...extra });
+  const held = (id: string, state: ItemCopy['state'], over: Partial<ItemCopy> = {}) => copy(id, { kind: 'you' }, { state, ...over });
+
+  it('requires a State word on a matching copy, trimmed and in any case', () => {
+    const req = lantern('owned', { state: ' Lit ' });
+    expect(unlocked(req, [held('a', { state: 'lit' })])).toBe(true);
+    expect(unlocked(req, [held('a', { state: 'unlit' })])).toBe(false);
+    expect(unlocked(req, [held('a', undefined)])).toBe(false);
+    expect(unlocked(lantern('owned', { state: '  ' }), [held('a', undefined)])).toBe(true);
+  });
+
+  it('needs every check on the same copy', () => {
+    const req = lantern('equipped', { state: 'lit', identity: 'identified' });
+    const equipped = { slotId: 'finger', order: 1 };
+    expect(unlocked(req, [held('a', { state: 'lit' }), held('b', undefined, { equipped })])).toBe(false);
+    expect(unlocked(req, [held('a', { state: 'lit', unidentified: true }, { equipped })])).toBe(false);
+    expect(unlocked(req, [held('a', { state: 'lit' }, { equipped })])).toBe(true);
+  });
+
+  it('requires identified or unidentified', () => {
+    const copies = [held('a', { unidentified: true })];
+    expect(unlocked(lantern('owned', { identity: 'unidentified' }), copies)).toBe(true);
+    expect(unlocked(lantern('owned', { identity: 'identified' }), copies)).toBe(false);
+    expect(unlocked(lantern('owned', { identity: 'identified' }), [held('a', undefined)])).toBe(true);
+  });
+
+  it('combines with the owner and Not', () => {
+    const onAsh = [copy('a', { kind: 'entity', id: 'ash' }, { state: { state: 'lit' } })];
+    const ash = { kind: 'entity', id: 'ash' } as const;
+    expect(unlocked(lantern('owned', { owner: ash, state: 'lit' }), onAsh)).toBe(true);
+    expect(unlocked(lantern('owned', { owner: { kind: 'you' }, state: 'lit' }), onAsh)).toBe(false);
+    expect(unlocked(lantern('owned', { owner: ash, state: 'lit', not: true }), onAsh)).toBe(false);
+    expect(unlocked(lantern('owned', { owner: ash, state: 'out', not: true }), onAsh)).toBe(true);
+  });
+
+  it('compares by State and identity', () => {
+    expect(sameRequirement(lantern('owned', { state: 'Lit' }), lantern('owned', { state: ' lit' }))).toBe(true);
+    expect(sameRequirement(lantern('owned', { state: 'lit' }), lantern('owned'))).toBe(false);
+    expect(sameRequirement(lantern('owned', { identity: 'identified' }), lantern('owned', { identity: 'unidentified' }))).toBe(false);
+  });
+
+  it('reads the checks in parentheses after the name', () => {
+    const text = (req: ItemRequirement) => gateOf(gateStates(input([gated(req)], [])), null, 'Curse')?.rows[0].conditions[0].text;
+    expect(text(lantern('owned', { state: 'lit' }))).toBe('owning Cursed Ring (lit)');
+    expect(text(lantern('equipped', { identity: 'unidentified' }))).toBe('equipping Cursed Ring (unidentified)');
+    expect(text(lantern('owned', { state: 'lit', identity: 'unidentified', not: true }))).toBe('not owning Cursed Ring (lit, unidentified)');
+  });
+
+  describe('the unidentified face', () => {
+    const masked = { reader: 'player' as const, worldItems: [{ id: 'ring', name: 'Cursed Ring', unidentifiedName: 'Plain Ring' }] };
+    const text = (copies: ItemCopy[], extra: Partial<GateInput> = masked) =>
+      gateOf(gateStates(input([gated(ring())], copies, extra)), null, 'Curse')?.rows[0].conditions[0].text;
+
+    it('names the unidentified face while the owner holds no identified copy', () => {
+      expect(text([])).toBe('owning Plain Ring');
+      expect(text([held('a', { unidentified: true })])).toBe('owning Plain Ring');
+      expect(text([held('a', { unidentified: true }), held('b', undefined)])).toBe('owning Cursed Ring');
+    });
+
+    it('ignores a hidden identified copy and another owner\'s identified copy', () => {
+      expect(text([held('a', undefined, { visibility: 'hidden' })])).toBe('owning Plain Ring');
+      expect(text([copy('a', { kind: 'entity', id: 'ash' })])).toBe('owning Plain Ring');
+    });
+
+    it('keeps the true name for the author and for an item with no unidentified face', () => {
+      expect(text([], { ...masked, reader: 'author' })).toBe('owning Cursed Ring');
+      expect(text([], { reader: 'player' })).toBe('owning Cursed Ring');
+    });
+  });
+
+  it('round-trips through a character card', () => {
+    const req = ring('owned', { state: 'lit', identity: 'identified' });
+    const entity = { id: 'ash', name: 'Ash', description: '', traits: [T('Cursed', { requires: [{ all: [req] }] })] } as Entity;
+    const home = traitWorldOf({ traits: [], entities: [], items: [{ id: 'ring', name: 'Cursed Ring' }] })!;
+    const card = JSON.parse(JSON.stringify(buildEntityCardData(entity, [], {}, undefined, home)));
+    expect(parseEntityCardData(card).traits![0].requires![0].all[0]).toEqual({ ...req, name: 'Cursed Ring' });
+  });
+});
+
 describe('item rules', () => {
   const rows = [{ all: [ring() as TraitRequirement] }];
   const base = input([], [copy('a', { kind: 'entity', id: 'ash' })]);

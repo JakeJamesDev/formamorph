@@ -11,6 +11,7 @@ import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex 
 import { buildTree, flattenTree } from './groupTree';
 import { blueprintsSubtreeIds } from './blueprintGroups';
 import { conditionsOf, rowsHold } from './requirementRows';
+import { faceName, isUnidentified, itemHasUnidentifiedFace, stateKey } from './items';
 import { partOf, playedEntityIds, scoped, scopedEntries, scopeKey, withPart, type OwnerId, type Scoped } from './scope';
 
 /** The breadcrumb of a world trait or group with no group above it. */
@@ -89,6 +90,8 @@ export interface GateItem {
   id: string;
   name: string;
   slotId?: string;
+  unidentifiedName?: string;
+  unidentifiedDescription?: string;
 }
 
 export interface GateInput {
@@ -182,6 +185,9 @@ export const requirementOwnerOf = (req: TraitRequirement): RequirementOwner | un
 export const requirementOwnerKey = (owner?: RequirementOwner): string =>
   (owner === undefined ? 'same' : owner.kind === 'you' ? 'you' : `entity:${owner.id}`);
 
+/** The State word an item Condition requires as stacking compares it: trimmed and lower case, empty for none (Q31). */
+const itemStateKey = (req: ItemRequirement): string => (req.state ?? '').trim().toLowerCase();
+
 const sameDayparts = (a: TimeRequirement, b: TimeRequirement): boolean => daypartSet(a.dayparts).join() === daypartSet(b.dayparts).join();
 
 /** Whether two requirements add the same gate: the same target under the same owner, both plain or both Not,
@@ -189,7 +195,7 @@ const sameDayparts = (a: TimeRequirement, b: TimeRequirement): boolean => daypar
 export const sameRequirement = (a: TraitRequirement, b: TraitRequirement): boolean =>
   a.kind === b.kind && a.id === b.id && requirementOwnerKey(requirementOwnerOf(a)) === requirementOwnerKey(requirementOwnerOf(b)) && !a.not === !b.not
   && (a.kind !== 'stat' || (b.kind === 'stat' && a.operator === b.operator && a.value === b.value && a.unit === b.unit))
-  && (a.kind !== 'item' || (b.kind === 'item' && a.status === b.status))
+  && (a.kind !== 'item' || (b.kind === 'item' && a.status === b.status && itemStateKey(a) === itemStateKey(b) && a.identity === b.identity))
   && (a.kind !== 'time' || (b.kind === 'time' && sameDayparts(a, b)));
 
 interface Located<T> { owner: GateScopeTree; item: T }
@@ -272,16 +278,32 @@ function index(input: GateInput) {
   const traitsBelow = (set: ReadonlySet<OwnerId>, groupId: string): string[] =>
     [...set].flatMap((ownerId) => owners.get(ownerId)?.below.get(groupId) ?? []);
   const itemNames = new Map((input.worldItems ?? []).map((item) => [item.id, item.name]));
-  /** Whether an item Condition on `from` holds before Not: its owner has a copy of the item, equipped when the
-   *  status says so. An owner-less one on global scope reads the persona (Q88); a played entity reads the
-   *  copies of `you` (Q54, Q90). */
-  const itemHeld = (req: ItemRequirement, from: GateScopeTree, visibleOnly = false): boolean => {
+  /** The copies of the item an item Condition on `from` names, held by its owner. */
+  const copiesOf = (req: ItemRequirement, from: GateScopeTree): ItemCopy[] => {
     const owner: RequirementOwner = req.owner ?? (from.id === null ? { kind: 'you' } : { kind: 'entity', id: from.id });
     const ids = owner.kind === 'you' ? played : [owner.id];
     const you = owner.kind === 'you' || ids.some((id) => played.includes(id));
-    return (input.itemCopies ?? []).some((copy) => copy.item.kind === 'item' && copy.item.itemId === req.id && copy.quantity > 0
-      && (!visibleOnly || copy.visibility === 'visible') && (req.status === 'owned' || !!copy.equipped)
+    return (input.itemCopies ?? []).filter((copy) => copy.item.kind === 'item' && copy.item.itemId === req.id && copy.quantity > 0
       && (copy.where.kind === 'you' ? you : copy.where.kind === 'entity' && ids.includes(copy.where.id)));
+  };
+  /** Whether an item Condition on `from` holds before Not: one copy of its owner matches the status, the State
+   *  word and the identity together. An owner-less one on global scope reads the persona (Q88); a played entity
+   *  reads the copies of `you` (Q54, Q90). */
+  const itemHeld = (req: ItemRequirement, from: GateScopeTree, visibleOnly = false): boolean => {
+    const state = itemStateKey(req);
+    return copiesOf(req, from).some((copy) => (!visibleOnly || copy.visibility === 'visible') && (req.status === 'owned' || !!copy.equipped)
+      && (!state || stateKey(copy) === state)
+      && (req.identity === undefined || isUnidentified(copy) === (req.identity === 'unidentified')));
+  };
+  const worldItem = new Map((input.worldItems ?? []).map((item) => [item.id, item]));
+  /** The name the player's text gives a required item: its unidentified face while its owner holds no visible
+   *  identified copy (Q45). `from` absent, the owner is unknown and the true name reads. */
+  const itemNameFor = (req: ItemRequirement, from?: GateScopeTree): string | undefined => {
+    const item = worldItem.get(req.id);
+    if (!item) return undefined;
+    const showUnidentified = input.reader === 'player' && from && itemHasUnidentifiedFace(item)
+      && !copiesOf(req, from).some((copy) => copy.visibility === 'visible' && !isUnidentified(copy));
+    return faceName(item, !!showUnidentified);
   };
   const statNames = new Map<string, string>();
   for (const [, set] of stats ? scopedEntries(stats) : []) {
@@ -297,7 +319,7 @@ function index(input: GateInput) {
     return null;
   };
   return {
-    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemHeld, persona: input.persona, personaName,
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, personaName,
     daypart: input.daypart ?? OPENING_DAYPART,
   };
 }
@@ -420,9 +442,15 @@ export function timeText(req: TimeRequirement): string {
   return DAYPARTS_OR.format([...DAYPARTS.slice(start), ...DAYPARTS.slice(0, start)].filter((d) => req.dayparts.includes(d)));
 }
 
+/** An item Condition's State and identity checks, in parentheses after the name: " (lit, unidentified)" (Q46). */
+export const itemChecks = (req: ItemRequirement): string => {
+  const parts = [req.state?.trim(), req.identity].filter(Boolean);
+  return parts.length ? ` (${parts.join(', ')})` : '';
+};
+
 /** "Paladin", "not any Class", "Ash: not Tamed" (Q11). `persona` is the played persona's name the text opens
  *  with, for the player's line to mark. */
-function requirementText(req: TraitRequirement, idx: Index): { text: string; unresolved: boolean; persona?: string } {
+function requirementText(req: TraitRequirement, idx: Index, from?: GateScopeTree): { text: string; unresolved: boolean; persona?: string } {
   if (req.kind === 'time') return { text: timeText(req), unresolved: !req.dayparts.length };
   const not = req.not ? 'not ' : '';
   if (req.kind === 'playingAs') {
@@ -433,8 +461,8 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
   }
   const named = req.kind === 'item'
     ? (idx.itemNames.has(req.id)
-      ? { text: `${req.status === 'owned' ? 'owning' : 'equipping'} ${idx.itemNames.get(req.id)!}`, unresolved: false }
-      : { text: `${req.status === 'owned' ? 'owning' : 'equipping'} ${req.name ?? 'a missing item'}`, unresolved: true })
+      ? { text: `${req.status === 'owned' ? 'owning' : 'equipping'} ${idx.itemNameFor(req, from)!}${itemChecks(req)}`, unresolved: false }
+      : { text: `${req.status === 'owned' ? 'owning' : 'equipping'} ${req.name ?? 'a missing item'}${itemChecks(req)}`, unresolved: true })
     : req.kind === 'trait'
     ? (idx.traitNames.has(req.id)
       ? { text: idx.traitNames.get(req.id)!, unresolved: false }
@@ -507,7 +535,7 @@ export function gateStates(input: GateInput): GateStates {
 function rowStatesOf(rows: readonly TraitRequirementRow[], host: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): RowState[] {
   return rows.map((row): RowState => {
     const conditions = row.all.map((req): ConditionState => {
-      const named = requirementText(req, idx);
+      const named = requirementText(req, idx, host.owner);
       const stat = req.kind === 'stat' ? idx.statOf(req, host.owner) : null;
       const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
       // An item held only as a hidden Item Copy stays out of the player's line (Q63, Q115).

@@ -249,7 +249,7 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
     const r = withOwner(req, (b) => comparableOwner(b, entity.id));
     const owner = r.kind !== 'playingAs' && r.owner ? { owner: r.owner } : {};
     const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit }
-      : r.kind === 'item' ? { status: r.status } : {};
+      : r.kind === 'item' ? { status: r.status, ...(r.state?.trim() && { state: r.state.trim().toLowerCase() }), ...(r.identity && { identity: r.identity }) } : {};
     if (pointsInside(r, entity, inside) || !r.name) return { kind: r.kind, id: r.id, ...owner, ...comparison, ...not } as TraitRequirement;
     return { kind: r.kind, id: '', name: r.name, ...owner, ...comparison, ...not } as TraitRequirement;
   };
