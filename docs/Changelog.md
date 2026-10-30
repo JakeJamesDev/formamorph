@@ -43,7 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Inventory tab can pick up the items lying at your location.** Pick Up works on Bound items too, and on a stack it asks how many.
     - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice. An item you carry stays one item when the story mentions it again, and an item someone hands you leaves their inventory.
     - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets. The description tells what the item is and how it looks, not where it lies.
-    - **Emberwatch now has ten items: cold iron gear, remedies, grave goods and the two halves of the broken crown.** You start with a draught and a lantern. Lay both crown halves on the king's bier to end the Wight.
+    - **Emberwatch now has 32 items: starting gear for each hero, cold iron, remedies, grave goods and the broken crown.** Search the keep and the barrow for hidden finds, some unidentified. Lay both crown halves on the king's bier to end the Wight.
     - **Requirement Rows can now require an item's State word and whether it is identified.** Both combine with Not. A lantern can grant Darkvision only while it is "lit".
   - **Formaquestion:**
     - **Formaquestion Settings gain a Read the World switch and two world rules prompts.** The switch is on by default. Custom presets can edit the **Editor World** and **Game World** prompts. Older preset files still import.

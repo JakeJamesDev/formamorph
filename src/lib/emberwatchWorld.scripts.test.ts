@@ -16,6 +16,7 @@ import { onCallRunner } from './tools/onCallRunner';
 import { clockReading } from './gameClock';
 import type { StatCodeTurnResult } from './statCodeTurn';
 import type { SandboxMemory } from './statCodeExecutor';
+import { applyInventoryOps } from './inventory';
 import type { Item, ItemCopy, ItemCopyWhere, LoreToggles } from '@/types';
 
 // The world as play reads it: each persona owns its copy of the Blueprint stats it links.
@@ -200,5 +201,39 @@ describe("Haldren's Crown scripts", () => {
 
   it('leaves the entry off when a half is picked up, even with both halves in hand', async () => {
     expect(await crownWrites(upper, carried, carried)).toEqual([]);
+  });
+});
+
+describe('the Flask of Lamp Oil script', () => {
+  const items = world.items ?? [];
+  const itemNamed = (name: string) => items.find((item) => item.name === name)!;
+  const flask = itemNamed('Flask of Lamp Oil');
+  const lantern = itemNamed('Hooded Lantern');
+  const you: ItemCopyWhere = { kind: 'you' };
+  const wall: ItemCopyWhere = { kind: 'location', id: locationNamed('The Boundary Wall').id };
+  const lanternAt = (id: string, where: ItemCopyWhere, uses: number): ItemCopy =>
+    ({ id, item: { kind: 'item', itemId: lantern.id }, where, quantity: 1, visibility: 'visible', state: { uses } });
+  const apply: ApplyInventory = (copies, ops) =>
+    applyInventoryOps(copies, ops, { world: { items, slots: world.slots }, source: 'script', newId: () => 'new' });
+
+  /** The lanterns' uses left after the flask, used up at `usedAt`, runs its When Used script. */
+  const afterPour = async (usedAt: ItemCopyWhere) => {
+    const copies = [lanternAt('mine', you, 0), lanternAt('spare', wall, 1)];
+    const was: ItemCopy = { id: 'flask', item: { kind: 'item', itemId: flask.id }, where: usedAt, quantity: 1, visibility: 'visible' };
+    const base = turnAt('The Boundary Wall', {});
+    const out = await runItemScripts(
+      { ...base, state: { ...base.state, items, itemCopies: copies } },
+      [{ timing: 'used', itemId: flask.id, copyId: 'flask', where: usedAt, quantity: 1, was }],
+      items, apply, (item) => item.name,
+    );
+    return Object.fromEntries(out.copies.map((copy) => [copy.id, copy.state?.uses ?? lantern.uses]));
+  };
+
+  it("refills the owner's own lanterns to three nights and leaves the rest alone", async () => {
+    expect(await afterPour(you)).toEqual({ mine: 3, spare: 1 });
+  });
+
+  it('refills nothing when the flask lies at a location', async () => {
+    expect(await afterPour(wall)).toEqual({ mine: 0, spare: 1 });
   });
 });
