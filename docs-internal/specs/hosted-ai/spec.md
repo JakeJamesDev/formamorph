@@ -109,13 +109,15 @@ A player without a pledge sees the preset locked, with a link to join on Patreon
 - The proxy owns its error handling. It never logs request bodies or upstream bodies, including on a parse error.
 
 **Admission**
-- Order for each request: auth (via `protect`) → client version → age gate → entitlement → global pause → per-account parallel limit → per-account rate limit → turn → budget → window.
+- Order for each request: client version → auth (via `protect`) → age gate → entitlement → global pause → per-account parallel limit → per-account rate limit → turn → budget → window.
 - **Turns.** The first call of a turn has no turn id. If admitted, the server issues one and returns it. The client sends it on every later call of that turn, background passes included. A turn id expires after a time limit from settings and admits at most a set number of calls. A call with a valid turn id skips the budget check, so a started turn always completes (story 32). The budget check runs only on a turn's first call.
 - **Reservation.** Every admitted call immediately records a usage row with status `open` and its worst-case cost: the estimated prompt plus the capped `max_tokens`. Budget and ceiling sums include open rows. So parallel requests can't all pass the same sum, and the overrun past a budget is at most one turn.
 - The per-account parallel limit is at least the largest number of passes a turn runs at once.
-- Refusals use the server's error shape (`success: false`, `code`, `error`). Codes: `client_outdated`, `age_gate_required`, `not_entitled`, `service_paused`, `rate_limited`, `turn_expired`, `budget_exhausted`, `window_exceeded`, `image_not_supported`. A refusal also carries the current hosted state where it helps the client: the window on `window_exceeded`, the reset time on `budget_exhausted`.
+- The client-version check is the existing per-route gate, with the proxy route in the staff-edited minimums map. It runs before auth and answers its existing 426 `CLIENT_UPDATE_REQUIRED`; the client maps that to `outdated`.
+- Refusals use the server's error shape (`success: false`, `code`, `error`). Codes and statuses: `invalid_request` 400 (bad JSON, no `messages`, missing or non-integer `max_tokens`), `image_not_supported` 400, `age_gate_required` 403, `not_entitled` 403, `service_paused` 503 (also when the server has no active model or upstream configuration), `rate_limited` 429, `turn_expired` 409, `budget_exhausted` 402, `window_exceeded` 413, `upstream_error` 502. Upstream error bodies never reach the client.
+- A `max_tokens` above the cap is clamped to the cap, not refused. A refusal also carries the current hosted state where it helps the client: the window on `window_exceeded`, the reset time on `budget_exhausted`.
 - The existing `protect` refusals stay as they are and are part of the client's map: 401 on an expired or invalid token, the privacy-policy refusal, the suspended refusal and the rename refusal.
-- A failure after the stream has started is sent as a final SSE error event, then the stream closes.
+- A failure after the stream has started is sent as a final SSE event, `event: error` with a refusal-shaped body (`upstream_error` for upstream failures and the idle abort), then the stream closes.
 
 **Metering**
 - One usage table: subject, account id (nullable), turn id, tier at the time, estimated prompt tokens, prompt tokens, cached tokens, output tokens, cost, cost source, start time, duration, status. No prompt or reply text, ever. Indexes on subject plus start time, and on start time. Rows older than a retention period from settings are deleted by the existing hourly job.
