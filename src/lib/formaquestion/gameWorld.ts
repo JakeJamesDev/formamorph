@@ -69,6 +69,7 @@ const lorePage = (entry: DictionaryEntry, resolve: GameWorldInput['resolve']): W
 /**
  * The entries that fire on the question's context, with the narration's activation: keywords over the question,
  * the Player View text and the memories, and over the recent turns as history; then meaning against the question.
+ * Keyword, constant and recursive fires come first, then semantic fires, each in declaration order.
  */
 export function firedLore(game: GameWorldInput, question: string, questionVector: Float32Array | null): DictionaryEntry[] {
   const lore = [...game.lore];
@@ -86,10 +87,21 @@ export function firedLore(game: GameWorldInput, question: string, questionVector
   if (questionVector && game.loreVectors) {
     applySemanticLore(report, selectSemanticLore(lore, questionVector, game.loreVectors));
   }
-  return lore.filter((entry) => entry.enabled !== false && report.byId.get(entry.id)?.activated);
+  const fired = lore.filter((entry) => entry.enabled !== false && report.byId.get(entry.id)?.activated);
+  const isSemantic = (entry: DictionaryEntry) => report.byId.get(entry.id)?.reason === 'semantic';
+  return [...fired.filter((entry) => !isSemantic(entry)), ...fired.filter(isSemantic)];
 }
 
-/** The game's World Index: the Player View rows and the fired entries, each its own item. */
+/**
+ * The game's World Index: the Player View rows, each its own item, searched and picked. The fired entries
+ * join by activation, so their pages resolve through `sectionsOf` and `sourceOf` but never rank.
+ */
 export function gameWorldIndex(game: GameWorldInput, fired: readonly DictionaryEntry[]): WorldIndex {
-  return worldIndexOfPages([...fired.map((entry) => lorePage(entry, game.resolve)), ...playerViewPages(game.view)]);
+  const rows = worldIndexOfPages(playerViewPages(game.view));
+  const lore = worldIndexOfPages(fired.map((entry) => lorePage(entry, game.resolve)));
+  return {
+    ...rows,
+    sourceOf: (section) => rows.sourceOf(section) ?? lore.sourceOf(section),
+    sectionsOf: (source) => (source.worldKind === 'dictionary' ? lore : rows).sectionsOf(source),
+  };
 }
