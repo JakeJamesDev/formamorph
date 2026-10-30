@@ -186,7 +186,7 @@ export function useGameEntityEditor(props: GameEntityEditorProps): { detail: Rea
 
   const worldNote = world && (
     <div className="mb-3 space-y-3">
-      <Hint>From the world. Its text stays as the world has it; its stats and where it stands are this game&apos;s.</Hint>
+      <Hint>A world entity. Its text stays as the world has it; its stats and where it stands are this game&apos;s.</Hint>
       <div className="space-y-2">
         <Label id={`game-entity-place-${id}`}>Location</Label>
         <Hint>Moves this entity in this game</Hint>

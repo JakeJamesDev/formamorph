@@ -330,7 +330,7 @@ describe('the Game Editor Overview', () => {
 describe('world entities in the Game Editor', () => {
   const REN = { id: 'ren', name: 'Ren', aiDescription: 'The ferryman.' };
 
-  it('lists them under From the World, and opens them from Here Now', async () => {
+  it('lists them under World Entities, and opens them from Here Now', async () => {
     const user = userEvent.setup();
     renderEditor({
       worldEntities: [REN],
@@ -338,8 +338,8 @@ describe('world entities in the Game Editor', () => {
       scene: { locationName: 'The Hut', here: [{ id: 'ren', name: 'Ren' }] },
     });
     await user.click(screen.getByRole('button', { name: 'Ren' }));
-    expect(list().textContent).toContain('From the World');
-    expect(list().textContent).toContain('In the Game');
+    expect(list().textContent).toContain('World Entities');
+    expect(list().textContent).toContain('Game Entities');
     expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Ren');
   });
 

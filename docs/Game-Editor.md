@@ -20,7 +20,7 @@ The **Overview** tab shows the game as it stands: the world, the turn, the time 
 <!-- keywords: active, list every character, invented characters, edit npc, fix pronouns, move a character, rename -->
 <!-- route: gameEditor.entities -->
 
-The **Entities** tab lists you first, then the entities **In the Game**, which the story invented, wherever they are, and the entities **From the World**. Select one to edit it.
+The **Entities** tab lists you first, then the **Game Entities**, which the story invented, wherever they are, and the **World Entities**. Select one to edit it.
 
 Under **Entities** on the left, **Active** shows you and the entities the model can be told about this turn: here, in sub-locations, in reachable places, and known here. **Inactive** shows the rest. A mark beside a name says they are in the scene, as the game's side panel lists them.
 

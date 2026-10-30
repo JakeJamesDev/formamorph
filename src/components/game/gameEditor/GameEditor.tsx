@@ -324,7 +324,7 @@ export function GameEditor(props: GameEditorProps) {
           label={<>{playerName}<YouMark onFill={detailId === GAME_EDITOR_PLAYER} /></>}
         />
       )}
-      {(listedEntities.length > 0 || (!term && !filtering)) && <SectionTitle className="px-2 pt-3">In the Game</SectionTitle>}
+      {(listedEntities.length > 0 || (!term && !filtering)) && <SectionTitle className="px-2 pt-3">Game Entities</SectionTitle>}
       {listedEntities.map((d) => (
         <EditorRow
           key={d.entity.id}
@@ -340,7 +340,7 @@ export function GameEditor(props: GameEditorProps) {
       {shownDiscovered.length === 0 && !term && !filtering && (
         <Hint className="px-2 py-3">The story hasn&apos;t invented any entities yet.</Hint>
       )}
-      {listedWorld.length > 0 && <SectionTitle className="px-2 pt-3">From the World</SectionTitle>}
+      {listedWorld.length > 0 && <SectionTitle className="px-2 pt-3">World Entities</SectionTitle>}
       {listedWorld.map((e) => (
         <EditorRow
           key={e.id}
@@ -442,7 +442,7 @@ export function GameEditor(props: GameEditorProps) {
                 onSelect={() => { if (openable) openEntity(e.id); }}
                 selectionLabel={e.name}
                 label={e.name}
-                meta={worldIds.has(e.id) ? 'From the world' : undefined}
+                meta={worldIds.has(e.id) ? 'World entity' : undefined}
               />
             );
           })}
@@ -464,7 +464,7 @@ export function GameEditor(props: GameEditorProps) {
                 onSelect={() => { if (openable) openEntity(e.id); }}
                 selectionLabel={e.name}
                 label={e.name}
-                meta={worldIds.has(e.id) ? 'From the world' : undefined}
+                meta={worldIds.has(e.id) ? 'World entity' : undefined}
               />
             );
           })}
