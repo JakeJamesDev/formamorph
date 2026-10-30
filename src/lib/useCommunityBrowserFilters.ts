@@ -433,7 +433,7 @@ export function useCommunityBrowserFilters(
 
   // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
   // `kind` included: switching tabs shortens the list, so a page-5 view would otherwise land on nothing.
-  // `review` included: turning Show Pending on from a later page would leave the pinned group out of sight.
+  // `review` included: turning Pin Pending on from a later page would leave the pinned group out of sight.
   useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, modelFilter, statusFilter, sortField, sortOrder, kind, review]);
   useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
 
