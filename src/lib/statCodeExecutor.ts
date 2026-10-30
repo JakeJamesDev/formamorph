@@ -1130,6 +1130,8 @@ export interface SandboxItemEvent {
   quantity: number;
   /** The Item Copy as it stood before the event, which `self.event.copy` reads once the copy is gone. */
   was?: SandboxItemCopy;
+  /** The Item Copy a use acted on, which `self.event.target` reads. */
+  targetCopyId?: string;
 }
 
 /** The fields on an Item Copy entry; none takes a write. */
@@ -1252,9 +1254,11 @@ const itemsPrelude = (
       `((self, entry, event, define, gone) => {`,
       `  if (entry) for (const key of Reflect.ownKeys(entry)) define(self, key, Object.getOwnPropertyDescriptor(entry, key));`,
       `  const copy = (entry && entry.copies.find((c) => c.id === event.copyId)) || gone;`,
-      `  define(self, 'event', { enumerable: true, value: Object.freeze({ timing: event.timing, quantity: event.quantity, copy }) });`,
+      // A target that is gone reads as null.
+      `  const target = event.targetCopyId ? Object.values(items).flatMap((e) => e.copies).find((c) => c.id === event.targetCopyId) || null : null;`,
+      `  define(self, 'event', { enumerable: true, value: Object.freeze({ timing: event.timing, quantity: event.quantity, copy, target }) });`,
       `  Object.freeze(self);`,
-      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ timing: event?.timing, quantity: event?.quantity, copyId: event?.copyId })}, Object.defineProperty, ${GONE_COPY});`,
+      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ timing: event?.timing, quantity: event?.quantity, copyId: event?.copyId, targetCopyId: event?.targetCopyId })}, Object.defineProperty, ${GONE_COPY});`,
     ] : []),
   ].join('\n');
 };

@@ -534,6 +534,7 @@ export const ITEM_EVENT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'timing', detail: 'string', info: 'The timing that ran: gained, lost, equipped, unequipped or used' },
   { name: 'quantity', detail: 'number', info: 'How many the event moved' },
   { name: 'copy', detail: 'object', info: 'The Item Copy the event happened to, with the fields of an items copy. Once it’s gone, it reads as it stood before the event.' },
+  { name: 'target', detail: 'object | null', info: 'The Item Copy a use acted on, such as the lantern oil was poured into. It’s null when the use named none or that copy is gone.' },
 ]);
 
 /** An item script's surface: a world script's, with `self` as the item and `owner` as the Item Copy's owner (Q67). */

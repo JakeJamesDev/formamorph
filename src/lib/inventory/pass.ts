@@ -47,6 +47,7 @@ export const inventoryPassSchema = (): ResponseSchema => ({
             to: { type: 'string' },
             state: { type: 'string' },
             after: { type: 'string', enum: ['', ...PASS_AFTER_WORDS] },
+            target: { type: 'string' },
           },
         },
       },
@@ -57,7 +58,7 @@ export const inventoryPassSchema = (): ResponseSchema => ({
 /** The text pass's reply format, which rides after the user message out of the author's reach. */
 export const INVENTORY_TEXT_FORMAT = `
 
-Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state and the after, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
+Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state, the after and the target, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
 
 /** The schema request's reply format: what the text format's NONE is for the JSON reply. */
 export const INVENTORY_JSON_FORMAT = `
@@ -87,9 +88,11 @@ const passOp = (raw: Record<string, unknown>): InventoryPassOp | null => {
   const item = text(raw.item);
   if (!isKind(op) || !item || NO_ITEM.test(item)) return null;
   const after = afterOf(raw.after);
+  const target = text(raw.target);
   return {
     op, item, quantity: quantityOf(raw.quantity), owner: text(raw.owner), to: text(raw.to),
     ...(raw.state !== undefined && { state: text(raw.state) }), ...(after && { after }),
+    ...(target && !NO_ITEM.test(target) && { target }),
   };
 };
 
@@ -107,11 +110,11 @@ const jsonOps = (raw: string): InventoryPassOp[] | null => {
   }
 };
 
-/** The text pass's lines: `op | item | quantity | owner | to | state | after`. A line that names no operation is skipped. */
+/** The text pass's lines: `op | item | quantity | owner | to | state | after | target`. A line that names no operation is skipped. */
 export function parseInventoryLines(raw: string): InventoryPassOp[] {
   return raw.split('\n').flatMap((line) => {
-    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
-    const parsed = passOp({ op, item, quantity, owner, to, state, after });
+    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = '', target = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
+    const parsed = passOp({ op, item, quantity, owner, to, state, after, target });
     return parsed ? [parsed] : [];
   });
 }
@@ -232,11 +235,26 @@ export function applyInventoryPass(
 
   const known = (key: string) => authored.some((a) => a.key === key || isFace(a, key)) || !!runtimeNamed(key);
 
+  /** A name copied with the Items Here summary or marks after it reads as the name before the colon or " (". */
+  const listedName = (name: string): string => {
+    const cut = [name.indexOf(':'), name.indexOf(' (')].filter((at) => at > 0)
+      .find((at) => !known(itemNameKey(name)) && known(itemNameKey(name.slice(0, at))));
+    return cut !== undefined ? name.slice(0, cut) : name;
+  };
+
+  /** The visible copy a use acts on: one `where` holds, else one lying here; never the used copy itself. */
+  const targetOf = (name: string, where: ItemCopyWhere, usedId: string): ItemCopy | null => {
+    const key = itemNameKey(listedName(name.replace(/^the\s+/i, '')));
+    const places = [where, ...(scene.location ? [{ kind: 'location' as const, id: scene.location.id }] : [])];
+    for (const place of places) {
+      const [hit] = candidates(key, place, 'transfer').filter((c) => c.id !== usedId && c.visibility === 'visible');
+      if (hit) return hit;
+    }
+    return null;
+  };
+
   for (const named of passOps) {
-    // A name copied with the Items Here summary or marks after it reads as the name before the colon or " (".
-    const cut = [named.item.indexOf(':'), named.item.indexOf(' (')].filter((at) => at > 0)
-      .find((at) => !known(itemNameKey(named.item)) && known(itemNameKey(named.item.slice(0, at))));
-    let op = cut !== undefined ? { ...named, item: named.item.slice(0, cut) } : named;
+    let op = { ...named, item: listedName(named.item) };
     const key = itemNameKey(op.item);
     // Taking from this place an item it never listed is finding a new one.
     const from = op.op === 'transfer' ? ownerOf(op.owner) : null;
@@ -334,8 +352,13 @@ export function applyInventoryPass(
     for (let i = 0; i < op.quantity; i += 1) {
       const [copy] = candidates(key, where, op.op, op.state);
       if (!copy) break;
+      // A use's `to` names no receiver, so an item named there is the target the reply misplaced.
+      const aimed = op.op !== 'use' ? '' : op.target || (op.to && !ownerOf(op.to) ? op.to : '');
+      // The item named as its own target is a plain use.
+      const target = aimed && itemNameKey(listedName(aimed.replace(/^the\s+/i, ''))) !== key ? targetOf(aimed, where, copy.id) : undefined;
+      if (target === null) skip(`target "${aimed}" of ${label}: none at "${op.owner}" or here`);
       run([op.op === 'change' ? { kind: 'change', copyId: copy.id, state: op.state ?? '' }
-        : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }) }
+        : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }), ...(target && { targetCopyId: target.id }) }
         : { kind: op.op, copyId: copy.id }]);
     }
   }

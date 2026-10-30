@@ -303,6 +303,7 @@ An item's scripts use five timings of their own. Each runs once for each event o
 | **When Used** | An Item Copy is used. The last use runs this timing only, not When Lost. A **Becomes** result runs its own When Gained |
 
 - `self.event` holds `timing`, `quantity`, the number the event moved, and `copy`, the Item Copy's entry. Once the Item Copy is gone, `copy` reads it as it stood before the event.
+- On **When Used**, `self.event.target` is the entry of the Item Copy the item was used on, such as the lantern oil was poured into. It's `null` when the story named no other item, or that copy is gone.
 - Revealing an Item Copy, setting its uses and setting its State run no timing. Starting items run none either.
 - Their writes apply when each script ends, not at the end of the turn. A script's inventory write runs the item timings it causes, up to 3 levels deep. Past that, the write still applies, no timing runs, and the turn log says so.
 

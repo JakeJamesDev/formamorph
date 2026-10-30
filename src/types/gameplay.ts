@@ -244,7 +244,7 @@ export type InventoryUseAfter = 'kept' | 'used up';
 
 /** One operation as the Inventory pass names it. `owner` holds the item now; `to` receives it (gain, transfer).
  *  `state` is the new State (change), absent when the reply named none; `after` is what a use leaves, absent when
- *  the reply named neither word. */
+ *  the reply named neither word. `target` is the other item a use acts on, absent when it named none. */
 export interface InventoryPassOp {
   op: InventoryPassOpKind;
   item: string;
@@ -253,6 +253,7 @@ export interface InventoryPassOp {
   to: string;
   state?: string;
   after?: InventoryUseAfter;
+  target?: string;
 }
 
 /** An entity the Inventory pass can name as an owner. */

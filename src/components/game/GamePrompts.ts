@@ -562,7 +562,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.
 - equip: an owner wields or wears an item they carry.
 - unequip: an owner puts away or takes off an item they had equipped.
-- use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, or spends a charge of it.
+- use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, spends a charge of it, or pours, applies or loads it into another item. The item is the one spent; the other item is the target.
 - change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.
 - reveal: an item marked hidden comes into view because someone searches where it lies, or an item's true nature becomes known. A found item stays where it lies until someone takes it.
 
@@ -574,6 +574,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
 - state: for change, the item's new state in a word or two. Empty for every other operation.
 - after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.
+- target: for use, the other item it is used on, by its name as Items Here shows it. Empty when it acts on no other item, and for every other operation.
 
 Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.
 
