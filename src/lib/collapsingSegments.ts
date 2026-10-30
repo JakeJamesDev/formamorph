@@ -40,9 +40,12 @@ export function segmentFold(full: readonly number[], icon: readonly number[], ro
  * @param icon - Each segment's width as an icon alone
  * @param active - The index of the selected segment
  * @param inset - The group's padding on each side
+ * @param fill - A width to stretch the group to, its spare room shared evenly between the segments
  */
-export function segmentLayout(full: readonly number[], icon: readonly number[], active: number, fold: SegmentFold, inset: number): SegmentLayout {
-  const widths = full.map((width, i) => (fold === 'full' || (fold === 'active' && i === active) ? width : icon[i] ?? width));
+export function segmentLayout(full: readonly number[], icon: readonly number[], active: number, fold: SegmentFold, inset: number, fill?: number): SegmentLayout {
+  const own = full.map((width, i) => (fold === 'full' || (fold === 'active' && i === active) ? width : icon[i] ?? width));
+  const spare = fill === undefined || own.length === 0 ? 0 : Math.max(0, fill - sum(own) - 2 * inset) / own.length;
+  const widths = own.map((width) => width + spare);
   const lefts: number[] = [];
   let x = inset;
   for (const width of widths) {

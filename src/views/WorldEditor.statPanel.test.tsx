@@ -59,7 +59,8 @@ const FIELD_LABELS =
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
 const panelLabels = () =>
   screen.getAllByText(FIELD_LABELS)
-    .filter((el) => !el.closest('[role="tablist"]'))
+    // The strip, with its hidden measuring copies, names tabs, not fields.
+    .filter((el) => !el.closest('[role="tablist"], [data-collapsing-root]'))
     .map((el) => el.textContent);
 
 /** The checkbox captions the panel shows, which are spans rather than labeled fields. */
