@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
     - **`inventory-regain-probe.cli.ts` scores the Inventory pass on items the player already carries.** It replays five real duplicate turns, checks retouch cases and two take-another guards, and scores runtime item descriptions for place words.
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
+    - **`inventory-leak-probe.cli.ts` scores how often the narrator names an unidentified item's true name.** It runs five scenes against a control that holds only the unidentified face, and reports name and nature rates per arm.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 #### 🔧 Fixed
