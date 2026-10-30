@@ -43,7 +43,7 @@ import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from '.
 import { worldIndexOf, type WorldIndex } from './worldIndex';
 import type { HelpFocus } from './helpFocus';
 import type { CodeTestOwner } from './helpCodeTestRun';
-import type { OpenWorld } from './helpWorld';
+import type { OpenWorld, WorldLean } from './helpWorld';
 import { mergeRanks } from './rankMerge';
 import { focusWords, openFocus, surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
 import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage, type WorldBlockSection } from './helpPrompt';
@@ -334,8 +334,8 @@ export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'his
   hint?: SurfaceHint | null;
   /** Gets each source's ranking of each query, and the pick request, for the trace. */
   record?: HelpSearchRecord;
-  /** The open world's index: the second pool, ranked by the same sources. */
-  world?: WorldIndex;
+  /** The open world's index, the second pool ranked by the same sources, and the lean it was read in. */
+  world?: { index: WorldIndex; lean: WorldLean };
   /** Gets each source's ranking of the world pool. */
   worldRecord?: HelpSearchRecord;
 }
@@ -390,14 +390,14 @@ export async function helpSearches({ question, history = [], settings, snapshot,
   const queries = helpQueries(question, previous);
   const [guidePicks, worldPicks, semantic, worldSemantic] = await Promise.all([
     on.aiPicks ? requestPicks(index, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe }).catch(() => []) : [],
-    on.aiPicks && world ? requestWorldPicks(world.pickList(), pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe: observeWorld }).catch(() => []) : [],
+    on.aiPicks && world ? requestWorldPicks(world.index.pickList(), world.lean, pickAsk, pickSnapshot, sampling, { signal, fetchImpl, observe: observeWorld }).catch(() => []) : [],
     on.semantic ? Promise.race([semanticRanking(index, queries, { embedder, floor: semanticFloor }), stopped]) : null,
-    on.semantic && world ? Promise.race([worldSemanticRanking(world, queries, { embedder, floor: semanticFloor }), stopped]) : null,
+    on.semantic && world ? Promise.race([worldSemanticRanking(world.index, queries, { embedder, floor: semanticFloor }), stopped]) : null,
   ]);
   const picks = screenRule ? screenPicks(question, guidePicks, hint?.section) : guidePicks;
   return {
     guide: poolSearch(index, on, picks, semantic, record),
-    ...(world && { world: poolSearch(world.docs, on, worldPicks, worldSemantic, worldRecord) }),
+    ...(world && { world: poolSearch(world.index.docs, on, worldPicks, worldSemantic, worldRecord) }),
   };
 }
 
@@ -561,7 +561,7 @@ export async function* askHelp({
   const game = read?.game;
   const worldRecord = worldIndex && record ? emptySearchRecord(record.on) : undefined;
   const searches = record
-    ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record, world: worldIndex, worldRecord })
+    ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record, world: worldIndex && { index: worldIndex, lean: game ? 'game' : 'editor' }, worldRecord })
     : { guide: index };
   const search = searches.guide;
   if (signal?.aborted) {
