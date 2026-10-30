@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderInGame, renderRightPanel, type Gameplay, type TurnFixture } from '@/test/gamePanels';
+import { usePresence } from '@/lib/usePresence';
+import type { Presence } from '@/lib/presence';
 import { useInventoryPanel } from './useInventoryPanel';
 import type { InventoryTabProps } from './InventoryTab';
 import type { Entity, GameLocation, Item, ItemCopy, Slot } from '@/types';
@@ -128,6 +130,34 @@ describe('RightPanel — Inventory tab', () => {
       await waitFor(() => expect(h.gameplay().itemCopies).toHaveLength(1));
       ops('ilsa');
       expect(h.gameplay().itemCopies.map((c) => c.where)).toEqual([{ kind: 'entity', id: 'ilsa' }]);
+    });
+  });
+
+  describe('an invented character', () => {
+    const invented = { id: 'rune', name: 'Rune', description: 'A drifter.' } as Entity;
+    const stageInvented = () => ({
+      ...stage([copy('c', 'coin')], { inScene: ['Rune'] }),
+      seed: (g: Gameplay) => {
+        g.setCurrentLocation(yard);
+        g.setItemCopies([copy('c', 'coin')]);
+        g.setActiveTab('inventory');
+        g.setDiscoveredEntities([{ entity: invented, locationId: 'yard', sourceTurnId: 't1' }]);
+      },
+    });
+
+    it('stands at its recorded place, so it is in Look Around and In Scene', async () => {
+      let presence!: Presence;
+      const Probe = () => { presence = usePresence(); return null; };
+      renderInGame(<Probe />, stageInvented());
+      await waitFor(() => expect(presence.lookAround.map((r) => r.entity.id)).toContain('rune'));
+      expect(presence.inScene.map((r) => r.entity.id)).toEqual(['rune']);
+    });
+
+    it('is offered in Give', async () => {
+      renderRightPanel({}, stageInvented());
+      await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
+      const list = await screen.findByRole('list', { name: 'Give to' });
+      expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Rune']);
     });
   });
 
