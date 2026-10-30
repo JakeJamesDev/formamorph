@@ -218,7 +218,7 @@ describe('staff review on the contest tab', () => {
 
     await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
     expect(screen.queryByRole('region', { name: 'Awaiting Review' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Show Pending' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Moderation/ })).not.toBeInTheDocument();
   });
 });
 

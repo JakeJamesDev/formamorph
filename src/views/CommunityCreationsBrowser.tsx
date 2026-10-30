@@ -54,7 +54,8 @@ import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters, type CommunityFilterPreferences, type ReviewPinning } from "@/lib/useCommunityBrowserFilters";
-import { useDevReviewViewer } from "@/lib/dev/devReviewViewer";
+import { useDevReviewViewer, useDevModerationOpen } from "@/lib/dev/devReviewViewer";
+import { ModerationMenu, type ModerationOption } from "@/components/community/ModerationMenu";
 import { PinnedReviewGroup } from "@/components/community/PinnedReviewGroup";
 import { useReviewDecision } from "@/components/community/useReviewDecision";
 import { decidedRow, listingIdOf, reviewSubjectOf } from "@/lib/reviewRows";
@@ -190,28 +191,6 @@ const PageHeading = ({ className, children }: { className?: string; children: Re
   <h1 className={className}>{children}</h1>
 );
 
-/** A staff view toggle in the filter row: outline when off, filled when on. */
-const StaffToggle = ({ tip, icon: Icon, pressed, onToggle, children }: {
-  tip: string;
-  icon: LucideIcon;
-  pressed: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) => (
-  <Tip tip={tip} labelsChild={false}>
-    <Button
-      variant={pressed ? 'default' : 'outline'}
-      size="sm"
-      className="shrink-0 gap-1"
-      aria-pressed={pressed}
-      onClick={onToggle}
-    >
-      <Icon className="h-4 w-4" />
-      {children}
-    </Button>
-  </Tip>
-);
-
 interface CommunityCreationsBrowserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -278,6 +257,7 @@ const CommunityCreationsBrowser = ({
   events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   const currentUser = useDevReviewViewer(signedInUser);
+  const devModerationOpen = useDevModerationOpen();
   const requestKey = useRequestKey(landingKey);
   // Stated here rather than in an effect, because the catalog request below goes out in an effect of
   // its own: a shell that sends its guests to sign-in is not an Install and must name none.
@@ -591,29 +571,37 @@ const CommunityCreationsBrowser = ({
   /** Whether anything is narrowing the grid — what tells an empty result from an empty catalog. */
   const anyFilterApplied = Boolean(searchQuery) || activeFilterCount > 0;
 
-  // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
-  // empty list is a control that teaches nothing.
-  const quarantineControl = capabilities.moderation && viewerIsStaff && quarantinedCount > 0 && browseTab !== 'contest' ? (
-    <StaffToggle
-      tip="Show only what is hidden pending changes"
-      icon={ShieldAlert}
-      pressed={quarantinedOnly}
-      onToggle={() => setQuarantinedOnly((prev) => !prev)}
-    >
-      Quarantined ({quarantinedCount})
-    </StaffToggle>
-  ) : null;
-
-  const showPendingControl = reviewsHere ? (
-    <StaffToggle
-      tip="Show listings that wait for review"
-      icon={Eye}
-      pressed={showPending}
-      onToggle={() => setShowPending((prev) => !prev)}
-    >
-      Show Pending
-    </StaffToggle>
-  ) : null;
+  // One popover for the staff view options. A zero count disables an option (unless it is on, so it can be
+  // switched off); a tab it does not suit hides it.
+  const staffHere = capabilities.moderation && viewerIsStaff && browseTab !== 'contest';
+  const moderationOptions: ModerationOption[] = [
+    {
+      key: 'quarantined',
+      label: 'Quarantined',
+      icon: ShieldAlert,
+      count: quarantinedCount,
+      checked: quarantinedOnly,
+      defaultChecked: false,
+      applies: staffHere,
+      disabled: quarantinedCount === 0 && !quarantinedOnly,
+      help: 'Show only what is hidden pending changes',
+      onChange: setQuarantinedOnly,
+    },
+    {
+      key: 'showPending',
+      label: 'Show Pending',
+      icon: Eye,
+      checked: showPending,
+      defaultChecked: true,
+      applies: staffHere,
+      disabled: quarantinedOnly,
+      help: 'Show listings that wait for review',
+      onChange: setShowPending,
+    },
+  ];
+  const moderationControl = (
+    <ModerationMenu options={moderationOptions} defaultOpen={devModerationOpen} />
+  );
 
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
   const isMobile = useIsMobile();
@@ -1385,9 +1373,7 @@ const CommunityCreationsBrowser = ({
                     </CollapsibleTrigger>
                     </TutorialPopover>
                   </div>
-                  {(showPendingControl || quarantineControl) && (
-                    <div className="flex flex-wrap items-center gap-2">{showPendingControl}{quarantineControl}</div>
-                  )}
+                  {staffHere && <div className="flex flex-wrap items-center gap-2">{moderationControl}</div>}
                 </>
               ) : (
                 // The title row fills its header, so the search box grows into the free space. Refresh ends
@@ -1399,8 +1385,7 @@ const CommunityCreationsBrowser = ({
                       <Heading className="ml-1 whitespace-nowrap text-title font-semibold">Community Creations</Heading>
                     </div>
                     {searchControl}
-                    {showPendingControl}
-                    {quarantineControl}
+                    {moderationControl}
                     <div className="flex items-center gap-1">
                       {sortControl}
                       {refreshControl}
