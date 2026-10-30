@@ -109,8 +109,8 @@ export type InventoryOp =
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
   | { kind: 'equip'; copyId: string }
   | { kind: 'unequip'; copyId: string }
-  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). */
-  | { kind: 'use'; copyId: string; after?: InventoryUseAfter }
+  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). `targetCopyId` is the copy it is used on. */
+  | { kind: 'use'; copyId: string; after?: InventoryUseAfter; targetCopyId?: string }
   | { kind: 'reveal'; copyId: string; quantity?: number }
   | { kind: 'setUses'; copyId: string; uses: number }
   /** Sets one copy's State; a blank `state` clears it. */
@@ -126,6 +126,8 @@ export interface ItemScriptEvent {
   quantity: number;
   /** The Item Copy as it stood before a When Lost or When Used event, which can leave it gone. */
   was?: ItemCopy;
+  /** The Item Copy a use acted on, as it stood before the use. */
+  target?: ItemCopy;
 }
 
 /** The authored slice the operations read. An absent slice reads as empty. */
@@ -206,8 +208,8 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
   const itemUses: ItemUse[] = [];
   const events: ItemScriptEvent[] = [];
   /** Records an event of `ref`'s item; none for a runtime item. */
-  const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy) => {
-    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }) });
+  const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy, target?: ItemCopy) => {
+    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }), ...(target && { target }) });
   };
   const itemOf = (copy: ItemCopy): Item | undefined => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
   /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place, uses left (Q27), State and identity (Q18). */
@@ -324,8 +326,10 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         if (item && !itemUsable(item)) return `use: Item Copy ${copy.id} can't be used`;
         const left = usesLeft(copy, item);
         if (left !== undefined && !(left > 0)) return `use: Item Copy ${copy.id} has no uses left`;
+        const target = op.targetCopyId !== undefined ? list.find((c) => c.id === op.targetCopyId && c !== copy) : undefined;
+        if (op.targetCopyId !== undefined && !target) diagnostics.push(`Inventory (${call.source}) used Item Copy ${copy.id} on nothing: no Item Copy ${op.targetCopyId}`);
         if (item) itemUses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }) });
-        fire('used', copy.item, copy.id, copy.where, 1, copy);
+        fire('used', copy.item, copy.id, copy.where, 1, copy, target);
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : op.after === 'kept' ? undefined : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });
         else if (empty?.kind === 'stays') list = withOneCopy(copy, { uses: 0 });

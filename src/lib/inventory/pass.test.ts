@@ -286,6 +286,56 @@ describe('the pass\'s use, after and change (Q6, Q7, Q10)', () => {
       .toEqual([copy('t', 'tonic', you, { quantity: 1 })]);
   });
 
+  describe('a use on a target', () => {
+    const oil = item('oil', 'Lamp Oil', { uses: 1 });
+    const lamp = item('lamp', 'Lantern', { uses: 3, stackable: false });
+    const world = [oil, lamp];
+    const use = (copies: ItemCopy[], target: string) => applyInventoryPass(copies, [op('use', 'Lamp Oil', { owner: 'you', target })],
+      scene({ items: world }), { world: { items: world }, newId: ids() });
+    const used = (result: ReturnType<typeof use>) => result.events.filter((e) => e.timing === 'used').map((e) => e.target?.id);
+
+    it('names the copy the owner holds on the used event', () => {
+      const result = use([copy('o', 'oil', you), copy('l', 'lamp', you)], 'lantern');
+      expect(result.diagnostics).toEqual([]);
+      expect(used(result)).toEqual(['l']);
+    });
+
+    it('falls back to a copy lying here, never a hidden one', () => {
+      expect(used(use([copy('o', 'oil', you), copy('l', 'lamp', cellar)], 'Lantern'))).toEqual(['l']);
+      expect(used(use([copy('o', 'oil', you), copy('l', 'lamp', cellar, { visibility: 'hidden' })], 'Lantern'))).toEqual([undefined]);
+    });
+
+    it('still uses the item when the target is not here, with a diagnostic', () => {
+      const result = use([copy('o', 'oil', you), copy('l', 'lamp', mara)], 'Lantern');
+      expect(used(result)).toEqual([undefined]);
+      expect(result.copies.map((c) => c.id)).toEqual(['l']);
+      expect(result.diagnostics).toEqual(['Inventory (pass) skipped target "Lantern" of use "Lamp Oil": none at "you" or here']);
+    });
+
+    it('reads a target copied with its Items Here marks, or written in to, as the item named', () => {
+      const oilOn = (over: Partial<InventoryPassOp>) => applyInventoryPass([copy('o', 'oil', you), copy('l', 'lamp', you)],
+        [op('use', 'Lamp Oil', { owner: 'you', ...over })], scene({ items: world }), { world: { items: world }, newId: ids() });
+      expect(used(oilOn({ target: 'Lantern (3 of 3 uses left)' }))).toEqual(['l']);
+      expect(used(oilOn({ to: 'the Lantern' }))).toEqual(['l']);
+      expect(used(oilOn({ to: 'you' }))).toEqual([undefined]);
+    });
+
+    it('reads an item named as its own target as a plain use, with no diagnostic', () => {
+      const result = applyInventoryPass([copy('l', 'lamp', you)], [op('use', 'Lantern', { owner: 'you', target: 'Lantern' })],
+        scene({ items: world }), { world: { items: world }, newId: ids() });
+      expect(result.diagnostics).toEqual([]);
+      expect(used(result)).toEqual([undefined]);
+    });
+
+    it('reads the target from the schema reply and a text line', () => {
+      const raw = JSON.stringify({ operations: [{ op: 'use', item: 'Lamp Oil', quantity: 1, owner: 'you', to: '', after: 'used up', target: 'Lantern' }] });
+      expect(followsResponseSchema(raw, inventoryPassSchema().schema)).toBe(true);
+      expect(parseInventoryReply(raw)).toEqual([op('use', 'Lamp Oil', { owner: 'you', after: 'used up', target: 'Lantern' })]);
+      expect(parseInventoryLines('use | Lamp Oil | 1 | you |  |  | used up | Lantern\nuse | Tonic | 1 | you |  |  |  | none'))
+        .toEqual([op('use', 'Lamp Oil', { owner: 'you', state: '', after: 'used up', target: 'Lantern' }), op('use', 'Tonic', { owner: 'you', state: '' })]);
+    });
+  });
+
   it('sets the named copy\'s State, splitting one off a stack', () => {
     const result = pass([copy('c', 'cloak', you, { quantity: 2 })], [op('change', 'oilskin cloak', { owner: 'you', state: 'soaked' })]);
     expect(result.diagnostics).toEqual([]);

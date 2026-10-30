@@ -818,7 +818,10 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const result = await snapshot.run({
       home: unit.home, timing, code: script.code, ...switchInput, ...(args && { args }), ...(prompts && { prompts }),
       ...(itemEvent && {
-        itemEvent: { copyId: itemEvent.event.copyId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }) },
+        itemEvent: {
+          copyId: itemEvent.event.copyId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }),
+          ...(itemEvent.event.target && { targetCopyId: itemEvent.event.target.id }),
+        },
       }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(choices && { choices }),

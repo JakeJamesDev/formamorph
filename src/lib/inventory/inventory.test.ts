@@ -339,3 +339,22 @@ describe('presentEntityIds', () => {
     expect(presentEntityIds(cast, {}, null)).toEqual([]);
   });
 });
+
+describe('a use on a target', () => {
+  const call: InventoryCall = { world: { items: [potion, wand] }, source: 'script', newId: ids() };
+  const copy = (id: string, itemId: string): ItemCopy => ({ id, item: { kind: 'item', itemId }, where: you, quantity: 1, visibility: 'visible' });
+
+  it('carries the target copy, as it stood, on the used event', () => {
+    const result = applyInventoryOps([copy('w', 'wand'), copy('p', 'potion')], [{ kind: 'use', copyId: 'w', targetCopyId: 'p' }], call);
+    expect(result.events.map((e) => [e.timing, e.target])).toEqual([['used', copy('p', 'potion')]]);
+  });
+
+  it('uses the item on nothing when the target is missing or is the used copy itself', () => {
+    for (const targetCopyId of ['gone', 'w']) {
+      const result = applyInventoryOps([copy('w', 'wand')], [{ kind: 'use', copyId: 'w', targetCopyId }], call);
+      expect(result.events.map((e) => e.target)).toEqual([undefined]);
+      expect(result.copies.map((c) => c.state?.uses)).toEqual([2]);
+      expect(result.diagnostics).toEqual([`Inventory (script) used Item Copy w on nothing: no Item Copy ${targetCopyId}`]);
+    }
+  });
+});

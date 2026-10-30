@@ -89,8 +89,8 @@ export interface ScriptRunUnit {
   readOnly?: boolean;
   /** The `turn.choices` the earlier scripts of the batch left, which this run reads in place of the state's (Q14). */
   choices?: readonly string[];
-  /** An item script's event: its Item Copy and how many it moved. */
-  itemEvent?: { copyId: string; quantity: number; was?: ItemCopy };
+  /** An item script's event: its Item Copy, how many it moved, and the Item Copy a use acted on. */
+  itemEvent?: { copyId: string; quantity: number; was?: ItemCopy; targetCopyId?: string };
 }
 
 /** Each scope's stat turn inputs: the global run's and each Owner's, by id. The caller leaves them empty at a
@@ -403,6 +403,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
         itemEvent: {
           itemId: unit.home.item.id, timing: unit.timing, copyId: unit.itemEvent.copyId, quantity: unit.itemEvent.quantity,
           ...(unit.itemEvent.was && { was: read.itemCopy(unit.itemEvent.was) }),
+          ...(unit.itemEvent.targetCopyId && { targetCopyId: unit.itemEvent.targetCopyId }),
         },
       }),
     };
