@@ -11,7 +11,7 @@ Model rationale: threads a new endpoint kind through SettingsContext, per-prompt
 
 - [ ] A virtual built-in preset appears next to Demo AI, never stored, with no Extra Parameters; its endpoint, model and window can't be edited.
 - [ ] Its window comes only from the hosted state, active or routed, never from the context-detect cache; the client budgets prompts to the window minus the server's margin; `window_exceeded` refetches the hosted state.
-- [ ] Its capabilities come only from the hosted state; no capability or context probe is sent for it; capability is cached by served model id.
+- [ ] Its capabilities come only from the hosted state; no capability or context probe is sent for it; capability is cached by the hosted state's `model.id` (the approved entry's id, per ticket 06).
 - [ ] The credential is read from the auth service at send time; a sign-out mid-turn never sends the old token (test).
 - [ ] Every call of a turn, background passes included, carries the server-issued turn id.
 - [ ] Each refusal code and the existing `protect` refusals map to the spec's preset states; the client's code list matches the server's list from ticket 03 in a pinned test.
