@@ -3,6 +3,7 @@ import type { DiscoveredEntity } from '@/types';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
+import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { recentSceneTurns } from '@/lib/turnDigest';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 
@@ -30,7 +31,7 @@ export function usePresence(viewedPage?: number): Presence {
     [snapshot, viewedPage, fullMessageHistory],
   );
   const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
-  const runtime = useMemo(() => runtimeSource.map((d) => d.entity), [runtimeSource]);
+  const runtime = useMemo(() => discoveredAsEntities(runtimeSource as DiscoveredEntity[]), [runtimeSource]);
   const positions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
   const followers = snapshot ? (snapshot.entityFollowers ?? NONE) : entityFollowers;
   const met = snapshot ? (snapshot.metEntities ?? NONE) : metEntities;
