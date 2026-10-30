@@ -209,6 +209,17 @@ describe('applyInventoryPass', () => {
     ]);
   });
 
+  it('skips a gain whose source is its own recipient, the item that owner already holds', () => {
+    const result = run([copy('t', 'tonic', you)], [op('gain', 'Tonic', { owner: 'you', to: 'you' })]);
+    expect(result.copies.map(({ where, quantity }) => ({ where, quantity }))).toEqual([{ where: you, quantity: 1 }]);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped gain "Tonic": it comes from "you", who receives it']);
+  });
+
+  it('adds one more copy for a gain from this place of an item the recipient already holds', () => {
+    const result = run([copy('t', 'tonic', you)], [op('gain', 'Tonic', { owner: 'here', to: 'you' })]);
+    expect(result.copies.map(({ where, quantity }) => ({ where, quantity }))).toEqual([{ where: you, quantity: 2 }]);
+  });
+
   it('adds a copy for a gain from someone who does not hold the item', () => {
     const result = run([copy('t', 'tonic', you)], [op('gain', 'Tonic', { owner: 'Mara', to: 'you' })]);
     expect(result.copies.map(({ where, quantity }) => ({ where, quantity }))).toEqual([{ where: you, quantity: 2 }]);

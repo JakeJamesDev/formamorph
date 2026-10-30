@@ -99,6 +99,9 @@ const OPS_HEADER = '## Operations';
 // `--prompt <file>` swaps the new arm's prompt for a candidate wording.
 const promptFile = argVal('--prompt', '');
 const newPrompt = promptFile ? readFileSync(promptFile, 'utf8') : defaultInventoryPrompt;
+// `--user <file>` swaps the new arm's user prompt the same way.
+const userFile = argVal('--user', '');
+const newUserPrompt = userFile ? readFileSync(userFile, 'utf8') : defaultInventoryUserPrompt;
 const promptOf = (arm: Arm) => (arm === 'new' ? newPrompt : fixture.shippedPrompt);
 const opsTail = (arm: Arm) => promptOf(arm).slice(promptOf(arm).indexOf(OPS_HEADER));
 
@@ -158,7 +161,7 @@ async function send(systemPrompt: string, messages: ChatMessage[], maxTokens: nu
 function passRun(start: ItemCopy[], c: { action: string; narration: string }, arm: Arm) {
   const ctx = chipValues({ ...baseScene, items, itemCopies: start, runtimeItems });
   const request = inventoryRequest(
-    { system: promptOf(arm), user: defaultInventoryUserPrompt }, { ctx, action: c.action, narration: c.narration }, { textPass: false, quiet: false },
+    { system: promptOf(arm), user: arm === 'new' ? newUserPrompt : defaultInventoryUserPrompt }, { ctx, action: c.action, narration: c.narration }, { textPass: false, quiet: false },
   );
   const apply = (raw: string) => applyInventoryPass(start, parseInventoryReply(shim(arm, raw)), {
     items, runtimeItems, playerNames: ['Traveler'], owners, location: { id: location!.id, name: location!.name },
