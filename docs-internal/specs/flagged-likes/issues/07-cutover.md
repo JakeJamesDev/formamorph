@@ -1,7 +1,7 @@
 # 07: Cutover
 
 Status: ready-for-human
-Blocked by: 01, 03, 04, 05, 06
+Blocked by: 01, 03, 04, 05, 06, 08
 Recommended model: N/A — operator steps on the live server and release
 Reasoning effort: N/A
 Spec: ../spec.md (Ordering constraint)
