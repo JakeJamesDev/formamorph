@@ -6,7 +6,7 @@ import { LikersDialog } from './LikersDialog';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import WorldStorageService from '@/services/WorldStorageService';
 import type { WorldRecord } from '@/components/WorldDetails';
-import type { AnonymousLikeRow, LikerAuditRow, LikerRow } from '@/types';
+import type { AnonymousLikeRow, LikerAuditRow, LikerRow, LikesSummary } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -891,5 +891,126 @@ describe('what the audit summary counts, and what a race re-reads', () => {
 
     await waitFor(() => expect(fetchLikers).toHaveBeenCalledTimes(2));
     expect(fetchAudit).not.toHaveBeenCalled();
+  });
+});
+
+describe('what the audit says about network kinds and Bursts', () => {
+  const anonRow = (over: Partial<AnonymousLikeRow> = {}): AnonymousLikeRow => ({
+    likedAt: '2026-08-30 12:00:00',
+    browserFamily: 'Chrome',
+    groupId: null,
+    linkedToAuthor: false,
+    addressKey: 'key-a',
+    networkKind: null,
+    ...over,
+  });
+
+  const summary = (over: Partial<LikesSummary> = {}): LikesSummary => ({
+    windowDays: 90, flagged: 0, total: 0, share: null, bursts: [], reasons: [], ...over,
+  });
+
+  const audit = (
+    rows: LikerAuditRow[], anonymousRows: AnonymousLikeRow[], sum: LikesSummary | null,
+  ) => {
+    vi.spyOn(WorldStorageService, 'fetchLikers')
+      .mockResolvedValue({ total: rows.length, rows, anonymous: anonymousRows.length });
+    return vi.spyOn(WorldStorageService, 'fetchLikersAudit').mockResolvedValue({
+      total: rows.length, rows, anonymous: anonymousRows.length, anonymousRows, summary: sum,
+    });
+  };
+
+  const auditRow = (over: Partial<LikerAuditRow> = {}): LikerAuditRow => ({
+    ...liker(), groupId: null, linkedToAuthor: false, networkKind: null, ...over,
+  });
+
+  const runAudit = async () =>
+    fireEvent.click(await screen.findByRole('button', { name: /Audit the likes/ }));
+
+  it('shows each kind on the account row or anonymous row that has one', async () => {
+    audit(
+      [auditRow({ id: 'u1', username: 'vpn_user', networkKind: 'vpn' })],
+      [anonRow({ networkKind: 'tor', addressKey: 'k1' }), anonRow({ networkKind: 'hosting', addressKey: 'k2' })],
+      summary({ flagged: 3, total: 3, share: 1 }),
+    );
+
+    show();
+    await runAudit();
+    await screen.findByText('vpn_user');
+
+    const kinds = Array.from(document.querySelectorAll('[data-network-kind]'))
+      .map((el) => el.getAttribute('data-network-kind'));
+    expect(kinds.sort()).toEqual(['hosting', 'tor', 'vpn']);
+    expect(screen.getByText('VPN')).toBeTruthy();
+    expect(screen.getByText('Hosting')).toBeTruthy();
+    expect(screen.getByText('Tor')).toBeTruthy();
+  });
+
+  it('leaves rows with no kind unchanged', async () => {
+    audit([auditRow()], [anonRow()], summary({ total: 2 }));
+
+    show();
+    await runAudit();
+    await screen.findByText('wren_hallow');
+
+    expect(document.querySelector('[data-network-kind]')).toBeNull();
+  });
+
+  it('shows the flagged count and share, and omits the line for an empty window', async () => {
+    audit([auditRow()], [], summary({ flagged: 12, total: 40, share: 0.3 }));
+
+    show();
+    await runAudit();
+
+    expect(await screen.findByText('12 of 40 likes flagged in the last 90 days (30%)')).toBeTruthy();
+  });
+
+  it('shows no summary line when the window holds no likes', async () => {
+    audit([auditRow()], [], summary());
+
+    show();
+    await runAudit();
+    await screen.findByText('wren_hallow');
+
+    expect(document.querySelector('[data-likes-summary]')).toBeNull();
+  });
+
+  it('lists each Burst with its size and names the reasons that fire', async () => {
+    audit([auditRow()], [], summary({
+      flagged: 6, total: 10, share: 0.6,
+      bursts: [{ startedAt: '2026-08-30 12:00:00', size: 9 }, { startedAt: '2026-08-31 08:30:00', size: 8 }],
+      reasons: ['burst', 'flagged_share'],
+    }));
+
+    show();
+    await runAudit();
+
+    expect(await screen.findByText('Marker fires on: Burst and Flagged share')).toBeTruthy();
+    expect(screen.getByText(/— 9 different likers/)).toBeTruthy();
+    expect(screen.getByText(/— 8 different likers/)).toBeTruthy();
+  });
+
+  it('shows no Bursts section when nothing fired', async () => {
+    audit([auditRow()], [], summary({ flagged: 0, total: 5, share: 0 }));
+
+    show();
+    await runAudit();
+    await screen.findByText('wren_hallow');
+
+    expect(document.querySelector('[data-bursts]')).toBeNull();
+  });
+
+  it('runs the audit on open when asked to, and the slower plain list does not overwrite it', async () => {
+    const fetchAudit = audit([auditRow({ networkKind: 'vpn' })], [], summary({ flagged: 1, total: 1, share: 1 }));
+    vi.mocked(WorldStorageService.fetchLikers).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ total: 1, rows: [liker({ username: 'plain_copy' })], anonymous: 0 }), 20)),
+    );
+
+    show({ auditOnOpen: true });
+
+    expect(await screen.findByText('VPN')).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(fetchAudit).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('wren_hallow')).toBeTruthy();
+    expect(screen.queryByText('plain_copy')).toBeNull();
   });
 });
