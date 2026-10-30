@@ -7,7 +7,7 @@ import { languageDirective } from '@/lib/languages';
 import { DEFAULT_WORLD_EDITOR_RULES } from './helpWorldRules';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { HELP_SYSTEM_PROMPT } from './helpPrompt';
-import { HELP_PICK_WORLD_LINES, PICK_WORLD_LINE } from './helpPicks';
+import { HELP_PICK_WORLD_LINES, PICK_GAME_LINE, PICK_WORLD_LINE } from './helpPicks';
 import type { HelpEmbedder } from './helpSemantic';
 import { askHelp, HELP_SECTION_LIMIT, HELP_WORLD_CHAR_BUDGET, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
@@ -199,8 +199,14 @@ describe('the world pool sources', () => {
     const { fetchImpl, answers, picks } = endpoint('Dictionary Entry › Lore › Ashen Pact');
     await ask(fetchImpl, { question, world: editorWorld(() => sedge()) }, picksOn);
     expect(picks).toHaveBeenCalledTimes(2);
-    const worldPick = pickBodies(picks).find((body) => body.startsWith(PICK_WORLD_LINE));
-    expect(worldPick).toContain('<sections>\nEntity › Mara\nDictionary Entry › Lore › Ashen Pact\n</sections>');
+    expect(pickBodies(picks).some((body) => body.startsWith(PICK_GAME_LINE))).toBe(false);
+    const worldPick = pickBodies(picks).find((body) => body.startsWith('The sections are the parts of the world open in the World Editor, one on each line.\n\n'));
+    expect(worldPick).toBe([
+      'The sections are the parts of the world open in the World Editor, one on each line.',
+      '<sections>\nEntity › Mara\nDictionary Entry › Lore › Ashen Pact\n</sections>',
+      `Question: ${question}`,
+      'Reply with the lines of the sections that answer the question, the best one first.',
+    ].join('\n\n'));
     expect(worldBlock(answers)).toContain('An oath sworn in smoke by the founders.');
   });
 

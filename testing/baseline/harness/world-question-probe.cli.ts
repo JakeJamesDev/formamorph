@@ -5,6 +5,8 @@
 //   off      the same session with Read the World off: the docs-only control for grounded-correct
 //   full     game cases only: the full world (AI descriptions, hidden stats, the unmet cast, switched-off lore) in
 //            the Player View's place, the control that shows the leak score catch a real leak
+//   oldline  game cases only, named in --arms: shipped with the World Editor pick line on the game pick request
+//   fullold  game cases only, named in --arms: full with the World Editor pick line, the old-line control of full
 //
 // Editor cases ask how a part of a bundled world works, with the World Editor open on it. Game cases ask about the
 // lore so far on a hand-written save (world-question-cases.ts); "what would you try" cases score opinion phrasing (Q19).
@@ -29,6 +31,7 @@ import path from 'node:path';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { sectionWithId } from '@/lib/docs/docsReader';
 import { firedLore, gameWorldIndex, type GameWorldInput } from '@/lib/formaquestion/gameWorld';
+import { HELP_PICK_WORLD_LINES, PICK_GAME_LINE, PICK_WORLD_LINE } from '@/lib/formaquestion/helpPicks';
 import { HELP_PICK_SYSTEM_PROMPT, worldNamesLine } from '@/lib/formaquestion/helpPrompt';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_SECTION_LIMIT, HELP_WORLD_CHAR_BUDGET, HELP_WORLD_SECTION_LIMIT } from '@/lib/formaquestion/helpSession';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
@@ -61,9 +64,11 @@ const rescore = argVal('--rescore', '');
 const language = argVal('--language', '');
 const check = (label: string, pattern: RegExp): Check => ({ label, pattern });
 
-type Arm = 'shipped' | 'off' | 'full' | 'rules-cleared' | 'rules-cleared-old';
-const ARMS = (language ? ['shipped', 'rules-cleared', 'rules-cleared-old'] as const : ['shipped', 'off', 'full'] as const)
-  .filter((arm) => !armList.length || armList.includes(arm));
+type Arm = 'shipped' | 'off' | 'full' | 'rules-cleared' | 'rules-cleared-old' | 'oldline' | 'fullold';
+/** The arms that send the game pick request with the World Editor line; they run only when --arms names them. */
+const OLD_LINE_ARMS: readonly Arm[] = ['oldline', 'fullold'];
+const ARM_SET: readonly Arm[] = language ? ['shipped', 'rules-cleared', 'rules-cleared-old'] : ['shipped', 'off', 'full', 'oldline', 'fullold'];
+const ARMS = ARM_SET.filter((arm) => (armList.length ? armList.includes(arm) : !OLD_LINE_ARMS.includes(arm)));
 const ARM_PAD = Math.max(7, ...ARMS.map((arm) => arm.length));
 /**
  * The language cases: each question as a Spanish-writing player asks it, its facts in either language, the world
@@ -96,7 +101,8 @@ const caseSet = language
   : WORLD_QUESTION_CASES;
 const cases = only.length ? caseSet.filter((c) => only.includes(c.id)) : caseSet;
 /** The full arm has nothing to add in the editor, which reads the full world already. */
-const armsOf = (c: WorldQuestionCase): Arm[] => ARMS.filter((arm) => arm !== 'full' || c.lean === 'game');
+const armsOf = (c: WorldQuestionCase): Arm[] => ARMS.filter((arm) => !['full', ...OLD_LINE_ARMS].includes(arm) || c.lean === 'game');
+const fullWorld = (arm: Arm) => arm === 'full' || arm === 'fullold';
 
 const rulesCopy = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'no-rules', 'No World Rules');
 const noRules = { ...DEFAULT_HELP_SETTINGS, presets: editHelpPrompt(editHelpPrompt(rulesCopy, 'no-rules', 'worldEditor', ''), 'no-rules', 'worldGame', '') };
@@ -106,6 +112,8 @@ const SETTINGS: Record<Arm, HelpSettings> = {
   full: DEFAULT_HELP_SETTINGS,
   'rules-cleared': noRules,
   'rules-cleared-old': noRules,
+  oldline: DEFAULT_HELP_SETTINGS,
+  fullold: DEFAULT_HELP_SETTINGS,
 };
 
 const WORLD_NAMES_SENTENCE = ` ${worldNamesLine(language)}`;
@@ -133,7 +141,7 @@ function openWorldOf(c: WorldQuestionCase, arm: Arm): { world: OpenWorld; index:
   const base ={ snapshot: () => emptyToolSnapshot, authored: () => authored };
   if (c.lean === 'editor') return { world: { ...base, lean: 'editor', world: () => authored }, index: () => worldIndexOf(authored) };
   const save = GAME_SAVES[c.world]!.save;
-  const game = arm === 'full' ? fullInputOf(authored, save) : gameInputOf(authored, save);
+  const game = fullWorld(arm) ? fullInputOf(authored, save) : gameInputOf(authored, save);
   return { world: { ...base, lean: 'game', game: () => game }, index: () => gameWorldIndex(game, firedLore(game, c.question, null)), game };
 }
 
@@ -187,6 +195,26 @@ function namesOf(caseId: string, answer: string): { kept: string[]; lost: string
   return { kept: names.filter((n) => n.pattern.test(answer)).map((n) => n.label), lost: names.filter((n) => !n.pattern.test(answer)).map((n) => n.label) };
 }
 
+/**
+ * A fetch that sends the game pick request with the World Editor line in place of the game line. It ends the
+ * probe when no request of the question led with the game line, so the control never runs as a copy of shipped.
+ */
+function withOldPickLine(fetchImpl: typeof fetch): { fetchImpl: typeof fetch; swapped: () => boolean } {
+  let swapped = false;
+  const wrapped = ((url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: unknown }[] };
+    const last = body.messages.at(-1);
+    const isPick = String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT);
+    if (isPick && typeof last?.content === 'string' && last.content.startsWith(`${PICK_GAME_LINE}\n\n`)) {
+      last.content = PICK_WORLD_LINE + last.content.slice(PICK_GAME_LINE.length);
+      swapped = true;
+      return fetchImpl(url, { ...init, body: JSON.stringify(body) });
+    }
+    return fetchImpl(url, init);
+  }) as typeof fetch;
+  return { fetchImpl: wrapped, swapped: () => swapped };
+}
+
 async function ask(c: WorldQuestionCase, arm: Arm): Promise<Sample> {
   const usage = noUsage();
   let finish: string | null = null;
@@ -200,11 +228,16 @@ async function ask(c: WorldQuestionCase, arm: Arm): Promise<Sample> {
   });
   const fetchImpl = arm === 'rules-cleared-old' ? withWorldNames(sessionFetchImpl, '') : sessionFetchImpl;
   const open = openWorldOf(c, arm);
+  const oldLine = OLD_LINE_ARMS.includes(arm) ? withOldPickLine(fetchImpl) : null;
   let trace: HelpTrace | null = null;
   let answer = '';
-  for await (const event of askHelp({ question: c.question, language, settings: SETTINGS[arm], snapshot, index, fetchImpl, world: open.world })) {
+  for await (const event of askHelp({ question: c.question, language, settings: SETTINGS[arm], snapshot, index, fetchImpl: oldLine?.fetchImpl ?? fetchImpl, world: open.world })) {
     if (event.type === 'trace') trace = event.trace;
     if (event.type === 'done') answer = event.text;
+  }
+  if (oldLine && !oldLine.swapped() && open.index().pickList().lines.length <= HELP_PICK_WORLD_LINES) {
+    console.error(`${c.id} ${arm}: no game pick request led with the game line`);
+    process.exit(1);
   }
   const save = GAME_SAVES[c.world]?.save;
   const storyCut = open.game !== undefined && save !== undefined && open.game.story.text !== uncutStory(bundledWorld(c.world), save).text;

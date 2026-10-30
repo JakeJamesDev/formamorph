@@ -7,6 +7,7 @@ import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { guideSections } from './guideSections';
 import type { HelpRequestOptions } from './helpPresets';
+import type { WorldLean } from './helpWorld';
 
 /** The most sections one pick reply names. */
 export const HELP_PICK_LIMIT = 5;
@@ -35,8 +36,11 @@ export interface PickQuestion {
 /** The most world lines a world pick request lists; a bigger world's pool is ranked by the other sources alone. */
 export const HELP_PICK_WORLD_LINES = 400;
 
-/** The line that tells the model what a world pick request's list is. */
+/** The line that tells the model what a World Editor pick request's list is. */
 export const PICK_WORLD_LINE = 'The sections are the parts of the world open in the World Editor, one on each line.';
+
+/** The line that tells the model what a game pick request's list is: the Player View rows. */
+export const PICK_GAME_LINE = 'The sections are what the player has met so far in the game, one on each line.';
 
 /** The one user message of a pick request: the lead line when given, the section list, then the question. */
 export function pickMessage(lines: readonly string[], { question, earlier, earlierAnswer, where }: Omit<PickQuestion, 'prompt'>, lead?: string): string {
@@ -99,16 +103,17 @@ export async function requestPicks(
   return requestPoolPicks(pickList(index), ask, snapshot, sampling, options);
 }
 
-/** {@link requestPicks} over the open world's parts; none, with no request, for a world over the line cap. */
+/** {@link requestPicks} over the open world's parts, led by the lean's line; none, with no request, for a world over the line cap. */
 export async function requestWorldPicks(
   world: PickPool,
+  lean: WorldLean,
   ask: PickQuestion,
   snapshot: AiSettingsSnapshot,
   sampling: HelpRequestOptions,
   options: AiTextOptions = {},
 ): Promise<DocSection[]> {
   if (world.lines.length > HELP_PICK_WORLD_LINES) return [];
-  return requestPoolPicks(world, ask, snapshot, sampling, options, PICK_WORLD_LINE);
+  return requestPoolPicks(world, ask, snapshot, sampling, options, lean === 'game' ? PICK_GAME_LINE : PICK_WORLD_LINE);
 }
 
 async function requestPoolPicks(

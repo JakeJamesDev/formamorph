@@ -10,6 +10,7 @@ import { helpTool, isPickRequest, NO_PICK, openWorld } from '@/test/helpFixtures
 import type { ChatMessage, DictionaryEntry, Entity, GameState, PlayerStat } from '@/types';
 import type { GameWorldInput } from './gameWorld';
 import { DEFAULT_WORLD_GAME_RULES } from './helpWorldRules';
+import { PICK_GAME_LINE, PICK_WORLD_LINE } from './helpPicks';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
 import type { OpenWorld } from './helpWorld';
@@ -84,13 +85,15 @@ interface SentBody { messages: { role: string; content: string }[] }
 
 function endpoint() {
   const answers: FetchSpy = vi.fn(async () => sseResponse(sseReply('Mara keeps the gate.')));
-  const fetchImpl = ((url: string, init: RequestInit) => (isPickRequest(init) ? sseResponse(sseReply(NO_PICK)) : answers(url, init))) as unknown as typeof fetch;
-  return { fetchImpl, answers };
+  const picks: FetchSpy = vi.fn(async () => sseResponse(sseReply(NO_PICK)));
+  const fetchImpl = ((url: string, init: RequestInit) => (isPickRequest(init) ? picks(url, init) : answers(url, init))) as unknown as typeof fetch;
+  return { fetchImpl, answers, picks };
 }
 
-const messagesOf = (spy: FetchSpy) => (JSON.parse(spy.mock.calls[0][1].body as string) as SentBody).messages;
-const userMessage = (spy: FetchSpy) => messagesOf(spy).at(-1)!.content;
+const messagesOf = (spy: FetchSpy, call = 0) => (JSON.parse(spy.mock.calls[call][1].body as string) as SentBody).messages;
+const userMessage = (spy: FetchSpy, call = 0) => messagesOf(spy, call).at(-1)!.content;
 const systemPrompt = (spy: FetchSpy) => messagesOf(spy)[0].content;
+const pickBodies = (spy: FetchSpy) => spy.mock.calls.map((_, call) => userMessage(spy, call));
 const worldBlock = (spy: FetchSpy) => /<world>[\s\S]*?<\/world>/.exec(userMessage(spy))?.[0];
 const storyBlock = (spy: FetchSpy) => /<story>[\s\S]*?<\/story>/.exec(userMessage(spy))?.[0];
 /** What the request holds of the world: the world block and the story block. The question is the player's own. */
@@ -270,6 +273,29 @@ describe('fired lore and met rows in one world block', () => {
     const { block } = await blockFor('Who is Mara, and what of the ashen pact and the cinder crown?', lore);
     expect(block).toContain(MARA_ROW);
     expect(loreIn(block, lore)).toEqual(['pact', 'bell']);
+  });
+});
+
+describe('the world pick request in the game', () => {
+  const picksOn = { sources: { keyword: false, aiPicks: true, semantic: false } };
+
+  it('names the list as what the player has met, with the Player View rows', async () => {
+    const { fetchImpl, picks } = endpoint();
+    await ask(fetchImpl, 'Who keeps the gate?', { world: gameWorld(() => gameInput()) }, picksOn);
+    const bodies = pickBodies(picks);
+    expect(bodies).toHaveLength(2);
+    expect(bodies.some((body) => body.startsWith(PICK_WORLD_LINE))).toBe(false);
+    const worldPick = bodies.find((body) => body.startsWith(`${PICK_GAME_LINE}\n\n<sections>\n`));
+    expect(worldPick).toContain('Entity › Mara');
+    expect(worldPick).not.toContain('Velka');
+  });
+
+  it('sends the guide pick request with the same body with or without a game world', async () => {
+    const docsOnly = endpoint();
+    await ask(docsOnly.fetchImpl, 'Who keeps the gate?', {}, picksOn);
+    const withWorld = endpoint();
+    await ask(withWorld.fetchImpl, 'Who keeps the gate?', { world: gameWorld(() => gameInput()) }, picksOn);
+    expect(pickBodies(withWorld.picks).filter((body) => !body.startsWith(PICK_GAME_LINE))).toEqual(pickBodies(docsOnly.picks));
   });
 });
 
