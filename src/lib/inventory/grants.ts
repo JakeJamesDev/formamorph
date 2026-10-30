@@ -2,6 +2,7 @@
  * Item trait grants: which owner traits the Item Copies hold on (Q52). A grant reaches only the owner's own
  * tree: an entity's, or for `you` the played entity's (Q117). Pure.
  */
+import { faceName, foldSighting, isUnidentified } from '@/lib/items';
 import { playedEntityIds } from '@/lib/scope';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import type { GateOwner } from '@/lib/traitGates';
@@ -21,7 +22,7 @@ export interface WantedGrants {
   /** Owner id → the trait ids grants hold, in copy order. */
   held: Record<string, string[]>;
   /** `<owner id>:<trait id>` → the first item holding it, and whether every Item Copy behind it is hidden. */
-  sources: Map<string, { item: Item; hidden: boolean }>;
+  sources: Map<string, { item: Item; hidden: boolean; unidentified: boolean }>;
   /** Owner id → the traits On First Obtain and Permanent After Use rows granted for good, this settle's included. */
   firstObtainTraits: Record<string, string[]>;
   /** The trait rows still running after this settle's expiry and doses, keyed as the ledger keys them. */
@@ -61,16 +62,16 @@ export function wantedGrants(
   copies: readonly ItemCopy[], world: GrantWorld, firstObtained: Readonly<Record<string, readonly string[]>> = {}, timed: TimedGrants = {},
 ): WantedGrants {
   const held: Record<string, string[]> = {};
-  const sources = new Map<string, { item: Item; hidden: boolean }>();
+  const sources = new Map<string, { item: Item; hidden: boolean; unidentified: boolean }>();
   const firstObtainTraits: Record<string, string[]> = Object.fromEntries(Object.entries(firstObtained).map(([id, ids]) => [id, [...ids]]));
   const diagnostics = new Set<string>();
-  const hold = (ownerId: string, traitId: string, item: Item | null, hidden: boolean) => {
+  const hold = (ownerId: string, traitId: string, item: Item | null, hidden: boolean, unidentified: boolean) => {
     if (!(held[ownerId] ??= []).includes(traitId)) held[ownerId].push(traitId);
     if (!item) return;
     const key = grantKey(ownerId, traitId);
     const seen = sources.get(key);
-    if (!seen) sources.set(key, { item, hidden });
-    else if (seen.item === item) seen.hidden &&= hidden;
+    if (!seen) sources.set(key, { item, hidden, unidentified });
+    else if (seen.item === item) foldSighting(seen, hidden, unidentified);
   };
   const traitOf = (ownerId: string, traitId: string) => world.owners.find((o) => o.id === ownerId)?.traits.find((t) => t.id === traitId);
   // A timed grant ends once the clock reaches its end, or once its item, row or trait is gone.
@@ -88,11 +89,11 @@ export function wantedGrants(
       const ownerId = treeOwnerOf(dose.where, row.traitId, world);
       const trait = ownerId === null ? undefined : traitOf(ownerId, row.traitId);
       if (ownerId === null || !trait) {
-        diagnostics.add(`Item ${item.name}: owner ${whereText(dose.where)} has no trait ${row.traitId}`);
+        diagnostics.add(`Item ${faceName(item, !!dose.unidentified)}: owner ${whereText(dose.where)} has no trait ${row.traitId}`);
         continue;
       }
       if (isAlwaysOn(trait)) {
-        diagnostics.add(`Item ${item.name}: trait ${trait.name} is Automatic`);
+        diagnostics.add(`Item ${faceName(item, !!dose.unidentified)}: trait ${trait.name} is Automatic`);
         continue;
       }
       if (row.duration?.kind !== 'time') {
@@ -105,14 +106,17 @@ export function wantedGrants(
       const endsAt = (timed.now ?? 0) + row.duration.hours;
       timedTraits[key] = timedTraits[key]
         ? { ...timedTraits[key], endsAt }
-        : { row: 'trait', ownerId, itemId: item.id, rowId: row.id, endsAt, ...(dose.hidden && { hidden: true }) };
+        : {
+          row: 'trait', ownerId, itemId: item.id, rowId: row.id, endsAt,
+          ...(dose.hidden && { hidden: true }), ...(dose.unidentified && { unidentified: true }),
+        };
     }
   }
-  for (const [ownerId, ids] of Object.entries(firstObtainTraits)) for (const id of ids) hold(ownerId, id, null, true);
+  for (const [ownerId, ids] of Object.entries(firstObtainTraits)) for (const id of ids) hold(ownerId, id, null, true, false);
   for (const entry of Object.values(timedTraits)) {
     const item = world.items.get(entry.itemId);
     const row = timedTraitRow(entry, world.items);
-    if (item && row) hold(entry.ownerId, row.traitId, item, !!entry.hidden);
+    if (item && row) hold(entry.ownerId, row.traitId, item, !!entry.hidden, !!entry.unidentified);
   }
   for (const copy of copies) {
     if (copy.item.kind !== 'item' || !(copy.quantity > 0) || copy.where.kind === 'location') continue;
@@ -123,18 +127,18 @@ export function wantedGrants(
       const ownerId = treeOwnerOf(copy.where, row.traitId, world);
       const trait = ownerId === null ? undefined : world.owners.find((o) => o.id === ownerId)?.traits.find((t) => t.id === row.traitId);
       if (ownerId === null || !trait) {
-        diagnostics.add(`Item ${item.name}: owner ${whereText(copy.where)} has no trait ${row.traitId}`);
+        diagnostics.add(`Item ${faceName(item, isUnidentified(copy))}: owner ${whereText(copy.where)} has no trait ${row.traitId}`);
         continue;
       }
       if (isAlwaysOn(trait)) {
-        diagnostics.add(`Item ${item.name}: trait ${trait.name} is Automatic`);
+        diagnostics.add(`Item ${faceName(item, isUnidentified(copy))}: trait ${trait.name} is Automatic`);
         continue;
       }
       if (row.timing === 'firstObtain') {
         const forGood = (firstObtainTraits[ownerId] ??= []);
         if (!forGood.includes(trait.id)) forGood.push(trait.id);
       }
-      hold(ownerId, trait.id, item, copy.visibility === 'hidden');
+      hold(ownerId, trait.id, item, copy.visibility === 'hidden', isUnidentified(copy));
     }
   }
   return { held, sources, firstObtainTraits, timedTraits, diagnostics: [...diagnostics] };

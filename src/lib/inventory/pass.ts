@@ -4,7 +4,7 @@
  */
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import { sameCharacterName } from '@/lib/entityMatch';
-import { sameWhere } from '@/lib/items';
+import { isUnidentified, sameWhere } from '@/lib/items';
 import type { InventoryPassOp, InventoryPassOpKind, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
@@ -128,7 +128,9 @@ export function applyInventoryPass(
   copies: readonly ItemCopy[], passOps: readonly InventoryPassOp[], scene: PassScene, call: Omit<InventoryCall, 'source'>,
 ): InventoryPassResult {
   const resolve = scene.resolve ?? ((s: string) => s);
-  const authored = scene.items.map((item) => ({ item, key: itemNameKey(resolve(item.name)) }));
+  const authored = scene.items.map((item) => ({
+    item, key: itemNameKey(resolve(item.name)), face: item.unidentifiedName?.trim() ? itemNameKey(resolve(item.unidentifiedName)) : '',
+  }));
   let runtimeItems = [...scene.runtimeItems];
   let list: ItemCopy[] = [...copies];
   const doses: InventoryResult['doses'] = [];
@@ -158,12 +160,16 @@ export function applyInventoryPass(
     return loose.length === 1 ? { kind: 'entity', id: loose[0].id } : null;
   };
 
+  /** `key` is the item's Unidentified Name. */
+  const isFace = (a: (typeof authored)[number], key: string) => !!a.face && a.face === key;
+
   const runtimeNamed = (key: string) => runtimeItems.find((r) => itemNameKey(r.name) === key);
 
+  /** A copy goes by its true name, and by its Unidentified Name while unidentified. */
   const nameMatches = (copy: ItemCopy, key: string): boolean => {
     if (copy.item.kind === 'item') {
       const id = copy.item.itemId;
-      return authored.some((a) => a.item.id === id && a.key === key);
+      return authored.some((a) => a.item.id === id && (a.key === key || (isFace(a, key) && isUnidentified(copy))));
     }
     const id = copy.item.runtimeItemId;
     return runtimeNamed(key)?.id === id;
@@ -174,15 +180,22 @@ export function applyInventoryPass(
     const here = list.filter((c) => nameMatches(c, key) && sameWhere(c.where, where));
     const rank = (c: ItemCopy) => (c.visibility === 'hidden' ? 2 : 0) + (c.equipped ? 1 : 0);
     switch (kind) {
-      case 'reveal': return here.filter((c) => c.visibility === 'hidden');
+      // Hidden copies first, then visible unidentified ones.
+      case 'reveal': return [...here.filter((c) => c.visibility === 'hidden'), ...here.filter((c) => c.visibility === 'visible' && isUnidentified(c))];
       case 'equip': return here.filter((c) => !c.equipped).sort((a, b) => rank(a) - rank(b));
       case 'unequip': return here.filter((c) => c.equipped).sort((a, b) => rank(a) - rank(b));
       default: return here.sort((a, b) => rank(a) - rank(b));
     }
   };
 
+  /** The one authored item whose Unidentified Name is `key`; none when several share it (Q43). */
+  const byFace = (key: string) => {
+    const faces = authored.filter((a) => isFace(a, key));
+    return faces.length === 1 ? faces[0] : undefined;
+  };
+
   const gainId = (name: string, key: string): string | null => {
-    const match = authored.find((a) => a.key === key);
+    const match = authored.find((a) => a.key === key) ?? byFace(key);
     if (match) return match.item.id;
     // A world with no authored items never gets runtime items (Q55).
     if (!authored.length) return null;
@@ -193,7 +206,7 @@ export function applyInventoryPass(
     return made.id;
   };
 
-  const known = (key: string) => authored.some((a) => a.key === key) || !!runtimeNamed(key);
+  const known = (key: string) => authored.some((a) => a.key === key || isFace(a, key)) || !!runtimeNamed(key);
 
   for (const named of passOps) {
     // A name copied with the Items Here summary after it reads as the name before the colon.
@@ -227,7 +240,8 @@ export function applyInventoryPass(
         continue;
       }
       // Taking a hidden one finds it first.
-      const hidden = to.kind !== 'location' && scene.location ? candidates(key, { kind: 'location', id: scene.location.id }, 'reveal') : [];
+      const hidden = to.kind !== 'location' && scene.location
+        ? candidates(key, { kind: 'location', id: scene.location.id }, 'reveal').filter((c) => c.visibility === 'hidden') : [];
       if (hidden.length) {
         distribute(hidden, op.quantity, (copy, quantity) => {
           const before = new Set(list.map((c) => c.id));

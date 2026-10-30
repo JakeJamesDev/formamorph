@@ -20,6 +20,41 @@ export const itemUsable = (item: Item): boolean => item.uses !== undefined
 export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'> | undefined): number | undefined =>
   (item?.uses === undefined ? undefined : copy.state?.uses ?? item.uses);
 
+/** Its copies start unidentified: it has an Unidentified Name or Unidentified Description (Q16). */
+export const itemHasUnidentifiedFace = (item: Item): boolean => !!item.unidentifiedName?.trim() || !!item.unidentifiedDescription?.trim();
+
+/** The Item Copy shows the unidentified face. */
+export const isUnidentified = (copy: Pick<ItemCopy, 'state'>): boolean => copy.state?.unidentified === true;
+
+/** The name and player description the player sees on `copy`: the unidentified face while it is unidentified,
+ *  a blank unidentified field falling back to the normal value (Q16). */
+export function copyFace(item: Pick<Item, 'name' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription'>, copy: Pick<ItemCopy, 'state'>): {
+  name: string; description: string | undefined;
+} {
+  const unidentified = isUnidentified(copy);
+  return {
+    name: faceName(item, unidentified),
+    description: unidentified && item.unidentifiedDescription?.trim() ? item.unidentifiedDescription : item.playerDescription,
+  };
+}
+
+/** The name the player sees on `item`: its Unidentified Name while unidentified and filled, else its name. */
+export const faceName = (item: Pick<Item, 'name' | 'unidentifiedName'>, unidentified: boolean): string =>
+  (unidentified && item.unidentifiedName?.trim() ? item.unidentifiedName : item.name);
+
+/** The name a log line gives a source of `item`: null when hidden (Q63), the unidentified face when unidentified (Q17). */
+export const seenItemName = (item: Pick<Item, 'name' | 'unidentifiedName'>, hidden: boolean, unidentified: boolean): string | null =>
+  (hidden ? null : faceName(item, unidentified));
+
+/** How the log sees a source behind several Item Copies, folded copy by copy. */
+export interface SourceSighting { hidden: boolean; unidentified: boolean }
+
+/** Folds one more copy into `seen`: hidden while every copy is, unidentified while every visible copy is (Q39). */
+export function foldSighting(seen: SourceSighting, hidden: boolean, unidentified: boolean): void {
+  if (!hidden) seen.unidentified = seen.hidden ? unidentified : seen.unidentified && unidentified;
+  seen.hidden &&= hidden;
+}
+
 /** How the editor and Formaquestion name each When Empty outcome. */
 export const WHEN_EMPTY_LABEL: Record<ItemWhenEmpty['kind'], string> = {
   stays: 'Stays', gone: 'Gone', becomes: 'Becomes', changesState: 'Changes State',
@@ -37,13 +72,14 @@ export const stateKey = (copy: Pick<ItemCopy, 'state'>): string => (copyState(co
 /** Whether two Item Copies have the same State for stacking. */
 export const sameState = (a: Pick<ItemCopy, 'state'>, b: Pick<ItemCopy, 'state'>): boolean => stateKey(a) === stateKey(b);
 
-/** The per-copy state a new Item Copy of `item` starts with: the starting State, and full uses when it doesn't stack.
- *  Undefined when none. */
+/** The per-copy state a new Item Copy of `item` starts with: the starting State, full uses when it doesn't stack, and
+ *  unidentified when the item has an unidentified face (Q16). Undefined when none. */
 export function seededState(item: Item): ItemCopyState | undefined {
   const state = stateWord(item.state);
   const uses = itemStackable(item) ? undefined : item.uses;
-  if (uses === undefined && !state) return undefined;
-  return { ...(uses !== undefined && { uses }), ...(state && { state }) };
+  const unidentified = itemHasUnidentifiedFace(item);
+  if (uses === undefined && !state && !unidentified) return undefined;
+  return { ...(uses !== undefined && { uses }), ...(state && { state }), ...(unidentified && { unidentified: true }) };
 }
 
 /** What a copy of `item` leaves on its last use (Q26). */

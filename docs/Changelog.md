@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now run scripts when an Item Copy is gained, lost, equipped, unequipped or used.** Scripts read who owns what through `items` and can give, take, move, equip, use, reveal and recharge items.
     - **Items now have Uses and When Empty in place of Consumable and Charges.** An empty item can stay, vanish or become another item, such as a potion that leaves a bottle. Any item with After Use effects shows a Use button.
     - **Items now have a State word, such as sealed or lit, shown beside the name in the Inventory tab.** The story and scripts change it, and a letter can turn "opened" on its last use. Copies with different States never stack.
+    - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
 
 ### Minor Changes
 

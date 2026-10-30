@@ -103,6 +103,13 @@ describe('the World Index', () => {
     expect(section(item({ state: '  ' }))).not.toContain('State');
   });
 
+  it('lists an item’s Unidentified Name and Unidentified Description for the author', () => {
+    const ring: Item = { id: 'ring', name: 'Ring of Curses', unidentifiedName: 'Plain Ring', unidentifiedDescription: 'A dull band.', statEffects: [], traitEffects: [], equipRequires: [] };
+    const [top] = buildWorldIndex(world({ items: [ring] })).docs.search('curses', 1);
+    expect(top.markdown).toContain('**Unidentified Name:** Plain Ring');
+    expect(top.markdown).toContain('**Unidentified Description:** A dull band.');
+  });
+
   it('maps every part of a long item back to it', () => {
     const long = world({ entities: [{ ...mara, playerDescription: Array.from({ length: 400 }, (_, at) => `Sentence ${at} about the gate.`).join('\n\n') }] });
     const index = buildWorldIndex(long);

@@ -71,6 +71,20 @@ describe('the Inventory chip', () => {
     expect(text).toContain('**carried:** Ash Wand (lit, 2 of 3 uses left, hidden), Ash Wand (3 of 3 uses left), Letter (sealed, ×2), Letter (opened, no uses left)');
   });
 
+  it('shows an unidentified copy by the face the player sees, then its true face marked unknown to the player (Q14, Q38)', () => {
+    const cursed = item('cursed', 'Ring of Curses', {
+      aiSummary: 'Drains the wearer.', unidentifiedName: 'Dull Ring', unidentifiedDescription: 'A tarnished band.',
+    });
+    const out = chipValues({ ...scene([
+      copy('cursed', { kind: 'you' }, { state: { unidentified: true }, equipped: { slotId: 'finger', order: 1 } }),
+      copy('cursed', { kind: 'location', id: 'landing' }, { state: { unidentified: true }, visibility: 'hidden' }),
+      copy('cursed', { kind: 'you' }),
+    ]), items: [...ITEMS, cursed] })('<INVENTORY|markdown>');
+    expect(out).toContain('**equipped:** Dull Ring: A tarnished band. (unknown to the player: it is Ring of Curses: Drains the wearer.)');
+    expect(out).toContain('**carried:** Ring of Curses\n');
+    expect(out).toContain('**lying here:** Dull Ring (hidden): A tarnished band. (unknown to the player: it is Ring of Curses: Drains the wearer.)');
+  });
+
   it('leaves out owners and places that are not here', () => {
     // Bell stands in the Boathouse, and the coin lies there.
     expect(render([

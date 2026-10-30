@@ -19,6 +19,7 @@ const items = [
   item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, slotId: 'hand' }),
   item('horn', 'War Horn', { statEffects: [{ id: 'h', statId: 'nerve', facet: 'value', timing: 'used', amount: 1, op: 'add' }] }),
   item('lamp', 'Oil Lamp', { uses: 1, whenEmpty: { kind: 'stays' } }),
+  item('ring', 'Ring of Curses', { unidentifiedName: 'Plain Ring', slotId: 'hand', statEffects: [{ id: 'r', statId: 'nerve', facet: 'value', timing: 'used', amount: -1, op: 'add' }] }),
 ];
 const yard = { id: 'yard', name: 'Yard' } as GameLocation;
 const hall = { id: 'hall', name: 'Hall' } as GameLocation;
@@ -188,6 +189,16 @@ describe('RightPanel — Inventory tab', () => {
     renderRightPanel({}, stage([copy('h', 'horn')]));
     expect(await screen.findByRole('button', { name: 'Use War Horn' })).toBeEnabled();
     expect(within(carried()).queryByText(/uses/)).not.toBeInTheDocument();
+  });
+
+  it('shows an unidentified copy by its unidentified name everywhere in the tab, and sends the dose unidentified (Q17)', async () => {
+    const commit = vi.fn();
+    renderRightPanel({ inventorySettle: { requirement: () => null, commit } }, stage([copy('r', 'ring', { state: { unidentified: true } })]));
+    expect(await within(carried()).findByText('Plain Ring')).toBeInTheDocument();
+    expect(screen.queryByText(/Ring of Curses/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ring of Curses/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Use Plain Ring' }));
+    expect(commit.mock.calls[0][3]).toEqual([{ itemId: 'ring', where: you, hidden: false, unidentified: true }]);
   });
 
   it('shows no uses line on a full Uses 1 stack, and No uses left on a spent copy (Q30)', async () => {

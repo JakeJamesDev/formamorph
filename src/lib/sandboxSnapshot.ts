@@ -24,7 +24,7 @@ import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
 import { isItemTiming } from './scripts';
-import { copyState, usesLeft } from './items';
+import { copyState, isUnidentified, usesLeft } from './items';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
 
@@ -305,11 +305,12 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
     const word = copyState(copy);
     return {
       id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: copy.equipped ? slotName.get(copy.equipped.slotId) ?? '' : '',
-      hidden: copy.visibility === 'hidden', ...(uses !== undefined && { uses }), ...(word && { state: word }),
+      hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }), ...(uses !== undefined && { uses }), ...(word && { state: word }),
     };
   };
   const items = (state.items ?? []).map((item): SandboxItem => ({
     id: item.id, name: statCodeName(item.name, placeholderDefs),
+    ...(item.unidentifiedName && { unidentifiedName: item.unidentifiedName }), ...(item.unidentifiedDescription && { unidentifiedDescription: item.unidentifiedDescription }),
     ...(sandbox?.owners.get(item.id) ? { placeholders: sandbox.owners.get(item.id) } : {}),
     copies: (state.itemCopies ?? []).filter((copy) => copy.item.kind === 'item' && copy.item.itemId === item.id).map(itemCopy),
   }));

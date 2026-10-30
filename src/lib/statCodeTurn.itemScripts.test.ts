@@ -170,6 +170,26 @@ describe('runItemScripts', () => {
     expect(out.copies.map((c) => c.state)).toEqual([{ state: 'lit' }]);
   });
 
+  it('gives an item script both faces and the flag, and its reveal() identifies the copy (Q19)', async () => {
+    const ring = {
+      ...item('i-ring', 'Ring of Curses', [['gained', `
+        if (self.unidentifiedName !== 'Plain Ring' || self.event.copy.unidentified !== true) throw new Error('faces');
+        self.event.copy.reveal();
+      `]]), unidentifiedName: 'Plain Ring',
+    };
+    const start = [{ ...copy('c-1', 'i-ring', { kind: 'you' }), state: { unidentified: true as const } }];
+    const out = await runItemScripts(turnOf([ring], start), [event('gained', 'i-ring', 'c-1', { kind: 'you' })], [ring], applyWith([ring]), (i) => i.name);
+    expect(out.diagnostics).toEqual([]);
+    expect(out.copies).toEqual([copy('c-1', 'i-ring', { kind: 'you' })]);
+  });
+
+  it('names an unidentified copy’s item by its unidentified face in a run’s lines (Q17)', async () => {
+    const ring = { ...item('i-ring', 'Ring of Curses', [['gained', 'self.give(persona);']]), unidentifiedName: 'Plain Ring' };
+    const start = [{ ...copy('c-1', 'i-ring', { kind: 'you' }), state: { unidentified: true as const } }];
+    const out = await runItemScripts(turnOf([ring], start), [event('gained', 'i-ring', 'c-1', { kind: 'you' })], [ring], applyWith([ring]), (i) => i.name, { depth: ITEM_EVENT_DEPTH + 1 });
+    expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Plain Ring did not run']);
+  });
+
   it('runs nothing and keeps the copies when the item has no script for the timing', async () => {
     const plain = item('i-plain', 'Plain', []);
     const start = [copy('c-1', 'i-plain', { kind: 'you' })];

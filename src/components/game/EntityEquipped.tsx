@@ -1,6 +1,6 @@
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { byEquipOrder } from '@/lib/items';
+import { byEquipOrder, copyFace } from '@/lib/items';
 import { copiesAt } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -29,7 +29,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
           const item = ref.kind === 'item' ? data?.items?.find((i) => i.id === ref.itemId) : undefined;
           return (
             <li key={copy.id} className="flex items-baseline gap-2">
-              <span>{resolveText(item?.name ?? '') || 'Unknown Item'}</span>
+              <span>{resolveText(item ? copyFace(item, copy).name : '') || 'Unknown Item'}</span>
               <span className="text-meta text-muted-foreground">{slotName(slotId)}</span>
             </li>
           );

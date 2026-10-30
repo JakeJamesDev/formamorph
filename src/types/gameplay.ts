@@ -265,6 +265,8 @@ export interface ItemCopyState {
   uses?: number;
   /** The copy's current State word. Absent = none. */
   state?: string;
+  /** Shows the item's unidentified face to the player. Apart from visibility (Q15). */
+  unidentified?: true;
 }
 
 /** One item in play: a stack of `quantity` copies of an item in one place. */
@@ -290,6 +292,8 @@ export interface AppliedItemEffect {
   values: Record<string, number>;
   /** Every Item Copy behind it is hidden, so its log lines name no item. */
   hidden?: boolean;
+  /** Every Item Copy behind it is unidentified, so its log lines use the unidentified face. */
+  unidentified?: boolean;
 }
 
 /** One running After Use row on an owner, which ends at a story-clock hour (Q40). */
@@ -306,6 +310,8 @@ export interface TimedItemEffect {
   values?: Record<string, number>;
   /** The dose came from a hidden Item Copy, so its lines name no item. */
   hidden?: boolean;
+  /** The dose came from an unidentified Item Copy, so its lines use the unidentified face. */
+  unidentified?: boolean;
 }
 
 /** The item effects in force. Bound facets are derived from the Item Copies and recorded nowhere. */

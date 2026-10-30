@@ -43,7 +43,8 @@ const weakSword = item('weak', 'Cursed Sword', { slotId: 'hand', equipRequires: 
 const band = item('band', 'Iron Band', { slotId: 'finger', statEffects: [statRow('strength', 2)] });
 const signet = item('signet', 'Signet', { slotId: 'finger', equipRequires: needs('strength', 5) });
 const gauntlet = item('gauntlet', 'Gauntlet', { slotId: 'body', equipRequires: needs('luck', 1), statEffects: [statRow('strength', 2)] });
-const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gauntlet, band, signet];
+const veil = item('veil', 'Hex Veil', { unidentifiedName: 'Lace Veil', traitEffects: [grant('cursed', 'owned')] });
+const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gauntlet, band, signet, veil];
 
 const hero = { kind: 'entity', id: 'hero' } as const;
 const you = { kind: 'you' } as const;
@@ -163,6 +164,31 @@ describe('item trait grants', () => {
     let play = start([stat('luck', 5)]);
     play = { ...play, copies: [{ id: 'h', item: { kind: 'item', itemId: 'ring' }, where: hero, quantity: 1, visibility: 'hidden' }] };
     expect(settle(play).log).toContain('Trait switched on: Cursed (by An item)');
+  });
+
+  it('names an unidentified Item Copy by its unidentified face, on and off (Q17)', () => {
+    let play = start([stat('luck', 5)]);
+    play = { ...play, copies: [{ id: 'v', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', state: { unidentified: true } }] };
+    play = settle(play);
+    expect(play.log).toContain('Trait switched on: Cursed (by Lace Veil)');
+    play = act(play, [lose(play, 'veil')]);
+    expect(play.log).toContain('Trait switched off: Cursed (by Lace Veil)');
+  });
+
+  it('names the true item once any Item Copy behind a grant is identified', () => {
+    const veilCopy = (id: string, unidentified: boolean): ItemCopy => ({
+      id, item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', ...(unidentified && { state: { unidentified: true as const } }),
+    });
+    const play = settle({ ...start([stat('luck', 5)]), copies: [veilCopy('a', true), veilCopy('b', false)] });
+    expect(play.log).toContain('Trait switched on: Cursed (by Hex Veil)');
+  });
+
+  it('keeps the unidentified face while the only identified copy is hidden (Q39)', () => {
+    const copies: ItemCopy[] = [
+      { id: 'h', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'hidden' },
+      { id: 'v', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', state: { unidentified: true } },
+    ];
+    expect(settle({ ...start([stat('luck', 5)]), copies }).log).toContain('Trait switched on: Cursed (by Lace Veil)');
   });
 
   it('skips an Automatic trait and a trait the owner lacks, with a diagnostic', () => {

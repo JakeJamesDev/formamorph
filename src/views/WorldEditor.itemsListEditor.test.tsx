@@ -132,6 +132,24 @@ describe('the item panel', () => {
     expect(screen.getByText('AI-Facing Summary')).toBeTruthy();
   });
 
+  it('writes the Unidentified Name and Unidentified Description from the Descriptions tab, in Simple mode too', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    openEditorTab(/Items/);
+    openItem('Lamp');
+    itemFieldsTab('Descriptions');
+    const type = async (name: string, text: string) => {
+      const editor = getNearestEditorFromDOMNode(screen.getByRole('textbox', { name }));
+      await act(async () => {
+        editor?.update(() => { $getRoot().clear().append($createParagraphNode().append($createTextNode(text))); }, { discrete: true });
+      });
+    };
+    await type('Unidentified Name', 'Dented Lamp');
+    await type('Unidentified Description', 'A lamp gone green with age.');
+    expect(ctx().items.find((i) => i.id === 'lamp')).toMatchObject({ unidentifiedName: 'Dented Lamp', unidentifiedDescription: 'A lamp gone green with age.' });
+    await type('Unidentified Name', '');
+    expect(ctx().items.find((i) => i.id === 'lamp')?.unidentifiedName).toBeUndefined();
+  });
+
   it('leaves Placeholders and the summary to Advanced mode', () => {
     renderWorldEditorBench(WORLD, 'simple');
     openEditorTab(/Items/);

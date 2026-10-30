@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { WorldInput } from '@/components/editor/WorldField';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
@@ -292,6 +292,32 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
 
       <PanelTabContent value="descriptions">
         <EntityDescriptionFields {...groupProps} />
+        <div className="space-y-2" {...fieldFrame('unidentifiedName')}>
+          <Label>Unidentified Name</Label>
+          <Hint id={`item-unidentified-name-hint-${item.id}`}>
+            Shows this name to the player until the story identifies the item. Blank shows the normal name.
+          </Hint>
+          <PlaceholderNameField
+            value={draft.unidentifiedName ?? ''}
+            onChange={(v) => setField('unidentifiedName', v || undefined)}
+            placeholders={placeholders}
+            ownerId={item.id}
+            ariaLabel="Unidentified Name"
+            ariaDescribedBy={`item-unidentified-name-hint-${item.id}`}
+          />
+        </div>
+        <PlaceholderField
+          label="Unidentified Description"
+          ariaLabel="Unidentified Description"
+          historyField="unidentifiedDescription"
+          hint="Shows this description to the player until the story identifies the item. Blank shows the Player-Facing Description."
+          value={draft.unidentifiedDescription ?? ''}
+          onChange={(v) => setField('unidentifiedDescription', v || undefined)}
+          placeholders={placeholders}
+          ownerId={item.id}
+          ownerName={draft.name}
+          resizable
+        />
       </PanelTabContent>
 
       <PanelTabContent value="properties">

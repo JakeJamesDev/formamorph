@@ -3,7 +3,7 @@
  * come from an injected maker, as the turn commit's do.
  */
 import {
-  byEquipOrder, itemStackable, itemUsable, sameState, sameWhere, seededState, slotCapacity, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
+  byEquipOrder, isUnidentified, itemStackable, itemUsable, sameState, sameWhere, seededState, slotCapacity, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
 } from '@/lib/items';
 import { inCast, playsAs } from '@/lib/owners';
 import type {
@@ -70,8 +70,8 @@ function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef |
 /**
  * The Item Copies a new game starts with, from the world's placements in authored order. A stackable item
  * placed twice on one owner forms one stack; a hidden placement stays its own row. Each copy of an item that
- * isn't stackable is its own Item Copy with full uses. Seeded copies start carried. Runs for a new game
- * only (Q59).
+ * isn't stackable is its own Item Copy with full uses. Seeded copies start carried, and unidentified when the item
+ * has an unidentified face (Q16). Runs for a new game only (Q59).
  */
 export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): ItemCopy[] {
   const items = new Map((world.items ?? []).map((item) => [item.id, item]));
@@ -184,6 +184,13 @@ const unequipped = (copy: ItemCopy): ItemCopy => {
   return rest;
 };
 
+/** `copy` without the unidentified flag. */
+const identified = (copy: ItemCopy): ItemCopy => {
+  const { unidentified: _off, ...state } = copy.state ?? {};
+  const { state: _was, ...rest } = copy;
+  return Object.keys(state).length ? { ...rest, state } : rest;
+};
+
 const whereText = (where: ItemCopyWhere): string => (where.kind === 'you' ? 'you' : `${where.kind} ${where.id}`);
 
 /**
@@ -202,11 +209,11 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
     if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }) });
   };
   const itemOf = (copy: ItemCopy): Item | undefined => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
-  /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place, uses left (Q27) and State. */
+  /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place, uses left (Q27), State and identity (Q18). */
   const sameRow = (c: ItemCopy, copy: ItemCopy): boolean => !c.equipped && sameRef(c.item, copy.item)
     && c.visibility === copy.visibility && sameWhere(c.where, copy.where)
     && usesLeft(c, itemOf(c)) === usesLeft(copy, itemOf(copy))
-    && sameState(c, copy);
+    && sameState(c, copy) && isUnidentified(c) === isUnidentified(copy);
   /** The row `copy` ended in after a `put`: its own, or the stack it merged into. */
   const rowOf = (copy: ItemCopy): string => (list.some((c) => c.id === copy.id) ? copy.id
     : list.find((c) => sameRow(c, copy))?.id ?? copy.id);
@@ -295,15 +302,18 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         return null;
       }
       case 'reveal': {
-        if (copy.visibility !== 'hidden') return `reveal: Item Copy ${copy.id} is not hidden`;
+        // A hidden copy comes into view and stays unidentified; a visible unidentified one is identified (Q8).
+        const hidden = copy.visibility === 'hidden';
+        if (!hidden && !isUnidentified(copy)) return `reveal: Item Copy ${copy.id} is neither hidden nor unidentified`;
         const quantity = op.quantity === undefined ? copy.quantity : Math.floor(op.quantity);
         if (!(quantity > 0) || quantity > copy.quantity) return `reveal: quantity ${op.quantity} does not fit ${copy.quantity}`;
-        // A revealed row merges into a carried visible stack of the same item and place (Q65, Q94).
+        const shown = (c: ItemCopy): ItemCopy => (hidden ? { ...c, visibility: 'visible' } : identified(c));
+        // A revealed row merges into a carried stack it now matches, in the same place (Q18, Q65, Q94).
         if (quantity === copy.quantity) {
-          list = put(list, { ...copy, visibility: 'visible' });
+          list = put(list, shown(copy));
         } else {
           list = list.map((c) => (c === copy ? { ...c, quantity: copy.quantity - quantity } : c));
-          list = put(list, { ...unequipped(copy), id: call.newId(), quantity, visibility: 'visible' });
+          list = put(list, shown({ ...unequipped(copy), id: call.newId(), quantity }));
         }
         return null;
       }
@@ -313,7 +323,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         if (item && !itemUsable(item)) return `use: Item Copy ${copy.id} can't be used`;
         const left = usesLeft(copy, item);
         if (left !== undefined && !(left > 0)) return `use: Item Copy ${copy.id} has no uses left`;
-        if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden' });
+        if (item) doses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }) });
         fire('used', copy.item, copy.id, copy.where, 1, copy);
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });

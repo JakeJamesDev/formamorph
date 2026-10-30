@@ -6,7 +6,7 @@ import type {
   ChatMessage, DiscoveredEntity, Entity, GameState, Item, ItemCopy, PlayerStat, RuntimeItem, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
-import { copyState, stateKey } from '@/lib/items';
+import { copyFace, copyState, isUnidentified, stateKey } from '@/lib/items';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
@@ -36,7 +36,7 @@ export interface PlayerViewLocation {
 
 export interface PlayerViewItem {
   kind: 'item';
-  /** The authored item's id, or the runtime item's. */
+  /** The authored item's id, or the runtime item's. An unidentified face has an id of its own ({@link unidentifiedRowId}). */
   id: string;
   name: string;
   description: string;
@@ -198,13 +198,23 @@ const metCopy = (copy: ItemCopy, snapshot: GameState): boolean =>
   copy.visibility === 'visible'
   && (copy.where.kind === 'you' || (copy.where.kind === 'location' && copy.where.id === snapshot.locationId));
 
-/** The item a copy is of, with its player text; undefined when the item is gone. */
+/** The row id of an item's unidentified face, apart from its true face's so the two never link (Q40). */
+export const unidentifiedRowId = (itemId: string): string => `${itemId}:unidentified`;
+
+/** The row id the player knows `copy` by: its item's id, or the unidentified face's while it is unidentified. */
+export const playerItemId = (copy: ItemCopy): string => (copy.item.kind === 'runtime' ? copy.item.runtimeItemId
+  : isUnidentified(copy) ? unidentifiedRowId(copy.item.itemId) : copy.item.itemId);
+
+/** The item a copy is of as the player knows it, with its player text; undefined when the item is gone. */
 function copiedItem(
-  ref: ItemCopy['item'], authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>,
+  copy: ItemCopy, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>,
 ): { id: string; name: string; text?: string } | undefined {
+  const ref = copy.item;
   if (ref.kind === 'item') {
     const item = authored.get(ref.itemId);
-    return item && { id: item.id, name: item.name, text: item.playerDescription };
+    if (!item) return undefined;
+    const face = copyFace(item, copy);
+    return { id: playerItemId(copy), name: face.name, text: face.description };
   }
   // A runtime item's description is text the AI wrote in play, which counts as player text.
   const item = runtime.get(ref.runtimeItemId);
@@ -221,7 +231,7 @@ function viewItems(input: PlayerViewInput): PlayerViewItem[] {
     for (const item of snapshot.runtimeItems ?? []) runtime.set(item.id, item);
     for (const copy of snapshot.itemCopies ?? []) {
       if (!metCopy(copy, snapshot)) continue;
-      const item = copiedItem(copy.item, authored, runtime);
+      const item = copiedItem(copy, authored, runtime);
       if (!item) continue;
       const key = `${copy.item.kind}:${item.id}`;
       const row = met.get(key);

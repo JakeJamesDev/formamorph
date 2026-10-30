@@ -33,7 +33,7 @@ The item panel works like the entity panel.
 | Tab | What it holds |
 |---|---|
 | **Profile** | The name, the images with their rules, and the image tags |
-| **Descriptions** | The player-facing and AI-facing descriptions, and in Advanced mode the **AI-Facing Summary** |
+| **Descriptions** | The player-facing and AI-facing descriptions, in Advanced mode the **AI-Facing Summary**, and the **Unidentified Name** and **Unidentified Description** |
 | **Properties** | Value, Stackable, Uses, When Empty, Bound, Slot and Slot Size |
 | **Effects** | The stat effect rows: what the item does to its owner's stats |
 | **Placeholders** | The item's own placeholders (Advanced mode only) |
@@ -41,6 +41,24 @@ The item panel works like the entity panel.
 An image's **Visibility Rule** reads whoever owns the item. A Condition with no owner reads as **Item Owner**.
 
 An item's placeholders roll once per playthrough. Every Item Copy shows the same value.
+
+## Unidentified items
+<!-- keywords: unidentified, identify, mystery item, cursed item, true name, hidden identity, unidentified name, unidentified description -->
+<!-- route: worldEditorItem.descriptions -->
+
+An item can hide what it really is until the story reveals it. A cursed ring can look like a plain ring.
+
+| Field | What it does |
+|---|---|
+| **Unidentified Name** | The name the player sees until the item is identified |
+| **Unidentified Description** | The description the player sees until the item is identified |
+
+- 🔒 Fill either field, and every copy of the item starts unidentified. A blank field shows the normal value.
+- 👁️ The player sees only the unidentified face: in the **Inventory** tab, in the log and in Formaquestion.
+- 📖 The narrator sees both faces, with the true one marked unknown to the player. It can reveal the truth when the story does.
+- ✨ The item's effects apply while it's unidentified.
+- 🔍 A reveal identifies a visible unidentified copy, from the story or from a script's `reveal()`. A hidden copy first comes into view and stays unidentified; a second reveal identifies it.
+- 📦 Unidentified and identified copies never stack. An identified copy joins a matching stack in the same place.
 
 ## Properties
 <!-- keywords: value, price, worth, stack, consumable, charges, uses, when empty, empty bottle, becomes, changes state, single use, state, sealed, opened, lit, bound, quest item, slot, equip -->
@@ -196,7 +214,7 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 
 After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use up an item, and reveal a hidden one. It sees the items of the player, of the people here, and of the location.
 
-- 🔤 A name in the story matches your item when it's the same name, ignoring case and spaces. "iron sword" is your **Iron Sword**. "iron swords" is not.
+- 🔤 A name in the story matches your item when it's the same name, ignoring case and spaces. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
 - ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used up, and it has no slot and no effects. The same name later reuses it.
 - 🎒 The step runs only while the world has items or the game holds any. A world with no items never sends it.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.

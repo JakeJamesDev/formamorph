@@ -4,7 +4,7 @@
  * effects reverse (Q48); the passes repeat to a fixed point under a cap (Q66). Pure.
  */
 import { itemRuleStates } from '@/lib/imageVisibility';
-import { sameWhere } from '@/lib/items';
+import { isUnidentified, sameWhere, seenItemName } from '@/lib/items';
 import { isHidden } from '@/lib/traitEffects';
 import {
   entityStatTraitsInForce, setGrantedTraits, settleTraits, traitGateInput, traitNameIn, traitSwitchLog,
@@ -75,7 +75,7 @@ function reader(world: InventorySettleWorld) {
   const resolve = world.resolve ?? same;
   const traitWorld = (copies: readonly ItemCopy[]): TraitWorld => ({ ...world.traits, itemCopies: copies });
   // A grant that leaves takes its item along, so its switch-off names the item it last read.
-  const lastSources = new Map<string, { item: Item; hidden: boolean }>();
+  const lastSources = new Map<string, { item: Item; hidden: boolean; unidentified: boolean }>();
   const grantsOf = (effectCopies: readonly ItemCopy[], tw: TraitWorld, ledger?: ItemEffectLedger, doses?: readonly Dose[], now?: number) =>
     wantedGrants(
       effectCopies, { items, owners: tw.owners ?? [], persona, entities: world.entities }, ledger?.firstObtainTraits,
@@ -85,10 +85,11 @@ function reader(world: InventorySettleWorld) {
     for (const [key, source] of grantsOf(copies, traitWorld(copies), ledger).sources) lastSources.set(key, source);
   };
   const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
-  /** A copy as the log names it: "An item" when it is hidden (Q63). */
+  /** A copy as the log names it: "An item" when it is hidden (Q63), the unidentified face when unidentified (Q17). */
   const copyName = (copy: ItemCopy) => {
     const item = itemOf(copy);
-    return copy.visibility === 'hidden' || !item ? 'An item' : resolve(item.name);
+    const name = item && seenItemName(item, copy.visibility === 'hidden', isUnidentified(copy));
+    return name ? resolve(name) : 'An item';
   };
 
   /** One pass: grants and stat effects from `effectCopies`, then the trait gates, which read `copies`. `doses` start
@@ -103,7 +104,8 @@ function reader(world: InventorySettleWorld) {
     for (const { ownerId, trait, on } of granted.switched) {
       if (isHidden(trait)) continue;
       const source = grants.sources.get(grantKey(ownerId, trait.id)) ?? lastSources.get(grantKey(ownerId, trait.id));
-      const by = !source ? undefined : source.hidden ? 'An item' : resolve(source.item.name);
+      const name = source && seenItemName(source.item, source.hidden, source.unidentified);
+      const by = !source ? undefined : name ? resolve(name) : 'An item';
       log.push(...traitSwitchLog(traitNameIn(tw, trait.id, nameOf, ownerId) ?? trait.name, on ? 'on' : 'off', [], by));
     }
     for (const [key, source] of grants.sources) lastSources.set(key, source);
