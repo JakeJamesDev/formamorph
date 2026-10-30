@@ -267,6 +267,15 @@ describe('the pass\'s use, after and change (Q6, Q7, Q10)', () => {
     expect(pass([noteCopy(2)], [op('use', 'Torn Note', { owner: 'you', after: 'used up' })]).copies).toEqual([noteCopy(1)]);
   });
 
+  it('uses a charged copy before a spent one beside it', () => {
+    const wand = item('wand', 'Wand', { uses: 3, whenEmpty: { kind: 'stays' } });
+    const spent = copy('a', 'wand', you, { state: { uses: 0 } });
+    const result = applyInventoryPass([spent, copy('b', 'wand', you)], [op('use', 'Wand', { owner: 'you' })],
+      scene({ items: [wand] }), { world: { items: [wand] }, newId: ids() });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.copies.map((c) => ({ id: c.id, uses: c.state?.uses }))).toEqual([{ id: 'a', uses: 0 }, { id: 'b', uses: 2 }]);
+  });
+
   it('follows an authored item\'s When Empty whatever after says', () => {
     for (const after of ['used up', 'kept', undefined] as const) {
       const result = pass([copy('l', 'letter', you)], [op('use', 'Sealed Letter', { owner: 'you', after })]);
