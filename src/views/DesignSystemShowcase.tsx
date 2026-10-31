@@ -16,7 +16,6 @@ import { YouMarkReference } from '@/components/design-system/YouMarkReference';
 import { InventoryTabReference } from '@/components/design-system/InventoryTabReference';
 import { SegmentedMultiSelectReference } from '@/components/design-system/SegmentedMultiSelectReference';
 import { CollapsingSegmentedReference } from '@/components/design-system/CollapsingSegmentedReference';
-import { SegmentMotionTrial } from '@/components/design-system/SegmentMotionTrial';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -482,12 +481,6 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Collapsing Segmented',
     description: 'A pick-one segmented control that folds the other options to icons when its labels don’t fit',
     Component: CollapsingSegmentedReference,
-  },
-  {
-    id: 'segment-motion-trial',
-    label: 'Segment Motion Trial',
-    description: 'Every motion candidate for the collapsing strips, side by side, at one width',
-    Component: SegmentMotionTrial,
   },
   {
     id: 'inventory-tab',

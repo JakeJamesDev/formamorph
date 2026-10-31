@@ -1,10 +1,10 @@
-import { useContext, useEffect, useRef, type CSSProperties, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
-import { SegmentMotionContext } from '@/components/ui/segmentMotion';
+import { SEGMENT_MOTION } from '@/components/ui/segmentMotion';
 import { SEGMENT_X } from '@/components/ui/useCollapsingSegments';
 import { labelShown, type SegmentFold, type SegmentLayout } from '@/lib/collapsingSegments';
 import { MEASURE_LAYER } from '@/lib/measureLayer';
@@ -18,43 +18,22 @@ export interface CollapsingSegmentOption<V extends string> {
 
 /** The one pill that slides to the selected segment. */
 export function SegmentPill({ layout, active, animate }: { layout: SegmentLayout; active: number; animate: boolean }) {
-  const { pill } = useContext(SegmentMotionContext);
-  const left = layout.lefts[active];
-  const width = layout.widths[active];
-  const lastLeft = useRef(left);
-  useEffect(() => { lastLeft.current = left; });
-  const base = 'pointer-events-none absolute top-1 bottom-1 rounded-sm bg-background shadow-sm';
-
-  if (typeof pill !== 'string') {
-    // The edge on the side of travel moves first; the other follows after the lag.
-    const { ms, lagMs, easing } = pill.stretch;
-    const edge = (lags: boolean) => `${ms}ms ${easing}${lags ? ` ${lagMs}ms` : ''}`;
-    const towardRight = left > lastLeft.current;
-    const towardLeft = left < lastLeft.current;
-    const style: CSSProperties = {
-      left,
-      right: layout.total - left - width,
-      transition: animate ? `left ${edge(towardRight)}, right ${edge(towardLeft)}` : undefined,
-    };
-    return <span aria-hidden data-collapsing-pill="" className={cn(base, 'motion-reduce:!transition-none')} style={style} />;
-  }
   return (
     <span
       aria-hidden
       data-collapsing-pill=""
-      className={cn(base, 'left-0', animate && pill)}
-      style={{ width, transform: `translateX(${left}px)` }}
+      className={cn('pointer-events-none absolute left-0 top-1 bottom-1 rounded-sm bg-background shadow-sm', animate && SEGMENT_MOTION.pill)}
+      style={{ width: layout.widths[active], transform: `translateX(${layout.lefts[active]}px)` }}
     />
   );
 }
 
 /** A segment's icon and its label, which opens and closes with the step. It moves only once `animate`, so the first measured step lands without a slide. */
 export function SegmentFace({ icon: Icon, label, shown, animate }: { icon: LucideIcon; label: string; shown: boolean; animate: boolean }) {
-  const motion = useContext(SegmentMotionContext);
   return (
     <>
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
-      <span className={cn('grid', animate && motion.label, shown ? 'ml-2 grid-cols-[1fr] opacity-100' : 'ml-0 grid-cols-[0fr] opacity-0')}>
+      <span className={cn('grid', animate && SEGMENT_MOTION.label, shown ? 'ml-2 grid-cols-[1fr] opacity-100' : 'ml-0 grid-cols-[0fr] opacity-0')}>
         <span className="min-w-0 overflow-hidden">{label}</span>
       </span>
     </>
@@ -75,12 +54,11 @@ export function CollapsingSegment<V extends string>({ kind, option, index, activ
   ready: boolean;
   animate: boolean;
 }) {
-  const motion = useContext(SegmentMotionContext);
   const shown = labelShown(fold, index, active);
   const props = {
     value: option.value,
     'aria-label': option.label,
-    className: cn('relative z-10 shrink-0', SEGMENT_X, animate ? motion.segment : 'transition-none'),
+    className: cn('relative z-10 shrink-0', SEGMENT_X, animate ? SEGMENT_MOTION.segment : 'transition-none'),
     style: ready ? { width: layout.widths[index] } : undefined,
     children: <SegmentFace icon={option.icon} label={option.label} shown={shown} animate={animate} />,
   };

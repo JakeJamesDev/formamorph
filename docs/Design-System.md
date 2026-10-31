@@ -2141,7 +2141,7 @@ The Selected step is sized for the widest label, so a new pick never changes the
 - 🧩 **Component.** `CollapsingToggleGroup` in [`collapsing-toggle-group.tsx`](../src/components/ui/collapsing-toggle-group.tsx), built on `ToggleGroup` at its `h-10` size. The production use is the main menu's top bar in [`MainMenu.tsx`](../src/views/MainMenu.tsx).
 - 📏 **Room, not viewport.** It fills its parent and folds by that width. It never takes less than its icons-only width, so it can't overlap the controls beside it.
 - 💊 **One pill.** A single pill slides and resizes to the selected option. Labels open and close on the same 200 ms `cubic-bezier(0.2, 0, 0, 1)` as the Nav Rail. With reduced motion, both change at once.
-- 🎞️ **One motion.** Every strip takes its pill, label and width motion from [`segmentMotion.ts`](../src/components/ui/segmentMotion.ts). The dev-only **Segment Motion Trial** reference compares the candidates side by side.
+- 🎞️ **One motion.** Every strip takes its pill, label and width motion from [`segmentMotion.ts`](../src/components/ui/segmentMotion.ts). That curve is Material 3's Standard; Carbon, Fluent 2, Material 3 Emphasized Decelerate and spring curves were tried against it and lost.
 - 💬 **Tips.** An option that shows only its icon shows its name in a `Tip` on hover or focus. An option whose label shows has no tip.
 - 🎨 **Icons.** Options use the app's shared icons for each type, such as `KIND_TAB_ICONS` for library types.
 - 📱 **Mobile.** Below `md`, the main menu uses its bottom tab bar instead.
