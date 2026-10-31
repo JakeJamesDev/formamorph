@@ -150,7 +150,7 @@ function strangerLabel(entity: Entity, aliases: StrangerLabels): string | null {
   return aliases[entity.id]?.trim() || entity.strangerName?.trim() || null;
 }
 
-/** How the planner names each entity that has a Stranger Name, by true name. Absent for everyone else, who
+/** How the prompts name each entity that has a Stranger Name, by true name. Absent for everyone else, who
  *  keeps the narration test. */
 export interface StrangerReveal {
   met: boolean;

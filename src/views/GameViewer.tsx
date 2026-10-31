@@ -2373,7 +2373,8 @@ const GameViewer = ({
     const { global, owners } = gatedWorld();
     return { global, owners };
   }, [gatedWorld]);
-  // Every roster lists an unmet stranger under its true name with its label beside it.
+  // Every roster lists an unmet stranger under its true name with its label beside it. This reads the live
+  // met list; the turn start reads its own, as the turn begins.
   const strangerLabels = useMemo(
     () => strangersInPlay(allEntities, metCheckFor(metEntities), strangerAliases).labels,
     [allEntities, metCheckFor, metEntities, strangerAliases],
