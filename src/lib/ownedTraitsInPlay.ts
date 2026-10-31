@@ -371,6 +371,35 @@ export function withOwnerNames(
   return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
 }
 
+/** The tree with each stranger's own trait and group names read from the authored text with the stranger's
+ *  label as the Character Name. `raw` holds the authored entities; `named` resolves a text for a relabeled node. */
+export function withStrangerNames(
+  tree: OwnerTraitTree, strangers: ReadonlySet<string>, raw: readonly Entity[],
+  named: (text: string, owner: Entity, trait?: Trait) => string,
+): OwnerTraitTree {
+  if (strangers.size === 0) return tree;
+  const rawById = new Map(raw.map((e) => [e.id, e]));
+  const strangerOf = (id: string | null | undefined) => (id != null && strangers.has(id) ? id : undefined);
+  const traits = mapPreservingIdentity(tree.traits, (row) => {
+    const ownerId = strangerOf(rowOwner(tree, row));
+    const entity = ownerId ? tree.entityNodes.get(ownerId) : undefined;
+    const original = ownerId ? rawById.get(ownerId)?.traits?.find((t) => t.id === row.id) : undefined;
+    if (!entity || !original) return row;
+    const name = named(original.name, entity, original);
+    return name === row.name ? row : { ...row, name };
+  });
+  const groups = mapPreservingIdentity(tree.groups, (row) => {
+    const ownerId = strangerOf(tree.ownerOfGroup.get(row.id));
+    const entity = ownerId ? tree.entityNodes.get(ownerId) : undefined;
+    if (!ownerId || !entity || !row.id.startsWith(`${ownerId}/`)) return row;
+    const original = rawById.get(ownerId)?.traitGroups?.find((g) => g.id === row.id.slice(ownerId.length + 1));
+    if (!original) return row;
+    const name = named(original.name, entity);
+    return name === row.name ? row : { ...row, name };
+  });
+  return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
+}
+
 /** A tree whose trait text primes: global scope's, with no entity, or an entity owner's. */
 type PrimingTree = Pick<Owner, 'traits' | 'groups'> & ({ entity: null } | Pick<Owner, 'id' | 'entity' | 'isPlayer'>);
 

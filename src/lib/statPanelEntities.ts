@@ -11,7 +11,7 @@ export interface StatPanelOption {
 }
 
 /** Later labels that repeat an earlier one take a count: "a gate guard", "a gate guard (2)". */
-function numbered(options: StatPanelOption[]): StatPanelOption[] {
+export function numbered(options: StatPanelOption[]): StatPanelOption[] {
   const counts = new Map<string, number>();
   return options.map((option) => {
     const count = (counts.get(option.label) ?? 0) + 1;

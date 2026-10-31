@@ -455,6 +455,38 @@ describe('entity nodes in the traits tab', () => {
     expect(screen.queryByRole('checkbox', { name: 'Switch off Ash’s Tamed' })).toBeNull();
   });
 
+  describe('on a past page', () => {
+    const hooded = { strangerName: 'a hooded man' };
+    const bond = T('t-bond', '{{char}} Bond', { playerDescription: '{{char}} watches you.' });
+    /** Two pages, both with `names` in scene; the view sits on page 1. */
+    const pastTraits = (entities: { id: string; name: string }[]) => {
+      const names = entities.map((e) => e.name);
+      const ownedTraits = Object.fromEntries(entities.map((e) => [e.id, { chosen: ['t-bond'] }]));
+      renderTraits([PALADIN], [], [], {
+        world: { entities: entities.map((e) => ({ ...e, ...hooded, traits: [bond] })) as never },
+        page: 1,
+        turns: [
+          { ...TURNS[0], locationId: 'yard', entities: names, ownedTraits },
+          { ...TURNS[0], turnId: 't2', locationId: 'yard', entities: names, ownedTraits },
+        ],
+      });
+    };
+
+    it('reads a stranger’s trait text with its label as the Character Name, never its name', () => {
+      pastTraits([{ id: 'e-ash', name: 'Ash' }]);
+      const node = section('a hooded man');
+      expect(within(node).getByRole('checkbox', { name: 'Switch off a hooded man Bond' })).toBeDisabled();
+      expect(within(node).getByText('a hooded man watches you.')).toBeTruthy();
+      expect(screen.queryByText(/Ash/)).toBeNull();
+    });
+
+    it('numbers strangers who share a label as distinct nodes', () => {
+      pastTraits([{ id: 'e-ash', name: 'Ash' }, { id: 'e-bo', name: 'Bo' }]);
+      expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man', 'a hooded man (2)']);
+      expect(screen.queryByText(/Ash|Bo\b/)).toBeNull();
+    });
+  });
+
   it('keeps the played entity’s node when it took no part', () => {
     withAsh({ quiet: ['Ash'], seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
     expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
