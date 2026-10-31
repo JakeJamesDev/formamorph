@@ -190,6 +190,12 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
       </Section>
       <Section title="Request">
         <CheckRow
+          htmlFor="fq-sort-questions"
+          checked={settings.intentClassifier}
+          onChange={(intentClassifier) => onChange({ intentClassifier })}
+          {...GENERAL_COPY.sortQuestions}
+        />
+        <CheckRow
           htmlFor="fq-open-screen"
           checked={settings.openScreen}
           onChange={(openScreen) => onChange({ openScreen })}

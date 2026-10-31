@@ -70,6 +70,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can read whether the player has met an entity, and can make the player meet it.** Read `entities.<Entity>.met`, or call `entities.<Entity>.meet()`. `met` never turns false.
     - **The Test Bench's opening preview and the AI Context show a stranger under its Stranger Name.** The true name stays beside it, as in the first turn of play.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
+  - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

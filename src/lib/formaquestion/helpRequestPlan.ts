@@ -7,6 +7,7 @@ import type { DocSection } from '@/lib/docs/docsIndex';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { Tool } from '@/types';
 import { isCodeTurn, isOnCodeTab } from './helpCodeRider';
+import { NO_WORLD_RIDER, TWO_ASK_RIDER, type IntentReading } from './helpIntent';
 import type { HelpSettings } from './helpSettings';
 import { helpToolsOn } from './helpTools';
 import type { SurfaceHint } from './surfaceHint';
@@ -42,11 +43,8 @@ export function turnLead(hint: SurfaceHint | null, quickReference: DocSection | 
   return { lead: quickReference, pinned: [] };
 }
 
-/**
- * The full request: every block the settings, the open screen and the question's code words call for.
- * `surface` and `hint` are the open screen's while Open Screen is on.
- */
-export function fullHelpPlan({ question, settings, surface, hint, quickReference, takesFunctions }: {
+/** What a question's plans are built from. `surface` and `hint` are the open screen's while Open Screen is on. */
+export interface HelpPlanInput {
   question: string;
   settings: HelpSettings;
   surface: Surface | null | undefined;
@@ -54,8 +52,10 @@ export function fullHelpPlan({ question, settings, surface, hint, quickReference
   quickReference: DocSection | null;
   /** The answer endpoint is known to take function calls. */
   takesFunctions: boolean;
-}): HelpRequestPlan {
-  const code = isCodeTurn(question, surface);
+}
+
+/** Every block the settings and the open screen call for, with the code rider when `code` says so. */
+function planOf({ settings, surface, hint, quickReference, takesFunctions }: HelpPlanInput, code: boolean): HelpRequestPlan {
   const lookup = settings.lookup && takesFunctions;
   const { lead } = turnLead(hint, code ? quickReference : null, isOnCodeTab(surface));
   // With no lead, no lookup and no source, no part of the request can carry a section.
@@ -72,4 +72,33 @@ export function fullHelpPlan({ question, settings, surface, hint, quickReference
     tools: takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [],
     riders: [],
   };
+}
+
+/** The full request: every block the settings, the open screen and the question's code words call for. */
+export const fullHelpPlan = (input: HelpPlanInput): HelpRequestPlan => planOf(input, isCodeTurn(input.question, input.surface));
+
+/** The Code Intent's plan: the full request with the code rider. Every other Intent's plan carries a part of it. */
+export const codeHelpPlan = (input: HelpPlanInput): HelpRequestPlan => planOf(input, true);
+
+/**
+ * The plan of a question the Intent Classifier read, per the spec's table. Create, and World with Read the
+ * World off, get the full request. World with no world open gets the no-world rider in place of the world.
+ */
+export function intentHelpPlan(input: HelpPlanInput, { intent, secondAsk }: IntentReading, worldOpen: boolean): HelpRequestPlan {
+  const twoAsk = secondAsk ? [TWO_ASK_RIDER] : [];
+  const full = fullHelpPlan(input);
+  const help = planOf(input, false);
+  switch (intent) {
+    case 'Chat':
+      return { guide: false, world: false, story: false, code: null, lookup: false, roll: full.roll, face: full.face, tools: [], riders: twoAsk };
+    case 'Help':
+      return { ...help, riders: twoAsk };
+    case 'Code':
+      return { ...codeHelpPlan(input), riders: twoAsk };
+    case 'World':
+      if (!help.world) return { ...full, riders: [...full.riders, ...twoAsk] };
+      return { ...help, guide: false, lookup: false, world: worldOpen, story: worldOpen, riders: [...(worldOpen ? [] : [NO_WORLD_RIDER]), ...twoAsk] };
+    case 'Create':
+      return { ...full, riders: [...full.riders, ...twoAsk] };
+  }
 }

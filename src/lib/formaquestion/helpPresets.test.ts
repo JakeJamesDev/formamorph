@@ -52,6 +52,7 @@ describe('the help preset store', () => {
     expect(DEFAULT_HELP_OPTIONS).toEqual({
       answer: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
       pick: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 150 },
+      intent: { temperature: 0, repetitionPenalty: 1, maxTokens: 40 },
       lookup: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
     });
   });
@@ -133,7 +134,7 @@ describe('the stored help preset store', () => {
     expect(read({ lookup: { temperature: -0.1, repetitionPenalty: 0.9, maxTokens: 12.5 } })).toEqual(DEFAULT_HELP_OPTIONS);
     const good = { temperature: 0.7, repetitionPenalty: 1.1, maxTokens: 400 };
     expect(read({ pick: good })).toEqual({ ...DEFAULT_HELP_OPTIONS, pick: good });
-    expect(read({ answer: good, pick: 'junk', lookup: { ...good, maxTokens: 0 } })).toEqual({ answer: good, pick: DEFAULT_HELP_OPTIONS.pick, lookup: { ...good, maxTokens: DEFAULT_HELP_OPTIONS.lookup.maxTokens } });
+    expect(read({ answer: good, pick: 'junk', lookup: { ...good, maxTokens: 0 } })).toEqual({ answer: good, pick: DEFAULT_HELP_OPTIONS.pick, intent: DEFAULT_HELP_OPTIONS.intent, lookup: { ...good, maxTokens: DEFAULT_HELP_OPTIONS.lookup.maxTokens } });
   });
 
   it('reads a bad value as the empty store, drops a bad preset, and points a ghost active id at Default', () => {
@@ -142,7 +143,7 @@ describe('the stored help preset store', () => {
     expect(parseHelpPresetStore({ activeId: 'x', presets: 'none' })).toEqual(EMPTY_HELP_PRESET_STORE);
     const good = { id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c', code: 'd' }, options: DEFAULT_HELP_OPTIONS };
     const read = parseHelpPresetStore({ activeId: 'gone', presets: [good, { id: 'bad', name: 'Bad', prompts: { answer: 1 } }, { id: 'ok', name: 'Twin', prompts: good.prompts }, 'junk'] });
-    expect(read).toEqual({ activeId: DEFAULT_HELP_PRESET_ID, presets: [{ ...good, prompts: { ...good.prompts, worldEditor: DEFAULT_HELP_PROMPTS.worldEditor, worldGame: DEFAULT_HELP_PROMPTS.worldGame } }] });
+    expect(read).toEqual({ activeId: DEFAULT_HELP_PRESET_ID, presets: [{ ...good, prompts: { ...good.prompts, intent: DEFAULT_HELP_PROMPTS.intent, worldEditor: DEFAULT_HELP_PROMPTS.worldEditor, worldGame: DEFAULT_HELP_PROMPTS.worldGame } }] });
     expect(parseHelpPresetStore({ activeId: 'ok', presets: [good] }).activeId).toBe('ok');
   });
 
@@ -156,8 +157,16 @@ describe('the stored help preset store', () => {
   it('gives a preset stored before the world rules the built-in rules, keeps stored rules, and drops rules that are not text', () => {
     const read = (prompts: Record<string, unknown>) => parseHelpPresetStore({ activeId: 'ok', presets: [{ id: 'ok', name: 'Ok', prompts }] }).presets;
     const before = { answer: 'a', pick: 'b', lookup: 'c', code: 'd' };
-    expect(read(before)[0]?.prompts).toEqual({ ...before, worldEditor: DEFAULT_HELP_PROMPTS.worldEditor, worldGame: DEFAULT_HELP_PROMPTS.worldGame });
+    expect(read(before)[0]?.prompts).toEqual({ ...before, intent: DEFAULT_HELP_PROMPTS.intent, worldEditor: DEFAULT_HELP_PROMPTS.worldEditor, worldGame: DEFAULT_HELP_PROMPTS.worldGame });
     expect(read({ ...before, worldEditor: 'Mine.', worldGame: 'Ours.' })[0]?.prompts).toMatchObject({ worldEditor: 'Mine.', worldGame: 'Ours.' });
     expect(read({ ...before, worldEditor: 7 })).toEqual([]);
+  });
+
+  it('gives a preset stored before the Intent Classifier the built-in prompt, keeps a stored one, and drops one that is not text', () => {
+    const read = (prompts: Record<string, unknown>) => parseHelpPresetStore({ activeId: 'ok', presets: [{ id: 'ok', name: 'Ok', prompts }] }).presets;
+    const before = { answer: 'a', pick: 'b', lookup: 'c', code: 'd' };
+    expect(read(before)[0]?.prompts.intent).toBe(DEFAULT_HELP_PROMPTS.intent);
+    expect(read({ ...before, intent: 'Sort it.' })[0]?.prompts.intent).toBe('Sort it.');
+    expect(read({ ...before, intent: 7 })).toEqual([]);
   });
 });

@@ -123,9 +123,9 @@ describe('the Endpoint tab', () => {
     }
   });
 
-  it('has no preset select: Answer and Pick are the only two', () => {
+  it('has no preset select: Answer, Pick and Sorting are the only three', () => {
     renderTab();
-    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    expect(screen.getAllByRole('combobox')).toHaveLength(3);
   });
 
   it('puts Answer and Pick in one row', () => {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Tool } from '@/types';
-import { chatChrome, CHAT_STYLES, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { chatChrome, CHAT_STYLES, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, SAME_AS_SEARCH, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { DEFAULT_MASCOT_RIG } from './mascot';
@@ -16,6 +16,9 @@ describe('the default help settings', () => {
       semanticOffer: 'undecided',
       answerEndpoint: null,
       pickEndpoint: SAME_AS_ANSWER,
+      // Off, so every question gets the full request the bar run measured.
+      intentClassifier: false,
+      intentEndpoint: SAME_AS_SEARCH,
       lookup: false,
       lookupCallLimit: 3,
       roll: false,

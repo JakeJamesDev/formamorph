@@ -1,6 +1,6 @@
 # 02: Intent Classifier
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -28,16 +28,25 @@ Spec: Q19–Q27, Q32, Q33, Q43, Q44, Q47–Q49, Q58, Q59, Q69; stories 1–15.
 
 ## Acceptance criteria
 
-- [ ] Each of Chat, Help, Code and World sends exactly its row of the spec's table: `askHelp` tests with a stubbed classifier reply
-- [ ] An unknown label, a parse failure, and Create (for now) send today's full request
-- [ ] An open Code tab with a Help label sends no code rider
-- [ ] World with no world open sends no world block and the no-world rider
-- [ ] A two-ask reply adds the rider to the answer request
-- [ ] The classifier request runs alongside the picks, and Chat sends no picks to the answer: request-order test
-- [ ] With the switch off, no classifier request goes out and the body is byte-equal to ticket 01's
-- [ ] The schema path and the prompted-label path both reach the same plan
-- [ ] The AI context viewer shows the Intent and the classifier request
-- [ ] A help preset file without the classifier prompt loads with the default; one with it round-trips
-- [ ] The CONTEXT.md entries and the player docs exist
+- [x] Each of Chat, Help, Code and World sends exactly its row of the spec's table: `askHelp` tests with a stubbed classifier reply: `helpSession.intent.test.ts` "the Intent plans"; Code equals the switch-off body of a code-word question
+- [x] An unknown label, a parse failure, and Create (for now) send today's full request: "the fallback to the full request", each body equal to the switch-off body; a failed request too
+- [x] An open Code tab with a Help label sends no code rider: "sends no code rider to a Help question from an open Code tab"
+- [x] World with no world open sends no world block and the no-world rider: "sends World with no world open…"
+- [x] A two-ask reply adds the rider to the answer request: "adds the two-ask rider last…", Help and Chat
+- [x] The classifier request runs alongside the picks, and Chat sends no picks to the answer: request-order test: a held classifier reply sees both picks go out first and the answer wait; adding `await reading` before the search turned it red
+- [x] With the switch off, no classifier request goes out and the body is byte-equal to ticket 01's: "does not go out with the switch off"; byte-equality by `helpSession.parity.test.ts` against ticket 01's captured bodies, unchanged and green
+- [x] The schema path and the prompted-label path both reach the same plan: "sends the schema where the endpoint accepts one…"; a refused schema retries once without it
+- [x] The AI context viewer shows the Intent and the classifier request: `Formaquestion.aiContext.test.tsx` "shows the sorted kind and the sorting request…"
+- [x] A help preset file without the classifier prompt loads with the default; one with it round-trips: `helpPresetFile.test.ts`, and the stored store in `helpPresets.test.ts`
+- [x] The CONTEXT.md entries and the player docs exist: **Intent** and **Intent Classifier** in CONTEXT.md; "How to Turn On Sort Questions" and the settings, prompt and AI Context rows in `docs/Formaquestion.md`
 
-For you: ask a few small-talk, help, code and lore questions with the switch on, and judge whether the answers feel faster and stay as good (Formaquestion, World Editor and game).
+## Landed
+
+**Not verified:**
+- Nothing in the criteria. The live UI (the **Sort Questions** row, the **Sorting Endpoint** field, the **Sorting** prompt) was checked by component tests only, not in a preview.
+
+**For you:**
+- Ask a few small-talk, help, code and lore questions with the switch on, and judge whether the answers feel faster and stay as good (Formaquestion, World Editor and game).
+- The labels: **Sort Questions**, **Sorting Endpoint**, the **Sorting** prompt and its **Sorting Format** chip, and **Sorted as** in AI Context (Formaquestion Settings → General, Endpoint, Prompts).
+
+**For ticket 06:** the classifier prompt, the World message text (no `<guide>` block, grounded in "world sections") and the two riders have no probe numbers yet. World falls back to the full request whenever the Help plan carries no world (Read the World off, or every source off with no lead), not only with Read the World off.

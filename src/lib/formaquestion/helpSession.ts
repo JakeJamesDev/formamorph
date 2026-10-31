@@ -35,7 +35,8 @@ import type { DictionaryEntry } from '@/types';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
 import { activeMascotRig } from './mascotPresets';
-import { fullHelpPlan, turnLead } from './helpRequestPlan';
+import { requestIntent } from './helpIntent';
+import { codeHelpPlan, fullHelpPlan, intentHelpPlan, turnLead } from './helpRequestPlan';
 import {
   emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection, traceSource,
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
@@ -152,8 +153,8 @@ export type HelpEvent =
    */
   | { type: 'trace'; trace: HelpTrace };
 
-/** The pick request never reasons (Q28). */
-const PICK_REASONING: PromptReasoningSetting = { enabled: false, level: 'global' };
+/** The pick and Intent Classifier requests never reason (Q28). */
+const NO_REASONING: PromptReasoningSetting = { enabled: false, level: 'global' };
 
 /**
  * The snapshot of one help request: the help kind sent along `routes` (the first preset id of them that exists,
@@ -392,7 +393,7 @@ export async function helpSearches({ question, history = [], settings, snapshot,
   const edited = isHelpPromptEdited(prompts, 'pick');
   const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Search', spec, edited, result); });
   const observeWorld = worldRecord && ((spec: AiRequestSpec, result?: AiStreamResult) => { worldRecord.pick = requestTrace('AI World Search', spec, edited, result); });
-  const pickSnapshot = helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING);
+  const pickSnapshot = helpSnapshot(snapshot, helpRoutes(settings).pick, NO_REASONING);
   const pickAsk = { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where };
   const sampling = activeHelpOptions(settings.presets).pick;
   const queries = helpQueries(question, previous);
@@ -495,7 +496,9 @@ function worldSearchTraceOf(index: WorldIndex, record: HelpSearchRecord, sent: r
 /**
  * Asks one help question, after the earlier exchanges. The mode is picked before anything is sent, and a
  * failed request is never sent again in the other mode (ADR-0008). The Help Request Plan decides what the
- * answer request carries; every question gets the full plan, whose rules follow.
+ * answer request carries. While the Intent Classifier is on, its request runs alongside the picks and its
+ * Intent picks a narrower plan; a reply that names no Intent, and every question while it is off, gets the
+ * full plan, whose rules follow.
  *
  * In both modes the sections that match the question go in the prompt. The search sources that are on find
  * them. AI picks sends one request of its own first; when that fails, the other sources find the sections,
@@ -528,58 +531,77 @@ export async function* askHelp({
   const shownFocus = openFocus(openSurface, focus);
   const hint = settings.openScreen ? surfaceHint(surface, index, shownFocus) : null;
   const quickReference = sectionWithId(index, QUICK_REFERENCE_SECTION);
-  const answerSnapshot = helpSnapshot(snapshot, helpRoutes(settings).answer, settings.reasoning, settings.reasoningBudget);
-  const plan = fullHelpPlan({
-    question, settings, surface: openSurface, hint, quickReference, takesFunctions: toolsSupported(answerSnapshot.resolveTarget('help').reasoning),
-  });
-  const { lead, pinned, where } = plan.guide ? turnLead(hint, plan.code ? quickReference : null, isOnCodeTab(openSurface)) : { pinned: [] };
+  const routes = helpRoutes(settings);
+  const answerSnapshot = helpSnapshot(snapshot, routes.answer, settings.reasoning, settings.reasoningBudget);
+  const answerTarget = answerSnapshot.resolveTarget('help');
+  const planInput = { question, settings, surface: openSurface, hint, quickReference, takesFunctions: toolsSupported(answerTarget.reasoning) };
   const kept = keptHistory(history, settings.historyLength);
-  const face = plan.face ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
-  const codeTest = plan.code?.test ? createCodeTest(world?.authored, codeTestHomeOf(openSurface, shownFocus)) : null;
-  // The question goes alone, with no search, and its answer is never flagged.
-  const bare = !plan.guide && !plan.world;
-  const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
+  const prompts = activeHelpPrompts(settings.presets);
+  // The classifier runs alongside the picks, so the search and the world read cover the Code plan, which holds every other Intent's.
+  const classifies = settings.intentClassifier && answerTarget.url !== '';
+  const reach = classifies ? codeHelpPlan(planInput) : fullHelpPlan(planInput);
+  const intentRecord: { request?: HelpRequestTrace } = {};
+  // The last exchange, whatever the History Length: a short follow-up needs it to keep its Intent (Q22).
+  const previous = answered(history).at(-1);
+  const reading = classifies
+    ? requestIntent(
+      { question, prompt: renderHelpPrompt(prompts.intent, helpChipValues('intent', settings)), earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where },
+      helpSnapshot(snapshot, routes.intent, NO_REASONING),
+      activeHelpOptions(settings.presets).intent,
+      { signal, fetchImpl, hostedTurn, observe: (spec, result) => { intentRecord.request = requestTrace('Sorting', spec, isHelpPromptEdited(prompts, 'intent'), result); } },
+    ).catch(() => null)
+    : null;
+  const record = !reach.guide && !reach.world ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
   // The keyword search is instant. The pick request and the semantic ranking take time, and picks take the name.
   if (record && settings.sources.aiPicks) yield { type: 'stage', stage: 'picking' };
   else if (record && settings.sources.semantic) yield { type: 'stage', stage: 'searching' };
-  const read = plan.world ? await readWorld(world, question, embedder ?? deviceEmbedder) : undefined;
+  const read = reach.world ? await readWorld(world, question, embedder ?? deviceEmbedder) : undefined;
   const worldIndex = read?.index;
   const game = read?.game;
   const worldRecord = worldIndex && record ? emptySearchRecord(record.on) : undefined;
   const searches = record
     ? await helpSearches({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, hostedTurn, record, world: worldIndex && { index: worldIndex, lean: game ? 'game' : 'editor' }, worldRecord })
     : { guide: index };
-  const search = searches.guide;
+  // With no search run, a plan that still carries the guide gets its lead and pinned sections alone.
+  const search = record ? searches.guide : { ...index, search: () => [] };
+  const intent = await reading;
+  const plan = intent ? intentHelpPlan(planInput, intent, read !== undefined) : fullHelpPlan(planInput);
+  const { lead, pinned, where } = plan.guide ? turnLead(hint, plan.code ? quickReference : null, isOnCodeTab(openSurface)) : { pinned: [] };
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead, stopped: true, flagged: false, nearest: [], reasoning: '' };
     return;
   }
+  const face = plan.face ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
+  const codeTest = plan.code?.test ? createCodeTest(world?.authored, codeTestHomeOf(openSurface, shownFocus)) : null;
+  // The question goes alone, and its answer is never flagged.
+  const bare = !plan.guide && !plan.world;
   const inPrompt = plan.guide ? helpSections(search, question, { history: kept, lead, pinned, howToRule }) : [];
+  // The world the answer request carries: the one read, while the plan holds the world block.
+  const shownIndex = plan.world ? worldIndex : undefined;
+  const shownGame = plan.world ? game : undefined;
   // The world pool fills its own budget, so a full world block never pushes out a guide section.
-  const ranked = searches.world ? helpSections(searches.world, question, { history: kept, budget: HELP_WORLD_CHAR_BUDGET, limit: HELP_WORLD_SECTION_LIMIT }) : [];
-  const worldInPrompt = game && worldIndex ? gameWorldSections(worldIndex, game.fired, ranked) : ranked;
-  const worldBlock: WorldBlockSection[] | undefined = worldIndex && worldInPrompt.flatMap((section) => {
-    const source = worldIndex.sourceOf(section);
+  const ranked = shownIndex && searches.world ? helpSections(searches.world, question, { history: kept, budget: HELP_WORLD_CHAR_BUDGET, limit: HELP_WORLD_SECTION_LIMIT }) : [];
+  const worldInPrompt = shownGame && shownIndex ? gameWorldSections(shownIndex, shownGame.fired, ranked) : ranked;
+  const worldBlock: WorldBlockSection[] | undefined = shownIndex && worldInPrompt.flatMap((section) => {
+    const source = shownIndex.sourceOf(section);
     return source ? [{ kind: source.worldKind, markdown: section.markdown }] : [];
   });
-  const worldSources = worldIndex ? worldSourcesOf(worldIndex, worldInPrompt) : [];
+  const worldSources = shownIndex ? worldSourcesOf(shownIndex, worldInPrompt) : [];
   const lookup = plan.lookup
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
-  // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
-  const prompts = activeHelpPrompts(settings.presets);
-  const story = plan.story ? game?.input.story.text : undefined;
+  const story = plan.story ? shownGame?.input.story.text : undefined;
   const turnMessage = bare
     ? question
-    : lookup ? helpLookupUserMessage(question, inPrompt, where, worldBlock, story) : helpUserMessage(question, inPrompt, where, worldBlock, story);
+    : lookup ? helpLookupUserMessage(question, inPrompt, where, worldBlock, story) : helpUserMessage(question, inPrompt, where, worldBlock, story, plan.guide);
   // The home line and the test-first line are the app's, so they ride a cleared rider too. The test line goes last.
   const home = scriptHomeLine(openSurface);
   const riderWithHome = home ? withRiderLine(prompts.code, home) : prompts.code;
   const rider = codeTest ? withRiderLine(riderWithHome, CODE_TEST_RIDER_LINE) : riderWithHome;
   const withCode = plan.code !== null ? withCodeRider(turnMessage, rider) : turnMessage;
   // The world rules ride after the code rider the same way, and the plan's riders after them.
-  const worldRulesKey = game ? 'worldGame' : 'worldEditor';
-  const withWorldRules = worldIndex ? withCodeRider(withCode, prompts[worldRulesKey]) : withCode;
+  const worldRulesKey = shownGame ? 'worldGame' : 'worldEditor';
+  const withWorldRules = shownIndex ? withCodeRider(withCode, prompts[worldRulesKey]) : withCode;
   const userMessage = plan.riders.reduce((message, line) => withCodeRider(message, line), withWorldRules);
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
@@ -601,7 +623,7 @@ export async function* askHelp({
   const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>
     (isTool(fn) ? runTool(fn, argumentsText, callSignal) : internal.get(fn.id)!(fn, argumentsText, callSignal));
   const spec = buildAiRequestSpec(answerSnapshot, {
-    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer, helpChipValues(lookup ? 'lookup' : 'answer', settings)), { world: worldIndex !== undefined }),
+    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer, helpChipValues(lookup ? 'lookup' : 'answer', settings)), { world: shownIndex !== undefined }),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: options.maxTokens,
@@ -611,7 +633,7 @@ export async function* askHelp({
   // The trace so far. Each yield builds it anew, so a viewer that keeps an earlier one sees no later change.
   const rounds: AiToolRound[] = [];
   const customPrompt = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer') || (plan.code !== null && isHelpPromptEdited(prompts, 'code'))
-    || (worldIndex !== undefined && isHelpPromptEdited(prompts, worldRulesKey));
+    || (shownIndex !== undefined && isHelpPromptEdited(prompts, worldRulesKey));
   const traceOf = (result?: AiStreamResult): HelpTrace => ({
     surface: surface ? surfaceWords(surface) : null,
     focus: shownFocus ? focusWords(shownFocus) : null,
@@ -621,7 +643,8 @@ export async function* askHelp({
     search: record && searchTraceOf(record, inPrompt),
     ...(worldIndex && worldRecord && { worldSearch: worldSearchTraceOf(worldIndex, worldRecord, worldInPrompt) }),
     sent: [...inPrompt.map(traceSource), ...worldSources],
-    requests: [...(record?.pick ? [record.pick] : []), ...(worldRecord?.pick ? [worldRecord.pick] : []), requestTrace('Answer', spec, customPrompt, result, rounds)],
+    ...(classifies && { intent: intent?.intent ?? null }),
+    requests: [...(intentRecord.request ? [intentRecord.request] : []), ...(record?.pick ? [record.pick] : []), ...(worldRecord?.pick ? [worldRecord.pick] : []), requestTrace('Answer', spec, customPrompt, result, rounds)],
   });
   yield { type: 'trace', trace: traceOf() };
   yield { type: 'stage', stage: 'waiting' };

@@ -6,7 +6,7 @@ import { TextEndpointEditor } from '@/components/modals/TextEndpointEditor';
 import { presetEditor, type PresetEditorView } from '@/components/modals/textEndpointEditorModel';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { helpRoutes } from '@/lib/formaquestion/helpRoutes';
-import { SAME_AS_ANSWER, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { SAME_AS_ANSWER, SAME_AS_SEARCH, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { ENDPOINT_COPY } from './formaquestionSettingsTabs';
 
@@ -58,6 +58,9 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
   const answerPreset = presetOf(settings.answerEndpoint);
   const pickPreset = presetOf(settings.pickEndpoint);
   const pickValue = settings.pickEndpoint === null ? null : pickPreset?.id ?? SAME_AS_ANSWER;
+  const sort = s.resolveEndpointForKind('help', routes.intent);
+  const sortPreset = presetOf(settings.intentEndpoint);
+  const sortValue = settings.intentEndpoint === null ? null : sortPreset?.id ?? SAME_AS_SEARCH;
 
   // The editor always edits where Answer goes. Its select is gone, so only Add and Delete move the route.
   const editedId = answer.endpointId;
@@ -99,6 +102,16 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           presets={presets}
           onChange={(pickEndpoint) => onChange({ pickEndpoint })}
           reachability={{ url: pick.url, apiToken: pick.apiToken, model: pick.model, enabled: pickPreset !== undefined }}
+        />
+        <EndpointRouteField
+          {...ENDPOINT_COPY.sort}
+          info={sortValue === SAME_AS_SEARCH ? ENDPOINT_COPY.sameAsSearch : routeInfo(sortPreset?.name, ENDPOINT_COPY.followsActive)}
+          value={sortValue}
+          activeName={s.activeTextEndpointPresetName}
+          extraRows={[{ value: SAME_AS_SEARCH, label: `Same as Search (${pick.presetName})` }]}
+          presets={presets}
+          onChange={(intentEndpoint) => onChange({ intentEndpoint })}
+          reachability={{ url: sort.url, apiToken: sort.apiToken, model: sort.model, enabled: settings.intentClassifier && sortPreset !== undefined }}
         />
       </div>
       <TextEndpointEditor heading={heading} model={model} advanced onOpenConnectionGuide={() => setGuideOpen(true)} presetDescription={ENDPOINT_COPY.presetHint} />

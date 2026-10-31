@@ -31,6 +31,9 @@ export interface HelpSources {
 /** The Search Endpoint choice that sends the search request where answers go. */
 export const SAME_AS_ANSWER = 'same-as-answer';
 
+/** The Sorting Endpoint choice that sends the Intent Classifier request where the search request goes. */
+export const SAME_AS_SEARCH = 'same-as-search';
+
 /** Whether the player has answered the Semantic Search offer card. A flip of the switch answers it too. */
 export type SemanticOffer = 'undecided' | 'decided';
 const isSemanticOffer = (value: unknown): value is SemanticOffer => value === 'undecided' || value === 'decided';
@@ -45,6 +48,10 @@ export interface HelpSettings {
   readonly answerEndpoint: string | null;
   /** The preset picks go to, `SAME_AS_ANSWER`, or null to follow the active endpoint. */
   readonly pickEndpoint: string | null;
+  /** The Intent Classifier gives each question an Intent first, and the answer request carries that Intent's plan. */
+  readonly intentClassifier: boolean;
+  /** The preset Intent Classifier requests go to, `SAME_AS_SEARCH`, or null to follow the active endpoint. */
+  readonly intentEndpoint: string | null;
   /** Lookup mode: the model reads more sections through the guide lookup, where the endpoint takes function calls (ADR-0009). */
   readonly lookup: boolean;
   /** The most guide lookup calls one help question runs. */
@@ -111,6 +118,9 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   semanticOffer: 'undecided',
   answerEndpoint: null,
   pickEndpoint: SAME_AS_ANSWER,
+  // Off until the Intent probe passes its bar (Q43).
+  intentClassifier: false,
+  intentEndpoint: SAME_AS_SEARCH,
   lookup: false,
   lookupCallLimit: DOCS_LOOKUP_CALL_LIMIT,
   roll: false,
@@ -159,7 +169,7 @@ const isBetween = (min: number, max: number): Check => (value) => Number.isInteg
 const isCount = (max: number): Check => isBetween(0, max);
 
 /** A preset id, or null for Follow Active. */
-const isPresetId: Check = (value) => value === null || (typeof value === 'string' && value !== '' && value !== SAME_AS_ANSWER);
+const isPresetId: Check = (value) => value === null || (typeof value === 'string' && value !== '' && value !== SAME_AS_ANSWER && value !== SAME_AS_SEARCH);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -179,6 +189,8 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       semanticOffer: isSemanticOffer,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
+      intentClassifier: isBool,
+      intentEndpoint: (value) => value === SAME_AS_SEARCH || isPresetId(value),
       lookup: isBool,
       lookupCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       roll: isBool,
