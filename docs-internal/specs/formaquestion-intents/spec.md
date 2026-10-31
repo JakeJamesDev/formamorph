@@ -177,6 +177,7 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
   ```
   ````
 
+- Ticket 05 rulings: the world text is its player-facing description, not the AI-Facing Description. "Editor order" is the Entities tab's tree order, and placeholders render as chips. Create carries the face call, the two-ask rider, the Q7 note, the AI Language directive, the answer's reasoning setting and History Length. It carries no roll, lookup or code test, and it sends the Formaquestion Tools that list Create. With Creation off, Create gets the full request on every screen; the refusal applies only while Creation is on. The refusal rider is a fixed app line. Starting pins: temperature 0.7, repetition penalty 1, 800 tokens, until ticket 07 tunes them. Export: `createEndpoint` in the help settings, and `prompts.create` and `options.create` in the help preset.
 - With the Intent Classifier off, the full request carries the same entity rider in a World Editor while creation is on (Q64).
 
 ### Entity block parser (Q38, Q61)
