@@ -59,11 +59,11 @@ These entries preserve established concepts. A familiar word is not automaticall
 | embedded image, linked image | An embedded image is stored in the world file. A linked image is stored as its URL only. | [entityImages.ts](../src/lib/entityImages.ts) |
 | publish, Publish Size, publish limit | Publishing sends a world, entity, dictionary, or avatar to Community Creations. Publish Size is the byte size of the content that publishing sends. The publish limit is the largest Publish Size the server accepts for that kind. | [publishLimits.ts](../src/lib/publishLimits.ts) |
 | script, code box | A script is one box of JavaScript with a timing, on a stat, a trait or the world. A code box is the editor that holds it. Never write "stat code" for it: that was the old name. | [ScriptBox.tsx](../src/managers/ScriptBox.tsx) |
-| timing, Before the AI, After the AI, During AI Output, At Game Start, When a Trait Switches | A script's timing is when it runs. Before the AI runs before the prompt is built. After the AI runs after the AI's changes and Regen apply. During AI Output runs on each completed narration sentence. At Game Start runs once on a new game's opening turn. When a Trait Switches runs when a trait turns on or off in play. | [scripts.ts](../src/lib/scripts.ts) |
+| timing, Before the AI, After the AI, During AI Output, At Game Start, When a Trait Switches | A script's timing is when it runs. Before the AI runs before the prompt is built. After the AI runs after the AI's changes and Regen apply. During AI Output runs on each completed narration sentence. At Game Start runs once on a new game's opening turn. When a Trait Switches runs when a trait turns on or off during the game. | [scripts.ts](../src/lib/scripts.ts) |
 | narration, player (in a script) | `narration` is the sentence and its context in a During AI Output script. `player` is the human who plays, with the calls `tell`, `toast`, `confirm`, `ask` and `input`. `persona` stays the entity the player plays. | [statCodeSurface.ts](../src/lib/statCodeSurface.ts) |
 | Test Code, Templates | The button under a code box that runs that box alone, and the menu that inserts a code template into it. | [ScriptBox.tsx](../src/managers/ScriptBox.tsx) |
 | pin (verb), unpin (verb) | Code or the author fixes a placeholder to one value until the pin is removed. `pin(x)` in code; Pin in the editor. | [statCodeSurface.ts](../src/lib/statCodeSurface.ts) |
-| switch (verb) | Code or the player turns a trait on or off through `enabled`. Only traits switch; stat fields are set. | [ScriptsGuide](ScriptsGuide) |
+| switch (verb) | Code or the player turns a trait on or off through `enabled`. Only traits switch; stat fields are set. | [Scripts-Reference](Scripts-Reference) |
 | listing | One published item on Community Creations. Distinct from the local copy it was published from, and from the world or library item it holds. | [publishPayload.ts](../src/lib/publishPayload.ts) |
 | source | The published listing a copy of an entity or a dictionary follows. A copy with no source is independent. | [publishLinks.ts](../src/lib/publishLinks.ts) |
 | required, Include as required | A world requires a source when downloading the world also downloads and links that source. Include as required is the checkbox that declares it. | [LinkedContentSection.tsx](../src/components/menu/LinkedContentSection.tsx) |
@@ -105,7 +105,7 @@ Labels keep Title Case. The brief line stays within 12 words. A ⓘ popover may 
 
 ### The technical register
 
-Technical surfaces are instructions, not prose. This covers script help, the Scripts Guide, editor warnings, Test Code output, Test Bench findings, completion info, template descriptions, and code comments. The reader is writing code and wants the exact term.
+Technical surfaces are instructions, not prose. This covers script help, the Scripts Guide and Scripts Reference, editor warnings, Test Code output, Test Bench findings, completion info, template descriptions, and code comments. The reader is writing code and wants the exact term.
 
 - **Defined words beat common words.** STE prefers the common word for a general reader. A technical reader needs the word that names the operation. "Overwrites" is correct; "writes over" is not a term. "Read-only" is correct; "code cannot change it" is a description of read-only.
 - **One term per concept, everywhere.** The same fact reads the same in the hint, the help topic, the guide, the warning, and the comment. Pick the term once and reuse it.

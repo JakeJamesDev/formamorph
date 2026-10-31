@@ -67,7 +67,7 @@ All three kinds show in the **Entities** tab during the game. The story treats t
 
 Ask a shopkeeper for directions, and the story might answer with a name no author wrote. The game reads names from the narration. An invented entity joins the scene as soon as the story names it. It then counts as present, and the story considers it when it offers you choices.
 
-This costs nothing and is always on. It works in every Thinking mode, including plain narration with no planning.
+This costs nothing and is always on. It works in every Thinking mode, **Native** included.
 
 > [!NOTE]
 > Not every capitalized name becomes an entity. A talent agency, a café, a weekday and a song title all *look* like names. The game adds a name only when the name acts like a person in the narration: it speaks, gestures, or is introduced. A name that only comes up again, and never does anything, stays off the list.

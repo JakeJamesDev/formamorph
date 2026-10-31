@@ -1,7 +1,7 @@
 # 🧮 Scripts Guide
 <!-- keywords: scripts, stat code, stat script, trait script, world script, scripting, automation, custom logic, game mechanics, coding, rules engine, javascript, dynamic value calculation -->
 
-A **script** is one box of JavaScript with a timing. Older worlds and posts call scripts stat code. A script belongs to a stat, a trait, an item or the world.
+A **script** is one box of JavaScript with a timing. A script belongs to a stat, a trait, an item or the world.
 
 A script can:
 
