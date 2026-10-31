@@ -1,7 +1,7 @@
 # 🚪 Starting a Game
 <!-- keywords: character creation, setup screen, new playthrough, before the story, first steps, campaign -->
 
-A new game starts at **Enter World**. One dialog holds every choice before page one: who you play, your starting traits, where you start, and what you add from your library.
+A new game starts at **Enter World**. One dialog holds every choice before page one. You pick who you play, your starting traits, where you start, and what you add from your library.
 
 > After the story starts, see [How to Play](How-to-Play).
 
@@ -26,7 +26,13 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 1. On the main menu, select a world.
 2. Select **Quick Start**. In portrait it is the icon beside **Enter World**.
 
-**Quick Start** skips the **Introduction**, the **Enter World** dialog and the Avatar step. You get the persona that **Enter World** picks first. You also get the author's default traits and a random starting location. When the persona is one of the world's own entities, you start at its location. No library additions come in, even after **Remember Additions**, and the world's own dictionaries are on as the author set them.
+**Quick Start** skips the **Introduction**, the **Enter World** dialog and the Avatar step. It starts the game with these picks:
+
+- The persona that **Enter World** picks first.
+- The author's default traits.
+- A random starting location. When the persona is one of the world's own entities, you start at its location.
+
+No library additions come in, even after **Remember Additions**. The world's own dictionaries are on as the author set them.
 
 ## How to Pick Starting Traits
 <!-- keywords: choose, character creation, options, class, race, perks, background, skills, abilities, attributes, species, feats, start button disabled, greyed out, customize character -->
@@ -154,7 +160,13 @@ The category has a search box and two lists.
 | **Entities** | Entities from your library. Each one you include joins the game at your starting location. See [Entities in Game](Entities). | Excluded |
 | **Dictionaries** | The world's own dictionaries, then the ones in your library | The world's on as the author set them; yours off |
 
-Select a row to read it in the details pane. A dictionary row's tag says where it comes from: **World** for one bundled with the world, **Library** for one of yours, **Linked** for the world's copy of a library dictionary.
+Select a row to read it in the details pane. A dictionary row's tag says where the dictionary comes from:
+
+| Tag | Where it comes from |
+|---|---|
+| **World** | Bundled with the world |
+| **Library** | Your library |
+| **Linked** | The world's copy of a library dictionary |
 
 The dictionary order is the order the AI reads them in. **Remember Additions** saves both lists as this world's defaults on this device.
 
@@ -171,7 +183,17 @@ An author can write an **Introduction** for the world. It opens before the **Ent
 
 The step shows when the persona you play has an Avatar. The button switches between **Continue to Avatar** and **Start Game** as you change your persona. A persona with no Avatar skips the step.
 
-**Continue to Avatar** opens **Character Customization**. When the persona uses **User's Default**, pick a **Player Avatar**. It starts on your default. When the author picked an Avatar, that one shows and you can't change it. **Add .vrm** imports another Avatar file. Adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog. When the world skipped that dialog, the button reads **Abort** and leaves without starting. Your changes apply to the Avatar of the entity you play. See [Character Customization](Avatars#character-customization).
+**Continue to Avatar** opens **Character Customization**.
+
+1. When the persona uses **User's Default**, pick a **Player Avatar**. It starts on your default. **Add .vrm** imports another Avatar file.
+2. Adjust the Avatar.
+3. Select **Finalize Character** to start.
+
+When the author picked an Avatar, that one shows and you can't change it.
+
+**Back** returns to the **Enter World** dialog. When the world skipped that dialog, the button reads **Abort** and leaves without starting.
+
+Your changes apply to the Avatar of the entity you play. See [Character Customization](Avatars#character-customization).
 
 ## What Happens at Start
 <!-- keywords: first turn, opening scene, prefilled text, already typed, first message, greeting, popups, intro scene -->

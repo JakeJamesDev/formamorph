@@ -47,7 +47,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 2. Select the **Import** button.
 3. Select one or more save `.json` files.
 
-Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
+Each save joins the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
 
 ## How to Make a Backup
 <!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
@@ -145,7 +145,9 @@ A save the browser can't read stays stored but doesn't show in the list. Your ot
 ## Autosave
 <!-- keywords: automatic, forgot, crash, closed tab, lost progress, recover, disable, auto tag, browser closed -->
 
-**Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. It is on by default. **Autosaves Kept** sets how many each world keeps, from 1 to 20; it starts at one. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
+**Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. It is on by default.
+
+**Autosaves Kept** sets how many autosaves each world keeps, from 1 to 20. It starts at 1. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
 
 - It starts after the opening scene. After **Re-generate**, it replaces that turn's autosave.
 - It never changes your own saves.
@@ -225,7 +227,11 @@ The desktop and Android apps check for updates on start, then every few hours. S
 | **Cancel** | Closes the dialog. Shows when an update is available. |
 | **Check for updates** | Checks again. Shows in place of **Download**. |
 
-After the download, **Update & Restart** shows under the version number on desktop. On Windows, **Update & Restart** still shows after you close and reopen the app, with no second download. The app also checks the download against the release's checksum before it uses it. A download that fails the check is erased, and an error shows. If the new Windows version fails to start, the app starts the old version again. The web version updates when you reload the page.
+- After the download, **Update & Restart** shows under the version number on desktop.
+- On Windows, **Update & Restart** still shows after you close and reopen the app, with no second download.
+- The app checks the download against the release's checksum before it uses it. A download that fails the check is erased, and an error shows.
+- If the new Windows version fails to start, the app starts the old version again.
+- The web version updates when you reload the page.
 
 Your saves, worlds and settings stay the same through an update.
 

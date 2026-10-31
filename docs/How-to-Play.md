@@ -91,7 +91,9 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
 3. Select **Save**.
 
-Saving rewrites the turn's narration. The game reads the edited text again to find who is in the turn, and that page's **Entities** tab updates to match. A new name you write in becomes an entity. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
+Saving rewrites the turn's narration. The game reads the edited text again to find who is in the turn, and that page's **Entities** tab updates to match. A new name you write in becomes an entity.
+
+Saving also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
 
 ## How to Edit Your Action
 <!-- keywords: change, fix, typo, rewrite, my message, input, correct, what i typed, my post, sent by mistake, amend, own line, user turn, remove picture, after sending -->
@@ -163,7 +165,10 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 3. Pick a voice under **Voice Selection**, and set the **Speed**.
 4. Select **Start**.
 
-**Stream narration audio** starts speaking each sentence as it arrives. **Highlight while speaking** marks the sentence you hear. **Unload Model** frees the memory the model uses. After the model loads, **Regenerate Audio** is under the turn's **More** button.
+- **Stream narration audio** starts to speak each sentence as it arrives.
+- **Highlight while speaking** marks the sentence you hear.
+- **Unload Model** frees the memory the model uses.
+- After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
 ## How to Report an Error
 <!-- keywords: bug, crash, problem, failed, copy, details, send feedback, broken, something went wrong, issue, not working, glitch, support, tell developers, stack trace, contact -->
@@ -184,7 +189,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 | Area | What it holds |
 |---|---|
-| The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the request that is running, such as *Generating Narration…*, next to a small animated icon for that request |
+| The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the running request, such as *Generating Narration…*. A small animated icon for that request shows beside it. |
 | The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
 | The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits**, **Inventory** and **Location** tabs |
 | Top left | The music button and the AI Context button |
@@ -227,7 +232,7 @@ When a tab strip has no room for every label, only the selected tab keeps its la
 
 ### Notes
 
-The **Notes** tab is one free-text box. Its text goes to the AI with every action, so standing facts belong here: who you pretend to be, what you carry, the goal you work toward.
+The **Notes** tab is one free-text box. Its text goes to the AI with every action. Standing facts belong here: who you pretend to be, what you carry, the goal you work toward.
 
 Notes are part of your save, and each turn keeps its own copy. An earlier page shows that turn's notes, and **Rewind to Here** restores them.
 
@@ -236,7 +241,7 @@ Notes are part of your save, and each turn keeps its own copy. An earlier page s
 
 ### Logs
 
-The **Logs** tab lists what the game changed: your starting traits and location, traits that switched on or off, moves, rewinds and saves. The tab label counts the entries, such as **Logs (12)**.
+The **Logs** tab lists what the game changed. That includes your starting traits and location, traits that switched on or off, moves, rewinds and saves. The tab label counts the entries, such as **Logs (12)**.
 
 - A story event starts with the in-game time, such as *[Day 1, 08:00]*.
 - An app event, such as a save or a failed load, shows in italic with no time.
@@ -272,11 +277,15 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 
 The buttons are icons. Their tooltips name the item, such as *Use Healing Potion*.
 
-**Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack. An item with uses shows how many are left under its name.
+Changes apply at once, and the next turn's narration sees them.
 
-An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack. An unidentified item shows only its unidentified name and description until the story reveals what it is.
-
-Items with art show a small image on their row. The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
+- **Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack.
+- An item with uses shows how many are left under its name.
+- An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.
+- An unidentified item shows only its unidentified name and description until the story reveals what it is.
+- Items with art show a small image on their row.
+- The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it.
+- On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
 
 > [!NOTE]
 > The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but you can pick it up, and the story can still take it.
@@ -304,7 +313,11 @@ An **Equipped** list shows what the entity wears, when you can see it. What the 
 <!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->
 <!-- route: stranger -->
 
-A stranger is an entity you haven't met yet. It shows in the **Entities** tab under the name you know, such as "a hooded figure". Select it to open the stranger dialog. The dialog shows that name, the image, and a short description when the world has one. You meet a stranger when the story says its real name. After that, the full entity dialog opens instead.
+A stranger is an entity you haven't met yet. It shows in the **Entities** tab under the name you know, such as "a hooded figure".
+
+Select it to open the stranger dialog. The dialog shows that name, the image, and a short description when the world has one.
+
+You meet a stranger when the story says its real name. After that, the full entity dialog opens instead.
 
 ## The Change Location Dialog
 <!-- keywords: world map, zoom, pan, places tree, sub areas, pin marker, minimap, overview of places -->
