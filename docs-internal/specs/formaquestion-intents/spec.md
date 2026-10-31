@@ -152,6 +152,7 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 | Create (elsewhere) | — | — | — | — | — | help, Chat request + refusal rider |
 | Fallback | today's full request; code rider from `isCodeTurn` | | | | | help |
 
+- The Help Request Plan (ticket 01) covers the answer request only; whether the picks go out is the classifier's call (ticket 02). It holds each choice after the settings and endpoint gates, so an Intent only narrows it and never re-checks the endpoint. Its riders are today's code rider (home line and code-test line included) and world rules, plus a slot ticket 02 fills (two-ask, no-world).
 - Every Intent carries the answer prompt with the Mascot Voice, the history and the face call. Roll rides every Intent but Create while it is on.
 - Code no longer comes from `isCodeTurn` except on the fallback (Q24, Q47).
 - World with no world open sends no world block and a rider that says so.
