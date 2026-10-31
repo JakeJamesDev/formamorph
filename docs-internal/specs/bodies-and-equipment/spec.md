@@ -1,6 +1,7 @@
 # Spec: Bodies and Equipment
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-31, tickets 01–08, last landing cb452d9f1. Review: spec text corrected. Closed red: the test gate crashed out of memory twice with no test failing; lint green.
 Spec session: bodies-and-equipment — spec
 
 ## Problem Statement
@@ -15,7 +16,7 @@ The slot list is edited in the Overview tab, beside the world's play settings. S
 
 A placement on an owner can be marked **Equipped**. At new game, the item starts equipped, and its While Equipped effects apply. If the equip fails, the item starts carried.
 
-A world defines **Bodies**. A Body is a name and an ordered list of slots, each with its own capacity in that Body. A Humanoid Body can have Head, Hand ×2 and Ring ×2. A Dog Body can have Collar and Back only. Each entity picks a Body. The first Body in the list is the **Default**, and every owner without a pick uses it. That includes new entities, library personas, library characters and characters the AI introduces. An owner can also pick **None** and equip nothing.
+A world defines **Bodies**. A Body is a name and an ordered list of slots, each with its own capacity in that Body. A Humanoid Body can have Head, Hand ×2 and Ring ×2. A Dog Body can have Collar and Back only. Each entity picks a Body. The first Body in the list is the **Default**, and every owner without a pick uses it. That includes new entities, library characters and characters the AI introduces. A library persona takes the Custom Persona entity's pick (Q31). An owner can also pick **None** and equip nothing.
 
 A Body can change in play. A trait can set a Body while it is active, and a script can set an owner's Body directly. When a Body loses a slot, or a slot's capacity drops, the items there unequip and stay carried. Their effects reverse exactly.
 
@@ -109,7 +110,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 14. As a world author, I want a shared slot list across Bodies, so that one helmet item fits every Body with a Head.
 15. As a world author, I want the first Body to be the Default, so that new entities get slots without extra work.
 16. As a world author, I want to reorder the Body list, so that I can choose which Body is the Default.
-17. As a world author, I want the editor to say that the first Body is the Default, so that I know what a new entity and a library persona get.
+17. As a world author, I want the editor to say that the first Body is the Default, so that I know what a new entity gets.
 18. As a world author, I want to pick an entity's Body at the top of its Items tab, so that its Body and starting items are edited together.
 19. As a world author, I want the Body select to start with Default and None, so that I can follow the Default or opt out of slots.
 20. As a world author, I want None to give an owner no slots, so that a ghost can carry but never equip.
@@ -173,19 +174,19 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 - An entity's **Body pick** is one of three values: Default (absent), None, or a Body id. A tagged form keeps None distinct from Default.
 - A **trait Body row** is a new trait effect: "set this holder's Body to X while active".
 - An owner placement gains **Equipped**. A location placement never carries it.
-- The save gains a per-owner **base Body** for owners whose Body a script changed. It also records when each Body-setting trait switched on, so that Q13's latest-on rule survives a load. Absent means the authored pick.
+- The save gains a per-owner **base Body** for owners whose Body a script changed. It also records the order the Body-setting traits switched on (`bodies.traitsOn`, oldest first), so that Q13's latest-on rule survives a load. Absent means the authored pick.
 - ⚠️ **Export shape.** World `.json`: the Slot loses `capacity`, and the world gains Bodies, entity Body picks, trait Body rows and placement Equipped. Save `.json`: per-owner base Body and trait-on order. Inventory has not shipped, so there is no compat code (Q10).
 
 ### Body in force
 
 - One resolver answers "which Body is in force for this owner": the most recently switched-on active Body-setting trait the owner holds, otherwise the base Body from the save, otherwise the authored pick, otherwise the Default (Q9, Q13, Q14, Q27). For the played Persona, the authored pick is the Custom Persona entity's pick.
 - The validator and `settleInventory` read capacity from the Body in force, never from the slot.
-- A Body change from any writer (a trait switch, a script write, a persona change) goes through the settle that already handles requirement auto-unequip (inventory Q48). The settle unequips what no longer fits, most recently equipped first, reverses effects exactly, and fires When Unequipped. One path covers every writer.
+- A Body change from any writer (a trait switch, a script write, a persona change) goes through the settle that already handles requirement auto-unequip (inventory Q48). The settle unequips what no longer fits, most recently equipped first, reverses effects exactly, and fires When Unequipped. One path covers every writer. A load settle fires nothing and writes a diagnostic (Q42); script writes settle at once (Q56, Q60).
 - A Body change logs one turn log line with the new Body's name and the items it unequipped. The log is player-facing, so the name is shown there, even though the AI never sees it (Q21).
 
 ### New game
 
-- `openingFold` seeds Item Copies as today, then equips the Equipped placements in placement order through the operation validator, as the `panel` source would minus Bound. It runs before `settleInventory` applies item effects, so that While Equipped effects apply in the same fold.
+- `openingFold` seeds Item Copies as today, then equips the Equipped placements in placement order through the shared `startingCopies` helper (Q51), which checks as the `panel` source would minus Bound. It runs before `settleInventory` applies item effects, so that While Equipped effects apply in the same fold.
 - A refused starting equip leaves the copy carried. It writes no log line in play. The editor's row warning is the author's signal (Q2).
 - No item script fires (inventory Q59 and the documented game-start rule).
 

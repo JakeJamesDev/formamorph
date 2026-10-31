@@ -1,6 +1,6 @@
 # 06: Script Body Writes
 
-Status: ready-for-human
+Status: done
 Blocked by: 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -24,7 +24,7 @@ Spec: Implementation Decisions under Body in force and Scripts; Q14, Q20, Q25 (s
 - [x] A write of an unknown name fails the script with an error (`statCodeExecutor.body.test.ts` and `GameViewer.bodyWrites.test.tsx`)
 - [x] The Test Bench rule fires on an unknown Body name and stays quiet on a real one (`rules.test.ts`, a script assigning a Body name)
 - [x] The Variable menu and hover cards list `body`. The Scripts Guide documents it (surface tests: `statCodeVariableTree.test.ts`, `src/lib/docs`; the docs page is `docs/Scripts-Reference.md`, section Bodies)
-- [ ] ⚠️ The response that lands this ticket reminds the user of the save shape change (in the landing report)
+- [x] ⚠️ The response that lands this ticket reminds the user of the save shape change (spec session landing report, 2026-10-31) (in the landing report)
 
 ## Landed
 
