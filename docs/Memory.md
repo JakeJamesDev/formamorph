@@ -19,7 +19,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 **More memory is not better memory.** A recap with everything that ever happened crowds out the part that matters, and the story starts to repeat itself. The story prunes memories on purpose.
 
 > [!NOTE]
-> Most memory settings are in Settings → **Output**, in the **Memory**, **Time** and **Characters** sections. Those sections show only in **Advanced** mode. Select **Advanced** next to the **Settings** title to see them.
+> Most memory settings are in Settings → **Output**, in the **Memory**, **Time**, **Lore** and **Characters** sections. Those sections show only in **Advanced** mode. Select **Advanced** next to the **Settings** title to see them.
 
 ## How to Edit a Memory
 <!-- keywords: change, fix, rewrite, summary, correct, wrong, remember, inaccurate recap, misremembered, alter, amend, pencil, revert, modify history, search for one -->
@@ -64,7 +64,7 @@ Memories you wrote have no pin button, because the story never lets them go.
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
 3. Select **Reset All My Changes**.
-4. Confirm in **Reset Every Memory Change?**.
+4. Confirm in **Reset Every Memory Change?**. This also deletes the memories you wrote yourself, and it can't be undone.
 
 To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
 
@@ -85,9 +85,9 @@ During the game, the **How to Play** help has the same **Memory Summaries** chec
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
-3. Open the **Output** tab. **Memory Summaries** must be on, or the **Time** section does not show.
+3. Open the **Output** tab.
 4. In the **Time** section, turn on **Measured Clock**.
-5. Turn on **Time in Memory** if the AI should also read the dates.
+5. Turn on **Time in Memory** if the AI should also read the dates. It shows only while **Memory Summaries** is on.
 
 ## The Memory Tab
 <!-- keywords: ledger, crossed out, faded lines, filters, list in sidebar, recent divider, greyed out, icons meaning -->
@@ -126,7 +126,7 @@ Memories under the **Recent** divider still go to the AI word for word, so a pin
 **Search memories…** and the filter chips find a memory in a long story. The chips are **All · Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted**. **Verbatim**, **Summary** and **Held** name the *form* the story holds a memory in, and a memory is only ever one of them.
 
 > [!TIP]
-> **Nothing here is destructive.** The story's own summary is always kept under whatever you write, so you can undo every change. **Reset All My Changes** puts the whole ledger back the way the story had it.
+> **Edits and deletions can be undone.** The story's own summary is always kept under whatever you write. **Reset All My Changes** puts the whole ledger back the way the story had it, and it deletes your hand-written memories. A reset can't be undone.
 
 ## Kept vs Sent
 <!-- keywords: accent bar, colored stripe, which ones were used, difference, relevance ranking, held meaning, verbatim meaning, scene badge, left out this turn -->
@@ -163,14 +163,15 @@ All of these are in [Settings](Settings#memory) → **Output**, in **Advanced** 
 |---|---|---|---|
 | **Memory Summaries** | Memory | On | Condenses older turns into memories. One extra request per turn. |
 | **Semantic Memory** | Memory | Off | Keeps the memories most relevant to your action, not only the newest. Runs a small model on your device, a one-time download of about 23 MB. Shows when **Memory Summaries** is on. |
-| **Memory Cap** | Memory | On, 12 | Sends at most this many memories each turn. The story opening and the newest memories always stay. Shows when **Semantic Memory** is on. |
+| **Memory Cap** | Memory | On, 12 | Sends at most this many memories each turn, at least 3. The story opening and the newest memories always stay. Shows when **Semantic Memory** is on. |
 | **Scene Recall** | Memory | Off | Sends a past scene word for word when your action goes back to it. At most two scenes per turn. Shows when **Semantic Memory** is on. |
 | **Measured Clock** | Time | Off | Measures how much story time each turn takes. See [When Each Memory Happened](#when-each-memory-happened). |
-| **Time in Memory** | Time | Off | Tells the AI when each memory happened. |
+| **Time Per Turn** | Time | 1 hour | The story time each turn adds, from minutes to weeks. 0 holds the clock still. Shows when **Measured Clock** is off. |
+| **Time in Memory** | Time | Off | Tells the AI when each memory happened. Shows when **Memory Summaries** is on. |
 | **Character Diaries** | Characters | Off | Each entity present writes a first-person diary entry as turns age out. Its recent entries shape its motivation. Shows in the Staged Thinking mode only. |
 | **Diary Recall** | Characters | Off | Adds older diary entries that are relevant to the moment. Costs nothing extra. Shows when **Character Diaries** and **Semantic Memory** are on. |
 
-The **Time** section shows only while **Memory Summaries** is on.
+**Semantic Lore**, in the **Lore** section, uses the same on-device model as **Semantic Memory**. See [Lore](Settings#lore).
 
 **Milestone Select** is a prompt, not a setting. Between turns, it decides which summarized turns stay in long-term memory. Edit it under Settings → **Prompts** → **Milestone Select**, in **Advanced** mode. Its tab shows while **Memory Summaries** is on.
 

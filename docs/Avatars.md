@@ -1,7 +1,7 @@
 # 🧍 Avatars
 <!-- keywords: player body, vtuber model, mannequin, figure on the left, body morphs, what is vrm -->
 
-An Avatar is a 3D model that an entity can show. It is a VRM file. You keep your Avatars in the library's **Avatars** tab. A world keeps its own Avatars, and each entity in the world picks one. In the game, an entity's Avatar shows in the entity view and changes shape with the entity's stats.
+An Avatar is a 3D model that an entity can show. It is a VRM file, or a plain `.glb` file. You keep your Avatars in the library's **Avatars** tab. A world keeps its own Avatars, and each entity in the world picks one. In the game, an entity's Avatar shows in the entity view and changes shape with the entity's stats.
 
 > An Avatar is not an entity's 3D model, and not your Profile Image. See [Avatars, 3D Models and Profile Images](#avatars-3d-models-and-profile-images).
 
@@ -13,9 +13,9 @@ An Avatar is a 3D model that an entity can show. It is a VRM file. You keep your
 2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
 3. Select one or more `.vrm` or `.glb` files.
 
-The Avatar gets the title in its file, or the file name. A message counts the Avatars it imported. If the file is the same as an Avatar you have, the app asks before it adds a second copy.
+The Avatar gets the title in its file, or the file name. A message counts the Avatars it imported. If the file is the same as an Avatar you have, the app asks before it adds a second copy. A `.glb` tile shows a **GLB** badge: the file has no license information, and **Initial Body Features** may not work on it.
 
-You can also add a file during **Character Customization**: select **Add .vrm**. The app adds it to your library and selects it.
+You can also add one file during **Character Customization**: select **Add .vrm** under **Player Avatar**. The app adds it to your library and selects it. **Add .vrm** is hidden when the author picked your Avatar.
 
 ## How to Customize Your Avatar
 <!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model, skin tone, eye shade, hairstyle, outfit recolor, body sliders, proportions, dress up, makeover -->
@@ -59,7 +59,7 @@ If it shows **Not shareable**, a line under it names what the file does not allo
 1. On the **Avatars** tab, select the Avatar's tile.
 2. Select **Export**.
 
-You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no VRM data.
+You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no VRM data. The file takes the Avatar's name in your library.
 
 ## How to Add Body Sliders in Blender
 <!-- keywords: shape keys, shapekeys, blend shapes, morph targets, custom avatar, slider not showing, key missing, body mesh, wings, horns, tail, transform during play, grow, ctrl+j, join mesh, weight paint, vertex group, ponytail, hair length key, vrm addon, basis, object data properties, part left behind, floating horns -->
@@ -104,14 +104,14 @@ Drag the viewer to turn the Avatar. Scroll to zoom.
 | **Back** | Returns to the **Enter World** dialog. When there is no step before this one, the button is **Abort**, and it cancels the start. |
 | **Finalize Character** | Starts the game with this Avatar |
 | **Player Avatar** | The Avatar you wear. It shows only when your persona uses **User's Default**. It lists the Avatars in your library and starts on your default. When the author picked an Avatar, that one shows and you can't change it. |
-| **Add .vrm** | Adds a `.vrm` or `.glb` file to your library and selects it |
+| **Add .vrm** | Adds a `.vrm` or `.glb` file to your library and selects it. Part of **Player Avatar**, so it shows only with that list. |
 | **Animate character** | Plays the idle animations. Clear it to stop the Avatar. |
 | **Hair** | A hair style, when the model has more than one, and **Hair Length** |
 | **Initial Body Features** | One slider for each body shape the model has. The world's stats can change these during the game. |
 | **Colors** | **Hair Color**, **Eye Color** and **Skin Color**. **Revert to original** restores the file's color. |
 | **Other Colors** | Pick a part, such as clothing, and change its color |
 
-A control shows only when the model supports it. A plain `.glb` file has no VRM data, so it may show few controls or none.
+**Colors** always shows. **Hair**, **Initial Body Features** and **Other Colors** show only when the model supports them, so a plain `.glb` file may show few of them or none.
 
 ### In the Game
 
@@ -145,7 +145,7 @@ Under **Details** are the same controls as in **Character Customization**. Use t
 | **Export** | Saves the file. See [How to Export an Avatar](#how-to-export-an-avatar). |
 | **Publish** | Publishes the Avatar to Community Creations. Shows when you are logged in. |
 
-Right-click a tile for **Publish**, **Thumbnail**, **Delete**, **Tile Size** and **Add To Group**. See [The Card Menu](Library#the-card-menu).
+Right-click a tile for **Set as Default Avatar** (or **Clear Default Avatar**), **Publish**, **Thumbnail**, **Delete**, **Tile Size** and **Add To Group**. **Publish** shows when you are logged in, **Thumbnail** when the file has its own thumbnail, and **Tile Size** in the grid layout. See [The Card Menu](Library#the-card-menu).
 
 ### Deleting an Avatar
 
@@ -163,7 +163,7 @@ You can publish an Avatar only when its file grants a Permissive License. The fi
 
 Formamorph reads this from the file. You can't set it in the app. A VRM 0.0 file or a plain `.glb` has no VRM 1.0 metadata, so it can't be published. The default Avatar can't be published either.
 
-When the license fails, **Publish** shows a message that names each missing right. To fix it, set the license in the tool that exported the VRM, export it as VRM 1.0, and import the file again. Publish an Avatar only when you have the right to share it.
+When the license fails, **Publish** shows a message that names each missing right. A file with no VRM 1.0 metadata gets a message that says only that. To fix it, set the license in the tool that exported the VRM, export it as VRM 1.0, and import the file again. Publish an Avatar only when you have the right to share it.
 
 The steps to publish are in [Publishing an Avatar](Community-Creations#publishing-an-avatar). You can download an Avatar from Community Creations whatever its license. Its details show the license terms.
 
@@ -200,7 +200,7 @@ Old worlds still work. An older world that showed one Avatar for the player keep
 | **Where you add it** | The library's **Avatars** tab, or the world's **Avatars** section in the **Media** tab | The entity's **3D Model** field, in Advanced mode | **User Profile** |
 | **Files** | `.vrm`, `.glb` | `.glb`, `.gltf`, `.fbx`, `.obj` | `.png`, `.jpg`, `.webp`, `.gif`, up to 10 MB |
 | **Where it is stored** | Your library, on this device, or inside the world file | Inside the world file | The Community Creations server |
-| **Where it shows** | The entity view | The entity's image, with **View 3D model** | Beside your name in Community Creations |
+| **Where it shows** | The entity view | The entity's image, with **View 3D Model** | Beside your name in Community Creations |
 | **Customizing** | Hair, body and colors | None | Position and zoom |
 
 An entity's 3D model has no sliders or colors. The narrator never sees an entity's image or 3D model.
