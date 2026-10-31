@@ -1,7 +1,7 @@
 # Spec: Scene Presence and Strangers
 
-Status: in-progress
-Status note: Reopened on 2026-10-31 for tickets 13–14. Closed on 2026-10-31. Tickets 01–09 and 11–12 are done, and 10 is wontfix. The last landing is 1553e521b. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1 and 9b6e60f93. Closed red: lint failed on a peer's uncommitted collapsing-segments files, and StrangerModal.test.tsx failed on a run that read the test before its fix landed. Both are outside this effort's code, and the test passes now.
+Status: done
+Status note: Closed on 2026-10-31. Tickets 01–09 and 11–14 are done, and 10 is wontfix. The last landing is f27bff9bb. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1, 9b6e60f93 and 425dfe87b. Closed with gaps: ticket 15 (labels in prompt previews) is open. Gates green on 2026-10-31.
 Spec session: scene-presence — spec
 
 ## Problem Statement
@@ -191,6 +191,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q85:** The Test Bench's Opening instrument lists world personas only, so Q81's library case is tested through the helper and the callers that can hold a library persona. A library picker for the Bench is out of scope.
 - **Q86:** A name-only roster, such as the Now Line's, prints an unmet stranger with a Stranger Name as "true name (label)". Per Q83, the label is shown with the true name, never in its place (ticket 14).
 - **Q87:** Relationship sentences and Inventory owner headings are references, not rosters, so they keep the true name alone. The entity's own roster block pairs that name with the label.
+- **Q88:** Prompt previews match play. The Test Bench's opening preview and the AI Context preview show the stranger label for each entity the start-met rule leaves unmet (ticket 15).
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 

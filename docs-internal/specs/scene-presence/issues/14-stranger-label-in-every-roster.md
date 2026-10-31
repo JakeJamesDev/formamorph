@@ -1,6 +1,6 @@
 # 14: Show the Stranger Label in Every Roster
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -14,7 +14,7 @@ Read `docs-internal/notes/prompt-writing-guide/notes.md` first. The field and an
 ## Acceptance criteria
 
 - [x] Every prompt whose roster lists an unmet entity with a Stranger Name shows its stranger label field. A met entity, or one without a Stranger Name, renders as today. Labels ride on the Chip Scene: `chipValues.test.ts` ("a scene's stranger labels": every scope, Choices scene roster, name-only `Name (label)` per Q86, byte-equal without labels), `liveScene.test.ts`; both guards mutation-tested.
-- [x] Narration with Thinking Mode Off refers to an unmet stranger by its label until the story introduces them. Field plus one rule line in the narration prompt; cloud LABEL 42% → 80%, asked-name guard still named 100%.
+- [x] Narration with Thinking Mode Off refers to an unmet stranger by its label until the story introduces them. Field plus one rule line in the narration prompt; cloud LABEL (the label used) 42% → 80%; LEAK (the true name in narration) 28% → 4% without a recap and 35% → 10% with the Now Line; asked-name guard still named 100%.
 - [x] A probe on cloud with in-batch controls, old prompt against new with at least 5 runs per arm, reports how often the true name leaks into narration with Thinking Mode Off. The numbers go in the landing message. `narration-stranger-probe.mjs`, 10–12 runs per case per arm, 5 cases plus a guard.
 - [x] Precall planning keeps ticket 07's numbers: no new leak, and the alias still matches the label. By construction: the planner prompt is unchanged, and its roster renders through the same `entityScopes` call with the same labels and met check, so its request is byte-equal. Not re-probed.
 - [ ] Request Anatomy shows the field.
