@@ -55,6 +55,11 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q28 | A Body select lists **Default (\<first Body\>)** first, then **None**, then each Body. A world with no Bodies gives no owner a slot |
 | Q29 | This spec writes the in-use delete standard into the Design System and adds one shared "used by" confirm helper. Body and slot deletes are its first users |
 | Q30 | Moving the other delete flows onto the standard is its own effort, outside this spec |
+| Q31 | (ticket 01) A played world persona uses its own Body pick. Under None or a library persona, the played Persona uses the Custom Persona entity's pick, else the Default (Q9; same routing as inventory Q81). This replaces ticket 01's "library personas use the Default" |
+| Q32 | (ticket 01) In 01, the validator's equip check reads the Body in force: a missing slot is refused, and capacity and swap-out come from the entry. The settle's unequip of a lost or shrunk slot is 05's |
+| Q33 | (ticket 01) A pick naming a Body the world lacks resolves to the Default. Slot Size's max is the largest capacity any Body entry gives the slot, and 1 when no Body holds it. The clamp on slot capacity edits goes away, and 03 re-adds it on Body entry edits |
+| Q34 | (ticket 01) Emberwatch gains one Body with its four current slots and capacities in 01, so it plays the same until 08 reauthors it |
+| Q35 | (ticket 01) An equipped copy whose slot the Body in force lacks shows under Carried with its Unequip button, never hidden |
 
 ## User Stories
 
