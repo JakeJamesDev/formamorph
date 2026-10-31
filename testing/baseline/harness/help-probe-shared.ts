@@ -4,7 +4,8 @@ import sidebar from '../../../docs/_Sidebar.md?raw';
 import { BUNDLED_DOCS } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
-import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
+import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { pickMessage, type PickQuestion } from '@/lib/formaquestion/helpPicks';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
@@ -91,6 +92,24 @@ export function withoutEarlierAnswer(fetchImpl: typeof fetch, lines: readonly st
     }
     body.messages[1] = { ...body.messages[1], content: pickMessage(lines, { ...ask, earlierAnswer: undefined }) };
     return fetchImpl(url, { ...init, body: JSON.stringify(body) });
+  }) as typeof fetch;
+}
+
+/** The Default preset's Intent Classifier prompt, rendered. */
+export const INTENT_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.intent);
+
+/**
+ * A fetch that times the Intent Classifier requests of a help session: those whose system prompt is the Default
+ * preset's classifier prompt. `onTime` gets each one's milliseconds; a schema retry is a second call.
+ */
+export function timeIntent(fetchImpl: typeof fetch, onTime: (ms: number) => void): typeof fetch {
+  return (async (url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: unknown }[] };
+    if (!String(body.messages[0]?.content).startsWith(INTENT_PROMPT)) return fetchImpl(url, init);
+    const started = performance.now();
+    const response = await fetchImpl(url, init);
+    onTime(performance.now() - started);
+    return response;
   }) as typeof fetch;
 }
 
