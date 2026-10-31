@@ -19,23 +19,24 @@ export function asFormaquestionSettingsTab(value: string | undefined): Formaques
 
 /** The label and the description of each General row. */
 export const GENERAL_COPY = {
-  mascot: { label: 'Mascot', hint: 'Shows the Mascot with a bare chat column' },
+  mascot: { label: 'Mascot', hint: 'Shows the Mascot with the chat and answers in its Voice' },
   chatStyle: {
     label: 'Chat Style',
-    hint: 'Sets how the window looks. Auto is Bubble with the Mascot on.',
+    hint: 'Sets how the window looks. Auto uses Bubble with the Mascot on.',
+    info: 'In the **Bubble** style, the Mascot speaks each answer from a speech bubble. With the Mascot off, **Auto** uses **Full**.',
     options: [
       { value: 'auto', label: 'Auto' },
       { value: 'minimal', label: 'Minimal' },
       { value: 'full', label: 'Full' },
     ],
   },
-  mascotScale: { label: 'Mascot Scale', hint: "Sizes the Mascot beside the chat. Auto fits the chat's height." },
+  mascotScale: { label: 'Mascot Scale', hint: "Sizes the Mascot. Auto fits the chat's height." },
   mascotPosition: {
     label: 'Mascot Position',
-    hint: 'Sets where the Mascot stands around the chat',
-    info: `- **Above** stands the Mascot over the chat, and **Below** under it. Both cap the chat at ${Math.round(MASCOT_BELOW_CAP * 100)}% of the screen height.\n`
-      + '- **Inside** stands it beside the chat, toward the middle of the screen.\n'
-      + '- **Outside** stands it beside the chat, toward the nearer edge of the screen.\n'
+    hint: 'Sets where the Mascot appears around the chat',
+    info: `- **Above** puts the Mascot over the chat, and **Below** under it. Both limit the chat to ${Math.round(MASCOT_BELOW_CAP * 100)}% of the screen height.\n`
+      + '- **Inside** puts it beside the chat, toward the middle of the screen.\n'
+      + '- **Outside** puts it beside the chat, toward the nearer edge of the screen.\n'
       + '- Under **Bubble**, only **Inside** and **Outside** apply.',
     options: [
       { value: 'above', label: 'Above' },
@@ -52,15 +53,17 @@ export const GENERAL_COPY = {
   reasoning: {
     label: 'Reasoning',
     hint: 'Lets your AI reason before it answers. Answers take longer.',
-    info: '**Global** follows the **Native Reasoning** row under Settings → Output, its switch included. **Model Default** sends no hint. Only applies to models with native reasoning.',
+    info: 'Applies only to models with native reasoning.\n'
+      + '- **Global** uses the **Native Reasoning** row under Settings → Output, including its checkbox\n'
+      + '- **Model Default** sends no hint',
   },
   answerReveal: { label: 'Answer Reveal', hint: 'Sets how each answer appears as it streams' },
   keyword: { label: 'Keyword Search', hint: 'Matches the words in your question to guide sections' },
-  aiPicks: { label: 'AI Search', hint: 'Asks your AI to choose the sections before answering. One extra request.' },
-  semantic: { label: 'Semantic Search', hint: 'Finds sections by meaning, not exact words. Downloads a small model once.' },
-  sortQuestions: { label: 'Sort Questions', hint: 'Sends each question only what it needs. One extra request.' },
+  aiPicks: { label: 'AI Search', hint: 'Asks your AI to choose guide sections first. Adds one request.' },
+  semantic: { label: 'Semantic Search', hint: 'Finds guide sections by meaning. Downloads a small model once.' },
+  sortQuestions: { label: 'Sort Questions', hint: 'Sends each question only the help it needs. Adds one request.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the open screen, your selected item, and its guide section' },
-  readWorld: { label: 'Read the World', hint: "Sends the open world's text to your endpoint with each question" },
+  readWorld: { label: 'Read the World', hint: 'Sends the parts of the open world that match your question' },
   creation: { label: 'Creation', hint: 'Lets you ask for entities in the World Editor and add them' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
@@ -79,7 +82,7 @@ export const MASCOT_COPY = {
   title: 'Mascot',
   /** The status line of the off state. The link is the General tab's name, quoted like a control label. */
   off: { before: 'The Mascot is off. Enable it in “', link: 'General', after: '” to customize it.' },
-  voice: { label: 'Voice', hint: 'Tells your AI how help answers sound while the mascot is on' },
+  voice: { label: 'Voice', hint: 'Tells your AI how the Mascot’s answers sound' },
   preview: {
     label: 'Preview',
     hint: 'Shows the Idle look, or the layer or overlay you select',
@@ -114,7 +117,7 @@ export const MASCOT_COPY = {
   removeOverlay: 'Remove overlay',
   preset: {
     label: 'Preset',
-    hint: `Picks the mascot help shows. ${DEFAULT_MASCOT_NAME} updates with each release.`,
+    hint: `Picks the mascot that Formaquestion shows. ${DEFAULT_MASCOT_NAME} updates with each release.`,
     readOnly: (name: string) => `${name} is read-only`,
     supporterReadOnly: (name: string) => `${name} is Supporter content. You can't edit, duplicate, export or publish it.`,
     /** The header actions' tooltips, by action key. */
@@ -125,7 +128,7 @@ export const MASCOT_COPY = {
       import: 'Add a mascot from a card',
       export: 'Save this mascot as a card',
       publish: 'Share this mascot in Community Creations',
-      reset: `Put this mascot back to ${DEFAULT_MASCOT_NAME}`,
+      reset: `Reset this mascot to ${DEFAULT_MASCOT_NAME}`,
     },
     deleteTitle: 'Delete Mascot',
     deleteBody: (name: string) => `Delete the "${name}" mascot and its images? You can't undo it.`,
@@ -148,9 +151,9 @@ export const MASCOT_COPY = {
   },
   noLayer: 'None',
   missingLayer: 'Missing Layer',
-  pickWarning: "These looks name a layer that's off or gone, so it draws nothing. Pick another or turn the layer on:",
+  pickWarning: "These looks use a layer that's off or deleted, so they show nothing. Pick another layer or turn it on:",
   transition: {
-    mode: { label: 'Transition', hint: 'Moves the mascot each time its look changes' },
+    mode: { label: 'Transition', hint: 'Sets how the mascot moves when its look changes' },
     modes: { none: 'None', dissolve: 'Dissolve', jelly: 'Jelly' },
     reducedMotion: "Swaps looks at once while your system's reduced-motion setting is on",
     jelly: {
@@ -171,14 +174,14 @@ export const AI_CONTEXT_COPY = {
   // Lower case after the first word, as the game view's AI Context writes them.
   collapseAll: 'Collapse all',
   expandAll: 'Expand all',
-  empty: 'No question has reached your AI yet. Ask one, then reopen this.',
-  bare: 'A bare question: no search ran, and the request holds the question alone.',
+  empty: 'Your AI hasn’t received a question yet. Ask one, then open AI Context again.',
+  bare: 'No search ran. The request holds only the question.',
   search: 'Search',
   question: 'Question',
   query: 'Query',
   preset: 'Preset',
   intent: 'Sorted as',
-  noIntent: 'none; the full request went',
+  noIntent: 'none, so the full request was sent',
   sourcesOn: 'Sources on',
   none: 'none',
   noScreen: 'No open screen',
@@ -197,12 +200,12 @@ export const AI_CONTEXT_COPY = {
 export const ENDPOINT_COPY = {
   answer: { label: 'Answer Endpoint', description: 'Sends your questions to this endpoint for answers' },
   pick: { label: 'Search Endpoint', description: 'Runs the search request. A small, fast model is enough.' },
-  followsActive: 'Follows the endpoint picked on the **AI Endpoints** tab of Settings. Switch endpoints there and this follows.',
+  followsActive: 'Uses the endpoint picked on the **Endpoints** tab of Settings. It changes when you switch endpoints there.',
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
   sort: { label: 'Sorting Endpoint', description: 'Runs the sorting request. A small, fast model is enough.' },
   sameAsSearch: 'Goes to the **Search Endpoint**, and follows it when you change it',
   create: { label: 'Creating Endpoint', description: 'Runs the request that makes entities in the World Editor' },
-  presetHint: 'Edits the preset Answer uses. The game uses the same presets.',
+  presetHint: 'Edits the “Answer Endpoint” preset. The game uses the same presets.',
 } as const;
 
 /** The copy of the Prompts tab. */

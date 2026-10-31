@@ -28,7 +28,7 @@ export function SemanticOfferCard({ semantic, variant, className }: { semantic: 
             <span className="font-medium">Semantic Search</span>
             <Badge variant="secondary">Recommended</Badge>
           </div>
-          <Hint>Improves help by finding sections by meaning. Downloads a small model once.</Hint>
+          <Hint>Finds guide sections by meaning. Downloads a small model once.</Hint>
           <div className="flex gap-2">
             <Button size="sm" onClick={semantic.turnOn}>Turn On</Button>
             <Button size="sm" variant="ghost" onClick={semantic.noThanks}>No Thanks</Button>

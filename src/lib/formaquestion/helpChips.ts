@@ -53,7 +53,7 @@ export const frameVoice = (voice: string, name: string): string =>
 export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
   [HELP_CHIP.marker]: {
     label: 'Not in Guide Marker',
-    hint: 'Marks an answer as general knowledge when the guide does not cover the question, so the notice shows',
+    hint: 'Marks an answer the guide doesn’t cover, so the notice shows',
     text: GENERAL_KNOWLEDGE_MARKER,
   },
   [HELP_CHIP.lookupFunction]: {
@@ -63,7 +63,7 @@ export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
   },
   [HELP_CHIP.pickLimit]: {
     label: 'Search Limit',
-    hint: 'Caps how many sections one search reply names',
+    hint: 'Sets the most sections one search reply can name',
     text: String(HELP_PICK_LIMIT),
   },
   [HELP_CHIP.replyFormat]: {
