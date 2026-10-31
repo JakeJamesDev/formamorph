@@ -331,7 +331,7 @@ export function inOwnerPlaces(traits: readonly Trait[], tree: Pick<OwnerTree, 't
   });
 }
 
-/** Each item with the Character Name in its name and AI description written as the Persona Name, for items the
+/** Each item with the Entity Name in its name and AI description written as the Persona Name, for items the
  *  player has. */
 export const borneByPlayer = <T extends { name: string; aiDescription?: string }>(items: readonly T[]): T[] =>
   mapPreservingIdentity(items, (item) => {
@@ -342,7 +342,7 @@ export const borneByPlayer = <T extends { name: string; aiDescription?: string }
 
 
 /** The Traits tab tree with each linked row named for its entity owner. `named` reads an original's authored
- *  text with that entity as the Character Name; the player's rows and owned rows keep their names. */
+ *  text with that entity as the Entity Name; the player's rows and owned rows keep their names. */
 export function withOwnerNames(
   tree: OwnerTraitTree, originals: Pick<OwnerWorld, 'traits' | 'traitGroups'>,
   named: (text: string, owner: Entity, trait?: Trait) => string,
@@ -372,7 +372,7 @@ export function withOwnerNames(
 }
 
 /** The tree with each stranger's own trait and group names read from the authored text with the stranger's
- *  label as the Character Name. `raw` holds the authored entities; `named` resolves a text for a relabeled node. */
+ *  label as the Entity Name. `raw` holds the authored entities; `named` resolves a text for a relabeled node. */
 export function withStrangerNames(
   tree: OwnerTraitTree, strangers: ReadonlySet<string>, raw: readonly Entity[],
   named: (text: string, owner: Entity, trait?: Trait) => string,

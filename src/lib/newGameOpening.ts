@@ -28,7 +28,7 @@ export function newGamePool(
 }
 
 /** The first draw of a new game. Page one renders the persona's name. `owner` is the entity whose row was
- *  drawn, which the Character Name chip names. */
+ *  drawn, which the Entity Name chip names. */
 export function drawNewGameOpening(
   sources: NewGameOpeningSources,
 ): { persona: ResolvedPersona | null; draw: UnseenDraw; owner: Entity | null } {

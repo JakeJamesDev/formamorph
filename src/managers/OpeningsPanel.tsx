@@ -298,7 +298,7 @@ export function OpeningsList({
   empty: ReactNode;
   /** Names the owner in each row's accessible labels, where several owners share one screen. */
   ownerLabel?: string;
-  /** The entity's authored name, which a Character Name chip previews as. */
+  /** The entity's authored name, which a Entity Name chip previews as. */
   ownerName?: string;
   /** The trimmed search text; only cards whose text matches draw. */
   search?: string;

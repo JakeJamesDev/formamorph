@@ -73,7 +73,7 @@ const ImageSetupGuide = ({
             <p>Add this app&apos;s address to <Code>allow_origins</Code> in <Code>invokeai.yaml</Code>, in the InvokeAI root folder. Then restart InvokeAI:</p>
             <Snippet>{`allow_origins: ["${window.location.origin}"]`}</Snippet>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-              <li>The default endpoint is <Code>http://localhost:9090</Code>. The <strong>Model</strong> list loads from the server. Pick an installed SDXL, SD1.5 or Z-Image model.</li>
+              <li>The default endpoint is <Code>http://localhost:9090</Code>. The <strong>Model</strong> list loads from the server. Pick an installed SDXL, SD1.5, SD2, Z-Image or Anima model.</li>
               <li>Z-Image also needs a Qwen3 encoder and a FLUX-type VAE. Installed ones are picked automatically. To pick others, use <strong>Qwen3 Encoder</strong> and <strong>Z-Image VAE</strong> in <strong>Advanced</strong> mode.</li>
               <li><strong>Face Fix</strong> needs no extension. The first image with it on waits while InvokeAI downloads its detector models, a few hundred MB, one time only.</li>
             </ul>

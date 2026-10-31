@@ -1391,7 +1391,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   // The description holds still across providers; only what it costs you differs.
                   info={<HintInfo>{imageProvider === 'a1111'
                     ? 'Fixes faces and hands. Requires the **ADetailer** extension installed on your A1111/Forge server.'
-                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time. Works with SDXL and SD1.5 only.'}</HintInfo>}
+                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time. Works with SDXL, SD1.5 and SD2 only.'}</HintInfo>}
                 />
               )}
               {advanced && imageProvider === 'comfyui' && (

@@ -102,7 +102,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     reader ? bindBlueprintPins(trait, blueprints, reader) : trait, {}, placeholders,
   );
   const copiesOf = (reader: CopyReader | undefined) => (reader ? copyLookup(blueprints, reader) : undefined);
-  // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Character Name.
+  // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Entity Name.
   const ownTraitText: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
     : (trait, text, owner) => {
@@ -120,7 +120,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     defaultPicks(tree.traits, tree.groups);
   const activeIds = new Set(options.activeTraitIds ?? defaultsOf(global));
   const globalCopies = copiesOf(globalReader);
-  // A global trait's Character Name reads as the Persona Name, under a caller's resolve or own pins.
+  // A global trait's Entity Name reads as the Persona Name, under a caller's resolve or own pins.
   const globalText = (trait: Trait, text: string) => (options.resolve
     ? options.resolve(characterAsPlayer(text), globalCopies)
     : resolveOwnerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, globalReader), copies: globalCopies }));

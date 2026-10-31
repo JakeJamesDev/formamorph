@@ -383,7 +383,7 @@ export function lensOwnerScopes(world: LensWorld, lens: BenchLens): (ownerId: st
   };
 }
 
-/** An entity's own text as the lens reads it, with the entity's described name as the Character Name. */
+/** An entity's own text as the lens reads it, with the entity's described name as the Entity Name. */
 export function resolveLensEntityText(
   entity: { name: string },
   text: string,
@@ -391,7 +391,7 @@ export function resolveLensEntityText(
   scope: Pick<LensOwnerScope, 'pins' | 'copies'>,
 ): string {
   const all = placeholders ?? [];
-  // The name has no owner, so a Character Name inside it reads as nothing, as play reads it.
+  // The name has no owner, so a Entity Name inside it reads as nothing, as play reads it.
   const character = describePlaceholders(entity.name, all, scope.pins, scope.copies, '');
   return describePlaceholders(text, all, scope.pins, scope.copies, character);
 }

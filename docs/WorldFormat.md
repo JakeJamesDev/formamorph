@@ -257,7 +257,7 @@ A trait changes a stat with a list of these.
 
 A `statToggles` entry takes the same `target`.
 
-> 🔁 Older files write `"target": "player"`. The app reads it as `"global"`, and new files write `"global"` only. Apps older than this change don't read `"global"`, so they apply these rows to the entity's own stat until updated.
+> 🔁 Older files write `"target": "player"`. The app reads it as `"global"`, and new files write `"global"` only. Formamorph 3.2 and earlier don't read `"global"`, so they apply these rows to the entity's own stat.
 
 ### Stat Groups
 

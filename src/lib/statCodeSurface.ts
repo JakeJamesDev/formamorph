@@ -213,7 +213,7 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
     list
       ? { name: 'pin', detail: '(list) => void', info: 'Pins the placeholder to a list of text, after this run. One text pins a one-item list.' }
       : { name: 'pin', detail: '(text) => void', info: 'Pins the placeholder to any text, after this run' },
-    { name: 'unpin', detail: '() => void', info: 'Clears the pin that code set, after this run. The rolled value applies again.' },
+    { name: 'unpin', detail: '() => void', info: 'Clears the pin that code set, after this run. The next pin in rank applies, or the rolled value when none is left.' },
   ], [PLACEHOLDER_WRITABLE_FIELD], 'afterRun');
 }
 

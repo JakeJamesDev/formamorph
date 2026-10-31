@@ -84,7 +84,7 @@ export interface HelpSettings {
   readonly thinkingOpen: boolean;
   /** How an answer reveals as it streams: the Answer Reveal dialog's values. */
   readonly reveal: HelpReveal;
-  /** The help prompt presets and the active one. The session sends the active preset's three texts. */
+  /** The help prompt presets and the active one. The session sends the active preset's texts. */
   readonly presets: HelpPresetStore;
   /** The player's Formaquestion Tools: a list of their own, apart from the gameplay Tools (ADR-0010). */
   readonly tools: readonly Tool[];

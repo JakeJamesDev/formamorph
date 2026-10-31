@@ -233,7 +233,7 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
         </div>
         <Hint>
           Shows every script by timing, in the order they run. Drag a script to change its order within its timing.
-          During a game, the persona&apos;s scripts run before other entities&apos;.
+          During a game, entities&apos; scripts run in the order the entities are listed in the world.
         </Hint>
       </div>
     );

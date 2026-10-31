@@ -49,7 +49,7 @@ export interface EnterWorldWorkspaceProps {
   statGroups?: StatGroup[];
   locations: GameLocation[];
   resolveText: (text: string) => string;
-  /** A trait's own text, bound for its owner, which is the Character Name in it. */
+  /** A trait's own text, bound for its owner, which is the Entity Name in it. */
   resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
   /** The global picks, and each entity's by its id. */
   selectedTraits: Scoped<readonly string[]>;

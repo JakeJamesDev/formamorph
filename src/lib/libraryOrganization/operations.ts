@@ -70,7 +70,7 @@ const detach = (
 /**
  * Put one tile into a new folder of its own, standing where the tile stood.
  *
- * This is how every folder starts: the context menu's New Group action. No drag gesture makes one.
+ * The context menu's New Group action starts a folder this way.
  *
  * @param groupId - The id to mint the folder under; the caller owns id generation
  */

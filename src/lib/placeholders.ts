@@ -622,7 +622,7 @@ export function buildPlaceholderPreview(
   /** Rolls to read and report into, for a preview shared across fields. Absent, the draws are thrown away
    *  with the pass — a preview never writes a save. */
   store?: AuthorDrawStore,
-  /** The owning entity's authored name, which Character Name previews as. Absent or blank, it shows its label. */
+  /** The owning entity's authored name, which Entity Name previews as. Absent or blank, it shows its label. */
   ownerName?: string,
   /** The owner whose trait text this is: its copies stand in for blueprints, and its pins hold. */
   ownerReads?: Pick<ResolveOptions, 'copies' | 'pins'>,
@@ -804,7 +804,7 @@ export function describePlaceholders(
   pins?: Record<string, string>,
   /** The copy lookup of the owner whose text this is, as {@link ResolveOptions.copies}. */
   copies?: CopyLookup,
-  /** The owner's name, which the Character Name shows in place of its label. */
+  /** The owner's name, which the Entity Name shows in place of its label. */
   character?: string,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
@@ -972,7 +972,7 @@ export interface ResolveOptions {
   /** Who the Persona Name chip names and what kind of text this is. Absent, it is reference text with no
    *  persona. */
   player?: Omit<BuiltinRender, 'character'>;
-  /** The resolved name of the entity that owns the text, which the Character Name chip renders. */
+  /** The resolved name of the entity that owns the text, which the Entity Name chip renders. */
   character?: string | null;
   /** The copy lookup of the owner whose text this is: a blueprint chip reads that owner's copy. Absent, it
    *  reads the blueprint itself. */
@@ -1594,8 +1594,8 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
 }
 
 /**
- * Resolve an entity's own text with that entity as the Character Name; with no entity, nothing fills it. The
- * name resolves first, with no owner, so a Character Name chip inside the name itself reads as nothing.
+ * Resolve an entity's own text with that entity as the Entity Name; with no entity, nothing fills it. The
+ * name resolves first, with no owner, so a Entity Name chip inside the name itself reads as nothing.
  */
 export function resolveEntityText(entity: { name: string } | null, text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
@@ -1603,8 +1603,8 @@ export function resolveEntityText(entity: { name: string } | null, text: string,
   return resolvePlaceholders(text, { ...opts, character: entity && resolvePlaceholders(entity.name, noOwner) });
 }
 
-/** Resolve a trait's own text with its owner as the Character Name. With no entity owner the player owns
- *  it, so the Character Name reads as the Persona Name. */
+/** Resolve a trait's own text with its owner as the Entity Name. With no entity owner the player owns
+ *  it, so the Entity Name reads as the Persona Name. */
 export function resolveOwnerText(owner: { name: string } | null, text: string, opts: ResolveOptions): string {
   return resolveEntityText(owner, owner ? text : characterAsPlayer(text), opts);
 }

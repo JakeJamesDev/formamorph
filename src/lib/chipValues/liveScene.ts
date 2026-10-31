@@ -37,9 +37,9 @@ export interface LiveSceneSources {
   /** The entities the player plays as, whose stats are the player's. None when absent. */
   playedEntities?: readonly Entity[];
   resolve: (text: string) => string;
-  /** A trait's own text under its own pins, with an owned trait's owner as the Character Name. */
+  /** A trait's own text under its own pins, with an owned trait's owner as the Entity Name. */
   resolveTrait: ResolveTraitText;
-  /** An entity's own text, with that entity as the Character Name. */
+  /** An entity's own text, with that entity as the Entity Name. */
   resolveEntity: ResolveEntityText;
   persona: ResolvedPersona | null;
   location: GameLocation | null;

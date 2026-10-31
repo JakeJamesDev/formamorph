@@ -222,7 +222,7 @@ describe('the Chip Options sections of the Prompt Chips guide', () => {
   });
 });
 
-describe('the other-stat write sections of the Stat Code Guide', () => {
+describe('the other-stat write sections of the Scripts pages', () => {
   const IDS = ['ScriptsGuide#how-to-change-another-stat-from-code', 'Scripts-Reference#writing-to-other-stats'];
 
   it.each([
@@ -241,7 +241,7 @@ describe('the other-stat write sections of the Stat Code Guide', () => {
   });
 });
 
-describe('the owner sections of the Stat Code Guide', () => {
+describe('the owner sections of the Scripts Reference', () => {
   // Code hover cards link each global to its own heading.
   it.each(['self', 'stats', 'owner'])('has one heading for %s', (name) => {
     const [section] = index.get([`Scripts-Reference#${name}`]);
