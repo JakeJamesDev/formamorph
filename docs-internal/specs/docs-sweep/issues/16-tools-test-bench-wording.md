@@ -1,6 +1,6 @@
 # 16: Tools and Test Bench Wording
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 15
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -19,11 +19,19 @@ Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and
 
 ## Acceptance criteria
 
-- [ ] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves
-- [ ] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page
-- [ ] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here
-- [ ] Control names take the exact casing of the on-screen label
-- [ ] Product terms match "Controlled product terms"
-- [ ] Paragraphs are short and steps are scannable lists
-- [ ] No fact changed: a diff read finds no new claim, limit or default
-- [ ] A renamed heading updates every anchor table that names it; the docs tests are green
+- [x] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves. No page is over: Tools 3,860 words, Test-Bench 1,827. No split proposed: each page serves one task (set up and write Tools; check a world on the bench).
+- [x] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page. No split, so none.
+- [x] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here. 71 before, 63 after. The 63: 61 on keyword and route comments (Q20), the `---` code literal in Test-Bench, and "Calling get_entity…", which quotes the status string in `toolCallStatus.ts`.
+- [x] Control names take the exact casing of the on-screen label. Each bold label grepped against its source string (ToolsTab, ToolEditor, ToolTryIt, the bench instruments); icon buttons named by tooltip (Q12): Delete, View full screen, Dismiss, Restore.
+- [x] Product terms match "Controlled product terms". Dictionary entries "activate", never "fire".
+- [x] Paragraphs are short and steps are scannable lists. Long run-ons split into lists.
+- [x] No fact changed: a diff read finds no new claim, limit or default. Diff read; the icon-button lines name existing tooltips only.
+- [x] A renamed heading updates every anchor table that names it; the docs tests are green. No heading renamed; docs tests 384 passed.
+
+## Landed
+
+**Not verified:** none.
+
+**For you:**
+- Tools.md "What a Script Can Read" table rows were left as they are: ticket 14 moves their ScriptsGuide links to Scripts-Reference.
+- No stale fact, missing page, stale ADR or contradicting label found.
