@@ -69,6 +69,12 @@ describe('the stored Tools', () => {
     expect(parseHelpTools('tools')).toEqual([]);
   });
 
+  it('keep an Intent list, including an empty one, and read a Tool saved without one as no list', () => {
+    const read = parseHelpTools([tool({ intents: ['Chat'] }), tool({ id: 'h-2', name: 'b', intents: [] }), tool({ id: 'h-3', name: 'c' })]);
+    expect(read.map((t) => t.intents)).toEqual([['Chat'], [], undefined]);
+    expect(read[2]).not.toHaveProperty('intents');
+  });
+
   it('keep a switch only for a Tool in the list, and only a boolean one', () => {
     const tools = [tool()];
     expect(parseHelpToolSwitches({ 'h-1': true, gone: true, 'h-1x': 'yes' }, tools)).toEqual({ 'h-1': true });

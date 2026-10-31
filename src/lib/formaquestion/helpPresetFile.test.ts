@@ -109,6 +109,13 @@ describe('export then import on a clean profile', () => {
     expect(result.readWorld).toBe(false);
   });
 
+  it('round-trips a Tool’s Intent list, and loads a Tool of a file without one as no list', () => {
+    const source = helpSettingsOf({ tools: [helpTool({ intents: ['Chat', 'Create'] }), helpTool({ id: 'h-2', name: 'find_place' })], toolSwitches: { 'h-1': true, 'h-2': true } });
+    const result = helpSettingsOf(importHelpPresetFile(DEFAULT_HELP_SETTINGS, parseHelpPresetFile(textOf(fileOf(source))), mint).change);
+    expect(result.tools[0].intents).toEqual(['Chat', 'Create']);
+    expect(result.tools[1]).not.toHaveProperty('intents');
+  });
+
   it('loads a file from before Read the World with the switch on and the built-in world rules', () => {
     const { readWorld: _, ...old } = JSON.parse(textOf(fileOf(customized()))) as Record<string, unknown>;
     const { worldEditor: _e, worldGame: _g, ...oldPrompts } = old.prompts as Record<string, unknown>;

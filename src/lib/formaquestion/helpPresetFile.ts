@@ -118,7 +118,7 @@ function readTools(raw: unknown): HelpPresetFileTool[] {
   if (!Array.isArray(raw)) throw refusal('tools');
   return raw.map((entry, index) => {
     if (!isRecord(entry)) throw refusal(`tools.${index}`);
-    const result = parseTool(entry.tool);
+    const result = parseTool(entry.tool, { help: true });
     if ('error' in result) throw new Error(`That preset file has a Tool that can’t be read: ${isRecord(entry.tool) && isText(entry.tool.name) ? `"${entry.tool.name}"` : `tools.${index}`}, ${result.error}.`);
     if (typeof entry.enabled !== 'boolean') throw refusal(`tools.${index}.enabled`);
     return { tool: result.tool, enabled: entry.enabled };

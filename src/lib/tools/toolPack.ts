@@ -19,7 +19,7 @@ export function buildToolPack(tools: readonly Tool[], appVersion: string): ToolP
 }
 
 /** Read a pack file. Throws on text that isn't a pack; a malformed Tool drops with a warning. */
-export function parseToolPack(json: string): { tools: Tool[]; warnings: string[] } {
+export function parseToolPack(json: string, options: { help?: boolean } = {}): { tools: Tool[]; warnings: string[] } {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -29,17 +29,17 @@ export function parseToolPack(json: string): { tools: Tool[]; warnings: string[]
   if (!isRecord(parsed) || typeof parsed.formamorphTools !== 'number' || !Array.isArray(parsed.tools)) {
     throw new Error('That file isn’t a Formamorph Tool pack.');
   }
-  const { tools, warnings } = parseToolList(parsed.tools);
+  const { tools, warnings } = parseToolList(parsed.tools, options);
   if (parsed.formamorphTools > TOOL_PACK_VERSION) warnings.unshift('This pack was made with a newer format. Anything unrecognized was skipped.');
   return { tools, warnings };
 }
 
 /** Read a list of untrusted Tools. A malformed Tool drops with a warning. */
-export function parseToolList(list: readonly unknown[]): { tools: Tool[]; warnings: string[] } {
+export function parseToolList(list: readonly unknown[], options: { help?: boolean } = {}): { tools: Tool[]; warnings: string[] } {
   const tools: Tool[] = [];
   const warnings: string[] = [];
   for (const raw of list) {
-    const result = parseTool(raw);
+    const result = parseTool(raw, options);
     if ('tool' in result) tools.push(result.tool);
     else warnings.push(`Skipped ${isRecord(raw) && typeof raw.name === 'string' ? `"${raw.name}"` : 'a Tool'}: ${result.error}.`);
   }

@@ -8,7 +8,7 @@ A **Tool** is a function the AI calls during a request ([ADR-0008](0008-tools-ar
 
 **Formaquestion** answers a help question from the player docs. Its one app-internal function, the guide lookup, is no Tool ([ADR-0009](0009-docs-lookup-is-an-app-internal-function.md)). A dedicated player wants more: Tools of their own in a help question, so Formaquestion can work as a chat assistant that reads the open world (Formaquestion Settings spec, Q33–Q38).
 
-The help request has no prompt preset of the game's kind. A help preset holds the three help prompts, and every other help setting is a device setting that applies to every preset (Q10, Q53). The request is one request: there is no "Offered To" to choose.
+The help request has no prompt preset of the game's kind. A help preset holds the three help prompts, and every other help setting is a device setting that applies to every preset (Q10, Q53). The request is one request: there is no "Offered To" to choose. The Intent Classifier later gave each question an Intent that narrows the request, so a Tool now chooses Intents instead (see Amendment).
 
 ## Decision
 
@@ -26,6 +26,15 @@ The help request has no prompt preset of the game's kind. A help preset holds th
 - A Tool that is on can send text of the player's world to the help endpoint, which no help request did before. The Tools tab states this next to the list.
 - Two Tool stores exist. A player who wants one Tool in both lists imports it twice, through the pack file.
 - The one Tools tab component serves both lists. Its caller decides whether a prompt preset is involved.
+
+## Amendment — a Tool chooses its Intents (2026-10-31)
+
+The Intent Classifier gives a help question an Intent: Chat, Help, Code, World or Create. A Formaquestion Tool gains an optional `intents` list, edited with the multiselect a gameplay Tool uses for its prompts.
+
+- **An absent list reads as Help, Code and World.** Tools saved before the change keep reaching those three. An empty list is valid and sends the Tool to no Intent.
+- **The answer request offers a Tool only when its list holds the question's Intent,** also when that Intent's plan falls back to the full request. A request with no Intent (classifier off, an unclear label, no endpoint) offers every Tool that is on.
+- **A gameplay Tool never carries the list.** The pack and preset readers keep it for the Formaquestion list only. A pack and a help preset file exported from the Formaquestion list carry the optional list. A pack from the gameplay list imports with no list.
+- **"Offered To" still does not apply.** The list holds Intents, not prompt kinds.
 
 ## Alternatives rejected
 

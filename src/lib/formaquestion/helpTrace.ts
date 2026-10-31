@@ -5,7 +5,7 @@
  */
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
 import type { DocSection } from '@/lib/docs/docsIndex';
-import type { Intent } from './helpIntent';
+import type { Intent } from '@/types';
 import type { HelpSources } from './helpSettings';
 import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from './helpWorldSource';
 

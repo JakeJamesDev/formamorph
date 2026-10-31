@@ -136,6 +136,9 @@ export interface ToolScriptHandler {
   stack?: boolean;
 }
 
+/** What a help question asks for, which decides what its answer request carries. */
+export type Intent = 'Chat' | 'Help' | 'Code' | 'World' | 'Create';
+
 /** A function the AI can call during a request. User Tools live in one global list; built-in Tools are the catalog. */
 export interface Tool {
   id: string;
@@ -149,6 +152,8 @@ export interface Tool {
   emptyResult: string;
   /** The prompts that send this Tool. */
   offeredTo: AIRequestType[];
+  /** Formaquestion Tools only: the Intents that send this Tool. Absent reads as Help, Code and World. */
+  intents?: Intent[];
   /** Calls allowed per request; absent uses the global default. */
   callLimit?: number;
 }
