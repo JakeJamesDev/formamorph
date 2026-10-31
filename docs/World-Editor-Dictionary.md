@@ -24,9 +24,11 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 5. Write the text the AI gets in **Value**.
 6. Select **Save**.
 
-> 💡 A comma doesn't split keywords. When a keyword holds commas, the field offers to split it.
+> 💡 A comma doesn't split keywords. When a keyword holds commas, the field offers to split it. A **Regex** entry gets no offer.
 
-To add a dictionary from your library, select the **+** button, then **Add From Library…**. **Import Dictionary…** in the same menu adds one from a file.
+To add a dictionary from your library, select the **+** button, then **Add From Library…**. **Import Dictionary…** in the same menu adds one from a file. It reads a Formamorph dictionary, a SillyTavern World Info file, or a character card's lorebook.
+
+To check which entries activate for a scene, use the Test Bench's [Triggers](Test-Bench#triggers) tab.
 
 ## What gets scanned
 <!-- keywords: not triggering, never fires, why didnt it activate, what text is checked, how far back, detection, ignored words -->
@@ -58,7 +60,7 @@ Select an entry to open its panel. **Trigger Keywords** and **Value** are all mo
 | **Details** | **Name**, **Trigger Keywords**, **Whole Words**, **Case-Sensitive** and **Value** | Simple and Advanced |
 | **Matching** | **Always Inject**, **Regex**, **Recursive**, **Scan Depth** and **Secondary Keywords** | Advanced only |
 
-Simple mode also hides the Background and Foreground groups and the **Enabled** switches.
+Simple mode also hides the Background and Foreground groups and the **Enabled** switches. A dictionary edited [in the library](#in-the-library) always shows every control.
 
 Use the **Matching** tab only when an entry activates at the wrong time, or doesn't activate at the right time.
 
@@ -78,7 +80,7 @@ Use the **Matching** tab only when an entry activates at the wrong time, or does
 |---|---|
 | **Always Inject** | Skips the scan and sends the entry on every turn. It uses context on every turn, so use it rarely. |
 | **Regex** | Reads each keyword as a regular expression. An invalid expression never matches. |
-| **Recursive** | The Values of entries that already activated can also activate this entry |
+| **Recursive** | The Values of entries that already activated can also activate this entry. The chain stops after 3 passes. |
 | **Scan Depth** | How many earlier messages the game scans. Blank scans all of them. `0` scans only the current scene. |
 | **Secondary Keywords** | A second condition. *bridge* activates the entry only when *toll* is also in the scanned text. |
 
@@ -94,7 +96,7 @@ Two checkboxes change the **Secondary Keywords** test:
 ## Semantic Lore
 <!-- keywords: by meaning, embedding, vector, fuzzy, smart match, synonyms, without exact word, similar wording -->
 
-**Semantic Lore** is a player setting in [Settings](Settings#lore) → **Output** → **Lore**, in Advanced mode. It is off by default. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change.
+**Semantic Lore** is a player setting in [Settings](Settings#lore) → **Output** → **Lore**, in Advanced mode. It is off by default. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change. It compares entries with your action, and skips **Always Inject** entries. It uses the same on-device model as **Semantic Memory**, about 23 MB, downloaded the first time you turn it on.
 
 ## Background and Foreground
 <!-- keywords: position in prompt, insertion order, before or after, top or bottom, move between sections, nothing is sent, placement -->
@@ -117,7 +119,7 @@ Select a book in the tree to open its panel. It has two tabs.
 
 | Tab | What it holds |
 |---|---|
-| **Details** | **Name**, **Description**, the entry count and, in Advanced mode, **Enabled**. |
+| **Details** | **Name**, **Description**, the entry count and, in Advanced mode, **Enabled**. The Description is a note for you and never reaches the AI. |
 | **Placeholders** | The book's own [placeholders](World-Editor-Placeholders), across the full panel. **Advanced mode only.** |
 
 In Simple mode the panel shows the Details fields with no tabs. The tab you pick stays open when you select another book.

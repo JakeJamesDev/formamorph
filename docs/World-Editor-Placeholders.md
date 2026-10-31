@@ -103,7 +103,7 @@ The toggle offers **Wildcard** and **Object**. A Variable has no button: the lin
 ## Draw Weight
 <!-- keywords: benched, disable an option, zero means never, default is one, turn off option -->
 
-Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The box then reads **Benched**.
+Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. In the **Chips** style, the line under the weight box then reads *Benched*. In the **Multiline** style, its chance reads 0%.
 
 ## Parts
 <!-- keywords: nested, inside another, compose, sub item, pieces, combine several, arrow name -->
@@ -133,7 +133,7 @@ A placeholder that can't roll locks the choice on **World**.
 | **Unique** | The name plus a letter, one sequence per placeholder | `Town Name (A)`, `Town Name (B)` … `Town Name (AA)` |
 | **Labeled** | The label you typed in Chip Options | `Hometown` |
 
-The letters follow the order of the world: entities first, in the order of the Entities tree. Then locations, then the Travel Hints, connection by connection: first the trip away from the location you made the connection from, then the trip back. Then traits, trait groups, stats, dictionaries, the world's own prompt fields and openings, and last the placeholders' own values.
+The letters follow the order of the world: entities first, in the order of the Entities tree. Then items, then locations, then the Travel Hints, connection by connection: first the trip away from the location you made the connection from, then the trip back. Then traits, trait groups, stats, dictionaries, the Overview's texts (AI-Facing Description, readmes, openings and world prompts), and last the placeholders' own values.
 
 - **Letters aren't stored.** Remove the first chip, and the next one becomes **(A)**. A letter tells two chips apart, but it isn't a permanent name.
 - **Give a Unique chip a Label** in Chip Options when you want a name that stays. Only Unique chips have the **Label** field.
@@ -150,6 +150,8 @@ A text field that holds a chip has a **Values** tab beside **Edit**. It opens ev
 - **Edit Value** in Chip Options opens this tab.
 
 The tab shows when the world has a placeholder. It is disabled until the text holds a chip.
+
+**Reroll**, a dice icon button, draws the field's chips again for **Preview** and **Values**. The text doesn't change. Its tooltip reads *Reroll placeholders*.
 
 ## Built-in Chips
 <!-- keywords: user macro, char macro, insert my name, hero name, double braces, sillytavern style, predefined, you or the player -->
@@ -190,7 +192,7 @@ The placeholder's **Pins** tab gathers every pin aimed at it. A change there is 
 
 Chips resolve **both** in the text the AI reads and in the text the player sees. Type `{` in each field that has the chip picker:
 
-- names and descriptions of entities, locations, stats and traits
+- names and descriptions of entities, items, locations, stats and traits, including an entity's Stranger Name and an item's Unidentified Name
 - the pronouns of an entity
 - the relationship labels of an entity
 - stat descriptors and dictionary entries
@@ -199,6 +201,7 @@ Chips resolve **both** in the text the AI reads and in the text the player sees.
 - openings
 - both readme tabs
 - the world's AI-Facing Description
+- the world's own prompts on the Overview, which offer no Built-in chips
 - the values of other placeholders
 
 The `{` menu lists the **Built-in** chips first, then ungrouped placeholders, then each group, then the placeholders of each owner. In an owner's own fields, that owner's placeholders come first.
@@ -211,7 +214,7 @@ A [blueprint chip](#blueprint-chips) works only in the text of an original trait
 <!-- keywords: npc own variables, travels with card, portable, exported together, lorebook own list, private to one, owner -->
 <!-- route: worldEditorEntity.placeholders -->
 
-An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. These placeholders travel with their owner in an entity card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
+An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. In the World Editor the tab shows in Advanced mode only. These placeholders travel with their owner in an entity card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
 
 ## Groups
 <!-- keywords: organize variables, tidy shared list, sort tokens, folder tree -->

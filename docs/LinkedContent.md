@@ -52,7 +52,7 @@ A linked copy of your own item also updates the next time you open its world.
 <!-- route: manageAddons -->
 
 1. In Community Creations, find your own published world.
-2. Select **Manage Add-ons**.
+2. Select **Manage Add-ons**, the puzzle icon button on the card. Its tooltip reads *Review the add-ons other authors offer for this world*.
 3. **Show** starts on **Needs Attention**. Set each offer to **Approved**, **Unreviewed** or **Declined**. **Mark Reviewed** accepts a changed source and keeps your answer.
 4. Select **Save Changes**.
 
@@ -90,14 +90,14 @@ A **linked copy** follows a **library item**. When you save the library item, ev
 |---|---|
 | **Save to Library** | Saves the copy as a library item and links the copy to it. |
 | **Add From Library…** | In the **+** menu on **Entities** and **Dictionary**. Adds a copy of a library item. **Link to Library** is on by default. |
-| **Import Entity…**, **Import Dictionary…** | In the same **+** menu. Adds a copy from a file, with the same **Link to Library** choice. |
-| **Link to Library Item…** | In an independent copy's menu. Links the copy to a library item you pick. |
+| **Import Entity…**, **Import Dictionary…** | In the same **+** menu. Adds a copy from a file. **Link through my library** is the same choice. |
+| **Link to Library Item…** | In an independent copy's menu. Links the copy to a library item you pick. If the copy's content differs from that item, it links as a **Local replacement**. |
 
 All four make the same link.
 
 ### The Three Link States
 
-A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows, such as *Linked · Sedge*.
+A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows, such as *Linked · Sedge*. Only the footer button shows **Link pending save**.
 
 | State | Meaning | Default in a review |
 |---|---|---|
@@ -114,7 +114,7 @@ Who owns the library item decides what an edit does.
 | **Yours** | Stays **Linked**. | Writes the edit to the library item. Every other world holding a copy receives it the next time you open that world. The last save wins. |
 | **Another author's** | Makes the copy a **Local replacement**. | Writes nothing to the library. Their updates still reach you for review, where **Keep Mine** is the default. |
 
-**Discard Changes** writes nothing to the library. A copy you already made a local replacement stays one; **Use Author's** in a review makes it share edits again.
+**Autosave** writes the same way as **Save**. **Exit Without Saving** writes nothing to the library. A copy you already made a local replacement stays one; **Use Author's** in a review makes it share edits again.
 
 ### The Copy's Menu
 
@@ -149,7 +149,7 @@ If a world is behind it, **Update Available** lists one row per world, with the 
 | **Keep Mine** | Keeps the copy as it is. | **Local replacement** |
 | **Unlink** | Keeps the copy as it is and stops following the library item. | |
 
-**View Changes** shows the changed fields with your value and the author's. A dictionary's changed, added, and removed entries are grouped, and unchanged content sits behind a disclosure.
+**View Changes** shows each changed field twice, under **This world** and **Library**. For an imported file, the file's name replaces **Library**. A dictionary's changed, added, and removed entries are grouped, and unchanged content sits behind a disclosure.
 
 Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it. If one world fails, it keeps the content it had and offers **Retry**. Every other world's result stands.
 
@@ -158,7 +158,7 @@ Choosing an action changes nothing until **Apply Updates**. **Cancel** applies n
 
 ### Update This World
 
-Choosing **Update an existing copy** on a community world opens **Update This World** before anything is written. It lists the linked copies the update would change, each with the same four actions. A local replacement starts on **Keep Mine**, so your edits survive the update.
+Choosing **Update an existing copy** on a community world opens **Update This World** before anything is written. It lists the linked copies the update would change, each with the same actions. A local replacement starts on **Keep Mine**, so your edits survive the update. When there is nothing to review, the world updates with no review.
 
 | Section | What is in it | What Apply Updates does |
 |---|---|---|
@@ -194,7 +194,7 @@ An unlisted listing stays out of Community Creations and reaches players only in
 
 ### Manage Add-ons
 
-Your own published world card in Community Creations gains **Manage Add-ons**. It opens the offers other authors have made for your world. Each offer is in one of three states.
+Your own published world card in Community Creations gains **Manage Add-ons**, a puzzle icon button. It opens the offers other authors have made for your world. Each offer is in one of three states.
 
 | State | Where the add-on appears on your world's download |
 |---|---|
@@ -225,7 +225,7 @@ A required item that does not download leaves the world out of your library and 
 
 ### A Listing's Compatible Worlds
 
-An entity's or a dictionary's details window lists the worlds it is offered for under **Compatible Worlds**, in three groups: **Approved**, **Unreviewed**, and **Declined by the world author**. Only the entity's or dictionary's own author sees the declined group. Pressing a world opens that world's listing. Downloading the entity or dictionary gets only that item. Each world stays a download of its own.
+An entity's or a dictionary's details window lists the worlds it is offered for under **Compatible Worlds**, in three groups: **Approved**, **Unreviewed**, and **Declined by the world author**. Only the entity's or dictionary's own author and staff see the declined group. Pressing a world opens that world's listing. Downloading the entity or dictionary gets only that item. Each world stays a download of its own.
 
 ### Importing a World File
 
@@ -237,8 +237,10 @@ A world file bundles its entities and dictionaries, and records what each linked
 | Elsewhere, **Link bundled content to my library** checked | Each bundled item becomes a library item of yours, and the world's copies follow it. |
 | Elsewhere, unchecked | The copies are embedded and follow nothing. |
 
+The **Link bundled content to my library** checkbox shows in the main menu when you select the imported world. It starts unchecked.
+
 > [!NOTE]
-> **The file's content always wins.** A copy whose source you already have follows your own item and arrives as a local replacement.
+> **The file's content always wins.** A copy whose source you already have follows your own item. Where the file's content differs from your item, the copy arrives as a local replacement.
 
 ### Importing an Entity or Dictionary File
 
@@ -260,7 +262,7 @@ If the file's source is already in your library, **Update Available** opens inst
 
 ### Check Sources
 
-The Test Bench's **Issues** list gains **Check Sources**. It asks the server about every library item this world's copies follow. Formamorph asks only when you press it, so a downloaded world stays playable with no connection.
+The Test Bench's **Issues** list gains **Check Sources** when a copy follows a published source. It asks the server about every published source this world's copies follow. After a check, the button reads **Check Again**. Formamorph asks only when you press it, so a downloaded world stays playable with no connection.
 
 | Result | Meaning |
 |---|---|
