@@ -25,7 +25,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [AI Context Inspector](How-to-Play#the-ai-context-inspector) | Shows the exact text the game sent to the AI each turn, and what came back |
 | [Demo AI](Connect-Your-Own-AI) | The small free model that the browser and Android apps start on |
 | [Built-In Engine](Connect-Your-Own-AI#the-desktop-engine) | The AI engine inside the desktop app. It runs a model on your own PC. |
-| [Endpoint](Settings#endpoints) | The address of the AI server that writes your story. An endpoint preset saves one. |
+| [Endpoint](Endpoint-Settings) | The address of the AI server that writes your story. An endpoint preset saves one. |
 | [Thinking Mode](Settings#reasoning) | How the AI plans a turn before it writes it: **Native**, **Inline**, **Planning** or **Staged** |
 | [Scene Image](Image-Generation#scene-images) | An image of the turn, made by an image server you connect |
 | [Text to Speech](How-to-Play#how-to-read-a-turn-aloud) | Reads a turn aloud with a voice model that runs in your browser |

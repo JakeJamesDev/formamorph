@@ -8,7 +8,7 @@ How Formamorph remembers a long story, and how you can change what it remembers.
 ## Why Memory Exists
 <!-- keywords: context window, token limit, too long, compression, pruned, repeats itself, forgot earlier events, struck through -->
 
-An AI model can only hold so much text at once. A story that runs 50 turns doesn't fit, so something has to give. Formamorph keeps the **recent** turns word for word and carries **older** turns as short memories instead.
+An AI model can only hold so much text at once. A story that runs 50 turns doesn't fit. So Formamorph keeps the **recent** turns word for word and carries **older** turns as short memories instead.
 
 | Layer | What It Is |
 |---|---|
@@ -77,7 +77,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 3. Open the **Output** tab.
 4. In the **Memory** section, turn off **Memory Summaries**.
 
-During the game, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
+During the game, the **How to Play** help has the same **Memory Summaries** checkbox. It is on the **Memory & Notes** tab, in every mode.
 
 ## How to Date Each Memory
 <!-- keywords: time, timestamp, day, calendar, clock, when it happened, how long ago, time passing, hours, chronology, time of day, elapsed, story date -->
@@ -104,7 +104,7 @@ Open the side panel's **Memory** tab during the game to see the whole ledger. Fa
 
 The filter chips are **All · Verbatim · Summary · Held · Custom**. **Custom** shows the memories you wrote.
 
-Memories under the **Recent** divider still go to the AI word for word, so a pin on one of them matters only after it ages out. The divider shows under the **All** chip only.
+Memories under the **Recent** divider still go to the AI word for word. A pin on one of them matters only after it ages out. The divider shows under the **All** chip only.
 
 ## The Memory Manager
 <!-- keywords: full editor, regenerate summary, resummarize, badges, trash, browse all, yours badge, popup, big list -->
@@ -133,7 +133,10 @@ Memories under the **Recent** divider still go to the AI word for word, so a pin
 
 Being **kept** and being **sent** are different things.
 
-*Kept* is a standing verdict: the story judged this memory worth carrying, or you pinned it. *Sent* is about one turn. With **Semantic Memory** on, the game ranks the kept memories against what you just did, and only the most relevant ones go to the AI. A long story keeps far more memories than any single turn sends.
+- *Kept* is a standing verdict: the story judged this memory worth carrying, or you pinned it.
+- *Sent* is about one turn. With **Semantic Memory** on, the game ranks the kept memories against what you just did. Only the most relevant ones go to the AI.
+
+A long story keeps far more memories than any single turn sends.
 
 | Row | Means |
 |---|---|
@@ -149,7 +152,7 @@ The three forms a memory can be in:
 | **Summary** | The compressed line you're reading, and nothing more |
 | **Held** | Nothing this turn. Still kept, until it is relevant again |
 
-A memory that **Scene Recall** sent back as its full original prose has an accent too, and a **Scene** badge in the **Memories** dialog. The story saw the whole scene, not only the one-line summary. The **Verbatim** chip collects those and the recent turns that still go to the AI word for word.
+**Scene Recall** can send a memory back as its full original prose. That memory has an accent too, and a **Scene** badge in the **Memories** dialog. The story saw the whole scene, not only the one-line summary. The **Verbatim** chip collects those memories and the recent turns that still go to the AI word for word.
 
 > [!NOTE]
 > Nothing is marked until a turn has run. A save you just loaded shows no accents. Memories under the **Recent** divider are never marked, because they always go to the AI word for word.
@@ -193,7 +196,10 @@ The side panel's clock reads the same way: **Day 1, morning**, not a count of ho
 | **Times of Day** | Coarse: *dawn*, *morning*, *midday*, *afternoon*, *evening*, *night*. Never a clock reading. |
 
 > [!NOTE]
-> **The Memory tab dates nothing while Measured Clock is off.** Without it every turn costs the same **Time Per Turn** (one hour unless you change it), so a date would only be a turn count. **Time in Memory** still dates what it sends to the AI, at that time per turn. Turn Measured Clock on partway through a story, and the earlier turns are dated at that time per turn. The scale is wrong, but the order is right.
+> **The Memory tab dates nothing while Measured Clock is off.** Without it, every turn costs the same **Time Per Turn**, one hour unless you change it. So a date would only be a turn count.
+>
+> - **Time in Memory** still dates what it sends to the AI, at that time per turn.
+> - Turn **Measured Clock** on partway through a story, and the earlier turns are dated at that time per turn. The scale is wrong, but the order is right.
 
 Both settings are in Settings → **Output** → **Time**, in **Advanced** mode. **Measured Clock** decides whether the game measures time. **Time in Memory** decides whether the AI is told.
 
@@ -231,6 +237,6 @@ If the story keeps forgetting something that should always hold, put it in **Not
 ## Turning Memory Off
 <!-- keywords: what happens without, consequences, old turns dropped, effect of disabling, nothing carried forward, manual ones still used -->
 
-**Memory Summaries** controls whether the story writes memories at all. It is in Settings → **Output** → **Memory**, in **Advanced** mode. With it off, the oldest turns drop away as the story outgrows its context, and nothing carries forward in their place.
+**Memory Summaries** controls whether the story writes memories at all. It is in Settings → **Output** → **Memory**, in **Advanced** mode. With it off, the oldest turns are dropped once the story is longer than the context. Nothing carries forward in their place.
 
 Memories you wrote by hand still go to the AI with the setting off. They're yours, not the story's.
