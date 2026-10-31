@@ -131,7 +131,7 @@ describe('what a row offers', () => {
 
 describe('the line under the title', () => {
   it('names first place once the results are out', () => {
-    expect(adminEventSummary(decided(), NOW)).toBe('1st Place: Lantern Reef — suneater');
+    expect(adminEventSummary(decided(), NOW)).toBe('1st Place: Lantern Reef by suneater');
   });
 
   it('counts the rest of the podium rather than listing it', () => {
@@ -143,7 +143,7 @@ describe('the line under the title', () => {
       ],
     });
 
-    expect(adminEventSummary(full, NOW)).toBe('1st Place: Lantern Reef — suneater (+2 more)');
+    expect(adminEventSummary(full, NOW)).toBe('1st Place: Lantern Reef by suneater (+2 more)');
   });
 
   it('counts a shared 1st instead of naming one of its winners', () => {
@@ -173,12 +173,12 @@ describe('the line under the title', () => {
 
   it('says a closed contest is waiting on its results', () => {
     expect(adminEventSummary(event({ startsAt: at(-9), endsAt: at(-1) }), NOW))
-      .toBe('Closed for entries — waiting on the results');
+      .toBe('Closed for entries · Waiting for results');
   });
 
   it('tells a running contest apart from a running notice', () => {
     expect(adminEventSummary(event(), NOW)).toBe('Open for entries');
-    expect(adminEventSummary(event({ type: 'announcement' }), NOW)).toBe('Banner live');
+    expect(adminEventSummary(event({ type: 'announcement' }), NOW)).toBe('Banner showing');
   });
 });
 

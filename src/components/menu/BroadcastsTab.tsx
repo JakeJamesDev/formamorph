@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Hint } from "@/components/ui/typography";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
 import { SentMessageList } from "@/components/menu/SentMessageList";
 import AuthService from "@/services/AuthService";
@@ -24,9 +25,10 @@ export function BroadcastsTab({ active }: BroadcastsTabProps) {
   return (
     <div className="py-4 min-w-0">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-helper text-muted-foreground">
-          Messages sent to every account. Pinned ones also reach accounts created later.
-        </p>
+        <Hint>
+          Sends messages to every account. <strong>Existing + New</strong> and <strong>Pinned</strong> messages
+          also reach accounts created later.
+        </Hint>
 
         <Button size="sm" className="shrink-0" onClick={() => setComposing(true)}>
           <Megaphone className="mr-2 h-4 w-4" /> New Broadcast

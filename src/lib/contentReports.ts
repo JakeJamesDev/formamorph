@@ -116,7 +116,7 @@ export function serverSupportsReports(meta: { categories?: unknown } | null | un
  * @returns The message to show, or null
  */
 export function reportDraftError(draft: ReportDraft): string | null {
-  if (!draft.category) return 'Pick what is wrong with it.';
+  if (!draft.category) return 'Choose what’s wrong with it.';
   if (draft.details.trim().length > REPORT_DETAILS_MAX) {
     return `Details are ${REPORT_DETAILS_MAX} characters at most.`;
   }

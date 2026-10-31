@@ -126,11 +126,20 @@ describe('scope control', () => {
   });
 });
 
+describe('the selects', () => {
+  it('take their visible labels as their names', () => {
+    render(<MessageComposerDialog open onOpenChange={() => {}} target={DIRECT} adminUsername="root" />);
+
+    expect(screen.getByRole('combobox', { name: 'Severity' })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Send As' })).toBeTruthy();
+  });
+});
+
 describe('scope hint', () => {
   it('explains the selected level', () => {
     render(<MessageComposerDialog open onOpenChange={() => {}} target={BROADCAST} adminUsername="root" />);
 
-    expect(screen.getByText(/Only accounts that exist right now/)).toBeTruthy();
+    expect(screen.getByText(/Reaches the accounts that exist now/)).toBeTruthy();
   });
 
   it('swaps to the newly selected level', () => {
@@ -138,8 +147,8 @@ describe('scope hint', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Pinned' }));
 
-    expect(screen.getByText(/cannot be dismissed/)).toBeTruthy();
-    expect(screen.queryByText(/Only accounts that exist right now/)).toBeNull();
+    expect(screen.getByText(/can’t be dismissed/)).toBeTruthy();
+    expect(screen.queryByText(/Reaches the accounts that exist now/)).toBeNull();
   });
 
   it('shows one hint at a time, not all of them', () => {

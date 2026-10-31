@@ -190,7 +190,7 @@ export function publishedMessage(
   if (entryHeld) return `${noun} sent for review with its changelog entry`;
   if (result && awaitsReview(result)) return `${noun} sent for review`;
 
-  return `${noun} ${updated ? 'updated' : 'published'} successfully!`;
+  return `${noun} ${updated ? 'updated' : 'published'}`;
 }
 
 

@@ -7,9 +7,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   user_unsuspended: 'Reinstated',
   suspension_expired: 'Suspension expired',
   terms_reset_user: 'Terms reset',
-  terms_reset_all: 'Terms reset (everyone)',
+  terms_reset_all: 'Terms reset for everyone',
   privacy_reset_user: 'Privacy policy reset',
-  privacy_reset_all: 'Privacy policy reset (everyone)',
+  privacy_reset_all: 'Privacy policy reset for everyone',
   listing_deleted: 'Listing deleted',
   comment_deleted: 'Comment deleted',
   feedback_deleted: 'Feedback deleted',
@@ -136,6 +136,9 @@ const KIND_NOUNS: Record<string, string> = {
   world: 'world',
   entity: 'entity',
   dictionary: 'dictionary',
+  model: 'avatar',
+  mascot: 'mascot',
+  prompt: 'prompt',
   comment: 'comment on',
   account: 'account',
   bug: 'bug report',
@@ -228,7 +231,7 @@ export function auditPredicate(entry: AuditEntry): string {
     case 'role_changed': {
       const to = entry.snippet ? entry.snippet.split(' to ')[1] : null;
       const who = target || 'an account';
-      if (!to) return `changed what ${who} is`;
+      if (!to) return `changed the role of ${who}`;
 
       return to === 'normal'
         ? `returned ${who} to a normal account`
@@ -342,7 +345,7 @@ export function auditPredicate(entry: AuditEntry): string {
     default: {
       const unhandled: never = entry.action;
       void unhandled;
-      return 'did something the app does not recognize';
+      return 'took an action this version doesn’t recognize';
     }
   }
 }

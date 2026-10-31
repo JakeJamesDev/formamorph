@@ -63,7 +63,7 @@ describe('the filing form on the website', () => {
     setField('feedbackBody', 'Some text');
     send();
 
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Failed to send this'));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Failed to send'));
     expect(notify).not.toHaveBeenCalled();
   });
 
@@ -74,7 +74,7 @@ describe('the filing form on the website', () => {
     setField('feedbackBody', 'Some text');
     send();
 
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('Failed to send this', 'error', expect.anything()));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Failed to send', 'error', expect.anything()));
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
@@ -90,7 +90,7 @@ describe('the filing form in the app', () => {
     setField('feedbackTitle', 'A title');
     setField('feedbackBody', 'Some text');
     send();
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('Failed to send this', 'error', expect.anything()));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Failed to send', 'error', expect.anything()));
   });
 });
 

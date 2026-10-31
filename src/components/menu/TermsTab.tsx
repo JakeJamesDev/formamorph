@@ -3,6 +3,7 @@ import { toastError } from "@/lib/linkToast";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Hint, Meta } from "@/components/ui/typography";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import PolicyService from "@/services/PolicyService";
 import { setUploadTermsDeclined } from "@/lib/uploadTermsDeclined";
@@ -79,7 +80,7 @@ export function TermsTab({ active, onAnswered }: TermsTabProps) {
   }
 
   if (!gate) {
-    return <p className="py-8 text-center text-helper text-muted-foreground">There are no terms to show.</p>;
+    return <Meta as="p" className="py-8 text-center">There are no terms to show.</Meta>;
   }
 
   return (
@@ -92,21 +93,20 @@ export function TermsTab({ active, onAnswered }: TermsTabProps) {
       <div className="text-label min-w-0"><MarkdownRenderer text={gate.body} /></div>
 
       {gate.accepted ? (
-        <p className="text-helper text-muted-foreground">
-          Publishing is open to you. If the terms change you&apos;ll be asked to accept the new wording.
-        </p>
+        <Meta as="p">
+          You can publish. If the terms change, you&apos;ll be asked to accept them again.
+        </Meta>
       ) : (
         <div className="space-y-3 rounded-md border p-4">
           {justDeclined ? (
-            <p className="text-helper text-muted-foreground">
-              You declined these terms, so publishing stays unavailable. You can accept them here whenever
-              you change your mind &mdash; nothing else about your account is affected.
-            </p>
+            <Meta as="p">
+              You declined these terms, so you can&apos;t publish. You can accept them here at any time.
+              Nothing else about your account changes.
+            </Meta>
           ) : (
-            <p className="text-helper text-muted-foreground">
-              Accepting is only needed to publish worlds, characters or dictionaries. Everything else works
-              either way.
-            </p>
+            <Hint>
+              You need to accept only to publish to Community Creations. Everything else works either way.
+            </Hint>
           )}
 
           <div className="flex flex-wrap gap-2">

@@ -10,7 +10,7 @@ import {
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { cn } from "@/lib/utils";
-import { FieldError } from "@/components/ui/typography";
+import { FieldError, Meta } from "@/components/ui/typography";
 import { DetailedError } from "@/lib/errorDetails";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 import { isVotableBoard, type FeedbackCategory, type FeedbackStatus, type FeedbackThread, type FeedbackType } from "@/types";
@@ -189,13 +189,13 @@ export function FeedbackList({
       >
         {failed ? (
           <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center">
-            <p className="text-helper text-muted-foreground">Formamorph couldn’t load these threads.</p>
+            <Meta as="p">These threads didn’t load.</Meta>
             <Button variant="outline" size="sm" onClick={() => setRetryNonce((n) => n + 1)}>
               <RotateCcw className="mr-2 h-4 w-4" aria-hidden /> Try Again
             </Button>
           </div>
         ) : threads.length === 0 ? (
-          <p className="py-8 text-center text-helper text-muted-foreground">{emptyLabel}</p>
+          <Meta as="p" className="py-8 text-center">{emptyLabel}</Meta>
         ) : (
           threads.map((thread) => {
             const style = statusStyle(thread.status);
@@ -250,7 +250,7 @@ export function FeedbackList({
                         )}
                         {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
                       </p>
-                      <p className="text-meta text-muted-foreground truncate">
+                      <Meta as="p" className="truncate">
                         #{thread.number} · {FEEDBACK_CATEGORY_LABELS[thread.category]}
                         {scope === 'all' && (
                           <>
@@ -261,7 +261,7 @@ export function FeedbackList({
                           </>
                         )}
                         {' · '}{formatFeedbackDate(thread.createdAt)}
-                      </p>
+                      </Meta>
                     </div>
                     <span className="shrink-0 flex flex-col items-end gap-1">
                       <span className={cn('px-2 inline-flex text-meta leading-5 font-semibold rounded-full', style.badge)}>
@@ -270,13 +270,13 @@ export function FeedbackList({
                       {/* Hidden at zero: the point of the number is that there is activity, and a column
                           of "0" beside every untouched row says only that the feature exists. */}
                       {replies > 0 && (
-                        <span
-                          className="inline-flex items-center gap-1 pr-0.5 text-meta text-muted-foreground"
+                        <Meta
+                          className="inline-flex items-center gap-1 pr-0.5"
                           aria-label={replies === 1 ? '1 reply' : `${replies} replies`}
                         >
                           <MessageSquare className="h-3 w-3" aria-hidden="true" />
                           <span className="tabular-nums">{replies}</span>
-                        </span>
+                        </Meta>
                       )}
                     </span>
                   </button>

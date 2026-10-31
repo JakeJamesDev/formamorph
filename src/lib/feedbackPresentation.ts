@@ -162,7 +162,7 @@ export const statusFilterValue = (
 export const categoryFilterValue = (value: CategoryFilter): FeedbackCategory | undefined =>
   (value === ANY_CATEGORY ? undefined : value);
 
-/** Which threads a profile tab is showing. */
+/** Which threads a Feedback window tab is showing. */
 export const FEEDBACK_SCOPES = ['mine', 'all'] as const;
 export type FeedbackScope = (typeof FEEDBACK_SCOPES)[number];
 
@@ -210,7 +210,7 @@ export const SORT_LABELS: Record<FeedbackSort, string> = {
 export const sortsFor = (type: FeedbackType): FeedbackSort[] =>
   (isVotableBoard(type) ? [...FEEDBACK_SORTS] : FEEDBACK_SORTS.filter((value) => value !== 'votes'));
 
-/** Which scope each profile tab opens on. */
+/** Which scope each Feedback window tab opens on. */
 export const DEFAULT_SCOPE: Record<FeedbackType, FeedbackScope> = {
   // Their own: this is where their replies are, and the badge counts their threads.
   bug: 'mine',
@@ -221,12 +221,12 @@ export const DEFAULT_SCOPE: Record<FeedbackType, FeedbackScope> = {
 
 /** The staff queue's filters. */
 export type StaffFilterValues = { status: StatusFilter; category: CategoryFilter; sort: FeedbackSort };
-/** A profile tab's filters: the staff set plus whose threads to show. */
+/** A Feedback window tab's filters: the staff set plus whose threads to show. */
 export type UserFilterValues = StaffFilterValues & { scope: FeedbackScope };
 
 /** The staff queue's filters behind the Filters button. */
 export const STAFF_HIDDEN_FILTERS = ['category'] as const satisfies readonly (keyof StaffFilterValues)[];
-/** A profile tab's filters behind the Filters button. */
+/** A Feedback window tab's filters behind the Filters button. */
 export const USER_HIDDEN_FILTERS = ['status', 'category', 'sort'] as const satisfies readonly (keyof UserFilterValues)[];
 
 /**
@@ -241,7 +241,7 @@ export const staffFilterDefaults = (type: FeedbackType): StaffFilterValues => ({
   sort: isVotableBoard(type) ? 'votes' : 'newest',
 });
 
-/** Which sort each profile tab opens on: newest, to find what is new to vote on, except questions, which
+/** Which sort each Feedback window tab opens on: newest, to find what is new to vote on, except questions, which
  *  open on the ones most players still need answered. */
 export const DEFAULT_USER_SORT: Record<FeedbackType, FeedbackSort> = {
   bug: 'newest',
@@ -250,7 +250,7 @@ export const DEFAULT_USER_SORT: Record<FeedbackType, FeedbackSort> = {
 };
 
 /**
- * What a profile tab opens on and resets to.
+ * What a Feedback window tab opens on and resets to.
  *
  * @param type - Which branch the tab shows
  * @returns The tab's default filters

@@ -247,7 +247,7 @@ async function pinToLocalApi(page: Page): Promise<string[]> {
  * Sign in as a fresh account and publish the first bundled world into the running contest.
  *
  * Shared by both flows below rather than repeated: each needs an entry of its own (one per creator), and
- * everything up to "published successfully" is the same journey.
+ * everything up to "World published" is the same journey.
  *
  * @returns The account it made, the world it published, and the off-machine requests it caught
  */
@@ -292,7 +292,7 @@ async function publishIntoTheContest(page: Page): Promise<{
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
   }
 
-  await expect(page.getByText('World published successfully!')).toBeVisible();
+  await expect(page.getByText('World published', { exact: true })).toBeVisible();
 
   return { username, password, worldName, stray };
 }

@@ -143,7 +143,7 @@ interface UserFilterRowProps {
   showScope?: boolean;
 }
 
-/** A profile tab's filter row: search and scope, then Filters with Status, Category and Sort, then the file button. */
+/** A Feedback window tab's filter row: search and scope, then Filters with Status, Category and Sort, then the file button. */
 export function UserFilterRow({ type, filters, fileLabel, onFile, showScope = true }: UserFilterRowProps) {
   const { values, set } = filters;
   const FileIcon = FILE_ICONS[type];

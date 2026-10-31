@@ -96,7 +96,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [selected, setSelected] = useState<Map<string, string>>(new Map());
   const [composerTarget, setComposerTarget] = useState<ComposerTarget | null>(null);
   const [composerPrefill, setComposerPrefill] = useState<{ subject: string; body: string } | null>(null);
-  // Offered after a suspension lands; declining leaves the suspension in place either way.
+  // Offered after a suspension applies; declining leaves the suspension in place either way.
   const [suspendedUser, setSuspendedUser] = useState<WorldRecord | null>(null);
   // The row whose length is being chosen, and whether the request that follows is still running.
   const [pendingSuspend, setPendingSuspend] = useState<WorldRecord | null>(null);
@@ -278,9 +278,9 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         userIdOf(user) === userId ? { ...user, status, suspendedUntil } : user
       ));
 
-      toast.success(`User ${newStatus === "normal" ? "activated" : "suspended"} successfully`);
+      toast.success(newStatus === "normal" ? 'Account activated' : 'Account suspended');
 
-      // The suspension itself has already landed; the notice is an optional follow-up so the user
+      // The suspension itself has already applied; the notice is an optional follow-up so the user
       // learns why. Declining leaves them suspended and simply unexplained.
       if (newStatus === "suspended") {
         const suspended = users.find((user) => userIdOf(user) === userId);
@@ -450,7 +450,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
           {/* Search controls */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <SearchField
-              placeholder="Search users..."
+              placeholder="Search users"
               className="flex-grow"
               value={userSearchQuery}
               onChange={setUserSearchQuery}
@@ -913,7 +913,8 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       open={pendingTermsReset !== null}
       onOpenChange={(isOpen) => { if (!isOpen) setPendingTermsReset(null); }}
       title="Ask this user to accept the terms again?"
-      description={`${pendingTermsReset ? usernameOf(pendingTermsReset) : ''} will have to accept the upload gate before publishing anything again, including updates to work they already published.`}
+      description={`${pendingTermsReset ? usernameOf(pendingTermsReset) : ''} must accept the Upload Gate again before they publish anything, including updates to what they already published.`}
+      confirmLabel="Reset Terms"
       onConfirm={() => {
         if (pendingTermsReset) resetTerms(pendingTermsReset);
         setPendingTermsReset(null);
@@ -934,7 +935,8 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       open={suspendedUser !== null}
       onOpenChange={(isOpen) => { if (!isOpen) setSuspendedUser(null); }}
       title="Send a suspension notice?"
-      description={`${suspendedUser?.username} has been suspended. Send them a message explaining why?`}
+      description={`${suspendedUser?.username} is suspended. You can send them a message that explains why.`}
+      confirmLabel="Write Message"
       onConfirm={() => {
         if (suspendedUser) {
           setComposerPrefill(suspensionTemplate(suspendedUser.suspendedUntil));
@@ -952,7 +954,8 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       open={pendingAvatarRemoval !== null}
       onOpenChange={(isOpen) => { if (!isOpen) setPendingAvatarRemoval(null); }}
       title="Remove this profile image?"
-      description={`${pendingAvatarRemoval ? usernameOf(pendingAvatarRemoval) : ''} will go back to a plain initial, and can upload a new picture at any time. This is recorded in the log.`}
+      description={`${pendingAvatarRemoval ? usernameOf(pendingAvatarRemoval) : ''} will show their initial instead. They can upload a new image at any time. The “Log” tab records this.`}
+      confirmLabel="Remove"
       onConfirm={() => {
         if (pendingAvatarRemoval) removeAvatar(pendingAvatarRemoval);
         setPendingAvatarRemoval(null);
@@ -963,8 +966,9 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
     <ConfirmDialog
       open={avatarRemovedFrom !== null}
       onOpenChange={(isOpen) => { if (!isOpen) setAvatarRemovedFrom(null); }}
-      title="Say why?"
-      description={`${avatarRemovedFrom ? usernameOf(avatarRemovedFrom) : ''} has had their profile image removed. Send them a message explaining why?`}
+      title="Send a notice?"
+      description={`${avatarRemovedFrom ? usernameOf(avatarRemovedFrom) : ''} no longer has a profile image. You can send them a message that explains why.`}
+      confirmLabel="Write Message"
       onConfirm={() => {
         if (avatarRemovedFrom) {
           setComposerPrefill({ ...AVATAR_REMOVAL_TEMPLATE });

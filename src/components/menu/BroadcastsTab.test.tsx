@@ -106,7 +106,7 @@ describe('composing', () => {
 
     // The broadcast composer is the only one that offers pinning.
     expect(await screen.findByText('Broadcast to All Users')).toBeTruthy();
-    expect(screen.getByText('Pinned')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Pinned' })).toBeTruthy();
   });
 });
 
@@ -117,7 +117,7 @@ describe('recall', () => {
     render(<BroadcastsTab active />);
     fireEvent.click(await screen.findByRole('button', { name: 'Recall' }));
 
-    expect(await screen.findByText(/disappear from every inbox/)).toBeTruthy();
+    expect(await screen.findByText(/from every inbox/)).toBeTruthy();
   });
 
   it('recalls the broadcast once confirmed', async () => {
@@ -126,7 +126,7 @@ describe('recall', () => {
 
     render(<BroadcastsTab active />);
     fireEvent.click(await screen.findByRole('button', { name: 'Recall' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Recall' }));
 
     await waitFor(() => expect(recall).toHaveBeenCalledWith('b1'));
   });

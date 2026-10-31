@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { DateTimeField } from "@/components/ui/date-time-field";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Hint, Meta } from "@/components/ui/typography";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { EventPosterBand } from "@/components/events/EventPosterBand";
@@ -80,8 +81,8 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
   const [pickedImage, setPickedImage] = useState<string | null>(null);
   const [imageChanged, setImageChanged] = useState(false);
   // Where the organizer framed the artwork, and whether the positioning dialog is up. The framing is
-  // edited there rather than on the form's own preview — a crop surface inside a scrolling form fights
-  // it — so the preview here stays inert and only ever shows the committed choice.
+  // edited there rather than on the form's own preview — a crop surface inside a scrolling form takes
+  // its scroll gestures — so the preview here stays inert and only ever shows the committed choice.
   const [posterPlacement, setPosterPlacement] = useState<PosterPlacement | null>(null);
   const [positioning, setPositioning] = useState(false);
   const filePicker = useRef<HTMLInputElement | null>(null);
@@ -163,11 +164,11 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
       posterPlacement,
       endsAt: end,
     };
-    // The artwork rides along only when it moved: an edit that never opened the picker must leave the
-    // stored file where it is, and sending null for "unchanged" would delete it.
+    // The image is sent only when it changed: an edit that never opened the picker must keep the stored
+    // file, and sending null for "unchanged" would delete it.
     const styled = imageChanged ? { ...authored, posterImage: pickedImage } : authored;
-    // The start rides along only while it can still move. An edit reads the keys it is given, so
-    // omitting it is how a typo fix in the banner avoids being refused for touching the start.
+    // The start is sent only while the event is scheduled. An edit reads the keys it is given, so
+    // omitting it keeps a banner typo fix from being refused for changing the start.
     const draft: Partial<ServerEventDraft> = started ? styled : { ...styled, startsAt: start };
 
     setSaving(true);
@@ -195,8 +196,9 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
         <DialogHeader>
           <DialogTitle>{editing ? 'Edit Event' : 'New Event'}</DialogTitle>
           <DialogDescription>
-            A timed banner and announcement every player sees. Starting it posts a pinned broadcast
-            automatically, written from the title and banner — polish its wording afterward under Broadcasts.
+            Shows every player a banner and an announcement while the event runs. When it starts, a pinned
+            broadcast goes out, written from the title and banner text. You can edit that broadcast under
+            <strong>Broadcasts</strong>.
           </DialogDescription>
         </DialogHeader>
 
@@ -243,11 +245,9 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                 value={bannerText}
                 maxLength={BANNER_MAX}
                 onChange={(e) => setBannerText(e.target.value)}
-                placeholder="One line, shown on the main menu while the event runs"
+                placeholder="One line for the banner"
               />
-              <p className="text-meta text-muted-foreground">
-                One line, on the main menu and in Community Creations while the event runs.
-              </p>
+              <Hint>Shows on the main menu and in Community Creations while the event runs</Hint>
             </div>
 
             {/* Players read these rendered, so they are authored the way the world editor's prose is —
@@ -261,7 +261,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                 markdown
                 ariaLabel="Details"
                 label="Details"
-                labelAside={<span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>}
+                labelAside={<Meta>{body.length} / {BODY_MAX}</Meta>}
                 placeholder="What players read in the announcement they acknowledge"
                 className="h-[300px]"
               />
@@ -276,12 +276,10 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                   markdown
                   ariaLabel="Rules"
                   label="Rules"
-                  placeholder="What entrants are agreeing to"
+                  placeholder="What entrants agree to"
                   className="h-[260px]"
                 />
-                <p className="text-meta text-muted-foreground">
-                  Shown where authors enter and where entries are browsed. Only contests have rules.
-                </p>
+                <Hint>Shows where authors enter the contest and where players browse its entries</Hint>
               </div>
             )}
 
@@ -320,10 +318,11 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                   onChange={(e) => takeImage(filesFrom(e)[0])}
                 />
               </div>
-              <p className="text-meta text-muted-foreground">
-                Both are optional — an event with neither keeps the default band. Images up to 2MB.
-                {previewImage && ' Reposition chooses which part of the picture the band shows.'}
-              </p>
+              <Hint>
+                A color and an image are optional. Without them, the event uses the default band. Images
+                can be up to 2MB.
+                {previewImage && <> <strong>Reposition</strong> sets which part of the image the band shows.</>}
+              </Hint>
 
               {/* The same band players are shown, composed from what is in the form right now. Inert by
                   design: the framing is edited in its own dialog, so scrolling past this preview can
@@ -349,9 +348,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                 <Label htmlFor="eventStarts">Starts</Label>
                 <DateTimeField id="eventStarts" label="Starts" value={startsAt} onChange={setStartsAt} readOnly={started} />
                 {started && (
-                  <p className="text-meta text-muted-foreground">
-                    Already open — people have been told when this began.
-                  </p>
+                  <Hint>The event has started, so its start can’t change</Hint>
                 )}
               </div>
 

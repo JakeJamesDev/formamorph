@@ -129,10 +129,10 @@ export function adminEventActions(
 export function adminEventSummary(event: ServerEvent, now: Date = new Date()): string {
   const state = eventState(event, now);
 
-  if (state === 'canceled') return 'Canceled — entries released and notices recalled';
-  if (state === 'scheduled') return 'Not started — staff only until it opens';
-  if (state === 'judging') return 'Closed for entries — waiting on the results';
-  if (state === 'active') return isContestEvent(event) ? 'Open for entries' : 'Banner live';
+  if (state === 'canceled') return isContestEvent(event) ? 'Canceled · Entries released, broadcast recalled' : 'Canceled · Broadcast recalled';
+  if (state === 'scheduled') return 'Not started · Only staff see it until it opens';
+  if (state === 'judging') return 'Closed for entries · Waiting for results';
+  if (state === 'active') return isContestEvent(event) ? 'Open for entries' : 'Banner showing';
 
   const podium = placementsOf(event);
   const first = firstPlaceOf(event);
@@ -142,7 +142,7 @@ export function adminEventSummary(event: ServerEvent, now: Date = new Date()): s
     // A tie drops the place prefix rather than repeating it: "1st Place: 2 worlds tied for 1st" says
     // the same thing twice in a line that has room for neither.
     if (first.length > 1) return tiedForFirstLine(first.length) + rest;
-    return `${PLACE_LABELS[1]}: ${first[0].worldName} — ${first[0].authorName}${rest}`;
+    return `${PLACE_LABELS[1]}: ${first[0].worldName} by ${first[0].authorName}${rest}`;
   }
   return 'Over';
 }

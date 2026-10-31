@@ -26,9 +26,8 @@ interface FeedbackHubDialogProps {
  * Everything a reader does with feedback, behind the main menu's Feedback button: browse both branches,
  * read a thread, reply to it, and file a new one.
  *
- * It opens on the lists rather than on the form. Filing is one click from here, and putting the form
- * first meant the queue could only be found by knowing it was somewhere else — which is what made the
- * same thing already filed get filed again. Triage stays in the Admin Panel: reading a thread and
+ * It opens on the lists rather than on the form, so a reader sees what is already filed before filing
+ * it again. Filing is one click from here. Triage stays in the Admin Panel: reading a thread and
  * deciding what happens to it are different jobs, even for the person who can do both.
  */
 export function FeedbackHubDialog({
