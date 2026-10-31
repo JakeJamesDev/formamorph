@@ -80,6 +80,7 @@ Spec-session answers to ticket intent questions.
 | R33 | Ticket 01 has landed, so a wrong shared string now goes to the ticket that finds it, which fixes it in its own pass and lists it as a drive-by |
 | R34 | A reference screen's intro keeps one or two sentences in its Hint (what it shows, then how to try it). The rest becomes a short bullet list in the same card, minus facts the sample shows. No HintInfo on dev screens |
 | R35 | Showcase tab descriptions name a pattern and stay noun phrases. Fix only image verbs and wrong terms |
+| R36 | "Bubble" stays the name of the style Auto gives with the Mascot on, because the docs use it. The app defines it where it first appears |
 
 ## Screen groups
 
