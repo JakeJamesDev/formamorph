@@ -182,5 +182,5 @@ A report then lists:
 
 ## Related
 
-- [🎭 Entities in Game](Entities): the cast you meet, and how a game opens
+- [🎭 Entities in Game](Entities): the entities you meet, and how a game opens
 - [🪪 Personas for Authors](Persona-Authoring): playable entities, **Allowed Personas** and **Starts On**, and the prompt chips

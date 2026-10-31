@@ -221,5 +221,5 @@ The first time you open Formamorph, a short animation spells out the name, then 
 
 - [🎮 How to Play](How-to-Play): what you do once the story starts
 - [🪪 Personas](Personas): who you are in the story
-- [🎭 Entities in Game](Entities): the cast, Library Additions and how a game opens
+- [🎭 Entities in Game](Entities): who is in the scene, Library Additions and how a game opens
 - [🎬 World Editor: Openings](World-Editor-Openings): how authors write openings
