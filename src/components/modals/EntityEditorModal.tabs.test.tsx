@@ -173,7 +173,7 @@ describe('the two entity editors', () => {
     const worldFields = await fieldsByTab(['Items', 'Traits', 'Stats', 'Openings', 'Placeholders']);
 
     expect(library).toEqual({
-      Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Persona', 'Type', 'Image Tags', '3D Model'],
+      Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Type', 'Image Tags', 'Persona', '3D Model'],
       Descriptions: ['Player-Facing Description', 'AI-Facing Description', 'AI-Facing Summary'],
     });
     expect({ ...worldFields, Profile: worldFields.Profile.filter((l) => l !== 'Locations') }).toEqual(library);

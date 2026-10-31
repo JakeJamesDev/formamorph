@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EntityIdentityFields, type EntityHome } from './EntityFields';
+import { EntityStrangerFields, type EntityHome } from './EntityFields';
 import { EditorModeContext } from '@/lib/editorMode';
 import type { Entity } from '@/types';
 
@@ -16,7 +16,7 @@ function mount(value: Partial<Entity>, { home = 'world', advanced = true }: { ho
   const onChange = vi.fn();
   render(
     <EditorModeContext.Provider value={{ mode: advanced ? 'advanced' : 'simple', advanced, setMode: () => {} }}>
-      <EntityIdentityFields value={{ id: 'e1', name: 'Sylvie', ...value } as Entity} onChange={onChange} home={home} />
+      <EntityStrangerFields value={{ id: 'e1', name: 'Sylvie', ...value } as Entity} onChange={onChange} home={home} />
     </EditorModeContext.Provider>,
   );
   return onChange;
