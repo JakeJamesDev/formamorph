@@ -165,12 +165,12 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Global Stat](World-Editor-Stats#how-the-ai-tracks-stat-changes) | A stat on the **Stats** tab, outside every entity. No one owns it. The AI reads it under **Global Stats**. |
 | [Global Trait](World-Editor-Traits#whose-trait-counts) | A trait outside every entity, such as one the player picks at the start. No one owns it. The AI reads the picked ones under **Global Traits**. |
 | [Persona Stat](Persona-Authoring#persona-stats) | A stat of the entity the player plays. The AI reads it in the **Persona** block, under the `Player Character` key. |
-| [Blueprint](World-Editor-Traits#blueprints) | A trait or [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
-| [Link](World-Editor-Traits#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |
-| [Original](World-Editor-Traits#links) | The Blueprint trait or group that a Link points at |
+| [Blueprint](World-Editor-Blueprints#blueprints) | A trait or [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
+| [Link](World-Editor-Blueprints#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |
+| [Original](World-Editor-Blueprints#links) | The Blueprint trait or group that a Link points at |
 | [Copy](World-Editor-Placeholders#copies) | An entity's own version of a Blueprint placeholder. It reads the Blueprint live until you change a value. |
-| [Override](World-Editor-Traits#overrides) | One field that a Link or a Copy sets for itself. **Reset** returns one; **Reset to Blueprint** returns all. |
-| [Detach](World-Editor-Traits#detach) | Turns a Link into the entity's own trait, which no longer follows the Original |
+| [Override](World-Editor-Blueprints#overrides) | One field that a Link or a Copy sets for itself. **Reset** returns one; **Reset to Blueprint** returns all. |
+| [Detach](World-Editor-Blueprints#detach) | Turns a Link into the entity's own trait, which no longer follows the Original |
 | [Placeholder](World-Editor-Placeholders) | A named value with a list of values, which you place in world text as chips |
 | [Wildcard, Object, Variable](World-Editor-Placeholders#kind) | A Wildcard shows one value picked at random. An Object shows all its values. A placeholder with one value is a Variable. |
 | [Roll](World-Editor-Placeholders#the-roll-stays-for-the-playthrough) | The value a Wildcard draws when a game starts. The save keeps it. |

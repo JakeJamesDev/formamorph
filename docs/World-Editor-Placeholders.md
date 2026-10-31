@@ -180,7 +180,7 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 |---|---|---|
 | A stat descriptor | The stat is in that band | The pin button on the [descriptor row](World-Editor-Stats#pins-on-a-descriptor) |
 | A location | The player is there | The location's [**Pins** tab](World-Editor-Locations#placeholder-pins) |
-| A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Traits#pins-by-blueprint), and each owner's copy takes the pin. |
+| A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Blueprints#pins-by-blueprint), and each owner's copy takes the pin. |
 | A placeholder value | That value is the placeholder's current value | The pin button beside the value. Its panel has **Add Placeholder Pin**. |
 
 When two sources pin the same placeholder, the higher row in this table wins. A [script](ScriptsGuide) can also pin and unpin a placeholder, and a script pin wins over all four.
@@ -228,7 +228,7 @@ Groups are for the editor only. They **never reach the AI**, and an entity card 
 
 A blueprint is a placeholder that exists to be copied. Each entity that needs it gets its own [copy](#copies), so one *Class Garb* can read a different value on each owner.
 
-Select **+**, then **Add Blueprints Group**. A group named **Blueprints** appears. It works like the [Blueprints group of the Traits tab](World-Editor-Traits#blueprints):
+Select **+**, then **Add Blueprints Group**. A group named **Blueprints** appears. It works like the [Blueprints group of the Traits tab](World-Editor-Blueprints#blueprints):
 
 - **A world has one Blueprints group.** It stays at the top level and holds world placeholders and groups. **Add Blueprints Group** leaves the menu while one exists.
 - **A blueprint is never a World placeholder.** One placeholder never reads different values in different places. With no Custom Persona entity, the player is the one owner, so a blueprint reads its own values there.
