@@ -1122,6 +1122,29 @@ const scriptUnknownBlueprintOwnerStat: Rule = {
     .map(({ label, item, miss }) => finding(scriptUnknownBlueprintOwnerStat, `${label} ${miss}`, [item])),
 };
 
+// A literal Body name assigned to the `body` of the persona, the owner or an entity. A computed name is skipped.
+const BODY_WRITE = /(?:\b(?:persona|owner)|\bentities(?:\.[\w$]+|\[\s*(?:"[^"]*"|'[^']*')\s*\]))\??\.body\s*=(?!=)\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
+
+/** Every Body name a script assigns to a `body`, unescaped. */
+const assignedBodyNames = (code: string): string[] => [...code.matchAll(BODY_WRITE)]
+  .map((m) => m[2])
+  .filter((literal) => !literal.includes('${'))
+  .map((literal) => literal.replace(/\\(.)/g, '$1'));
+
+const scriptUnknownBody: Rule = {
+  id: 'script-unknown-body',
+  severity: 'error',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} scripts write Body names the world doesn’t have`,
+  check: (world) => {
+    const known = new Set((world.bodies ?? []).map((body) => body.name));
+    return ruleScripts(world).flatMap(({ listed, label, item }) => [...new Set(assignedBodyNames(listed.box.code))]
+      .filter((name) => !known.has(name))
+      .map((name) => scriptFinding(scriptUnknownBody, `${label} assigns the unknown Body name ${quote(name)}`, item)));
+  },
+};
+
 // A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
 // a member read counts — which also leaves an author's own variable of that name alone.
 const DELTA_READ = /\??\.\s*delta\b|\[\s*(["'`])delta\1\s*\]/;
@@ -3752,7 +3775,7 @@ const imageMislabeled: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, itemBecomesMissingItem, placeholderPinBroken,
-  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat,
+  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat, scriptUnknownBody,
   scriptBeforeReadsDelta, scriptTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, entityNoCodeName, statDisabledForever,

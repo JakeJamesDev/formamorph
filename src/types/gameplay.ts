@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick } from './world';
 import type { ChatMessage } from './ai';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
@@ -344,6 +344,8 @@ export interface BodyTraitOn {
 export interface BodyRuntime {
   /** The active Body-setting traits, oldest switch-on first. The last one an owner holds wins (Q13). Absent ⇒ none. */
   traitsOn?: BodyTraitOn[];
+  /** Each owner's base Body a script wrote, by owner key (the empty string is the played Persona). Absent ⇒ the authored picks. */
+  base?: Record<string, BodyPick>;
 }
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */

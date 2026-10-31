@@ -232,9 +232,11 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
 /** The members of an owner entry that are maps. Their own entries carry the access. */
 const OWNER_MAPS = ['traits', 'placeholders', 'stats'];
 
-/** The members of `persona`. The members are read-only; a trait switches through its own `enabled`, and a
+const BODY_INFO = 'The Body in force, slots and equipped copies included, or null; assign a Body name to set it';
+
+/** The members of `persona`. The members are read-only except `body`; a trait switches through its own `enabled`, and a
  *  stats entry takes writes to its value, min, max, regen and hidden while its identity fields stay read-only. */
-export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+export const PERSONA_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the persona entity, or empty when the player plays no entity' },
   { name: 'name', detail: 'string', info: 'Code name of the persona, or empty when the player plays no entity' },
   { name: 'type', detail: 'string', info: 'Type text of the persona, or empty when it has none' },
@@ -250,12 +252,13 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name, or empty when the player plays no entity' },
   { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each a stats entry, or empty when the player plays no entity' },
   { name: 'items', detail: 'array', info: 'The Item Copies the player owns, carried and equipped, each with the fields of an items copy' },
-], OWNER_MAPS);
+  { name: 'body', detail: 'object | null', info: BODY_INFO },
+], ['body'], 'writable', OWNER_MAPS);
 
 /** The members of one entry in `entities`, and of `owner`. The members are read-only; a trait switches through
  *  its own `enabled`, and a stats entry takes writes to its value, min, max, regen and hidden while its identity fields
  *  stay read-only. */
-export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the entity' },
   { name: 'name', detail: 'string', info: 'Code name of the entity' },
   { name: 'type', detail: 'string', info: 'Type text of the entity, or empty when it has none' },
@@ -271,12 +274,13 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max, regen and hidden. Use entities.Mira.stats["Two Words"] for a name with a space.' },
   { name: 'items', detail: 'array', info: 'The Item Copies the entity owns, carried and equipped, each with the fields of an items copy' },
+  { name: 'body', detail: 'object | null', info: BODY_INFO },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the entity to a location of the world when the turn ends, and stops it following the player. A name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes the entity follow the player when the turn ends, at the player’s location' },
   { name: 'unfollow', detail: '() => void', info: 'Stops the entity following the player when the turn ends, and leaves it at the player’s location. An entity that isn’t following stays where it is.' },
   { name: 'meet', detail: '() => void', info: 'Makes the player meet the entity, so they see its name. Ignored when met is already true.' },
   { name: 'diary', detail: '(line) => void', info: 'Adds a line to the entity’s diary for this turn, after the AI’s entry. An entity the game doesn’t have stops the script with an error.' },
-], OWNER_MAPS);
+], ['body'], 'writable', OWNER_MAPS);
 
 /** The members of one Item Copy, in `items[x].copies`, an entity's `items` or a location's `items`. The fields are
  *  read-only; a verb's change applies when the script ends. */

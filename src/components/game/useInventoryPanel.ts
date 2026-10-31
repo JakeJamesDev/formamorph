@@ -24,6 +24,8 @@ export interface InventoryPanelSettle {
   timed?: readonly TimedEffectView[];
   /** Each owner's winning trait Body pick. Absent = none. */
   traitPicks?: TraitBodyPicks;
+  /** Each owner's base Body a script wrote. Absent = none. */
+  basePicks?: TraitBodyPicks;
 }
 
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
@@ -39,8 +41,9 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const { currentLocation, persona, entities: cast, worldPersonas, customPersona } = useResolvedWorld();
   const entities = useMemo(() => bodyPickEntities(cast, worldPersonas, customPersona), [cast, worldPersonas, customPersona]);
   const traitPicks = settle?.traitPicks;
+  const basePicks = settle?.basePicks;
   const bodySlotsOfYou = useMemo(
-    () => slotsInForce({ bodies, entities, slots, traitPicks }, YOU, personaRef), [bodies, entities, personaRef, slots, traitPicks],
+    () => slotsInForce({ bodies, entities, slots, traitPicks, basePicks }, YOU, personaRef), [bodies, entities, personaRef, slots, traitPicks, basePicks],
   );
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
@@ -51,7 +54,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
 
   const onOps = useCallback((ops: InventoryOp[]) => {
     const result = applyInventoryOps(itemCopies, ops, {
-      world: { items, slots, bodies, entities, traitPicks }, source: 'panel', newId: randomUUID, persona: personaRef,
+      world: { items, slots, bodies, entities, traitPicks, basePicks }, source: 'panel', newId: randomUUID, persona: personaRef,
       presence: { locationId, entityIds: new Set(present.map((e) => e.id)) },
       ...(settle && { requirement: settle.requirement }),
     });
@@ -61,7 +64,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     }
     setItemCopies(result.copies);
     for (const line of result.diagnostics) addLogEntry(line);
-  }, [itemCopies, items, slots, bodies, entities, traitPicks, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
+  }, [itemCopies, items, slots, bodies, entities, traitPicks, basePicks, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
 
   return {
     ownerName: persona?.entity.name ?? null,

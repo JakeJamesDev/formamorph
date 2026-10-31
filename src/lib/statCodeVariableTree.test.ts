@@ -467,7 +467,7 @@ describe('field info', () => {
 describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
-    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items',
+    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body',
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {

@@ -6,9 +6,10 @@
 import type { Entity, Item, ItemCopy, ItemCopyWhere, Placeholder, Stat, Trait } from '@/types';
 import {
   EMPTY_REPLY, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxItem, type SandboxItemCopy, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxBodyDef, type SandboxItem, type SandboxItemCopy, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
+import { bodyDefsOf, bodyReadingOf } from './bodies';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { navigableDestinationEntries } from './locationContext';
 import { parentIndex } from './locationGraph';
@@ -240,6 +241,16 @@ interface Board {
   placeholderDefs: readonly Placeholder[];
   items: SandboxItem[];
   itemCopy: (copy: ItemCopy) => SandboxItemCopy;
+  bodyDefs: SandboxBodyDef[];
+}
+
+/** `inPlay` with each owner's Body in force, as `body` reads it. The played entity reads as the played Persona. */
+function withBodies(inPlay: CodeEntities, { world, persona }: NonNullable<SandboxState['bodies']>): CodeEntities {
+  const reading = (entity: CodeEntity, played: boolean): CodeEntity =>
+    ({ ...entity, body: bodyReadingOf(world, played ? { kind: 'you' } : { kind: 'entity', id: entity.id ?? '' }, persona) });
+  const played = reading(inPlay.persona, true);
+  const isPlayed = (entity: CodeEntity) => !!inPlay.persona.id && entity.id === inPlay.persona.id;
+  return { ...inPlay, entities: inPlay.entities.map((entity) => (isPlayed(entity) ? played : reading(entity, false))), persona: played };
 }
 
 /** The pending persona's placeholder node: every persona-capable entity's own placeholders under `persona`. Each
@@ -294,7 +305,8 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
     const entity = authored.get(id);
     return { ...(node ? { placeholders: node } : {}), ...(stats ? { stats } : {}), ...(entity ? playFields(entity, state, resolve) : {}) };
   });
-  const inPlay = pendingPersona ? { ...withFields, persona: pendingPersonaOf(state, withFields, sandbox?.owners, ownerStats) } : withFields;
+  const withPending = pendingPersona ? { ...withFields, persona: pendingPersonaOf(state, withFields, sandbox?.owners, ownerStats) } : withFields;
+  const inPlay = state.bodies && !pendingPersona ? withBodies(withPending, state.bodies) : withPending;
   const assumed = assumedStats.map((name): Stat => ({ id: randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT }));
   const globalStats = assumed.length ? [...state.stats, ...assumed] : state.stats;
   const globalEnabled = assumed.length ? { ...state.enabled, ...activeStatEnabled(assumed, []) } : state.enabled;
@@ -317,6 +329,7 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   return {
     stats: scopeStats(globalStats, globalEnabled, readings?.global),
     traits, inPlay, placeholderDefs, ownerStats, items, itemCopy,
+    bodyDefs: state.bodies ? bodyDefsOf(state.bodies.world) : [],
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(
       codeDictionaries(placeholderSet?.dictionaries && withLoreToggles(placeholderSet.dictionaries, state.loreToggles), placeholderDefs), sandbox?.owners,
@@ -399,6 +412,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
       ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
       ...(read.items.length && { items: read.items }),
+      ...(read.bodyDefs.length && { bodies: read.bodyDefs }),
       ...(unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing) && {
         itemEvent: {
           itemId: unit.home.item.id, timing: unit.timing, copyId: unit.itemEvent.copyId, quantity: unit.itemEvent.quantity,

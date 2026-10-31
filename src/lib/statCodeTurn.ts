@@ -1,7 +1,8 @@
 import type {
   CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemCopy, LoreToggles,
-  OwnedTraitStates, Placeholder, PlayerStat, Script, Slot, Trait,
+  BodyPick, OwnedTraitStates, Placeholder, PersonaRef, PlayerStat, Script, Slot, Trait,
 } from '@/types';
+import type { BodyWorld } from './bodies';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
@@ -98,6 +99,8 @@ export interface SandboxState {
   items?: readonly Item[];
   /** The world's slots, which an equipped Item Copy names. Absent ⇒ none. */
   slots?: readonly Slot[];
+  /** The Bodies `body` reads, with the picks that decide which is in force. Absent ⇒ no Bodies. */
+  bodies?: { world: BodyWorld & { slots?: readonly Slot[] }; persona: PersonaRef | undefined };
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */
@@ -585,6 +588,19 @@ export function withoutInventory(writes: WorldWrites | undefined): WorldWrites |
   if (!writes) return writes;
   const { inventory: _landed, ...rest } = writes;
   return Object.keys(rest).length ? rest : undefined;
+}
+
+/** `writes` without their Body writes; undefined when nothing else is left. */
+export function withoutBodies(writes: WorldWrites | undefined): WorldWrites | undefined {
+  if (!writes) return writes;
+  const { bodies: _landed, ...rest } = writes;
+  return Object.keys(rest).length ? rest : undefined;
+}
+
+/** The base Bodies `writes` set, by owner key; the last write to an owner wins. Undefined when it sets none. */
+export function baseWritesOf(writes: WorldWrites | undefined): Record<string, BodyPick> | undefined {
+  if (!writes?.bodies?.length) return undefined;
+  return Object.fromEntries(writes.bodies.map(({ owner, pick }) => [owner, pick]));
 }
 
 /** One switch run per event, over `turn`, the state the switches left (Q12, Q47). */

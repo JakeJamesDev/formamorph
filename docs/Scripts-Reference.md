@@ -12,7 +12,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
@@ -21,8 +21,8 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
@@ -91,7 +91,7 @@ Each entry has the [same members as `self`](#stat-properties). Each entry takes 
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
-`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
 
 The entity's own stats are under `owner.stats`, its own traits under `owner.traits`, and its own placeholders under `owner.placeholders`.
 
@@ -494,7 +494,7 @@ A write to an unknown trait name is ignored. **Test Code** and the **Test Bench*
 | `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Entries take writes |
 
-`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases` and `items` of an [entity entry](#entities).
+`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `items` and `body` of an [entity entry](#entities).
 
 - `inScene` and `met` are always true for the played persona.
 - `location` is where the player is. `following` is always false.
@@ -548,6 +548,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The entity's own stats by name. Entries take writes |
 | `items` | The Item Copies the entity owns. See [Items](#items). Read-only |
+| `body` | The entity's Body in force, or `null`. Assign a Body name to set its base Body. See [Bodies](#bodies) |
 | `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes the entity follow the player |
 | `unfollow()` | Stops the entity following the player |
@@ -763,6 +764,30 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 // Resting at the shrine refills every wand the player carries.
 if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item === 'Wand') copy.setUses(3);
 ```
+
+### Bodies
+<!-- keywords: body, bodies, transform, wolf form, change slots, set body from code, body in force, base body, unequip on transform, unknown body name -->
+
+`body` is on an entity's entry, on `persona` and on `owner`. It reads the owner's Body in force, or `null` when the owner has no Body. A Body has:
+
+| Member | What it is |
+| --- | --- |
+| `name` | The Body's name. Read-only |
+| `slots` | The Body's slots, in the Body's order. A list. Read-only |
+
+Each slot has `name`, `capacity` and `items`: the Item Copies equipped in it. They have the [members of an Item Copy](#items).
+
+```javascript
+// A curse turns the player into a wolf for good.
+persona.body = "Wolf";
+```
+
+- **Assign a Body name to set the owner's base Body.** Assign `null` for no Body. The name is the Body's name in the **Equipment Settings** editor. Of two Bodies with one name, the first in the list is the match.
+- **An active trait's Body still wins.** `body` reads the trait's Body until the trait ends. Then the base Body returns.
+- **A name the world has no Body for stops the script with an error.** The Test Bench reports a literal name that is not a Body.
+- **The write settles at once.** Items in a slot the new Body lacks, or past a smaller capacity, unequip and stay carried. Their effects reverse, **When Unequipped** runs and the log names the Body and the items. This holds in a **When a Trait Switches** script and an item script.
+- **`body` reads the new Body in the same run,** with the items equipped in its slots.
+- **The base Body is saved with the game.** A script cannot return the base to the Body the world picked. Assign that Body's name.
 
 ### Narration
 <!-- keywords: rewrite a sentence, sentence hook, during ai output, narration object, narration sentence, sent, buffered, full, index, filter narration, replace words in the story, narration is not defined, error underline on narration -->

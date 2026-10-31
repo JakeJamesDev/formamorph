@@ -12,6 +12,8 @@ export interface BodyWorld {
   entities?: readonly { id: string; name?: string; body?: BodyPick; customPersona?: boolean }[];
   /** Each owner's winning trait Body pick, by {@link slotOwnerKey}. Absent = none. */
   traitPicks?: TraitBodyPicks;
+  /** Each owner's base Body a script wrote, by {@link slotOwnerKey}. It yields to a trait pick (Q14). Absent = none. */
+  basePicks?: TraitBodyPicks;
 }
 
 /** Owner key → the Body pick its winning trait sets. */
@@ -41,16 +43,17 @@ const bodyOfPick = (bodies: readonly Body[], pick: BodyPick | undefined): Body |
 };
 
 /**
- * The Body in force for an owner: its winning trait's pick first (Q13). Otherwise an entity reads its own pick;
- * one the world lacks, such as a library or AI-introduced character, takes the Default. The played Persona reads
+ * The Body in force for an owner: its winning trait's pick first (Q13), then the base a script wrote (Q14).
+ * Otherwise an entity reads its own pick; one the world lacks, such as a library or AI-introduced character,
+ * takes the Default. The played Persona reads
  * a world persona's own pick, and under None or a library persona the Custom Persona entity's (Q9, Q31).
  * Undefined = no slots.
  */
 export function bodyInForce(world: BodyWorld, owner: SlotOwner, persona: PersonaRef | undefined): Body | undefined {
   const bodies = world.bodies ?? [];
   if (!bodies.length) return undefined;
-  const traitPick = world.traitPicks?.[slotOwnerKey(owner)];
-  if (traitPick) return bodyOfPick(bodies, traitPick);
+  const forced = world.traitPicks?.[slotOwnerKey(owner)] ?? world.basePicks?.[slotOwnerKey(owner)];
+  if (forced) return bodyOfPick(bodies, forced);
   const entities = world.entities ?? [];
   const entity = owner.kind === 'entity' ? entities.find((e) => e.id === owner.id)
     : persona?.source === 'world' ? entities.find((e) => e.id === persona.entityId)
@@ -71,6 +74,17 @@ export function bodySlots(body: Body | undefined, slots: readonly Slot[]): BodyS
 /** The slots of the owner's Body in force, in entry order. */
 export const slotsInForce = (world: BodyWorld & { slots?: readonly Slot[] }, owner: SlotOwner, persona: PersonaRef | undefined): BodySlot[] =>
   bodySlots(bodyInForce(world, owner, persona), world.slots ?? []);
+
+/** Every Body of the world with its slots by name, as a script's `body` reads them. */
+export const bodyDefsOf = (world: BodyWorld & { slots?: readonly Slot[] }): { id: string; name: string; slots: { name: string; capacity: number }[] }[] =>
+  (world.bodies ?? []).map((body) => ({
+    id: body.id, name: body.name, slots: bodySlots(body, world.slots ?? []).map(({ slot, capacity }) => ({ name: slot.name, capacity })),
+  }));
+
+/** The owner's Body in force as a script reads it: its id (null = none), and whether a trait forces it so a script's write waits (Q14). */
+export function bodyReadingOf(world: BodyWorld, owner: SlotOwner, persona: PersonaRef | undefined): { id: string | null; locked: boolean } {
+  return { id: bodyInForce(world, owner, persona)?.id ?? null, locked: !!world.traitPicks?.[slotOwnerKey(owner)] };
+}
 
 /** Why the owner's authored Body refuses a starting equip: no Body, no such slot, or too little room. */
 export type StartingEquipGap =
