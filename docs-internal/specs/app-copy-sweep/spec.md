@@ -78,6 +78,8 @@ Spec-session answers to ticket intent questions.
 | R31 | Drafts that staff edit and send (takedown and quarantine notices) are message content and keep their voice. Fix only wrong terms and false facts. A preview that mirrors a server template (the podium announcement) stays as the server sends it |
 | R32 | A count in a label ("Approved (3)") is data, not an aside |
 | R33 | Ticket 01 has landed, so a wrong shared string now goes to the ticket that finds it, which fixes it in its own pass and lists it as a drive-by |
+| R34 | A reference screen's intro keeps one or two sentences in its Hint (what it shows, then how to try it). The rest becomes a short bullet list in the same card, minus facts the sample shows. No HintInfo on dev screens |
+| R35 | Showcase tab descriptions name a pattern and stay noun phrases. Fix only image verbs and wrong terms |
 
 ## Screen groups
 
