@@ -76,6 +76,10 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q49 | (ticket 03, user ruling) The entry and its editor are named **Equipment Settings**. Bodies reuse the Morphie layer pattern (an EditorRow with a chevron, an attached body and a nested EditorRowList), so no new Design System pattern is added. Every destructive remove button in the editor gets the red destructive hover |
 | Q50 | (ticket 04) A starting item that the opening settle unequips, because another starting item's effect broke its requirement, comes off with no opening log line. A new game never logs a starting unequip (Q2, Q37) |
 | Q51 | (ticket 04) One shared starting-copies helper feeds the new game, the Enter World trait-gate draft and the chip preview scene. The previews apply starting equips with the Body and swap-out rules but no requirement check, since they hold no stat state |
+| Q52 | (ticket 07) Slots go on owners that already have an inventory block, plus the player always. The line reads `slots: Head, Hand ×2`, showing capacity only above 1. An owner with None or no Body reads `slots: none` in a world with Bodies, and the line is omitted in a world without Bodies |
+| Q53 | (ticket 07) An equippable item's line names its slot, such as `Iron Helm (Head)`, with Slot Size above 1 as `(Hand ×2)`. The equip operation gains the clause "into a slot listed for that owner", kept only if the probe supports it |
+| Q55 | (ticket 07, probe evidence) The model reads `slots: none`, but it does not match an item's `(Head)` against `slots: Collar`: 0/8 in every arm for a transformed owner. Each item an owner can't fit gets a precomputed per-owner mark in that owner's list, worded by the ticket under the prompt-writing guide, with one more probe round. If the mark does not move the rate, 07 ships slots, the item slot and the clause, and records the mismatch as a known gap; the validator still skips those equips (Q8) |
+| Q54 | (ticket 07) 07 does not wait for 05. Whichever lands second wires 05's trait overrides into 07's prompt slice |
 
 ## User Stories
 
