@@ -28,7 +28,7 @@ const scene = (over: Partial<PassScene> = {}): PassScene => ({
   resolve: (text) => text.replace('{Cursed}', 'Cursed'), ...over,
 });
 const run = (copies: ItemCopy[], ops: InventoryPassOp[], over: Partial<PassScene> = {}) =>
-  applyInventoryPass(copies, ops, scene(over), { world: { items: [sword, tonic, ring], slots: [hand] }, newId: ids() });
+  applyInventoryPass(copies, ops, scene(over), { world: { items: [sword, tonic, ring], slots: [hand], bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] }] }, newId: ids() });
 
 describe('parseInventoryReply', () => {
   it('reads the schema reply, and a reply the schema shapes passes the schema check', () => {

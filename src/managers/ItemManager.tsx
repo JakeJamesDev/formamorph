@@ -17,7 +17,8 @@ import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useEditorMode } from '@/lib/editorMode';
 import { fieldFrame } from '@/lib/historyField';
-import { WHEN_EMPTY_LABEL, itemStackable, slotCapacity, whenEmptyOf, wholeCount } from '@/lib/items';
+import { largestCapacity } from '@/lib/bodies';
+import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { canBePlayer } from '@/lib/owners';
 import { itemPanelTabsFor, type ItemPanelTab } from '@/views/itemPanelTabs';
@@ -50,7 +51,7 @@ const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
 
 /** The item fields beyond its descriptions: value, stacking, uses, the lock, and equipping. */
 const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
-  const { playStats, entities, slots, placeholders, items } = useGameData();
+  const { playStats, entities, slots, bodies, placeholders, items } = useGameData();
   const label = (name: string) => labelPlaceholders(name, placeholders);
   // The Global Stats, then each persona's own (Q75).
   const statGroups = useMemo(() => [
@@ -66,6 +67,8 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
     apply({ valueUnit: next });
   };
   const slot = slots.find((s) => s.id === item.slotId);
+  // An item fits no Body when its size passes every Body's capacity for the slot (Q33).
+  const maxSize = slot ? largestCapacity(bodies, slot.id) : 1;
   const multiUse = (item.uses ?? 1) > 1;
   const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
   const others = items.filter((i) => i.id !== item.id);
@@ -228,13 +231,13 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
             id={id('slot-size')}
             type="number"
             min={1}
-            max={slotCapacity(slot)}
+            max={maxSize}
             className="w-32"
             value={item.slotSize ?? 1}
             onChange={(e) => {
               const size = wholeCount(e.target.value);
               if (size === undefined) return;
-              const clamped = Math.min(Math.max(1, size), slotCapacity(slot));
+              const clamped = Math.min(Math.max(1, size), maxSize);
               apply({ slotSize: clamped === 1 ? undefined : clamped });
             }}
           />

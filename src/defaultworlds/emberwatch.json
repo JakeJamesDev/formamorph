@@ -3586,8 +3586,7 @@
   "slots": [
     {
       "id": "e97ee514-725f-4b62-8a79-9ea920d3db51",
-      "name": "Hands",
-      "capacity": 2
+      "name": "Hands"
     },
     {
       "id": "bf8a9e30-4a2e-4710-b294-9324688bbd3c",
@@ -3600,6 +3599,27 @@
     {
       "id": "b9c8a35a-3873-4bf7-a5db-b23593a63d07",
       "name": "Head"
+    }
+  ],
+  "bodies": [
+    {
+      "id": "f4dcb334-9355-41d9-a586-17fe3df7b410",
+      "name": "Humanoid",
+      "entries": [
+        {
+          "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "capacity": 2
+        },
+        {
+          "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c"
+        },
+        {
+          "slotId": "58c8bc32-9dfa-47f2-affe-0a032671cbf4"
+        },
+        {
+          "slotId": "b9c8a35a-3873-4bf7-a5db-b23593a63d07"
+        }
+      ]
     }
   ],
   "placements": [

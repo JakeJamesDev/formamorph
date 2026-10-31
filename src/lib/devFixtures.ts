@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
+import type { Body, Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
@@ -49,8 +49,9 @@ const ENTITY_STATS_CAST = [
 
 const WHITE_ROOM_ID = '1783535114538';
 
-/** The `items` fixture's slots and items. */
-const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand', capacity: 2 }, { id: 'dev-slot-ring', name: 'Ring' }];
+/** The `items` fixture's slots, its one Body and its items. */
+const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand' }, { id: 'dev-slot-ring', name: 'Ring' }];
+const DEV_BODIES: Body[] = [{ id: 'dev-body-humanoid', name: 'Humanoid', entries: [{ slotId: 'dev-slot-hand', capacity: 2 }, { slotId: 'dev-slot-ring' }] }];
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', uses: 1,
@@ -262,7 +263,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       return {
         world: {
-          ...world, slots: DEV_SLOTS, items: devItems(world.stats[0]?.id), placements: DEV_PLACEMENTS,
+          ...world, slots: DEV_SLOTS, bodies: DEV_BODIES, items: devItems(world.stats[0]?.id), placements: DEV_PLACEMENTS,
           // Starts in the White Room, so Give has its two entities.
           locations: world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, isStarting: true } : l)),
           entities: [...world.entities, ...DEV_ITEM_CAST],

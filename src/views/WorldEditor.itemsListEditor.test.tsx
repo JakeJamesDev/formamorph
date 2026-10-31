@@ -3,7 +3,7 @@ import { screen, fireEvent, within, act } from '@testing-library/react';
 import { $createParagraphNode, $createTextNode, $getRoot, getNearestEditorFromDOMNode } from 'lexical';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { blankItem } from '@/lib/items';
-import type { Item, Placement, Slot, World } from '@/types';
+import type { Body, Item, Placement, Slot, World } from '@/types';
 
 /** The Items tab: a flat list beside Entities, the item panel, and the world's slots. */
 
@@ -24,7 +24,12 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand', capacity: 2 }, { id: 'ring', name: 'Ring' }];
+const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }, { id: 'tail', name: 'Tail' }];
+// Hand holds 2 in one Body and 1 in the other; no Body holds Tail.
+const BODIES: Body[] = [
+  { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] },
+  { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] },
+];
 const ITEMS: Item[] = [
   { ...blankItem('lamp', 'Lamp'), playerDescription: 'A brass lamp.' },
   { ...blankItem('sword', 'Greatsword'), slotId: 'hand', slotSize: 2 },
@@ -36,7 +41,7 @@ const PLACEMENTS: Placement[] = [
 
 const WORLD: World = benchEditorWorld({
   stats: [{ id: 'gold', name: 'Gold', type: 'number', description: '', min: 0, max: 999, regen: 0, descriptors: [] }],
-  items: ITEMS, slots: SLOTS, placements: PLACEMENTS,
+  items: ITEMS, slots: SLOTS, bodies: BODIES, placements: PLACEMENTS,
 } as Partial<World>);
 
 const search = (term: string) =>
@@ -51,12 +56,13 @@ const openItem = (name: string) => fireEvent.click(screen.getByRole('button', { 
 
 beforeEach(() => { localStorage.clear(); });
 
-describe('items, slots and placements in the world', () => {
+describe('items, slots, Bodies and placements in the world', () => {
   it('come back out of the editor exactly as they went in', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     const data = ctx().getWorldData();
     expect(data.items).toEqual(ITEMS);
     expect(data.slots).toEqual(SLOTS);
+    expect(data.bodies).toEqual(BODIES);
     expect(data.placements).toEqual(PLACEMENTS);
     expect(ctx().isWorldDirty).toBe(false);
   });
@@ -66,6 +72,7 @@ describe('items, slots and placements in the world', () => {
     const data = ctx().getWorldData();
     expect(data).not.toHaveProperty('items');
     expect(data).not.toHaveProperty('slots');
+    expect(data).not.toHaveProperty('bodies');
     expect(data).not.toHaveProperty('placements');
   });
 });
@@ -251,51 +258,55 @@ describe('the item panel', () => {
     expect(ctx().items[0].valueUnit).toEqual({ kind: 'stat', statId: 'gold' });
   });
 
-  it('lists the world slots in its slot picker and caps the slot size at the slot capacity', () => {
+  it('lists the world slots in its slot picker and caps the slot size at the largest Body capacity', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
     itemFieldsTab('Properties');
     expect(screen.queryByLabelText('Slot Size')).toBeNull();
     openSelect('Slot');
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Not Equippable', 'Hand', 'Ring']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Not Equippable', 'Hand', 'Ring', 'Tail']);
     fireEvent.keyDown(screen.getByRole('option', { name: 'Hand' }), { key: 'Enter' });
     expect(ctx().items[0].slotId).toBe('hand');
     fireEvent.change(screen.getByLabelText('Slot Size'), { target: { value: '5' } });
     expect(ctx().items[0].slotSize).toBe(2);
+  });
+
+  it('caps the slot size at 1 for a slot no Body holds', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Items/);
+    openItem('Lamp');
+    itemFieldsTab('Properties');
+    openSelect('Slot');
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Tail' }), { key: 'Enter' });
+    fireEvent.change(screen.getByLabelText('Slot Size'), { target: { value: '3' } });
+    expect(ctx().items[0].slotSize).toBeUndefined();
   });
 });
 
 describe('the Slots section', () => {
   const openSlots = () => openEditorTab(/Overview/);
 
-  it('adds, renames and sizes a slot', () => {
+  it('adds and renames a slot, which has a name only', () => {
     const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
     openSlots();
     fireEvent.click(screen.getByRole('button', { name: 'Add Slot' }));
     fireEvent.change(screen.getByLabelText('Slot Name'), { target: { value: 'Head' } });
-    fireEvent.change(screen.getByLabelText('Head Capacity'), { target: { value: '2' } });
-    expect(ctx().slots).toMatchObject([{ name: 'Head', capacity: 2 }]);
+    expect(screen.queryByLabelText('Head Capacity')).toBeNull();
+    expect(ctx().slots).toEqual([{ id: expect.any(String), name: 'Head' }]);
   });
 
   it('asks before it removes a slot items use, then clears it from them', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openSlots();
     fireEvent.click(screen.getByRole('button', { name: 'Delete Hand' }));
-    expect(ctx().slots).toHaveLength(2);
+    expect(ctx().slots).toHaveLength(3);
     const dialog = screen.getByRole('alertdialog');
     expect(dialog.textContent).toContain('1 item equips into this slot');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-    expect(ctx().slots.map((s) => s.id)).toEqual(['ring']);
+    expect(ctx().slots.map((s) => s.id)).toEqual(['ring', 'tail']);
     expect(ctx().items.find((i) => i.id === 'sword')).not.toHaveProperty('slotId');
-  });
-
-  it('cuts the slot size of the items in a slot when its capacity drops', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openSlots();
-    fireEvent.change(screen.getByLabelText('Hand Capacity'), { target: { value: '1' } });
-    expect(ctx().slots.find((s) => s.id === 'hand')).not.toHaveProperty('capacity');
-    expect(ctx().items.find((i) => i.id === 'sword')?.slotSize).toBe(1);
+    expect(ctx().bodies.map((b) => b.entries.map((e) => e.slotId))).toEqual([['ring'], []]);
   });
 
   it('removes an unused slot at once', () => {
@@ -303,7 +314,7 @@ describe('the Slots section', () => {
     openSlots();
     fireEvent.click(screen.getByRole('button', { name: 'Delete Ring' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(ctx().slots.map((s) => s.id)).toEqual(['hand']);
+    expect(ctx().slots.map((s) => s.id)).toEqual(['hand', 'tail']);
   });
 });
 

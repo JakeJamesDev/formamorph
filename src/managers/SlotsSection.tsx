@@ -8,11 +8,11 @@ import { Tip } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
-import { itemsInSlot, slotCapacity, wholeCount } from '@/lib/items';
+import { itemsInSlot } from '@/lib/items';
 import { randomUUID } from '@/lib/uuid';
 import type { Slot } from '@/types';
 
-/** The world's equipment slots: a name and a capacity each. The Persona and every entity share them (Q15). */
+/** The world's equipment slots, by name. Each Body gives a slot its capacity. */
 const SlotsSection = () => {
   const { slots, setSlots, updateSlot, removeSlot, items } = useGameData();
   const [pending, setPending] = useState<Slot | null>(null);
@@ -25,7 +25,7 @@ const SlotsSection = () => {
   return (
     <div className="space-y-2" {...fieldFrame('slots')}>
       <Label id="world-slots-label">Slots</Label>
-      <Hint>Lists where items equip, such as Hand. <b>Capacity</b> sets how many fit.</Hint>
+      <Hint>Lists where items equip, such as Hand.</Hint>
       {slots.length > 0 && (
         <ul aria-labelledby="world-slots-label" className="space-y-2">
           {slots.map((slot) => (
@@ -35,20 +35,6 @@ const SlotsSection = () => {
                 className="min-w-0 flex-1"
                 value={slot.name}
                 onChange={(e) => updateSlot({ ...slot, name: e.target.value })}
-              />
-              <WorldInput
-                aria-label={`${slot.name || 'Slot'} Capacity`}
-                type="number"
-                min={1}
-                className="w-20"
-                value={slotCapacity(slot)}
-                onChange={(e) => {
-                  const typed = wholeCount(e.target.value);
-                  if (typed === undefined) return;
-                  const capacity = Math.max(1, typed);
-                  const { capacity: _drop, ...rest } = slot;
-                  updateSlot(capacity === 1 ? rest : { ...slot, capacity });
-                }}
               />
               <Tip tip="Delete">
                 <Button variant="ghost" size="icon" aria-label={`Delete ${slot.name || 'Slot'}`} onClick={() => askRemove(slot)}>

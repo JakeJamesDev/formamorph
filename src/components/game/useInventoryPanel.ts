@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { bodyPickEntities, slotsInForce } from '@/lib/bodies';
 import { applyInventoryOps, copiesAt, type ItemUse, type InventoryOp, type ItemScriptEvent, type TimedEffectView } from '@/lib/inventory';
 import { usePresence } from '@/lib/usePresence';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
@@ -29,10 +30,15 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const data = useGameDataOptional();
   const items = data?.items ?? NONE;
   const slots = data?.slots ?? NONE;
+  const bodies = data?.bodies ?? NONE;
   const {
-    itemCopies, setItemCopies, runtimeItems, addLogEntry, isWaitingForAI, isViewingPast,
+    itemCopies, setItemCopies, runtimeItems, addLogEntry, isWaitingForAI, isViewingPast, personaRef,
   } = useGameplay();
-  const { currentLocation, persona } = useResolvedWorld();
+  const { currentLocation, persona, entities: cast, worldPersonas, customPersona } = useResolvedWorld();
+  const entities = useMemo(() => bodyPickEntities(cast, worldPersonas, customPersona), [cast, worldPersonas, customPersona]);
+  const bodySlotsOfYou = useMemo(
+    () => slotsInForce({ bodies, entities, slots }, YOU, personaRef), [bodies, entities, personaRef, slots],
+  );
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
   const disabled = isWaitingForAI || isViewingPast;
@@ -42,7 +48,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
 
   const onOps = useCallback((ops: InventoryOp[]) => {
     const result = applyInventoryOps(itemCopies, ops, {
-      world: { items, slots }, source: 'panel', newId: randomUUID,
+      world: { items, slots, bodies, entities }, source: 'panel', newId: randomUUID, persona: personaRef,
       presence: { locationId, entityIds: new Set(present.map((e) => e.id)) },
       ...(settle && { requirement: settle.requirement }),
     });
@@ -52,13 +58,13 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     }
     setItemCopies(result.copies);
     for (const line of result.diagnostics) addLogEntry(line);
-  }, [itemCopies, items, slots, locationId, present, settle, setItemCopies, addLogEntry]);
+  }, [itemCopies, items, slots, bodies, entities, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
 
   return {
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
     lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
-    items, ...(runtimeItems?.length && { runtimeItems }), slots, present, locationId,
+    items, ...(runtimeItems?.length && { runtimeItems }), slots: bodySlotsOfYou, present, locationId,
     locationName: currentLocation ? resolveText(currentLocation.name) : null, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blankItem, duplicateItem, itemStackable, itemTraitOptions, itemsInSlot, parseItems, parsePlacements, wholeCount, withSlotCapacity,
+  blankItem, duplicateItem, itemStackable, itemTraitOptions, itemsInSlot, parseItems, parsePlacements, wholeCount,
   withoutItemPlacements, withoutSlotRefs,
 } from './items';
 import type { Item, Placement } from '@/types';
@@ -111,20 +111,6 @@ describe('parsePlacements', () => {
   it('drops placements with no item source, so a later item delete never reads a missing source', () => {
     const kept = { id: 'p1', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } };
     expect(parsePlacements([kept, { id: 'p2', where: { kind: 'you' }, quantity: 1 }, { id: 'p3', source: { kind: 'table' } }])).toEqual([kept]);
-  });
-});
-
-describe('withSlotCapacity', () => {
-  it('cuts the slot sizes in a slot down to its new capacity, and only in that slot', () => {
-    const items = [item({ id: 'sword', slotId: 'hand', slotSize: 2 }), item({ id: 'pike', slotId: 'back', slotSize: 2 })];
-    const next = withSlotCapacity(items, 'hand', 1);
-    expect(next[0].slotSize).toBe(1);
-    expect(next[1]).toBe(items[1]);
-  });
-
-  it('keeps the list when every size still fits', () => {
-    const items = [item({ id: 'sword', slotId: 'hand', slotSize: 2 })];
-    expect(withSlotCapacity(items, 'hand', 2)).toBe(items);
   });
 });
 
