@@ -10,7 +10,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 
 | Term | Meaning |
 |---|---|
-| [Formaquestion](Formaquestion) | The help window. You can ask it a question, search this guide and read each page. The **Help** tab or F1 opens it. A Tool that you turn on lets it read the world you have open. |
+| [Formaquestion](Formaquestion) | The help window. You can ask it a question, search this guide and read each page. The **Help** tab or F1 opens it. The **Read the World** setting lets it read the world you have open. |
 | [Search Source](Formaquestion-Settings#general) | One way Formaquestion finds guide sections for your question: **Keyword Search**, **AI Search** or **Semantic Search**. You turn each one on or off in **Formaquestion Settings**. |
 | [Turn](How-to-Play) | One action from you and the AI's reply to it |
 | [Action](How-to-Play#how-to-take-an-action) | What you write in the action box: what you do next |
@@ -57,7 +57,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 
 | Term | Meaning |
 |---|---|
-| [Entity](World-Editor-Entities) | Anything in a world the narrator can name: a person, a creature, a plant or an object |
+| [Entity](World-Editor-Entities) | Anything in a world the narrator can name: a person, a creature, an object or a fixture |
 | [Story-Invented Entity](Entities#entities-the-story-invents) | An entity the story names during the game that no author wrote. It joins the scene for that playthrough. |
 | [Memory](Memory) | What the story keeps from older turns. Recent turns go to the AI word for word; older ones go as short memories. |
 | [Memory Summaries](Memory#memory-settings) | The setting that condenses older turns into memories |
@@ -120,7 +120,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Chip Options](Prompt-Chips#chip-options) | The dialog a placed chip opens. A prompt chip shows **What the AI Reads** beside its rows. The **Entities** and **Persona** chips add **Only With**, **Include** and **Stat Detail**. |
 | [Request Anatomy](Prompts#anatomy) | A labeled map of every message in one request, which marks the text you typed |
 | [Custom Prompts](Prompts#world-prompts-and-the-diff-viewer) | A world's own narration, choices or stats prompt, which replaces yours while you play it |
-| [Tool](Tools) | A function the AI can call during a request to get information it does not have. A Tool only reads. Formaquestion has its own list of Tools, which you switch on and off on this device. |
+| [Tool](Tools) | A function the AI can call during a request to get information it does not have. Your own Tools and the built-in Tools only read; a World Tool's script can change the story. Formaquestion has its own list of Tools, which you switch on and off on this device. |
 | [Tool Handler](Tools#handler) | The part of a Tool that runs when the AI calls it: **Lookup**, **Template** or **Script** |
 
 ## 🛠️ Building a World
@@ -141,10 +141,15 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Locations Canvas](World-Editor-Locations#list-and-canvas) | The visual view of the **Locations** tab, with boxes for locations and arrows for Connections |
 | [Auto Arrange](World-Editor-Locations#list-and-canvas) | The canvas command that lays out boxes for you. Nothing on the canvas moves without it or you. |
 | [Map](How-to-Play#the-change-location-dialog) | The read-only canvas the player sees in game, on the **Map** tab |
+| [Presence](World-Editor-Locations#entities) | Where an entity with several locations is in a new game: **Everywhere Listed**, or **One, at Random** |
+| [Movement](World-Editor-Locations#entities) | How an entity moves during play, such as **Stays Put** or **Can Follow the Player** |
+| [Known In](World-Editor-Entities#locations) | Where the AI knows of an entity while it isn't present, **Nearby** by default |
+| [Known Here](World-Editor-Locations#entities) | The entities a location's entities may speak of, though they aren't there |
+| [Relationship](World-Editor-Entities#the-panel) | A link from one entity to another, or to the persona, with the target's role toward it. It reaches the AI as a line. |
+| [Stranger Name](World-Editor-Entities#strangers) | What the player calls an entity until they meet it |
 | [Stat](World-Editor-Stats) | A number the game tracks, between a **Min** and a **Max**. It is global or an entity's own. |
 | [Stat Descriptor](World-Editor-Stats#stat-descriptors) | A word the AI gets for a band of a stat's values |
-| [Regen](World-Editor-Stats#the-fields) | The amount a stat changes for each hour of story time |
-| [Script](ScriptsGuide) | One box of JavaScript with a timing, on a stat, a trait or the world. It was called stat code. |
+| [Regen](World-Editor-Stats#the-fields) | The amount a stat changes for each hour of story time || [Script](ScriptsGuide) | One box of JavaScript with a timing, on a stat, a trait or the world. It was called stat code. |
 | [Timing](ScriptsGuide#the-five-timings) | When a script runs. Pick it in the script's **Timing** menu. |
 | [Before the AI](ScriptsGuide#the-five-timings) | The timing that runs at the start of a turn, before the prompt is built |
 | [After the AI](ScriptsGuide#the-five-timings) | The timing that runs after the AI's stat changes and Regen apply |
@@ -158,15 +163,21 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Pick Count](World-Editor-Traits#pick-count) | How many traits the player must and can pick from a group: **Any**, **Exactly One**, **Up to One** or **Custom** |
 | [Requirement](World-Editor-Traits#requirements) | What a trait needs before it is available: a list of rows. The trait opens when any one row holds. |
 | [Requirement Row](World-Editor-Traits#rows) | One way to open a trait. It holds when every Condition in it holds. |
-| [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, a persona, or a stat. **Not** makes it hold while the target is off. |
+| [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, a persona, a stat, an item or the time of day. **Not** makes it hold while the target is off. |
 | [Stat Condition](World-Editor-Traits#stat-conditions) | A Condition that compares a stat to a number, raw or as a percent of the stat's range. *Rage >= 80* |
 | [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows in play. With no rows, it always shows. |
+| [Item](World-Editor-Items) | An object someone can own, with its own description, image and rules |
+| [Item Copy](World-Editor-Items) | One copy of an item in a game, held by an owner or lying at a location |
+| [Starting Items](World-Editor-Items#starting-items) | The items a new game begins with, on the player, an entity or a location |
+| [Slot](World-Editor-Items#slots) | A named place an item equips into, such as Hand |
+| [Body](World-Editor-Items#bodies) | The set of slots an owner has, with how much each one holds |
 | [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. The played persona is the owner **Persona**. An item with no owner is global. |
 | [Global Stat](World-Editor-Stats#how-the-ai-tracks-stat-changes) | A stat on the **Stats** tab, outside every entity. No one owns it. The AI reads it under **Global Stats**. |
 | [Global Trait](World-Editor-Traits#whose-trait-counts) | A trait outside every entity, such as one the player picks at the start. No one owns it. The AI reads the picked ones under **Global Traits**. |
 | [Persona Stat](Persona-Authoring#persona-stats) | A stat of the entity the player plays. The AI reads it in the **Persona** block, under the `Player Character` key. |
-| [Blueprint](World-Editor-Blueprints#blueprints) | A trait or [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
+| [Blueprint](World-Editor-Blueprints#blueprints) | A trait, a [stat](World-Editor-Stats#blueprint-stats-and-links) or a [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
 | [Link](World-Editor-Blueprints#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |
+| [Stat Link](World-Editor-Stats#blueprint-stats-and-links) | Gives a Blueprint stat to an entity, with the entity's own value |
 | [Original](World-Editor-Blueprints#links) | The Blueprint trait or group that a Link points at |
 | [Copy](World-Editor-Placeholders#copies) | An entity's own version of a Blueprint placeholder. It reads the Blueprint live until you change a value. |
 | [Override](World-Editor-Blueprints#overrides) | One field that a Link or a Copy sets for itself. **Reset** returns one; **Reset to Blueprint** returns all. |
