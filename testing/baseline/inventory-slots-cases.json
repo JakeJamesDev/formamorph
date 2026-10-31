@@ -1,0 +1,93 @@
+{
+  "items": [
+    { "id": "helm", "name": "Iron Helm", "slotId": "head", "stackable": false, "aiSummary": "A dented iron cap with a leather chin strap." },
+    { "id": "knife", "name": "Gutting Knife", "slotId": "hand" },
+    { "id": "collar", "name": "Studded Collar", "slotId": "neck", "stackable": false },
+    { "id": "eel", "name": "Smoked Eel", "uses": 1 }
+  ],
+  "slots": [
+    { "id": "head", "name": "Head" },
+    { "id": "hand", "name": "Hand" },
+    { "id": "neck", "name": "Collar" }
+  ],
+  "bodies": [
+    { "id": "humanoid", "name": "Humanoid", "entries": [{ "slotId": "head" }, { "slotId": "hand", "capacity": 2 }] },
+    { "id": "wolf", "name": "Wolf", "entries": [{ "slotId": "neck" }] }
+  ],
+  "cases": [
+    {
+      "id": "slotless-held",
+      "note": "Odette has no Body and already carries the helm; the narration has her put it on.",
+      "picks": { "ent-odette": "none" },
+      "copies": [
+        { "item": "knife", "where": "you" },
+        { "item": "helm", "where": "ent-odette" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I tell Odette the helm would suit her.",
+      "narration": "Odette snorts, but she lifts the iron helm from beside her pack and sets it on her head. It sits crooked over her braid. \"Like a cook pot,\" she says, and goes back to turning the eels.",
+      "owner": "ent-odette",
+      "item": "helm",
+      "want": "no-equip"
+    },
+    {
+      "id": "slotless-given",
+      "note": "Odette has no Body and holds only eel; the player hands her the helm and she puts it on (the Q52 same-turn edge).",
+      "picks": { "ent-odette": "none" },
+      "copies": [
+        { "item": "helm", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I offer Odette my iron helm.",
+      "narration": "You hold out the iron helm. Odette takes it, turns it over once, and jams it onto her head. \"Keeps the smoke out of my hair, at least,\" she says.",
+      "owner": "ent-odette",
+      "item": "helm",
+      "want": "no-equip"
+    },
+    {
+      "id": "normal",
+      "note": "The player keeps the Default Body and puts on the helm they carry.",
+      "picks": {},
+      "copies": [
+        { "item": "helm", "where": "you" },
+        { "item": "knife", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I put on my iron helm.",
+      "narration": "You pull the iron helm over your head and buckle the strap under your chin. The dented rim sits low over your brow. Odette glances up from the firepit and nods.",
+      "owner": "you",
+      "item": "helm",
+      "want": "equip"
+    },
+    {
+      "id": "transformed",
+      "note": "The player's Body is the Wolf (Collar only); the narration pushes the helm onto the wolf's head.",
+      "picks": { "you": "wolf" },
+      "copies": [
+        { "item": "helm", "where": "you" },
+        { "item": "collar", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I push my muzzle into the iron helm.",
+      "narration": "You nose the iron helm across the planks and shove your long wolf's head into it. It wobbles over your ears and settles there, ridiculous. Odette laughs so hard she drops an eel.",
+      "owner": "you",
+      "item": "helm",
+      "want": "no-equip"
+    },
+    {
+      "id": "transformed-odette",
+      "note": "Odette's Body is the Wolf (Collar only) and she carries the helm; the narration pushes it onto her head.",
+      "picks": { "ent-odette": "wolf" },
+      "copies": [
+        { "item": "knife", "where": "you" },
+        { "item": "helm", "where": "ent-odette" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I watch Odette try on the iron helm.",
+      "narration": "Odette, a gray wolf now, noses the iron helm across the planks and shoves her long head into it. It wobbles over her ears and settles there, ridiculous. You laugh so hard you nearly drop your knife.",
+      "owner": "ent-odette",
+      "item": "helm",
+      "want": "no-equip"
+    }
+  ]
+}

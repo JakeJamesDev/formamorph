@@ -1,11 +1,18 @@
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, PersonaRef, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
+import type { slotsInForce } from '../bodies';
 import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
 import type { WorldCalendar } from '../gameClock';
+
+/** The slice each owner's Body in force resolves from. */
+export interface SceneEquipment {
+  world: Parameters<typeof slotsInForce>[0];
+  persona?: PersonaRef;
+}
 
 /** The story clock as the Time chip reads it: the hours elapsed since the opening, on the world's calendar. */
 export interface ChipSceneTime {
@@ -58,6 +65,9 @@ export interface ChipScene {
   itemCopies?: readonly ItemCopy[];
   /** The runtime items the Inventory pass made. None when absent. */
   runtimeItems?: readonly RuntimeItem[];
+  /** What each owner's slots in force read: the Bodies, the slots, the Body picks, and the played persona. No
+   *  slots when absent. */
+  equipment?: SceneEquipment;
   /** The lore entries to render, each carrying its position. */
   lore: DictionaryEntry[];
   /** The player's notes; blank when there are none. */

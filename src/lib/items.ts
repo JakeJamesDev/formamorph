@@ -104,7 +104,7 @@ export function seededState(item: Item): ItemCopyState | undefined {
 export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };
 
 /** The slot capacity one Item Copy of `item` takes. A runtime item, which has no item, takes 1. */
-export const slotSizeOf = (item: Item | undefined): number => item?.slotSize ?? 1;
+export const slotSizeOf = (item: Pick<Item, 'slotSize'> | undefined): number => item?.slotSize ?? 1;
 
 /** Sorts equipped Item Copies longest equipped first. */
 export const byEquipOrder = (a: ItemCopy, b: ItemCopy): number => (a.equipped?.order ?? 0) - (b.equipped?.order ?? 0);
