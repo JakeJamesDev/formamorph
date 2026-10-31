@@ -183,6 +183,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q77:** `met` uses the full start-met rule at every sandbox site, Test Bench, script Test Runs and Tools included (ticket 11).
 - **Q78:** A stranger's trait text resolves with the label, never the true name. The Traits tab numbers strangers who share a label, as the stat picker does (ticket 12).
 - **Q79:** The Entity View may show a stranger's art when no one is selected. Art is not identity.
+- **Q80:** Script sites pass a persona when they hold one: in-game Tools pass the played persona. A Test Run with no persona (Q3) still calls the start-met rule with a null persona, so one code path serves every site.
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 
