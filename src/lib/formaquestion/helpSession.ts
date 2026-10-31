@@ -674,7 +674,7 @@ export async function* askHelp({
   let content = '';
   let reasoning = '';
   const reasoningNow = () => joinReasoning(native, earlierInline, extractReasoningLive(content));
-  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, hostedTurn, captureRounds: true, ...(offered.length > 0 && { execute }) })) {
+  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, hostedTurn, captureRounds: true, ...(offered.length > 0 && { execute }), ...(face && { unseen: new Set([face.fn.id]) }) })) {
     if (event.type === 'toolRound') {
       for (const id of face?.takeFaces() ?? []) yield { type: 'face', face: id };
       rounds.push(event.round);

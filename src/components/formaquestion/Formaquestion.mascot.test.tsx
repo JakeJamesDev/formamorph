@@ -853,17 +853,15 @@ describe('the Mascot phases', () => {
     expect(drawn()).toEqual(look('answering'));
   });
 
-  it('holds Thinking through a face call, shows the face at the first content token, swaps at once on a later call, and clears on the next send', async () => {
+  it('holds Thinking through a face call, shows the face at the first content token, and clears on the next send', async () => {
     const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
     ai.current = helpAi({ snapshot: textSnapshot(textTarget({ reasoning })), answerTarget: { reasoning, localEngine: false, maxTokens: undefined }, revalidate: vi.fn(async () => true) });
     const faceCall = (face: string) => sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: HELP_FACE.name, arguments: JSON.stringify({ face }) } }] });
     const second = heldReply();
-    const third = heldReply();
     const next = heldReply();
     const replies = [
       () => sseResponse([faceCall('Happy'), sseFrame({}, 'tool_calls'), 'data: [DONE]\n\n']),
       second.respond,
-      third.respond,
       next.respond,
     ];
     let request = 0;
@@ -877,17 +875,13 @@ describe('the Mascot phases', () => {
     await second.push(sseFrame({ content: 'Open' }));
     await waitFor(() => expect(drawn()).toEqual(faceLook('happy')));
 
-    await second.push(faceCall('Wink'));
-    await second.end('tool_calls');
-    await waitFor(() => expect(request).toBe(3));
-    expect(drawn()).toEqual(faceLook('wink'));
-    await third.push(sseFrame({ content: 'Open the Traits tab.' }));
-    await third.end();
+    await second.push(sseFrame({ content: ' the Traits tab.' }));
+    await second.end();
     await within(conversation()).findByText(/Open the Traits tab/);
-    expect(drawn()).toEqual(faceLook('wink'));
+    expect(drawn()).toEqual(faceLook('happy'));
 
     await send(field, 'And then?');
-    await waitFor(() => expect(request).toBe(4));
+    await waitFor(() => expect(request).toBe(3));
     expect(drawn()).toEqual(look('thinking'));
     await next.push(sseFrame({ content: 'Select Add Trait.' }));
     await waitFor(() => expect(drawn()).toEqual(look('answering')));
