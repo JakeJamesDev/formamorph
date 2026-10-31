@@ -165,7 +165,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 ### Rulings (ticket 07 intent questions, 2026-10-30)
 
 - **Q68:** an unmet entity with a Stranger Name gets one roster field that carries its label. The planner's alias rule tells it to use that text as the parenthetical alias. A met entity, or one without a Stranger Name, gets no field and is cast as today.
-- **Q69:** only the planner's request renders that field. Every other prompt's roster stays byte-equal to today. A custom planner prompt still gets it, because it rides in the Entities chip.
+- **Q69:** only the planner's request renders that field. Every other prompt's roster stays byte-equal to today. A custom planner prompt still gets it, because it rides in the Entities chip. Superseded by Q83 and Q86: every roster now renders it.
 - **Q70:** the field carries the Presence label: the latest story alias, else the Stranger Name. This follows Q27, where the story's alias wins once seen.
 - **Q71:** for an entity with a Stranger Name, met decides whether the name may appear, in the prompt rule and the code backstop alike. A name spoken elsewhere does not reveal it (Q41). Entities without a Stranger Name keep today's narration test.
 - **Q72:** the backstop fills a missing alias with the label in place of the generic fallback. It does not overwrite an alias the planner invented. The staged-mode director prompt is out of scope.
@@ -190,6 +190,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q84:** The name normalizers in Presence, the planner backstop and entityMatch stay separate.
 - **Q85:** The Test Bench's Opening instrument lists world personas only, so Q81's library case is tested through the helper and the callers that can hold a library persona. A library picker for the Bench is out of scope.
 - **Q86:** A name-only roster, such as the Now Line's, prints an unmet stranger with a Stranger Name as "true name (label)". Per Q83, the label is shown with the true name, never in its place (ticket 14).
+- **Q87:** Relationship sentences and Inventory owner headings are references, not rosters, so they keep the true name alone. The entity's own roster block pairs that name with the label.
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 
