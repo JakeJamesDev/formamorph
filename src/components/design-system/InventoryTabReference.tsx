@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tabs } from '@/components/ui/tabs';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { InventoryTab } from '@/components/game/InventoryTab';
 import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
@@ -69,8 +69,16 @@ export function InventoryTabReference() {
       <CardHeader>
         <CardTitle>Inventory Tab</CardTitle>
         <CardDescription>
-          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand use, and turns off at zero uses. The Ash Wand is Bound. Effects lists the After Use effects running, with time left. Give lists the entities in the scene above the rest at the location. A card named for the location lists the visible items lying there, each with Pick Up.
+          Shows the Status panel&apos;s Inventory tab on sample items. <strong>Equip</strong>, <strong>Unequip</strong>, <strong>Use</strong>, <strong>Drop</strong> and <strong>Give</strong> act at once.
         </CardDescription>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li><strong>Drop</strong> and <strong>Give</strong> on a stack ask how many.</li>
+          <li><strong>Use</strong> spends one Healing Tonic or one Ash Wand use, and turns off at zero uses.</li>
+          <li>The Ash Wand is Bound, so you can&apos;t drop or give it.</li>
+          <li><strong>Effects</strong> lists the After Use effects running, with the time left.</li>
+          <li><strong>Give</strong> lists the entities in the scene first, then the rest at the location.</li>
+          <li>A card named for the location lists the visible items there, each with <strong>Pick Up</strong>.</li>
+        </Hint>
       </CardHeader>
       <CardContent className="flex flex-wrap items-start gap-6">
         <div className="h-[36rem] w-full max-w-[19rem] space-y-2">

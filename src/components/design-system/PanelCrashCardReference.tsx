@@ -47,8 +47,8 @@ function Sample({ title, width, onViewDetails, onTryAgain }: {
 function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
   const name = mode === 'light' ? 'Light' : 'Dark';
   const [status, setStatus] = useState('');
-  const viewDetails = () => setStatus('View Details opens the Error Details dialog.');
-  const tryAgain = () => setStatus('Try Again remounts the panel.');
+  const viewDetails = () => setStatus('“View Details” opens the Error Details dialog.');
+  const tryAgain = () => setStatus('“Try Again” loads the panel again.');
   return (
     <section
       aria-label={`${name} Theme`}
@@ -58,7 +58,7 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
       <SectionTitle>{name}</SectionTitle>
       <Sample title={`${name} Wide`} width="wide" onViewDetails={viewDetails} onTryAgain={tryAgain} />
       <Sample title={`${name} Narrow`} width="narrow" onViewDetails={viewDetails} onTryAgain={tryAgain} />
-      <p role="status" className="min-h-5 text-helper text-muted-foreground">{status}</p>
+      <Meta as="p" role="status" className="min-h-5">{status}</Meta>
     </section>
   );
 }
@@ -69,7 +69,7 @@ export function PanelCrashCardReference() {
     <Card role="region" aria-labelledby="panel-crash-card-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="panel-crash-card-reference-title" className="text-heading">Panel Crash Card Reference</CardTitle>
-        <CardDescription>This reference shows the card a crashed editor panel shows beside a list that keeps working.</CardDescription>
+        <CardDescription>Shows the card that replaces a crashed editor panel, beside a list that keeps working</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 lg:grid-cols-2">
         <ThemePanel mode="light" />

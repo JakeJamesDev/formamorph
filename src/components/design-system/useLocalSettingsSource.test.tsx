@@ -54,8 +54,8 @@ describe('the local source', () => {
     expect(result.current.resolvedTheme).toBe('dark');
     expect(reports).toEqual([
       expect.stringContaining('Dark theme'),
-      expect.stringContaining('skipped the download'),
-      expect.stringContaining('skipped the unload'),
+      expect.stringContaining('skipped the embedding model download'),
+      expect.stringContaining('skipped the embedding model unload'),
     ]);
     expect(localStorage).toHaveLength(0);
   });

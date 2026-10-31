@@ -41,8 +41,8 @@ export function NavRailReference() {
       <CardHeader>
         <CardTitle id="nav-rail-title" className="text-heading">Nav Rail</CardTitle>
         <CardDescription>
-          The World Editor&apos;s own tab registry, drawn as the Nav Rail inside its card. Collapse it from the toggle
-          at the bottom, then point at an icon or focus it with the keyboard to see its name.
+          Shows the World Editor&apos;s tabs as the Nav Rail inside its card. Collapse the rail with the toggle at
+          the bottom, then hover over or focus an icon to see its name.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hint } from '@/components/ui/typography';
+import { Meta } from '@/components/ui/typography';
 import { VariableMenu } from '@/components/prompt/VariableMenu';
 import { scriptSurface, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
 import { buildVariableTree, timingGlobalsOf } from '@/lib/statCodeVariableTree';
@@ -13,7 +13,7 @@ export function VariableMenuReference() {
   return (
     <section aria-label="Variable Menu Rows" className="space-y-2 rounded-lg border bg-background p-4">
       <VariableMenu build={build} onPick={(field) => setStatus(`The sample would insert ${field.insert}.`)} />
-      <Hint role="status">{status}</Hint>
+      <Meta as="p" role="status">{status}</Meta>
     </section>
   );
 }

@@ -28,21 +28,21 @@ const SAMPLES: readonly Sample[] = [
   {
     id: 'entities',
     title: 'Entities Chip',
-    note: 'Two panes. Scope is a dropdown. Only With, Include and Stat Detail are rows of checkboxes.',
+    note: 'Two panes, with “Scope” as a dropdown. “Only With”, “Include” and “Stat Detail” are rows of checkboxes.',
     token: '<ENTITIES|markdown|header="Entities">',
     vocab: PROMPT_VOCABULARY,
   },
   {
     id: 'stats',
     title: 'Stats Chip',
-    note: 'Two panes. Stat Detail is the only row of checkboxes. The last piece on stays checked.',
+    note: 'Two panes, with “Stat Detail” as the one row of checkboxes. The last checked piece can’t be cleared.',
     token: '<STATS DESCRIPTION|markdown>',
     vocab: PROMPT_VOCABULARY,
   },
   {
     id: 'placeholder',
     title: 'Placeholder Chip',
-    note: 'One column. A placeholder chip has no What the AI Reads pane.',
+    note: 'One column, with no “What the AI Reads” pane',
     token: encodePlaceholderToken({ id: 'reference-town', mode: 'world', placementId: 'reference-place' }),
     vocab: placeholderVocabulary(PLACEHOLDERS),
   },
@@ -81,7 +81,7 @@ export function ChipOptionsReference() {
     <Card role="region" aria-labelledby="chip-options-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="chip-options-reference-title" className="text-heading">Chip Options Reference</CardTitle>
-        <CardDescription>This reference opens the production dialog on three sample chips. Hover a control to light the text it adds.</CardDescription>
+        <CardDescription>Shows the production dialog on three sample chips. Hover over a control to highlight the text it adds.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <CheckRow htmlFor="chip-options-reference-editable" label="Editable" hint="Clear it to open the dialog with every control disabled"

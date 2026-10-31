@@ -49,9 +49,9 @@ describe('panel tab strip reference', () => {
       expect(within(entry).getByRole('tab', { name: label })).toBeInTheDocument();
     }
 
-    expect(screen.getByText('Identity, picture, and where the entity is found.')).toBeInTheDocument();
+    expect(screen.getByText('Identity, image, and where the entity is found.')).toBeInTheDocument();
     await user.click(within(entity).getByRole('tab', { name: 'Descriptions' }));
-    expect(screen.getByText('The prose the player reads and the prose the model reads.')).toBeInTheDocument();
+    expect(screen.getByText('The text the player reads and the text the AI reads.')).toBeInTheDocument();
   });
 
   it('gives each registry its own bodies, so a shared tab value does not share its text', async () => {

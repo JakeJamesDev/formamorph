@@ -114,7 +114,7 @@ export function SupporterFlairReference() {
     <Card role="region" aria-labelledby="supporter-flair-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="supporter-flair-reference-title" className="text-heading">Supporter Flair Reference</CardTitle>
-        <CardDescription>This proposal shows the tier colors, badges, names, and Profile Image rings.</CardDescription>
+        <CardDescription>Shows the proposed tier colors, badges, names and Profile Image rings</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 lg:grid-cols-2">
         <ThemePanel mode="light"><Sample /></ThemePanel>

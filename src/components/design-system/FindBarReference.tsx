@@ -143,7 +143,7 @@ export function FindBarReference() {
     <Card role="region" aria-labelledby="find-bar-reference-title" data-find-bar-reference>
       <CardHeader>
         <CardTitle id="find-bar-reference-title" className="text-heading">Find Bar Reference</CardTitle>
-        <CardDescription>Search and replace text in a local World Editor sample.</CardDescription>
+        <CardDescription>Search and replace text in a sample World Editor</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         <ToggleGroup

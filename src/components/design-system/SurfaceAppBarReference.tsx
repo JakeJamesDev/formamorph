@@ -7,6 +7,7 @@ import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { BackButton } from '@/components/BackButton';
 import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { TruncatedText } from '@/components/TruncatedText';
@@ -50,8 +51,8 @@ export function SurfaceAppBarReference() {
       <CardHeader>
         <CardTitle id="surface-app-bar-title" className="text-heading">Surface App Bar</CardTitle>
         <CardDescription>
-          The World Editor&apos;s bar over sample controls. Search World sits on the bar&apos;s center line
-          when space allows, and never overlaps the sides.
+          Shows the World Editor&apos;s bar with sample controls. <strong>Search World</strong> is centered on the bar when
+          there is room, and never overlaps the sides.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -115,7 +116,7 @@ export function SurfaceAppBarReference() {
               )}
             />
           </div>
-          <p className="p-4 text-meta text-muted-foreground">The editor&apos;s panels start here.</p>
+          <Meta as="p" className="p-4">The editor&apos;s panels start here.</Meta>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <Button variant="secondary" size="sm" onClick={() => setDirty(true)}>Make a Change</Button>
@@ -124,7 +125,7 @@ export function SurfaceAppBarReference() {
             Fail Saves
           </label>
         </div>
-        <p className="text-meta text-muted-foreground" aria-live="polite">Last action: {action}</p>
+        <Meta as="p" aria-live="polite">Last action: {action}</Meta>
       </CardContent>
     </Card>
   );

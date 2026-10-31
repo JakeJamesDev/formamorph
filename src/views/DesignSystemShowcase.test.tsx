@@ -121,9 +121,9 @@ describe('settings design reference', () => {
     const status = screen.getByRole('status');
     for (const label of [SETTINGS_COPY.semanticLore.label, SETTINGS_COPY.semanticMemory.label]) {
       await user.click(screen.getByRole('checkbox', { name: label }));
-      expect(status).toHaveTextContent('The reference skipped the download.');
+      expect(status).toHaveTextContent('The reference skipped the embedding model download.');
       await user.click(screen.getByRole('checkbox', { name: label }));
-      expect(status).toHaveTextContent('The reference skipped the unload.');
+      expect(status).toHaveTextContent('The reference skipped the embedding model unload.');
     }
 
     expect(loadEmbeddingModel).not.toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe('code templates reference', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Code Templates' }));
 
-    expect(screen.getByRole('heading', { name: 'Stat Code Templates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Code Templates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Code Templates' })).toBeInTheDocument();
   });
 });

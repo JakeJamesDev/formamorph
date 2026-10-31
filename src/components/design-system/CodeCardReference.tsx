@@ -150,7 +150,7 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
         <Meta>No Uses</Meta>
         <div className="w-fit max-w-full"><DomMount build={NO_USES_BUILD} report={setStatus} /></div>
       </section>
-      <p role="status" className="min-h-5 text-helper text-muted-foreground">{status}</p>
+      <Meta as="p" role="status" className="min-h-5">{status}</Meta>
     </section>
   );
 }
@@ -161,7 +161,7 @@ export function CodeCardReference() {
     <Card role="region" aria-labelledby="code-card-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="code-card-reference-title" className="text-heading">Code Hover Card Reference</CardTitle>
-        <CardDescription>This reference shows the production card for each kind of name, and the Find All Uses list.</CardDescription>
+        <CardDescription>Shows the production card for each kind of name, and the <strong>Find All Uses</strong> list</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 lg:grid-cols-2">
         <ThemePanel mode="light" />

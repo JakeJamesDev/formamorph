@@ -21,7 +21,7 @@ describe('panel crash card reference', () => {
 
     await user.click(within(panel('Dark')).getAllByRole('button', { name: 'Try Again' })[0]);
 
-    expect(within(panel('Dark')).getByRole('status')).toHaveTextContent('Try Again remounts the panel.');
+    expect(within(panel('Dark')).getByRole('status')).toHaveTextContent('“Try Again” loads the panel again.');
     expect(within(panel('Light')).getByRole('status')).toBeEmptyDOMElement();
   });
 });

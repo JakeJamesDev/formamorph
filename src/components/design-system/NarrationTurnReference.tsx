@@ -1,7 +1,7 @@
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { bubbleActions, choicesActions, playerBubbleActions, type BubbleAction, type BubbleActionHandlers } from '@/lib/bubbleActions';
 import { ActionLine } from '@/components/game/ActionLine';
 import { ChoiceRows } from '@/components/game/ChoiceRows';
@@ -79,9 +79,12 @@ export function NarrationTurnReference() {
           Narration Turn
         </CardTitle>
         <CardDescription>
-          These are the production Turn Card, Scene Plate, and choice rows, with the production action lists.
-          Right-click a card or the action line for its menu. Point at the image, or press Tab past it, for its controls.
+          Shows the production Turn Card, Scene Plate and choice rows, with their action lists. Right-click a card
+          or the action line to open its menu.
         </CardDescription>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>Hover over the image, or press Tab to reach it, to see its controls.</li>
+        </Hint>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="narration-turn-latest" className="grid content-start gap-3">
@@ -124,7 +127,7 @@ export function NarrationTurnReference() {
         <section aria-labelledby="narration-turn-past" className="grid content-start gap-3">
           <div className="space-y-1">
             <h3 id="narration-turn-past" className="text-label font-semibold">Past Page</h3>
-            <Meta>No image, so no plate. The row has Rewind to Here, and the rows show the choice taken. The Stats panel actions are disabled.</Meta>
+            <Meta>No image, so no plate. The action row has <strong>Rewind to Here</strong>, the choice rows show the choice taken, and the Stats panel actions are disabled.</Meta>
           </div>
           <div>
             <TurnCard actions={pastActions} turnNumber={4}>

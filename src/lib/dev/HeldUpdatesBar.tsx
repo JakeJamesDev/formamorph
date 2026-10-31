@@ -46,10 +46,10 @@ export function HeldUpdatesBar({ state, apply }: { state: HeldState; apply: () =
 
   const names = files.map(fileName).join(', ');
   const summary = reload
-    ? 'Reload needed to apply the waiting changes'
+    ? 'A reload is needed to apply the waiting changes.'
     : files.every(isStyle)
       ? `Styles changed: ${names}`
-      : `Code changed, may reset what's open: ${names}`;
+      : `Code changed. A reload may reset what's open: ${names}`;
 
   return (
     <div role="status" style={barStyle} {...keepOutOfModals}>

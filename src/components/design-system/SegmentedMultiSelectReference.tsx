@@ -12,7 +12,7 @@ export function SegmentedMultiSelectReference() {
     <Card role="region" aria-labelledby="segmented-multi-select-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="segmented-multi-select-title" className="text-heading">Segmented Multi-Select Reference</CardTitle>
-        <CardDescription>Each segment turns on and off by itself. The last one on stays on.</CardDescription>
+        <CardDescription>Each segment turns on and off by itself. The last segment that’s on can’t be turned off.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         <TimeConditionControls requirement={requirement} accepts={() => true} onChange={setRequirement} />
