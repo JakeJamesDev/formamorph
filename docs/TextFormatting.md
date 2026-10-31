@@ -1,9 +1,9 @@
 # ✍️ Text Formatting
 <!-- keywords: rich text, styling, markup syntax, fancy text, special symbols, works in comments -->
 
-Everywhere Formamorph shows you formatted prose — world descriptions, readmes, community comments, feedback threads, the story's own narration — it reads the same Markdown. This page is the full list of what works.
+Formamorph reads the same Markdown everywhere it shows formatted prose: world descriptions, readmes, community comments, feedback threads and the story's narration. This page lists everything that works.
 
-> Formatting is written in the text itself. In the World Editor's prose fields a **toolbar** sits above the box and applies most of this to your selection, so you rarely have to type the punctuation by hand.
+> Formatting is written in the text itself. In the World Editor's prose fields, a **toolbar** above the box applies most of it to your selection. You rarely have to type the punctuation by hand.
 
 ## How to Format Text with the Toolbar
 <!-- keywords: bold, italic, markdown, heading, list, style, link, table, wysiwyg, underline, buttons above the box, ribbon, formatting bar, click to style, without typing symbols, insert menu -->
@@ -14,7 +14,7 @@ Everywhere Formamorph shows you formatted prose — world descriptions, readmes,
 
 A split button's face then applies the last item you picked from it.
 
-**Bold** and **Italic** also take Ctrl+B and Ctrl+I (⌘B and ⌘I on a Mac). **Undo** and **Redo** buttons sit on the same row.
+**Bold** and **Italic** also take Ctrl+B and Ctrl+I (⌘B and ⌘I on a Mac). **Undo** and **Redo** buttons are on the same row.
 
 ## How to Highlight Text
 <!-- keywords: color, mark, marker, background, colour, yellow, make words stand out, tint, paint over words, neon, undo it, colored words -->
@@ -47,7 +47,7 @@ Wrap text in double equals signs to highlight it, exactly as in Obsidian:
 Mind the ==loose plank== on the third step.
 ```
 
-The plain highlight takes its color from **your active theme**, so a highlight looks at home whether you're on Purple, Forest, Bubble Gum or any of the rest — in light mode or dark.
+The plain highlight takes its color from **your active theme**, such as Purple, Forest or Bubble Gum. It matches the theme in light mode and in dark mode.
 
 ### Color Keys
 
@@ -67,10 +67,14 @@ Put a single letter between the first pair of equals signs to pick a color inste
 
 The closing marker is always a plain `==`, whether or not you used a key. Any other letter shows the plain themed highlight.
 
-You don't have to type any of it. The highlighter button's chevron, **Highlight color**, lists ten highlighters: the plain **Highlight** and the nine colors above, each with its own swatch. The button then applies the last one you picked, while the field stays open. A color on text that already has a different one recolors it in place. The color it already has takes the highlight off.
+You don't have to type any of it. The highlighter button's chevron, **Highlight color**, lists ten highlighters: the plain **Highlight** and the nine colors above, each with its own swatch.
+
+- **The button applies the last highlighter you picked**, while the field stays open.
+- **A different color on highlighted text recolors it** in place.
+- **The same color on highlighted text takes the highlight off.**
 
 > [!NOTE]
-> The content can't start or end with a space — `==loose plank==` highlights, `== loose plank ==` doesn't. An empty `====` renders as nothing at all.
+> The content can't start or end with a space. `==loose plank==` highlights, and `== loose plank ==` doesn't. An empty `====` shows nothing.
 
 > [!WARNING]
 > Two `==` comparisons close together in ordinary prose can be read as one highlight: `a==b and c==d` highlights *b and c*. Put spaces around your operators (`a == b`) or wrap them in `` ` `` inline code, where formatting never applies.
@@ -83,7 +87,7 @@ You don't have to type any of it. The highlighter button's chevron, **Highlight 
 | `H~2~O` | H<sub>2</sub>O |
 | `x^2^` | x<sup>2</sup> |
 
-Neither may contain a space — that's what stops a stray `~` in ordinary prose ("~5 minutes") from swallowing the rest of the line.
+Neither may contain a space. This keeps a stray `~` in ordinary prose, such as "~5 minutes", from formatting the rest of the line.
 
 ## Headings, Lists and Blocks
 <!-- keywords: hash sign title, pound sign, todo checklist, divider, separator line, dashes, section titles, quote someone, big text, bullet points -->
@@ -127,11 +131,11 @@ const greeting = 'hello';
 ```
 ````
 
-Formatting is never applied inside code — an inline span or a fenced block shows exactly what you typed, `==` and `~` included.
+Formatting never applies inside code. An inline span or a fenced block shows exactly what you typed, `==` and `~` included.
 
 Only a fence makes a code block. Text indented by four spaces stays ordinary text.
 
 ## Line Breaks
 <!-- keywords: enter key, paragraph spacing, poem, verse, lines run together, carriage return, shift enter, lyrics layout -->
 
-A single newline is a line break. You don't need two spaces at the end of a line, and you don't need a blank line between every line of a stanza or an address.
+A single newline is a line break. You don't need two spaces at the end of a line. You don't need a blank line between the lines of a stanza or an address.

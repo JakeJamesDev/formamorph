@@ -128,7 +128,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
 
   'settings.prompts': { page: 'Prompts', anchor: '-prompts' },
   settingsCompare: { page: 'Prompts', anchor: '-prompts' },
-  chipOptions: { page: 'Prompts', anchor: 'chip-options' },
+  chipOptions: { page: 'Prompt-Chips', anchor: 'chip-options' },
   worldPrompts: { page: 'Prompts', anchor: 'world-prompts-and-the-diff-viewer' },
   ...Object.fromEntries(tabsOf('settingsPrompts').map((id) => [id, THE_PROMPTS])),
   'settingsPromptPreset.overview': { page: 'Prompts', anchor: 'the-overview' },
