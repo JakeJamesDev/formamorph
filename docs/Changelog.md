@@ -30,8 +30,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
     - **The Inventory prompt now records a use, a change of State, and an item's true nature becoming known.** Opening a letter or lighting a lantern keeps the item. Burning or shattering one still removes it with no effect.
     - **The story can now use one item on another, such as pouring lamp oil into a lantern.** The oil is the item spent. Its When Used script reads the lantern as `self.event.target`.
-  - **Formaquestion:**
-    - **With Sort Questions and Creation on, Formaquestion drafts entities from your world's names, description and two sample entities.** Off the World Editor, your mascot tells you to ask there. Pick a **Creating Endpoint** and edit the **Creating** prompt in Formaquestion Settings.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 
 ### Minor Changes
@@ -54,6 +52,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In game, Formaquestion answers about the story so far and the characters, places, items and lore you have met.** It never reads AI descriptions, diaries, hidden stats or the entries of characters you haven't met. Sources show as plain names.
     - **With an AI Language set, Formaquestion keeps names from your world as the world writes them.** This works even after you clear the world rules prompts.
     - **In the World Editor, Formaquestion can draft entities as cards, and Add puts one in your open world.** Turn on **Creation** in Formaquestion Settings → **General**, then ask for an entity. Undo removes it.
+    - **With Sort Questions and Creation on, Formaquestion drafts entities from your world's names, description and two sample entities.** Off the World Editor, your mascot tells you to ask there. Pick a **Creating Endpoint** and edit the **Creating** prompt in Formaquestion Settings.
   - **Supporter Flair:**
     - **Supporter Flair now covers a third Patreon tier.** The new tier gets its own badge and ring color in the app, and lists first on the Supporters page.
     - **Supporter badges, the Supporters page and the account page show each tier's Patreon name.** A tier with no known name shows Member.
