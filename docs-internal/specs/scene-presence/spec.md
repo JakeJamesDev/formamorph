@@ -1,6 +1,7 @@
 # Spec: Scene Presence and Strangers
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-30. Tickets 01–08 are done; the last landing is eb6c4ea72. Review: spec text corrected, and two fixes landed in 268e1a00e. Closed with gaps: tickets 09 and 10 are open. Closed red: EditorModalShell.test.tsx failed on a peer's uncommitted edit, outside this effort.
 Spec session: scene-presence — spec
 
 ## Problem Statement
@@ -209,8 +210,8 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 ### State and world shape
 
 - An entity gains optional `strangerName` and `strangerDescription` strings. Both resolve placeholders and rolls the way other entity text fields do. ⚠️ This is an additive world export-shape change.
-- The save gains a remembered last alias per entity, keyed by entity id. The planner's cast alias and the Stranger Name fill it. ⚠️ This is an additive save export-shape change.
-- The met-in-play list keeps its shape. The start-met entities are no longer written to it.
+- The save gains a remembered last alias per entity, keyed by entity id. The planner's cast alias fills it. The Stranger Name is a read-time fallback and is never stored (Q45). ⚠️ This is an additive save export-shape change.
+- The met-in-play list keeps its shape. It records every entity here that the story names, start-met ones included (Q46).
 - The per-turn scene record keeps its alias and revealed fields. A move now clears the live scene list, apart from followers.
 
 ### Surfaces
