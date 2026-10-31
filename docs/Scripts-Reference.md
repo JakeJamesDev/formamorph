@@ -529,7 +529,7 @@ When the player plays no entity, `persona` is an empty entry:
 ### Entities
 <!-- keywords: companion status, is someone nearby, does character exist, invented ones missing, duplicate names, npc, npc traits, companion traits, another character's trait, side character -->
 
-`entities` holds every entity in the game by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
+`entities` holds every entity in the game by its code name: the world's own entities, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
 
 | Member | What it is |
 | --- | --- |
@@ -1017,7 +1017,7 @@ if (stats.Energy.value <= 0) location.move("Camp");
 
 `discover(<text>)` adds a new entity to the turn, as if the AI had introduced it.
 
-- **`discover("<Name>")`** adds the name to the turn's cast. The AI then describes the entity, as it does for an entity the narration invents. With **Describe New Characters** off, nothing more happens. See [How to Get Descriptions for New Entities](Entities#how-to-get-descriptions-for-new-entities).
+- **`discover("<Name>")`** adds the name to the entities in the turn's scene. The AI then describes the entity, as it does for an entity the narration invents. With **Describe New Characters** off, nothing more happens. See [How to Get Descriptions for New Entities](Entities#how-to-get-descriptions-for-new-entities).
 - **`discover("<Name>", "<Description>")`** creates the entity at once with that description, with no AI call.
 - **A name that an entity already has is skipped.**
 - **A blank name or a blank description throws a TypeError.** Both are trimmed.
@@ -1106,7 +1106,7 @@ if (traits.Betrayed.enabled) entities.Mira.diary("I trusted them, and they sold 
 
 A script's move, advance or discovery wins over the AI's answer for the same turn. Memory and diary lines are the exception. They join the AI's summary and diary entries. With no script write, the AI's answer applies.
 
-Like every script write, each one belongs to its turn. A regenerate or a stopped turn discards it. A stat re-roll keeps the turn's location, time, cast, memories and diary lines.
+Like every script write, each one belongs to its turn. A regenerate or a stopped turn discards it. A stat re-roll keeps the turn's location, time, scene entities, memories and diary lines.
 
 ### Examples
 <!-- keywords: sample scripts, cookbook, survival needs, decay over time, combat math, rng, randomness same number, soft cap, copy paste ideas -->
