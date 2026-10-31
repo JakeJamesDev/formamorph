@@ -98,7 +98,7 @@ describe('the Patreon section: linked with no tier', () => {
     patreon({ 'GET ': ok(NO_TIER) });
     render(<AccountPage />);
 
-    expect(await screen.findByText('No active membership')).toBeTruthy();
+    expect(await screen.findByText('Not supporting right now')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Unlink' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Become a Supporter' })).toBeTruthy();
     expect(screen.queryByRole('checkbox', { name: 'Show Supporter Flair' })).toBeNull();

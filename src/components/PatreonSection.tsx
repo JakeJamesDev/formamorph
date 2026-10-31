@@ -253,7 +253,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
 
       {status?.linked && !status.tier && (
         <>
-          <p className="text-body">No active membership</p>
+          <p className="text-body">Not supporting right now</p>
           <div className="flex flex-wrap items-center gap-3">
             {unlinkButton}
             {become}

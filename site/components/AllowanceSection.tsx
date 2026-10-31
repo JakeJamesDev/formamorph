@@ -42,7 +42,7 @@ function Figures({ reading, reset }: { reading: HostedAllowance; reset: string |
 
   return (
     <dl className="space-y-1 text-body">
-      {reading.tier && <Row label="Tier" value={tierNameOf(reading.tier)} />}
+      {reading.tier && <Row label="Support" value={tierNameOf(reading.tier)} />}
       {reading.percentUsed !== null && <Row label="Used" value={`${reading.percentUsed}%`} />}
       {reading.turnsLeft !== null && <Row label="Turns left" value={`About ${reading.turnsLeft}`} />}
       {reset && <Row label="Resets" value={reset} />}
@@ -78,9 +78,9 @@ export function AllowanceSection() {
       return (
         <div className="space-y-2">
           <p className="text-helper text-muted-foreground">
-            Formamorph AI gives Supporters hosted AI with no key and no setup.
+            Formamorph AI thanks Patreon Supporters with hosted AI that needs no key and no setup.
           </p>
-          <PatreonLink>Join on Patreon</PatreonLink>
+          <PatreonLink>Support on Patreon</PatreonLink>
         </div>
       );
     case 'age-gate':
@@ -97,9 +97,9 @@ export function AllowanceSection() {
       return (
         <div className="space-y-2">
           <p className="text-helper text-muted-foreground">
-            You’ve used this month’s Formamorph AI{reset ? `. It comes back on ${reset}.` : '.'}
+            You’ve used this month’s Formamorph AI allowance{reset ? `. It comes back on ${reset}.` : '.'}
           </p>
-          <PatreonLink>Upgrade on Patreon</PatreonLink>
+          <PatreonLink>Support on Patreon</PatreonLink>
         </div>
       );
     default:

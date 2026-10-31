@@ -16,7 +16,7 @@ export interface HostedStateCopy {
   extra?: HostedStateAction;
 }
 
-export const HOSTED_UPGRADE_LABEL = 'Upgrade';
+export const HOSTED_SUPPORT_LABEL = 'Support on Patreon';
 export const HOSTED_SWITCH_BACK_LABEL = 'Switch Back';
 
 const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
@@ -29,11 +29,11 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
   },
   suspended: { reason: "Your account is suspended, so you can't use Formamorph AI", action: null },
   'age-gate': { reason: 'Confirm that you are 18 or older to use Formamorph AI', action: { kind: 'ageGate', label: 'Confirm Age' } },
-  locked: { reason: 'Join as a Supporter on Patreon to use Formamorph AI', action: { kind: 'patreon', label: 'Join on Patreon' } },
+  locked: { reason: 'Formamorph AI is a thank-you for Patreon Supporters', action: { kind: 'patreon', label: HOSTED_SUPPORT_LABEL } },
   exhausted: {
     reason: "You've used this month's Formamorph AI allowance",
     action: { kind: 'switchBack', label: HOSTED_SWITCH_BACK_LABEL },
-    extra: { kind: 'patreon', label: HOSTED_UPGRADE_LABEL },
+    extra: { kind: 'patreon', label: HOSTED_SUPPORT_LABEL },
   },
   paused: {
     reason: "Formamorph AI is paused for everyone right now. This doesn't use your allowance.",

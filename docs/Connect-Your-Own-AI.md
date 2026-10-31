@@ -9,18 +9,18 @@ The AI writes everything you read. A stronger model gives you sharper narration,
 <!-- keywords: formamorph ai, supporter, patreon, allowance, monthly allowance, turns left, used up, ran out, switch back, hosted ai, no setup, no key -->
 <!-- route: settingsEndpoints.text#text-preset -->
 
-**Formamorph AI** is a built-in preset for Patreon Supporters. It needs no key and no setup. Your Supporter tier sets the context window and the size of your monthly allowance.
+**Formamorph AI** is a built-in preset that thanks Patreon Supporters. It needs no key and no setup. Your support includes a context window and a monthly allowance. Their size depends on how you support the project.
 
-The first time a device sees your Supporter tier, Formamorph selects **Formamorph AI** for you. It does this once on each device. After that, your choice stays.
+The first time a device sees your support, Formamorph selects **Formamorph AI** for you. It does this once on each device. After that, your choice stays.
 
-To see your allowance, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your tier, the percent used, about how many turns are left, and the reset date. The numbers update after each turn.
+To see your allowance, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your support, the percent used, about how many turns are left, and the reset date. The numbers update after each turn.
 
 - Each turn on any device counts against one shared allowance.
 - The allowance resets on the 1st of each month (UTC).
 - A notice appears after a turn when you pass a warning level. Each notice shows once a month.
-- When the allowance runs out, Formamorph AI stops until the reset date. Select **Switch Back** to return to your last preset, or **Upgrade** to open the Patreon page.
+- When the allowance runs out, Formamorph AI stops until the reset date. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
 
-If you are not a Supporter, the preset shows a **Join on Patreon** button.
+If you are not a Supporter, the preset shows a **Support on Patreon** button.
 
 Every route to your own AI ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode.
 
