@@ -3,7 +3,7 @@
 
 The Test Bench checks a world before you play it. It lives in the World Editor and works in Simple and Advanced mode.
 
-The bench shows only what the app computes from your world. It never calls the AI, so it works offline, costs nothing and updates as you type. To see what the AI writes, play a turn.
+The bench shows only what the app computes from your world. It never calls the AI, so it works offline, costs nothing and updates as you type. Only **Check Sources** needs the server. To see what the AI writes, play a turn.
 
 ## How to Check a World for Issues
 <!-- keywords: errors, warnings, problems, bugs, validate, doctor, broken, debug, fix, flask icon, health check, diagnose, scan for mistakes, auto repair, verify before upload, number on beaker -->
@@ -21,22 +21,22 @@ The list updates as you edit. To see the full bench, select **Open Test Bench** 
 <!-- route: worldEditorBench.triggers#scene-text -->
 
 1. Open the Test Bench, then select the **Triggers** tab.
-2. Paste story text into the **Scene text** box. If you've played this world, select **Paste Last Turn** to fill it from your latest save.
+2. Paste story text into the **Scene text** box. If you've played this world, select **Paste Last Turn** to fill it and **History** from your latest save.
 3. Read **Dictionary**. Each entry says why it fired, or why it stayed out.
-4. Select a marked word in your text to jump to the entity or entry it matched.
+4. Select a marked word in your text to jump to the entity or entry it matched. Select it again to step through every row that shares the word.
 
-To test scan depth, open **History** and paste earlier messages, oldest first.
+To test scan depth, open **History** and paste earlier messages, oldest first, with a `---` line between them.
 
 ## How to Preview the Opening
 <!-- keywords: first message, intro, start, greeting, test, see, first turn, simulate new game, beginning scene, what newcomers see, reroll randoms, initial values, as a different class, sample run -->
 <!-- route: worldEditorBench.opening#placeholder-rolls -->
 
 1. Open the Test Bench, then select the **Opening** tab.
-2. In **Testing as**, pick who you play.
+2. In **Testing as**, pick the trait to test, such as a class. If the world has personas, pick one in **Persona**.
 3. Read the **Opening Pool**. Select an opening to see what it sends on turn one.
 4. Select **Reroll** to draw new Wildcard values.
 
-If the world has more than one starting location, pick one in the **Starting Location** list.
+If a new game can start in more than one place, pick one in the **Starting Location** list. With no location marked as a start, every location is in the list.
 
 ## What the Bench Shows
 <!-- keywords: is it accurate, reliable results, what it cannot tell, unable to predict ai, same as real game, simulation scope -->
@@ -48,7 +48,7 @@ Where a result ends in the AI's choice, the bench says so. For example, **AI Con
 ## Opening the Bench
 <!-- keywords: where to find it, beaker button, orange counter, dock or float, detach panel, side by side, simulate as a class, choose test place, instruments list -->
 
-The **Test Bench** flask button sits at the right of the World Editor's header. Its badge counts findings.
+The **Test Bench** flask button sits at the right of the World Editor's header. Its badge counts the rows on the **Issues** tab. Dismissed rows don't count.
 
 - An amber badge counts new findings: ones you haven't seen yet.
 - A gray badge counts every finding, after you've seen them all.
@@ -72,12 +72,12 @@ On desktop, the panel can sit inside the editor's list panel or beside it. Selec
 
 ### Testing As and At
 
-**Triggers**, **AI Context** and **Opening** read the bar under the tabs: **Testing as** who you play, **at** a location.
+**Triggers** and **AI Context** read the bar under the tabs: **Testing as** a trait pick, **at** a location. **Opening** reads **Testing as** only, and starts at its own **Starting Location** pick.
 
 - **Testing as** lists the traits in groups where the player picks one. **Anyone** tests with no pick.
 - **at** lists every location. **Nowhere** tests with no location.
 
-Your pick stays when you switch tabs. A broken pin on your **Testing as** pick shows in red under the bar.
+Your pick stays when you switch tabs. A broken pin on the traits in force, the **at** location or the starting stats shows in red under the bar. The bar also names the stats your pick adds or removes.
 
 ## Issues
 <!-- keywords: ignore a warning, suppress, silence a finding, bring back hidden warning, world too large, file size meter, linter, simple mode hides findings -->
@@ -88,13 +88,17 @@ The **Issues** tab is the World Doctor. It checks your world's structure: broken
 - **Publish Size** shows how much of the publish limit the world uses. Images, sounds and 3D models count toward it. A world over the limit adds a warning that opens the **Media** tab, where you can find the heavy files.
 - Each finding is one row with the items it names. A **New** tag marks a row you haven't seen.
 - **Fix** repairs a row when the fix is safe. **Fix All** repairs every item in the row.
-- The eye button dismisses a row. Open **dismissed** at the bottom, then select the restore button to bring it back.
-- **Mark All Seen** clears the **New** tags. Closing the bench also marks the list seen.
+- The eye button dismisses a row. Open **dismissed** at the bottom, then select the restore button to bring it back. A row about a missing source can't be dismissed.
+- **Mark All Seen** clears the **New** tags. Closing the bench also marks the list seen. A row whose text changes shows as **New** again.
+- This browser remembers seen and dismissed rows for each world. An update to a downloaded world clears the seen marks.
+- A world with no findings shows **No Problems Found**.
 
 Some checks run only when you ask:
 
-- **Check Scripts** runs every script of every stat, trait and the world, in each timing, and lists what fails. Each finding names the script by its name, or by its owner and timing. It shows prompts as it runs: each `player` question shows, one after another, for you to answer. It shows in Advanced mode when the world has a script with code.
-- **Check Sources** asks the server whether the library items this world's copies follow still exist. It shows when a copy follows a published item. A copy whose source is gone gets a repair list and **Apply**.
+- **Check Scripts** runs every script of the world, every stat and every trait, entities' included. Each runs once, in its own timing, and the list shows what fails. Each finding names the script by its name, or by its owner and timing. It shows prompts as it runs: each `player` question shows, one after another, for you to answer. It shows in Advanced mode when the world has a script with code.
+- **Check Sources** asks the server whether the library items this world's copies follow still exist. It shows when a copy follows a published item. A copy whose source is gone gets a repair list and **Apply**. The repairs are **Replace from Library**, **Unlink and Keep Content** and **Remove from World**. When the server can't be reached, **Retry Check** asks again.
+
+After a run, each button reads **Check Again**.
 
 In Simple mode, findings about hidden fields fold into one line. Switch to Advanced mode to see them.
 
@@ -109,7 +113,7 @@ The **Triggers** tab is the Activation Tester. Paste text, and it shows what tha
 - **Rendered Context** shows the lore text the AI would get, with its token cost.
 - **History** holds earlier messages, so you can test an entry's scan depth.
 
-**Semantic** adds meaning-based matches. It's off each time you open the bench, so a keyword result never looks like a semantic one. It needs embeddings, which the app builds when you play the world with **Semantic Lore** on.
+**Semantic** adds meaning-based matches. It's off each time you open the World Editor, so a keyword result never looks like a semantic one. It needs embeddings, which the app builds when you play the world with **Semantic Lore** on.
 
 Matching warnings from **Issues** show on the rows they name, with the same **Fix**.
 
@@ -132,8 +136,8 @@ The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 
 - **Persona** picks who you play, when the world has persona choices.
 - **Opening Pool** lists every opening a new game here can draw, with its chance.
-- **Stats at Game Start** shows each stat's starting value. Drag a slider to see which descriptor the AI gets at other values. Dragging never changes the world.
-- **Active Traits** lists the traits in force at the start, with their pins and stat changes.
+- **Stats at Game Start** shows each stat's starting value. Drag a slider to see which descriptor the AI gets at other values. Dragging never changes the world. When traits change a stat, the row shows by how much.
+- **Active Traits** lists the traits in force at the start, with their pins and the stats they add or remove.
 - **Placeholder Rolls** shows what each Wildcard drew, every value's chance, and the chance of a repeat.
 - **First Prompt** shows the **System Prompt** and **Opening User Turn**. An Opening Narration shows **Page One** instead, since no request goes out on turn one.
 
