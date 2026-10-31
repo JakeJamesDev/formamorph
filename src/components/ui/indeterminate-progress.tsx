@@ -3,7 +3,7 @@ const IndeterminateProgress = () => {
     <div className="relative w-full h-1">
       <div
         role="progressbar"
-        aria-label="Loading..."
+        aria-label="Loading"
         aria-valuemin={0}
         aria-valuemax={1}
         className="absolute inset-0 overflow-hidden bg-secondary"

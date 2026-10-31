@@ -141,7 +141,7 @@ describe('settings design reference', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: /preview theme/i }));
-    expect(await screen.findByText(/Seeded from your current theme/)).toBeInTheDocument();
+    expect(await screen.findByText(/Starts from your current .* theme/)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
   });
 

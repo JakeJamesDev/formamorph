@@ -56,7 +56,7 @@ export function BundledContentChoice({ worldId, data, onApplied }: BundledConten
         disabled={busy}
         onCheckedChange={(checked) => { void apply(checked === true); }}
       />
-      <Tip tip="Save this world's bundled entities and dictionaries to your library. Other worlds can then use them, and source updates apply to them.">
+      <Tip tip="Saves this world's bundled entities and dictionaries as library items and links the world's copies to them. Other worlds can then use them too.">
         <label htmlFor="link-bundled-content" className="text-label cursor-pointer">
           Link bundled content to my library
         </label>

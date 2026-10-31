@@ -10,6 +10,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { labelPlaceholders } from '@/lib/placementLetters';
+import { Hint } from '@/components/ui/typography';
 
 /** One row of the flat search list. `name` is the label its row shows, and what the search matches. */
 export type ListEditorRow = {
@@ -100,7 +101,7 @@ export function useListEditor(
 
   const { onReorder } = adapter;
   const searchList = (rows: ListEditorRow[]) => {
-    if (!rows.length) return <p className="text-helper text-muted-foreground p-2">No {adapter.noun} match &ldquo;{search.typed}&rdquo;.</p>;
+    if (!rows.length) return <Hint className="p-2">No {adapter.noun} match &ldquo;{search.typed}&rdquo;.</Hint>;
     const drawn = rows.map((row) => {
       const props = {
         selected: selectedId === row.id,

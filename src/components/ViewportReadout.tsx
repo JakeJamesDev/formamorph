@@ -62,7 +62,7 @@ export function ViewportReadout() {
     };
     update();
 
-    // Focus changes are what open and close the keyboard, and the resize can land a frame later.
+    // Focus changes are what open and close the keyboard, and the resize can arrive a frame later.
     const events: Array<[EventTarget | undefined, string]> = [
       [vv ?? undefined, 'resize'], [vv ?? undefined, 'scroll'],
       [window, 'resize'], [window, 'orientationchange'],

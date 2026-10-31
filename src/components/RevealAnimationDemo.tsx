@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Hint } from '@/components/ui/typography';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import {
@@ -45,17 +46,17 @@ export type RevealAnimationSource = Pick<ReturnType<typeof useSettings>,
 const COPY = {
   narration: {
     title: 'Narration reveal',
-    srDescription: 'Preview the narration reveal and tune its animation.',
-    noEffects: 'No effects — narration types in with the smooth character crawl (paced by the model’s speed, so it isn’t previewable here).',
-    speed: 'In game, the pace follows the model’s tokens/sec, but never goes faster than these floors.',
-    resetDescription: 'Reset all narration reveal settings to their defaults?',
+    srDescription: 'Preview the narration reveal and adjust its animation',
+    noEffects: 'No effects. Narration types in one character at a time, at the model’s speed, so this preview can’t show it.',
+    speed: 'In play, narration follows the model’s speed but never reveals faster than these limits.',
+    resetDescription: 'Every narration reveal setting returns to its default.',
   },
   answer: {
     title: 'Answer Reveal',
-    srDescription: 'Preview the answer reveal and tune its animation.',
+    srDescription: 'Preview the answer reveal and adjust its animation',
     noEffects: 'No effects. Answers show with no animation.',
-    speed: 'Answers reveal at a default pace, but never go faster than these floors.',
-    resetDescription: 'Reset all answer reveal settings to their defaults?',
+    speed: 'Answers reveal at a default pace but never faster than these limits.',
+    resetDescription: 'Every answer reveal setting returns to its default.',
   },
 } as const;
 
@@ -196,8 +197,8 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
         <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-4">
           <DialogDescription>
-            Stack any of these effects to build how each sentence appears. Changes save as you make them and
-            preview live below.
+            Combine these effects to set how each sentence appears. Changes save at once and play in the
+            preview above.
           </DialogDescription>
 
           {/* Effects */}
@@ -206,14 +207,14 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
             <label className="flex items-center gap-2 text-label">
               <Checkbox checked={revealFade} onCheckedChange={(c) => setRevealFade(c === true)} />
               <span className="font-medium">Fade</span>
-              <span className="text-meta text-muted-foreground">opacity 0 → 1</span>
+              <Hint as="span">Fades each sentence in</Hint>
             </label>
 
             {prefersReducedMotion && (
               <p className="text-helper text-warning">
-                Your system’s <strong>Reduce Motion</strong> setting is on, so <strong>Move</strong> and{' '}
-                <strong>Scale</strong> are disabled to respect it. Fade and Blur still apply. Turn it off in
-                your OS accessibility settings to use them.
+                Your system’s <strong>Reduce Motion</strong> setting is on, so <strong>Move in</strong> and{' '}
+                <strong>Scale</strong> are off. <strong>Fade</strong> and <strong>Blur</strong> still apply. To
+                use Move in and Scale, turn off Reduce Motion in your system’s accessibility settings.
               </p>
             )}
 
@@ -222,7 +223,7 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
               <label className="flex items-center gap-2 text-label">
                 <Checkbox checked={revealMove} disabled={prefersReducedMotion} onCheckedChange={(c) => setRevealMove(c === true)} />
                 <span className="font-medium">Move in</span>
-                <span className="text-meta text-muted-foreground">slides in from a direction</span>
+                <Hint as="span">Slides each sentence in from one side</Hint>
               </label>
               {revealMove && !prefersReducedMotion && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
@@ -243,7 +244,7 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
               <label className="flex items-center gap-2 text-label">
                 <Checkbox checked={revealScale} disabled={prefersReducedMotion} onCheckedChange={(c) => setRevealScale(c === true)} />
                 <span className="font-medium">Scale</span>
-                <span className="text-meta text-muted-foreground">grows into place</span>
+                <Hint as="span">Grows each sentence into place</Hint>
               </label>
               {revealScale && !prefersReducedMotion && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
@@ -275,7 +276,7 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
               <label className="flex items-center gap-2 text-label">
                 <Checkbox checked={revealBlur} onCheckedChange={(c) => setRevealBlur(c === true)} />
                 <span className="font-medium">Blur</span>
-                <span className="text-meta text-muted-foreground">sharpens into focus</span>
+                <Hint as="span">Starts blurred, then sharpens</Hint>
               </label>
               {revealBlur && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
@@ -291,7 +292,7 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
           {/* Shared easing */}
           {active && (
             <label className="flex flex-col gap-1 text-label sm:max-w-xs">
-              <span className="text-muted-foreground">Easing (all effects)</span>
+              <span className="text-muted-foreground">Easing for all effects</span>
               <Select value={revealEasing} onValueChange={setRevealEasing}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -301,13 +302,13 @@ export function RevealAnimationDialog({ open, onOpenChange, source, kind }: { op
             </label>
           )}
 
-          {/* Minimum speed — floors the in-game reveal so a fast model stays readable; 0 = unlimited. */}
+          {/* Speed limit — floors the in-game reveal so a fast model stays readable; 0 = unlimited. */}
           {active && (
             <div className="rounded-md border border-dashed border-border p-3 space-y-3">
-              <div className="text-helper text-muted-foreground">
-                <span className="font-medium text-foreground">Minimum speed.</span> {copy.speed} 0 = no limit. The
-                preview above runs at your minimum (or a default when unlimited).
-              </div>
+              <Hint>
+                <span className="font-medium text-foreground">Speed limit.</span> {copy.speed} Set 0 for no
+                limit. The preview plays at these values, or at a default when a value is 0.
+              </Hint>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Min fade duration: {revealMinDuration === 0 ? 'Unlimited' : `${revealMinDuration}ms`}</span>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { useAnchorCovered } from '@/lib/useAnchorCovered';
 import type { TutorialEntry, TutorialNav } from '@/lib/tutorials';
+import { Hint, Meta } from '@/components/ui/typography';
 
 type Side = 'top' | 'bottom' | 'left' | 'right';
 type Align = 'start' | 'center' | 'end';
@@ -71,13 +72,13 @@ export function TutorialNote({ open, title, body, points, action, footer, anchor
         >
           <PopoverArrow />
           <p className="font-medium leading-none">{title}</p>
-          {body && <p className="text-helper text-muted-foreground">{body}</p>}
+          {body && <Hint>{body}</Hint>}
           {points && (
             <div className="space-y-1">
               {points.map((p) => (
-                <p key={p.term} className="text-helper text-muted-foreground">
+                <Hint key={p.term}>
                   <span className="font-medium text-foreground">{p.term}</span> — {p.text}
-                </p>
+                </Hint>
               ))}
             </div>
           )}
@@ -126,9 +127,9 @@ export function TutorialPopover({ entry, nav, side = 'bottom', align = 'end', an
               of one says nothing. */}
           {isTour && (
             <>
-              <span className="mr-auto text-meta text-muted-foreground tabular-nums">
+              <Meta className="mr-auto tabular-nums">
                 {nav.step} / {nav.total}
-              </span>
+              </Meta>
               {/* "Previous", not "Back": screens that host a tour have their own Back control, and two
                   of them differ only in whether they leave the screen. */}
               <Button size="xs" variant="ghost" onClick={nav.prev} disabled={nav.step === 1}>Previous</Button>

@@ -8,6 +8,7 @@ import { selectTriggerVariants } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 
 /** One pickable row. Rows are unique by `key`, so two rows may pick the same `value`. */
 export interface BreadcrumbPickerRow<V> {
@@ -68,11 +69,11 @@ function Breadcrumb({ segments, render }: { segments: readonly string[]; render:
   const collapsed = segments.length >= 3;
   const shown = collapsed ? [segments[0], '…', segments[segments.length - 1]] : segments;
   return (
-    <span className="min-w-0 flex-1 truncate text-right text-meta text-muted-foreground">
+    <Meta className="min-w-0 flex-1 truncate text-right">
       {shown.map((segment, i) => (
         <Fragment key={i}>{i > 0 && SEPARATOR}{collapsed && i === 1 ? segment : render(segment)}</Fragment>
       ))}
-    </span>
+    </Meta>
   );
 }
 
@@ -153,7 +154,7 @@ function PickerCommand<V>({
             onSelect={() => openPage(page.key)}
           >
             <span className="min-w-0 flex-1 truncate">{render(page.heading)}</span>
-            <span className="shrink-0 text-meta text-muted-foreground">{count}</span>
+            <Meta className="shrink-0">{count}</Meta>
             <span aria-hidden className="shrink-0 text-muted-foreground">›</span>
           </CommandItem>
         );
@@ -177,7 +178,7 @@ function PickerCommand<V>({
             </span>
           )}
           <BreadcrumbLabel name={r.name} breadcrumb={breadcrumb} render={render} />
-          {r.hint && <span className="shrink-0 text-meta text-muted-foreground">{render(r.hint)}</span>}
+          {r.hint && <Meta className="shrink-0">{render(r.hint)}</Meta>}
         </CommandItem>
       );
       return <BreadcrumbTip key={r.key} breadcrumb={breadcrumb} plainText={plain}>{cmdItem}</BreadcrumbTip>;

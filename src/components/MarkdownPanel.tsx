@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
  * panel rather than floating on the dialog's background, and still selectable for copy/paste.
  *
  * Shared by the changelog box, the world Readme, and the help pop-outs. Callers own the height cap
- * (`className`) since each surface sits in a different container. `ref` lands on the content div, for
+ * (`className`) since each surface sits in a different container. `ref` attaches to the content div, for
  * callers that post-process the rendered markup.
  */
 export const MarkdownPanel = forwardRef<HTMLDivElement, {

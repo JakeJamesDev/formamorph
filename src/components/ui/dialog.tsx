@@ -44,10 +44,10 @@ export const dialogFullHeightMobile = 'max-sm:top-[var(--app-top,0px)] max-sm:tr
 
 /**
  * The stock open/close animation minus the slide, for a dialog centered by its margins rather than by
- * `translate(-50%, -50%)`. The slide is written as a half-width offset that only lands where a
- * transform-centered dialog sits; the zoom and fade read the same either way.
+ * `translate(-50%, -50%)`. The slide is written as a half-width offset that is correct only for a
+ * transform-centered dialog; the zoom and fade read the same either way.
  *
- * Pair with `unanimated` on the content, and drive it from `data-state` on the element itself.
+ * Pair with `unanimated` on the content, and control it with `data-state` on the element itself.
  */
 export const dialogCenteredAnimation = 'duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95';
 

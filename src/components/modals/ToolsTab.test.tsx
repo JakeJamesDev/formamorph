@@ -217,7 +217,7 @@ describe('Offered To', () => {
     await pick(user, /^Select all \d+ options$/);
     await user.click(offeredTo());
     const listbox = (await screen.findByRole('option', { name: /^Narration/ })).closest('[role="listbox"]');
-    await user.type(screen.getByPlaceholderText('Search options...'), 'zzz');
+    await user.type(screen.getByPlaceholderText('Search options'), 'zzz');
     for (const name of ['Clear', 'Close']) {
       const item = screen.getByRole('option', { name });
       expect(listbox).not.toContainElement(item);

@@ -274,7 +274,7 @@ export function DateTimeField({
     onChange(dateOnly ? nextDay : `${nextDay}T${time || DEFAULT_TIME}`);
 
   // An hour alone is not a moment either, but in a visual picker a click that writes nothing reads as a
-  // broken control — so the first one lands on today and the calendar corrects it from there.
+  // broken control — so the first one starts at today and the calendar corrects it from there.
   const emitTime = (nextTime: string) =>
     onChange(`${day || dateToDay(new Date())}T${nextTime || DEFAULT_TIME}`);
 

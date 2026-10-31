@@ -270,7 +270,7 @@ describe('the unsaved-changes prompt', () => {
     await openOptedIn();
     await type(30);
     askToLeave();
-    expect(await screen.findByText(/exit without saving, or keep editing/)).toBeInTheDocument();
+    expect(await screen.findByText(/“Exit Without Saving” discards them\./)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
 

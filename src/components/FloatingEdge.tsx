@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
  * their canvas is looking at what the player will see. What an arrow *says* is `lib/canvasEdges`' answer.
  */
 
-/** Half the gap between a pair's two arrows — each rides to the left of its own direction of travel. */
+/** Half the gap between a pair's two arrows — each is placed to the left of its own direction of travel. */
 const ARROW_OFFSET = 5;
 
 /** The width of an arrow's click target, xyflow's default. */

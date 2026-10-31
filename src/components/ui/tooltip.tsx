@@ -145,7 +145,7 @@ const TooltipPositioner = React.forwardRef<HTMLDivElement, TooltipPrimitive.Posi
 )
 TooltipPositioner.displayName = "TooltipPositioner"
 
-/** The bubble. Popover tokens, so it themes with every palette in both modes. Base UI drives the enter
+/** The bubble. Popover tokens, so it themes with every palette in both modes. Base UI runs the enter
  *  and exit through `data-starting-style` / `data-ending-style`, and marks an instant open — keyboard
  *  focus, or a neighbor inside the group window — with `data-instant`, which skips the animation. */
 const TooltipPopup = React.forwardRef<HTMLDivElement, TooltipPrimitive.Popup.Props>(

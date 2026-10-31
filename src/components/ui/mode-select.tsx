@@ -2,6 +2,7 @@ import { forwardRef, useId, type ComponentPropsWithoutRef, type ElementRef } fro
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Hint } from '@/components/ui/typography';
 
 export type ModeSelectValue = 'simple' | 'advanced';
 
@@ -10,7 +11,7 @@ type TriggerProps = Omit<ComponentPropsWithoutRef<typeof SelectTrigger>, 'childr
 /**
  * The Simple/Advanced picker. The trigger keeps one width in both modes, so the controls beside it never
  * shift. The ref and every extra attribute go to the trigger, so tutorial notes, tour anchors and Take Me
- * There targets land on it.
+ * There targets attach to it.
  */
 export const ModeSelect = forwardRef<ElementRef<typeof SelectTrigger>, TriggerProps & {
   mode: ModeSelectValue;
@@ -27,7 +28,7 @@ export const ModeSelect = forwardRef<ElementRef<typeof SelectTrigger>, TriggerPr
     <Select value={mode} onValueChange={(v) => onModeChange(v as ModeSelectValue)}>
       <SelectTrigger ref={ref} {...rest} aria-describedby={describedByIds} className={cn('relative w-[7.5rem] gap-2', className)}>
         <SelectValue>{mode === 'advanced' ? 'Advanced' : 'Simple'}</SelectValue>
-        {/* The tip rides the dot, not the trigger: a Tip with no text drops its wrapper, so a trigger-wide
+        {/* The tip wraps the dot, not the trigger: a Tip with no text drops its wrapper, so a trigger-wide
             tip would remount the trigger, and its focus with it, when the dot appears. */}
         {hiddenNotice && (
           <>
@@ -43,11 +44,11 @@ export const ModeSelect = forwardRef<ElementRef<typeof SelectTrigger>, TriggerPr
       <SelectContent align="end">
         <SelectItem value="simple">
           <span className="block">Simple</span>
-          <span className="block text-meta text-muted-foreground">{descriptions.simple}</span>
+          <Hint as="span" className="block">{descriptions.simple}</Hint>
         </SelectItem>
         <SelectItem value="advanced">
           <span className="block">Advanced</span>
-          <span className="block text-meta text-muted-foreground">{descriptions.advanced}</span>
+          <Hint as="span" className="block">{descriptions.advanced}</Hint>
         </SelectItem>
       </SelectContent>
     </Select>

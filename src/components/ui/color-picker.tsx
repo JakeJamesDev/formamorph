@@ -56,7 +56,7 @@ export function ColorPicker({
           type="button"
           variant="outline"
           aria-label={ariaLabel}
-          // A label replaces the button text in the accessible name, so the value rides in the description.
+          // A label replaces the button text in the accessible name, so the value goes in the description.
           aria-describedby={ariaDescribedBy ? `${valueId} ${ariaDescribedBy}` : valueId}
           className="gap-2 px-3 font-mono"
         >
