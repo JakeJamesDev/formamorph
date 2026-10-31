@@ -140,6 +140,6 @@ describe('the library dictionary editor’s own placeholder store', () => {
   it('binds no owner’s section: the store has no world lists', async () => {
     await open();
     expect(modalStores().length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Placeholders of this dictionary/)).toBeNull();
+    expect(screen.queryByText(/These placeholders belong to this dictionary/)).toBeNull();
   });
 });

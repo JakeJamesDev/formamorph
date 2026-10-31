@@ -27,6 +27,7 @@ import {
 import type { PlaceholderPin, Stat, StatDescriptor, ThresholdUnit } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
+import { Meta } from '@/components/ui/typography';
 
 /** What one descriptor field can be written to: its threshold, its text, or its pin list. */
 export type DescriptorFieldValue = string | number | PlaceholderPin[] | undefined;
@@ -280,9 +281,9 @@ export const StatDescriptorsSection = ({
               </div>
             </div>
             {span && (
-              <p className="ml-1 mt-0.5 text-helper text-muted-foreground">
+              <Meta as="p" className="ml-1 mt-0.5">
                 covers {span.from} – {span.to}{unit === 'percent' ? ` of ${max}` : ''}
-              </p>
+              </Meta>
             )}
           </div>
         );

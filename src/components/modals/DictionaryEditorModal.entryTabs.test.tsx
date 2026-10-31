@@ -111,12 +111,12 @@ describe('the library dictionary editor’s entry panel', () => {
     open();
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('A big lizard.')).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText('Notes for you, not injected into the prompt')).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Description' })).toBeNull();
   });
 
   it('keeps the book’s placeholders on the Placeholders tab alone', () => {
     // The book panel's own section edits a world's list, and a library book has no world behind it.
     open();
-    expect(screen.queryByText(/Placeholders of this dictionary/)).toBeNull();
+    expect(screen.queryByText(/These placeholders belong to this dictionary/)).toBeNull();
   });
 });

@@ -8,7 +8,7 @@ vi.mock('../game/EntityVisual', () => ({
   EntityVisual: ({ entity }: { entity: Entity }) => <div data-testid="visual">{entity.name}</div>,
 }));
 vi.mock('../game/AudioPlayer', () => ({ default: () => <div data-testid="sound" /> }));
-// `@NAME` stands in for the Character Name chip, which fills with the entity's name.
+// `@NAME` stands in for the Entity Name chip, which fills with the entity's name.
 vi.mock('@/lib/usePlaceholderResolver', () => ({
   useEntityTextResolver: () => (entity: Entity, t: string) => t.replace('@NAME', entity.name),
 }));
@@ -45,7 +45,7 @@ describe('StrangerModal', () => {
     expect(screen.queryByTestId('sound')).toBeNull();
   });
 
-  it('fills a Character Name chip in the Stranger Description with the label', () => {
+  it('fills an Entity Name chip in the Stranger Description with the label', () => {
     const chip = { ...sylvie, strangerDescription: '@NAME watches you.' } as Entity;
     const { baseElement } = render(<StrangerModal entity={chip} label="a hooded figure" isOpen onOpenChange={() => {}} />);
     expect(screen.getByText('a hooded figure watches you.')).toBeTruthy();

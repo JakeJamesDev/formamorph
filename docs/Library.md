@@ -23,7 +23,7 @@ One file opens its world dialog. More files add their tiles. If the world brings
 1. On the **Worlds** tab, select the world.
 2. Select **Export World**.
 3. Choose how to store the world's images, or select **Keep as-is**.
-4. If the world links its images, the **Linked Images** dialog opens. Select **Keep Links — Smaller File** or **Download and Embed — Works Offline**.
+4. If the world links its images, the **Linked Images** dialog opens. Select **Keep Links** for a smaller file, or **Download and Embed** to store the images in the file so it works offline.
 
 You get a `.json` file with the world's name.
 

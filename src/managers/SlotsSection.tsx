@@ -25,7 +25,7 @@ const SlotsSection = () => {
   return (
     <div className="space-y-2" {...fieldFrame('slots')}>
       <Label id="world-slots-label">Slots</Label>
-      <Hint>Lists where items equip, such as Hand. Capacity sets how many fit.</Hint>
+      <Hint>Lists where items equip, such as Hand. <b>Capacity</b> sets how many fit.</Hint>
       {slots.length > 0 && (
         <ul aria-labelledby="world-slots-label" className="space-y-2">
           {slots.map((slot) => (

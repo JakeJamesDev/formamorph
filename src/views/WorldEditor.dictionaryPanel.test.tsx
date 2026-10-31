@@ -214,6 +214,6 @@ describe('the World Editor dictionary entry panel tabs', () => {
     fireEvent.click(screen.getByText('Fen Lore'));
     expect(panelStrip()).toBeNull();
     // The book panel's own first field, which the Label sits over rather than labels.
-    expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument();
   });
 });

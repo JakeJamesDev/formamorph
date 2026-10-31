@@ -100,7 +100,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
   // One line for the secondary-keyword gate, per any/all × require/exclude mode, in the register's verbs.
   const secondaryHint = secondaryKeywords.length === 0
-    ? "Optional. The entry activates only when these match too, or with Exclude, only when they don't."
+    ? "Limits the entry to messages where these match too, or with Exclude, where they don't"
     : editingEntry.secondaryExclude
       ? (editingEntry.secondaryAll
         ? 'Activates when a Trigger Keyword matches and not every Secondary Keyword matches'
@@ -113,7 +113,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
     <>
       <div className="space-y-2" data-tour-anchor="dictionary-name" {...fieldFrame('name')}>
         <Label>Name</Label>
-        <Hint>Names the entry in the list and prefixes the Value in the prompt. Blank uses the first Trigger Keyword.</Hint>
+        <Hint>Names the entry in the list and prefixes its Value in the prompt. Leave it blank to use the first Trigger Keyword.</Hint>
         <PlaceholderNameField
           value={editingEntry.name ?? ''}
           onChange={(v) => handleChange('name', v)}
@@ -128,7 +128,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           <Label>Trigger Keywords</Label>
           <HintInfo>{KEYWORDS_INFO}</HintInfo>
         </div>
-        <Hint>Press Enter after each keyword. A message that contains one activates the entry.</Hint>
+        <Hint>Activates the entry when a message contains one. Press Enter after each keyword.</Hint>
         <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} ownerId={ownerId} offerCommaSplit={!editingEntry.useRegex} />
         {/* The two switches that modify these keywords, kept beside them: they are also the only matching
             switches Simple mode shows. */}
@@ -166,7 +166,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
       </div>
       <div className="space-y-2" {...fieldFrame('scanDepth')}>
         <Label>Scan Depth</Label>
-        <Hint>Sets how many earlier messages are scanned for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
+        <Hint>Sets how many earlier messages to scan for keywords. Leave it blank to scan all of them, or enter 0 to scan only the current turn.</Hint>
         <WorldInput type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
       <div className="space-y-2" {...fieldFrame('secondaryKeys')}>

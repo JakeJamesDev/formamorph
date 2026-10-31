@@ -151,7 +151,7 @@ describe('the library dictionary editor’s Overview', () => {
     expect(screen.getByText('Tags')).toBeInTheDocument();
     expect(screen.getByText('Cover Image')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Fen Lore');
-    expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toHaveValue('Marsh notes');
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Marsh notes');
     const author = screen.getByRole('textbox', { name: 'Author' });
     expect(author).toHaveValue('');
     expect(author.compareDocumentPosition(screen.getByText('Tags')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -175,7 +175,7 @@ describe('the library dictionary editor’s Overview', () => {
   it('shows none of the World Editor book panel', async () => {
     await openOverview();
     expect(screen.queryByText(/Add one with the \+ on this dictionary/)).toBeNull();
-    expect(screen.queryByText(/Placeholders of this dictionary/)).toBeNull();
+    expect(screen.queryByText(/These placeholders belong to this dictionary/)).toBeNull();
   });
 
   it('renames the book, raises no offer, and changes no stat of the world', async () => {

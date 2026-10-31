@@ -78,7 +78,7 @@ describe('useWorldExport', () => {
     await api.exportWorld(world);
 
     expect(await screen.findByText('Linked Images')).toBeInTheDocument();
-    expect(screen.getByText(/links to 2 images/)).toBeInTheDocument();
+    expect(screen.getByText(/stores 2 images as links/)).toBeInTheDocument();
     expect(downloadBlob).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: /Keep Links/ }));
@@ -94,7 +94,7 @@ describe('useWorldExport', () => {
     render(<Host />);
     await api.exportWorld(world);
 
-    await userEvent.click(await screen.findByRole('button', { name: /Download and Embed/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download and Embed' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
     expect(exported()).toMatchObject({ worldOverview: { name: 'Embedded' } });
     // Choice made, dialog gone.
@@ -110,9 +110,9 @@ describe('useWorldExport', () => {
     render(<Host />);
     await api.exportWorld(world);
 
-    await userEvent.click(await screen.findByRole('button', { name: /Download and Embed/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download and Embed' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
-    expect(toast.warning).toHaveBeenCalledWith("1 image couldn't be downloaded and stayed linked.");
+    expect(toast.warning).toHaveBeenCalledWith("Couldn't download 1 image. The file keeps it as a link.");
   });
 
   it('reports an embed failure instead of writing a partial file', async () => {
@@ -121,7 +121,7 @@ describe('useWorldExport', () => {
     render(<Host />);
     await api.exportWorld(world);
 
-    await userEvent.click(await screen.findByRole('button', { name: /Download and Embed/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download and Embed' }));
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('network downView Details →'));
     expect(downloadBlob).not.toHaveBeenCalled();
   });

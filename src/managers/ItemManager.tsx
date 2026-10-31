@@ -131,7 +131,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
       />
       <div className="space-y-2" {...fieldFrame('uses')}>
         <Label htmlFor={id('uses')}>Uses</Label>
-        <Hint>Sets how many times each Item Copy can be used. Blank means unlimited.</Hint>
+        <Hint>Sets how many times each copy of this item can be used. Leave it blank for unlimited uses.</Hint>
         <WorldInput
           id={id('uses')}
           type="number"
@@ -149,7 +149,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
       </div>
       <div className="space-y-2" {...fieldFrame('state')}>
         <Label htmlFor={id('state')}>State</Label>
-        <Hint>Sets the word each Item Copy starts with, such as sealed</Hint>
+        <Hint>Sets the state each copy of this item starts in, such as sealed</Hint>
         <WorldInput
           id={id('state')}
           className="w-48"
@@ -160,7 +160,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
       {empty && (
         <div className="space-y-2" {...fieldFrame('whenEmpty')}>
           <Label id={id('when-empty-label')}>When Empty</Label>
-          <Hint>Picks what happens to an Item Copy after its last use</Hint>
+          <Hint>Picks what happens to a copy of this item after its last use</Hint>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={empty.kind} onValueChange={(kind) => { if (isWhenEmptyKind(kind)) pickEmpty(kind); }}>
               <SelectTrigger className="w-48" aria-labelledby={id('when-empty-label')}>
@@ -296,7 +296,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
         <div className="space-y-2" {...fieldFrame('unidentifiedName')}>
           <Label>Unidentified Name</Label>
           <Hint id={`item-unidentified-name-hint-${item.id}`}>
-            Shows this name to the player until the story identifies the item. Blank shows the normal name.
+            Shows this name to the player until the narration identifies the item. Leave it blank to show its Name.
           </Hint>
           <PlaceholderNameField
             value={draft.unidentifiedName ?? ''}
@@ -311,7 +311,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
           label="Unidentified Description"
           ariaLabel="Unidentified Description"
           historyField="unidentifiedDescription"
-          hint="Shows this description to the player until the story identifies the item. Blank shows the Player-Facing Description."
+          hint="Replaces the Player-Facing Description until the narration identifies the item. Leave it blank to show the Player-Facing Description."
           value={draft.unidentifiedDescription ?? ''}
           onChange={(v) => setField('unidentifiedDescription', v || undefined)}
           placeholders={placeholders}

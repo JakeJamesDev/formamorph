@@ -136,7 +136,7 @@ const ImageTile = ({ id, url, index, framed, onSelect, ruled, rule }: {
       {/* The tip explains the tile; the short spoken name stays on the button. */}
       <Tip
         tip={primary
-          ? 'Primary. Shown wherever one image is needed. Drag to reorder.'
+          ? 'Primary image. Shows wherever one image is needed. Drag to reorder.'
           : `Image ${index + 1}. Drag to reorder.`}
         labelsChild={false}
       >
@@ -445,14 +445,14 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
       {coverRuled && (
         <p data-image-rule-cover-warning="" className="flex items-start gap-1 text-helper text-warning">
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          The primary image ignores its rule outside play
+          Outside a game, the primary image shows even when its rule hides it
         </p>
       )}
       <ConfirmDialog
         open={pendingPrompt !== null}
         onOpenChange={(o) => { if (!o) setPendingPrompt(null); }}
         title="Use the image's prompt?"
-        description="This image has an embedded AI prompt. Use it as the Image Tags? This replaces the current tags."
+        description="This image carries the AI prompt that made it. The prompt replaces the current Image Tags."
         onConfirm={() => { if (pendingPrompt) onTagsChange(pendingPrompt); setPendingPrompt(null); }}
         onCancel={() => setPendingPrompt(null)}
       />
@@ -491,7 +491,7 @@ export function ReplaceImageDialog({ open, images, slot, onSlotChange, idPrefix,
         <DialogHeader>
           <DialogTitle>Replace which image?</DialogTitle>
           <DialogDescription>
-            There is no free slot for the generated image. Choose the one it takes the place of.
+            Every slot holds an image. Select the image the generated one replaces.
           </DialogDescription>
         </DialogHeader>
         <RadioGroup value={String(slot)} onValueChange={(v) => onSlotChange(Number(v))}>
@@ -533,7 +533,7 @@ export const ImageTags = () => {
         onChange={onTagsChange}
         placeholders={placeholders}
         ownerId={ownerId}
-        placeholder="booru tags, comma separated"
+        placeholder="Danbooru tags, separated by commas"
         aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
       />
     </div>

@@ -167,7 +167,7 @@ describe('the live adapter', () => {
     expect(scene.entities.find((e) => e.id === 'porter')?.aiDescription).toBe('the box hauler hauls crates.');
   });
 
-  it("resolves each entity's text with that entity as the Character Name", () => {
+  it("resolves each entity's text with that entity as the Entity Name", () => {
     const scene = liveChipScene(sources({ location: warehouse }));
     expect(chipValues(scene)('<ENTITIES>')).toContain('Porter hauls crates.');
     expect(buildToolSnapshot(scene, []).world.entities.find((e) => e.id === 'porter'))
@@ -202,7 +202,7 @@ describe('the live adapter', () => {
       .toBe('A\n## The Player Notes\nFind the map.\nB');
   });
 
-  it("resolves the persona's own text with the persona as the Character Name", () => {
+  it("resolves the persona's own text with the persona as the Entity Name", () => {
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: '{{char}} rows the ferry.' };
     const scene = liveChipScene(sources({ persona: { source: 'world', entity: wren } }));
     expect(chipValues(scene)('<PERSONA>')).toContain('Wren rows the ferry.');
@@ -386,7 +386,7 @@ describe('the live adapter', () => {
       ...over,
     });
 
-    it("gives a cast entity its active linked trait in full, with the entity as the Character Name", () => {
+    it("gives a cast entity its active linked trait in full, with the entity as the Entity Name", () => {
       const values = chipValues(liveChipScene(real(null, { ownedTraits: { albus: { chosen: ['paladin'] } } })));
       expect(values('<ENTITIES>')).toContain('Paladin: Albus swore the oath.');
       expect(values('<ENTITIES|summary>')).toContain('traits: Paladin');

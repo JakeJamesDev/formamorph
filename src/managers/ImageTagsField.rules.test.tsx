@@ -174,7 +174,7 @@ describe('Gallery Visibility rules', () => {
     unmount();
 
     render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B }]} />);
-    expect(document.querySelector('[data-image-rule-cover-warning]')).toHaveTextContent('The primary image ignores its rule outside play');
+    expect(document.querySelector('[data-image-rule-cover-warning]')).toHaveTextContent('Outside a game, the primary image shows even when its rule hides it');
   });
 
   it('keeps the entity editor dialog open while the popover is used', async () => {

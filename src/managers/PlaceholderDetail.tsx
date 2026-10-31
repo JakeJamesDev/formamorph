@@ -10,6 +10,7 @@ import PlaceholderManager from './PlaceholderManager';
 import PlaceholderGroupManager from './PlaceholderGroupManager';
 import PlaceholderOwnerPanel from './PlaceholderOwnerPanel';
 import { PlaceholderCopyEditor, PlaceholderCopyFooter } from './PlaceholderCopyEditor';
+import { Hint } from '@/components/ui/typography';
 
 export interface PlaceholderDetailProps {
   /** A row id, or a bare placeholder id that opens its first row. */
@@ -29,10 +30,10 @@ export interface PlaceholderDetailProps {
 
 /** A copy whose blueprint the card doesn't carry: its values live in the blueprint, so there is nothing to edit. */
 const MissingBlueprintNotice = () => (
-  <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+  <Hint className="rounded-md border border-dashed px-2 py-1.5">
     This copy&apos;s blueprint isn&apos;t in this card, so its values can&apos;t be shown. Add the entity to a world
     that has the blueprint to edit the copy.
-  </p>
+  </Hint>
 );
 
 export interface PlaceholderDetailParts {

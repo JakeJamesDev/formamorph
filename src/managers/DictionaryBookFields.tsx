@@ -43,10 +43,11 @@ const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; 
       </div>
       <div className="space-y-2" {...fieldFrame('description')}>
         <Label>Description</Label>
+        <Hint>Shows on the dictionary&apos;s listing. The AI never reads it.</Hint>
         <WorldTextarea
           value={book.description ?? ''}
           onChange={(e) => updateDictionary({ ...book, description: e.target.value })}
-          placeholder="Notes for you, not injected into the prompt"
+          aria-label="Description"
           rows={3}
         />
       </div>

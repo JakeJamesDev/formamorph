@@ -38,6 +38,7 @@ import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from '@/views/placeholderPanelTabs';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
+import { Hint, Meta } from '@/components/ui/typography';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -53,7 +54,7 @@ export const KIND_INFO = `**Wildcard** randomizes. One of its values is picked, 
 **Object** holds. All of its values apply, joined together wherever it's placed.
 
 - With one value the two coincide. It's a **Variable**, and always resolves to that value.
-- A Variable whose one value holds Wildcard chips is a template. It rolls those chips, and picks World or Unique like a Wildcard.
+- When a Variable's one value holds Wildcard chips, it works as a template. It rolls those chips, and picks World or Unique like a Wildcard.
 - A chip that can roll chooses **World** (one pick shared everywhere) or **Unique** (its own)
 - A value that is exactly one chip nests that placeholder under this one, addressable as \`Owner › Name\``;
 
@@ -187,7 +188,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
     count === 0
       ? 'No values yet, so this resolves to nothing'
       : rollingVariable
-        ? 'A Variable whose one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.'
+        ? 'A template Variable. It rolls its chips, and picks World or Unique like a Wildcard.'
         : count === 1
           ? 'A Variable, so it always resolves to its one value'
           : kind === 'wildcard'
@@ -331,11 +332,11 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
             value={weightOf(openValue)}
             onChange={(e) => setWeight(openValue, Math.max(0, Math.round(Number(e.target.value) || 0)))}
           />
-          <p className="text-meta text-muted-foreground">
+          <Meta as="p">
             {(chances[byText.get(openValue)?.id ?? ''] ?? 0) === 0
-              ? 'Benched, so it never rolls but stays in the list'
+              ? 'Weight 0, so it never rolls but stays in the list'
               : `Rolls ${pct(openValue)} of the time. Weights are relative: 2 is twice as likely as 1.`}
-          </p>
+          </Meta>
         </>
       )}
     </PopoverContent>
@@ -367,20 +368,20 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
       <PanelTabContent value="details">
         {locked && (
           <ListDetailFirstRow align="center">
-            <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+            <Hint className="rounded-md border border-dashed px-2 py-1.5">
               Shared row. The name, the kind and the values come from the original.{' '}
               {kind === 'object'
-                ? "An Object applies every value and never draws, so there's nothing to weigh here."
-                : 'The draw weights are this row’s own. Benching a value here changes nothing anywhere else.'}
-            </p>
+                ? 'An Object applies every value and never draws, so it has no draw weights.'
+                : 'Its draw weights are this row’s own. A change here changes nothing anywhere else.'}
+            </Hint>
           </ListDetailFirstRow>
         )}
         <div className="space-y-2">
           {locked ? nameInput : <ListDetailFirstRow>{nameInput}</ListDetailFirstRow>}
           {shadowsMember && (
             <p role="status" className="text-meta text-warning">
-              Every placeholder has a <code>{editing.name}</code> of its own, so scripts can’t reach this part
-              by name. Rename it to reach it from code.
+              Every placeholder has a member named <code>{editing.name}</code>, which shadows this part in scripts.
+              Rename it so scripts resolve to this part.
             </p>
           )}
         </div>
@@ -408,7 +409,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
             <ToggleGroupItem value="wildcard" className="h-6 px-2 text-helper">Wildcard</ToggleGroupItem>
             <ToggleGroupItem value="object" className="h-6 px-2 text-helper">Object</ToggleGroupItem>
           </ToggleGroup>
-          <p className="text-helper text-muted-foreground">{state}</p>
+          <Meta as="p">{state}</Meta>
         </div>
         {/* One sample of what this placeholder produces, nested chips and all, without placing it anywhere.
             Only where there is something to draw from — an empty placeholder would sample nothing. */}
@@ -590,7 +591,7 @@ const SharedValues = ({ values, line, style, suffix, register, onOpen }: {
   onOpen?: (value: string) => void;
 }) => (
   <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
-    {values.length === 0 && <span className="text-helper text-muted-foreground">No values.</span>}
+    {values.length === 0 && <Meta>No values</Meta>}
     {values.map((v) => {
       const label = line(v.text);
       const chip = (

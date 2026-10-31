@@ -170,7 +170,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
                 onChange={(s) => handleChange('aiSummary', s)}
               />
             )}
-            hint="Replaces the full description in prompt slots too small for it. Keep it brief."
+            hint="Sends the AI this short version where a full description doesn't fit. Keep it brief."
             value={editingLocation.aiSummary || ''}
             onChange={(v) => handleChange('aiSummary', v)}
             placeholders={placeholders}

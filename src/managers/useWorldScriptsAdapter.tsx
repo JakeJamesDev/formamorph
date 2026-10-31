@@ -232,8 +232,8 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
           <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
         </div>
         <Hint>
-          Shows every script by timing, in the order they run. Drag a script to change when it runs in its timing. In play,
-          the persona&apos;s scripts run before other entities&apos;.
+          Shows every script by timing, in the order they run. Drag a script to change its order within its timing.
+          During a game, the persona&apos;s scripts run before other entities&apos;.
         </Hint>
       </div>
     );

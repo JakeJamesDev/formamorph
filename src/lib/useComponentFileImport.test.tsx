@@ -131,7 +131,7 @@ describe('useComponentFileImport', () => {
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     try {
       await open({ associations: [{ id: 'listing-w', name: 'The Long Thaw' }] });
-      expect(await screen.findByText(/cannot connect to Community Creations/)).toBeInTheDocument();
+      expect(await screen.findByText(/Can't connect to Community Creations/)).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole('button', { name: 'Import Entity' }));
 

@@ -263,7 +263,7 @@ describe('useDownscalePrompt — within-budget convertibles are still offered Op
       void api.promptWorld(worldWith('data:image/jpeg;base64,big', ['data:image/gif;base64,tiny']));
     });
 
-    expect(await screen.findByText(/2 images worth optimizing — 1 larger than recommended/)).toBeInTheDocument();
+    expect(await screen.findByText(/2 images worth optimizing: 1 larger than recommended/)).toBeInTheDocument();
     expect(screen.getByText(/Downscale also shrinks the 1 larger than recommended/)).toBeInTheDocument();
     expect(screen.getByText('Optimize')).toBeInTheDocument();
     expect(screen.getByText('Downscale')).toBeInTheDocument();
@@ -301,7 +301,7 @@ describe('useDownscalePrompt — lossless images are Downscale targets at any si
       void api.promptWorld(worldWith('data:image/jpeg;base64,big', ['data:image/png;base64,tiny', 'data:image/gif;base64,tiny']));
     });
 
-    expect(await screen.findByText(/3 images worth optimizing — 1 larger than recommended, 1 lossless/)).toBeInTheDocument();
+    expect(await screen.findByText(/3 images worth optimizing: 1 larger than recommended, 1 lossless/)).toBeInTheDocument();
     expect(screen.getByText(/Downscale also shrinks 2 of them/)).toBeInTheDocument();
     expect(screen.getByText('Optimize')).toBeInTheDocument();
     expect(screen.getByText('Downscale')).toBeInTheDocument();
@@ -313,6 +313,6 @@ describe('useDownscalePrompt — lossless images are Downscale targets at any si
 
     // The PNG estimates at 5 KB; the GIF, which Downscale leaves, stays at 50 KB.
     expect(await screen.findByText(/Downscale also shrinks 1 of them \(~55 KB\)/)).toBeInTheDocument();
-    expect(screen.getByText(/2 images worth optimizing — 1 lossless/)).toBeInTheDocument();
+    expect(screen.getByText(/2 images worth optimizing: 1 lossless/)).toBeInTheDocument();
   });
 });

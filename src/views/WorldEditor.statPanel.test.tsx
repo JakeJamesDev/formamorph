@@ -123,9 +123,9 @@ describe('the World Editor stat panel tabs', () => {
     const help = screen.getByText(/Enabled keeps the stat active/);
     expect(help.textContent).toMatch(/Hidden hides it from the player only/);
     // The pair had a paragraph each before; a second line under Availability is the regression.
-    expect(screen.queryByText(/Regen and Code/)).toBeNull();
+    expect(screen.queryByText(/Regen and scripts/)).toBeNull();
     await userEvent.click(within(help.parentElement!).getByRole('button', { name: 'More info' }));
-    expect(await screen.findByText(/its Regen and Code run/)).toBeInTheDocument();
+    expect(await screen.findByText(/its Regen and scripts run/)).toBeInTheDocument();
   });
 
   it('puts the descriptor section whole on Descriptors', () => {

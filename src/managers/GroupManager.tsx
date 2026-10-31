@@ -85,7 +85,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
         markdown
-        placeholder="Shown above this group's choices in World Setup. Supports markdown."
+        hint="Shows the player this text above the group's choices in World Setup"
         readOnly={readOnly}
         resizable
       />

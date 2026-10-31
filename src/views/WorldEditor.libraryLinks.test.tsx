@@ -567,7 +567,7 @@ describe('Opening a world after a library save', () => {
     expect(ctx().dictionaries[0].entries[0].value).toBe('Wetland.');
     expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
-    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked “Fen Lore” because its library item is gone.');
+    expect(toast.info).toHaveBeenCalledWith('“Fen Lore” is now an independent copy. Its library item is gone.');
   });
 
   it('says it once when Exit Without Saving restores the link and the pass lets go again', async () => {
@@ -594,7 +594,7 @@ describe('Opening a world after a library save', () => {
     } as unknown as Partial<World>), 'advanced');
 
     await waitFor(() => expect(ctx().dictionaries.every((book) => !book.link)).toBe(true));
-    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked 2 copies whose library items are gone.');
+    expect(toast.info).toHaveBeenCalledWith('2 copies are now independent. Their library items are gone.');
     expect(toast.info).toHaveBeenCalledTimes(1);
   });
 
@@ -624,7 +624,7 @@ describe('Opening a world after a library save', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link?.libraryId).toBeUndefined());
     expect(ctx().dictionaries[0].link?.sourceId).toBe('listing-9');
-    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked “Fen Lore” because its library item is gone.');
+    expect(toast.info).toHaveBeenCalledWith('“Fen Lore” is now an independent copy. Its library item is gone.');
     focusLinkFace();
     expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
   });

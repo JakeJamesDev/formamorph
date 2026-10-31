@@ -263,7 +263,7 @@ export function applyInventoryPass(
     if (op.op === 'gain') {
       const to = ownerOf(op.to || op.owner);
       if (!to) {
-        skip(`${label}: no one present is "${op.to || op.owner}"`);
+        skip(`${label}: nothing present is named "${op.to || op.owner}"`);
         continue;
       }
       // A gain from someone who holds the item is them handing it over.
@@ -302,7 +302,7 @@ export function applyInventoryPass(
       }
       // An item already lying here is the scene as listed, not a new one.
       if (to.kind === 'location' && candidates(key, to, 'transfer').some((c) => c.visibility === 'visible')) {
-        skip(`${label}: it already lies at "${op.to || op.owner}"`);
+        skip(`${label}: it is already at "${op.to || op.owner}"`);
         continue;
       }
       const itemId = gainId(op.item, key);
@@ -316,11 +316,11 @@ export function applyInventoryPass(
 
     const where = ownerOf(op.owner);
     if (!where) {
-      skip(`${label}: no one present is "${op.owner}"`);
+      skip(`${label}: nothing present is named "${op.owner}"`);
       continue;
     }
     if (op.op === 'transfer' && !ownerOf(op.to)) {
-      skip(`${label}: no one present is "${op.to}"`);
+      skip(`${label}: nothing present is named "${op.to}"`);
       continue;
     }
     // A change needs any copy here; its State check follows.

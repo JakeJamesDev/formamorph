@@ -27,7 +27,7 @@ export interface EditorPreviewRolls {
   /** Token → value for every chip in `text`. A chip nothing has drawn yet is drawn now and kept, so the
    *  next reader — this field's next render, or another field — sees the same value. `pinRows` are the
    *  world's pins, which a stop an author stepped to may name. `ownerName` is the owning entity's authored
-   *  name, which Character Name previews as. `ownerPreview` reads a trait's text as one owner's (see
+   *  name, which Entity Name previews as. `ownerPreview` reads a trait's text as one owner's (see
    *  `buildPlaceholderPreview`). */
   preview(
     text: string, placeholders: Placeholder[], pinRows?: readonly PinRow[], ownerName?: string, ownerPreview?: OwnerPreview,

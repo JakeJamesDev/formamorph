@@ -18,14 +18,14 @@ describe('the Built-in registry', () => {
     expect(PLAYER_NAME.visible({ offered: false })).toBe(false);
   });
 
-  it('lists Character Name second, stored in the SillyTavern spelling', () => {
+  it('lists Entity Name second, stored in the SillyTavern spelling', () => {
     expect(BUILTIN_PLACEHOLDERS[1]).toBe(CHARACTER_NAME);
     expect(CHARACTER_NAME.token).toBe('{{char}}');
-    expect(CHARACTER_NAME.label).toBe('Character Name');
+    expect(CHARACTER_NAME.label).toBe('Entity Name');
     expect(CHARACTER_NAME.searchTerms).toContain('char');
   });
 
-  it('offers Character Name only in an entity’s own fields', () => {
+  it('offers Entity Name only in an entity’s own fields', () => {
     expect(CHARACTER_NAME.visible({ offered: true, ownerKind: 'entity' })).toBe(true);
     expect(CHARACTER_NAME.visible({ offered: true, ownerKind: 'dictionary' })).toBe(false);
     expect(CHARACTER_NAME.visible({ offered: true })).toBe(false);
@@ -117,7 +117,7 @@ describe('renderBuiltins', () => {
   });
 });
 
-describe('renderBuiltins for Character Name', () => {
+describe('renderBuiltins for Entity Name', () => {
   it('renders the character in any spelling, with no capital rule of its own', () => {
     expect(renderBuiltins("{{char}} waits. She sees {{ Char }}'s boat.", { character: 'vos' }))
       .toBe("vos waits. She sees vos's boat.");

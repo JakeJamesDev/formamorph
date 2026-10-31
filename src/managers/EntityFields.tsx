@@ -121,7 +121,7 @@ export const EntityStrangerFields = ({ value, onChange, placeholders = [], owner
           <HelpButton topicId="worldEditor.strangerName" className="h-6 w-6" />
         </div>
         <Hint id={`entity-stranger-name-hint-${value.id}`}>
-          The player sees this name until they meet the entity. They meet it when the narration uses its Name.
+          Shows this name to the player until the narration uses the entity&apos;s Name
         </Hint>
         <PlaceholderNameField
           value={value.strangerName ?? ''}
@@ -137,7 +137,7 @@ export const EntityStrangerFields = ({ value, onChange, placeholders = [], owner
         label="Stranger Description"
         ariaLabel="Stranger Description"
         historyField="strangerDescription"
-        hint="Replaces the Player-Facing Description until the player meets the entity. Leave it blank to show no description."
+        hint="Replaces the Player-Facing Description until the narration uses the entity's Name. Leave it blank to show no description."
         value={value.strangerDescription ?? ''}
         onChange={(v) => onChange('strangerDescription', v.trim() ? v : undefined)}
         placeholders={placeholders}
@@ -296,7 +296,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
               onChange={(s) => onChange('aiSummary', s)}
             />
           )}
-          hint="Replaces the full description in prompt slots too small for it. Keep it brief."
+          hint="Sends the AI this short version where a full description doesn't fit. Keep it brief."
           value={value.aiSummary || ''}
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}
@@ -321,7 +321,7 @@ export interface EntityLocationsFieldProps extends EntityFieldGroupProps {
 export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange }: EntityLocationsFieldProps) => (
   <div data-tour-anchor="entity-locations" className="space-y-2" {...fieldFrame('locations')}>
     <Label>Locations</Label>
-    {value.persona === true && <Hint>The player can start as this persona at any of these</Hint>}
+    {value.persona === true && <Hint>Lets the player start at any of these when they play this entity</Hint>}
     <MultiSelect
       key={value.id}
       options={options}
@@ -428,7 +428,7 @@ const AvatarPickField = ({ entityId, hint, named, stored, onPick }: {
   );
 };
 
-export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars in the Media tab.';
+export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars on the Media tab.';
 
 /** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
 export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {

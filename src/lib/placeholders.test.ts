@@ -121,7 +121,7 @@ describe('the Persona Name chip in the placeholder pass', () => {
   });
 });
 
-describe('the Character Name chip in the placeholder pass', () => {
+describe('the Entity Name chip in the placeholder pass', () => {
   const eyes = P('eyes', ['green']);
 
   it('renders the character in any spelling of the token, possessive as written', () => {
@@ -149,8 +149,8 @@ describe('the Character Name chip in the placeholder pass', () => {
 
   it('counts as a chip and reads as its label on design-time surfaces', () => {
     expect(hasPlaceholders('Hi {{ Char }}.')).toBe(true);
-    expect(describePlaceholders('Hi {{char}}.', [])).toBe('Hi Character Name.');
-    expect(buildPlaceholderPreview('Hi {{char}}.', [])).toEqual({ '{{char}}': 'Character Name' });
+    expect(describePlaceholders('Hi {{char}}.', [])).toBe('Hi Entity Name.');
+    expect(buildPlaceholderPreview('Hi {{char}}.', [])).toEqual({ '{{char}}': 'Entity Name' });
   });
 
   it('previews as the owner name an entity editor passes', () => {
@@ -169,7 +169,7 @@ describe('the Character Name chip in the placeholder pass', () => {
 
   it('previews as its label with an empty owner name, and leaves Persona Name as its label', () => {
     expect(buildPlaceholderPreview('{{char}} greets {{user}}.', [], first, undefined, ' '))
-      .toEqual({ '{{char}}': 'Character Name', '{{user}}': 'Persona Name' });
+      .toEqual({ '{{char}}': 'Entity Name', '{{user}}': 'Persona Name' });
     expect(buildPlaceholderPreview('{{user}} waits.', [], first, undefined, 'Vos')).toEqual({ '{{user}}': 'Persona Name' });
   });
 });
@@ -178,7 +178,7 @@ describe('resolveEntityText', () => {
   const rank = P('rank', ['Captain']);
   const vos = { name: `${tok('rank', 'world', 'p1')} Vos` };
 
-  it('fills Character Name with the owner name, resolved first', () => {
+  it('fills Entity Name with the owner name, resolved first', () => {
     expect(resolveEntityText(vos, '{{char}} keeps the dock.', { placeholders: [rank], rolls: {} }))
       .toBe('Captain Vos keeps the dock.');
   });
@@ -205,12 +205,12 @@ describe('resolveEntityText', () => {
 });
 
 describe('resolveOwnerText', () => {
-  it('fills Character Name with an entity owner, as its own text does', () => {
+  it('fills Entity Name with an entity owner, as its own text does', () => {
     expect(resolveOwnerText({ name: 'Albus' }, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
       .toBe('Albus swore the oath.');
   });
 
-  it('reads Character Name as the Persona Name when the player has the trait', () => {
+  it('reads Entity Name as the Persona Name when the player has the trait', () => {
     expect(resolveOwnerText(null, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
       .toBe('Wren swore the oath.');
     expect(resolveOwnerText(null, '{{char}} swore. Kneel to {{char}}’s oath.', { placeholders: [], rolls: {} }))

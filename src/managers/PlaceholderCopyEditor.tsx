@@ -16,6 +16,7 @@ import type { Placeholder, PlaceholderValue } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
+import { Hint } from '@/components/ui/typography';
 
 /** A weight typed into a box: whole, never negative. */
 const typedWeight = (raw: string) => Math.max(0, Math.round(Number(raw) || 0));
@@ -97,10 +98,10 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
   return (
     <div className="space-y-4">
       <ListDetailFirstRow align="center">
-        <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+        <Hint className="rounded-md border border-dashed px-2 py-1.5">
           Copy of the blueprint <strong>{blueprint.name}</strong>. Values follow the blueprint until you change them
           here.
-        </p>
+        </Hint>
       </ListDetailFirstRow>
       <div className="space-y-2">
         <Label htmlFor={`copy-name-${copy.id}`}>Name</Label>
