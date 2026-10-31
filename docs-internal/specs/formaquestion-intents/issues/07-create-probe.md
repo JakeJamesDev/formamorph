@@ -16,6 +16,7 @@ Measure creation against its bars, tune the Create pins, and flip the Creation d
 - Scores: valid blocks per ticket 04's parser (Q61), and a hand-graded sample for fit to the world and its tone (Q62). Cloud default first, with an in-batch control, per the probe skill.
 - Bars: at least 90% of blocks valid, at least 80% fitting by hand grade. The create-ask and false-Create rates come from ticket 06's corpus (Q8).
 - Set the Create prompt kind's sampler pins from the runs.
+- Measure the Creating prompt, the sample format and the off-editor refusal rider, which ticket 05 shipped unprobed. The Mascot Voice chip on the Creating prompt still says to write control names as the guide writes them. That frame is shared by every help prompt, so check whether it hurts drafts before changing it.
 - On a pass, flip the Creation switch's default to on. On a fail, leave it off and record the numbers (Q15, Q43).
 
 Spec: Q8, Q15, Q35, Q43, Q61, Q62; Testing Decisions.
