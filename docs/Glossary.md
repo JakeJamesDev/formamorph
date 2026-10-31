@@ -124,7 +124,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Tool Handler](Tools#handler) | The part of a Tool that runs when the AI calls it: **Lookup**, **Template** or **Script** |
 
 ## 🛠️ Building a World
-<!-- keywords: world info, attribute, perk, random table, room, zone, authoring vocabulary, creator terms, script, inheritance -->
+<!-- keywords: world info, attribute, perk, random table, room, zone, authoring vocabulary, creator terms, script, stat code, inheritance -->
 
 | Term | Meaning |
 |---|---|
@@ -140,22 +140,23 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Travel Hint](World-Editor-Locations#travel-hints) | Text that tells the AI how the player makes one trip of a Connection |
 | [Locations Canvas](World-Editor-Locations#list-and-canvas) | The visual view of the **Locations** tab, with boxes for locations and arrows for Connections |
 | [Auto Arrange](World-Editor-Locations#list-and-canvas) | The canvas command that lays out boxes for you. Nothing on the canvas moves without it or you. |
-| [Map](How-to-Play#the-change-location-dialog) | The read-only canvas the player sees in game, on the **Map** tab |
-| [Presence](World-Editor-Locations#entities) | Where an entity with several locations is in a new game: **Everywhere Listed**, or **One, at Random** |
-| [Movement](World-Editor-Locations#entities) | How an entity moves during play, such as **Stays Put** or **Can Follow the Player** |
-| [Known In](World-Editor-Entities#locations) | Where the AI knows of an entity while it isn't present, **Nearby** by default |
-| [Known Here](World-Editor-Locations#entities) | The entities a location's entities may speak of, though they aren't there |
-| [Relationship](World-Editor-Entities#the-panel) | A link from one entity to another, or to the persona, with the target's role toward it. It reaches the AI as a line. |
-| [Stranger Name](World-Editor-Entities#strangers) | What the player calls an entity until they meet it |
+| [Map](How-to-Play#the-change-location-dialog) | The read-only canvas the player sees during the game, on the **Map** tab |
+| [Presence](World-Editor-Locations#entities) | Where an entity with several locations is in a new game: **Everywhere Listed** or **One, at Random** |
+| [Movement](World-Editor-Locations#entities) | How an entity moves during the game: **Free**, **Stays Put**, **Moves Between Its Locations** or **Can Follow the Player** |
+| [Known In](World-Editor-Entities#locations) | Where the AI knows of an entity while the entity isn't present. The default is **Nearby**. |
+| [Known Here](World-Editor-Locations#entities) | A location's list of entities that aren't there, but that the entities there may speak of |
+| [Relationship](World-Editor-Entities#the-panel) | Another entity, or the persona, with its role toward this entity. The AI reads each one as a line. |
+| [Stranger Name](World-Editor-Entities#strangers) | The name the player sees for an entity until they meet it |
 | [Stat](World-Editor-Stats) | A number the game tracks, between a **Min** and a **Max**. It is global or an entity's own. |
 | [Stat Descriptor](World-Editor-Stats#stat-descriptors) | A word the AI gets for a band of a stat's values |
-| [Regen](World-Editor-Stats#the-fields) | The amount a stat changes for each hour of story time || [Script](ScriptsGuide) | One box of JavaScript with a timing, on a stat, a trait or the world. It was called stat code. |
+| [Regen](World-Editor-Stats#the-fields) | The amount a stat changes for each hour of story time |
+| [Script](ScriptsGuide) | One box of JavaScript with a timing, on a stat, a trait or the world |
 | [Timing](ScriptsGuide#the-five-timings) | When a script runs. Pick it in the script's **Timing** menu. |
 | [Before the AI](ScriptsGuide#the-five-timings) | The timing that runs at the start of a turn, before the prompt is built |
 | [After the AI](ScriptsGuide#the-five-timings) | The timing that runs after the AI's stat changes and Regen apply |
 | [During AI Output](ScriptsGuide#during-ai-output) | The timing that runs once for each completed narration sentence, and can rewrite it |
 | [At Game Start](ScriptsGuide#at-game-start) | The timing that runs once on the opening turn of a new game |
-| [When a Trait Switches](ScriptsGuide#when-a-trait-switches) | The timing that runs each time a trait turns on or off in play |
+| [When a Trait Switches](ScriptsGuide#when-a-trait-switches) | The timing that runs each time a trait turns on or off during the game |
 | [Trait](World-Editor-Traits) | A fact about the player or an entity, such as a class or a fear. It is global or an entity's own. |
 | [Acquired](Scripts-Reference#traits) | A trait the player has. A trait switched off is still acquired. |
 | [Trait Modes](World-Editor-Traits#mode) | **Optional**: the player chooses. **Automatic**: active while its requirements hold. **Hidden**: Automatic, and the player never sees it. |
@@ -165,21 +166,21 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Requirement Row](World-Editor-Traits#rows) | One way to open a trait. It holds when every Condition in it holds. |
 | [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, a persona, a stat, an item or the time of day. **Not** makes it hold while the target is off. |
 | [Stat Condition](World-Editor-Traits#stat-conditions) | A Condition that compares a stat to a number, raw or as a percent of the stat's range. *Rage >= 80* |
-| [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows in play. With no rows, it always shows. |
-| [Item](World-Editor-Items) | An object someone can own, with its own description, image and rules |
-| [Item Copy](World-Editor-Items) | One copy of an item in a game, held by an owner or lying at a location |
-| [Starting Items](World-Editor-Items#starting-items) | The items a new game begins with, on the player, an entity or a location |
-| [Slot](World-Editor-Items#slots) | A named place an item equips into, such as Hand |
-| [Body](World-Editor-Items#bodies) | The set of slots an owner has, with how much each one holds |
+| [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows during the game. With no rows, it always shows. |
+| [Item](World-Editor-Items) | An object the player or an entity can own, with its own description, image and rules |
+| [Item Copy](World-Editor-Items) | One copy of an item in a game. An owner holds it, or it lies at a location. |
+| [Starting Items](World-Editor-Items#starting-items) | The Item Copies a new game starts with. Each one goes to the player, an entity or a location. |
+| [Slot](World-Editor-Items#slots) | A named place that an item equips into, such as Hand |
+| [Body](World-Editor-Items#bodies) | The slots an owner has, and how many item units each slot holds |
 | [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. The played persona is the owner **Persona**. An item with no owner is global. |
-| [Global Stat](World-Editor-Stats#how-the-ai-tracks-stat-changes) | A stat on the **Stats** tab, outside every entity. No one owns it. The AI reads it under **Global Stats**. |
-| [Global Trait](World-Editor-Traits#whose-trait-counts) | A trait outside every entity, such as one the player picks at the start. No one owns it. The AI reads the picked ones under **Global Traits**. |
+| [Global Stat](World-Editor-Stats#how-the-ai-tracks-stat-changes) | A stat on the **Stats** tab, outside every entity. It has no owner. The AI reads it under **Global Stats**. |
+| [Global Trait](World-Editor-Traits#whose-trait-counts) | A trait outside every entity, such as one the player picks at the start. It has no owner. The AI reads the picked ones under **Global Traits**. |
 | [Persona Stat](Persona-Authoring#persona-stats) | A stat of the entity the player plays. The AI reads it in the **Persona** block, under the `Player Character` key. |
 | [Blueprint](World-Editor-Blueprints#blueprints) | A trait, a [stat](World-Editor-Stats#blueprint-stats-and-links) or a [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
-| [Link](World-Editor-Blueprints#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |
-| [Stat Link](World-Editor-Stats#blueprint-stats-and-links) | Gives a Blueprint stat to an entity, with the entity's own value |
+| [Link](World-Editor-Blueprints#links) | Gives a Blueprint trait to an entity. It takes every change to the Blueprint, except in the fields you override. |
+| [Stat Link](World-Editor-Stats#blueprint-stats-and-links) | Gives a Blueprint stat to an entity. The entity keeps its own value. |
 | [Original](World-Editor-Blueprints#links) | The Blueprint trait or group that a Link points at |
-| [Copy](World-Editor-Placeholders#copies) | An entity's own version of a Blueprint placeholder. It reads the Blueprint live until you change a value. |
+| [Copy](World-Editor-Placeholders#copies) | An entity's own version of a Blueprint placeholder. It takes every change to the Blueprint, except in the values you override. |
 | [Override](World-Editor-Blueprints#overrides) | One field that a Link or a Copy sets for itself. **Reset** returns one; **Reset to Blueprint** returns all. |
 | [Detach](World-Editor-Blueprints#detach) | Turns a Link into the entity's own trait, which no longer follows the Original |
 | [Placeholder](World-Editor-Placeholders) | A named value with a list of values, which you place in world text as chips |
@@ -188,7 +189,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [World or Unique](World-Editor-Placeholders#world-or-unique) | Every World chip of a placeholder shows the same roll. Each Unique chip rolls on its own. |
 | [Draw Weight](World-Editor-Placeholders#draw-weight) | How often a value comes up, compared with the others. Weight 0 never draws it. |
 | [Pin](World-Editor-Placeholders#pins) | Holds a placeholder at one value while its source is active: a stat band, a location, a trait or a value |
-| [Persona Name, Character Name](World-Editor-Placeholders#built-in-chips) | The two built-in chips. Type `{{user}}` for your name, or `{{char}}` for the entity that owns the text. |
+| [Persona Name, Entity Name](World-Editor-Placeholders#built-in-chips) | The two built-in chips. Type `{{user}}` for your name, or `{{char}}` for the entity that owns the text. |
 | [Dictionary](World-Editor-Dictionary) | A world's lorebook. Its entries reach the AI only when a keyword matches. |
 | [Book](World-Editor-Dictionary#books) | A group of dictionary entries. A library dictionary is one book. |
 | [Entry](World-Editor-Dictionary#the-entry-panel) | One piece of lore: **Trigger Keywords** and the **Value** the AI gets |

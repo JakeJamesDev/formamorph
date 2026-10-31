@@ -421,7 +421,7 @@ The entity's **Traits** tab is the **Traits** tab for that entity alone. It show
 
 An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the persona's.
 
-> 💡 **Type `{{char}}` in a trait's text to name its owner.** It shows as the **Character Name** chip. On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
+> 💡 **Type `{{char}}` in a trait's text to name its owner.** It shows as the **Entity Name** chip. On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
 
 To give a global trait or group to one entity, drag it onto the entity's node. It moves to that entity. A [Blueprints](World-Editor-Blueprints#blueprints) item links instead, in Advanced mode.
 
