@@ -45,7 +45,7 @@ export const StrangerModal = ({ entity, label, isOpen, onOpenChange }: {
           onImageStep={onImageStep}
           morphValues={morphValues}
         >
-          <EntityDescription text={entity.strangerDescription?.trim() ?? ''} resolveText={(text) => resolveEntityText(entity, text)} />
+          <EntityDescription text={entity.strangerDescription?.trim() ?? ''} resolveText={(text) => resolveEntityText(shown, text)} />
         </EntityCardBody>
       </DialogContent>
     </Dialog>
