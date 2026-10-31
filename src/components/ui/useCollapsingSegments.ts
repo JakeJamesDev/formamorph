@@ -26,6 +26,8 @@ export interface CollapsingSegments {
   fold: SegmentFold;
   layout: SegmentLayout;
   minWidth: number | undefined;
+  /** The width with every label shown, once measured. A host that hugs its tabs uses it as its basis. */
+  fullWidth: number | undefined;
 }
 
 /**
@@ -45,6 +47,7 @@ export function useCollapsingSegments({ labels, active, fold: hostFold, onStepWi
   const measureRef = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<Measured | null>(null);
   const labelKey = labels.join('\u0000');
+  const fullWidth = measured?.full.some((w) => w > 0) ? segmentStepWidths(measured.full, measured.icon, SEGMENT_INSET).full : undefined;
   // Motion belongs to one label set, so tabs that arrive or rename land on their step without a slide.
   const [animatedKey, setAnimatedKey] = useState<string | null>(null);
   const animate = animatedKey === labelKey;
@@ -72,7 +75,8 @@ export function useCollapsingSegments({ labels, active, fold: hostFold, onStepWi
     observer?.observe(root);
     observer?.observe(rows[0]);
     return () => observer?.disconnect();
-  }, [labelKey]);
+    // A hugging host's room follows `fullWidth`, so it is read again before paint when that changes.
+  }, [labelKey, fullWidth]);
 
   const ready = !!measured && measured.full.some((w) => w > 0);
   useLayoutEffect(() => {
@@ -100,5 +104,5 @@ export function useCollapsingSegments({ labels, active, fold: hostFold, onStepWi
     ? hostFold ? segmentLayout(fullWidths, iconWidths, active, hostFold, SEGMENT_INSET).total : segmentLayout(fullWidths, iconWidths, active, 'icons', SEGMENT_INSET).total
     : undefined;
 
-  return { rootRef, measureRef, ready, animate, fold, layout, minWidth };
+  return { rootRef, measureRef, ready, animate, fold, layout, minWidth, fullWidth };
 }

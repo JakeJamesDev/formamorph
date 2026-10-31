@@ -1,8 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
+import { Box, Map } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import EditorModalShell from './EditorModalShell';
 
-const TABS = [{ value: 'a', label: 'Alpha' }, { value: 'b', label: 'Beta' }];
+const TABS = [{ value: 'a', label: 'Alpha', icon: Box }, { value: 'b', label: 'Beta', icon: Map }];
+
+// The app root supplies the tooltip provider the strip's tips read.
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: TooltipProvider });
 
 const baseProps = {
   surface: 'entityEditor' as const,
@@ -24,7 +29,7 @@ describe('EditorModalShell', () => {
   it('shows only Loading… while loading — no tabs, no footer', () => {
     render(<EditorModalShell {...baseProps} loading><div>body</div></EditorModalShell>);
     expect(screen.getByText('Loading…')).toBeTruthy();
-    expect(screen.queryByText('Alpha')).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Alpha' })).toBeNull();
     expect(screen.queryByText('Save')).toBeNull();
     expect(screen.queryByText('body')).toBeNull();
   });
@@ -32,7 +37,7 @@ describe('EditorModalShell', () => {
   it('renders title, tabs, body and footer once loaded', () => {
     render(<EditorModalShell {...baseProps}><div>body</div></EditorModalShell>);
     expect(screen.getByText('My Record')).toBeTruthy();
-    expect(screen.getByText('Alpha')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Alpha' })).toBeTruthy();
     expect(screen.getByText('body')).toBeTruthy();
     expect(screen.getByText('Export')).toBeTruthy();
     expect(screen.getByText('Save')).toBeTruthy();

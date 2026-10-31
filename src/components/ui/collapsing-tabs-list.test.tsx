@@ -100,6 +100,26 @@ describe('CollapsingTabsList', () => {
     expect(motion()).toEqual([true, true, true]);
   });
 
+  it('hugs its tabs with its full-label width as basis, folding by the room a tight row leaves it', () => {
+    const hugging = () => (
+      <TooltipProvider>
+        <Tabs value="profile">
+          <CollapsingTabsList hug tabs={TABS} value="profile" aria-label="Entity Fields" />
+        </Tabs>
+      </TooltipProvider>
+    );
+    room = 400;
+    const { unmount } = render(hugging());
+    const root = () => screen.getByRole('tablist', { name: 'Entity Fields' }).parentElement!;
+    expect(root().style.flex).toBe('0 1 338px');
+    expect(widths()).toEqual(['100px', '130px', '100px']);
+    unmount();
+    room = 300;
+    render(hugging());
+    expect(TABS.map((t) => labelShown(t.label))).toEqual([true, false, false]);
+    expect(widths()).toEqual(['100px', '40px', '40px']);
+  });
+
   it('moves the kept label to the picked tab', async () => {
     room = 300;
     render(<Harness />);

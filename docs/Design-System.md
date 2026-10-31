@@ -2166,10 +2166,11 @@ The top bar folds its parts together, in a fixed order, by whether its three cel
 
 ### As a tab strip
 
-Editor detail panels and the game's side panels use the same three steps on a strip of tabs. The editor reaches it through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)).
+Editor detail panels, the game's side panels and the library editors' headers use the same three steps on a strip of tabs. The editor reaches it through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)); the library editors through `EditorModalShell`.
 
 - 🧩 **Component.** `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) keeps the tab and panel roles. It shares its measuring with the segmented control through `useCollapsingSegments`.
 - ↔️ **Fills its row.** Unlike the segmented control, the tabs stretch to the strip's full width.
+- 🎯 **Or hugs its tabs.** With `hug`, the strip keeps its full-label width and stays centered. In the library editor header, the title truncates to 128px first, then the strip folds.
 - 🆕 **New tabs land.** A tab that arrives or renames after mount, such as the game's Inventory tab or the log count, snaps to its step without a slide.
 
 ## Pattern: Inventory Tab
