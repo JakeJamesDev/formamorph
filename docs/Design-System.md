@@ -2166,7 +2166,7 @@ The top bar folds its parts together, in a fixed order, by whether its three cel
 
 ### As a tab strip
 
-Editor detail panels, the game's side panels and the library editors' headers use the same three steps on a strip of tabs. The editor reaches it through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)); the library editors through `EditorModalShell`.
+Editor detail panels, the game's side panels, the library editors' headers and the narrow Formaquestion window use the same three steps on a strip of tabs. The editor reaches it through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)); the library editors through `EditorModalShell`.
 
 - 🧩 **Component.** `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) keeps the tab and panel roles. It shares its measuring with the segmented control through `useCollapsingSegments`.
 - ↔️ **Fills its row.** Unlike the segmented control, the tabs stretch to the strip's full width.
