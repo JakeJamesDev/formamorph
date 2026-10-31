@@ -15,6 +15,8 @@
 - [🎭 Entities in Game](Entities)
 - [🪪 Personas](Personas)
 - [🌐 Community Creations](Community-Creations)
+- [👤 Your Account](Account)
+- [💬 Bugs and Suggestions](Feedback)
 - [⚙️ Settings](Settings)
   - [📜 Prompts](Prompts)
   - [🧰 Tools](Tools)

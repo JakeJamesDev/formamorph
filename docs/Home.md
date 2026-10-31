@@ -35,7 +35,9 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
 | 🎭 **[Entities in Game](Entities)** | Who the story tracks as present, including the entities it invents mid-scene, and how to remove one it got wrong |
 | 🪪 **[Personas](Personas)** | Who you are in the story: making a persona, picking one at Enter World, changing it in game, and the SillyTavern import |
-| 🌐 **[Community Creations](Community-Creations)** | Downloading, Likes, comments and follows, publishing each kind, contests, Reports, bug reports and suggestions, and your account |
+| 🌐 **[Community Creations](Community-Creations)** | Downloading, Likes, comments and follows, publishing each kind, contests and Reports |
+| 👤 **[Your Account](Account)** | Login and Register, the privacy policy, your profile image, the User Profile dialog, and deleting your account |
+| 💬 **[Bugs and Suggestions](Feedback)** | The Feedback window: bug reports, suggestions and questions, statuses, accepted answers, and links and mentions in a thread |
 | ⚙️ **[Settings](Settings)** | Every setting in the Display, Output, Endpoints and Data tabs, and the Simple and Advanced modes |
 | 📜 **[Prompts](Prompts)** | Prompt presets, what each prompt does in a turn, the chip editor, per-prompt endpoints and reasoning, and a world's own prompts |
 | 🧰 **[Tools](Tools)** | The functions the AI can call, the built-in Tools, how to make and try your own, and endpoints with no Tool support |

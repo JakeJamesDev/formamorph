@@ -67,7 +67,7 @@ See [Sharing a Preset](#sharing-a-preset) for what a shared preset holds.
 <!-- keywords: upload, community, share online, post, public, listing, workshop, submit, models required, tags, publish blocked -->
 <!-- route: settingsPromptPreset.overview -->
 
-You must log in to Community Creations to publish. See [Login and Register](Community-Creations#login-and-register).
+You must log in to Community Creations to publish. See [Login and Register](Account#login-and-register).
 
 1. Select your own preset in the **Preset** list.
 2. Select **Overview** at the top of the list of prompts.
