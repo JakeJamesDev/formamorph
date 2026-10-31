@@ -91,7 +91,7 @@ Only entities you select are playable. The setting is your statement that the en
 
 > ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you make the entity playable. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
 
-In Simple mode, a **Playable** or **Persona-Only** entity puts a dot on the **Advanced** side of the mode switch, so you know the world uses Advanced features.
+In Simple mode, a **Playable** or **Persona-Only** entity puts a dot on the corner of the mode menu, so you know the world uses Advanced features. A non-default **Allowed Personas** or **Starts On** does the same.
 
 ## Persona-Only Entities
 <!-- keywords: hidden unless chosen, never in the world, reserved for player, invisible character, exclusive hero, not offered in library -->
@@ -123,6 +123,7 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 | Self openings | Its [Self Openings](World-Editor-Openings#self-openings) draw for a player who picks **None**, or a library persona with no Self openings of its own |
 | At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
 | Always an owner | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
+| Locations | It moves with the player, so **Presence**, **Movement** and **Known In** don't apply to it |
 | Duplicate | A duplicate drops the mark. |
 
 Its traits are the persona's traits when the player picks **None** or a library persona. A world persona keeps its own traits. The root traits the player picks stay global traits under every persona and under **None**. The picks carry over between **None** and library personas.
@@ -154,14 +155,14 @@ Two controls on the **Overview** tab decide who the player can be. Both are **Ad
 | Value | Starts on |
 |---|---|
 | **Player's Default** | The player's default persona. **World Only** hides this choice. |
-| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one |
+| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one. **World Only** hides **None** when the world has no Custom Persona. |
 | One of your personas | That persona |
 
 Use **Starts On: None** when your world already defines the player. Use **World Only** when the player must be one of your entities.
 
 - **A pick the player made in your world before wins**, when the list still offers it. **Starts On** guides new players. It doesn't lock them.
 - **World Only with no persona entity works like Any** until you give an entity a **Persona** role other than **Cast**.
-- **A start persona you later unmark falls back to Player's Default.**
+- **A start persona you later unmark falls back to Player's Default.** Under **World Only**, it falls back to the first choice **Starts On** still offers.
 - **The side panel's Change list follows Allowed Personas** too.
 - **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**. Cast becomes **World Only**, and also **Starts On: None** when no entity was playable.
 
@@ -174,7 +175,7 @@ An entity's own stats become *persona stats* while the player plays as it. Under
 |---|---|
 | Stat panel | The global stats show under **Global**. The persona's stats show under its name, below them. Pick the persona's name, marked **You**, in the entity picker, and no entity section shows. |
 | AI stat updates | The AI updates every persona stat under **Player Character**, and the global stats under **Global Stats**. A stat with the same name as a global stat stays a separate stat. See [How the AI Tracks Stat Changes](World-Editor-Stats#how-the-ai-tracks-stat-changes). |
-| AI prompts | The narrator, choice writer and storyboard planner read the global stats and traits first. The persona's own stats follow in its **Persona** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
+| AI prompts | The narrator, choice writer and storyboard planner read the global stats and traits first. The persona's own stats follow in its **Player Character** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 
@@ -204,7 +205,7 @@ These rows work with **Content**:
 | **Stat Detail** | Pick **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
 | **Format** | **Simple**, **Markdown** or **XML**, as on the other list chips |
 
-**Name** sends plain text. It turns off **Include** and **Stat Detail**, and it locks **Format**. **Only With** still works. Clearing **Include → Stats** turns off **Stat Detail**.
+**Name** sends plain text. It turns off **Include** and **Stat Detail**, and it locks **Format** while the chip has no **Header**. **Only With** still works. Clearing **Include → Stats** turns off **Stat Detail**.
 
 | Detail | What to do |
 |---|---|

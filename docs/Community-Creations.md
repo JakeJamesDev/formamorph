@@ -143,7 +143,7 @@ On a wide screen the tabs are a side rail on the left, below the search and filt
 
 Type in the search box to match names and descriptions. Select the **Refresh catalog** button to load new listings.
 
-The sort menu offers **Last Updated**, **Creation Date**, **Downloads** and **Likes**. The button beside it switches between **Descending** and **Ascending**. The **Updates first** checkbox puts listings with an update for you at the top.
+The sort menu offers **Last Updated**, **Creation Date**, **Downloads** and **Likes**. The button beside it switches between **Descending** and **Ascending**. The **Updates first** checkbox puts listings with an update for you at the top. It is on by default.
 
 The **Add Filter** button opens these filters:
 
@@ -202,16 +202,18 @@ On your own listing, select **Add Entry**. Fill in **Title**, **Date** and **Wha
 | World | A new copy in your library's **Worlds** tab, with the content it requires and the add-ons you checked. |
 | Entity, Dictionary | Your library. A second download replaces the copy you have. |
 | Avatar | Your library's **Avatars** tab. |
-| Mascot | **Settings** → **Formaquestion** → **Mascot**, as a custom Mascot you can select, edit, duplicate and export. A second download replaces the copy you have. If you edited the copy, the app asks first. |
+| Mascot | **Formaquestion Settings** → **Mascot**, as a custom Mascot you can select, edit, duplicate and export. A second download replaces the copy you have. If you edited the copy, the app asks first. |
 | Prompt | **Settings** → **Prompts**. Select **Use This Preset** to switch to it. |
 
-A toast says when the download is done. A prompt preset that adds a script Tool warns you first. Read the script in the **Tools** tab. See [Tools](Tools).
+A toast says when the download is done. When a prompt preset adds a script Tool and turns it on, a toast warns you. Read the script in the **Tools** tab. See [Tools](Tools).
 
-On formamorph.ai, the download button saves the file to your device instead. Prompt presets and Mascots download only in the app. The website has no **Hidden** list and no Reports.
+A download can stop partway. When a world's required content fails, **Download not finished** opens. When an add-on fails, **Some add-ons did not download** opens. Select **Retry** or **Retry All** to get the rest. What already downloaded is kept.
+
+On formamorph.ai, the download button saves the file to your device instead. The website has no **Hidden** list and no Reports.
 
 ### Supporter-Only Listings
 
-Staff can limit a listing's download to Patreon Supporters. Everyone can still open it, like it and comment on it. The main button on its card and in its details window changes with your account:
+Admins can limit a listing's download to Patreon Supporters. Everyone can still open it, like it and comment on it. The main button on its card and in its details window changes with your account. On the card it is an icon; in the details window it reads:
 
 | You are | The button reads | What it does |
 |---|---|---|
@@ -221,7 +223,7 @@ Staff can limit a listing's download to Patreon Supporters. Everyone can still o
 
 The button reads **Checking…** while the app checks your Supporter status at start. Only Mascots can be installed so far. On a Supporter-only listing of another kind, a Supporter sees **Not Supported Yet**.
 
-Staff see **Limit to Supporters** beside **Pin** in the details window, and a heart on the card. Select it to limit the download to Supporters. Select **Open to All** to open the download to everyone again.
+Admins see **Limit to Supporters** beside **Pin** in the details window, and a heart on the card. Select it to limit the download to Supporters. Select **Open to All** to open the download to everyone again.
 
 ### When an Update Is Available
 
@@ -233,6 +235,8 @@ For a world, the button asks what to do:
 |---|---|
 | **Download a copy** | Adds the new version as a separate world. Your copy stays. |
 | **Update an existing copy** | Replaces your copy with the new version. With several copies, you pick one. An edited copy loses your changes. |
+
+For a world you already have with no update, the details window's button reads **Re-download World**. It offers **Download a copy** or **Overwrite an existing copy**.
 
 When the world has linked content, **Update This World** opens next. See [Update This World](LinkedContent#update-this-world).
 
@@ -302,6 +306,7 @@ You must log in to publish. Each kind opens the same publish dialog from its own
 | Dictionary | The library dictionary editor → **Publish**. |
 | Avatar | Right-click the avatar in the library's **Avatars** tab → **Publish**, or the avatar's details → **Publish**. |
 | Prompt | **Settings** → **Prompts** → **Publish**. See [How to Publish a Prompt Preset](Prompts#how-to-publish-a-prompt-preset). |
+| Mascot | **Formaquestion Settings** → **Mascot** → **Publish**. |
 
 A bundled world must be edited before you can publish it. An entity or a dictionary publishes what is on screen, saved or not.
 
@@ -309,7 +314,7 @@ A bundled world must be edited before you can publish it. An entity or a diction
 
 | Part | What it does |
 |---|---|
-| **Publish as new world** | Makes a new listing. Selected each time the dialog opens. |
+| **Publish as new world** | Makes a new listing. Selected when the dialog opens, unless the item came from one of your listings: then that listing is selected. |
 | **Or update existing world:** | Replaces one of your listings of the same kind. Each row shows its download count. |
 | **Changelog Entry** | On an update, adds an entry to the [Listing Changelog](#the-listing-changelog) once the update is published. |
 | **Linked Content** | On a world, sets what players download with it. See [Publishing a World](LinkedContent#publishing-a-world). |
@@ -331,7 +336,7 @@ The dialog has no name or description fields. The listing reads them from the it
 | Avatar | The title in the VRM file | The authors the file names | Its image | None |
 | Prompt | The preset name | **Description** in **Overview** | None | **Tags** |
 
-Each kind has a publish limit: a world 100 MB, an entity 25 MB, a dictionary 5 MB, an avatar 64 MB, and a prompt preset 1 MB.
+Each kind has a publish limit: a world 100 MB, an entity 25 MB, a dictionary 5 MB, an avatar 64 MB, a prompt preset 1 MB, and a Mascot 10 MB.
 
 ### Publishing an Avatar
 
@@ -343,9 +348,20 @@ The steps are in [How to Publish a Prompt Preset](Prompts#how-to-publish-a-promp
 
 ### Publishing Terms
 
-Staff can set terms that you accept before you publish. The dialog opens the first time you publish. **Accept** lets you publish. **Decline** turns off publishing until you accept them in the **Terms** tab of your **User Profile**.
+Staff can set terms that you accept before you publish. The dialog opens the first time you publish. **Accept** lets you publish. **Decline** turns off publishing until you accept them. Accept them in the **Terms** tab of your **User Profile**, or through **Review the terms** in the publish dialog.
 
 Your tags can also raise a notice before publishing. Select **Continue** to publish or **Cancel** to change them.
+
+### Review and Quarantine
+
+When listing review is on, a new listing or an update waits for a mod before players see it. Only you and the mods see these markers on your card:
+
+| Marker | What it means |
+|---|---|
+| **Pending Review** | Players can see it after a mod approves it. |
+| **Update Pending** | Players see the live version until a mod approves the update. |
+| **Quarantined** | A mod hid it. The marker names the date it is deleted. |
+| **Resubmitted** | You updated a quarantined listing, and it waits for review again. |
 
 ### Deleting a Listing
 
@@ -418,9 +434,9 @@ Select the round button at the bottom left of the main menu to open **Login**. T
 | Dialog | Fields |
 |---|---|
 | **Login** | **Username** and **Password**. **Forgot password?** opens the reset page on formamorph.ai. |
-| **Register** | **Username** (3–20 letters, numbers, spaces, `_` or `-`; no two names can differ only by case), **Password** (at least 6), **Confirm Password**, and **Email (Optional)**. The email lets you reset your password. |
+| **Register** | **Username** (3–20 letters, numbers, spaces, `_` or `-`; no two names can differ only by case, or by a space in place of `_`), **Password** (at least 6), **Confirm Password**, and **Email (Optional)**. The email lets you reset your password. |
 
-Select **Create Account** to switch to **Register**, and **Back to Login** to switch back. To change your email, use the account page on formamorph.ai.
+Select **Create Account** to switch to **Register**, and **Back to Login** to switch back. To change your email, use the **Settings** tab of your **User Profile**, or the account page on formamorph.ai.
 
 ### The Privacy Policy
 
@@ -438,17 +454,17 @@ Read the policy any time at [formamorph.ai/privacy](https://formamorph.ai/privac
 
 ### Choose a New Username
 
-Some older usernames don't fit the username rule: they have spaces or other symbols, or they match another account's name except for capital letters. If yours is one of them, **Choose a New Username** opens when you log in or start the app.
+Some older usernames don't fit the username rule. They are too long or too short, or they have symbols the rule doesn't allow. Or they match another account's name except for capital letters or a space in place of `_`. If yours is one of them, **Choose a New Username** opens when you log in or start the app.
 
 - 💡 The **New Username** field starts with a suggested name when one is free. Keep it or type your own.
 - Select **Save Username** to change it. From then on, you log in with the new name.
-- Select **Later** to close the dialog. Your games and saves keep working. Likes, comments, follows and publishing stay locked until you rename, and the dialog opens again when you try one.
+- Select **Later** to close the dialog. Your games and saves keep working. When a rename is required, your account can't make changes such as likes, comments, follows or publishing until you rename. The dialog opens again when you try one.
 
 Your listings, likes and comments move to the new name. Old links to your profile stop working.
 
 ### The User Profile Dialog
 
-Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](#how-to-change-your-profile-image).
+Select the round button at the bottom left of the main menu. Its badge counts unread messages and new follow-feed items. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](#how-to-change-your-profile-image).
 
 The header has **Log Out**. Your email, **Change Password** and **Delete Account** are on the **Settings** tab.
 
@@ -457,7 +473,7 @@ The header has **Log Out**. Your email, **Change Password** and **Delete Account
 | **Messages** | Messages from the Formamorph team, such as Report Outcomes. Dismiss a message with its button. |
 | **Notifications** | The [follow feed](#the-follow-feed). |
 | **Terms** | The [publishing terms](#publishing-terms). **Accept** or **Decline** them here. Shows only when terms exist. |
-| **Settings** | Your account email, with **Resend Verification Email**. **Change Password** and **Delete Account** are here too. |
+| **Settings** | Your **Email Address**, with **Save Email**, and **Resend Verification Email** while the address is unverified. Your Patreon link, **Change Password** and **Delete Account** are here too. |
 
 ### Account Deletion
 
@@ -483,15 +499,17 @@ Select the round **Feedback** button at the bottom left of the main menu. It sho
 
 | Tab | What it holds |
 |---|---|
-| **Bugs** | Your bug reports, or all of them with **All Reports**. **Report a Bug** opens the form. Only you and the team reply to your report. |
-| **Suggestions** | Everyone's suggestions, or yours with **Mine**. **Suggest Something** opens the form. Anyone can reply and vote. Sort by **Newest** or **Most voted**. |
-| **Questions** | Everyone's questions, or yours with **Mine**. **Ask a Question** opens the form. Anyone can reply, and a vote says you have the same question. The tab opens on **Unanswered**, sorted by **Most Voted**. |
+| **Bugs** | Your bug reports, or all of them with **All Reports**. **Report a Bug** opens the form. Only you and the team reply to your report. The tab opens on **Unresolved**. |
+| **Suggestions** | Everyone's suggestions, or yours with **Mine**. **Suggest Something** opens the form. Anyone can reply and vote. The tab opens on **Still Open**. |
+| **Questions** | Everyone's questions, or yours with **Mine**. **Ask a Question** opens the form. Anyone can reply, and a vote says you have the same question. The tab opens on **Unanswered**, sorted by **Most Voted**. While you type a title, **Similar Questions** lists up to 5 matches. |
+
+Sort a list by **Newest**, **Oldest** or **Recently Active**. **Suggestions** and **Questions** also sort by **Most Voted**.
 
 You can also read the **Suggestions** and **Questions** boards at [formamorph.ai/feedback](https://formamorph.ai/feedback), with no account. Sign in there to vote or reply. Bug reports stay in the app.
 
-A bug report includes your app version and platform. Nothing about your worlds or saves goes with it. The form keeps an unsent draft.
+A bug report includes your app version, platform and system. Nothing about your worlds or saves goes with it. The form keeps an unsent draft.
 
-Staff set each item's status. A bug is **Open**, **Needs Info**, **Confirmed**, **Pending Release**, **Fixed**, **Won't Fix** or **Duplicate**. A suggestion is **Open**, **Considering**, **Planned**, **Pending Release**, **Declined** or **Added**. **Pending Release** means the change is done and comes in the next update. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.
+Staff set each item's status. A bug is **Open**, **Needs Info**, **Confirmed**, **Pending Release**, **Fixed**, **Won't Fix** or **Duplicate**. A suggestion is **Open**, **Considering**, **Planned**, **Pending Release**, **Declined** or **Added**. **Pending Release** means the change is done and comes in the next update. A question is **Open**, **Answered** or **Closed**, and a closed question takes no more replies. Staff can also lock a suggestion or a question, which stops replies and edits. Replies show in the item's thread, under **Bugs**, **Suggestions** or **Questions**.
 
 ### Accepted Answers
 
@@ -526,7 +544,7 @@ A listing that is hidden, waiting for review or deleted shows as **Unavailable l
 ### Mentions
 <!-- keywords: mention a player, at sign, at username, tag someone, notify a player, unknown user, mention limit, too many mentions -->
 
-To point a thread at a player, type `@` and their username in a report, a question, a suggestion or a reply. Names ignore letter case. The mention shows as a chip with the player's image and name. Select the chip to open their profile. On the website it opens their profile page.
+To point a thread at a player, type `@` and their username in a report, a question, a suggestion or a reply. Names ignore letter case. For a name with spaces, type `_` in place of each space. The mention shows as a chip with the player's image and name. Select the chip to open their profile. On the website it opens their profile page.
 
 | You type | What shows |
 |---|---|
