@@ -68,6 +68,12 @@ Spec-session answers to ticket intent questions.
 | R21 | The avatar creator says Avatar: Avatar Customization, Avatar Preview, Finalize Avatar, Animate Avatar. Every quote follows (R14): wiki pages, Glossary, surface label, Formaquestion targets, tests. User ruling |
 | R22 | A game status row shows its prompt's visible name from the prompt labels. Pipeline words ("Cast") never show |
 | R23 | Dead UI (a dialog no code path opens) stays unchanged and goes under Findings |
+| R24 | `statCodeTiming.ts` belongs to ticket 05. A case-only fix ("The" in a title) rides along only when the string is rewritten for another reason |
+| R25 | A parameter label carries no "(optional)". The label is the bare name, with an "Optional" Hint under it |
+| R26 | Built-in Tool descriptions are text the AI receives, so they are prompt text and out of scope, even where a read view shows them |
+| R27 | A template description is a technical-register line: two sentences at most. A third is allowed only when an author who reads just this line would otherwise build something that breaks. One sentence takes no period; two or more end with one |
+| R28 | An unassigned `src/lib/` file goes to the ticket whose screens show its copy. A file another ticket lists stays with that ticket. A string the account site also reads is swept here; `site/` itself stays out of scope |
+| R29 | The world trust notice says "scripts". Its detection skips trait, item and Tool scripts; that gap is a Finding for the user, not an in-place fix, because it changes what the notice and its code view cover |
 
 ## Screen groups
 
