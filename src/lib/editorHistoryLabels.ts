@@ -21,6 +21,7 @@ export const SLICE_TYPE_NAMES: Record<SliceName, [string, string]> = {
   tools: ["Tool", "Tools"],
   items: ["Item", "Items"],
   slots: ["Slot", "Slots"],
+  bodies: ["Body", "Bodies"],
   placements: ["Placement", "Placements"],
 };
 

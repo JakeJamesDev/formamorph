@@ -159,8 +159,17 @@ An authored starting Item Copy: where it goes (the Persona, an entity or a locat
 _Avoid_: spawn, starting item
 
 **Slot**:
-A named place in the world's slot list where an item is equipped, such as Hand or Ring. Its capacity sets how many item units fit; an item's slot size says how many it takes. The Persona and every entity share one list.
-_Avoid_: equipment slot list per entity
+A name in the world's slot list where an item is equipped, such as Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and an item's slot size says how many units it takes. One list serves every Body, so an item's slot works in any Body that has it.
+
+**Body**:
+A named, ordered list of slot entries, each a slot and its capacity (absent = 1), such as Humanoid with Head and Hand ×2. The world holds an ordered Body list. An entity picks a Body, the Default, or None; None gives the owner no slots.
+_Avoid_: body type, form, paperdoll
+
+**Default Body**:
+The first Body in the world's list. Every owner without a pick uses it: an entity with no pick, a library character and a character the AI introduces. A world with no Bodies has no Default, so no owner has slots.
+
+**Body in force**:
+The Body an owner equips into right now, from the one resolver every slot reader uses. An entity reads its own pick. The played Persona reads a world persona's own pick, or the Custom Persona entity's under None or a library persona. A pick whose Body is gone reads as the Default.
 
 **Persona**:
 The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.

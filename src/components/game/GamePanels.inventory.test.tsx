@@ -6,14 +6,15 @@ import { usePresence } from '@/lib/usePresence';
 import type { Presence } from '@/lib/presence';
 import { useInventoryPanel } from './useInventoryPanel';
 import type { InventoryTabProps } from './InventoryTab';
-import type { Entity, GameLocation, Item, ItemCopy, Slot } from '@/types';
+import type { Entity, GameLocation, Body, Item, ItemCopy, Slot } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
-const slots: Slot[] = [{ id: 'hand', name: 'Hand', capacity: 2 }, { id: 'head', name: 'Head' }];
+const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }];
+const bodies: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] }];
 const items = [
   item('dagger', 'Dagger', { slotId: 'hand' }),
   item('helm', 'Iron Helm', { stackable: false, slotId: 'head' }),
@@ -38,7 +39,7 @@ const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCop
 const turns: TurnFixture[] = [{ narration: 'One.', turnId: 't1' }, { narration: 'Two.', turnId: 't2' }];
 /** `inScene` names who took part in the latest turn, which puts them In Scene when they stand here. */
 const stage = (copies: ItemCopy[], over: { page?: number; inScene?: string[]; met?: string[] } = {}) => ({
-  world: { items, slots, entities, locations: [yard, hall] },
+  world: { items, slots, bodies, entities, locations: [yard, hall] },
   turns: over.inScene ? [turns[0], { ...turns[1], entities: over.inScene }] : turns,
   ...(over.page !== undefined && { page: over.page }),
   seed: (g: Gameplay) => {
@@ -70,6 +71,39 @@ describe('RightPanel — Inventory tab', () => {
     expect(mine(h.gameplay()).map((c) => [c.id, !!c.equipped])).toEqual([['old', false], ['new', true]]);
   });
 
+  describe("the played Persona's Body in force", () => {
+    const withBody = (copies: ItemCopy[], body: Body | undefined, pick?: Entity['body']) => ({
+      ...stage(copies),
+      world: {
+        items, slots, bodies: body ? [body] : [], locations: [yard, hall],
+        entities: [...entities, { id: 'me', name: 'Me', locations: [], customPersona: true, ...(pick && { body: pick }) } as Entity],
+      },
+    });
+    const owner = () => screen.getByRole('region', { name: /inventory$/ });
+
+    it("lists the Body's slots in its entry order", async () => {
+      const headFirst: Body = { id: 'b', name: 'B', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
+      renderRightPanel({}, withBody([], headFirst));
+      await screen.findByText('Equipped');
+      expect(within(owner()).getAllByRole('listitem').filter((li) => li.getAttribute('aria-label')).map((li) => li.getAttribute('aria-label')))
+        .toEqual(['Head', 'Hand']);
+    });
+
+    it('shows no slots and offers no Equip under None', async () => {
+      renderRightPanel({}, withBody([copy('h', 'helm')], bodies[0], { kind: 'none' }));
+      await screen.findByText('Iron Helm');
+      expect(screen.queryByText('Equipped')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Equip Iron Helm' })).toBeNull();
+    });
+
+    it('shows an item equipped in a slot the Body lacks under Carried, where it unequips (Q35)', async () => {
+      const handsOnly: Body = { id: 'b', name: 'B', entries: [{ slotId: 'hand', capacity: 2 }] };
+      const h = renderRightPanel({}, withBody([copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })], handsOnly));
+      await userEvent.click(await screen.findByRole('button', { name: 'Unequip Iron Helm' }));
+      expect(mine(h.gameplay())[0].equipped).toBeUndefined();
+    });
+  });
+
   it('unequips an item into the carried list', async () => {
     const h = renderRightPanel({}, stage([copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Unequip Iron Helm' }));
@@ -93,7 +127,7 @@ describe('RightPanel — Inventory tab', () => {
     const crowd = [...entities, { id: 'ilsa', name: 'Ilsa', locations: ['yard'] }, { id: 'odo', name: 'Odo', locations: ['hall'] }] as Entity[];
     renderRightPanel(
       {},
-      { ...stage([copy('c', 'coin')], { inScene: ['Ilsa', 'Odo'] }), world: { items, slots, entities: crowd, locations: [yard, hall] } },
+      { ...stage([copy('c', 'coin')], { inScene: ['Ilsa', 'Odo'] }), world: { items, slots, bodies, entities: crowd, locations: [yard, hall] } },
     );
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
     const list = await screen.findByRole('list', { name: 'Give to' });
@@ -114,7 +148,7 @@ describe('RightPanel — Inventory tab', () => {
     const probe = () => {
       let panel!: InventoryTabProps;
       const Probe = () => { panel = useInventoryPanel(); return null; };
-      const h = renderInGame(<Probe />, { ...stage([copy('c', 'coin')], { inScene: ['Ilsa'] }), world: { items, slots, entities: crowd, locations: [yard, hall] } });
+      const h = renderInGame(<Probe />, { ...stage([copy('c', 'coin')], { inScene: ['Ilsa'] }), world: { items, slots, bodies, entities: crowd, locations: [yard, hall] } });
       return { h, ops: (to: string) => act(() => panel.onOps(give(to))) };
     };
 
@@ -165,7 +199,7 @@ describe('RightPanel — Inventory tab', () => {
     const withStranger = (strangerName: string | undefined, over: Partial<Entity> = {}) => ({
       ...stage([copy('c', 'coin')], { inScene: ['Sylvie Thornwhistle'] }),
       world: {
-        items, slots, locations: [yard, hall],
+        items, slots, bodies, locations: [yard, hall],
         entities: [{ id: 'sylvie', name: 'Sylvie Thornwhistle', locations: ['yard'], ...(strangerName !== undefined && { strangerName }), ...over }] as Entity[],
       },
     });

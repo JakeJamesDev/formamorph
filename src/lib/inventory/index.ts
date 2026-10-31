@@ -3,8 +3,9 @@
  * come from an injected maker, as the turn commit's do.
  */
 import {
-  byEquipOrder, isUnidentified, itemStackable, itemUsable, sameState, sameWhere, seededState, slotCapacity, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
+  byEquipOrder, isUnidentified, itemStackable, itemUsable, sameState, sameWhere, seededState, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
 } from '@/lib/items';
+import { slotsInForce, type BodyWorld } from '@/lib/bodies';
 import { inCast, playsAs } from '@/lib/owners';
 import type {
   Entity, GameLocation, Item, ItemCopy, ItemCopyState, ItemCopyVisibility, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
@@ -131,7 +132,7 @@ export interface ItemScriptEvent {
 }
 
 /** The authored slice the operations read. An absent slice reads as empty. */
-export interface InventoryWorld {
+export interface InventoryWorld extends BodyWorld {
   items?: readonly Item[];
   slots?: readonly Slot[];
 }
@@ -146,6 +147,8 @@ export interface InventoryCall {
   world: InventoryWorld;
   source: InventorySource;
   newId: NewId;
+  /** Who `you` is, for the played Persona's Body. */
+  persona?: PersonaRef;
   presence?: Presence;
   /** The runtime items a gain may name. */
   runtimeItems?: readonly RuntimeItem[];
@@ -202,7 +205,7 @@ const whereText = (where: ItemCopyWhere): string => (where.kind === 'you' ? 'you
  */
 export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly InventoryOp[], call: InventoryCall): InventoryResult {
   const items = new Map((call.world.items ?? []).map((item) => [item.id, item]));
-  const slots = new Map((call.world.slots ?? []).map((slot) => [slot.id, slot]));
+  const slots = call.world.slots ?? [];
   let list: ItemCopy[] = [...copies];
   const diagnostics: string[] = [];
   const itemUses: ItemUse[] = [];
@@ -369,10 +372,12 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       case 'equip': {
         if (copy.equipped) return `equip: Item Copy ${copy.id} is already equipped`;
         if (copy.where.kind === 'location') return `equip: Item Copy ${copy.id} has no owner`;
-        const slot = item?.slotId ? slots.get(item.slotId) : undefined;
+        const slot = item?.slotId ? slots.find((s) => s.id === item.slotId) : undefined;
         if (!slot) return `equip: Item Copy ${copy.id} has no slot`;
+        // Capacity comes from the owner's Body in force; a slot that Body lacks refuses the equip (Q8).
+        const capacity = slotsInForce(call.world, copy.where, call.persona).find((s) => s.slot.id === slot.id)?.capacity;
+        if (capacity === undefined) return `equip: no ${slot.name} slot on ${whereText(copy.where)}`;
         const size = slotSizeOf(item);
-        const capacity = slotCapacity(slot);
         if (size > capacity) return `equip: Item Copy ${copy.id} takes ${size} of slot ${slot.name}'s ${capacity}`;
         // The owner's items in this slot, longest equipped first (Q14, Q96).
         const worn = list

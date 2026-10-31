@@ -103,8 +103,6 @@ export function seededState(item: Item): ItemCopyState | undefined {
 /** What a copy of `item` leaves on its last use (Q26). */
 export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };
 
-export const slotCapacity = (slot: Slot): number => slot.capacity ?? 1;
-
 /** The slot capacity one Item Copy of `item` takes. A runtime item, which has no item, takes 1. */
 export const slotSizeOf = (item: Item | undefined): number => item?.slotSize ?? 1;
 
@@ -144,12 +142,6 @@ export const wholeCount = (raw: string): number | undefined => {
   const n = Math.floor(Number(raw));
   return Number.isFinite(n) ? n : undefined;
 };
-
-/** `items` with every slot size in the slot cut to `capacity`. */
-export function withSlotCapacity(items: Item[], slotId: string, capacity: number): Item[] {
-  if (!items.some((i) => i.slotId === slotId && (i.slotSize ?? 1) > capacity)) return items;
-  return items.map((i) => (i.slotId === slotId && (i.slotSize ?? 1) > capacity ? { ...i, slotSize: capacity } : i));
-}
 
 /** The item with `map` over each of its chip fields. */
 const mapItemChips = (item: Item, map: (text: string) => string): Item => {

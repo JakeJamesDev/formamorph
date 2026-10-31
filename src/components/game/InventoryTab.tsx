@@ -7,11 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { formatTimeLeft } from '@/lib/gameClock';
-import { byEquipOrder, copyFace, copyState, itemUsable, slotCapacity, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
+import type { BodySlot } from '@/lib/bodies';
+import { byEquipOrder, copyFace, copyState, itemUsable, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
-import type { Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
+import type { Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 export interface InventoryTabProps {
@@ -24,7 +25,8 @@ export interface InventoryTabProps {
   items: readonly Item[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
-  slots: readonly Slot[];
+  /** The played Persona's Body slots, in entry order. Empty = no Body. */
+  slots: readonly BodySlot[];
   /** The In Scene entities Give can pick, each under its label (Q59). */
   present: readonly { id: string; name: string }[];
   locationId: string | null | undefined;
@@ -180,8 +182,10 @@ export function InventoryTab({
     return (copy.item.kind === 'runtime'
       ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
   };
-  const equipped = shown.filter((c) => c.equipped).sort(byEquipOrder);
-  const carried = shown.filter((c) => !c.equipped);
+  const inBody = (c: ItemCopy) => slots.some((s) => s.slot.id === c.equipped?.slotId);
+  const equipped = shown.filter(inBody).sort(byEquipOrder);
+  // A copy equipped in a slot the Body lacks shows as carried, so it never hides (Q35).
+  const carried = shown.filter((c) => !inBody(c));
   const lyingHere = lying.filter((c) => c.visibility === 'visible');
   const here: ItemCopyWhere | null = locationId ? { kind: 'location', id: locationId } : null;
 
@@ -228,12 +232,11 @@ export function InventoryTab({
           <>
             <PanelSubheader>Equipped</PanelSubheader>
             <ul className="space-y-0.5">
-              {slots.map((slot) => {
+              {slots.map(({ slot, capacity }) => {
                 const inSlot = equipped.filter((c) => c.equipped?.slotId === slot.id);
                 // The count shows visible items only: a hidden equipped one takes capacity unseen (Q112).
                 const used = equipped.filter((c) => c.equipped?.slotId === slot.id)
                   .reduce((sum, c) => sum + slotSizeOf(itemOf(c)), 0);
-                const capacity = slotCapacity(slot);
                 return (
                   <li key={slot.id} className="flex gap-2 rounded-md bg-background/40 px-1 py-0.5" aria-label={slot.name}>
                     <div className="w-16 shrink-0 py-1.5 pl-1">
@@ -270,10 +273,16 @@ export function InventoryTab({
               const item = itemOf(copy);
               const name = nameOf(copy);
               const bound = !!item?.bound;
-              const equippable = !!item?.slotId && slots.some((s) => s.id === item.slotId);
+              const equippable = !!item?.slotId && slots.some((s) => s.slot.id === item.slotId);
               return row(copy, (
                 <div className="flex shrink-0 items-center">
                   <UseButton copy={copy} item={item} name={name} disabled={disabled} onOps={onOps} />
+                  {copy.equipped && (
+                    <ItemRowButton
+                      label={`Unequip ${name}`} icon={Undo2} disabled={disabled}
+                      onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
+                    />
+                  )}
                   {equippable && (
                     <ItemRowButton
                       label={`Equip ${name}`} icon={Shirt} disabled={disabled}

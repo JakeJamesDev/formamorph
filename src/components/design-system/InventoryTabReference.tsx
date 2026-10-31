@@ -9,9 +9,12 @@ import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { randomUUID } from '@/lib/uuid';
-import type { Item, ItemCopy, Slot } from '@/types';
+import { bodySlots } from '@/lib/bodies';
+import type { Body, Item, ItemCopy, Slot } from '@/types';
 
-const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand', capacity: 2 }, { id: 'ring', name: 'Ring' }];
+const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }];
+const BODIES: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] }];
+const BODY_SLOTS = bodySlots(BODIES[0], SLOTS);
 const item = (id: string, name: string, over: Partial<Item>): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 const ITEMS: Item[] = [
@@ -58,7 +61,7 @@ export function InventoryTabReference() {
   const [copies, setCopies] = useState(START);
   const [busy, setBusy] = useState(false);
   const onOps = (ops: InventoryOp[]) => setCopies((now) => applyInventoryOps(now, ops, {
-    world: { items: ITEMS, slots: SLOTS }, source: 'panel', newId: randomUUID,
+    world: { items: ITEMS, slots: SLOTS, bodies: BODIES }, source: 'panel', newId: randomUUID,
     presence: { locationId: HERE, entityIds: new Set(PRESENT.map((e) => e.id)) },
   }).copies);
   return (
@@ -80,7 +83,7 @@ export function InventoryTabReference() {
             copies={copies.filter((c) => c.where.kind === 'you')}
             lying={copies.filter((c) => c.where.kind === 'location')}
             items={ITEMS}
-            slots={SLOTS}
+            slots={BODY_SLOTS}
             present={PRESENT}
             locationId={HERE}
             locationName="Sample Room"

@@ -395,6 +395,8 @@ export interface Entity {
    *  never in the cast (see lib/owners). At most one per world, at the root. Excludes the Persona marks and
    *  implies persona-only. */
   customPersona?: boolean;
+  /** The Body it equips into. Absent = the Default Body. */
+  body?: BodyPick;
   type?: string;
   /** What the player calls the entity before meeting it. Absent, the entity starts met (see lib/presence). */
   strangerName?: string;
@@ -603,13 +605,28 @@ export interface Item {
   scripts?: Script[];
 }
 
-/** One equipment slot of the world, shared by the Persona and every entity. */
+/** One equipment slot of the world: a name only. Its capacity comes from each Body that holds it. */
 export interface Slot {
   id: string;
   name: string;
+}
+
+/** One slot a Body holds. */
+export interface BodyEntry {
+  slotId: string;
   /** Absent = 1. */
   capacity?: number;
 }
+
+/** A named set of slots an owner equips into, in the order the Inventory panel lists them. */
+export interface Body {
+  id: string;
+  name: string;
+  entries: BodyEntry[];
+}
+
+/** An entity's Body pick. Absent = the Default Body, the world's first. */
+export type BodyPick = { kind: 'none' } | { kind: 'body'; id: string };
 
 /** Where a placement puts its Item Copies: on the played Persona, on an entity, or at a location. */
 export type PlacementWhere =
@@ -936,6 +953,8 @@ export interface World {
   items?: Item[];
   /** Equipment slots. Absent = none. */
   slots?: Slot[];
+  /** Bodies, in order. The first is the Default. Absent = none, so no owner has a slot. */
+  bodies?: Body[];
   /** Starting Item Copies. Absent = none. */
   placements?: Placement[];
 }

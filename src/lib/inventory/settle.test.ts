@@ -4,7 +4,7 @@ import { groupPickStates } from '@/lib/traitGates';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { applyCodeTraitSwitches, seedStatBases, switchPlayerTrait, traitGateInput, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import type {
-  Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, Slot, StatChange, Trait, TraitGroup,
+  Body, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, Slot, StatChange, Trait, TraitGroup,
   TraitRequirementRow,
 } from '@/types';
 
@@ -20,9 +20,10 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const trait = (id: string, over: Partial<Trait> = {}, statChanges: StatChange[] = []): Trait =>
   ({ id, name: id[0].toUpperCase() + id.slice(1), statChanges, playerToggle: true, ...over });
 
-const hand: Slot = { id: 'hand', name: 'Hand', capacity: 2 };
+const hand: Slot = { id: 'hand', name: 'Hand' };
 const body: Slot = { id: 'body', name: 'Body' };
 const finger: Slot = { id: 'finger', name: 'Finger' };
+const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'body' }, { slotId: 'finger' }] };
 const stance: TraitGroup = { id: 'stance', name: 'Stance', parentId: null, maxPicks: 1 } as TraitGroup;
 
 const cursed = trait('cursed', {}, [{ statId: 'luck', value: -1, type: 'starting' }]);
@@ -71,7 +72,7 @@ function act(play: Play, ops: InventoryOp[], cap?: number): Play {
   let n = play.copies.length;
   const check = equipRequirement({ traits: play.traits, ledger: play.ledger }, world());
   const { copies, diagnostics } = applyInventoryOps(play.copies, ops, {
-    world: { items, slots: [hand, body, finger] }, source: 'script', newId: () => `c${n++}`, requirement: check,
+    world: { items, slots: [hand, body, finger], bodies: [humanoid] }, source: 'script', newId: () => `c${n++}`, requirement: check,
   });
   const settled = settleInventory({ copies, previous: play.copies, traits: play.traits, ledger: play.ledger }, world(cap));
   return { copies: settled.copies, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };

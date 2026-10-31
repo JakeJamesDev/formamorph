@@ -96,6 +96,8 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `dictionaries` | ✓ | [Dictionary](#dictionaries)[] | Lore books. Import makes one empty book when the list is absent or empty |
 | `statUpdates` | ✓ | [StatUpdate](#stat-updates)[] | An older field. Write `[]` |
 | `scripts` | | [Script](#scripts)[] | Scripts no stat owns. They run with no `self` |
+| `slots` | | [Slot](#slots-and-bodies)[] | Where items equip, such as Hand. Absent = none |
+| `bodies` | | [Body](#slots-and-bodies)[] | Which slots each owner has. The first is the **Default**. Absent = no owner has slots |
 
 A stored world also has an `id`. Export leaves it out, and import gives the world a new one.
 
@@ -375,6 +377,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `persona` | | Boolean | The **Persona** mark. See [Persona Marks](#persona-marks) |
 | `personaOnly` | | Boolean | The entity exists only while the player plays it |
 | `customPersona` | | Boolean | The **Custom Persona** mark |
+| `body` | | [Body pick](#slots-and-bodies) | The Body it equips into. Absent = the Default |
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
@@ -606,6 +609,45 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 | `sourceName` | String | The source's name, for display |
 | `connections` | Object | What each world placeholder or location the source expects is in this world, by `id` |
 | `bundledFrom` | String | The copy came in an imported world file, and its library item is not on this machine |
+
+## Slots and Bodies
+<!-- keywords: equipment slots, capacity, hands, rings, body type, default body, none, wear, equip where, slot size -->
+
+A **slot** is a name only. A **Body** lists the slots an owner has, and how many item units each one holds. Items equip into the slots of their owner's Body.
+
+| Slot field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name, such as "Hand" |
+
+| Body field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name, such as "Humanoid" |
+| `entries` | ✓ | Entry[] | The Body's slots, in the order the Inventory panel lists them |
+
+| Entry field | Req. | Type | Meaning |
+|---|---|---|---|
+| `slotId` | ✓ | String | The slot's `id` |
+| `capacity` | | Number | How many item units fit. Absent = 1 |
+
+An entity's `body` picks its Body:
+
+| `body` | Meaning |
+|---|---|
+| absent | The **Default**: the first Body in `bodies` |
+| `{ "kind": "none" }` | No Body. The entity carries items but equips none |
+| `{ "kind": "body", "id": "…" }` | That Body. An `id` the world lacks reads as the Default |
+
+The player's Body comes from the persona they play. A world persona uses its own `body`. With no persona, or with a library persona, the player uses the Custom Persona entity's `body`. Library characters and characters the AI adds use the Default.
+
+```json
+"slots": [{ "id": "hand", "name": "Hand" }, { "id": "collar", "name": "Collar" }],
+"bodies": [
+  { "id": "humanoid", "name": "Humanoid", "entries": [{ "slotId": "hand", "capacity": 2 }] },
+  { "id": "dog", "name": "Dog", "entries": [{ "slotId": "collar" }] }
+]
+```
 
 ## Stat Updates
 <!-- keywords: deprecated list, unused, empty array, obsolete, leftover, what is this for -->

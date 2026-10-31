@@ -76,6 +76,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
+import { bodyPickEntities } from "@/lib/bodies";
 import { worldEntitiesOf, type PersonaPick } from "@/lib/persona";
 import { resolveWorldPrompt, appliedWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { statTextFor } from "@/lib/statTextPrompts";
@@ -520,6 +521,7 @@ const GameViewer = ({
     worldTools,
     items: worldItems,
     slots: worldSlots,
+    bodies: worldBodies,
     worldOverview,
     worldId,
     worldLoaded,
@@ -811,9 +813,13 @@ const GameViewer = ({
     entities, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
-    presentEntitiesUnder,
+    presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona,
   } = useResolvedWorld();
   usePersonaNotice();
+  // The authored slice inventory operations read, with every entity whose Body pick play reads.
+  const inventoryWorld = useMemo(() => ({
+    items: worldItems, slots: worldSlots, bodies: worldBodies, entities: bodyPickEntities(entities, worldPersonas, resolvedCustomPersona),
+  }), [worldItems, worldSlots, worldBodies, entities, worldPersonas, resolvedCustomPersona]);
   // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
   // The entities are every one whose scripts run: the played one and the picked library ones included.
   const worldScriptsChangeChoices = useMemo(() => scriptsChangeChoices({
@@ -5191,11 +5197,11 @@ const GameViewer = ({
 
   /** Script inventory writes through the Inventory module, checked against the live state (Q41, Q58). */
   const applyScriptOps = useCallback<ApplyInventory>((copies, ops) => applyInventoryOps(copies, ops, {
-    world: { items: worldItems, slots: worldSlots }, source: 'script', newId: randomUUID,
+    world: inventoryWorld, source: 'script', newId: randomUUID, persona: personaRef,
     requirement: equipRequirement(
       { traits: liveTraitStateRef.current, ledger: liveItemsRef.current.effects, now: gameTime }, settleWorldOf(gatedWorld()),
     ),
-  }), [worldItems, worldSlots, gameTime, settleWorldOf, gatedWorld]);
+  }), [inventoryWorld, personaRef, gameTime, settleWorldOf, gatedWorld]);
 
   /** `copies` settled over the live state and committed, `previous` naming the items whose grants leave; the
    *  settle fires the switch scripts. Hands back the settle's auto-unequip events. */
@@ -5329,7 +5335,7 @@ const GameViewer = ({
       items: worldItems, runtimeItems: from.runtimeItems, playerNames, owners,
       location: location && { id: location.id, name: location.name }, resolve: resolvePH,
     }, {
-      world: { items: worldItems, slots: worldSlots }, newId: randomUUID,
+      world: inventoryWorld, newId: randomUUID, persona: personaRef,
       requirement: equipRequirement({ traits: traitsBefore, ledger: from.ledger, now: gameTime }, settleWorld),
     });
     for (const line of result.diagnostics) addSystemLogEntry(line);
