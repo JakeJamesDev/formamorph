@@ -53,7 +53,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, Formaquestion answers about your open world as well as the guide.** It reads your unsaved edits. Each world source under an answer opens its item in the editor.
     - **In game, Formaquestion answers about the story so far and the characters, places, items and lore you have met.** It never reads AI descriptions, diaries, hidden stats or the entries of characters you haven't met. Sources show as plain names.
     - **With an AI Language set, Formaquestion keeps names from your world as the world writes them.** This works even after you clear the world rules prompts.
-    - **In the World Editor, Formaquestion can draft entities as cards, and Add puts one in your open world.** Turn on **Creation** in Formaquestion Settings → **General**, then ask for an entity. Undo removes it.
+    - **In the World Editor, Formaquestion can draft entities as cards, and Add puts one in your open world.** Turn on **Creation** in Formaquestion Settings → **General**, then ask for an entity. Placeholders in the draft arrive as chips. Undo removes it.
     - **With Sort Questions and Creation on, Formaquestion drafts entities from your world's names, description and two sample entities.** Off the World Editor, your mascot tells you to ask there. Pick a **Creating Endpoint** and edit the **Creating** prompt in Formaquestion Settings.
   - **Supporter Flair:**
     - **Supporter Flair now covers a third Patreon tier.** The new tier gets its own badge and ring color in the app, and lists first on the Supporters page.
@@ -96,7 +96,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
   - **Closing the World Editor while the Test Bench is still checking a large world no longer freezes Formamorph.** The check stops when the editor closes.
-  - **Formaquestion's replies no longer stop short or come back empty after your mascot changes her face.** Some models, such as the default cloud model, started thinking again after the face change and ran out of room for the reply.
+  - **Formaquestion's replies no longer stop short or come back empty after your mascot changes her face.** Some models, such as the default cloud model, started thinking again after the face change and ran out of room for the reply. AI Context still lists the face change, struck through, since the model no longer sees it.
   - **Settings and World Editor hints now match what the controls do.** Scene Images points at the turn's More menu, Face Fix lists SD2, and the Remove dialog fits entities you added.
 - **🛠️ Developer tooling**
   - **Scene Presence:**

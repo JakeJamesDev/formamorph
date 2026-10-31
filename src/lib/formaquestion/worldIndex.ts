@@ -2,11 +2,12 @@
  * The World Index: every authored part of the open world as sections in the Docs Index shape, one page per
  * item, so the help search ranks them as it ranks guide sections. Placeholders read as their authored chips.
  */
-import { builtinLabel } from '@/lib/builtinPlaceholders';
+import { BUILTIN_PLACEHOLDERS, builtinLabel } from '@/lib/builtinPlaceholders';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
+import { decodePlaceholderToken, encodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
+import { randomUUID } from '@/lib/uuid';
 import type { DictionaryEntry, Item, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
@@ -82,6 +83,26 @@ const placeholdersOf = (world: WorldIndexInput) => allPlaceholders({ ...world, p
 export function worldTextOf(world: WorldIndexInput): (value: string | undefined) => string {
   const placeholders = placeholdersOf(world);
   return (value) => chipText(value ?? '', placeholders);
+}
+
+// A `{Name}` the reader wrote, never part of a `{{token}}`.
+const WRITTEN_CHIP = /(?<!\{)\{([^{}\n]+)\}(?!\})/g;
+
+/**
+ * Drafted text back as world text: each `{Name}` that names one shared placeholder or one Built-in becomes
+ * its chip, as the editor's palette inserts it. Any other braces stay as written.
+ */
+export function chipsFromText(world: WorldIndexInput): (text: string) => string {
+  const byName = new Map<string, (() => string) | null>();
+  const add = (name: string, token: () => string) => {
+    const key = name.trim().toLowerCase();
+    byName.set(key, byName.has(key) ? null : token);
+  };
+  for (const placeholder of world.placeholders ?? []) {
+    add(placeholder.name, () => encodePlaceholderToken({ id: placeholder.id, mode: 'world', placementId: randomUUID() }));
+  }
+  for (const builtin of BUILTIN_PLACEHOLDERS) add(builtin.label, () => builtin.token);
+  return (text) => text.replace(WRITTEN_CHIP, (written, name: string) => byName.get(name.trim().toLowerCase())?.() ?? written);
 }
 
 /** The world's entity names, placeholders as their chips, as the World Index shows them. */

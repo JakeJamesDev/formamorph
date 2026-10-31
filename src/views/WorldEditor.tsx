@@ -27,6 +27,7 @@ import {
 } from '@/lib/blankWorld';
 import { randomUUID } from '@/lib/uuid';
 import type { EntityDraft } from '@/lib/formaquestion/entityBlock';
+import { chipsFromText } from '@/lib/formaquestion/worldIndex';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
 } from '@/lib/authoringTour/steps';
@@ -620,7 +621,9 @@ const WorldEditorInner = ({
   }, [getWorldData, openCodeCardItem, navigateToBenchItem]);
   // An entity card's Add: a blank entity at the root with the block's two fields, shown on the Entities tab.
   const addEntityDraft = useCallback(({ name, aiDescription }: EntityDraft) => {
-    const entity = { ...newEntity(randomUUID(), entityRootCount(getWorldData()), name), aiDescription };
+    const world = getWorldData();
+    const chips = chipsFromText(world);
+    const entity = { ...newEntity(randomUUID(), entityRootCount(world), chips(name)), aiDescription: chips(aiDescription) };
     addEntity(entity);
     navigateToBenchItem('entities', entity.id);
   }, [getWorldData, addEntity, navigateToBenchItem]);
