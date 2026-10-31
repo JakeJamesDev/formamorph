@@ -1,6 +1,6 @@
 # 02: Play Wording
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -19,11 +19,24 @@ Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and
 
 ## Acceptance criteria
 
-- [ ] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves
-- [ ] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page
-- [ ] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here
-- [ ] Control names take the exact casing of the on-screen label
-- [ ] Product terms match "Controlled product terms"
-- [ ] Paragraphs are short and steps are scannable lists
-- [ ] No fact changed: a diff read finds no new claim, limit or default
-- [ ] A renamed heading updates every anchor table that names it; the docs tests are green
+- [x] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves. How-to-Play: no split (spec-session ruling). One reader task: playing a game in progress. Its 4,340 words include the keyword comments; the prose is about 3,500.
+- [x] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page. No split, so nothing to add.
+- [x] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here. `npm run copy:sweep` on the six pages: 243 before, 228 after. 220 notices sit on keyword and route HTML comments, which are search terms: false positives. Prose notices: 23 before, 8 after. The 8 left are quoted UI strings (*Viewing turn n of total — history*, *Move to …?*, *Enjoying …?*, *Turned off …, because of …*, *Game saved as …*, **Loading…**) and the **Character** tab and **Character Customization** labels.
+- [x] Control names take the exact casing of the on-screen label. Read against source for the history banner and the mobile **Character** tab; no label text changed.
+- [x] Product terms match "Controlled product terms". "phone" became "Android device"; "visual editor" became World Editor; no "picture" or "character" in prose.
+- [x] Paragraphs are short and steps are scannable lists. Long paragraphs split into bullets or steps: TTS options, inventory details, Quick Start, dictionary tags, the Avatar step, update details, Autosave.
+- [ ] No fact changed: a diff read finds no new claim, limit or default. Two reviews read the diff; the changes listed under Landed are deliberate.
+- [x] A renamed heading updates every anchor table that names it; the docs tests are green. No heading changed. Docs suites (11 files, 374 tests) green.
+
+## Landed
+
+**Not verified**
+
+- "No fact changed" stays unticked on purpose. Stale facts the wording pass fixed (Q17 staleness misses):
+  - Home intro said Formamorph "runs entirely in the browser" and games "stay on your own machine and model". It now names the browser, the desktop app and Android, says worlds and saves stay on the device, and says the connected AI receives what you send (spec-session ruling).
+  - Home caution box said Community Creations shows worlds "unmoderated". The word is gone; "as-is" stays (spec-session ruling). A conditional review line belongs to ticket 05.
+  - Install-on-Android's update check said "a few times a day". It now reads "on start, then every few hours", as Saves-and-Backup says. Source: `CHECK_INTERVAL_MS` (3 h) and a check on mount in `src/hooks/useUpdateChecker.ts`.
+
+**For you**
+
+- Read Home's new intro and caution box on the wiki: they are the two ruled fact changes.

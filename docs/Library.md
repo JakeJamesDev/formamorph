@@ -67,9 +67,9 @@ To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-impo
 2. Select **Create New Group…**.
 3. Type a **Group Name**, then select **Create Group**.
 
-The Group goes where the tile was, at the same size, and the tile goes into it.
+The Group takes the tile's place, at the same size, and holds the tile.
 
-In the grid view, you can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles go into a new Group named *New Group*.
+In the grid view, you can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles join a new Group named *New Group*.
 
 ## How to Add a Tile to a Group
 <!-- keywords: folder, put in, move into, organize, sort, collection, drop onto, file away, assign, include in, place inside -->
@@ -78,7 +78,7 @@ In the grid view, you can also drag one tile onto the near half of another tile 
 1. Right-click the tile.
 2. Under **Add To Group**, select a Group. Only three Groups show there. To see all of them, select **Add To Group…** and find the Group by name.
 
-In the grid view, you can also drag the tile onto the near half of a Group's tile, hold it, and release it.
+In the grid view, you can also drag the tile onto the near half of a Group's tile. Hold it there, then release it.
 
 ## How to Remove a Tile from a Group
 <!-- keywords: folder, take out, move out, ungroup, pull out, back to main, separate, unassign, eject -->
@@ -114,7 +114,7 @@ A **Small** tile hides its name. Point to it to see the name. **Tile Size** show
 
 1. Select the Group to open it.
 2. Select its name at the top, and type a new one.
-3. Press Enter to keep the name, or Escape to cancel.
+3. Press **Enter** to keep the name, or **Escape** to cancel.
 
 ## How to Delete a Group
 <!-- keywords: folder, remove, ungroup, get rid of, disband, dissolve, erase, break apart, trash, lose contents -->
@@ -123,7 +123,7 @@ A **Small** tile hides its name. Point to it to see the name. **Tile Size** show
 1. Right-click the Group.
 2. Select **Delete Group**.
 
-The Group's tiles go back to the board. In the grid view, each tile goes to the first free place. In the detailed view, the tiles take the Group's place in the order. Formamorph erases no items.
+The Group's tiles go back to the board. In the grid view, each tile goes to the first free place. In the detailed view, the tiles take the Group's place in the order. **Delete Group** erases none of the Group's items.
 
 ---
 
@@ -140,7 +140,7 @@ The Group's tiles go back to the board. In the grid view, each tile goes to the 
 
 On a wide screen, the tabs are at the top left. On mobile, they are at the bottom of the screen. When the labels don't fit, only the selected tab keeps its label. With less room, the tabs show icons only. Hover an icon to read its name.
 
-Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. **Community Creations** sits beside them. The **Menu** button at the top right holds **Load Game**, **Backup & Restore** and **Settings**.
+Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. **Community Creations** is beside them. The **Menu** button at the top right holds **Load Game**, **Backup & Restore** and **Settings**.
 
 On a narrow screen, the top bar hides the tab labels first, then the buttons, then the event badges. The hidden buttons move to the **Menu** button at the top center. The event badges become one chip with a count.
 
@@ -180,7 +180,7 @@ A Group holds tiles of one tab. Its tile shows a small image of its board, and a
 ## The Card Menu
 <!-- keywords: context menu, long press, delete world, uninstall, trash, erase character, options popup, thumbnail -->
 
-Right-click a tile, or press and hold it on a touch screen. With the keyboard, press Shift+F10 or the Menu key.
+Right-click a tile, or press and hold it on a touch screen. With the keyboard, press **Shift+F10** or the **Menu** key.
 
 | Item | Tabs | What it does |
 |---|---|---|
