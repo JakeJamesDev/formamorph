@@ -97,14 +97,14 @@ Any world inhabitant the narrator can reference — person, creature, plant, or 
 _Avoid_: character (too narrow)
 
 **Stranger**:
-An entity the player has not met. Only an entity with a Stranger Name can be one. The player sees it under the latest alias the story gave it, else its Stranger Name, and never its true name. With neither it has no label and no player surface shows it.
+An entity the player has not met. Only an entity with a Stranger Name can be one. The player sees it under the latest alias the story gave it, else its Stranger Name, and never its true name. When both are blank it has no label and no player surface shows it. User copy says "stranger" and "the name you know"; "label" stays internal.
 _Avoid_: unknown entity, hidden entity
 
 **Met**:
 Whether the player knows who an entity is. An entity starts met in any of these cases:
 - It has no Stranger Name.
 - It has a relationship with the played persona, on either side.
-- One of its Known In picks holds a place the persona lists, child places included.
+- One of its Known In picks is one of the persona's Locations or contains one. Nearby and Nowhere pick nothing.
 - It is a runtime character.
 
 Otherwise the player meets it when the story names it while it is here. A name inside dialogue counts. A met entity stays met. The Met set lists every met entity, wherever it is. It feeds the map and the Help window.

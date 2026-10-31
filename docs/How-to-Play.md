@@ -300,7 +300,7 @@ An **Equipped** list shows what the entity wears, when you can see it. What the 
 <!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->
 <!-- route: stranger -->
 
-Someone you haven't met shows in the **Entities** tab under the name you know them by. Select it to open the stranger dialog. It shows that name, the image, and a short description when the author wrote one. It never shows who they really are. Once the story introduces them, the full entity dialog opens instead.
+A stranger is an entity you haven't met yet. It shows in the **Entities** tab under the name you know, such as "a hooded figure". Select it to open the stranger dialog. The dialog shows that name, the image, and a short description when the world has one. You meet a stranger when the story says its real name. After that, the full entity dialog opens instead.
 
 ## The Change Location Dialog
 <!-- keywords: world map, zoom, pan, places tree, sub areas, pin marker, minimap, overview of places -->

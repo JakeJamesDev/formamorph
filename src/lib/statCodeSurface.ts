@@ -240,7 +240,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'type', detail: 'string', info: 'Type text of the persona, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the persona, or empty when it has none' },
   { name: 'inScene', detail: 'boolean', info: 'True when the persona plays, false when the player plays no entity' },
-  { name: 'met', detail: 'boolean', info: 'Always true, since the player knows who they play' },
+  { name: 'met', detail: 'boolean', info: 'Always true for the persona' },
   { name: 'location', detail: 'string', info: 'Code name of the location the player is at, or empty in a world with no location' },
   { name: 'following', detail: 'boolean', info: 'Always false, since the persona moves with the player' },
   { name: 'description', detail: 'string', info: 'Full AI description of the persona, its placeholders filled in' },
@@ -261,7 +261,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'type', detail: 'string', info: 'Type text of the entity, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the entity, or empty when it has none' },
   { name: 'inScene', detail: 'boolean', info: 'True when the entity is in this turn’s scene' },
-  { name: 'met', detail: 'boolean', info: 'True when the player has met the entity, and never false again' },
+  { name: 'met', detail: 'boolean', info: 'True when the player has met the entity, so they see its name, and never false again' },
   { name: 'location', detail: 'string', info: 'Code name of the entity’s location, the player’s for a follower, or empty at every location it lists' },
   { name: 'following', detail: 'boolean', info: 'True when the entity follows the player' },
   { name: 'description', detail: 'string', info: 'Full AI description of the entity, its placeholders filled in' },
@@ -274,7 +274,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the entity to a location of the world when the turn ends, and stops it following the player. A name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes the entity follow the player when the turn ends, at the player’s location' },
   { name: 'unfollow', detail: '() => void', info: 'Stops the entity following the player when the turn ends, and leaves it at the player’s location. An entity that isn’t following stays where it is.' },
-  { name: 'meet', detail: '() => void', info: 'Introduces the entity to the player, and a later read of met sees it. Does nothing when the player has met the entity.' },
+  { name: 'meet', detail: '() => void', info: 'Makes the player meet the entity, so they see its name. Ignored when met is already true.' },
   { name: 'diary', detail: '(line) => void', info: 'Adds a line to the entity’s diary for this turn, after the AI’s entry. An entity the game doesn’t have stops the script with an error.' },
 ], OWNER_MAPS);
 

@@ -224,21 +224,29 @@ Give an entity the one or two names the story will actually use. Each alias is a
     title: 'Stranger Name',
     wikiPage: 'World-Editor-Entities',
     wikiAnchor: 'strangers',
-    body: `Hides who an entity is until the story names it. Until then the player sees the **Stranger Name** ("a hooded figure") and the **Stranger Description**, and the AI uses the Stranger Name too.
+    body: `Hides who an entity is until the player meets it. Until then, the player sees the **Stranger Name**, such as "a hooded figure", in place of the **Name**. The AI narrator uses the Stranger Name too.
 
-**Who starts met**
+**How the player meets the entity**
 
-An entity starts met, with no introduction, when any of these is true:
+- The narration uses the entity's Name, or a distinctive part of it such as a first name, while the entity is at the player's location. Dialogue counts. Entries in **Aliases** don't.
+- A script calls \`meet()\` on the entity.
 
-- It has no Stranger Name. Old worlds play as before.
-- It has a relationship with the persona the player plays, on either side.
-- One of its **Known In** picks covers a place where the persona lives. The pick's child places count too.
+Once met, the player sees the Name for the rest of the game.
 
-The **Nearby** default of **Known In** makes nobody met. A persona that lives nowhere, such as the Custom Persona, meets every stranger fresh.
+**Before the player meets the entity**
 
-A stranger turns met once the story uses the entity's real name. Met stays met for the rest of the game.
+- If the narration calls the entity something else, such as "the tall woman", the player sees that name instead.
+- The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
+- The Map and the Help window don't show the entity.
 
-Both fields take placeholders and rolls. Clear a field to remove it.`,
+**Entities the player has already met**
+
+The player has met an entity from the start when it has no Stranger Name, or when:
+
+- It has a relationship with the persona, in either direction.
+- One of its **Known In** picks is one of the persona's **Locations**, or contains one. The **Nearby** default doesn't count.
+
+Both fields take placeholders and rolls.`,
   },
   'worldEditor.statChanges': {
     title: 'Stat Changes',
