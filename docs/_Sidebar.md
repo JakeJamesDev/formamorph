@@ -35,6 +35,7 @@
   - [🎒 Items](World-Editor-Items)
   - [🗺️ Locations](World-Editor-Locations)
   - [🧬 Traits](World-Editor-Traits)
+  - [🔗 Blueprints](World-Editor-Blueprints)
   - [📖 Dictionary](World-Editor-Dictionary)
   - [🧩 Placeholders](World-Editor-Placeholders)
 - [🧪 Test Bench](Test-Bench)

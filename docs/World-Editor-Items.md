@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-Items are the objects of your world that someone can own: a sword, a potion, a key, a cursed ring. Each one is defined once on the **Items** tab.
+Items are the objects of your world that the player or an entity can own: a sword, a potion, a key, a cursed ring. Each one is defined once on the **Items** tab.
 
 ## Why it exists
 <!-- keywords: ai forgets items, narrator invents gear, keep track of objects, persistent items -->
@@ -17,12 +17,14 @@ Without items, a sword exists only in the prose, and the narrator forgets it a f
 
 1. Open the **Items** tab. It sits right below **Entities**.
 2. Type the item's name in the **Filter Items** box.
-3. Select the **+** button (**Add Item**).
+3. Select the **Add Item** icon button (+).
 4. The new item opens in the panel. Give it an image on the **Profile** tab.
 5. On the **Descriptions** tab, write the **AI-Facing Description**.
 6. Select **Save**.
 
-> 💡 With the box empty, the new item is named "New Item". Drag an item by its grip to change the order of the list. Use the row's buttons to duplicate or delete it. Deleting an item also removes it from every **Starting Items** list.
+- With the box empty, the new item is named "New Item".
+- Drag an item by its grip to change the order of the list.
+- Use the row's buttons to duplicate or delete an item. Deleting an item also removes it from every **Starting Items** list.
 
 ## The panel
 <!-- keywords: item tabs, profile, descriptions, item image, item placeholders, image rule -->
@@ -48,7 +50,7 @@ An item's placeholders roll once per playthrough. Every Item Copy shows the same
 <!-- keywords: unidentified, identify, mystery item, cursed item, true name, hidden identity, unidentified name, unidentified description -->
 <!-- route: worldEditorItem.descriptions -->
 
-An item can hide what it really is until the story reveals it. A cursed ring can look like a plain ring.
+An item can hide its true name and description until the story reveals them. A cursed ring can look like a plain ring.
 
 | Field | What it does |
 |---|---|
@@ -151,7 +153,7 @@ A trait effect row gives the owner a trait while its timing holds. Each row pick
 <!-- keywords: equip requirements, strength needed, cannot equip, unequips, requirement -->
 <!-- route: worldEditorItem.requirements -->
 
-Requirement Rows on the **Requirements** tab set what an owner needs to equip the item. Any one row that holds is enough. With no rows, anyone can equip it.
+Requirement Rows on the **Requirements** tab set what an owner needs to equip the item. Any one row that holds is enough. With no rows, any owner can equip it.
 
 - 🧑 A Condition with no owner reads the item's owner.
 - 🗡️ The item's own effects never count, in either direction. A +2 Strength sword cannot meet its own Strength 5 requirement, and a cursed -2 Strength sword cannot fail it. Every copy of the same item on that owner is left out.
@@ -201,7 +203,7 @@ Starting items are the items a new game begins with. You can place them in three
 |---|---|
 | 👤 The player | **Overview** tab, under **Persona Items**. The player gets them whoever they play. |
 | 🧑 An entity | The entity's **Items** tab |
-| 📍 A location | The location's **Items** tab. They lie there for anyone to pick up. |
+| 📍 A location | The location's **Items** tab. They lie there for the player or any entity to pick up. |
 
 Each row picks an item, a quantity and **Hidden**. A hidden item is there, but the player doesn't see it until the story reveals it.
 
@@ -214,7 +216,7 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 ## Items in the story
 <!-- keywords: inventory pass, ai gives items, story picks up item, invented item, runtime item, item names, narrator item changes -->
 
-After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use an item, change its State, and reveal a hidden or unidentified one. It sees the items of the player, of the people here, and of the location.
+After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use an item, change its State, and reveal a hidden or unidentified one. It sees the items of the player, of the entities in the scene, and of the location.
 
 - 🧪 A use follows the item's **When Empty**. For a plain item the story made, the story says whether the use kept it or used it up.
 - 🔤 A name in the story matches your item when it's the same name, ignoring case and the spaces at the ends. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.

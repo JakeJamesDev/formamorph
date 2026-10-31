@@ -58,7 +58,8 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 | 🎭 **[World Editor: Entities](World-Editor-Entities)** | The people, creatures and things in a world, their names and aliases, and SillyTavern cards |
 | 🎒 **[World Editor: Items](World-Editor-Items)** | The objects someone can own, their properties, and the world's equipment slots |
 | 🗺️ **[World Editor: Locations](World-Editor-Locations)** | The places, nesting, Connections and Travel Hints, and starting locations |
-| 🧬 **[World Editor: Traits](World-Editor-Traits)** | Trait modes, Pick Counts, requirements, entity traits, Blueprints and links |
+| 🧬 **[World Editor: Traits](World-Editor-Traits)** | Trait modes, Pick Counts, requirements, entity traits and the Custom Persona |
+| 🔗 **[World Editor: Blueprints](World-Editor-Blueprints)** | Share one trait across entities: Blueprints, links, overrides and Detach |
 | 📖 **[World Editor: Dictionary](World-Editor-Dictionary)** | Lore entries, what gets scanned, keyword matching, and books |
 | 🧩 **[World Editor: Placeholders](World-Editor-Placeholders)** | Wildcards, Objects and Variables, rolls, pins, copies and the built-in chips |
 | 🧪 **[Test Bench](Test-Bench)** | Checking a world before you play it: the World Doctor, which dictionary entries fire, what the AI gets at a location, and turn one of a new game |
