@@ -81,6 +81,7 @@ Spec-session answers to ticket intent questions.
 | R34 | A reference screen's intro keeps one or two sentences in its Hint (what it shows, then how to try it). The rest becomes a short bullet list in the same card, minus facts the sample shows. No HintInfo on dev screens |
 | R35 | Showcase tab descriptions name a pattern and stay noun phrases. Fix only image verbs and wrong terms |
 | R36 | "Bubble" stays the name of the style Auto gives with the Mascot on, because the docs use it. The app defines it where it first appears |
+| R37 | A help topic keeps a code-true fact its wiki page leaves out, worded in the page's terms, and lists it as a Finding. Where topic and page disagree, the code decides; a wrong page line is a Finding, not an edit |
 
 ## Screen groups
 
