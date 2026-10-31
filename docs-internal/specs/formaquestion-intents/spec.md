@@ -202,7 +202,9 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 ### Formaquestion Tools (Q54, Q65–Q67)
 
 - Each Formaquestion Tool gets a multiselect of Intents in the Tool editor, the same control a Tool uses for the prompts it goes to. The prompt list holds prompt kinds, not Intents, so a Formaquestion Tool gains an optional Intent list. An absent list reads as the default: Help, Code and World (Q66, Q67). A gameplay Tool never carries one.
-- The fallback request offers every Tool that is on.
+- The fallback request offers every Tool that is on. "Fallback" means no Intent: classifier off, a bad label, or no endpoint. When an Intent is known but its plan falls back to the full request (World with no world, Create before ticket 05), Tools still follow that Intent's list.
+- An empty list is valid and means no Intent. The editor stores a list only once the player changes it, so an untouched Tool keeps the default. A Chat request sends the Tools that list Chat, and nothing else in the Chat plan changes.
+- A gameplay or world Tool never carries the list: import into the gameplay list drops it, and a gameplay Tool imported into the help list gets the default. The Intent type lives in `@/types`.
 - This amends ADR-0010, which says the help request has no "Offered To" to choose.
 
 ### Settings and help preset (Q16, Q25, Q32, Q43, Q57, Q58)
@@ -225,6 +227,8 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 - **World Editor bench:** a card's Add puts the entity in the world at the root, selects it, and undo removes it; disabled off-editor; the duplicate tip. Prior art: `WorldEditor.codeInsert.test.tsx`.
 - **Help preset file and Tool pack:** a file without the two prompts or a Tool's Intent list loads with defaults; a file with them round-trips. Prior art: `helpPresetFile.test.ts`.
 - **Intent probe (Q29, Q63):** a labeled corpus with per-Intent cases, two-ask messages, follow-ups that only resolve through the last exchange, create asks off-editor, lore questions, and non-English questions. Enough Help, Code and World cases (about 150) to measure the 2% Chat bar. Reports accuracy, misroutes to Chat, and median latency. Cloud default first, with an in-batch control, per the probe skill.
+- **Intent probe scoring (ticket 06):** "correct" means the Intent matches; the second-ask flag is reported apart. A two-ask case expects the first ask's Intent. The 2% Chat bar counts Help, Code and World cases; the 5% false-Create bar counts every non-Create case; off-editor create asks are labeled Create. Arms: shipped, prompted, and a second shipped copy as the A/A control, plus a keyword floor for reference, 5 runs each. Dev and blind sets are split before tuning; the bars must pass on both, with at most 3 prompt revisions. Latency reads the classifier request alongside the picks. Help-recall's on-arm scores the guide block the answer actually carried.
+- **On a pass:** the ticket flips the default and updates the player docs. It writes no changelog fragment: the spec session edits the unreleased entry on main so it no longer says the feature is off by default.
 - **Create probe (Q8, Q35, Q61, Q62):** arms are the fenced block in the streamed reply and a strict-schema draft request as the control. Scores: valid blocks per Q61, and a hand grade for fit to the world and its tone. The ≤5% false-Create rate comes from the Intent probe.
 - **Help baselines (Q29, Q60):** `help-baseline`, `help-recall` and the world-question probe, run with the Intent Classifier on and off in one batch. A drop beyond the control's spread, or more than 3 points, fails.
 
