@@ -49,6 +49,12 @@ export function openingPersonaOf(
   return { ref, ...(ref.source === 'library' && libraryEntity && { libraryEntity }) };
 }
 
+/** The entity the opening persona plays: the world entity or the library one. Null under None. */
+export function openingPlayedEntity(entities: readonly Entity[], persona?: OpeningPersona): Entity | null {
+  const ref = persona?.ref;
+  return ref?.source === 'world' ? entities.find((e) => e.id === ref.entityId) ?? null : persona?.libraryEntity ?? null;
+}
+
 export const NO_OPENING_PICKS: OpeningPicks = { traits: [], owned: {} };
 
 /** The fold, with the parts play keeps beyond the state. */
@@ -113,7 +119,7 @@ export function openingFold(
   const locations = world.locations ?? [];
   const start = startingLocations(locations)[0] ?? locations[0] ?? null;
   // A new game has no met-in-play list yet, so the start rule alone says who the player knows.
-  const played = ref.source === 'world' ? entities.find((e) => e.id === ref.entityId) ?? null : persona?.libraryEntity ?? null;
+  const played = openingPlayedEntity(entities, persona);
   const metIds = [...entities, ...library].filter((e) => startsMet(e, played, locations)).map((e) => e.id);
   const state: SandboxState = {
     stats: traitState.stats,

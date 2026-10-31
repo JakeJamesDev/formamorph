@@ -68,6 +68,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Map and the Help window show only the entities you've met.** An entity with no Stranger Name shows from the start. An entity at several locations shows at each one.
     - **The narrator calls a stranger by its Stranger Name until you meet it.** You meet it when the narration uses its Name. The narrator doesn't use the stranger's first name before then.
     - **Scripts can read whether the player has met an entity, and can make the player meet it.** Read `entities.<Entity>.met`, or call `entities.<Entity>.meet()`. `met` never turns false.
+    - **The Test Bench's opening preview and the AI Context show a stranger under its Stranger Name.** The true name stays beside it, as in the first turn of play.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
 - **🛠️ Developer tooling**
   - **Inventory:**

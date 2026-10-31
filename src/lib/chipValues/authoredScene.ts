@@ -18,6 +18,8 @@ import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
 import { seedItemCopies } from '../inventory';
+import { openingPlayedEntity, type OpeningPersona } from '../openingState';
+import { startsMet, strangersInPlay } from '../presence';
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Stat, StatGroup,
   Trait, TraitGroup, WorldOverview,
@@ -58,6 +60,8 @@ export interface AuthoredSceneOptions {
   /** An entity's own trait text under that trait's pins over the entity's. Absent, a given `resolveEntity`
    *  reads it, else the trait's own pins do. */
   resolveOwned?: ResolveOwnedTraitText;
+  /** The persona the preview holds, for the start rule that leaves a stranger unmet. Absent is None. */
+  persona?: OpeningPersona;
 }
 
 
@@ -126,6 +130,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
   ));
   let copyCount = 0;
+  const openingPlayed = openingPlayedEntity(entities, options.persona);
 
   return {
     overview: worldOverview?.systemPrompt || '',
@@ -165,5 +170,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     items: world.items ?? [],
     // The Item Copies a new game would start with, ids numbered since nothing keeps them.
     itemCopies: seedItemCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
+    // Turn one's labels: nobody is met in play yet, so the start rule alone leaves a stranger unmet.
+    strangerLabels: strangersInPlay(entities, (entity) => startsMet(entity, openingPlayed, locations), {}).labels,
   };
 }
