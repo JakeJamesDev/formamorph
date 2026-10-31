@@ -76,8 +76,16 @@ function scriptsBlock(scripts: readonly Script[] | undefined, text: (value: stri
   return scripts.map((script) => `**Script${script.name?.trim() ? ` ${script.name.trim()}` : ''} (${script.timing}):**\n${fenced(text(script.code))}`).join('\n\n');
 }
 
+const placeholdersOf = (world: WorldIndexInput) => allPlaceholders({ ...world, placeholders: world.placeholders ?? [], items: world.items ?? [] });
+
+/** The world's entity names, placeholders as their chips, as the World Index shows them. */
+export function entityNamesOf(world: WorldIndexInput): string[] {
+  const placeholders = placeholdersOf(world);
+  return world.entities.map((entity) => chipText(entity.name, placeholders));
+}
+
 export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
-  const placeholders = allPlaceholders({ ...world, placeholders: world.placeholders ?? [], items: world.items ?? [] });
+  const placeholders = placeholdersOf(world);
   const text = (value: string | undefined) => chipText(value ?? '', placeholders);
   const statName = (id: string, own: readonly Stat[] = []) => [...own, ...world.stats].find((stat) => stat.id === id)?.name ?? id;
   const traitName = (id: string) => world.traits.find((trait) => trait.id === id)?.name ?? world.entities.flatMap((entity) => entity.traits ?? []).find((trait) => trait.id === id)?.name ?? id;

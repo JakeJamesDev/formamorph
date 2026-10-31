@@ -6,6 +6,7 @@
 import type { DocSection } from '@/lib/docs/docsIndex';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { Tool } from '@/types';
+import { ENTITY_RIDER } from './entityBlock';
 import { isCodeTurn, isOnCodeTab } from './helpCodeRider';
 import { NO_WORLD_RIDER, TWO_ASK_RIDER, type IntentReading } from './helpIntent';
 import type { HelpSettings } from './helpSettings';
@@ -52,6 +53,8 @@ export interface HelpPlanInput {
   quickReference: DocSection | null;
   /** The answer endpoint is known to take function calls. */
   takesFunctions: boolean;
+  /** The open world is a World Editor's. */
+  inEditor: boolean;
 }
 
 /** Every block the settings and the open screen call for, with the code rider when `code` says so. */
@@ -74,8 +77,14 @@ function planOf({ settings, surface, hint, quickReference, takesFunctions }: Hel
   };
 }
 
-/** The full request: every block the settings, the open screen and the question's code words call for. */
-export const fullHelpPlan = (input: HelpPlanInput): HelpRequestPlan => planOf(input, isCodeTurn(input.question, input.surface));
+/**
+ * The full request: every block the settings, the open screen and the question's code words call for, and
+ * the entity rider in a World Editor while Creation is on.
+ */
+export const fullHelpPlan = (input: HelpPlanInput): HelpRequestPlan => ({
+  ...planOf(input, isCodeTurn(input.question, input.surface)),
+  riders: input.settings.creation && input.inEditor ? [ENTITY_RIDER] : [],
+});
 
 /** The Code Intent's plan: the full request with the code rider. Every other Intent's plan carries a part of it. */
 export const codeHelpPlan = (input: HelpPlanInput): HelpRequestPlan => planOf(input, true);

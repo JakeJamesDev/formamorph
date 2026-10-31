@@ -68,6 +68,8 @@ export interface HelpSettings {
   readonly openScreen: boolean;
   /** A request carries the open world's text and the world rules of its lean. */
   readonly readWorld: boolean;
+  /** In a World Editor, the full request asks for entities in entity blocks, which reply cards add to the world. */
+  readonly creation: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
   readonly historyLength: number;
   /** The answer request's reasoning switch and strength. The pick request never reasons. */
@@ -130,6 +132,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   codeTestCallLimit: HELP_CODE_TEST_CALL_LIMIT,
   openScreen: true,
   readWorld: true,
+  creation: false,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
   reasoningBudget: defaultReasoningBudgetPct('help'),
@@ -199,6 +202,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       codeTestCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       openScreen: isBool,
       readWorld: isBool,
+      creation: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,
       reasoningBudget: isBetween(MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT),

@@ -61,6 +61,7 @@ export const GENERAL_COPY = {
   sortQuestions: { label: 'Sort Questions', hint: 'Sends each question only what it needs. One extra request.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the open screen, your selected item, and its guide section' },
   readWorld: { label: 'Read the World', hint: "Sends the open world's text to your endpoint with each question" },
+  creation: { label: 'Creation', hint: 'Lets you ask for entities in the World Editor and add them' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
 

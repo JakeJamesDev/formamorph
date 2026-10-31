@@ -1,6 +1,6 @@
 # 04: Entity Cards
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -25,16 +25,24 @@ Spec: Q5, Q7, Q10, Q11, Q16, Q36–Q41, Q43, Q50–Q53, Q55, Q56, Q61, Q64; stor
 
 ## Acceptance criteria
 
-- [ ] The parser accepts and rejects each Q61 case, multi-line descriptions and label case included: parser tests
-- [ ] An entity fence renders as a card; an invalid one renders as code
-- [ ] Add puts the entity at the root of the open world with the block's name and AI description, opens the Entities panel and selects it, and undo removes it: World Editor bench test
-- [ ] Add works in the in-game World Editor
-- [ ] Add is disabled, with its tip, on a screen with no World Editor
-- [ ] A clashing name shows the warning tip and still adds
-- [ ] The next help request carries the Add note
-- [ ] The full request carries the entity rider in a World Editor with the switch on, and not otherwise
-- [ ] The game registers no add action: a test that reads the registry in game
-- [ ] The ADR, the CONTEXT.md amendment and the player docs exist
-- [ ] Frames: `.scratch/frames/entity-card-light.png` and `.scratch/frames/entity-card-dark.png`, at the Formaquestion window's default width
+- [x] The parser accepts and rejects each Q61 case, multi-line descriptions and label case included: parser tests: `entityBlock.test.ts`
+- [x] An entity fence renders as a card; an invalid one renders as code: `Formaquestion.entityCards.test.tsx`, through the real renderer, streaming included
+- [x] Add puts the entity at the root of the open world with the block's name and AI description, opens the Entities panel and selects it, and undo removes it: World Editor bench test: `WorldEditor.entityAdd.test.tsx`
+- [x] Add works in the in-game World Editor: same bench with `inGame`
+- [x] Add is disabled, with its tip, on a screen with no World Editor: `Formaquestion.entityCards.test.tsx`, no world and game world
+- [x] A clashing name shows the warning tip and still adds: `Formaquestion.entityCards.test.tsx`, including a name the card's own Add just put in the world
+- [x] The next help request carries the Add note: `Formaquestion.entityCards.test.tsx` (and kept when that question fails) and `helpSession.entityBlocks.test.ts`
+- [x] The full request carries the entity rider in a World Editor with the switch on, and not otherwise: `helpSession.entityBlocks.test.ts`
+- [x] The game registers no add action: a test that reads the registry in game: `GameViewer.helpWorld.test.tsx`
+- [x] The ADR, the CONTEXT.md amendment and the player docs exist: ADR-0015, the Formaquestion glossary entry, `docs/Formaquestion.md` "How to Add an Entity From an Answer" and the **Creation** settings row
+- [x] Frames: `.scratch/frames/entity-card-light.png` and `.scratch/frames/entity-card-dark.png`, at the Formaquestion window's default width: from `#dev?modal=formaquestion&fixture=entityCards` at 1280×800
 
-For you: paste an entity block into a Formaquestion reply through the dev-router, then judge the card's look and how Add feels in the World Editor.
+## Landed
+
+**Not verified:**
+- The entity rider is unprobed. Ticket 07 measures it; **Creation** stays off by default until then.
+
+**For you:**
+- For you: paste an entity block into a Formaquestion reply through the dev-router, then judge the card's look and how Add feels in the World Editor. `#dev?modal=formaquestion&fixture=entityCards` opens the window on a canned answer with two cards and one invalid block; open a World Editor first for a live Add.
+- The card is a new visual pattern (bordered muted box, Entity label, Copy and an outlined Add): approve it or ask for changes. Frames: `.scratch/formaquestion-intents-04/frames/entity-card-light.png`, `.scratch/formaquestion-intents-04/frames/entity-card-dark.png`.
+- A duplicate name shows a warning icon beside the name, and the same warning as Add's tip.

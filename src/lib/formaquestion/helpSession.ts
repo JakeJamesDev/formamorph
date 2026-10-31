@@ -37,6 +37,7 @@ import type { HelpSettings } from './helpSettings';
 import { activeMascotRig } from './mascotPresets';
 import { requestIntent } from './helpIntent';
 import { codeHelpPlan, fullHelpPlan, intentHelpPlan, turnLead } from './helpRequestPlan';
+import { entityAddNote } from './entityBlock';
 import {
   emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection, traceSource,
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
@@ -93,6 +94,8 @@ export interface HelpQuestion {
   question: string;
   /** The earlier exchanges of the conversation, oldest first. The request keeps the newest that have an answer. */
   history?: readonly EarlierExchange[];
+  /** The names of the entities the player added from entity blocks since the last question. */
+  added?: readonly string[];
   /** The AI Language setting. */
   language?: string;
   /** The Formaquestion settings. The window passes its value; tests and probes pass their own. */
@@ -523,7 +526,7 @@ function worldSearchTraceOf(index: WorldIndex, record: HelpSearchRecord, sent: r
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', settings, snapshot, index, surface, focus, images = [], world, screenRule, howToRule, embedder, semanticFloor, signal, fetchImpl,
+  question, history = [], added = [], language = '', settings, snapshot, index, surface, focus, images = [], world, screenRule, howToRule, embedder, semanticFloor, signal, fetchImpl,
   hostedTurn = new HostedTurn(),
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   // The Code tab and the focus count only while the open screen does.
@@ -534,7 +537,9 @@ export async function* askHelp({
   const routes = helpRoutes(settings);
   const answerSnapshot = helpSnapshot(snapshot, routes.answer, settings.reasoning, settings.reasoningBudget);
   const answerTarget = answerSnapshot.resolveTarget('help');
-  const planInput = { question, settings, surface: openSurface, hint, quickReference, takesFunctions: toolsSupported(answerTarget.reasoning) };
+  const planInput = {
+    question, settings, surface: openSurface, hint, quickReference, takesFunctions: toolsSupported(answerTarget.reasoning), inEditor: world?.lean === 'editor',
+  };
   const kept = keptHistory(history, settings.historyLength);
   const prompts = activeHelpPrompts(settings.presets);
   // The classifier runs alongside the picks, so the search and the world read cover the Code plan, which holds every other Intent's.
@@ -602,7 +607,9 @@ export async function* askHelp({
   // The world rules ride after the code rider the same way, and the plan's riders after them.
   const worldRulesKey = shownGame ? 'worldGame' : 'worldEditor';
   const withWorldRules = shownIndex ? withCodeRider(withCode, prompts[worldRulesKey]) : withCode;
-  const userMessage = plan.riders.reduce((message, line) => withCodeRider(message, line), withWorldRules);
+  // The note of the entities added since the last question rides last, whatever the plan.
+  const riders = added.length ? [...plan.riders, entityAddNote(added)] : plan.riders;
+  const userMessage = riders.reduce((message, line) => withCodeRider(message, line), withWorldRules);
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
   // own executors; the roll and the Tools run on the one world snapshot of the question, which the roll does not read.

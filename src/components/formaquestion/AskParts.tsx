@@ -18,6 +18,7 @@ import AuthService from '@/services/AuthService';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { withReaderLinks } from '@/lib/docs/docsReader';
+import { openEntityFence } from '@/lib/formaquestion/entityBlock';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { helpRevealSpec, helpRevealTiming } from '@/lib/formaquestion/helpReveal';
 import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from '@/lib/formaquestion/helpWorldSource';
@@ -34,6 +35,7 @@ import { SectionRows } from './GuideParts';
 import { ScrollArrow } from './ScrollArrow';
 import { FOCUS_RING, readerComponents } from './readerLinks';
 import { CodeInsert } from './CodeInsert';
+import { entityCard, OpenEntityFence } from './EntityCard';
 import type { SnippetActions } from './CodeSnippet';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { answerList, useAnswerFolds, type AnswerFolds, type Fold } from './useAnswerFolds';
@@ -239,12 +241,13 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
   const { listed, listLabel } = answerList(exchange);
   const sourced = listed.length > 0;
   const fold = folds.sources;
-  const components = useMemo(() => readerComponents(onOpen, insertAction), [onOpen]);
+  const components = useMemo(() => readerComponents(onOpen, insertAction, entityCard), [onOpen]);
   const reduceMotion = usePrefersReducedMotion();
   const spec = useMemo(() => helpRevealSpec(settings.reveal, reduceMotion), [settings.reveal, reduceMotion]);
   const timing = useMemo(() => helpRevealTiming(settings.reveal), [settings.reveal]);
   // A docs link that the model copies from a section opens that section here.
   const text = useMemo(() => withReaderLinks(answer, '', guide.resolve), [answer, guide]);
+  const openFence = status === 'writing' ? openEntityFence(answer) : null;
   const searched = status === 'no-ai' || status === 'failed';
   const route = answerRoute(exchange);
   const matches = useMemo(
@@ -257,14 +260,16 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
       {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
         <div data-reveal className="[&_:first-child]:mt-0" style={revealVars(spec) as CSSProperties}>
-          <MarkdownRenderer
-            text={text}
-            animate={status === 'writing' && revealActive(spec)}
-            animation={revealAnimName(spec)}
-            easing={settings.reveal.easing}
-            timing={timing}
-            components={components}
-          />
+          <OpenEntityFence.Provider value={openFence}>
+            <MarkdownRenderer
+              text={text}
+              animate={status === 'writing' && revealActive(spec)}
+              animation={revealAnimName(spec)}
+              easing={settings.reveal.easing}
+              timing={timing}
+              components={components}
+            />
+          </OpenEntityFence.Provider>
         </div>
       )}
       {/* The conversation is a log, which announces its own new text. */}
