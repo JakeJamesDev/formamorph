@@ -1,11 +1,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { StrictMode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { seedSampleTierNames } from '@/test/tierNames';
 import { RoleBadge } from './RoleBadge';
 import { SupporterBadge } from './SupporterBadge';
 import { UserName } from './UserName';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import { stubReducedMotion } from '@/test/reducedMotion';
+
+beforeEach(seedSampleTierNames);
 
 afterEach(() => {
   cleanup();

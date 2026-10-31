@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import AuthService from '@/services/AuthService';
+import { seedTierNamesForTest } from '@/lib/tierNames';
 import type { AuthUser } from '@/types';
 
 /** Minimal fetch Response stub — the same shape AuthService's own tests use. */
@@ -20,6 +21,8 @@ export const resetAccountPage = (url: string) => {
   AuthService.logout();
   at(url);
   vi.stubGlobal('fetch', vi.fn());
+  // Fixture names, not the live Patreon titles; the seed also skips the server read.
+  seedTierNamesForTest({ supporter: 'Supporter', supporter_plus: 'Supporter+', supporter_top: 'Supporter++' });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 };
 

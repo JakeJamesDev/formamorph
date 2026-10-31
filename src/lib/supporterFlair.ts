@@ -29,13 +29,6 @@ export function supporterTenure(since: string | null | undefined, now: Date = ne
   return rest === 0 ? plural(years, 'year') : `${plural(years, 'year')}, ${plural(rest, 'month')}`;
 }
 
-export const SUPPORTER_LABELS: Record<SupporterTier, string> = {
-  supporter: 'Supporter',
-  supporter_plus: 'Supporter+',
-  // Working label until the tier is named.
-  supporter_top: 'Supporter++',
-};
-
 /** Name color per tier. */
 export const SUPPORTER_NAME_STYLES: Record<SupporterTier, string> = {
   supporter: 'text-supporter',

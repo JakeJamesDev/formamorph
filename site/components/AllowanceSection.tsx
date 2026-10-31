@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
-import { SUPPORTER_LABELS } from '@/lib/supporterFlair';
+import { useTierName } from '@/lib/tierNames';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { fetchHostedAllowance, type HostedAllowance } from '@/services/HostedStateService';
 
@@ -38,9 +38,11 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function Figures({ reading, reset }: { reading: HostedAllowance; reset: string | null }) {
+  const tierNameOf = useTierName();
+
   return (
     <dl className="space-y-1 text-body">
-      {reading.tier && <Row label="Tier" value={SUPPORTER_LABELS[reading.tier]} />}
+      {reading.tier && <Row label="Tier" value={tierNameOf(reading.tier)} />}
       {reading.percentUsed !== null && <Row label="Used" value={`${reading.percentUsed}%`} />}
       {reading.turnsLeft !== null && <Row label="Turns left" value={`About ${reading.turnsLeft}`} />}
       {reset && <Row label="Resets" value={reset} />}

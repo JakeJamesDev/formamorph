@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
 import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
 import { NAV_RAIL_REFERENCE_STORAGE_KEY } from '@/components/design-system/NavRailReference';
+import { seedSampleTierNames } from '@/test/tierNames';
 import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorkerClient';
 
 vi.mock('@/lib/embeddingWorkerClient', async (importOriginal) => ({
@@ -23,6 +24,7 @@ const renderShowcase = () => render(
 );
 
 beforeEach(() => {
+  seedSampleTierNames();
   localStorage.clear();
   document.documentElement.classList.remove('light', 'dark');
 });

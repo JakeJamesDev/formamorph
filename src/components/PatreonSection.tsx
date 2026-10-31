@@ -12,7 +12,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { SUPPORTER_LABELS, supporterTenure } from '@/lib/supporterFlair';
+import { supporterTenure } from '@/lib/supporterFlair';
+import { useTierName } from '@/lib/tierNames';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { PatreonError, PatreonService, type PatreonStatus } from '@/services/PatreonService';
 
@@ -72,6 +73,7 @@ interface PatreonSectionProps {
  */
 export function PatreonSection({ openAuthorize, returned = null, suspended = false, refreshOnFocus = false, className }: PatreonSectionProps) {
   const mounted = useMountedRef();
+  const tierNameOf = useTierName();
   // `undefined` while the first read is out, `null` when it failed.
   const [status, setStatus] = useState<PatreonStatus | null | undefined>(undefined);
   const [notice, setNotice] = useState<Notice>(null);
@@ -263,7 +265,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
       {status?.linked && status.tier && (
         <>
           <p className="text-body">
-            <span className="font-semibold">{SUPPORTER_LABELS[status.tier]}</span>
+            <span className="font-semibold">{tierNameOf(status.tier)}</span>
             {tenure && <span className="text-muted-foreground"> · Supporting for {tenure}</span>}
           </p>
           <div className="flex items-start gap-2">

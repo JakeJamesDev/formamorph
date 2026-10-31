@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar } from '@/components/UserAvatar';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
-import {
-  SUPPORTER_LABELS,
-  SUPPORTER_NAME_STYLES,
-} from '@/lib/supporterFlair';
+import { SUPPORTER_NAME_STYLES } from '@/lib/supporterFlair';
+import { useTierName } from '@/lib/tierNames';
 import type { SupporterTier } from '@/types';
 import { PatreonService, type Supporter } from '@/services/PatreonService';
 import { cn } from '@/lib/utils';
@@ -45,6 +43,7 @@ function SupporterRow({ supporter }: { supporter: Supporter }) {
  */
 export function SupportersPage() {
   const [state, setState] = useState<State>({ status: 'loading' });
+  const tierNameOf = useTierName();
 
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +90,7 @@ export function SupportersPage() {
 
           return (
             <section key={tier} aria-labelledby={`supporters-${tier}`} className="space-y-3">
-              <h2 id={`supporters-${tier}`} className="text-title font-semibold">{SUPPORTER_LABELS[tier]}</h2>
+              <h2 id={`supporters-${tier}`} className="text-title font-semibold">{tierNameOf(tier)}</h2>
               <ul className="space-y-3">
                 {rows.map((row) => <SupporterRow key={row.id} supporter={row} />)}
               </ul>

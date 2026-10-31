@@ -10,8 +10,8 @@ import type { HostedState } from '@/lib/hostedAi/hostedState';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
 import { openExternal } from '@/lib/openExternal';
 import { requestSignIn } from '@/lib/signInStore';
-import { SUPPORTER_LABELS } from '@/lib/supporterFlair';
-import type { SupporterTier } from '@/types/supporter';
+import { flairTier } from '@/lib/supporterFlair';
+import { useTierName } from '@/lib/tierNames';
 
 /** The dev route's canned usage, so `fixture=fai-<state>` shows the allowance lines without a server. */
 const DEV_SAMPLE: Partial<Record<HostedPresetState, Pick<HostedState, 'tier' | 'percentUsed' | 'turnsLeft' | 'resetAt'>>> = {
@@ -25,11 +25,13 @@ export function HostedPresetStatus({ state }: { state?: HostedPresetState }) {
   const { hostedAi, refreshHostedState, switchBackFromHostedAi } = useSettings();
   const { requireAttestation } = useAgeGate();
   const { checkNow } = usePrivacyPolicy();
+  const tierNameOf = useTierName();
   const shown = state ?? hostedAi.presetState;
   const sample = import.meta.env.DEV && state ? DEV_SAMPLE[state] : undefined;
   const hosted = sample ? ({ ...hostedAi.hosted, ...sample } as HostedState) : hostedAi.hosted;
   const copy = hostedStateCopy(shown, hosted?.resetAt);
-  const tierLabel = hosted?.tier ? SUPPORTER_LABELS[hosted.tier as SupporterTier] ?? null : null;
+  const knownTier = flairTier(hosted?.tier ? { tier: hosted.tier } : null);
+  const tierLabel = knownTier ? tierNameOf(knownTier) : null;
   const usage = shown === 'ready' || shown === 'warned' || shown === 'exhausted' ? hostedUsageCopy(hosted, tierLabel) : null;
 
   const run: Record<HostedAction, () => void> = {
