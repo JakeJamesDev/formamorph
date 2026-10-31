@@ -185,8 +185,8 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
         loading: false,
         progress: null,
         error: null,
-        start: () => report('Settings downloads the embedding model at this step. The reference skipped the download.'),
-        dispose: () => report('Settings unloads the embedding model at this step. The reference skipped the unload.'),
+        start: () => report('The reference skipped the embedding model download. Settings downloads it at this step.'),
+        dispose: () => report('The reference skipped the embedding model unload. Settings unloads it at this step.'),
       },
     };
   }, [report]);

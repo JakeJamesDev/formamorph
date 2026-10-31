@@ -30,8 +30,8 @@ export function SectionsBarReference() {
       <CardHeader>
         <CardTitle id="sections-bar-title" className="text-heading">Sections Bar</CardTitle>
         <CardDescription>
-          The World Editor&apos;s own tab registry, drawn as the mobile Sections bar. Open the bar to see the
-          tabs split into groups by lines, and pick one to close it.
+          Shows the World Editor&apos;s tabs as the mobile Sections bar. Open the bar to see the tab groups, then
+          pick a tab to close it.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">

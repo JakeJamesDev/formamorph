@@ -122,7 +122,7 @@ export function CodeTemplatesReference() {
     },
     remove: async (id) => {
       templates.current = templates.current.filter((template) => template.id !== id);
-      setLastAction('The local template library erased the selected template.');
+      setLastAction('The local template library deleted the selected template.');
     },
     import: async (incoming) => {
       const known = new Set(templates.current.map((template) => template.id));
@@ -141,24 +141,22 @@ export function CodeTemplatesReference() {
   return (
     <section data-code-templates-reference className="grid gap-6" aria-labelledby="code-templates-reference-title">
       <div className="grid gap-2">
-        <h3 id="code-templates-reference-title" className="text-heading">Stat Code Templates</h3>
-        <Hint>
-          Use the production dialog with controlled world data and local templates.
-        </Hint>
+        <h3 id="code-templates-reference-title" className="text-heading">Code Templates</h3>
+        <Hint>Uses the production dialog with sample world data and local templates</Hint>
       </div>
 
       <div className="grid gap-4 rounded-md border border-border bg-card p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0 space-y-2">
           <Meta className="uppercase tracking-wider">Local Sample Target</Meta>
           <h4 className="text-title font-semibold">Focus</h4>
-          <Hint>This stat receives generated code only in this mounted reference.</Hint>
+          <Hint>Receives the inserted code in this reference only</Hint>
           {insertedCode ? (
             <HighlightedCode
               code={insertedCode}
               className="max-h-52 overflow-auto rounded-md border bg-muted/40 p-2 text-meta"
             />
           ) : (
-            <p className="text-helper text-muted-foreground">No code is inserted.</p>
+            <Meta as="p">No code is inserted yet.</Meta>
           )}
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -180,7 +178,7 @@ export function CodeTemplatesReference() {
         hasExistingCode={false}
         onInsert={(code) => {
           setInsertedCode(code);
-          setLastAction('The local sample stat code is updated.');
+          setLastAction('The sample code box holds the inserted code.');
         }}
         traitPlaces={SAMPLE_TRAIT_PLACES}
         entities={SAMPLE_CODE_ENTITIES}

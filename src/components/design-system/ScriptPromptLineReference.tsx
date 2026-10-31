@@ -50,7 +50,7 @@ export function ScriptPromptLineReference() {
       <CardHeader>
         <CardTitle id="prompt-line-title" className="text-heading">Inline Prompt Line</CardTitle>
         <CardDescription>
-          The production prompt line under a sample turn. Pick a prompt to open it. Press Escape inside it to cancel.
+          Shows the production prompt line under a sample turn. Pick a prompt to open it, and press Escape inside it to cancel.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

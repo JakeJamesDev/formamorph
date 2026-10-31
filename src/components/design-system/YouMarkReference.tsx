@@ -43,7 +43,7 @@ export function YouMarkReference() {
     <Card role="region" aria-labelledby="you-mark-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="you-mark-reference-title" className="text-heading">You Pill Reference</CardTitle>
-        <CardDescription>The pill follows the played persona’s name. A selected row inverts it onto the primary fill.</CardDescription>
+        <CardDescription>Shows the pill after the played persona’s name. On a selected row, the pill reverses its colors against the primary fill.</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 lg:grid-cols-3">
         {PANELS.map((panel) => <ThemePanel key={panel.label} {...panel} />)}

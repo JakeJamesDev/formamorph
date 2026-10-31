@@ -11,8 +11,8 @@ import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 /** What each tab's body says, so switching tabs shows a real change rather than an empty box. One map per
  *  registry: three panels share the value `details`, and each one holds different fields. */
 const ENTITY_BODY: Record<string, string> = {
-  profile: 'Identity, picture, and where the entity is found.',
-  descriptions: 'The prose the player reads and the prose the model reads.',
+  profile: 'Identity, image, and where the entity is found.',
+  descriptions: 'The text the player reads and the text the AI reads.',
   items: 'The items the entity starts a game with.',
   traits: 'The entity\'s own traits and groups, each one opening on the editor\'s Traits tab.',
   stats: 'The entity\'s own stats, each one opening in the stat panel.',
@@ -68,15 +68,15 @@ export function PanelTabStripReference() {
           Panel Tab Strip
         </CardTitle>
         <CardDescription>
-          These are the production strips from the entity, location, trait, and dictionary entry panels,
-          reading their own tab registries. Narrow the window to see the labels give way to their icons.
+          Shows the production tab strips of the entity, location, trait and dictionary entry panels. Narrow
+          the window to see the labels change to icons.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="panel-tab-strip-entity" className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 id="panel-tab-strip-entity" className="text-label font-semibold">Seven Tabs</h3>
-            <Meta>The entity panel, in Advanced mode, where each tab has the least room.</Meta>
+            <Meta>The entity panel in Advanced mode, where each tab has the least room</Meta>
           </div>
           <Strip tabs={ENTITY_PANEL_TABS} stripLabel="Sample Entity Fields" body={ENTITY_BODY} />
         </section>
@@ -84,7 +84,7 @@ export function PanelTabStripReference() {
         <section aria-labelledby="panel-tab-strip-location" className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 id="panel-tab-strip-location" className="text-label font-semibold">Six Tabs</h3>
-            <Meta>The location panel, in Advanced mode.</Meta>
+            <Meta>The location panel in Advanced mode</Meta>
           </div>
           <Strip tabs={LOCATION_PANEL_TABS} stripLabel="Sample Location Fields" body={LOCATION_BODY} />
         </section>
@@ -92,7 +92,7 @@ export function PanelTabStripReference() {
         <section aria-labelledby="panel-tab-strip-trait" className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 id="panel-tab-strip-trait" className="text-label font-semibold">A Tab Name the Editor Also Uses</h3>
-            <Meta>The trait panel, whose Stats tab shares a name with the editor&apos;s own.</Meta>
+            <Meta>The trait panel, whose Stats tab has the same name as the editor&apos;s Stats tab</Meta>
           </div>
           <Strip tabs={TRAIT_PANEL_TABS} stripLabel="Sample Trait Fields" body={TRAIT_BODY} />
         </section>
@@ -101,8 +101,8 @@ export function PanelTabStripReference() {
           <div className="space-y-1">
             <h3 id="panel-tab-strip-entry" className="text-label font-semibold">Two Tabs, Two Hosts</h3>
             <Meta>
-              The dictionary entry panel, in Advanced mode. It splits by cadence, not height, and the World
-              Editor and the library&apos;s dictionary editor mount the same panel.
+              The dictionary entry panel in Advanced mode. Its tabs split the fields you edit often from the
+              fields you rarely change. The World Editor and the library&apos;s dictionary editor show the same panel.
             </Meta>
           </div>
           <Strip tabs={DICTIONARY_PANEL_TABS} stripLabel="Sample Entry Fields" body={ENTRY_BODY} />

@@ -69,15 +69,17 @@ export function MainMenuContextMenuReference() {
     <section className="grid gap-6" aria-labelledby="main-menu-context-menu-reference-title">
       <div className="grid gap-2">
         <h3 id="main-menu-context-menu-reference-title" className="text-heading">Grouped Context Actions</h3>
-        <Hint>
-          Right-click the sample entity. On a touch screen, press and hold the sample entity. For keyboard access, focus the sample entity. Press Shift+F10 or the Context Menu key.
+        <Hint>Shows the library tile menu on a sample entity. Right-click the entity to open it.</Hint>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>On a touch screen, press and hold the entity.</li>
+          <li>With a keyboard, focus the entity and press Shift+F10 or the Context Menu key.</li>
         </Hint>
       </div>
 
       <div className="w-44">
         {deleted ? (
           <div className="grid aspect-[2/3] place-items-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center">
-            <Hint>Restore the local sample to continue.</Hint>
+            <Hint>Restore the sample to continue</Hint>
             <Button size="sm" variant="outline" onClick={() => setDeleted(false)}>Restore Sample</Button>
           </div>
         ) : (

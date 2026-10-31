@@ -32,7 +32,7 @@ export function TravelHintPairReference() {
     <Card role="region" aria-labelledby="travel-hints-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="travel-hints-reference-title" className="text-heading">Travel Hint Pair Reference</CardTitle>
-        <CardDescription>Select the link toggle to link or unlink a pair.</CardDescription>
+        <CardDescription>Select the link toggle to link or unlink a pair</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-3 md:grid-cols-3">
         {SAMPLES.map((sample) => <Sample key={sample.connection.id} {...sample} />)}

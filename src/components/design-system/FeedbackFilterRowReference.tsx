@@ -32,7 +32,7 @@ export function FeedbackFilterRowReference() {
     <Card role="region" aria-labelledby="feedback-filter-row-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="feedback-filter-row-reference-title" className="text-heading">Feedback Filter Row Reference</CardTitle>
-        <CardDescription>Change a filter under “Filters” to show the badge, then select “Reset Filters”.</CardDescription>
+        <CardDescription>Change a filter under <strong>Filters</strong> to show the badge, then select <strong>Reset Filters</strong></CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-3">
         <StaffSample />

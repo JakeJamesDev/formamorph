@@ -91,17 +91,17 @@ export function BreadcrumbPickerReference() {
     <Card role="region" aria-labelledby="breadcrumb-picker-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="breadcrumb-picker-reference-title" className="text-heading">Breadcrumb Picker Reference</CardTitle>
-        <CardDescription>Open a picker to see its rows, then type to search.</CardDescription>
+        <CardDescription>Open a picker to see its rows, then type to search</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-3 md:grid-cols-2">
-        <PickerSample title="Default" note="A path of three or more segments collapses to its first and last. Point at a row to see the full path." sections={TRAIT_SECTIONS} placeholder="Pick a trait…" />
-        <PickerSample title="Picked" note="Every row that holds the value shows a check. Scarred shows under both entities." sections={PERSONA_SECTIONS} initial="Scarred" placeholder="Pick a trait…" />
-        <PickerSample title="No Breadcrumb" note="A list with no groups shows names only." sections={STAT_SECTIONS} placeholder="Pick a stat…" />
-        <PickerSample title="Disabled Row" note="A disabled row stays visible and can't be picked." sections={DISABLED_SECTIONS} initial="Focus" placeholder="Pick a stat…" />
-        <PickerSample title="Empty" note="An empty list shows Nothing to pick." sections={NO_SECTIONS} placeholder="Pick a trait…" />
-        <PickerSample title="Unavailable" note="A disabled field doesn't open." sections={TRAIT_SECTIONS} placeholder="Pick a trait…" disabled />
-        <PickerSample title="Drill-Down" note="Over 15 rows, the list opens on its categories. Search on the first page reads every row. Backspace in an empty search goes back." tree={DRILL_TREE} placeholder="Pick a target…" />
-        <PickerSample title="No Matches" note="Type zzz in the search field." sections={TRAIT_SECTIONS} placeholder="Pick a trait…" />
+        <PickerSample title="Default" note="A path of three or more segments shows only its first and last. Hover over a row to see the full path." sections={TRAIT_SECTIONS} placeholder="Pick a trait" />
+        <PickerSample title="Picked" note="Each row that holds the value shows a check, so Scarred shows a check under both entities." sections={PERSONA_SECTIONS} initial="Scarred" placeholder="Pick a trait" />
+        <PickerSample title="No Breadcrumb" note="A list with no groups shows names only" sections={STAT_SECTIONS} placeholder="Pick a stat" />
+        <PickerSample title="Disabled Row" note="A disabled row stays visible and can't be picked" sections={DISABLED_SECTIONS} initial="Focus" placeholder="Pick a stat" />
+        <PickerSample title="Empty" note="An empty list shows “Nothing to pick”" sections={NO_SECTIONS} placeholder="Pick a trait" />
+        <PickerSample title="Unavailable" note="A disabled field doesn't open" sections={TRAIT_SECTIONS} placeholder="Pick a trait" disabled />
+        <PickerSample title="Drill-Down" note="Over 15 rows, the list opens on its categories, and search on that page reads every row. Backspace in an empty search goes back." tree={DRILL_TREE} placeholder="Pick a target" />
+        <PickerSample title="No Matches" note="Type zzz in the search field" sections={TRAIT_SECTIONS} placeholder="Pick a trait" />
       </CardContent>
     </Card>
   );

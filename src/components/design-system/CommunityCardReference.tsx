@@ -157,8 +157,10 @@ export function CommunityCardReference() {
     <section className="grid gap-6" aria-labelledby="community-card-reference-title">
       <div className="grid gap-2">
         <h3 id="community-card-reference-title" className="text-heading">Community Creation Cards</h3>
-        <Hint>
-          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity or Avatar card puts its image beside the text instead. An entity or Avatar with no image shows its Morph art. An entity or Avatar that the server flags as a stand-in shows it too.
+        <Hint>Shows production cards with long sample content. Select a card or its heart to see the result below.</Hint>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>An entity or Avatar card puts its image beside the text.</li>
+          <li>An entity or Avatar with no image, or with an image the server flags as a stand-in, shows its Morph art.</li>
         </Hint>
       </div>
 
@@ -257,14 +259,16 @@ export function CommunityCardReference() {
             <CircleDashed className="h-3.5 w-3.5" /> Complete Local Action
           </Button>
         ) : (
-          <Meta>Select the Like or Unlike button.</Meta>
+          <Meta>Select the heart to like or unlike</Meta>
         )}
       </div>
 
       <div className="grid gap-2">
         <SectionTitle>Like Counts</SectionTitle>
-        <Hint>
-          A contest entry hides its like count until staff announce the winners. Other readers see a dash, and the heart still works. The author and staff see the number, with a tooltip that says who else sees it.
+        <Hint>A contest entry hides its like count until staff announce the winners</Hint>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>Other readers see a dash, and the heart still works.</li>
+          <li>The author and staff see the number, with a tooltip that says who else sees it.</li>
         </Hint>
         <div className="flex flex-wrap items-center gap-6 rounded-md border border-border p-3 text-meta text-muted-foreground" onClick={stopCardClick}>
           <span className="flex items-center gap-2"><Meta>Public</Meta><LikeButton count={{ visibility: 'public', likes: 104 }} /></span>

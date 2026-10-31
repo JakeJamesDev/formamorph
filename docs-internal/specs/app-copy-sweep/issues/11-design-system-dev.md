@@ -1,6 +1,6 @@
 # 11: Design System and Dev
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -26,11 +26,58 @@ Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.
 
 ## Acceptance criteria
 
-- [ ] Every help line, ⓘ body, tooltip, description, status, error and confirmation in the listed files follows the Writing Guide, written from a facts list in the user's words.
-- [ ] The copy:sweep count per rule before and after is recorded here; each remaining notice has its triage reason.
-- [ ] Raw help paragraphs in the listed files render through Hint or Meta.
-- [ ] Labels changed only for a wrong term, a parenthetical aside, or a name that differs from its help (Q5). Each rename is checked against the Find bar and the tests.
-- [ ] Comments in the listed files changed only when false, history-telling, or figurative (Q6).
-- [ ] Every test that pinned a changed string is updated.
-- [ ] Each in-place bug fix has a test that fails with the bug reinstated, and is listed as a drive-by under Landed.
-- [ ] No changelog fragment.
+- [x] Every help line, ⓘ body, tooltip, description, status, error and confirmation in the listed files follows the Writing Guide, written from a facts list in the user's words. Hand pass of every reference card, plus a standards and a spec review; facts checked against the rendered components.
+- [x] The copy:sweep count per rule before and after is recorded here; each remaining notice has its triage reason. See Landed.
+- [x] Raw help paragraphs in the listed files render through Hint or Meta. copy:sweep raw-hint-role 14 → 0.
+- [x] Labels changed only for a wrong term, a parenthetical aside, or a name that differs from its help (Q5). Each rename is checked against the Find bar and the tests. One rename: the "Stat Code Templates" heading; the showcase test and `e2e/design-system.spec.ts` updated, no Find bar caption names it.
+- [x] Comments in the listed files changed only when false, history-telling, or figurative (Q6). One comment: "Character Name" → "Entity Name" in `PromptChipsReference.tsx` (R10).
+- [x] Every test that pinned a changed string is updated. Grep of `src` and `e2e`; affected tests green in the review gates.
+- [x] Each in-place bug fix has a test that fails with the bug reinstated, and is listed as a drive-by under Landed. No bug fixes.
+- [x] No changelog fragment.
+
+## Landed
+
+**Not verified**
+
+- Nothing unticked. The pages were not opened in the preview; the change is copy and Hint/Meta wrappers, and the affected tests render each reference.
+
+**For you**
+
+- Read the reference intros and their new bullet lists (R34) in the showcase at `/#dev?modal=designSystem`, one tab at a time.
+
+**Copy:sweep counts** (the ticket's 60 files)
+
+| Rule | Before | After |
+| --- | --- | --- |
+| period-shape | 39 | 21 |
+| raw-hint-role | 14 | 0 |
+| label-case | 12 | 12 |
+| ellipsis | 8 | 0 |
+| figurative | 3 | 1 |
+| many-sentences | 2 | 0 |
+| on-off-preamble | 1 | 1 |
+| app-subject | 1 | 0 |
+| em-dash | 1 | 1 |
+| label-parenthetical | 1 | 1 |
+| **Total** | **82** | **37** |
+
+**Remaining notices**
+
+- period-shape (21): sample data for author, player or staff text (stat and template descriptions, card descriptions, bylines, listing samples), specimen text ("The lanterns wake along the harbor."), and status lines and dialog descriptions, which take full sentences. One is a false positive: the Formaquestion Minimal Chrome hint ends with a period after a `<strong>` the script splits on.
+- label-case (12): accessible names of sample regions and sample feedback titles; case-only (Q5) or user content (R6).
+- on-off-preamble (1): a personal template's description, sample data (R6).
+- figurative (1): "live sample" in a showcase tab description; "live" means updating as you change it, and R35 limits those lines to image verbs and wrong terms.
+- em-dash (1): `devEventSample.ts` event blurb, staff content (R6, R31).
+- label-parenthetical (1): `devPaneSamples.ts` template literal `slice(0, -1)`, a false positive.
+
+**Drive-bys and corrections**
+
+- "picture" → "image" and "the model" → "the AI" in the entity panel tab-body stand-ins.
+- "Stat Code Templates" → "Code Templates" (the old "stat code" name).
+- The Inventory Tab showcase description says "Status panel", the panel's name.
+- `HeldUpdatesBar.tsx` statuses are full sentences.
+- `MainMenuContextMenuReference.tsx` already says "Delete Entity" with the real menu's consequence (ticket 07); confirmed only.
+
+**Findings**
+
+- None.

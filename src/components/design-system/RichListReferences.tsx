@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Meta } from '@/components/ui/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { randomUUID } from '@/lib/uuid';
 
@@ -70,7 +71,7 @@ function WorldEditorListReference() {
     <Card role="region" aria-labelledby="world-editor-list-title">
       <CardHeader>
         <CardTitle id="world-editor-list-title" className="text-heading">World Editor List</CardTitle>
-        <CardDescription>Rich rows keep sorting, metadata, selection, and item actions.</CardDescription>
+        <CardDescription>Shows editor rows with sorting, details, selection and row actions</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(14rem,0.8fr)]">
         <ScrollArea type="always" className="h-64 rounded-md border p-1">
@@ -105,9 +106,9 @@ function WorldEditorListReference() {
             onChange={(event) => rename(event.target.value)}
             disabled={!selected}
           />
-          <p className="text-helper text-muted-foreground">
+          <Meta as="p">
             {selected ? `Editing a ${selected.kind.toLowerCase()} sample.` : selectedId === PINNED_ID ? 'The pinned entry opens settings for the whole list.' : 'Select an item.'}
-          </p>
+          </Meta>
         </div>
       </CardContent>
     </Card>
@@ -130,7 +131,7 @@ function SaveLoadListReference() {
     <Card role="region" aria-labelledby="save-load-list-title">
       <CardHeader>
         <CardTitle id="save-load-list-title" className="text-heading">Save and Load List</CardTitle>
-        <CardDescription>Save rows keep timestamps, game time, ordering, and row actions.</CardDescription>
+        <CardDescription>Shows save rows with timestamps, game time, ordering and row actions</CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 space-y-3">
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
@@ -158,7 +159,7 @@ function SaveLoadListReference() {
             />
           </div>
         </ScrollArea>
-        <p aria-live="polite" className="text-helper text-muted-foreground">{status}</p>
+        <Meta as="p" aria-live="polite">{status}</Meta>
       </CardContent>
     </Card>
   );

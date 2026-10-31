@@ -20,7 +20,7 @@ const PLACEHOLDERS: Placeholder[] = [{ id: 'reference-town', name: 'Town', value
   { id: 'reference-harrow', text: 'Harrow' }, { id: 'reference-merrow', text: 'Merrow' },
 ] }];
 
-// The panel's owner, so its own field offers Character Name and previews it as this name.
+// The panel's owner, so its own field offers Entity Name and previews it as this name.
 const OWNER = { id: 'reference-oren', name: 'Oren' } as Entity;
 
 export function PromptChipsReference() {

@@ -45,7 +45,7 @@ describe('code templates design reference', () => {
     await user.click(insert);
 
     expect(screen.queryByRole('dialog', { name: 'Code Templates' })).toBeNull();
-    const status = screen.getByText('The local sample stat code is updated.');
+    const status = screen.getByText('The sample code box holds the inserted code.');
     expect(status).toBeInTheDocument();
     expect(status.closest('section')).toHaveTextContent('const weight = 0.25;');
   });
@@ -72,7 +72,7 @@ describe('code templates design reference', () => {
     await user.click(await screen.findByRole('button', { name: 'Confirm' }));
     expect(screen.queryByRole('button', { name: 'Imported Local Demonstration' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Close' }));
-    expect(screen.getByText('The local template library erased the selected template.')).toBeInTheDocument();
+    expect(screen.getByText('The local template library deleted the selected template.')).toBeInTheDocument();
 
     await openDialog();
     await user.click(screen.getByRole('button', { name: 'Duplicate' }));

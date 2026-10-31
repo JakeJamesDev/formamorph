@@ -59,7 +59,7 @@ export function LocationsCanvasReference() {
     <Card role="region" aria-labelledby="locations-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="locations-reference-title" className="text-heading">Locations Canvas Reference</CardTitle>
-        <CardDescription>Select “Edit Full Screen”.</CardDescription>
+        <CardDescription>Shows the production canvas on sample locations. Select <strong>Edit Full Screen</strong> to open it full screen.</CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 space-y-3">
         <div ref={canvasRef} className="h-[34rem] min-w-0 overflow-hidden rounded-md border border-border">
