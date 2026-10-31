@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-Locations are the places where your story happens. The player is always in one location. That location decides what the AI reads about the scene: the description, who's present, and where the story can go next.
+Locations are the places where your story happens. The player is always in one location. That location decides what the AI reads about the scene. The AI reads the location's description, the entities present, and where the story can go next.
 
 ## Why it exists
 <!-- keywords: ai forgets where, scene keeps changing, random teleport, setting drifts, keep scene consistent -->
@@ -112,25 +112,31 @@ The **Locations** tab has two views. Switch between them with the **List** and *
 
 In full screen, the toolbar and the right-click menus also align, distribute and snap boxes, and set the Connection style. An entity card there sets one entity's **Locations** or **Known In** by selecting boxes.
 
-Nothing on the canvas moves until you move it or ask for a layout. Right-click open canvas and select **Auto Arrange All** to lay out every box. In full screen, the toolbar holds the same button. With a box selected, it reads **Auto Arrange** and lays out only its group. Right-click a location with sub-locations and select **Auto Arrange** to lay out only its children. The in-game map uses your canvas layout.
+Nothing on the canvas moves until you move it or ask for a layout:
+
+- Right-click an empty part of the canvas and select **Auto Arrange All** to lay out every box.
+- In full screen, the toolbar holds the same button. With a box selected, it reads **Auto Arrange** and lays out only its group.
+- Right-click a location with sub-locations and select **Auto Arrange** to lay out only its children.
+
+The in-game map uses your canvas layout.
 
 ### Map Background
 <!-- keywords: world map image, map art, picture behind canvas, trace a map, background image on map, map opacity, ruined map, map changes -->
 
-A **Map Background** is a picture behind the boxes, such as a hand-drawn world map. The player's in-game Map shows it in the same place, at the same size and opacity.
+A **Map Background** is an image behind the boxes, such as a hand-drawn world map. The player's in-game Map shows it in the same place, at the same size and opacity.
 
-1. Right-click open canvas and select **Set Background Image…**.
+1. Right-click an empty part of the canvas and select **Set Background Image…**.
 2. Upload a file, or paste an image address. The image covers your locations.
-3. The **Adjust Background** card opens. Drag the image to move it. Drag a corner to resize it; it keeps its shape.
+3. The **Adjust Background** card opens. Drag the image to move it. Drag a corner to resize it. The image keeps its shape.
 4. Set **Opacity**, then close the card.
 
-- 🔒 **Locked.** Outside Adjust, the image never moves. Dragging, selecting and connecting boxes work as before.
-- 🎚️ **Adjust Background.** Right-click open canvas to turn it on or off. The boxes stay on top but don't move, so a drag anywhere on the image moves it. The card also holds **Remove Image**.
+- 🔒 **Locked.** Outside Adjust, the image never moves. Dragging, selecting and connecting boxes work as usual.
+- 🎚️ **Adjust Background.** Right-click an empty part of the canvas to turn it on or off. The boxes stay on top but don't move, so a drag anywhere on the image moves it. The card also holds **Remove Image**.
 - 🖼️ **Replace Background Image…** opens the map's gallery, the same one the **Media** tab shows. Select a tile to frame it, drag a tile to reorder, or select **x** to remove the framed image. The canvas shows the first image.
-- 🗑️ Removing the last image also clears its place and opacity. The next image lands like a first one: over your locations, or over the visible canvas when there are none.
+- 🗑️ Removing the last image also clears its place and opacity. The next image is placed like a first one: over your locations, or over the visible canvas when there are none.
 - ↩️ Each drag, resize, removal, or opacity change is one undo step.
 
-The **Media** tab can hold more than one map image, each with its own [Visibility rule](World-Editor-Entities#visibility-rules). In play, the Map shows the first visible image, all in the same frame. A condition with no owner reads the persona, as on a location. The canvas always shows the first image. See [Map Background in the Media tab](World-Editor-Media#map-background).
+The **Media** tab can hold more than one map image, each with its own [Visibility rule](World-Editor-Entities#visibility-rules). During a game, the Map shows the first visible image, all in the same frame. A condition with no owner reads the persona, as on a location. The canvas always shows the first image. See [Map Background in the Media tab](World-Editor-Media#map-background).
 
 ## The panel
 <!-- keywords: backdrop, wallpaper, scenery picture, looping noise, atmosphere audio, generate scenery, rain sfx -->
@@ -162,7 +168,7 @@ Simple mode also hides **AI-Facing Summary**.
 
 Each background image can carry a [Visibility rule](World-Editor-Entities#visibility-rules), the same as an entity image. Select the cog on a thumbnail to set one.
 
-- 🖼️ In play, the backdrop shows the **first visible image**, counting from the left.
+- 🖼️ During a game, the backdrop shows the **first visible image**, counting from the left.
 - 🧍 A condition with no owner reads the **persona** the player plays. A location has no traits or stats of its own. Pick an entity to read that entity instead. A global trait or stat needs no owner.
 - 🌫️ When no image is visible, the story shows no backdrop.
 
@@ -195,16 +201,16 @@ The default prompt gives the **narrator** the current location in full. It gives
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 <!-- route: worldEditorLocation.presence -->
 
-The **Entities** picker on the **Presence** tab lists who's at this location. Each entity stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
+The **Entities** picker on the **Presence** tab lists the entities at this location. Each entity stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
 
 - **Entities Here** gives each entity at this location a **Movement** select. An entity at more than one location also gets a **Presence** switch: **Everywhere Listed** or **One, at Random**.
-- **Known Here** lists entities that aren't here but that people here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
+- **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
 - **Nearby Through Connections** adds entities one Connection away to what the AI receives as nearby. It is on for a new location.
 
 ## Connections
 <!-- keywords: no way back, both directions, trip description, how you get there, return trip wording, arrow labels, trapdoor, shortcut across branches -->
 
-Nesting gives travel for free, and it always goes both ways. A **Connection** is a link you make between *any* two locations, at any place in the tree.
+Nesting lets the story move the player between nested places, always in both directions. A **Connection** is a link you make between *any* two locations, at any place in the tree.
 
 The **Connections** section lists every link this location is part of, from this location's point of view:
 
@@ -224,7 +230,7 @@ Each direction has its own hint. The AI gets the hint for the direction the play
 
 | Connection | Hint boxes |
 |---|---|
-| **Two-Way** | Two boxes, one for each direction. A **link toggle** sits to the right of both. |
+| **Two-Way** | Two boxes, one for each direction. A **link toggle** is to the right of both. |
 | **Outgoing** or **Incoming** | One box. There is no toggle. |
 
 On a location's panel, the boxes read **To** *place* and **From** *place*. On the Canvas, each box shows an arrow and the place it leads to.
@@ -246,7 +252,7 @@ Change a Connection to one-way, and it keeps the hint for the direction that rem
 
 On the Canvas, each arrow shows its own hint as a label. Two arrows with the same hint share one label. Select an arrow to edit that direction's hint. Undo and redo cover the toggle and every hint edit.
 
-> ⚠️ **A Connection replaces the free travel those two places had.** This is what makes a one-way link truly one-way, even between two sub-locations of the same place. The story is never offered the trip back.
+> ⚠️ **A Connection replaces the travel that nesting gives those two places.** This is what makes a one-way link truly one-way, even between two sub-locations of the same place. The story is never offered the trip back.
 
 One Connection is one link, so it shows on **both** locations' panels. Change it or delete it from either side.
 

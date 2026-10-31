@@ -4,14 +4,14 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-Entities are the people, creatures and things in your world: a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**. The AI reads the entities that can show up where the player is.
+An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**. The AI reads the entities that can show up where the player is.
 
 ## Why it exists
 <!-- keywords: ai forgets characters, narrator invents people, recurring character, persistent npc, keeps renaming -->
 
-Without entities, the narrator invents a stranger, names them, and forgets both by the next turn. An entity is a fixed person or thing the story can come back to. The AI reads about it again each time the player is at one of its locations.
+Without entities, the narrator invents a stranger, names them, and forgets both by the next turn. An entity is a fixed person or object that the story can come back to. The AI reads about it again each time the player is at one of its locations.
 
-The default prompt lists the entities that **may** appear in the current location. That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
+The default prompt lists the entities that **may** appear in the current location. That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use any entity on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
 
 ## How to Add an Entity
 <!-- keywords: character, npc, create, new character, make, person, monster, companion, creature, bot, villain, love interest, pet, party member, enemy, add someone -->
@@ -35,10 +35,15 @@ To add a copy of an entity from your library, select the **+** button, then **Ad
 1. On the Main Menu, open the library's **Entities** tab.
 2. Select **Import Entity**.
 3. Pick the card's `.png` or `.json` file.
-4. The card joins your library as an entity. A PNG card's image becomes the entity's image. A JSON card brings an image only when its avatar is a web address. Its lorebook, if it has one, joins your library as a dictionary.
-   You can pick several files at once. A SillyTavern persona backup `.json` imports as personas.
+4. The card joins your library:
+   - The card becomes an entity.
+   - A PNG card's image becomes the entity's image.
+   - A JSON card brings an image only when its avatar is a web address.
+   - The card's lorebook, if it has one, joins your library as a dictionary.
 5. In the World Editor, open the **Entities** tab, select the **+** button, then select **Add From Library…**.
 6. Select the entity, then select **Add Entity** in the window.
+
+> 💡 You can pick several files at once. A SillyTavern persona backup `.json` imports as personas.
 
 You can also import a card directly into a world. On the **Entities** tab, select the **+** button, then **Import Entity…**. Pick the file, keep or clear **Link through my library**, and select **Add Entity**. This route doesn't bring in the card's lorebook.
 
@@ -132,7 +137,12 @@ The game reads each page of narration to find which entities are present. It mat
 | Several words, such as `Emily Foster` | The words in order. One distinctive word with a capital also matches, so "Emily" is enough. A common word alone doesn't match, unless every word of the name is common, such as `Rose Wolf`. |
 | Plurals | `Wolf` also matches "Wolves" |
 
-**Aliases** are other names the entity uses: a title, a nickname, an epithet. Press Enter after each alias. The **Aliases** field shows in Advanced mode only, but aliases work in both modes. The AI reads them as *"also known as"*. The game also counts the entity as present when the narration uses an alias.
+**Aliases** are other names the entity uses: a title, a nickname, an epithet.
+
+- Press Enter after each alias.
+- The **Aliases** field shows in Advanced mode only, but aliases work in both modes.
+- The AI reads them as *"also known as"*.
+- The game counts the entity as present when the narration uses an alias.
 
 | Rule | Example |
 |---|---|
@@ -201,7 +211,13 @@ Each entity with stats shows as a node in the world's **Stats** tab, below the g
 - **Drag a stat or a group** onto another entity's node, or out to the global stats, to move it. It keeps its id.
 - **Drag a Blueprint stat** onto a node to link it, in Advanced mode. The Blueprint stays where it is.
 
-> ⚠️ **A move is refused when something ties the stat to where it is now.** That is a trait that changes it or switches it on or off, a script that reads it, or its own code that reads another stat. A note names it. A move is also refused when the other side already has the stat. The same check stops a stat from moving into **Blueprints**. A Blueprint stat that an owner links to stays in **Blueprints**, and the Custom Persona's node can't go in a group.
+> ⚠️ **A move is refused when something ties the stat to where it is now.** A note names what ties it:
+>
+> - A trait that changes the stat, or switches it on or off
+> - A script that reads the stat
+> - The stat's own code, when it reads another stat
+>
+> A move is also refused when the other side already has the stat. The same check stops a stat from moving into **Blueprints**. A Blueprint stat that an owner links to stays in **Blueprints**, and the Custom Persona's node can't go in a group.
 
 ### What the AI sees
 <!-- keywords: ai sees entity stats, npc stats in prompt, send stats to ai, turn off entity stats, hidden stat ai -->
@@ -228,11 +244,16 @@ An entity can have its own openings, so it can start the scene in its own voice.
 <!-- keywords: portrait, character art, sprite, danbooru, stable diffusion prompt, mesh, face picture, png metadata -->
 <!-- route: imageReplace -->
 
-The image and the 3D model are for the player's screen. **Image Tags** are booru tags for AI [image generation](Image-Generation#scene-images) only. **Generate image tags**, a ✨ icon button, writes a draft of the tags from the description. Its tooltip reads "Generate image tags from the description". A primary image can have a prompt in its file. In Advanced mode, the editor offers to use that prompt when you upload it. The narrator reads none of this.
+- The image and the 3D model are for the player's screen.
+- **Image Tags** are booru tags for AI [image generation](Image-Generation#scene-images) only.
+- **Generate image tags**, a ✨ icon button, writes a draft of the tags from the description. Its tooltip reads "Generate image tags from the description".
+- A primary image can have a prompt in its file. In Advanced mode, the editor offers to use that prompt when you upload it.
+
+The narrator reads none of these.
 
 An image field takes an uploaded file or a web address. See [Upload or link](World-Editor-Overview#upload-or-link).
 
-An entity's gallery has no slot limit, so a generated image always goes into a new slot. A one-image field that already holds an image, such as an item's image, asks **Replace which image?** first. **Cancel** changes nothing.
+An entity's gallery has no slot limit, so a generated image always gets a new slot. A one-image field that already holds an image, such as an item's image, asks **Replace which image?** first. **Cancel** changes nothing.
 
 ## Visibility rules
 <!-- keywords: show image when hurt, wounded portrait, portrait only when injured, image changes with health, hide image, change image in game, art follows story, transformation art, armored portrait, conditional image, image per state, stat threshold image, form change image -->
@@ -240,7 +261,11 @@ An entity's gallery has no slot limit, so a generated image always goes into a n
 
 A **Visibility rule** makes an image show only in the right state. Give the wounded portrait a rule that reads *Health < 20%*, and it shows while the entity is hurt.
 
-An image with no rule always shows. In play, the entity shows the **first image that is visible**, counting from the left. An entity with an Avatar or a 3D model shows that first, unless the player picks another default view. Its image is then behind the **View Image** button. The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a trait's **Requires** field, including [stat conditions](World-Editor-Traits#stat-conditions) and [time conditions](World-Editor-Traits#time-conditions). Give a night portrait the rule *night*, and it shows only at night.
+- An image with no rule always shows.
+- During a game, the entity shows the **first image that is visible**, counting from the left.
+- An entity with an Avatar or a 3D model shows that first, unless the player picks another default view. Its image is then behind the **View Image** button.
+
+The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a trait's **Requires** field, including [stat conditions](World-Editor-Traits#stat-conditions) and [time conditions](World-Editor-Traits#time-conditions). Give a night portrait the rule *night*, and it shows only at night.
 
 ### How to add a rule
 <!-- keywords: cog on thumbnail, add visibility rule, edit rule, shown while, badge on image, eye badge -->
@@ -274,7 +299,7 @@ Put the special states first and the fallback last. For a rule on each of *Wound
 
 The first image is the **primary**. Outside play, the primary always shows and rules are ignored: in the library, on listings, on a character card and in setup.
 
-In play, the first visible image takes its place. The editor warns when the primary has a rule, so leave it without one and use it as the fallback.
+During a game, the first visible image takes its place. The editor warns when the primary has a rule, so leave it without one and use it as the fallback.
 
 ### What the player sees
 

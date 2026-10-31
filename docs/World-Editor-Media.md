@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-The **Media** tab shows every image, sound, 3D Model and Avatar in your world, with its size. Use it to find what makes a world heavy. It sits under **Overview**, in Simple and Advanced mode.
+The **Media** tab shows every image, sound, 3D Model and Avatar in your world, with its size. Use it to find what makes a world heavy. It is under **Overview**, in Simple and Advanced mode.
 
 Every file stays where you added it: on the entity, location, dictionary or Overview. The tab only shows them in one place.
 
@@ -29,8 +29,13 @@ The row above the search box holds the **Publish Size** meter and four buttons. 
 
 - **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location, dictionary or world slot it belongs to.
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
-- **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules**, **Over Size Budget** or **No Images** items. **All Media** turns the filter off. **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included. **Linked**, **Has Visibility Rules** and **Over Size Budget** look at images, so they hide sounds, 3D Models and Avatars. The button shows the filter's name while it's on.
-- The **No Images** filter shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**. Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
+- **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules**, **Over Size Budget** or **No Images** items. **All Media** turns the filter off. The button shows the filter's name while it's on.
+  - **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included.
+  - **Linked**, **Has Visibility Rules** and **Over Size Budget** look at images, so they hide sounds, 3D Models and Avatars.
+- The **No Images** filter shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**.
+  - Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card.
+  - Select an entity or location card to open its image panel on the add tile.
+  - Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
 - **Optimize Images** converts or shrinks the world's images. See [Optimize Images](#optimize-images).
 
 The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
@@ -38,7 +43,7 @@ The tab remembers **Group by Type** and **Largest First** on this device. The fi
 ## The gallery
 <!-- keywords: cards, sections, stack, count badge, linked badge, rules badge, warning color, over budget -->
 
-The cards sit in sections that follow your editor:
+The cards are in sections that follow your editor:
 
 | Section | Holds |
 |---|---|
@@ -67,7 +72,12 @@ Only files that exist show. An empty slot makes no card.
 - **Optimize** converts each image that a lossless WebP makes smaller, at any size. The image keeps its resolution. A message then says how many images stayed as they were.
 - **Downscale** turns each image that is over its budget, or stored lossless (PNG, BMP, lossless WebP), into a smaller lossy WebP.
 
-**Keep as-is** closes the dialog. With nothing worth optimizing, no dialog shows. The icon shows a spinner while a run goes, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
+**Keep as-is** closes the dialog. With nothing worth optimizing, no dialog shows.
+
+- The icon shows a spinner while a run goes, and its tooltip shows the progress.
+- Close the editor to cancel a run.
+- The run is one Step, so one undo brings every image back.
+- Sizes and the Publish Size meter update when it ends.
 
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
@@ -114,10 +124,10 @@ Each change is one undo step.
 ## Map Background
 <!-- keywords: map background, world map, map image, map visibility rule, ruined map, map changes in game, go to locations -->
 
-The **World › Map Background** cards hold the picture behind the [Locations canvas](World-Editor-Locations#map-background). Two or more images stack, like an entity's.
+The **World › Map Background** cards hold the image behind the [Locations canvas](World-Editor-Locations#map-background). Two or more images stack, like an entity's.
 
 - 🖼️ The cards open the image panel, with **Replace**, **Download**, **Remove** and **Go to Locations**.
-- 🎚️ Each image can carry a Visibility rule. In play, the Map shows the first visible image, and no image when none is visible. A condition with no owner reads the persona.
+- 🎚️ Each image can carry a Visibility rule. During a game, the Map shows the first visible image, and no image when none is visible. A condition with no owner reads the persona.
 - 📐 Every image fits inside one shared frame at its own shape, so a swap lines up with your locations.
 - ➕ With no image, **No Images** shows a blank card. An upload there covers your locations.
 - 📦 The size budget is in [Image Sizes](#image-sizes).
@@ -137,4 +147,4 @@ Each image slot has a size budget: a long edge and a file size. An image over th
 ## Sizes
 <!-- keywords: how size is measured, mb, kb, publish size match, total -->
 
-A size is what the file adds to the world's saved file, the same measure as the **Publish Size** bar in the [Test Bench](Test-Bench). Each Avatar counts once, however many entities pick it.
+A size is what the file adds to the world's saved file. It is the same measure as the **Publish Size** bar in the [Test Bench](Test-Bench). Each Avatar counts once, however many entities pick it.

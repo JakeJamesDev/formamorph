@@ -1,6 +1,6 @@
 # 08: Editor Core Wording
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -19,11 +19,23 @@ Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and
 
 ## Acceptance criteria
 
-- [ ] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves
-- [ ] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page
-- [ ] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here
-- [ ] Control names take the exact casing of the on-screen label
-- [ ] Product terms match "Controlled product terms"
-- [ ] Paragraphs are short and steps are scannable lists
-- [ ] No fact changed: a diff read finds no new claim, limit or default
-- [ ] A renamed heading updates every anchor table that names it; the docs tests are green
+- [x] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves. World-Editor-Entities (4,187 words with comments, 3,731 without): no split (spec-session ruling). One reader task: authoring an entity. The other five pages are under 4,000 and serve one task each.
+- [x] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page. No split, so nothing to add.
+- [x] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here. 186 before, 173 after. Prose notices 16 → 3. The 3 left are the ellipses in the **Connect to…**, **Add From Library…** and **Import Entity…** labels. The other 170 are on keyword and route comments: false positives (Q20).
+- [x] Control names take the exact casing of the on-screen label. No label text changed; ticket 07 checked them in source.
+- [x] Product terms match "Controlled product terms". "people/who/anyone" for entities, "picture", "book" for a dictionary, "In play", and image verbs (lands, sits, stand, points at, free travel) reworded.
+- [x] Paragraphs are short and steps are scannable lists. Long paragraphs became lists: the rail and header on WorldEditor, export choices, Auto Arrange, aliases, the move-refused warning, image fields, Media's filters and Optimize runs, the default opening's conditions.
+- [ ] No fact changed: a diff read finds no new claim, limit or default. A spec-axis review read every hunk old against new; the two ruled changes are listed under Landed.
+- [x] A renamed heading updates every anchor table that names it; the docs tests are green. No heading changed. Docs suites (8 files, 317 tests) green.
+
+## Landed
+
+**Not verified**
+
+- "No fact changed" stays unticked on purpose. Two stale summary lines on WorldEditor were fixed (Q17 staleness misses, spec-session ruling):
+  - Stats: "The numbers that describe the player" now adds "and the entities". The section summary says the AI receives the player's stats on every turn (the Global Stats block in the default narration prompt, `GamePrompts.ts`) and links Entity Stats.
+  - Traits: the line now adds "and states that switch on or off during a game", in the table and the section summary.
+
+**For you**
+
+- [Home.md](../../../../docs/Home.md) still describes entities as "people, creatures and things". Home is the Play group's page; the editor pages now say "a person, a creature, an object or a fixture".
