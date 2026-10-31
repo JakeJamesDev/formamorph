@@ -823,7 +823,6 @@ const GameViewer = ({
   const inventoryWorld = useMemo(() => ({
     items: worldItems, slots: worldSlots, bodies: worldBodies, entities: bodyPickEntities(entities, worldPersonas, resolvedCustomPersona),
   }), [worldItems, worldSlots, worldBodies, entities, worldPersonas, resolvedCustomPersona]);
-  const sceneEquipment = useMemo(() => ({ world: inventoryWorld, persona: personaRef }), [inventoryWorld, personaRef]);
   // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
   // The entities are every one whose scripts run: the played one and the picked library ones included.
   const worldScriptsChangeChoices = useMemo(() => scriptsChangeChoices({
@@ -861,6 +860,18 @@ const GameViewer = ({
     }),
     [authoredTraits, traitGroups, daypart, worldItems, heldItemCopies, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
+  /** The gameplay slice the trait runtime reads and rewrites. */
+  const traitState = useMemo<TraitRuntimeState>(
+    () => ({
+      stats: globalStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
+      entityStats,
+    }),
+    [globalStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
+  );
+  // The equip check, the panel and the prompts read each owner's Body in force, trait Body rows included (Q13, Q54).
+  const traitBodyPicks = useMemo(() => traitPicksInPlay(bodies, traitState, gatedWorld()), [bodies, traitState, gatedWorld]);
+  const inventoryWorldInForce = useMemo(() => ({ ...inventoryWorld, traitPicks: traitBodyPicks }), [inventoryWorld, traitBodyPicks]);
+  const sceneEquipment = useMemo(() => ({ world: inventoryWorldInForce, persona: personaRef }), [inventoryWorldInForce, personaRef]);
   // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {
     const off = new Set(disabledTraitIds);
@@ -3661,21 +3672,10 @@ const GameViewer = ({
   liveCodeStateRef.current = {
     codePins, loreToggles, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
   };
-  /** The gameplay slice the trait runtime reads and rewrites. */
-  const traitState = useMemo<TraitRuntimeState>(
-    () => ({
-      stats: globalStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
-      entityStats,
-    }),
-    [globalStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
-  );
   // The trait state play stands at, which a switch run lands onto. A commit writes it at once, so a landing
   // before the next render builds on that commit.
   const liveTraitStateRef = useRef(traitState);
   liveTraitStateRef.current = traitState;
-  // The equip check and the panel read each owner's Body in force, trait Body rows included (Q13).
-  const traitBodyPicks = useMemo(() => traitPicksInPlay(bodies, traitState, gatedWorld()), [bodies, traitState, gatedWorld]);
-  const inventoryWorldInForce = useMemo(() => ({ ...inventoryWorld, traitPicks: traitBodyPicks }), [inventoryWorld, traitBodyPicks]);
   // The Item Copies, item effects and Body state play stands at, which a run reads and an item landing builds on.
   // A landing writes them at once, so the next landing before a render builds on it.
   const liveItemsRef = useRef({ copies: itemCopies, effects: itemEffects, bodies });
