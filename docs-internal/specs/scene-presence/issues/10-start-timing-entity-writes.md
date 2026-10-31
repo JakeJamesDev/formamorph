@@ -1,6 +1,7 @@
 # 10: Land Entity Writes from Start-Timing Scripts
 
-Status: ready-for-agent
+Status: wontfix
+Resolution: No write is lost. A live cloud repro (two runs, identical) used a Start script that moves Ash, has Bram follow, and meets Cora. Turn one landed all three. A stat re-roll kept them. A full re-roll of page one returned to the pre-game state, and the resubmit landed all three again. Q75 and Q76 rested on an untraced review claim.
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
