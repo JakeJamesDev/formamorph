@@ -2,8 +2,9 @@
  * Bodies: which slots each owner equips into, with each slot's capacity. `bodyInForce` is the one resolver
  * every slot reader takes.
  */
-import { slotSizeOf } from '@/lib/items';
-import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, Trait } from '@/types';
+import { itemsInSlot, slotSizeOf } from '@/lib/items';
+import { usedByText } from '@/lib/usedByText';
+import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, Trait, TraitBodyRow } from '@/types';
 
 /** The authored slice the resolver reads. An absent slice reads as empty. */
 export interface BodyWorld {
@@ -27,6 +28,9 @@ export type SlotOwner = Exclude<ItemCopyWhere, { kind: 'location' }>;
 
 /** The key an owner's trait pick sits under: the empty string for the played Persona, else the entity id. */
 export const slotOwnerKey = (owner: SlotOwner): string => (owner.kind === 'you' ? '' : owner.id);
+
+/** A Body's name as the editor shows it. */
+export const bodyLabel = (body: Body): string => body.name || 'Unnamed Body';
 
 export const entryCapacity = (entry: BodyEntry): number => entry.capacity ?? 1;
 
@@ -98,6 +102,72 @@ export function withoutSlotEntries(bodies: Body[], slotId: string): Body[] {
   if (!bodies.some((body) => body.entries.some((e) => e.slotId === slotId))) return bodies;
   return bodies.map((body) => ({ ...body, entries: body.entries.filter((e) => e.slotId !== slotId) }));
 }
+
+/** How many Body entries hold the slot. */
+export const slotEntryCount = (bodies: readonly Body[], slotId: string): number =>
+  bodies.reduce((n, body) => n + body.entries.filter((e) => e.slotId === slotId).length, 0);
+
+/** `items` with each Slot Size cut to the largest capacity `bodies` give its slot (Q44). */
+export function withSlotSizesWithin<I extends { slotId?: string; slotSize?: number }>(items: I[], bodies: readonly Body[]): I[] {
+  const over = (item: I) => !!item.slotId && (item.slotSize ?? 1) > largestCapacity(bodies, item.slotId);
+  if (!items.some(over)) return items;
+  return items.map((item) => {
+    if (!over(item) || !item.slotId) return item;
+    const size = largestCapacity(bodies, item.slotId);
+    const { slotSize: _drop, ...rest } = item;
+    return (size === 1 ? rest : { ...item, slotSize: size }) as I;
+  });
+}
+
+/** Whether the entity picks the Body by id. */
+export const picksBody = (entity: { body?: BodyPick }, bodyId: string): boolean =>
+  entity.body?.kind === 'body' && entity.body.id === bodyId;
+
+/** `entities` with picks of the Body set back to Default. */
+export function withoutBodyPicks<E extends { body?: BodyPick }>(entities: E[], bodyId: string): E[] {
+  if (!entities.some((e) => picksBody(e, bodyId))) return entities;
+  return entities.map((entity) => {
+    if (!picksBody(entity, bodyId)) return entity;
+    const { body: _drop, ...rest } = entity;
+    return rest as E;
+  });
+}
+
+/** The confirm line for deleting a slot: the Body entries it deletes and the items it leaves without a slot. */
+export const slotUsedBy = (items: readonly Item[], bodies: readonly Body[], slotId: string): string | null => usedByText([
+  { count: slotEntryCount(bodies, slotId), one: 'Body entry', many: 'Body entries' },
+  { count: itemsInSlot(items, slotId), one: 'item', many: 'items', clause: (n) => `clears the slot on ${n}` },
+]);
+
+type BodyRowTrait = { body?: TraitBodyRow };
+type BodyPicker = { body?: BodyPick; traits?: readonly BodyRowTrait[] };
+
+/** Whether the trait's Body row picks the Body by id. */
+const rowPicksBody = (trait: BodyRowTrait, bodyId: string): boolean =>
+  trait.body?.pick?.kind === 'body' && trait.body.pick.id === bodyId;
+
+/** The trait Body rows that pick the Body: the world's traits plus the ones entities own. */
+export const bodyRowCount = (traits: readonly BodyRowTrait[], entities: readonly BodyPicker[], bodyId: string): number =>
+  [...traits, ...entities.flatMap((e) => e.traits ?? [])].filter((t) => rowPicksBody(t, bodyId)).length;
+
+/** `traits` with their Body rows for the Body blanked. */
+export function withoutBodyRows<T extends BodyRowTrait>(traits: T[], bodyId: string): T[] {
+  if (!traits.some((t) => rowPicksBody(t, bodyId))) return traits;
+  return traits.map((t) => (rowPicksBody(t, bodyId) ? { ...t, body: {} } : t));
+}
+
+/** `entities` with their picks of the Body back to Default and their own traits' rows for it blanked. */
+export function withoutEntityBodyRefs<E extends { body?: BodyPick; traits?: Trait[] }>(entities: E[], bodyId: string): E[] {
+  const picked = withoutBodyPicks(entities, bodyId);
+  if (!picked.some((e) => e.traits?.some((t) => rowPicksBody(t, bodyId)))) return picked;
+  return picked.map((e) => (e.traits ? { ...e, traits: withoutBodyRows(e.traits, bodyId) } : e));
+}
+
+/** The confirm line for deleting a Body: the picks that go back to Default and the trait Body rows it blanks. */
+export const bodyUsedBy = (entities: readonly BodyPicker[], traits: readonly BodyRowTrait[], bodyId: string): string | null => usedByText([
+  { count: entities.filter((e) => picksBody(e, bodyId)).length, one: 'pick', many: 'picks', clause: (n) => `resets ${n} to Default` },
+  { count: bodyRowCount(traits, entities, bodyId), one: 'trait Body row', many: 'trait Body rows', clause: (n) => `clears ${n}` },
+]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 

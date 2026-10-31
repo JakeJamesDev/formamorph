@@ -18,6 +18,16 @@ describe('usedByText', () => {
     expect(usedByText([linksKind(0), { count: 2, one: 'pick', many: 'picks' }])).toBe('This also deletes its 2 picks.');
   });
 
+  it('words kept references with their own clause, after the deleted ones', () => {
+    const cleared = { one: 'item', many: 'items', clause: (n: string) => `clears the slot on ${n}` };
+    const entries = { one: 'Body entry', many: 'Body entries' };
+    expect(usedByText([{ count: 3, ...cleared }, { count: 2, ...entries }]))
+      .toBe('This also deletes its 2 Body entries and clears the slot on 3 items.');
+    expect(usedByText([{ count: 1, ...cleared }, { count: 1, ...entries }]))
+      .toBe('This also deletes its Body entry and clears the slot on 1 item.');
+    expect(usedByText([{ count: 1, ...cleared }, { count: 0, ...entries }])).toBe('This also clears the slot on 1 item.');
+  });
+
   it('returns null at zero uses, so no confirm opens', () => {
     expect(usedByText([])).toBeNull();
     expect(usedByText([linksKind(0), { count: 0, one: 'pick', many: 'picks' }])).toBeNull();

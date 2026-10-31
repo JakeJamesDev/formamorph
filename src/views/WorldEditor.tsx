@@ -93,7 +93,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import { useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
-import { useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
+import { EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
@@ -423,6 +423,10 @@ const WorldEditorInner = ({
   const select = useCallback((tab: string, id: string | null) => {
     setSelections((held) => (held[tab] === id ? held : { ...held, [tab]: id }));
   }, []);
+  // And over the Items tab, where `equipment` opens the pinned Equipment Settings entry.
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.tab === 'items' && devSubtab === EQUIPMENT_ID) select('items', EQUIPMENT_ID);
+  }, [devRoute?.tab, devSubtab, select]);
 
   // ── Find & replace ────────────────────────────────────────────────────────
   const isMobile = useIsMobile();

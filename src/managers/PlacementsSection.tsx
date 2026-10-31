@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { Plus, TriangleAlert, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
+import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
@@ -111,7 +112,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                     </Label>
                   )}
                   <Tip tip="Delete">
-                    <Button variant="ghost" size="icon" aria-label={`Delete ${name(p.source.itemId)}`} onClick={() => remove(p.id)}>
+                    <Button variant="ghost" size="icon" className={DESTRUCTIVE_ROW_ACTION_HOVER} aria-label={`Delete ${name(p.source.itemId)}`} onClick={() => remove(p.id)}>
                       <X className="h-4 w-4" />
                     </Button>
                   </Tip>

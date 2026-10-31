@@ -5,7 +5,7 @@ import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/
 import { blankItem } from '@/lib/items';
 import type { Body, Item, Placement, Slot, World } from '@/types';
 
-/** The Items tab: a flat list beside Entities, the item panel, and the world's slots. */
+/** The Items tab: a flat list beside Entities and the item panel. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -281,40 +281,6 @@ describe('the item panel', () => {
     fireEvent.keyDown(screen.getByRole('option', { name: 'Tail' }), { key: 'Enter' });
     fireEvent.change(screen.getByLabelText('Slot Size'), { target: { value: '3' } });
     expect(ctx().items[0].slotSize).toBeUndefined();
-  });
-});
-
-describe('the Slots section', () => {
-  const openSlots = () => openEditorTab(/Overview/);
-
-  it('adds and renames a slot, which has a name only', () => {
-    const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
-    openSlots();
-    fireEvent.click(screen.getByRole('button', { name: 'Add Slot' }));
-    fireEvent.change(screen.getByLabelText('Slot Name'), { target: { value: 'Head' } });
-    expect(screen.queryByLabelText('Head Capacity')).toBeNull();
-    expect(ctx().slots).toEqual([{ id: expect.any(String), name: 'Head' }]);
-  });
-
-  it('asks before it removes a slot items use, then clears it from them', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openSlots();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Hand' }));
-    expect(ctx().slots).toHaveLength(3);
-    const dialog = screen.getByRole('alertdialog');
-    expect(dialog.textContent).toContain('1 item equips into this slot');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-    expect(ctx().slots.map((s) => s.id)).toEqual(['ring', 'tail']);
-    expect(ctx().items.find((i) => i.id === 'sword')).not.toHaveProperty('slotId');
-    expect(ctx().bodies.map((b) => b.entries.map((e) => e.slotId))).toEqual([['ring'], []]);
-  });
-
-  it('removes an unused slot at once', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openSlots();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Ring' }));
-    expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(ctx().slots.map((s) => s.id)).toEqual(['hand', 'tail']);
   });
 });
 

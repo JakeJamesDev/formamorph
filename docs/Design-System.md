@@ -691,6 +691,8 @@ Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lin
 | --- | --- |
 | Choose one simple destination | Use `CompactSelectionRow`. Do not reserve absent control columns or add sorting. |
 | Edit or order authored items | Use `SortableList`, `SortableRow`, and `EditorRow`; preserve selection, metadata, duplicate/delete controls, and the detail editor. |
+| Open settings for a whole list | Pin one `EditorRow` above the list, with no grip, no actions and a divider under it, through the List Editor adapter's `pinned` rows. It never drags, stays under any search, and shows when the list is empty. The Items tab's **Equipment Settings** uses it. |
+| Edit records that hold their own ordered rows | Use an expandable `EditorRow` (chevron, grip, name, meta summary, delete) with an attached bordered body below it. The body holds the record's fields and a nested `EditorRowList` that is its own drag boundary. Morphie's layers and the World Editor's Bodies use it. |
 | Choose and manage saved progress | Use `SaveList`; preserve the save name, timestamp, game time, Auto state, ordering, load/select action, export, and delete. |
 
 Keep controls that change the collection outside its scrolling pane when they must remain reachable. The live Save/Load reference keeps Save Name and Save above the list; the World Editor reference keeps the selected item's editor beside or below the list. Do not nest a second vertical scroller merely to imitate a scrollbar.
