@@ -65,6 +65,12 @@ describe('the live adapter', () => {
     expect(chipValues(scene)('<ENTITIES|inscene.name>')).toBe('Harbormaster, the ferryman');
   });
 
+  it("lists an unmet stranger under its true name with its label, in every pass's roster", () => {
+    const scene = liveChipScene(sources({ strangerLabels: { harbormaster: 'a man with a ledger' } }));
+    expect(chipValues(scene)('<ENTITIES|summary.markdown>'))
+      .toContain('- **Harbormaster**\n  - **stranger name:** a man with a ledger\n');
+  });
+
   it('sends an entity’s pronouns resolved in its own scope', () => {
     const pronouned = { ...harbormaster, pronouns: '{{char}} goes by they/them' };
     const values = chipValues(liveChipScene(sources({

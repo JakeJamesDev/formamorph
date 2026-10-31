@@ -346,7 +346,7 @@ const thinkingPass: TurnPassRecord<ParsedDirector> = {
     );
     return labeledRequest(
       { type: 'thinking', maxTokens: TURN_PASS_CAPS.thinking, silent: false, quiet: false },
-      systemTiled(input.prompts.thinking, layerValues(material.ctx, material.plannerEntityTokens)),
+      systemTiled(input.prompts.thinking, material.ctx),
       tilePieces(pieces),
     );
   },

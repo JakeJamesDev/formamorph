@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, GameLocation } from '@/types';
 import {
-  computePresence, connectedPlaces, introducedIds, plannerStrangers, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
+  computePresence, connectedPlaces, introducedIds, strangersInPlay, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
   type PresenceInput, type SceneTurn,
 } from './presence';
 import { readNarration } from './turnPipeline/narrationReading';
@@ -278,16 +278,16 @@ describe('the planner\'s stranger labels', () => {
   const aliases = { marr: 'the guard with the scar' };
 
   it('labels each unmet stranger by its latest alias, else its Stranger Name', () => {
-    expect(plannerStrangers([marr, mara], isMet, {}).labels).toEqual({ marr: 'a gate guard' });
-    expect(plannerStrangers([marr], isMet, aliases).labels).toEqual({ marr: 'the guard with the scar' });
+    expect(strangersInPlay([marr, mara], isMet, {}).labels).toEqual({ marr: 'a gate guard' });
+    expect(strangersInPlay([marr], isMet, aliases).labels).toEqual({ marr: 'the guard with the scar' });
   });
 
   it('leaves out met strangers, entities without a Stranger Name, and strangers with no label', () => {
-    expect(plannerStrangers([sylvie, mara, shade], isMet, {}).labels).toEqual({});
+    expect(strangersInPlay([sylvie, mara, shade], isMet, {}).labels).toEqual({});
   });
 
   it('reveals a stranger by met, by true name in any case, and knows nothing of other entities', () => {
-    const { reveal } = plannerStrangers([marr, sylvie, mara, shade], isMet, aliases);
+    const { reveal } = strangersInPlay([marr, sylvie, mara, shade], isMet, aliases);
     expect(reveal('marr')).toEqual({ met: false, label: 'the guard with the scar' });
     expect(reveal('Sylvie')).toEqual({ met: true, label: null });
     expect(reveal('The Shade')).toEqual({ met: false, label: null });
@@ -296,6 +296,6 @@ describe('the planner\'s stranger labels', () => {
 
   it('labels a stranger as the panels do', () => {
     const p = presence({ entities: [marr, mara], strangerAliases: aliases });
-    expect(plannerStrangers([marr], (e) => p.byId.get(e.id)!.met, aliases).labels.marr).toBe(p.byId.get('marr')?.label);
+    expect(strangersInPlay([marr], (e) => p.byId.get(e.id)!.met, aliases).labels.marr).toBe(p.byId.get('marr')?.label);
   });
 });

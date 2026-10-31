@@ -158,20 +158,20 @@ export interface StrangerReveal {
   label: string | null;
 }
 
-/** How the planner sees the entities that have a Stranger Name. */
-export interface PlannerStrangers {
-  /** The label each unmet stranger prints in the planner's roster, by entity id. */
+/** How the prompts see the entities that have a Stranger Name. */
+export interface StrangersInPlay {
+  /** The label each unmet stranger prints in every roster, by entity id. */
   labels: StrangerLabels;
   /** A lookup by true name: whether the entity is met, and its label while unmet. */
   reveal: (realName: string) => StrangerReveal | undefined;
 }
 
-/** The planner's view of every entity that has a Stranger Name. */
-export function plannerStrangers(
+/** The prompts' view of every entity that has a Stranger Name. */
+export function strangersInPlay(
   entities: readonly Entity[],
   isMet: (entity: Entity) => boolean,
   aliases: StrangerLabels,
-): PlannerStrangers {
+): StrangersInPlay {
   const labels: Record<string, string> = {};
   const byName = new Map<string, StrangerReveal>();
   for (const entity of entities) {

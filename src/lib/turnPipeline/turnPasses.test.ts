@@ -369,13 +369,6 @@ describe('turn pass requests', () => {
       expect(build('thinking').maxTokens).toBe(TURN_PASS_CAPS.thinking);
     });
 
-    it("renders the precall planner's Entities chips from the stranger override, and only the planner's", () => {
-      const over = { plannerEntityTokens: { '<ENTITIES>': 'WITH STRANGER LABELS' } };
-      const prompts = { prompts: { ...TEST_PROMPTS, thinking: 'THINK <ENTITIES>', director: 'DIRECTOR <ENTITIES>' } };
-      expect(build('thinking', over, prompts).systemPrompt).toBe('THINK WITH STRANGER LABELS');
-      expect(build('thinking', {}, prompts).systemPrompt).toBe('THINK ALL ENTITIES');
-      expect(build('director', over, prompts).systemPrompt).toBe('DIRECTOR ALL ENTITIES');
-    });
   });
 
   describe('the post-narration passes', () => {
