@@ -23,6 +23,8 @@ export const DEFAULT_HELP_OPTIONS: HelpPresetOptions = {
   answer: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
   pick: { temperature: 0.2, repetitionPenalty: 1, maxTokens: HELP_PICK_MAX_TOKENS },
   intent: { temperature: 0, repetitionPenalty: 1, maxTokens: HELP_INTENT_MAX_TOKENS },
+  // Drafts want some variety.
+  create: { temperature: 0.7, repetitionPenalty: 1, maxTokens: 800 },
   lookup: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
 };
 
@@ -53,7 +55,7 @@ export const EMPTY_HELP_PRESET_STORE: HelpPresetStore = { activeId: DEFAULT_HELP
 export const defaultHelpPreset = (): HelpPreset => ({ id: DEFAULT_HELP_PRESET_ID, name: DEFAULT_HELP_PRESET_NAME, prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_OPTIONS });
 
 /** One block per prompt, each made by `block`. */
-export const mapHelpOptions = (block: (key: HelpRequestKey) => HelpRequestOptions): HelpPresetOptions => ({ answer: block('answer'), pick: block('pick'), intent: block('intent'), lookup: block('lookup') });
+export const mapHelpOptions = (block: (key: HelpRequestKey) => HelpRequestOptions): HelpPresetOptions => ({ answer: block('answer'), pick: block('pick'), intent: block('intent'), create: block('create'), lookup: block('lookup') });
 
 const copyOptions = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptions((key) => ({ ...options[key] }));
 

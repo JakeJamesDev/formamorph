@@ -37,6 +37,7 @@ const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
   answer: helpChipVocabulary(HELP_PROMPT_CHIPS.answer),
   pick: helpChipVocabulary(HELP_PROMPT_CHIPS.pick),
   intent: helpChipVocabulary(HELP_PROMPT_CHIPS.intent),
+  create: helpChipVocabulary(HELP_PROMPT_CHIPS.create),
   lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
   code: helpChipVocabulary(HELP_PROMPT_CHIPS.code),
   worldEditor: helpChipVocabulary(HELP_PROMPT_CHIPS.worldEditor),

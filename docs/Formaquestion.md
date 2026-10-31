@@ -65,6 +65,7 @@ Each entity in the answer shows as a card with its name and AI description. **Ad
 - A warning icon next to the name means your world already has an entity with that name. **Add** still adds a second one.
 - **Add** works in the World Editor only, including the World Editor you open from a game. On any other screen it's unavailable.
 - Your next question tells your AI which entities you added.
+- With **Sort Questions** on, a request to make an entity sends your world's name, description and entity names, and two of your entities as samples, with no guide. On any other screen, your mascot tells you to ask again in the World Editor.
 - A card that has fields other than the name and the AI description, or an AI description longer than four sentences, shows as a code block with **Copy** instead.
 
 ## How to Ask About Your Story
@@ -336,7 +337,7 @@ The sorting request goes out at the same time as the **AI Search** request. It r
 | ❓ How-to | The guide and your world, without the help for scripts |
 | 🧩 Code | Everything, the same as with **Sort Questions** off |
 | 🌍 Your world | Your world, and in a game the story so far, with no guide |
-| 🛠️ Make something | Everything, the same as with **Sort Questions** off |
+| 🛠️ Make something | With **Creation** on, in the World Editor: your world's name, description and entity names, and two of your entities as samples, with no guide. On any other screen: your question, and a reply that making entities works in the World Editor. With **Creation** off: everything, the same as with **Sort Questions** off |
 
 - Your AI decides from the question, not the open **Scripts** tab, whether a question is about code.
 - Each of your own Tools goes only to the kinds it lists in **Sorted As**. See [Tools](#tools).
@@ -606,13 +607,14 @@ The **Endpoint** tab sets where help questions go. Help can use a different AI t
 | **Answer Endpoint** | **Use Active Endpoint** | Sends your questions to this endpoint for answers |
 | **Search Endpoint** | **Same as Answer** | Sends the **AI Search** request to this endpoint. A small, fast model works well here. |
 | **Sorting Endpoint** | **Same as Search** | Sends the sorting request of **Sort Questions** to this endpoint. A small, fast model works well here. |
+| **Creating Endpoint** | **Same as Answer** | Sends requests to make an entity to this endpoint, while **Sort Questions** and **Creation** are on |
 
 - **Use Active Endpoint** follows the endpoint you pick in **Settings** → **AI Endpoints**.
 - A preset you choose shows whether it answers. Select **Recheck** to check again.
 - If you delete a preset that a setting names, that setting goes back to its default.
 - The **Ask** tab says when your AI is not connected. It checks the **Answer Endpoint**.
 
-**Answer Endpoint** and **Search Endpoint** share one row, and **Sorting Endpoint** is under them. Under the three is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
+**Answer Endpoint** and **Search Endpoint** share one row, and **Sorting Endpoint** and **Creating Endpoint** are under them. Under the four is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
 
 - The editor has no preset list. It always edits the preset that **Answer Endpoint** uses. Its heading, **Edit** and the preset's name, changes when you change **Answer Endpoint**. While **Answer Endpoint** follows the active endpoint, the heading names that preset and says **Active Endpoint**.
 - **Add New Preset** adds a copy of the preset you are editing, moves **Answer Endpoint** to the copy, and opens the copy in the editor.
@@ -630,6 +632,7 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 | **Answer** | Tells your AI how to answer from the guide sections in the request |
 | **Search** | Tells your AI how to choose guide sections from the list of headings, for the **AI Search** request |
 | **Sorting** | Tells your AI how to sort a question by the help it needs, for the sorting request of **Sort Questions** |
+| **Creating** | Tells your AI how to make entities in the World Editor, for a request to make an entity while **Sort Questions** and **Creation** are on |
 | **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
 | **Code** | Tells your AI how to write scripts. It goes after a question about code, and after any question from a stat's **Scripts** tab while **Use the Open Screen** is on |
 
@@ -651,18 +654,18 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 | **Search Limit** | Search | The most sections one search reply names. The app reads that many sections at most, whatever the prompt says. |
 | **Reply Format** | Search | The rule for how the search reply is written, so the app can read it |
 | **Sorting Format** | Sorting | The rule for how the sorting reply names the kind of help, so the app can read it |
-| **Mascot Voice** | Answer, Lookup | Your mascot's name and Voice: "You are Morphie." for the mascot that comes with the app, then the Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
+| **Mascot Voice** | Answer, Lookup, Creating | Your mascot's name and Voice: "You are Morphie." for the mascot that comes with the app, then the Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
 Each prompt editor has an **Edit** tab and a **Preview** tab. **Preview** shows the prompt as your AI gets it, with each chip replaced by its text. **Mascot Voice** shows your mascot's Voice while the mascot is on.
 
-Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Search** to the **AI Search** request, **Sorting** to the sorting request, and **Lookup** to the answer request when your AI can call **read_guide**.
+Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Search** to the **AI Search** request, **Sorting** to the sorting request, **Creating** to a request to make an entity, and **Lookup** to the answer request when your AI can call **read_guide**.
 
 | Option | Default | What it does |
 |---|---|---|
-| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Search**, 40 for **Sorting** | Sets how long the reply can run |
-| **Custom Temperature** | 0.2, and 0 for **Sorting** | Sets how freely the reply is worded |
+| **Max Output** | 800 tokens for **Answer**, **Lookup** and **Creating**, 150 for **Search**, 40 for **Sorting** | Sets how long the reply can run |
+| **Custom Temperature** | 0.2, 0 for **Sorting**, and 0.7 for **Creating** | Sets how freely the reply is worded |
 | **Custom Repetition Penalty** | 1 | Sets how hard the reply avoids repeated words |
 
 Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default.
@@ -857,6 +860,7 @@ The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-a
 | **Search** | The screen you had open, the item you had selected, and whether **Use the Open Screen** was on, the help preset, how **Sort Questions** sorted the question while it was on, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
 | **Request N: Sorting** | The sorting request of **Sort Questions**, and the reply your AI wrote |
 | **Request N: AI Search** | The **AI Search** request, and the lines your AI chose |
+| **Request N: Creating** | A request to make an entity, in place of the answer request, and the reply your AI wrote |
 | **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
 
 - A request card has the same blocks as a request in the game's inspector. Its header names the endpoint that served it, its reasoning fields, its **Max Tokens**, and its sampler values. A **Custom Prompt** mark shows when the prompt of that request differs from the default text.

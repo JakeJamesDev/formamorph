@@ -20,6 +20,7 @@ function customized(): HelpSettings {
   presets = editHelpPrompt(presets, 'p-1', 'answer', 'Answer like a pirate. <NOT_IN_GUIDE>');
   presets = editHelpPrompt(presets, 'p-1', 'pick', 'Pick well.');
   presets = editHelpPrompt(presets, 'p-1', 'intent', 'Sort it.');
+  presets = editHelpPrompt(presets, 'p-1', 'create', 'Make it.');
   presets = editHelpPrompt(presets, 'p-1', 'code', 'Give each box as one block.');
   presets = editHelpPrompt(presets, 'p-1', 'worldEditor', 'Explain my world.');
   presets = editHelpPrompt(presets, 'p-1', 'worldGame', 'No spoilers.');
@@ -27,6 +28,7 @@ function customized(): HelpSettings {
   presets = editHelpOptions(presets, 'p-1', 'pick', { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 });
   presets = editHelpOptions(presets, 'p-1', 'lookup', { temperature: 0.6, maxTokens: 1500 });
   presets = editHelpOptions(presets, 'p-1', 'intent', { temperature: 0.1, maxTokens: 30 });
+  presets = editHelpOptions(presets, 'p-1', 'create', { temperature: 0.9, maxTokens: 600 });
   return helpSettingsOf({
     presets,
     tools: [helpTool(), helpTool({ id: 'h-2', name: 'find_place' })],
@@ -52,8 +54,8 @@ describe('buildHelpPresetFile', () => {
   it('holds the field list and no other key', () => {
     const file = fileOf(customized());
     expect(Object.keys(file).sort()).toEqual([...HELP_PRESET_FILE_FIELDS].sort());
-    expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'code', 'intent', 'lookup', 'pick', 'worldEditor', 'worldGame']);
-    expect(Object.keys(file.options).sort()).toEqual(['answer', 'intent', 'lookup', 'pick']);
+    expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'code', 'create', 'intent', 'lookup', 'pick', 'worldEditor', 'worldGame']);
+    expect(Object.keys(file.options).sort()).toEqual(['answer', 'create', 'intent', 'lookup', 'pick']);
     for (const block of Object.values(file.options)) expect(Object.keys(block).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
     // The face call has no switch and no call limit, so it has no row.
     expect(Object.keys(file.functions)).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_CODE_TEST.name]);
@@ -142,6 +144,18 @@ describe('export then import on a clean profile', () => {
     expect(parsed.options.intent).toEqual({ temperature: 0.1, repetitionPenalty: 1, maxTokens: 30 });
     const file = JSON.parse(textOf(fileOf(customized()))) as Record<string, Record<string, unknown>>;
     expect(() => parseHelpPresetFile(textOf({ ...file, options: { ...file.options, intent: { temperature: 9, repetitionPenalty: 1, maxTokens: 30 } } }))).toThrow('options.intent.temperature');
+  });
+
+  it('loads a file from before Create with the built-in prompt and options, and round-trips one with them', () => {
+    const old = JSON.parse(textOf(fileOf(customized()))) as Record<string, Record<string, unknown>>;
+    const { create: _p, ...oldPrompts } = old.prompts;
+    const { create: _o, ...oldOptions } = old.options;
+    const before = parseHelpPresetFile(textOf({ ...old, prompts: oldPrompts, options: oldOptions }));
+    expect(before.prompts.create).toBe(DEFAULT_HELP_PROMPTS.create);
+    expect(before.options.create).toEqual(DEFAULT_HELP_OPTIONS.create);
+    const parsed = parseHelpPresetFile(textOf(fileOf(customized())));
+    expect(parsed.prompts.create).toBe('Make it.');
+    expect(parsed.options.create).toEqual({ temperature: 0.9, repetitionPenalty: 1, maxTokens: 600 });
   });
 
   it('leaves every device setting the file does not hold', () => {

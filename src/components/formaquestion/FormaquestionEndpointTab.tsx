@@ -61,6 +61,9 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
   const sort = s.resolveEndpointForKind('help', routes.intent);
   const sortPreset = presetOf(settings.intentEndpoint);
   const sortValue = settings.intentEndpoint === null ? null : sortPreset?.id ?? SAME_AS_SEARCH;
+  const create = s.resolveEndpointForKind('help', routes.create);
+  const createPreset = presetOf(settings.createEndpoint);
+  const createValue = settings.createEndpoint === null ? null : createPreset?.id ?? SAME_AS_ANSWER;
 
   // The editor always edits where Answer goes. Its select is gone, so only Add and Delete move the route.
   const editedId = answer.endpointId;
@@ -112,6 +115,16 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           presets={presets}
           onChange={(intentEndpoint) => onChange({ intentEndpoint })}
           reachability={{ url: sort.url, apiToken: sort.apiToken, model: sort.model, enabled: settings.intentClassifier && sortPreset !== undefined }}
+        />
+        <EndpointRouteField
+          {...ENDPOINT_COPY.create}
+          info={createValue === SAME_AS_ANSWER ? ENDPOINT_COPY.sameAsAnswer : routeInfo(createPreset?.name, ENDPOINT_COPY.followsActive)}
+          value={createValue}
+          activeName={s.activeTextEndpointPresetName}
+          extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})` }]}
+          presets={presets}
+          onChange={(createEndpoint) => onChange({ createEndpoint })}
+          reachability={{ url: create.url, apiToken: create.apiToken, model: create.model, enabled: settings.intentClassifier && settings.creation && createPreset !== undefined }}
         />
       </div>
       <TextEndpointEditor heading={heading} model={model} advanced onOpenConnectionGuide={() => setGuideOpen(true)} presetDescription={ENDPOINT_COPY.presetHint} />

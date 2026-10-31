@@ -64,7 +64,7 @@ const blockOf = ({ temperature, repetitionPenalty, maxTokens }: HelpRequestOptio
 const blocksOf = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptions((key) => blockOf(options[key]));
 
 /** The texts with their fields only. */
-const promptsOf = ({ answer, pick, intent, lookup, code, worldEditor, worldGame }: HelpPromptTexts): HelpPromptTexts => ({ answer, pick, intent, lookup, code, worldEditor, worldGame });
+const promptsOf = ({ answer, pick, intent, create, lookup, code, worldEditor, worldGame }: HelpPromptTexts): HelpPromptTexts => ({ answer, pick, intent, create, lookup, code, worldEditor, worldGame });
 
 /** The file of the preset `presetId`, the Default preset from the code of this build; null for an id no preset holds. */
 export function buildHelpPresetFile(settings: HelpSettings, presetId: string, appVersion: string): HelpPresetFile | null {
@@ -101,7 +101,7 @@ function recordAt(parent: Record<string, unknown>, key: string, field = key): Re
 }
 
 /** The option blocks a file may lack: each reads as the Default preset's. */
-const OPTIONAL_BLOCKS: readonly HelpRequestKey[] = ['intent'];
+const OPTIONAL_BLOCKS: readonly HelpRequestKey[] = ['intent', 'create'];
 
 /** The option block of `key`, else a refusal that names the block or its bad field. */
 function parseBlock(options: Record<string, unknown>, key: HelpRequestKey): HelpRequestOptions {

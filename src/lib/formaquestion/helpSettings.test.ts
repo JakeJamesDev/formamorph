@@ -19,6 +19,7 @@ describe('the default help settings', () => {
       // Off, so every question gets the full request the bar run measured.
       intentClassifier: false,
       intentEndpoint: SAME_AS_SEARCH,
+      createEndpoint: SAME_AS_ANSWER,
       lookup: false,
       lookupCallLimit: 3,
       roll: false,

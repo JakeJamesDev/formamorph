@@ -37,6 +37,9 @@ export const TWO_ASK_RIDER = 'The player asked for two things in this message. A
 /** The rider of a World question with no world open (Q49). */
 export const NO_WORLD_RIDER = 'Tell the player that no world is open, and that a world question needs a world open in the World Editor or in a game.';
 
+/** The rider of a Create question on a screen with no World Editor (Q30, Q46). */
+export const CREATE_REFUSAL_RIDER = 'The player asked you to make an entity. Tell the player that you can make entities only while a world is open in the World Editor, and that they can ask again there.';
+
 const intentOf = (label: string): Intent | undefined => INTENTS.find((intent) => intent.toLowerCase() === label.trim().toLowerCase());
 
 /**

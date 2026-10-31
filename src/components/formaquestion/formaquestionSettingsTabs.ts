@@ -201,6 +201,7 @@ export const ENDPOINT_COPY = {
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
   sort: { label: 'Sorting Endpoint', description: 'Runs the sorting request. A small, fast model is enough.' },
   sameAsSearch: 'Goes to the **Search Endpoint**, and follows it when you change it',
+  create: { label: 'Creating Endpoint', description: 'Runs the request that makes entities in the World Editor' },
   presetHint: 'Edits the preset Answer uses. The game uses the same presets.',
 } as const;
 
@@ -211,6 +212,7 @@ export const PROMPTS_COPY = {
     answer: { label: 'Answer', hint: 'Tells your AI how to answer from the guide sections' },
     pick: { label: 'Search', hint: 'Tells your AI how to choose guide sections from the heading list' },
     intent: { label: 'Sorting', hint: 'Tells your AI how to sort questions by the help they need' },
+    create: { label: 'Creating', hint: 'Tells your AI how to make entities in the World Editor' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
     code: { label: 'Code', hint: 'Tells your AI how to write scripts on questions about code' },
     worldEditor: { label: 'Editor World', hint: 'Tells your AI how to explain your world in the World Editor' },
@@ -235,6 +237,11 @@ export const PROMPTS_COPY = {
         hint: 'Sets how this preset runs the sorting request',
         temperature: 'Sets how freely your AI sorts each question',
         repetitionPenalty: 'Sets how hard the sorting reply avoids repeated words',
+      },
+      create: {
+        hint: 'Sets how this preset runs the creating request',
+        temperature: 'Sets how freely your AI writes new entities',
+        repetitionPenalty: 'Sets how hard the creating reply avoids repeated words',
       },
       lookup: {
         hint: 'Sets how this preset runs the answer request with the lookup function',

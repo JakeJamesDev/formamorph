@@ -8,7 +8,7 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { Tool } from '@/types';
 import { ENTITY_RIDER } from './entityBlock';
 import { isCodeTurn, isOnCodeTab } from './helpCodeRider';
-import { NO_WORLD_RIDER, TWO_ASK_RIDER, type IntentReading } from './helpIntent';
+import { CREATE_REFUSAL_RIDER, NO_WORLD_RIDER, TWO_ASK_RIDER, type IntentReading } from './helpIntent';
 import type { HelpSettings } from './helpSettings';
 import { helpToolsOn } from './helpTools';
 import { toolIntents } from './intents';
@@ -33,6 +33,8 @@ export interface HelpRequestPlan {
   readonly tools: readonly Tool[];
   /** The riders after the world rules, in order. */
   readonly riders: readonly string[];
+  /** The Create request in place of the answer request: the Create prompt and the World Editor's Create context. */
+  readonly create: boolean;
 }
 
 /**
@@ -56,6 +58,8 @@ export interface HelpPlanInput {
   takesFunctions: boolean;
   /** The open world is a World Editor's. */
   inEditor: boolean;
+  /** The Create endpoint is known to take function calls. */
+  createTakesFunctions: boolean;
 }
 
 /** Every block the settings and the open screen call for, with the code rider when `code` says so. */
@@ -75,6 +79,7 @@ function planOf({ settings, surface, hint, quickReference, takesFunctions }: Hel
     face: settings.mascot && takesFunctions,
     tools: takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [],
     riders: [],
+    create: false,
   };
 }
 
@@ -91,8 +96,10 @@ export const fullHelpPlan = (input: HelpPlanInput): HelpRequestPlan => ({
 export const codeHelpPlan = (input: HelpPlanInput): HelpRequestPlan => planOf(input, true);
 
 /**
- * The plan of a question the Intent Classifier read, per the spec's table. Create, and World with Read the
- * World off, get the full request. World with no world open gets the no-world rider in place of the world.
+ * The plan of a question the Intent Classifier read, per the spec's table. World with Read the World off gets
+ * the full request, and World with no world open the no-world rider in place of the world. Create gets the
+ * Create request in a World Editor and the Chat plan with a refusal rider elsewhere, while Creation is on;
+ * with Creation off, the full request.
  */
 export function intentHelpPlan(input: HelpPlanInput, reading: IntentReading, worldOpen: boolean): HelpRequestPlan {
   const plan = intentBlocksPlan(input, reading, worldOpen);
@@ -104,9 +111,10 @@ function intentBlocksPlan(input: HelpPlanInput, { intent, secondAsk }: IntentRea
   const twoAsk = secondAsk ? [TWO_ASK_RIDER] : [];
   const full = fullHelpPlan(input);
   const help = planOf(input, false);
+  const chat: HelpRequestPlan = { guide: false, world: false, story: false, code: null, lookup: false, roll: full.roll, face: full.face, tools: full.tools, riders: [], create: false };
   switch (intent) {
     case 'Chat':
-      return { guide: false, world: false, story: false, code: null, lookup: false, roll: full.roll, face: full.face, tools: full.tools, riders: twoAsk };
+      return { ...chat, riders: twoAsk };
     case 'Help':
       return { ...help, riders: twoAsk };
     case 'Code':
@@ -115,6 +123,15 @@ function intentBlocksPlan(input: HelpPlanInput, { intent, secondAsk }: IntentRea
       if (!help.world) return { ...full, riders: [...full.riders, ...twoAsk] };
       return { ...help, guide: false, lookup: false, world: worldOpen, story: worldOpen, riders: [...(worldOpen ? [] : [NO_WORLD_RIDER]), ...twoAsk] };
     case 'Create':
-      return { ...full, riders: [...full.riders, ...twoAsk] };
+      if (!input.settings.creation) return { ...full, riders: [...full.riders, ...twoAsk] };
+      if (!input.inEditor) return { ...chat, riders: [CREATE_REFUSAL_RIDER, ...twoAsk] };
+      return {
+        ...chat,
+        roll: false,
+        face: input.settings.mascot && input.createTakesFunctions,
+        tools: input.createTakesFunctions ? helpToolsOn(input.settings.tools, input.settings.toolSwitches) : [],
+        riders: [ENTITY_RIDER, ...twoAsk],
+        create: true,
+      };
   }
 }

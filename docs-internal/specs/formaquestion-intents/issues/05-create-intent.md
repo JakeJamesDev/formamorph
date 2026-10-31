@@ -1,6 +1,6 @@
 # 05: Create Intent
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -21,11 +21,23 @@ Spec: Q28, Q30, Q35, Q42, Q45, Q46, Q57, Q58; stories 16–25, 32.
 
 ## Acceptance criteria
 
-- [ ] In a World Editor, Create sends exactly the Q28 context and the entity rider, on the Create prompt kind: `askHelp` test
-- [ ] The two samples are the first two entities with an AI description, in editor order
-- [ ] On a screen with no World Editor, Create sends the Chat plan with the refusal rider
-- [ ] With the Creation switch off, Create sends the full request
-- [ ] A help preset file without the Create prompt loads with the default; one with it round-trips
-- [ ] The Create endpoint setting defaults to the Answer Endpoint
+- [x] In a World Editor, Create sends exactly the Q28 context and the entity rider, on the Create prompt kind: `askHelp` test: `helpSession.create.test.ts`, whole-body equality on the Creating prompt and its pins
+- [x] The two samples are the first two entities with an AI description, in editor order: `helpSession.create.test.ts`, a folder ahead of root entities and a first entity with no AI description
+- [x] On a screen with no World Editor, Create sends the Chat plan with the refusal rider: `helpSession.create.test.ts`, game world and no world
+- [x] With the Creation switch off, Create sends the full request: `helpSession.create.test.ts`, body equal to the switch-off body, in the editor and in game
+- [x] A help preset file without the Create prompt loads with the default; one with it round-trips: `helpPresetFile.test.ts`, and the stored store in `helpPresets.test.ts`
+- [x] The Create endpoint setting defaults to the Answer Endpoint: `helpRoutes.test.ts`, `FormaquestionEndpointTab.test.tsx`, and the request URL in `helpSession.create.test.ts`
 
-For you: in the World Editor, ask for a single entity, then for two at once, then "make him older", and judge the replies and drafts.
+## Landed
+
+**Not verified:**
+
+- The Creating prompt, the sample format and the refusal rider are unprobed. Ticket 07 measures them; **Creation** and **Sort Questions** stay off by default until their probes pass.
+- The **Creating Endpoint** field and the **Creating** prompt were checked by component tests only, not in a preview.
+
+**For you:**
+
+- For you: in the World Editor, ask for a single entity, then for two at once, then "make him older", and judge the replies and drafts.
+- The labels: **Creating Endpoint** (Formaquestion Settings → **Endpoint**), the **Creating** prompt and its options (→ **Prompts**), and **Request N: Creating** in AI Context.
+
+**For ticket 07:** the Mascot Voice chip on the Creating prompt still says to write control names as the guide writes them; that frame is shared by every help prompt.
