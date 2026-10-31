@@ -4,7 +4,7 @@
 
 > A browser-based, AI-driven text RPG framework — **play**, **create**, and **share** interactive worlds powered by your own LLM.
 
-> ▶️ **[Play in your browser →](https://jakejamesdev.github.io/formamorph/)** — instant, no install, runs fully client-side. *Please read the 18+ notice below first.*
+> ▶️ **[Play in your browser →](https://formamorph.ai/play/)** — instant, no install, runs fully client-side. *Please read the 18+ notice below first.*
 
 > [!CAUTION]
 > **For adults only (18+) — mature content.**

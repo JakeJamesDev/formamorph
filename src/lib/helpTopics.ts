@@ -363,7 +363,7 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
 | **Keep Mine** | Keep the copy as it is. The default for a local replacement. |
 | **Unlink** | Keep the copy as it is and stop following the library item. |
 
-**View Changes** shows each changed field with your value and the author's. Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it.
+**View Changes** shows each changed field in two columns: **This world**, and **Library** or the file's name. Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it.
 
 **Keep Mine remembers the revision you answered for.** That revision doesn't come back. The next revision asks again.
 
@@ -401,7 +401,7 @@ A required item that doesn't download leaves the world out of your library, and 
 
 **Compatible Worlds** on an entity's or a dictionary's listing shows the worlds it is offered for. Downloading the entity or dictionary installs it alone.
 
-**Importing a world file.** The file carries what each copy follows. On the machine that wrote it, every link is restored. Elsewhere, **Link bundled content to my library** saves each bundled item as a library item of yours, and the world's copies follow it. Unchecked, the copies follow nothing. If you already have a copy's source, the copy follows your item as a **local replacement**, which no update overwrites, because the file's content always wins.`,
+**Importing a world file.** The file carries what each copy follows. On the machine that wrote it, every link is restored. Elsewhere, **Link bundled content to my library** saves each bundled item as a library item of yours, and the world's copies follow it. Unchecked, the copies follow nothing. If you already have a copy's source, the copy follows your item. When the file's copy differs from your item, it is a **local replacement**, which no update overwrites.`,
       },
       {
         label: 'Repairs',

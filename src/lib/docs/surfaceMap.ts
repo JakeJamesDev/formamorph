@@ -55,10 +55,10 @@ const EVENT_POSTERS = community('event-posters-and-banners');
 const account = (anchor: string): Required<DocTarget> => ({ page: 'Account', anchor });
 const USER_PROFILE = account('the-user-profile-dialog');
 const ACCOUNT_DELETION = account('account-deletion');
-const BUGS_AND_SUGGESTIONS: Required<DocTarget> = { page: 'Feedback', anchor: 'the-feedback-window' };
+const THE_FEEDBACK_WINDOW: Required<DocTarget> = { page: 'Feedback', anchor: 'the-feedback-window' };
 const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
-const fqSettingsPage = (anchor: string): Required<DocTarget> => ({ page: 'Formaquestion-Settings', anchor });
+const formaquestionSettings = (anchor: string): Required<DocTarget> => ({ page: 'Formaquestion-Settings', anchor });
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
@@ -163,8 +163,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'profile.settings': USER_PROFILE,
   deleteAccount: ACCOUNT_DELETION,
   deletionCancelled: ACCOUNT_DELETION,
-  feedbackHub: BUGS_AND_SUGGESTIONS,
-  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, BUGS_AND_SUGGESTIONS])),
+  feedbackHub: THE_FEEDBACK_WINDOW,
+  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, THE_FEEDBACK_WINDOW])),
 
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   'worldEditor.media': { page: 'World-Editor-Media', anchor: '-world-editor-media' },
@@ -236,14 +236,14 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestion.ask': { page: 'Formaquestion', anchor: 'ask' },
   'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
-  formaquestionSettings: fqSettingsPage('\u{FE0F}-formaquestion-settings'),
-  formaquestionCompare: fqSettingsPage('prompts'),
+  formaquestionSettings: formaquestionSettings('\u{FE0F}-formaquestion-settings'),
+  formaquestionCompare: formaquestionSettings('prompts'),
   formaquestionAiContext: { page: 'Formaquestion', anchor: 'ai-context' },
   formaquestionWikiConfirm: { page: 'Formaquestion', anchor: 'the-wiki-confirm' },
-  'formaquestionSettings.general': fqSettingsPage('general'),
-  'formaquestionSettings.endpoint': fqSettingsPage('endpoint'),
-  'formaquestionSettings.prompts': fqSettingsPage('prompts'),
-  'formaquestionSettings.tools': fqSettingsPage('tools'),
+  'formaquestionSettings.general': formaquestionSettings('general'),
+  'formaquestionSettings.endpoint': formaquestionSettings('endpoint'),
+  'formaquestionSettings.prompts': formaquestionSettings('prompts'),
+  'formaquestionSettings.tools': formaquestionSettings('tools'),
   'formaquestionSettings.mascot': { page: 'Formaquestion-Mascot', anchor: '-formaquestion-mascot' },
 
   avatar: { page: 'Avatars', anchor: 'avatar-customization' },

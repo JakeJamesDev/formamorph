@@ -1634,7 +1634,7 @@ const GameViewer = ({
     if (session.drawn?.opening.kind === "action") return session.drawn;
     return (session.cue ??= drawPoolEntry(sessionPool().filter((row) => row.opening.kind === "action"), Math.random));
   };
-  /** A drawn row's text, with its owning entity as the Character Name. */
+  /** A drawn row's text, with its owning entity as the Entity Name. */
   const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
     owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities)], persona, customPersona),
   });

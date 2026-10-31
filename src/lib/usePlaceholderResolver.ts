@@ -23,7 +23,7 @@ export function usePlaceholderResolver(): (text: string) => string {
   return useCallback((text: string) => resolvePlaceholders(text, opts), [opts]);
 }
 
-/** {@link usePlaceholderResolver} for an entity's own text, with that entity as the Character Name. */
+/** {@link usePlaceholderResolver} for an entity's own text, with that entity as the Entity Name. */
 export function useEntityTextResolver(): ResolveEntityText {
   const { opts, pinSet } = useViewPins();
   return useCallback<ResolveEntityText>(

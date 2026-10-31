@@ -57,7 +57,7 @@ describe('the Guide link on a global’s card', () => {
   });
 
   it.each([['narration', 'output'], ['player', 'before'], ['trait', 'switch']] as const)(
-    'carries the Scripts Guide row of %s in a %s script',
+    'carries the Scripts Reference row of %s in a %s script',
     (name, timing) => {
       expect(linkOf(name, 1, scriptSurface(STAT_CODE_SURFACE, timing))).toEqual({ id: 'guide', target: { page: 'Scripts-Reference', anchor: name } });
     },

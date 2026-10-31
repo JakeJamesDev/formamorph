@@ -76,7 +76,7 @@ export interface ChipScene {
   time: ChipSceneTime | null;
   /** Placeholder resolution, applied to every value before it reaches a prompt. */
   resolve: (text: string) => string;
-  /** An entity's own text with that entity as the Character Name; `resolve` reads it when absent. */
+  /** An entity's own text with that entity as the Entity Name; `resolve` reads it when absent. */
   resolveEntity?: ResolveEntityText;
   /** The world's shared placeholders, which a Tool script reads by name. None when absent. */
   placeholders?: readonly Placeholder[];

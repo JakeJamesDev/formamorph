@@ -38,7 +38,7 @@ export function resolveEntityNames(entities: Entity[], resolve: (text: string, e
   });
 }
 
-/** Resolves one entity's own text with that entity as the Character Name. */
+/** Resolves one entity's own text with that entity as the Entity Name. */
 export type ResolveEntityText = (entity: Entity, text: string) => string;
 
 /** Each entity's descriptions, summary, pronouns, stranger texts and relationship labels, resolved with that entity as their
@@ -71,7 +71,7 @@ export function resolveEntityTexts(entities: readonly Entity[], resolve: Resolve
   });
 }
 
-/** Resolves an owned trait's own text: its own pins, with its owner as the Character Name. */
+/** Resolves an owned trait's own text: its own pins, with its owner as the Entity Name. */
 export type ResolveOwnedTraitText = (trait: Trait, text: string, owner: Entity) => string;
 
 /** Each item's name and AI description under `resolve`, keeping the list when none held a chip. */
@@ -86,7 +86,7 @@ function resolveAiTexts<T extends { name: string; aiDescription?: string }>(
   });
 }
 
-/** Each entity's trait and group names and AI descriptions, with the entity as their Character Name. */
+/** Each entity's trait and group names and AI descriptions, with the entity as their Entity Name. */
 export function resolveOwnedTraitTexts(
   entities: readonly Entity[], resolveTrait: ResolveOwnedTraitText, resolveEntity: ResolveEntityText,
 ): Entity[] {

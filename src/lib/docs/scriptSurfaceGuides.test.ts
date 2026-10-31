@@ -41,7 +41,7 @@ const SURFACE: ReadonlyArray<[string, string, readonly string[]]> = [
   ['dictionaries', 'Scripts-Reference#dictionaries', [...names(DICTIONARY_FIELDS), ...names(DICTIONARY_ENTRY_FIELDS)]],
 ];
 
-describe('the Scripts Guide', () => {
+describe('the Scripts Reference', () => {
   it.each(SURFACE)('gives every field and verb of %s a row or a bullet with a help line', (_label, id, expected) => {
     const markdown = sectionMarkdown(id);
     const rows = tableRows(markdown);

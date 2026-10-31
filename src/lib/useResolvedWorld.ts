@@ -96,7 +96,7 @@ export interface ResolvedWorld {
   resolveWith: (extraPins: Record<string, string>, text: string) => string;
   /** Resolve opening text, where the Persona Name chip reads "you" with no persona. */
   resolveOpening: (text: string, over?: OpeningOverrides) => string;
-  /** Resolve an entity's own text (descriptions, summary) with that entity as the Character Name. */
+  /** Resolve an entity's own text (descriptions, summary) with that entity as the Entity Name. */
   resolveEntityText: ResolveEntityText;
   /** `resolveEntityText` against a pin set of the caller's own. */
   resolveEntityFor: (pins: PinSet, entity: Entity, text: string) => string;
@@ -115,7 +115,7 @@ export interface OpeningOverrides {
   rolls?: PlaceholderRolls;
   /** The characters and library books added at entry, whose placeholders state does not hold yet. */
   libraryAdditions?: readonly LibraryCarrier[];
-  /** The entity whose opening this is, which the Character Name chip names. Absent or null for the world's. */
+  /** The entity whose opening this is, which the Entity Name chip names. Absent or null for the world's. */
   owner?: Entity | null;
 }
 
@@ -309,7 +309,7 @@ export function useResolvedWorld(): ResolvedWorld {
     [resolveTraitText, resolvePH],
   );
   // The marked entity's node carries the player's entry or library persona: its name in the heading and as
-  // its Character Name.
+  // its Entity Name.
   const libraryName = libraryEntities[0]?.name;
   const traitEntities = useMemo(
     () => resolveOwnedNames([...withPersonaEntry(worldEntities, personaRef, libraryName)]),

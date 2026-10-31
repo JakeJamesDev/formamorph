@@ -138,8 +138,7 @@ function StatOptions({ choices, label }: { choices: readonly StatChoices[]; labe
  *
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  *
- * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections show on a persona
- * or where the trait already has stat effects. Its "Owned by" line goes with `ownerLine` off, for a host whose
+ * An `owner` makes it that entity's trait: edits write to the entity. Its "Owned by" line goes with `ownerLine` off, for a host whose
  * heading already names the entity. A host that can open only some requirement targets says which through
  * `requirementOpens`; the rest read as plain chips. A `link` edits the trait as that link reads it:
  * overridable fields write the link's overrides and show a Reset while overridden, and the rest is read-only.

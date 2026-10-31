@@ -404,7 +404,7 @@ If the text has an error, requests go out without these fields.`,
     description: 'Generates an image of every turn automatically',
     info: `Renders the image after the turn's text is done. Your next action waits for it, because one GPU can't run the image model and the text model at the same time. Each turn then takes as long as your image server needs.
 
-You can still generate a single scene yourself from the button above the story.`,
+You can still generate a single scene yourself with **Generate Scene Image** in a turn's **More** menu.`,
   },
   imageProvider: {
     label: 'Provider',

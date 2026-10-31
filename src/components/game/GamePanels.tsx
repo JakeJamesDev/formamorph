@@ -343,7 +343,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
             open={pendingRemoval !== null}
             onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
             title={`Remove ${pendingRemoval ?? ''}?`}
-            description="The story added this entity. Removing it takes it out of the scene, and the story won't bring it back."
+            description="Removing it takes it out of the scene, and the story won't bring it back."
             onConfirm={() => { if (pendingRemoval) removeDiscovered(pendingRemoval); }}
             onCancel={() => setPendingRemoval(null)}
           />

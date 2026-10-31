@@ -70,7 +70,7 @@ function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef |
 
 /**
  * The Item Copies a new game starts with, from the world's placements in authored order. A stackable item
- * placed twice on one owner forms one stack; a hidden placement stays its own row. Each copy of an item that
+ * placed twice on one owner forms one stack; hidden placements stack apart from shown ones. Each copy of an item that
  * isn't stackable is its own Item Copy with full uses. Seeded copies start carried, and unidentified when the item
  * has an unidentified face (Q16). Runs for a new game only (Q59).
  */
