@@ -217,7 +217,7 @@ Staff can limit a listing's download to Patreon Supporters. Everyone can still o
 |---|---|---|
 | Signed out | **Sign In** | Opens the login dialog. |
 | Signed in, not a Supporter | **Patreon** | Opens the project's Patreon page. |
-| A Supporter or Supporter+ | **Install** | Installs the listing. The button then reads **Installed**. |
+| A Supporter | **Install** | Installs the listing. The button then reads **Installed**. |
 
 The button reads **Checking…** while the app checks your Supporter status at start. Only Mascots can be installed so far. On a Supporter-only listing of another kind, a Supporter sees **Not Supported Yet**.
 

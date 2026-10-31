@@ -696,7 +696,7 @@ You can keep more than one mascot. The **Preset** list at the top of the tab pic
 
 Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Morphie** is selected. Only **Import** and **View full screen** show while a Supporter Mascot is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
 
-**Supporter Mascots** are for Patreon Supporter and Supporter+ accounts. One you don't have shows in the **Preset** list with its thumbnail and a lock. Select it to open its listing in Community Creations. If your account is a Supporter, selecting it installs it and selects it. A Supporter Mascot is read-only: you can't edit, duplicate, export or publish it. When your pledge ends, the app removes it and Formaquestion shows Morphie again.
+**Supporter Mascots** are for Patreon Supporters. One you don't have shows in the **Preset** list with its thumbnail and a lock. Select it to open its listing in Community Creations. If your account is a Supporter, selecting it installs it and selects it. A Supporter Mascot is read-only: you can't edit, duplicate, export or publish it. When your pledge ends, the app removes it and Formaquestion shows Morphie again.
 
 Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 
