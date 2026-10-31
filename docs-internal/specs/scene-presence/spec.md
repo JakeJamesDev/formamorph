@@ -1,7 +1,7 @@
 # Spec: Scene Presence and Strangers
 
-Status: done
-Status note: Closed on 2026-10-31. Tickets 01–09 and 11–12 are done, and 10 is wontfix. The last landing is 1553e521b. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1 and 9b6e60f93. Closed red: lint failed on a peer's uncommitted collapsing-segments files, and StrangerModal.test.tsx failed on a run that read the test before its fix landed. Both are outside this effort's code, and the test passes now.
+Status: in-progress
+Status note: Reopened on 2026-10-31 for tickets 13–14. Closed on 2026-10-31. Tickets 01–09 and 11–12 are done, and 10 is wontfix. The last landing is 1553e521b. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1 and 9b6e60f93. Closed red: lint failed on a peer's uncommitted collapsing-segments files, and StrangerModal.test.tsx failed on a run that read the test before its fix landed. Both are outside this effort's code, and the test passes now.
 Spec session: scene-presence — spec
 
 ## Problem Statement
@@ -184,6 +184,10 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q78:** A stranger's trait text resolves with the label, never the true name. The Traits tab numbers strangers who share a label, as the stat picker does (ticket 12).
 - **Q79:** The Entity View may show a stranger's art when no one is selected. Art is not identity.
 - **Q80:** Script sites pass a persona when they hold one: in-game Tools pass the played persona. A Test Run with no persona (Q3) still calls the start-met rule with a null persona, so one code path serves every site.
+- **Q81:** One helper builds the opening persona from what the caller holds, library personas included, so the Test Bench reads `met` for a library persona too. The trailing `persona?` arguments fold into an options object (ticket 13).
+- **Q82:** The planner backstop's name-part swap stays case-exact, so ordinary words that match a name are left alone.
+- **Q83:** The narrator must read a stranger's true name to recognize the introduction, so the name stays in its roster. Every prompt that lists an unmet stranger with a Stranger Name also shows the stranger label as one more field, like the planner's (ticket 14). This widens Q69 past the planner.
+- **Q84:** The name normalizers in Presence, the planner backstop and entityMatch stay separate.
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 
