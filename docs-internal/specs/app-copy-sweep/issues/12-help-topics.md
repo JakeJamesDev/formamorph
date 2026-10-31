@@ -21,6 +21,7 @@ Sweep the copy of the help pop-out topics, tutorials and leave prompts under the
 - Waits for every docs-sweep wording ticket to land (Q7). The spec session proposes this ticket only then.
 - Copy each fact from the docs page that owns it. A help topic and its page state the same fact in the same words.
 - A help topic is extended help: short paragraphs or bullets, not hint-shaped lines.
+- The Memory pin control is "Clear the Pin and Let the Story Decide" (R12). Quote that name.
 
 Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.
 

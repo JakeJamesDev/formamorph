@@ -21,6 +21,7 @@ Sweep the copy of the game screen and the start-of-game modals under the Writing
 **Notes**
 
 - The game panel suites assert on labels. Update them with each change.
+- The Memory pin control is "Clear the Pin and Let the Story Decide" (R12). Rename it in `MemoryPanel.tsx`.
 - Ticket 03 renames the built-in chip "Character Name" to "Entity Name" (R10). Fix the `GamePanels.tsx` comments that still name the old label.
 
 Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.

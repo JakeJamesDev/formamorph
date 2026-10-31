@@ -56,6 +56,10 @@ Spec-session answers to ticket intent questions.
 | R9 | A shared fallback must be true for every caller that relies on it. Audit the callers; a fallback that claims a consequence some caller lacks drops that claim. A caller that needs a specific consequence goes to its ticket as a finding |
 | R10 | The built-in chip for `{{char}}` is "Entity Name": it resolves to the owning entity's name, as its own hint says. `char` stays a search term. The renaming ticket updates every test that pins the label, in any folder; comments in another ticket's files go to that ticket |
 | R11 | The Overview readme fields' accessible names are "Introduction Readme" and "Gameplay Readme". The Overview Voice Pass did not rule them, so Q5's parenthetical rule applies |
+| R12 | The Memory pin control "Clear Pin (Let the Story Decide)" becomes "Clear the Pin and Let the Story Decide" on all three surfaces: the Memory manager (02), the Memory panel (06) and its help topic (12) |
+| R13 | `textEndpointEditorModel.ts` belongs to ticket 02. `editorMode.ts`'s mode lines stay the same as Settings' lines, because the Design System quotes them |
+| R14 | A ticket that renames a label updates every quote of it: wiki pages, the Design System doc, design-system reference screens and their tests. Only comments in another ticket's files are routed to that ticket. An unassigned `src/contexts/` file goes to the ticket whose screen uses it |
+| R15 | A hint placed after its control (Field help order) is a layout change and stays. The ticket lists it under Findings; close-spec gathers the list |
 
 ## Screen groups
 
