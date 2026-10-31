@@ -15,6 +15,8 @@ Check each page's structure, then rewrite these pages under the Writing Guide: [
 
 Read "Before you write", "Labels, capitalization, and complete sentences" and "Controlled product terms" first. Run `npm run copy:sweep` on the pages and triage each notice under the copy-sweep skill. Write the rewrite yourself. Change no facts: a fact that looks wrong goes to the spec session.
 
+Carried from ticket 17's review: the new lines name element types on first mention, and untouched text says "characters, places" where the controlled terms are entity and location. Bring both under Controlled product terms.
+
 Carried from ticket 06: Formaquestion calls its ⋮ button "the **⋮** menu". Its tooltip and accessible name are **More Actions**, and Community-Creations now uses that name. Match it (Q12).
 
 Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and anchors".
