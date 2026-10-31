@@ -38,7 +38,7 @@ export interface PresenceInput {
   /** The met-in-play list. */
   met: readonly string[];
   /** The latest alias each stranger was seen under, by entity id. */
-  strangerAliases: Readonly<Record<string, string>>;
+  strangerAliases: StrangerLabels;
   /** The recorded turns, oldest first. */
   turns: readonly SceneTurn[];
 }
@@ -215,11 +215,11 @@ export function introducedIds(narration: string, entities: readonly Entity[], he
 /** `aliases` with the alias each cast member carries for an entity `isMet` rejects. The same record when
  *  nothing changes. */
 export function strangerAliasesFromCast(
-  aliases: Readonly<Record<string, string>>,
+  aliases: StrangerLabels,
   cast: readonly { name: string; alias?: string; isPlayer?: boolean }[],
   entities: readonly Entity[],
   isMet: (entity: Entity) => boolean,
-): Readonly<Record<string, string>> {
+): StrangerLabels {
   let next = aliases;
   for (const member of cast) {
     const alias = member.alias?.trim();

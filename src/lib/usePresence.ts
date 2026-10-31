@@ -3,6 +3,7 @@ import type { DiscoveredEntity } from '@/types';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
+import type { StrangerLabels } from '@/lib/locationContext';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { recentSceneTurns } from '@/lib/turnDigest';
 import { pageAssistantIndex } from '@/lib/turnHistory';
@@ -10,7 +11,7 @@ import { pageAssistantIndex } from '@/lib/turnHistory';
 const NONE: readonly string[] = [];
 const NO_RUNTIME: readonly DiscoveredEntity[] = [];
 const NO_POSITIONS: Readonly<Record<string, string>> = {};
-const NO_ALIASES: Readonly<Record<string, string>> = {};
+const NO_ALIASES: StrangerLabels = {};
 
 /**
  * The Presence for what the player is looking at. With `viewedPage` on an earlier page it reads that
@@ -31,7 +32,7 @@ export function usePresence(viewedPage?: number): Presence {
     [snapshot, viewedPage, fullMessageHistory],
   );
   const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
-  const runtime = useMemo(() => discoveredAsEntities(runtimeSource as DiscoveredEntity[]), [runtimeSource]);
+  const runtime = useMemo(() => discoveredAsEntities(runtimeSource), [runtimeSource]);
   const positions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
   const followers = snapshot ? (snapshot.entityFollowers ?? NONE) : entityFollowers;
   const met = snapshot ? (snapshot.metEntities ?? NONE) : metEntities;

@@ -87,6 +87,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   aiContext: { host: 'gameViewer' },
   demoAI: { host: 'gameViewer' },
   entity: { ancestor: 'gameViewer.entities' },
+  stranger: { ancestor: 'gameViewer.entities' },
   memoryManager: { ancestor: 'gameViewer.memory' },
   persona: { ancestor: 'gameViewer' },
   editText: { ancestor: 'gameViewer' },

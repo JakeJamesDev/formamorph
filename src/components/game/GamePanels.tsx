@@ -160,7 +160,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
   // Authored cast only — the panel receives authored + discovered together, and the two need telling
   // apart to decide what the player may remove.
-  const authoredNames = new Set(authoredEntities.map((e) => e.name));
+  const authoredIds = new Set(authoredEntities.map((e) => e.id));
   const removeDiscovered = (name: string) => {
     // Suppression is what makes the deletion stick: without it the next turn naming them promotes
     // them straight back.
@@ -330,7 +330,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
                     following={entityFollowers.includes(row.entity.id)}
                     onClick={() => handleLookAroundClick(row)}
                     // Runtime characters are the story's; authored ones belong to the world and never delete from play.
-                    onRemove={row.met && !authoredNames.has(row.entity.name) ? () => setPendingRemoval(row.entity.name) : undefined}
+                    onRemove={row.met && !authoredIds.has(row.entity.id) ? () => setPendingRemoval(row.entity.name) : undefined}
                   />
                 ))
               ) : personaEntity || youRow ? null : (
