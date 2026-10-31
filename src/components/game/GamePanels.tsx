@@ -8,7 +8,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { usePresence } from '@/lib/usePresence';
-import type { EntityPresence } from '@/lib/presence';
+import { numbered, type EntityPresence } from '@/lib/presence';
 import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
 import { narrationOf } from '@/lib/aiResponse';
 import { usePlayAvatars } from '@/lib/usePlayAvatars';
@@ -18,7 +18,6 @@ import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, trait
 import {
   activeOwnedTraitIds, ownerTraitTree, inSceneTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames, withStrangerNames,
 } from '@/lib/ownedTraitsInPlay';
-import { numbered } from '@/lib/statPanelEntities';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
@@ -1291,7 +1290,7 @@ export const RightPanel = ({
   // Owner nodes follow In Scene; the player's and the library's stay. A stranger's node reads its label.
   const { inScene: sceneNow } = usePresence(isViewingPast ? currentPage : undefined);
   const traitTree = React.useMemo(() => {
-    const named = (text: string, owner: Entity, trait?: Trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text));
+    const resolveText = (text: string, owner: Entity, trait?: Trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text));
     // Strangers who share a label are numbered in scene order, as the stat picker numbers them.
     const strangers = sceneNow.filter((p) => !p.met && p.label);
     const labels = new Map(numbered(strangers.map((p) => ({ id: p.entity.id, label: p.label! }))).map((o) => [o.id, o.label]));
@@ -1301,9 +1300,9 @@ export const RightPanel = ({
       labels,
     });
     return withOwnerNames(
-      withStrangerNames(inScene, new Set(labels.keys()), [...codeEntities.world, ...codeEntities.library], named),
+      withStrangerNames(inScene, new Set(labels.keys()), [...codeEntities.world, ...codeEntities.library], resolveText),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
-      named,
+      resolveText,
     );
   }, [ownerWorld, personaRef, traitLibrary, sceneNow, codeEntities, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText]);
   // An owner's trait card reads that owner as the Character Name, as the AI does.

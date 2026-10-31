@@ -135,6 +135,16 @@ function participantIds(
   return out;
 }
 
+/** Later labels that repeat an earlier one take a count: "a gate guard", "a gate guard (2)". */
+export function numbered<T extends { label: string }>(options: readonly T[]): T[] {
+  const counts = new Map<string, number>();
+  return options.map((option) => {
+    const count = (counts.get(option.label) ?? 0) + 1;
+    counts.set(option.label, count);
+    return count > 1 ? { ...option, label: `${option.label} (${count})` } : option;
+  });
+}
+
 /** What an unmet entity shows as: its latest story alias, else its Stranger Name, else nothing. */
 function strangerLabel(entity: Entity, aliases: StrangerLabels): string | null {
   return aliases[entity.id]?.trim() || entity.strangerName?.trim() || null;

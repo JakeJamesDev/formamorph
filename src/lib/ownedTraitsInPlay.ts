@@ -380,22 +380,23 @@ export function withStrangerNames(
   if (strangers.size === 0) return tree;
   const rawById = new Map(raw.map((e) => [e.id, e]));
   const strangerOf = (id: string | null | undefined) => (id != null && strangers.has(id) ? id : undefined);
+  /** `row` named from the stranger's authored `original`, or `row` itself when nothing changes. */
+  const relabel = <R extends { name: string }>(row: R, ownerId: string | undefined, original: { name: string } | undefined, trait?: Trait): R => {
+    const entity = ownerId ? tree.entityNodes.get(ownerId) : undefined;
+    if (!entity || !original) return row;
+    const name = named(original.name, entity, trait);
+    return name === row.name ? row : { ...row, name };
+  };
   const traits = mapPreservingIdentity(tree.traits, (row) => {
     const ownerId = strangerOf(rowOwner(tree, row));
-    const entity = ownerId ? tree.entityNodes.get(ownerId) : undefined;
     const original = ownerId ? rawById.get(ownerId)?.traits?.find((t) => t.id === row.id) : undefined;
-    if (!entity || !original) return row;
-    const name = named(original.name, entity, original);
-    return name === row.name ? row : { ...row, name };
+    return relabel(row, ownerId, original, original);
   });
   const groups = mapPreservingIdentity(tree.groups, (row) => {
     const ownerId = strangerOf(tree.ownerOfGroup.get(row.id));
-    const entity = ownerId ? tree.entityNodes.get(ownerId) : undefined;
-    if (!ownerId || !entity || !row.id.startsWith(`${ownerId}/`)) return row;
+    if (!ownerId || !row.id.startsWith(`${ownerId}/`)) return row;
     const original = rawById.get(ownerId)?.traitGroups?.find((g) => g.id === row.id.slice(ownerId.length + 1));
-    if (!original) return row;
-    const name = named(original.name, entity);
-    return name === row.name ? row : { ...row, name };
+    return relabel(row, ownerId, original);
   });
   return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
 }

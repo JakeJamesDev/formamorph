@@ -2,22 +2,13 @@
 
 import type { Entity, PlayerStat, SceneEntity } from '@/types';
 import { resolveEntityByName } from './entityMatch';
+import { numbered } from './presence';
 
 export interface StatPanelOption {
   id: string;
   label: string;
   /** The played persona: the picker renders the You mark after the label. */
   you?: boolean;
-}
-
-/** Later labels that repeat an earlier one take a count: "a gate guard", "a gate guard (2)". */
-export function numbered(options: StatPanelOption[]): StatPanelOption[] {
-  const counts = new Map<string, number>();
-  return options.map((option) => {
-    const count = (counts.get(option.label) ?? 0) + 1;
-    counts.set(option.label, count);
-    return count > 1 ? { ...option, label: `${option.label} (${count})` } : option;
-  });
 }
 
 /**
