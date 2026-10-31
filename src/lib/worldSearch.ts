@@ -200,8 +200,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'AI-Facing Description', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
     // The two readmes share one caption ("Readme") and are told apart by their tab, so their labels carry
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
-    add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Readme (Introduction)', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
-    add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme (Gameplay)', ov.readme, (r, v) => ({ ...r, readme: v }));
+    add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Introduction Readme', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
+    add({ ...ovWhere, chipCapable: true }, 'readme', 'Gameplay Readme', ov.readme, (r, v) => ({ ...r, readme: v }));
     // Every row, switched on or not; the default opening is not world text and is never a target.
     (ov.openings ?? []).forEach((opening, i) => {
       add({ ...ovWhere, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,

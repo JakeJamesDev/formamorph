@@ -222,7 +222,7 @@ describe('placeholderVocabulary — the Persona Name chip', () => {
   });
 });
 
-describe('placeholderVocabulary — the Character Name chip', () => {
+describe('placeholderVocabulary — the Entity Name chip', () => {
   const eyes: Placeholder = P('eye', ['Red', 'Blue']);
   const keeper: PlaceholderOwnerRef = { kind: 'entity', id: 'keeper', name: 'Keeper' };
   const book: PlaceholderOwnerRef = { kind: 'dictionary', id: 'lore', name: 'Lore' };
@@ -231,7 +231,7 @@ describe('placeholderVocabulary — the Character Name chip', () => {
 
   it('joins Persona Name in an entity’s own fields', () => {
     const v = placeholderVocabulary([eyes], { builtins: true, ownerId: 'keeper', scope: keeper });
-    expect(labels(v)).toEqual(['Persona Name', 'Character Name']);
+    expect(labels(v)).toEqual(['Persona Name', 'Entity Name']);
     expect(v.acceptsPaletteToken?.('{{char}}')).toBe(true);
   });
 
@@ -252,7 +252,7 @@ describe('placeholderVocabulary — the Character Name chip', () => {
   });
 
   it('joins where the fields name their owner’s kind outright', () => {
-    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerKind: 'entity' }))).toEqual(['Persona Name', 'Character Name']);
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerKind: 'entity' }))).toEqual(['Persona Name', 'Entity Name']);
   });
 
   it('takes its label, hint and color from the Built-in registry', () => {

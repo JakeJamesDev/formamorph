@@ -7,6 +7,7 @@ import { ImageUpload } from '@/lib/UtilityComponents';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
 import DictionaryBookFields from './DictionaryBookFields';
 import type { Dictionary } from '@/types';
+import { Hint } from '@/components/ui/typography';
 
 /**
  * Library metadata and cover beside the book's name and description; stacked below `sm`.
@@ -26,6 +27,7 @@ const DictionaryOverviewManager = ({ book, author, onAuthorChange }: {
 
         <div className="space-y-2">
           <Label htmlFor="image-upload-dictionary-thumbnail">Cover Image</Label>
+          <Hint>Shows on the dictionary&apos;s listing. Leave it empty to publish with a default cover.</Hint>
           {/* Capped like a world's thumbnail, and for the same reason: a book downloads as one JSON file
               carrying this inline, so a full-size cover would dwarf the text it is decorating. */}
           <ImageUpload
@@ -36,9 +38,6 @@ const DictionaryOverviewManager = ({ book, author, onAuthorChange }: {
             objectFit="cover"
             previewClassName="w-full max-w-[400px] aspect-video relative rounded-md"
           />
-          <p className="text-meta text-muted-foreground">
-            Optional. A dictionary published without one gets a stand-in cover.
-          </p>
         </div>
       </div>
       <FieldColumn>

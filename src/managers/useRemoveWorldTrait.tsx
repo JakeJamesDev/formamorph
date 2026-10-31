@@ -10,7 +10,7 @@ import { linksKind, usedByText } from '@/lib/usedByText';
 function blueprintsLine(removal: BlueprintsRemoval): string {
   const { detached, movedUp } = removal;
   const lines = [
-    detached ? `${detached === 1 ? "Its link becomes that entity's own trait" : `Its ${detached} links become each entity's own trait`}, and the linked originals are deleted.` : '',
+    detached ? `${detached === 1 ? "Its link becomes that entity's own trait" : `Its ${detached} links become each entity's own trait`}, and this deletes the linked originals.` : '',
     movedUp ? `${detached ? 'The other traits move' : 'Its traits move'} to the top level, where the player can pick them.` : '',
   ];
   return lines.filter(Boolean).join(' ');

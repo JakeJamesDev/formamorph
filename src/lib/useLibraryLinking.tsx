@@ -254,8 +254,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     if (fresh.length) {
       const name = describePlaceholders(fresh[0].name, current.placeholders) || 'Untitled';
       toast.info(fresh.length === 1
-        ? `Formamorph unlinked “${name}” because its library item is gone.`
-        : `Formamorph unlinked ${fresh.length} copies whose library items are gone.`);
+        ? `“${name}” is now an independent copy. Its library item is gone.`
+        : `${fresh.length} copies are now independent. Their library items are gone.`);
     }
   }, [mounted, setVrmStore]);
 
@@ -500,7 +500,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         if (!linked) { void saveToLibrary(item); return; }
         const id = item.link?.libraryId;
         if (id) setLibraryEditor({ kind, id });
-        else toast.error('This copy follows a published source, not a library item.');
+        else toast.error('This copy follows a published source. It has no library item to open.');
       },
       menu: [
         ...(advanced ? [{ label: `Export ${noun}…`, onClick: exportItem }] : []),

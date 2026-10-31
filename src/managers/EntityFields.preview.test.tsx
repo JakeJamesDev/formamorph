@@ -31,7 +31,7 @@ async function preview(): Promise<string | null> {
 }
 
 describe('an entity description’s Preview', () => {
-  it('reads Character Name as the entity’s current name', async () => {
+  it('reads Entity Name as the entity’s current name', async () => {
     const { unmount } = mount(entity('YoRHa 2B'));
     expect(await preview()).toBe('YoRHa 2B waits.');
     unmount();
@@ -41,6 +41,6 @@ describe('an entity description’s Preview', () => {
 
   it('reads the label while the entity has no name', async () => {
     mount(entity(''));
-    expect(await preview()).toBe('Character Name waits.');
+    expect(await preview()).toBe('Entity Name waits.');
   });
 });

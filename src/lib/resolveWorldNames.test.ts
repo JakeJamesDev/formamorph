@@ -164,7 +164,7 @@ describe('resolveEntityTexts', () => {
   const byOwner = (entity: Entity, text: string) =>
     resolveEntityText(entity, text, { placeholders: PLACEHOLDERS, rolls: { world: { [TOWN.id]: 'Sedge' } } });
 
-  it("resolves each entity's prose with that entity as the Character Name, and leaves its name alone", () => {
+  it("resolves each entity's prose with that entity as the Entity Name, and leaves its name alone", () => {
     const keeper: Entity = {
       id: 'k', name: tok(KEEPER.id), playerDescription: 'Meet {{char}}.', aiDescription: '{{char}} of ' + tok(TOWN.id) + '.',
       aiSummary: '{{char}}.',

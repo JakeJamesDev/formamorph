@@ -170,7 +170,7 @@ Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Promp
 
 ### Built-in Placeholder chips
 
-Built-in Placeholders (**Persona Name**, **Character Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
+Built-in Placeholders (**Persona Name**, **Entity Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
 
 A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `LayoutTemplate` icon, the Blueprint element icon, from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places. `Link2` keeps the linked-copy meaning. The showcase's **Blueprint Chips** card shows it.
 
@@ -182,11 +182,11 @@ Preview reads each Built-in chip by one rule:
 
 | Chip | Preview shows |
 | --- | --- |
-| **Character Name** | The owning entity's name |
-| **Character Name**, blank owner name or no owner | Its label |
+| **Entity Name** | The owning entity's name |
+| **Entity Name**, blank owner name or no owner | Its label |
 | **Persona Name** | Its label |
 
-The Prompt Chips reference's placeholder palette sits over a sample entity, Oren, so it lists both Built-in chips. Its Entity Description field belongs to Oren, and its Preview shows Character Name as Oren. Description and Notes are world text, so Character Name stays dimmed while one of them holds focus.
+The Prompt Chips reference's placeholder palette sits over a sample entity, Oren, so it lists both Built-in chips. Its Entity Description field belongs to Oren, and its Preview shows Entity Name as Oren. Description and Notes are world text, so Entity Name stays dimmed while one of them holds focus.
 
 ### Shared chip insertion and movement
 
@@ -804,7 +804,7 @@ Closing through Cancel, Escape, or the close control changes no data and returns
 | Destructive | Delete keeps the destructive fill and confirmation semantics in the affirmative position. |
 | Overflow | The pair stacks before labels force horizontal page overflow; controls remain reachable with enlarged text. |
 
-The live Footer Actions reference demonstrates Cancel | Create Group and Cancel | Delete with production dialogs and footer controls. A constrained example uses the established Download and Embed — Works Offline label to demonstrate wrapping. Create Group starts disabled, keyboard focus moves through the negative-first action order, and the destructive example preserves its semantic treatment.
+The live Footer Actions reference demonstrates Cancel | Create Group and Cancel | Delete with production dialogs and footer controls. A constrained example uses the production Download and Embed label to demonstrate wrapping. Create Group starts disabled, keyboard focus moves through the negative-first action order, and the destructive example preserves its semantic treatment.
 
 ### Writing review
 

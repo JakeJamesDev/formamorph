@@ -153,7 +153,7 @@ describe('applyInventoryPass', () => {
       op('lose', 'Tonic', { owner: 'you' }),
     ]);
     expect(result.diagnostics).toEqual([
-      'Inventory (pass) skipped transfer "Tonic": no one present is "Odette"',
+      'Inventory (pass) skipped transfer "Tonic": nothing present is named "Odette"',
       'Inventory (pass) skipped equip: Item Copy t has no slot',
       'Inventory (pass) skipped use "Iron Sword": none at "you"',
     ]);
@@ -170,7 +170,7 @@ describe('applyInventoryPass', () => {
   it('never touches an owner who is not present', () => {
     const result = run([copy('s', 'sword', { kind: 'entity', id: 'odette' })], [op('lose', 'Iron Sword', { owner: 'Odette' })]);
     expect(result.copies).toHaveLength(1);
-    expect(result.diagnostics).toEqual(['Inventory (pass) skipped lose "Iron Sword": no one present is "Odette"']);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped lose "Iron Sword": nothing present is named "Odette"']);
   });
 
   it('moves an item lying here when a gain names it, instead of making a second one', () => {
@@ -228,7 +228,7 @@ describe('applyInventoryPass', () => {
   it('makes no second item where the same one already lies', () => {
     const result = run([copy('t', 'tonic', cellar)], [op('gain', 'Tonic', { to: 'here' })]);
     expect(result.copies).toEqual([copy('t', 'tonic', cellar)]);
-    expect(result.diagnostics).toEqual(['Inventory (pass) skipped gain "Tonic": it already lies at "here"']);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped gain "Tonic": it is already at "here"']);
   });
 
   it('spreads a quantity over several Item Copies of an item that does not stack', () => {

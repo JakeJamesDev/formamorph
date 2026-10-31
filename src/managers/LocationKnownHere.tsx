@@ -29,7 +29,7 @@ export default function LocationKnownHere({ location, locations, entities, label
   return (
     <div className="space-y-2">
       <Label className="block">Known Here</Label>
-      <Hint>Sends these entities’ summaries to the AI anywhere inside this location. They aren’t here.</Hint>
+      <Hint>Sends these entities’ summaries to the AI anywhere inside this location, where they aren’t present</Hint>
       {rows.map(({ entity, via }) => {
         const label = labelOf(entity);
         return (

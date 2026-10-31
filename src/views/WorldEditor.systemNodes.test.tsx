@@ -93,7 +93,7 @@ describe('removing a system node', () => {
     expect(within(blueprints).queryByRole('button', { name: 'Duplicate' })).toBeNull();
     fireEvent.click(within(blueprints).getByRole('button', { name: 'Remove Blueprints' }));
     expect(screen.getByText(
-      "Its 3 links become each entity's own trait, and the linked originals are deleted. "
+      "Its 3 links become each entity's own trait, and this deletes the linked originals. "
       + 'The other traits move to the top level, where the player can pick them.',
     )).toBeInTheDocument();
     confirm();

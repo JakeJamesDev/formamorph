@@ -91,14 +91,14 @@ const CHAR_TOKEN = '{{char}}';
 /** The owning entity's name. With no owner it reads as nothing, like a missing placeholder. */
 export const CHARACTER_NAME: BuiltinPlaceholder = {
   id: 'character-name',
-  label: 'Character Name',
+  label: 'Entity Name',
   token: CHAR_TOKEN,
   source: String.raw`\{\{\s*[Cc][Hh][Aa][Rr]\s*\}\}`,
-  searchTerms: ['char'],
+  searchTerms: ['char', 'character name'],
   accent: placeholderAccent(CHAR_TOKEN),
   // A book is an owner too, but its entries have no entity to name.
   visible: ({ offered, ownerKind }) => offered && ownerKind === 'entity',
-  hint: 'Shows the name of the entity this text belongs to.',
+  hint: 'Shows the name of the entity this text belongs to',
   resolve: (_match, { character }) => character?.trim() ?? '',
 };
 
@@ -148,10 +148,10 @@ export function labelBuiltins(text: string): string {
 
 const CHARACTER_RE = new RegExp(CHARACTER_NAME.source, 'g');
 
-/** Write every Character Name as the Persona Name, for text the player has. */
+/** Write every Entity Name as the Persona Name, for text the player has. */
 export const characterAsPlayer = (text: string): string => text.replace(CHARACTER_RE, PLAYER_NAME.token);
 
-/** Write every Character Name in the text as `name`. */
+/** Write every Entity Name in the text as `name`. */
 export const withCharacterName = (text: string, name: string): string => text.replace(CHARACTER_RE, () => name);
 
 const PLAYER_NAME_RE = new RegExp(PLAYER_NAME.source, 'g');

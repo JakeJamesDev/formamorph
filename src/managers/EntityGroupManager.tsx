@@ -5,6 +5,7 @@ import type { EntityGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { Hint } from '@/components/ui/typography';
 
 /** Right-panel editor for an entity group: just a name — groups are editor-only folders with no AI fields. */
 const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
@@ -21,9 +22,7 @@ const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
           <WorldInput value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
         </div>
       </ListDetailFirstRow>
-      <p className="text-helper text-muted-foreground">
-        Organizes entities in the editor only. Groups are never sent to the AI.
-      </p>
+      <Hint>Organizes entities in the editor only. The AI never sees groups.</Hint>
     </div>
   );
 };

@@ -472,7 +472,7 @@ describe('entity nodes in the traits tab', () => {
       });
     };
 
-    it('reads a stranger’s trait text with its label as the Character Name, never its name', () => {
+    it('reads a stranger’s trait text with its label as the Entity Name, never its name', () => {
       pastTraits([{ id: 'e-ash', name: 'Ash' }]);
       const node = section('a hooded man');
       expect(within(node).getByRole('checkbox', { name: 'Switch off a hooded man Bond' })).toBeDisabled();
@@ -548,7 +548,7 @@ describe('entity nodes in the traits tab', () => {
     expect(subheading).toHaveTextContent(/^AshYou$/);
   });
 
-  it("reads an owned trait's Character Name as its owner", () => {
+  it("reads an owned trait's Entity Name as its owner", () => {
     renderTraits([PALADIN], [], [], {
       world: { entities: [{ ...ash, traits: [T('t-tamed', 'Tamed', { playerDescription: '{{char}} heels at a word.' })] }] },
       seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
@@ -608,12 +608,12 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getByRole('button', { name: 'Wanderer, You, 0 enabled' })).toBeTruthy();
     unfold('Wanderer');
     expect(within(section('Wanderer')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
-    // The Character Name chip resolves to the marked entity, never to another owner.
+    // The Entity Name chip resolves to the marked entity, never to another owner.
     expect(within(section('Wanderer')).getByText(/studies\.$/).textContent).toBe('Wanderer studies.');
     expect(screen.getByText("Ash's Paladin")).toBeTruthy();
   });
 
-  it("names the Custom Persona entity's node and its Character Name after the player's entered name", () => {
+  it("names the Custom Persona entity's node and its Entity Name after the player's entered name", () => {
     withLinks({ seed: (gameplay) => {
       gameplay.setPersonaRef({ source: 'none', name: 'Ash Vale' });
       gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-paladin'] }, 'e-you': { chosen: ['t-wizard'] } });
@@ -637,7 +637,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Bo', 'Ash']);
   });
 
-  it("reads a linked trait's Character Name as its owner", () => {
+  it("reads a linked trait's Entity Name as its owner", () => {
     withLinks({ seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-wizard'] } }) });
     expect(within(section('Ash')).getByText('Ash studies.')).toBeTruthy();
   });

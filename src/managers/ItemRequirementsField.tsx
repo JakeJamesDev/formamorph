@@ -8,7 +8,7 @@ export const ItemRequirementsField = ({ item, apply }: { item: Item; apply: (pat
   return (
     <div className="space-y-2">
       <HostRuleRows host={host} label="Equip Requirements" rows={item.equipRequires} onChange={(equipRequires) => apply({ equipRequires })} />
-      <Hint>Lets its owner equip it while any row holds</Hint>
+      <Hint>Lets its owner equip it while any row is true</Hint>
     </div>
   );
 };

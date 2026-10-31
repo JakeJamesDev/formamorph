@@ -179,13 +179,13 @@ describe('the field pulse after undo and redo', () => {
     const { ctx } = renderWorldEditorBench(world, 'advanced');
     openEditorTab(/Overview/);
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Gameplay' }));
-    await typeInto(screen.getByRole('textbox', { name: 'Readme (Gameplay)' }), 'A drowned primer.');
+    await typeInto(screen.getByRole('textbox', { name: 'Gameplay Readme' }), 'A drowned primer.');
     await leaveFor(/Stats/);
 
     await undo();
     expect(ctx().worldOverview.readme).toBe('A fen primer.');
     expect(screen.getByRole('tab', { name: 'Gameplay' })).toHaveAttribute('aria-selected', 'true');
-    expect(ringed()).toContainElement(screen.getByRole('textbox', { name: 'Readme (Gameplay)' }));
+    expect(ringed()).toContainElement(screen.getByRole('textbox', { name: 'Gameplay Readme' }));
   });
 
   it('pulses a field that commits on blur, when the author moves straight to another field', async () => {

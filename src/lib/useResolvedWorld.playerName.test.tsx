@@ -115,7 +115,7 @@ describe('the Persona Name chip in play', () => {
   });
 });
 
-describe('the Character Name chip in play', () => {
+describe('the Entity Name chip in play', () => {
   const rank = { id: 'rank', name: 'Rank', values: [{ id: 'v1', text: 'Captain' }] };
   const captain: Entity = {
     ...vos, name: '{{ph:rank:world:p1}} Vos', aiDescription: '{{char}} runs the dock.', playerDescription: 'Ask {{Char}}.',
@@ -156,7 +156,7 @@ describe('the Character Name chip in play', () => {
   });
 });
 
-describe('the Character Name chip in a trait card', () => {
+describe('the Entity Name chip in a trait card', () => {
   const oath = { id: 't-oath', name: 'Paladin', aiDescription: '{{char}} keeps the oath.', statChanges: [] };
 
   it('names a cast owner', async () => {

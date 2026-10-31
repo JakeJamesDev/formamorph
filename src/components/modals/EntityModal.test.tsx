@@ -121,7 +121,7 @@ describe('EntityModal description controls', () => {
     expect(captured!.aborted).toBe(true);
     await waitFor(() => expect((screen.getByRole('button', { name: /regenerate/i }) as HTMLButtonElement).disabled).toBe(false));
     expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
-    expect(screen.queryByText(/nothing usable/i)).toBeNull();
+    expect(screen.queryByText(/Couldn't write a new description/i)).toBeNull();
     expect(hooks.onSave).not.toHaveBeenCalled();
   });
 
@@ -129,7 +129,7 @@ describe('EntityModal description controls', () => {
     const hooks = editing({ onRegenerate: vi.fn(async () => null) });
     render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} editing={hooks} />);
     fireEvent.click(screen.getByRole('button', { name: /regenerate/i }));
-    expect(await screen.findByText(/nothing usable/i)).toBeTruthy();
+    expect(await screen.findByText(/Couldn't write a new description/i)).toBeTruthy();
     expect(hooks.onSave).not.toHaveBeenCalled();
     expect(screen.getByText('A wiry scavenger.')).toBeTruthy();
   });
@@ -139,7 +139,7 @@ describe('EntityModal description controls', () => {
     render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} editing={hooks} />);
     fireEvent.click(screen.getByRole('button', { name: /regenerate/i }));
     await waitFor(() => expect((screen.getByRole('button', { name: /regenerate/i }) as HTMLButtonElement).disabled).toBe(false));
-    expect(screen.queryByText(/nothing usable/i)).toBeNull();
+    expect(screen.queryByText(/Couldn't write a new description/i)).toBeNull();
     expect(screen.getByText('A wiry scavenger.')).toBeTruthy();
   });
 

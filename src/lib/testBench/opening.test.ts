@@ -355,8 +355,8 @@ describe('the fresh game’s stage', () => {
   });
 });
 
-describe('the Character Name chip on turn one', () => {
-  // Tobin's name holds a chip, which resolves before it fills the Character Name chip.
+describe('the Entity Name chip on turn one', () => {
+  // Tobin's name holds a chip, which resolves before it fills the Entity Name chip.
   const w = () => world({
     worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
     entities: [{
@@ -718,7 +718,7 @@ describe('the persona pick', () => {
     expect(texts(opening)).toEqual(['You arrive as yourself.']);
   });
 
-  it('names the persona as the Character Name of its own row', () => {
+  it('names the persona as the Entity Name of its own row', () => {
     const w = staged({ entities: [{ ...cast()[1], openings: [row('o-wren', '{{char}} steps ashore.', true)] }] });
     expect(at(w, { personaId: 'e-wren' }).opening.text).toBe('Wren steps ashore.');
   });

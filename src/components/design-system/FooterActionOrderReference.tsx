@@ -161,7 +161,7 @@ export function FooterActionOrderReference() {
                 </DialogClose>
                 <DialogClose asChild>
                   <Button onClick={() => setEmbedded(true)}>
-                    Download and Embed — Works Offline
+                    Download and Embed
                   </Button>
                 </DialogClose>
               </DialogFooter>

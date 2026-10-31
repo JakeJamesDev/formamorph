@@ -111,7 +111,7 @@ describe('the World Editor entity panel tabs', () => {
     selectEntity('Wren');
     openPanelTab('Placeholders');
     expect(panelLabels()).toEqual([]);
-    expect(screen.getByText(/Placeholders of this entity's own/)).toBeInTheDocument();
+    expect(screen.getByText(/These placeholders belong to this entity/)).toBeInTheDocument();
   });
 
   it('drops the Advanced-only fields from both tabs in Simple mode, keeping Generate with AI', () => {

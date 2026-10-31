@@ -74,7 +74,7 @@ export function ImportComponentModal({
                     <span className="truncate">{row.worldName ?? row.name}</span>
                   </label>
                 ))}
-                <Hint>Each selected world receives a linked copy of the library item.</Hint>
+                <Hint>Adds a linked copy of the library item to each world you select</Hint>
               </div>
             )}
 
@@ -91,8 +91,8 @@ export function ImportComponentModal({
                 ))}
                 <Hint>
                   {offline
-                    ? 'Formamorph cannot connect to Community Creations. These worlds cannot be found now.'
-                    : 'Open Listing opens the world in Community Creations. Download the world there.'}
+                    ? "Can't connect to Community Creations. Try again when you're online."
+                    : 'Open Listing shows the world on Community Creations, where you can download it.'}
                 </Hint>
               </div>
             )}

@@ -558,7 +558,7 @@ describe('the openings panel', () => {
     expect(world.overview.openingsEnabled).toBe(false);
     expect(world.overview.openings).toEqual(ROWS);
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
-    expect(screen.getByText(/Switched off, so players start on the default opening/)).toBeInTheDocument();
+    expect(screen.getByText(/Openings are off, so players start on the default opening/)).toBeInTheDocument();
 
     await user.click(openingsCheckbox());
     expect(world.overview.openingsEnabled).toBeUndefined();
@@ -913,7 +913,7 @@ describe('the mirrored openings panel', () => {
     world.overview = { ...world.overview, openingsEnabled: false };
     await open();
     expect(chance('Guide Opening 1')).toBe('33%');
-    expect(screen.getByText(/Switched off, so players start on the default opening/)).toBeInTheDocument();
+    expect(screen.getByText(/Openings are off, so players start on the default opening/)).toBeInTheDocument();
   });
 
   it('opens the entity’s Openings tab from its group header', async () => {

@@ -21,6 +21,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { fieldPath } from '@/lib/historyField';
 import { cn } from '@/lib/utils';
 import { useDictionaryActions, useDictionaryCollapse, type DictionaryCollapse } from './useDictionaryActions';
+import { Meta } from '@/components/ui/typography';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
 function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onRemove }: {
@@ -47,7 +48,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
       setNodeRef={setNodeRef}
       style={style}
       gripProps={{ ...attributes, ...listeners }}
-      gripTitle="Drag to reorder, re-place, or move to another dictionary"
+      gripTitle="Drag to reorder, or move to another dictionary"
       selected={selected}
       onSelect={() => onSelect(entry.id)}
       checkbox={advanced ? { checked: entry.enabled !== false, onChange: (v) => onToggleEnabled(entry, v), field: fieldPath('rows', entry.id, 'enabled') } : undefined}
@@ -167,7 +168,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
                 onRemove={onRemoveEntry}
               />
             ))}
-            {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here</p>}
+            {!flat && entries.length === 0 && <Meta as="p" className="px-2 py-1">Drag entries here</Meta>}
           </EditorRowList>
           )}
         </StableSortableContext>

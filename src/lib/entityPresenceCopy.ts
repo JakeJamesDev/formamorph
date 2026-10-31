@@ -48,7 +48,7 @@ export const KNOWN_IN_LABEL: Record<KnownInChoice, string> = {
 };
 
 export const KNOWN_IN_HELP: Record<KnownInChoice, string> = {
-  nearby: 'Sends its summary to the AI one step away from where it is',
+  nearby: 'Sends its summary to the AI one location away from where it is',
   nowhere: 'Sends it to the AI only at its own location',
   picked: 'Sends its summary to the AI anywhere inside the picked locations',
 };

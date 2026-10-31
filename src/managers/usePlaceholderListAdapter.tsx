@@ -8,6 +8,7 @@ import type { PlaceholderRowNode } from '@/lib/placeholderScopes';
 import { placeholderSearchRows } from './placeholderSearchRows';
 import type { PlaceholderRowRules } from './usePlaceholderRowActions';
 import { cn } from '@/lib/utils';
+import { Hint } from '@/components/ui/typography';
 
 /**
  * The List Editor adapter for one owner's placeholder list: its tree, flat search rows without an owner
@@ -38,7 +39,7 @@ export function usePlaceholderListAdapter({ nodes, lists, rowRules, names, tree,
     noun: 'placeholders',
     detail: (id) => (
       <div className={cn('p-4 [--panel-gutter:theme(spacing.4)]', id && fills && 'flex min-h-0 flex-1 flex-col')}>
-        {id ? detail : <p className="text-helper text-muted-foreground">Select a placeholder to edit it, or add one</p>}
+        {id ? detail : <Hint>Select a placeholder to edit it, or add one</Hint>}
       </div>
     ),
     footer: () => footer,

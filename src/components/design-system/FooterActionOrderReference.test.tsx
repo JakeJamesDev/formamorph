@@ -87,7 +87,7 @@ describe('footer action order reference', () => {
     await user.click(opener);
 
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Download and Embed — Works Offline' }));
+    await user.click(screen.getByRole('button', { name: 'Download and Embed' }));
     expect(screen.getByText('Embedded the images in the local example.')).toBeInTheDocument();
     expect(opener).toHaveFocus();
   });

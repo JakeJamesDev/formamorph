@@ -66,7 +66,7 @@ function ComponentRow({ row, action, onChoose }: {
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world&apos;s edits.</Hint>}
+          {row.state === 'local-replacement' && <Hint><b>Keep Mine</b> keeps this world&apos;s edits</Hint>}
         </>
       )}
     </li>

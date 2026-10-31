@@ -33,6 +33,7 @@ import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { DictionaryPanelTab } from '@/views/dictionaryPanelTabs';
 import { DICTIONARY_EDITOR_TABS, type DictionaryEditorTab } from '@/views/dictionaryEditorTabs';
 import type { Dictionary, Placeholder, LibraryDetails } from '@/types';
+import { Hint } from '@/components/ui/typography';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
@@ -72,7 +73,7 @@ function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange
             onTabChange={onEntryTabChange}
           />
         ) : (
-          <p className="text-helper text-muted-foreground">Select an entry to edit it</p>
+          <Hint>Select an entry to edit it</Hint>
         )}
       </FieldColumn>
     ),
@@ -210,10 +211,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
       setDictionaries(normalized);
       baselineRef.current = canon(normalized);
       detailsBaselineRef.current = canon(libraryDetails);
-      toast.success('Dictionary saved!');
+      toast.success('Dictionary saved');
       return true;
     } catch (error) {
-      toastError(error, { headline: 'Could not save dictionary.' });
+      toastError(error, { headline: 'Could not save the dictionary.' });
       return false;
     }
   };

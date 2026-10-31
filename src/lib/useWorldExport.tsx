@@ -14,6 +14,7 @@ import type { World } from '@/types';
 import { downloadBlob } from './downloadBlob';
 import { embedWorldRemoteImages, remoteWorldImages } from './embedRemoteImages';
 import { serializeWorldFile } from './worldFile';
+import { Meta } from '@/components/ui/typography';
 
 /** The world queued behind the linked-images choice, with the filename its download will use. */
 interface PendingExport {
@@ -42,7 +43,7 @@ export function useWorldExport(promptWorld: (world: World) => Promise<World | nu
     try {
       const { world: embedded, failures } = await embedWorldRemoteImages(world, (done, total) => setEmbedding({ done, total }));
       if (failures.length) {
-        toast.warning(`${failures.length} image${failures.length > 1 ? 's' : ''} couldn't be downloaded and stayed linked.`);
+        toast.warning(`Couldn't download ${failures.length} image${failures.length > 1 ? 's' : ''}. The file keeps ${failures.length > 1 ? 'them as links' : 'it as a link'}.`);
       }
       await writeWorldFile(embedded, filename);
     } catch (error) {
@@ -72,20 +73,20 @@ export function useWorldExport(promptWorld: (world: World) => Promise<World | nu
         <DialogHeader>
           <DialogTitle>Linked Images</DialogTitle>
           <DialogDescription>
-            {pending && `This world links to ${linked} image${linked > 1 ? 's' : ''} instead of storing them. How should the exported file handle them?`}
+            {pending && `This world stores ${linked} image${linked > 1 ? 's' : ''} as links. Keep Links makes a smaller file. Download and Embed stores them in the file, so it works offline.`}
           </DialogDescription>
         </DialogHeader>
         {embedding ? (
-          <p className="text-helper text-muted-foreground">
+          <Meta as="p">
             Downloading images… {embedding.done} of {embedding.total}
-          </p>
+          </Meta>
         ) : (
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button className="w-full" onClick={async () => { const p = pending; setPending(null); if (p) await writeWorldFile(p.world, p.filename); }}>
-              Keep Links — Smaller File
+              Keep Links
             </Button>
             <Button variant="outline" className="w-full" onClick={() => { if (pending) void exportEmbedded(pending); }}>
-              Download and Embed — Works Offline
+              Download and Embed
             </Button>
           </DialogFooter>
         )}

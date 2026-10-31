@@ -6,6 +6,7 @@ import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
 import type { Placeholder } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
+import { Hint } from '@/components/ui/typography';
 
 /**
  * What the Placeholders tab shows for a selected owner node. The node is read off an entity or book, so
@@ -26,11 +27,11 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
           <PlaceholderText text={owner.name} placeholders={placeholders} />
         </div>
       </ListDetailFirstRow>
-      <p className="text-helper text-muted-foreground">
+      <Hint>
         These placeholders belong to this {owner.kind}. Elsewhere in the world they read as{' '}
         <PlaceholderText text={owner.name} placeholders={placeholders} />{OWNER_NAME_SEPARATOR}Name. Drag one to the top of the
         list to share it with the whole world, or drag a shared one here to make it this {owner.kind}&apos;s own.
-      </p>
+      </Hint>
       <Button variant="outline" size="sm" onClick={onOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
         Open {OWNER_LABEL[owner.kind]}

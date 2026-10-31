@@ -1023,7 +1023,7 @@ describe('EnterWorldWorkspace cast pages', () => {
         traitGroups={[...cast.traitGroups]}
         traitEntities={cast.entities}
         resolveEntityText={(_entity, text) => text}
-        // The owner the workspace hands over is the Character Name in a trait's own text.
+        // The owner the workspace hands over is the Entity Name in a trait's own text.
         resolveTraitText={(_trait, text, owner) => text.replace('{{char}}', owner?.name ?? 'you')}
         selectedTraits={scoped(draft.traitIds, draft.ownedTraitIds)}
         onTraitSelect={(id, ownerId) => {

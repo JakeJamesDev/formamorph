@@ -288,7 +288,7 @@ const TraitManager = ({
                 <PlaceholderText text={owner.name} placeholders={placeholders} />
               </button>
             </p>
-            <Hint>Describes them to the AI, and joins your traits when you play as them</Hint>
+            <Hint>Describes this entity to the AI, and joins the player&apos;s traits when they play as it</Hint>
           </div>
         </div>
       )}

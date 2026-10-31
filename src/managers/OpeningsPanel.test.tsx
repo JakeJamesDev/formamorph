@@ -39,12 +39,12 @@ async function menu(): Promise<string[]> {
   return screen.getAllByTestId('chip-typeahead-row').map((row) => row.textContent?.trim() ?? '');
 }
 
-/** An entity opening is the entity's own text, so its `{` menu offers Character Name; a world opening has
+/** An entity opening is the entity's own text, so its `{` menu offers Entity Name; a world opening has
  *  no entity to name. */
 describe('opening fields', () => {
-  it('offer Character Name in an entity’s opening', async () => {
+  it('offer Entity Name in an entity’s opening', async () => {
     mount(<EntityOpenings entity={keeper} onChange={() => {}} placeholders={[]} />);
-    expect(await menu()).toEqual(['Persona Name', 'Character Name']);
+    expect(await menu()).toEqual(['Persona Name', 'Entity Name']);
   });
 
   it('leave it out of a world opening', async () => {
@@ -56,7 +56,7 @@ describe('opening fields', () => {
 describe('an entity opening’s Preview', () => {
   const greeting = { ...keeper, openings: [{ id: 'o1', text: '{{char}} nods to {{user}}.', kind: 'narration' }] } as Entity;
 
-  it('reads Character Name as the entity’s name and Persona Name as its label', async () => {
+  it('reads Entity Name as the entity’s name and Persona Name as its label', async () => {
     mount(<EntityOpenings entity={greeting} onChange={() => {}} placeholders={[]} />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');

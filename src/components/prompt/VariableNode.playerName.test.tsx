@@ -38,7 +38,7 @@ describe('VariableNode Chip Options — Persona Name', () => {
 describe('VariableNode — Built-in chips', () => {
   const eye = encodePlaceholderToken({ id: 'eye', mode: 'world', placementId: 'p1' });
 
-  it.each(['Persona Name', 'Character Name'])('opens no Chip Options on %s', async (label) => {
+  it.each(['Persona Name', 'Entity Name'])('opens no Chip Options on %s', async (label) => {
     const user = userEvent.setup();
     render(<Harness value="{{user}} and {{char}}" />);
     await user.click(screen.getByText(label));
@@ -55,6 +55,6 @@ describe('VariableNode — Built-in chips', () => {
   it('carries the Built-in mark on each Built-in chip and no other', () => {
     render(<Harness value={`{{user}} {{ Char }} ${eye}`} />);
     const marked = [...document.querySelectorAll('[data-builtin-mark]')].map((el) => el.closest('[data-chip]')?.textContent);
-    expect(marked).toEqual(['Persona Name', 'Character Name']);
+    expect(marked).toEqual(['Persona Name', 'Entity Name']);
   });
 });

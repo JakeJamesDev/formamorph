@@ -188,7 +188,7 @@ describe('an owned trait\'s panel', () => {
     openTab(/Traits/);
     fireEvent.click(treeRow('Tamed')!);
     expect(screen.getByText(/^Owned by/)).toHaveTextContent('Owned by Ash');
-    expect(screen.getByText('Describes them to the AI, and joins your traits when you play as them')).toBeInTheDocument();
+    expect(screen.getByText("Describes this entity to the AI, and joins the player's traits when they play as it")).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
     expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
     // Tamed names no player stat, so the persona note stays away.

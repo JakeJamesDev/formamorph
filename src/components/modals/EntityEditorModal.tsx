@@ -171,10 +171,10 @@ const EntityEditorModal = ({
       setEntity(normalized);
       baselineRef.current = canon(normalized);
       detailsBaselineRef.current = canon(libraryDetails);
-      toast.success('Character saved!');
+      toast.success('Entity saved');
       return true;
     } catch (error) {
-      toastError(error, { headline: 'Could not save character.' });
+      toastError(error, { headline: 'Could not save the entity.' });
       return false;
     }
   };
@@ -185,7 +185,7 @@ const EntityEditorModal = ({
       // A library item is its own source, so the card names it and the worlds that hold a linked copy.
       const blob = await exportEntityCard(entity, undefined, await exportedLibraryLinks('entity', entity.id), libraryDetails);
       // A chip in the name would otherwise put a raw placement id in the filename.
-      downloadBlob(blob, `${labelPlaceholders(entity.name, pool, { letters }) || 'Character'}.webp`);
+      downloadBlob(blob, `${labelPlaceholders(entity.name, pool, { letters }) || 'Entity'}.webp`);
     } catch (error) {
       toastError(error, 'Could not export the entity.');
     }
@@ -203,9 +203,9 @@ const EntityEditorModal = ({
         surface="entityEditor"
         surfaceTabs="entityEditor"
         open={isOpen}
-        // A library character has no world behind it, so its own carried defs render the chips — the same
+        // A library entity has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={labelPlaceholders(entity?.name ?? '', pool, { letters }) || 'Character'}
+        title={labelPlaceholders(entity?.name ?? '', pool, { letters }) || 'Entity'}
         contentClassName={LIBRARY_EDITOR_CONTENT_CLASS}
         loading={!entity}
         tabs={ENTITY_EDITOR_TABS}

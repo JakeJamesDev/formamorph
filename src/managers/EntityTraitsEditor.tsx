@@ -18,6 +18,7 @@ import GroupManager from './GroupManager';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, LinkNotice, ThisLinkSection } from './TraitLinkPanel';
 import TraitManager from './TraitManager';
 import TraitTree from './TraitTree';
+import { Hint } from '@/components/ui/typography';
 
 /** A trait store whose root is one entity: what this editor edits. */
 export type EntityTraitStore = TraitStore & { entityRoot: EntityRoot };
@@ -165,7 +166,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
           onTabChange={setTab}
         />
       ) : (
-        <p className="text-helper text-muted-foreground">Select a trait to edit it, or add one</p>
+        <Hint>Select a trait to edit it, or add one</Hint>
       )}
     </div>
   );

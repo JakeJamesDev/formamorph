@@ -13,6 +13,7 @@ import { useEntityGallery } from "@/lib/useEntityGallery";
 import { useEntityStatMorphs } from "@/lib/useEntityStatMorphs";
 import type { Entity } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from '@/components/ui/typography';
 
 /** Editing hooks for a runtime-discovered character, whose description lives in the save rather than the
  *  authored world. Absent for authored entities, which the modal renders read-only. */
@@ -160,7 +161,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                   {editing && (
                     <div className="flex gap-2 justify-end items-center">
                       {regenError && (
-                        <span className="text-meta text-muted-foreground mr-auto">Nothing usable came back. Try again.</span>
+                        <Meta className="mr-auto">Couldn&apos;t write a new description. Try again.</Meta>
                       )}
                       <Button variant="ghost" size="sm" onClick={startEdit} disabled={regenerating}>
                         <Pencil className="h-4 w-4 mr-1" /> Edit

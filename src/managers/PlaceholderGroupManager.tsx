@@ -5,6 +5,7 @@ import type { PlaceholderGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { Hint } from '@/components/ui/typography';
 
 /** Right-panel editor for a placeholder folder: just a name. Folders are editor-only and take no chips, so
  *  the name is a plain input rather than a chip field. The Blueprints group keeps its name. */
@@ -28,11 +29,11 @@ const PlaceholderGroupManager = ({ group }: { group: PlaceholderGroup }) => {
           />
         </div>
       </ListDetailFirstRow>
-      <p className="text-helper text-muted-foreground">
+      <Hint>
         {blueprints
           ? 'Holds blueprints. Each entity reads a blueprint through its own copy, which you can change for that entity alone.'
-          : 'Organizes shared placeholders in the editor only. Groups are never sent to the AI, and a placeholder that belongs to an entity or dictionary stays under it.'}
-      </p>
+          : 'Organizes shared placeholders in the editor only. The AI never sees groups, and a placeholder that belongs to an entity or dictionary stays under it.'}
+      </Hint>
     </div>
   );
 };

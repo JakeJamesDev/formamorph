@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { libraryItemData, libraryItems, LINK_EXPLANATIONS, type LibraryItemSummary, type LibraryKind } from '@/lib/librarySources';
 import type { LinkableContent } from '@/lib/linkedContent';
 import type { SurfaceIdName } from '@/components/ui/surface';
@@ -115,9 +115,9 @@ function AddFromLibraryModal({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {loading ? (
-          <p className="py-6 text-center text-helper text-muted-foreground">Loading…</p>
+          <Meta as="p" className="py-6 text-center">Loading…</Meta>
         ) : list.length === 0 ? (
-          <p className="py-6 text-center text-helper text-muted-foreground">{emptyMessage}</p>
+          <Hint className="py-6 text-center">{emptyMessage}</Hint>
         ) : (
           <>
             <SearchField
@@ -148,7 +148,7 @@ function AddFromLibraryModal({
                   </div>
                 ))}
                 {shown.length === 0 && (
-                  <p className="py-6 text-center text-helper text-muted-foreground">No match for that search.</p>
+                  <Meta as="p" className="py-6 text-center">No match for that search.</Meta>
                 )}
               </div>
             </ScrollArea>

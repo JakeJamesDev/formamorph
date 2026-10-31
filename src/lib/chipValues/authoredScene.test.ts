@@ -34,7 +34,7 @@ const world = (over: Partial<AuthoredWorld> = {}): AuthoredWorld => ({
   ...over,
 });
 
-describe('authoredChipScene and the Character Name chip', () => {
+describe('authoredChipScene and the Entity Name chip', () => {
   const keeper: Entity = { ...wren, aiDescription: '{{char}} keeps the lamps.' };
 
   it("resolves each entity's text with that entity as its owner", () => {

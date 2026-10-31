@@ -315,7 +315,7 @@ const ReadmeSection = ({ focusField, fieldReveal }: {
           onChange={(introReadme) => updateWorldOverview({ introReadme })}
           placeholders={placeholders}
           markdown
-          ariaLabel="Readme (Introduction)"
+          ariaLabel="Introduction Readme"
           resizable
         />
       </TabsContent>
@@ -327,7 +327,7 @@ const ReadmeSection = ({ focusField, fieldReveal }: {
           onChange={(readme) => updateWorldOverview({ readme })}
           placeholders={placeholders}
           markdown
-          ariaLabel="Readme (Gameplay)"
+          ariaLabel="Gameplay Readme"
           resizable
         />
       </TabsContent>

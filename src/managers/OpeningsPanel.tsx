@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { SelectOptions } from '@/components/SelectOptions';
 import { Tip } from '@/components/ui/tooltip';
-import { Hint } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { ListSearchToolbar } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -188,10 +188,10 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
 
       <Hint>
         {openingsEnabled(worldOverview, owners)
-          ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
+          ? "Draws one opening by weight when a player starts this world. A Player Action fills the player's input box to edit and send. Narration shows as the first page, as written."
           : anyOpenings
-            ? "Switched off, so players start on the default opening. Chances show the odds you'll get once it's on."
-            : 'Write an opening here, on a location or on an entity to switch this on. Until then players start on the default opening.'}
+            ? "Openings are off, so players start on the default opening. The percentages show each opening's odds once openings are on."
+            : 'Write an opening here, on a location, or on an entity to turn openings on. Until then, players start on the default opening.'}
       </Hint>
     </div>
   );
@@ -230,8 +230,8 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
-        {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
-        {showSelf && ' Mark one Self to make it the only start for a player who plays this entity.'}
+        {"Joins the world's openings when a game starts at one of this entity's locations. Turning off the world's openings turns these off too."}
+        {showSelf && ' Mark one Self to make it the only opening for a player who plays this entity.'}
       </Hint>
     </div>
   );
@@ -264,7 +264,7 @@ export function LocationOpenings({ location, onChange, placeholders, names = { p
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
-        {"Joins the world's openings when a game starts at this location, not at a location inside it. The world's Openings checkbox turns them off too."}
+        {"Joins the world's openings when a game starts at this location, not at a location inside it. Turning off the world's openings turns these off too."}
       </Hint>
     </div>
   );
@@ -276,7 +276,7 @@ function matchingRows(rows: EditorOpeningRow[], typed: string, names: ListSearch
 }
 
 function NoMatch({ typed }: { typed: string }) {
-  return <p className="p-2 text-helper text-muted-foreground">No openings match &ldquo;{typed}&rdquo;.</p>;
+  return <Meta as="p" className="p-2">No openings match &ldquo;{typed}&rdquo;.</Meta>;
 }
 
 /**

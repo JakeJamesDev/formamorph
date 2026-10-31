@@ -93,7 +93,7 @@ const ConnectReferencesModal = ({ rows, choices, confirmLabel, onChoose, onBack,
         <DialogHeader>
           <DialogTitle>Connect World References</DialogTitle>
           <DialogDescription>
-            This content names world references. Select what each one is in this world.
+            This content uses placeholders or locations by name. Select the one in this world that each name means.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[50dvh] pr-2">
@@ -103,7 +103,7 @@ const ConnectReferencesModal = ({ rows, choices, confirmLabel, onChoose, onBack,
               if (!inGroup.length) return null;
               return (
                 <Fragment key={kind}>
-                  <p className="pt-1 text-meta font-medium text-muted-foreground">{heading}</p>
+                  <Meta as="p" className="pt-1 font-medium">{heading}</Meta>
                   {inGroup.map((row) => (
                     <ReferenceRowFields
                       key={row.key}

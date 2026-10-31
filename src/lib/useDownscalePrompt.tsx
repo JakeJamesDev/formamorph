@@ -108,7 +108,7 @@ const describeScan = (s: OptimizeStats): string => {
     ...(s.overCount > 0 ? [`${s.overCount} larger than recommended`] : []),
     ...(s.losslessCount > 0 ? [`${s.losslessCount} lossless`] : []),
   ];
-  return `${images} worth optimizing — ${reasons.join(', ')}`;
+  return `${images} worth optimizing: ${reasons.join(', ')}`;
 };
 
 /**
