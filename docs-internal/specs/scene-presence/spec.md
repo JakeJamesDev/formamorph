@@ -1,7 +1,7 @@
 # Spec: Scene Presence and Strangers
 
-Status: in-progress
-Status note: Reopened on 2026-10-30 for tickets 09–12. First closed on 2026-10-30. Tickets 01–08 are done; the last landing is eb6c4ea72. Review: spec text corrected, and two fixes landed in 268e1a00e. Closed with gaps: tickets 09 and 10 are open. Closed red: EditorModalShell.test.tsx failed on a peer's uncommitted edit, outside this effort.
+Status: done
+Status note: Closed on 2026-10-31. Tickets 01–09 and 11–12 are done, and 10 is wontfix. The last landing is 1553e521b. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1 and 9b6e60f93. Closed red: lint failed on a peer's uncommitted collapsing-segments files, and StrangerModal.test.tsx failed on a run that read the test before its fix landed. Both are outside this effort's code, and the test passes now.
 Spec session: scene-presence — spec
 
 ## Problem Statement
@@ -179,7 +179,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
   - A blank entry reads `met: false`, and its `meet()` stops the script.
   - `met` ships wherever entity entries do. `meet()` ships only where entity writes are allowed, so a read-only run, such as a user Tool, has `met` and no `meet()`.
 - **Q75:** The opening state lands a Start-timing script's `meet()`, move and follow writes, so they take effect on turn one (ticket 10).
-- **Q76:** Q75's premise was wrong: play already lands Start writes at turn one's commit. Ticket 10 now makes a re-roll of turn one keep those writes.
+- **Q76:** Q75's premise was wrong: play already lands Start writes at turn one's commit. A live repro then showed re-rolls keep those writes too, so ticket 10 closed as wontfix and Q75 has nothing to build.
 - **Q77:** `met` uses the full start-met rule at every sandbox site, Test Bench, script Test Runs and Tools included (ticket 11).
 - **Q78:** A stranger's trait text resolves with the label, never the true name. The Traits tab numbers strangers who share a label, as the stat picker does (ticket 12).
 - **Q79:** The Entity View may show a stranger's art when no one is selected. Art is not identity.
