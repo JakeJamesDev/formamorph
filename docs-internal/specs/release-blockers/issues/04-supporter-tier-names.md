@@ -8,7 +8,7 @@ Blocks: release
 
 The three Patreon tiers have no final names. The app shows working labels ("Supporter", "Supporter+", "Supporter++") from `SUPPORTER_LABELS` in `src/lib/supporterFlair.ts`.
 
-Owning effort: [Formamorph AI](../../hosted-ai/spec.md), ticket 02.
+Origin: [Formamorph AI](../../hosted-ai/spec.md), ticket 02. The code work is the [Supporter Tier Names](../../supporter-tier-names/spec.md) effort.
 
 ## Rulings (2026-10-31)
 
