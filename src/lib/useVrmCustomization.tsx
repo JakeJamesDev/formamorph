@@ -11,6 +11,7 @@ import { Undo2 } from 'lucide-react';
 import type { CharacterData, HairTypeDef } from '@/types';
 import type { VRMCapabilities, VRMViewerHandle } from '@/views/VRMViewer';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 
 /**
  * Owns the avatar-customization surface — the sliders and color pickers that read a model's detected
@@ -76,7 +77,7 @@ export interface VrmCustomization {
 }
 
 /**
- * @param includeAnimateToggle - whether the controls render the "Animate character" checkbox (the enter-world
+ * @param includeAnimateToggle - whether the controls render the "Animate Avatar" checkbox (the enter-world
  *   flow shows it; a preview that's just testing morphs may not want it). Defaults to true.
  */
 export function useVrmCustomization(includeAnimateToggle = true): VrmCustomization {
@@ -182,7 +183,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
       {includeAnimateToggle && (
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox checked={animate} onCheckedChange={(v) => setAnimate(v === true)} />
-          <span className="text-label font-medium">Animate character</span>
+          <span className="text-label font-medium">Animate Avatar</span>
         </label>
       )}
 
@@ -205,7 +206,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
             <div className="space-y-2">
               <Label htmlFor="hair-length">Hair Length</Label>
               <Slider id="hair-length" min={0} max={2} step={0.1} value={[hairLength]} onValueChange={([v]) => setHairLength(v)} />
-              <span className="text-helper text-muted-foreground">{hairLength.toFixed(1)}</span>
+              <Meta>{hairLength.toFixed(1)}</Meta>
             </div>
           )}
         </div>
@@ -227,7 +228,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
                   value={[value]}
                   onValueChange={([v]) => setBodyMorph(morph, v)}
                 />
-                <span className="text-helper text-muted-foreground">{value.toFixed(2)}</span>
+                <Meta>{value.toFixed(2)}</Meta>
               </div>
             );
           })}

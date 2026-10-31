@@ -219,7 +219,7 @@ Setups keep every shot off live servers and live AI:
 | `desktopEngine` | The desktop bridge, with the built-in engine ready on a loaded model. Nothing loads or downloads |
 | `helpAnswer` | The help window's reply, streamed from a fixed text. An ask clip holds it back until it lets it through |
 
-The storyboard's live-data shots (help answer, community grid) are fixed this way. The avatar clip is deferred (Q60) but keeps **Animate character** on and sets `model` (below), so it films the idle animation on a controlled clock if it returns.
+The storyboard's live-data shots (help answer, community grid) are fixed this way. The avatar clip is deferred (Q60) but keeps **Animate Avatar** on and sets `model` (below), so it films the idle animation on a controlled clock if it returns.
 
 ### Frozen time and clips
 

@@ -1,4 +1,5 @@
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { Meta } from '@/components/ui/typography';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { byEquipOrder, copyFace } from '@/lib/items';
 import { copiesAt } from '@/lib/inventory';
@@ -30,7 +31,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
           return (
             <li key={copy.id} className="flex items-baseline gap-2">
               <span>{resolveText(item ? copyFace(item, copy).name : '') || 'Unknown Item'}</span>
-              <span className="text-meta text-muted-foreground">{slotName(slotId)}</span>
+              <Meta>{slotName(slotId)}</Meta>
             </li>
           );
         })}

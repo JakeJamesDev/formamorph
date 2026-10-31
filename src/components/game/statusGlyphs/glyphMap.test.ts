@@ -2,20 +2,20 @@ import { describe, expect, it } from 'vitest';
 import type { AIRequestType } from '@/types';
 import { BACKGROUND_PASS_STATUS, TOOL_GLYPH, requestLabel, requestStatus } from './glyphMap';
 
-// The spec's glyph map and today's status labels, written out by hand.
+// The spec's glyph map, and each request under its prompt's visible name, written out by hand.
 const SPEC: Record<AIRequestType, [label: string, glyph: string]> = {
-  thinking: ['Generating Plan…', 'compass'],
-  director: ['Generating Cast…', 'masks'],
-  character: ['Generating Motivation…', 'masks'],
-  discoverEntity: ['Generating Character…', 'masks'],
+  thinking: ['Generating Planning…', 'compass'],
+  director: ['Generating Director…', 'masks'],
+  character: ['Generating Character…', 'masks'],
+  discoverEntity: ['Generating Discover Entity…', 'masks'],
   narration: ['Generating Narration…', 'quill'],
   choices: ['Generating Choices…', 'split'],
   statUpdates: ['Generating Stat Updates…', 'chartColumnIncreasing'],
-  summary: ['Generating Memory…', 'bookOpen'],
-  milestoneSelect: ['Generating Memory Select…', 'bookOpen'],
+  summary: ['Generating Summaries…', 'bookOpen'],
+  milestoneSelect: ['Generating Milestone Select…', 'bookOpen'],
   diary: ['Generating Diary…', 'bookOpen'],
   storyboard: ['Generating Storyboard…', 'scroll'],
-  locationChange: ['Generating Location…', 'mapPin'],
+  locationChange: ['Generating Location Change…', 'mapPin'],
   entityLocation: ['Generating Entity Location…', 'mapPin'],
   timePassed: ['Generating Clock…', 'hourglass'],
   openingTime: ['Generating Opening…', 'hourglass'],

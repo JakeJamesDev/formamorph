@@ -24,6 +24,7 @@ import {
 } from '../../lib/saveOrdering';
 import type { SaveRecord } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { SaveList, type SaveListItem } from './SaveList';
 
@@ -53,7 +54,7 @@ function FolderRowBody({ folder, pinned }: { folder: SaveFolder; pinned: boolean
       <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="flex-1 min-w-0">
         <div className="break-words font-medium">
-          {folder.worldName}{pinned && <span className="ml-2 text-meta text-muted-foreground">(current)</span>}
+          {folder.worldName}{pinned && <Meta className="ml-2">(current)</Meta>}
         </div>
         <div className="text-meta opacity-70">
           {folder.saves.length} save{folder.saves.length === 1 ? '' : 's'}
@@ -227,7 +228,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     if (isLoading) return;
     try {
       setIsLoading(true);
-      setLoadingMessage('Loading save file. Please wait...');
+      setLoadingMessage('Loading the save…');
       await new Promise(resolve => setTimeout(resolve, 100));
       await onLoad(row.id, targetWorldId);
       onOpenChange(false);
@@ -257,7 +258,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     try {
       setIsExporting(true);
       setExportingSaveName(row.name);
-      setLoadingMessage(`Preparing ${row.name} for export...`);
+      setLoadingMessage(`Preparing “${row.name}” for export…`);
       // Strip device-local fields from the export: the record id and the autosave marker (an exported
       // autosave re-imports as an ordinary manual save).
       const { id: _id, isAutosave: _auto, ...fileData } = row.record;
@@ -337,8 +338,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
         onOpenChange={(o) => { if (!o) setPendingLoad(null); }}
         title={pendingLoad?.targetWorldId ? 'Switch worlds and load?' : 'Load a save from another world?'}
         description={pendingLoad?.targetWorldId
-          ? `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”. Loading it switches to that world and leaves your current game — unsaved progress will be lost.`
-          : `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”, which isn't installed. It will load into your current world (“${current?.name ?? ''}”) and may not behave as intended. Your current game will be replaced — unsaved progress will be lost.`}
+          ? `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”. Loading it switches to that world and ends your current game. Unsaved progress is lost.`
+          : `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”, which isn't installed. It loads into your current world, “${current?.name ?? ''}”, and may not play as intended. Your current game ends, and unsaved progress is lost.`}
         onConfirm={() => { const p = pendingLoad; setPendingLoad(null); if (p) void doLoad(p.row, p.targetWorldId); }}
       />
 
@@ -349,8 +350,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
             <DialogTitle>World not installed</DialogTitle>
           </DialogHeader>
           <DialogDescription className="py-2">
-            This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which is not installed. Import or
-            download that world first to play its saves. You can still export or delete this save.
+            This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which isn&apos;t installed. Import or
+            download that world to play its saves. You can still export or delete this save.
           </DialogDescription>
           <DialogFooter>
             <Button onClick={() => setBlockedLoad(null)}>OK</Button>
@@ -449,11 +450,11 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 {busy && (
                   <div className="text-center py-4 flex flex-col items-center space-y-2">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <div className="text-label">{loadingMessage || 'Processing...'}</div>
+                    <div className="text-label">{loadingMessage || 'Processing…'}</div>
                     <div className="text-meta text-warning max-w-xs">
                       {isExporting
-                        ? `Please wait while the save file "${exportingSaveName}" is being prepared for export. For large save files, this may take a moment.`
-                        : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'}
+                        ? `Preparing “${exportingSaveName}” for export. A large save can take a moment.`
+                        : "A large save can take a moment. Don't load another save until it finishes."}
                     </div>
                   </div>
                 )}

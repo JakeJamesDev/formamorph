@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { byEquipOrder, copyFace, copyState, itemUsable, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
@@ -73,7 +74,7 @@ function CountField({ max, text, onChange }: { max: number; text: string; onChan
         onChange={(e) => onChange(e.target.value)}
       />
       <Button variant="outline" size="xs" onClick={() => onChange(String(max))} aria-pressed={countOf(text, max) === max}>All</Button>
-      <span className="text-meta text-muted-foreground">of {max}</span>
+      <Meta>of {max}</Meta>
     </div>
   );
 }
@@ -128,7 +129,7 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
         <p className="text-label font-medium">Give {name}</p>
         {copy.quantity > 1 && <CountField max={copy.quantity} text={text} onChange={setText} />}
         {present.length === 0 ? (
-          <p role="status" className="text-meta text-muted-foreground">No entities are in the scene.</p>
+          <Meta as="p" role="status">No entities are in the scene.</Meta>
         ) : (
           <div role="list" aria-label="Give to">
             {present.map((entity) => (
@@ -206,8 +207,8 @@ export function InventoryTab({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
             <span className="truncate">{name}</span>
-            {state && <span className="shrink-0 text-meta text-muted-foreground">{state}</span>}
-            {copy.quantity > 1 && <span className="shrink-0 text-meta text-muted-foreground">×{copy.quantity}</span>}
+            {state && <Meta className="shrink-0">{state}</Meta>}
+            {copy.quantity > 1 && <Meta className="shrink-0">×{copy.quantity}</Meta>}
             {item?.bound && (
               <Tip tip="Bound: you can't drop or give it">
                 <span role="img" aria-label="Bound" className="shrink-0">
@@ -216,7 +217,7 @@ export function InventoryTab({
               </Tip>
             )}
           </p>
-          {line && <p className="text-meta text-muted-foreground">{line}</p>}
+          {line && <Meta as="p">{line}</Meta>}
         </div>
         {actions}
       </li>
@@ -240,8 +241,8 @@ export function InventoryTab({
                 return (
                   <li key={slot.id} className="flex gap-2 rounded-md bg-background/40 px-1 py-0.5" aria-label={slot.name}>
                     <div className="w-16 shrink-0 py-1.5 pl-1">
-                      <p className="truncate text-meta font-medium text-muted-foreground">{resolveText(slot.name)}</p>
-                      {capacity > 1 && <p className="text-meta text-muted-foreground">{used} of {capacity}</p>}
+                      <Meta as="p" className="truncate font-medium">{resolveText(slot.name)}</Meta>
+                      {capacity > 1 && <Meta as="p">{used} of {capacity}</Meta>}
                     </div>
                     {inSlot.length === 0 ? (
                       <p className="flex-1 py-1.5 text-label text-muted-foreground">Empty</p>
@@ -319,9 +320,9 @@ export function InventoryTab({
                 <li key={view.key} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-label">{view.itemName === null ? 'An item' : resolveText(view.itemName)}</p>
-                    <p className="text-meta text-muted-foreground">{resolveText(view.effect)}</p>
+                    <Meta as="p">{resolveText(view.effect)}</Meta>
                   </div>
-                  <span className="shrink-0 text-meta text-muted-foreground">{formatTimeLeft(view.hoursLeft)} left</span>
+                  <Meta className="shrink-0">{formatTimeLeft(view.hoursLeft)} left</Meta>
                 </li>
               ))}
             </ul>

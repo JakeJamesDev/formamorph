@@ -1,4 +1,5 @@
 import type { BackgroundPassKind } from '@/lib/backgroundPassQueue/backgroundPassQueue';
+import { REQUEST_LABELS } from '@/lib/promptGroups';
 import type { AIRequestType } from '@/types';
 
 /** The glyphs the status row can show. */
@@ -17,30 +18,30 @@ export type StatusGlyphKey =
 
 /** What the status row shows for one request. */
 export interface RequestStatus {
-  /** The request's short name, as "Generating {name}…" shows it. */
+  /** The name of the prompt that sends the request, as "Generating {name}…" shows it. */
   name: string;
   glyph: StatusGlyphKey;
 }
 
 /** A complete record, so a new request type fails typecheck until it gets a name and a glyph. */
 export const REQUEST_STATUS: Record<AIRequestType, RequestStatus> = {
-  thinking: { name: 'Plan', glyph: 'compass' },
-  director: { name: 'Cast', glyph: 'masks' },
-  character: { name: 'Motivation', glyph: 'masks' },
-  storyboard: { name: 'Storyboard', glyph: 'scroll' },
-  narration: { name: 'Narration', glyph: 'quill' },
-  choices: { name: 'Choices', glyph: 'split' },
-  statUpdates: { name: 'Stat Updates', glyph: 'chartColumnIncreasing' },
-  locationChange: { name: 'Location', glyph: 'mapPin' },
-  entityLocation: { name: 'Entity Location', glyph: 'mapPin' },
-  summary: { name: 'Memory', glyph: 'bookOpen' },
-  milestoneSelect: { name: 'Memory Select', glyph: 'bookOpen' },
-  diary: { name: 'Diary', glyph: 'bookOpen' },
-  discoverEntity: { name: 'Character', glyph: 'masks' },
-  timePassed: { name: 'Clock', glyph: 'hourglass' },
-  openingTime: { name: 'Opening', glyph: 'hourglass' },
-  sceneTags: { name: 'Scene Tags', glyph: 'sparkles' },
-  inventory: { name: 'Inventory', glyph: 'sparkles' },
+  thinking: { name: REQUEST_LABELS.thinking, glyph: 'compass' },
+  director: { name: REQUEST_LABELS.director, glyph: 'masks' },
+  character: { name: REQUEST_LABELS.character, glyph: 'masks' },
+  storyboard: { name: REQUEST_LABELS.storyboard, glyph: 'scroll' },
+  narration: { name: REQUEST_LABELS.narration, glyph: 'quill' },
+  choices: { name: REQUEST_LABELS.choices, glyph: 'split' },
+  statUpdates: { name: REQUEST_LABELS.statUpdates, glyph: 'chartColumnIncreasing' },
+  locationChange: { name: REQUEST_LABELS.locationChange, glyph: 'mapPin' },
+  entityLocation: { name: REQUEST_LABELS.entityLocation, glyph: 'mapPin' },
+  summary: { name: REQUEST_LABELS.summary, glyph: 'bookOpen' },
+  milestoneSelect: { name: REQUEST_LABELS.milestoneSelect, glyph: 'bookOpen' },
+  diary: { name: REQUEST_LABELS.diary, glyph: 'bookOpen' },
+  discoverEntity: { name: REQUEST_LABELS.discoverEntity, glyph: 'masks' },
+  timePassed: { name: REQUEST_LABELS.timePassed, glyph: 'hourglass' },
+  openingTime: { name: REQUEST_LABELS.openingTime, glyph: 'hourglass' },
+  sceneTags: { name: REQUEST_LABELS.sceneTags, glyph: 'sparkles' },
+  inventory: { name: REQUEST_LABELS.inventory, glyph: 'sparkles' },
   descriptionSummary: { name: 'Response', glyph: 'sparkles' },
   descriptionBridge: { name: 'Response', glyph: 'sparkles' },
   imageTags: { name: 'Response', glyph: 'sparkles' },

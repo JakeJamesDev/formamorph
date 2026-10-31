@@ -50,7 +50,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Others Opening](World-Editor-Openings#self-openings) | The usual opening, in which the story greets you. It never draws while you play its owner. |
 | [Self Opening](World-Editor-Openings#self-openings) | An opening written for playing as its owner. While you play that entity, its Self openings replace every other opening. |
 | [Default Opening](World-Editor-Openings#the-default-opening) | The opening the game uses when no other opening can draw |
-| [Character Customization](Avatars#character-customization) | The step after Enter World where you pick and shape your Avatar |
+| [Avatar Customization](Avatars#avatar-customization) | The step after Enter World where you pick and shape your Avatar |
 
 ## 🎭 Entities and Memory
 <!-- keywords: npc, character definition, recap, journal, summarization, made up character -->

@@ -56,6 +56,7 @@ import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONTINUE_CHOICE } from "@/lib/choices";
 import { Progress } from "@/components/ui/progress";
+import { Hint, Meta } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -292,7 +293,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
 
       <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <CollapsingTabsList
-          aria-label="Character"
+          aria-label="Story"
           value={leftTab}
           tabs={[
             ...(isMobile ? [{ value: 'model', icon: AvatarIcon, label: 'View' }] : []),
@@ -342,7 +343,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
             open={pendingRemoval !== null}
             onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
             title={`Remove ${pendingRemoval ?? ''}?`}
-            description="This character was invented by the story rather than authored. Removing them takes them out of the scene and stops them being brought back later. Authored characters are unaffected."
+            description="The story added this entity. Removing it takes it out of the scene, and the story won't bring it back."
             onConfirm={() => { if (pendingRemoval) removeDiscovered(pendingRemoval); }}
             onCancel={() => setPendingRemoval(null)}
           />
@@ -352,14 +353,14 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
           <div className="h-full p-2 flex flex-col">
             {!placesNotes && (
               <div className="mb-2 p-2 bg-warning/20 border border-warning rounded  text-label">
-                Warning: The current system prompt does not include the &lt;NOTES&gt; placeholder!
+                The <b>Narration</b> prompt has no <b>Notes</b> chip, so the AI doesn&apos;t read these notes. Add the chip in <b>Settings</b> to send them.
               </div>
             )}
             <textarea
               className="w-full flex-grow p-2 bg-background/80 border border-border rounded resize-none"
               value={playerNotes}
               onChange={(e) => setPlayerNotes(e.target.value)}
-              placeholder="Add notes here... These will be sent to the AI along with your actions."
+              placeholder="Write notes the AI reads each turn"
               style={{ height: "calc(100% - 8px)" }}
             />
           </div>
@@ -372,7 +373,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
             <div className="p-2">
               {/* Story events are timestamped in world time; app events (saves, load failures, aborted
                   requests) are not — a story date on the save dialog would be a claim, not a rounding.
-                  Entries from before the split carry no `kind` and read as story events, as they did. */}
+                  An entry with no `kind` reads as a story event. */}
               {logEntries.map((entry, index) => (
                 <p key={index} className={`mb-1${logKind(entry) === 'system' ? ' text-muted-foreground italic' : ''}`}>
                   {logKind(entry) === 'system' ? null : (
@@ -457,8 +458,8 @@ const ActionInput = ({
 
 // The prompt of Rewind to Here, in both layouts.
 const ROLLBACK_CONFIRM = {
-  title: "Confirm Rollback",
-  description: "Are you sure you want to rollback to the previous state? This action cannot be undone.",
+  title: "Rewind to Here?",
+  description: "The story goes back to this turn and deletes every later turn. Stats, your location, items and entities return to how they were at this turn. This can't be undone.",
 };
 
 /** A slash-command preview's choices: the list so far, and whether its scripted turn has ended. */
@@ -795,7 +796,7 @@ export const MiddlePanel = ({
   const commandPreviewHeader = (
     // Left-aligned: the narration options button holds the top-right corner.
     <div className="mb-2 flex shrink-0 items-center gap-1">
-      <span className="text-meta text-muted-foreground">{commandChoices ? 'Choices preview (/choices test)' : 'Markdown preview (/markdown test)'}</span>
+      <Meta>{commandChoices ? 'Choices preview (/choices test)' : 'Markdown preview (/markdown test)'}</Meta>
       <Tip tip="Dismiss preview">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
           <X className="h-5 w-5" />
@@ -849,9 +850,9 @@ export const MiddlePanel = ({
         {ttsGenerating && ttsProgress && (
           <div className="flex items-center gap-2 px-1 pb-1">
             <Progress value={(ttsProgress.done / ttsProgress.total) * 100} className="h-1.5 flex-1" />
-            <span className="text-meta text-muted-foreground whitespace-nowrap">
+            <Meta className="whitespace-nowrap">
               Narrating {Math.min(ttsProgress.done + 1, ttsProgress.total)}/{ttsProgress.total}
-            </span>
+            </Meta>
           </div>
         )}
         {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. The padding
@@ -863,7 +864,7 @@ export const MiddlePanel = ({
             <div className="flex items-center gap-2 shrink-0">
               <TtsPlaybackBar className="w-auto flex-grow" />
               {ttsLoaded && (
-                <Tip tip="Regenerate audio for current text">
+                <Tip tip="Regenerate the audio for this narration">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1141,7 +1142,7 @@ export const MiddlePanel = ({
                 value={playerInput}
                 setValue={setPlayerInput}
                 onKeyDown={handleKeyPress}
-                placeholder="Type your action... [square brackets] direct the story as the author"
+                placeholder="Type your action. Text in [square brackets] directs the story as the author."
                 disabled={disabled}
               />
               <HelpButton
@@ -1153,7 +1154,7 @@ export const MiddlePanel = ({
                       <Checkbox checked={choicesEnabled} onCheckedChange={(c: boolean | 'indeterminate') => setChoicesEnabled(c === true)} />
                       <span>
                         <span className="font-medium">Choices</span>
-                        <span className="ml-2 text-muted-foreground">offer ready-made actions after each turn</span>
+                        <Hint as="span" className="ml-2">Offers ready-made actions after each turn</Hint>
                       </span>
                     </label>
                   ),
@@ -1162,7 +1163,7 @@ export const MiddlePanel = ({
                       <Checkbox checked={memoryDigests} onCheckedChange={(c: boolean | 'indeterminate') => setMemoryDigests(c === true)} />
                       <span>
                         <span className="font-medium">Memory Summaries</span>
-                        <span className="ml-2 text-muted-foreground">carry older turns as memory notes</span>
+                        <Hint as="span" className="ml-2">Condenses older turns so long stories stay coherent</Hint>
                       </span>
                     </label>
                   ),
@@ -1286,7 +1287,7 @@ export const RightPanel = ({
     () => ({ traits, traitGroups, entities: traitEntities }),
     [traits, traitGroups, traitEntities],
   );
-  // A linked row's name reads its entity as the Character Name, from the original's authored text.
+  // A linked row's name reads its entity as the Entity Name, from the original's authored text.
   // Owner nodes follow In Scene; the player's and the library's stay. A stranger's node reads its label.
   const { inScene: sceneNow } = usePresence(isViewingPast ? currentPage : undefined);
   const traitTree = React.useMemo(() => {
@@ -1305,7 +1306,7 @@ export const RightPanel = ({
       resolveText,
     );
   }, [ownerWorld, personaRef, traitLibrary, sceneNow, codeEntities, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText]);
-  // An owner's trait card reads that owner as the Character Name, as the AI does.
+  // An owner's trait card reads that owner as the Entity Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
     (trait: Trait, text: string, ownerId: OwnerId) =>
       resolveTraitText(trait, text, ownerId === null ? null : traitTree.entityNodes.get(ownerId) ?? null),
@@ -1427,7 +1428,7 @@ export const RightPanel = ({
               values={language ? [language] : []}
               onChange={(vals) => setLanguage(vals[0] ?? '')}
               options={COMMON_LANGUAGES}
-              placeholder="Language or style…"
+              placeholder="Language or style"
             />
           </div>
         </div>

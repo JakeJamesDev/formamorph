@@ -18,6 +18,7 @@ import { gateOf, groupPickState, leavesShort, type GateStates, type GroupPickSta
 import { scopeKey, type OwnerId } from '@/lib/scope';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { textVariants } from '@/components/ui/typography';
 import { gateLineParts } from '@/lib/traitGateLine';
 import { GateLineText } from '@/components/game/GateLineText';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
@@ -266,7 +267,7 @@ export const TraitsTab = ({
       </div>
     ));
 
-  if (sections.length === 0) return <p>No traits acquired.</p>;
+  if (sections.length === 0) return <p>No traits to show.</p>;
 
   return (
     <div className="flex h-full flex-col">
@@ -274,7 +275,7 @@ export const TraitsTab = ({
         value={query}
         onChange={(next) => patch({ query: next })}
         aria-label="Filter traits"
-        placeholder="Filter traits…"
+        placeholder="Filter traits"
         size="sm"
         className="mb-2 flex-shrink-0"
         inputClassName="text-label"
@@ -284,7 +285,8 @@ export const TraitsTab = ({
           {active.length > 0 && (
             // The clipped list spelled out; the line already reads itself out in full to a screen reader.
             <Tip tip={active.join(', ')} labelsChild={false}>
-              <p className="truncate px-1 text-helper text-muted-foreground">
+              {/* A plain element: Tip hands its trigger ref to the child, and Hint doesn't forward refs. */}
+              <p className={cn(textVariants({ role: 'hint' }), 'truncate px-1')}>
                 <span className="font-medium text-foreground/70">{active.length} active:</span>{' '}
                 {active.join(', ')}
               </p>

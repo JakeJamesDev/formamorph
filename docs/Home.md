@@ -27,7 +27,7 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 | 🔌 **[Connect Your Own AI](Connect-Your-Own-AI)** | Moving from the Demo AI to a stronger model: Formamorph AI for supporters, a local server, a hosted API service, or the desktop app |
 | 📱 **[Install on Android](Install-on-Android)** | Getting the app on your Android device: the download, Android's prompts, and how the app updates itself |
 | 📚 **[Library](Library)** | The main menu's board: the four tabs, tile sizes, Groups, the card menu, and import and export of worlds, entities, dictionaries and avatars |
-| 🧍 **[Avatars](Avatars)** | The 3D models an entity can show: importing a VRM file, your default Avatar, Character Customization, the details and license, and how an Avatar differs from an entity's 3D model and your Profile Image |
+| 🧍 **[Avatars](Avatars)** | The 3D models an entity can show: importing a VRM file, your default Avatar, Avatar Customization, the details and license, and how an Avatar differs from an entity's 3D model and your Profile Image |
 | 🚪 **[Starting a Game](Starting-a-Game)** | Everything before page one: Enter World, Quick Start, starting traits, the starting location and Library Additions |
 | 🎮 **[How to Play](How-to-Play)** | Taking a turn: actions, choices, `[bracket]` direction, images, re-generate, edit, rewind, the side panels, your inventory and the game menu |
 | ❓ **[Formaquestion](Formaquestion)** | The help window in the app: the **Help** tab and F1, asking a question, asking about your world or your story, searching this guide, reading a page, moving the window, and changing its settings |

@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Hint } from "@/components/ui/typography";
 import type { Trait, TraitGroup, Stat } from "@/types";
 import { useBackStop } from "@/hooks/useBackStop";
 
@@ -231,7 +232,7 @@ const TraitSelectionModal = ({
 
         <ScrollArea className="flex-1 mb-4">
           {sectionTraits.length === 0 ? (
-            <p className="text-helper text-muted-foreground p-2">No traits in this section.</p>
+            <Hint className="p-2">No traits in this section.</Hint>
           ) : isExclusive ? (
             <RadioGroup value={exclusiveValue} onValueChange={onTraitSelect}>
               {traitRows}

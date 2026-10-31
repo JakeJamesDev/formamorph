@@ -11,7 +11,7 @@
     { "id": "library-b2", "page": "Library", "question": "how do I rearrange the cards on my main screen?", "section": "Library#how-to-move-a-tile", "otherSections": ["Library#the-board"] },
     { "id": "library-b3", "page": "Library", "question": "how do I send one of my characters to a friend as a file?", "section": "Library#how-to-export-an-entity-or-a-dictionary", "otherSections": ["Library#the-library-editors"] },
     { "id": "avatars-b1", "page": "Avatars", "question": "how do I know if I'm allowed to share a 3D body I downloaded?", "section": "Avatars#how-to-check-an-avatars-license", "otherSections": ["Avatars#the-permissive-license", "Avatars#the-avatar-details-dialog"] },
-    { "id": "avatars-b2", "page": "Avatars", "question": "how do I change what my 3D body looks like?", "section": "Avatars#how-to-customize-your-avatar", "otherSections": ["Avatars#character-customization"] },
+    { "id": "avatars-b2", "page": "Avatars", "question": "how do I change what my 3D body looks like?", "section": "Avatars#how-to-customize-your-avatar", "otherSections": ["Avatars#avatar-customization"] },
     { "id": "starting-b1", "page": "Starting-a-Game", "question": "I skipped the opening text too fast, can I see it again?", "section": "Starting-a-Game#how-to-read-the-introduction-again" },
     { "id": "starting-b2", "page": "Starting-a-Game", "question": "how do I choose where on the map my story begins?", "section": "Starting-a-Game#how-to-pick-a-starting-location", "otherSections": ["Starting-a-Game#starting-location"] },
     { "id": "play-b1", "page": "How-to-Play", "question": "the AI wrote a reply I don't like, can I get a different one?", "section": "How-to-Play#how-to-re-generate-a-turn", "otherSections": ["How-to-Play#turn-actions"] },

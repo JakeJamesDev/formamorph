@@ -82,7 +82,7 @@ function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabe
           )}
         </div>
         <div className="text-meta opacity-70">
-          {formatSaveTimestamp(row.timestamp)} - Game Time: {formatGameTime(row.gameTime)}
+          {formatSaveTimestamp(row.timestamp)} · Game time {formatGameTime(row.gameTime)}
         </div>
       </div>
       <Tip tip="Export save">
