@@ -1,7 +1,7 @@
 # Spec: Scene Presence and Strangers
 
 Status: done
-Status note: Closed on 2026-10-31. Tickets 01–09 and 11–14 are done, and 10 is wontfix. The last landing is f27bff9bb. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1, 9b6e60f93 and 425dfe87b. Closed with gaps: ticket 15 (labels in prompt previews) is open. Gates green on 2026-10-31.
+Status note: Closed on 2026-10-31. Tickets 01–09 and 11–15 are done, and 10 is wontfix. The last landing is f1c1218fb, and its preview-matches-play test landed in 240ef0518. Review: spec text corrected, and fixes landed in 268e1a00e, af9e382d1, 9b6e60f93 and 425dfe87b. Gates green on 2026-10-31.
 Spec session: scene-presence — spec
 
 ## Problem Statement
