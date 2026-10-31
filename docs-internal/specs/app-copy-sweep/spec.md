@@ -64,6 +64,10 @@ Spec-session answers to ticket intent questions.
 | R17 | A dictionary entry activates; it never "fires". Use the Writing Guide's match, activate and inject in the Triggers UI and Test Bench findings. Other trigger kinds take their own defined verb (a trait switches, a script runs) |
 | R18 | Sample world text a tour suggests is world text and keeps its own voice. Only the tour's instructions are swept |
 | R19 | A control named in a plain-text slot (Test Bench findings, row descriptions) takes curly quotation marks |
+| R20 | The left game panel is "Story": the mobile switcher reads "Story · Game · Status". User ruling |
+| R21 | The avatar creator says Avatar: Avatar Customization, Avatar Preview, Finalize Avatar, Animate Avatar. Every quote follows (R14): wiki pages, Glossary, surface label, Formaquestion targets, tests. User ruling |
+| R22 | A game status row shows its prompt's visible name from the prompt labels. Pipeline words ("Cast") never show |
+| R23 | Dead UI (a dialog no code path opens) stays unchanged and goes under Findings |
 
 ## Screen groups
 
