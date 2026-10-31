@@ -3,7 +3,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a player presses **Start Game**, the game draws one opening from the pool.
+**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a game starts, after **Start Game** (or **Continue to Avatar** and the Avatar step), the game draws one opening from the pool.
 
 Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text lands:
 
@@ -51,7 +51,7 @@ See [Self Openings](#self-openings) for when a Self opening draws.
 
 | Setting | What it does |
 |---|---|
-| Weight (the number box) | How often the opening comes up, compared with the others. A missing weight counts as 1. |
+| Weight (the number box) | How often the opening comes up, compared with the others. A missing weight counts as 1. The box takes whole numbers from 0: a decimal rounds, and a negative or blank value becomes 0. |
 | Chance (the percentage beside it) | The share of draws this opening gets, calculated from all the weights. You don't set it. |
 | Weight 0 | Keeps the opening in the list and never draws it. Use it to keep a draft. |
 
@@ -60,7 +60,7 @@ Drag a row by its handle to change its place in the list. Order doesn't change t
 ## Collapse the Cards
 <!-- keywords: fold, minimize, shrink rows, hide long text, expand all, too much scrolling, compact list -->
 
-Each opening is a card. A card collapses to one line: the handle, "Opening N", the first line of its text, the switches, the weight, the chance and delete. Every control works while the card is collapsed, so you can drag and tune weights without scrolling past the text.
+Each opening is a card. A card collapses to one line: the handle, "Opening N", the first line of its text, the switches, the weight, the chance and **Remove opening**. Every control works while the card is collapsed, so you can drag and tune weights without scrolling past the text.
 
 | Rule | Effect |
 |---|---|
@@ -128,6 +128,8 @@ A world with one starting location has no filter. The panel shows chances as at 
 
 An entity at no starting location shows a **No Starting Location** badge. A location that isn't a starting location shows it too. Their openings never come up.
 
+With no location marked **Starting Location**, every location counts as one. In a world with no locations, only the world's own openings draw, and every entity group with Others openings shows the badge.
+
 ## Location Openings
 <!-- keywords: start per place, room specific intro, area greeting, different per spawn, place based beginning, parent not inherited -->
 <!-- route: worldEditorLocation.openings -->
@@ -143,14 +145,19 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 ## Re-generate on page one
 <!-- keywords: reroll, different start, another beginning, retry first page, cycle greetings, same page again -->
 
-**Re-generate** on page one draws again. The game picks an opening it hasn't shown yet in this session. When every opening has been shown, the draw starts over. A world with one opening keeps the same page.
+**Re-generate Narration** on page one draws again. The game picks an opening it hasn't shown yet in this session. When every opening has been shown, the draw starts over.
+
+- An Opening Narration replaces page one. When the draw comes back with the same page, it stays.
+- An Opening Action clears page one and fills the input box again, with your own edit when the same opening comes back. Send it to start the game.
+
+To check the draw before you play, use the **Opening** tab of the [Test Bench](Test-Bench#how-to-preview-the-opening).
 
 ## Chips, search and older worlds
 <!-- keywords: variables in intro, my name in intro, legacy world, ai asks what next, ai offers options, pre-filled action, random details per run -->
 
-- **Placeholder chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time.
+- **[Placeholder](World-Editor-Placeholders) chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time. A **Character Name** chip in an entity's opening names that entity.
 - **The Persona Name chip works in openings.** Type `{` and pick **Persona Name**. Page one then says the [persona](Persona-Authoring#the-persona-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
-- **Search and replace reaches every opening**, on the world and on each entity.
+- **Search and replace reaches every opening**, on the world, each location and each entity.
 - **A world saved with one pre-filled opening** loads with it as an Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
 - **A world saved before openings existed** has none, so the box reads unchecked and the world plays the default opening. Nothing is stored and nothing is lost.
 
@@ -200,7 +207,7 @@ The game looks for Self openings in this order. The first source that has one wi
 - **The world switch covers Self openings.** Off means the default opening.
 - **A world persona with no Self openings starts on the normal pool.** Its Others openings still stay out.
 - **A library persona with no Self openings uses the Custom Persona's Self openings.** With none there, it starts on the normal pool.
-- **A Persona-Only entity's Self openings draw when the player picks it.** Its Others openings never draw.
+- **A Persona-Only entity's Self openings draw when the player picks it.** Its Others openings never draw, and neither do the **Custom Persona** entity's.
 - **Setting it back to Cast keeps the text.** An entity set back to **Cast** keeps its Self openings in the file. The editor hides them until you set it to a persona choice again.
 
 In the panel, Self openings stay in their owner's group with a **Self** badge.
