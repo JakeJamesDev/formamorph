@@ -138,7 +138,7 @@ export function ServerSettingsTab({ active }: { active: boolean }) {
 
   return (
     <div className="py-4 min-w-0 grid gap-8">
-      <Section title="Server Settings" hint="Applies to everyone at once, with no deploy and no confirmation">
+      <Section title="Server Settings" hint="Changes apply to everyone at once, with no confirmation">
         {SETTINGS.filter((setting) => !setting.needsReview || review.supported).map((setting) => (
           <SettingRow key={setting.key} setting={setting} active={active} />
         ))}

@@ -146,7 +146,7 @@ describe('the thread', () => {
 
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
-    expect(await screen.findByText(/could not be loaded/)).toBeTruthy();
+    expect(await screen.findByText(/didn’t load/)).toBeTruthy();
   });
 });
 
@@ -203,7 +203,7 @@ describe('reading somebody else’s report', () => {
 
     expect(screen.queryByLabelText('Reply')).toBeNull();
     expect(screen.queryByRole('button', { name: /Send Reply/ })).toBeNull();
-    expect(screen.getByText(/Replies are between the reporter and the team/)).toBeTruthy();
+    expect(screen.getByText(/Only the reporter and staff can reply to a bug/)).toBeTruthy();
   });
 
   it('still shows the report and its thread', async () => {
@@ -390,7 +390,7 @@ describe('changing your own comment', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete comment' })[0]);
 
     expect(remove).not.toHaveBeenCalled();
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith('b1', 'c1'));
     await waitFor(() => expect(screen.queryByText('Which version?')).toBeNull());
@@ -405,7 +405,7 @@ describe('changing your own comment', () => {
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByText('Which version?');
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(screen.getByText('Which version?')).toBeTruthy());
   });
@@ -456,8 +456,8 @@ describe('triage controls', () => {
     await screen.findByText('Save button does nothing');
     fireEvent.click(screen.getByLabelText('Delete thread'));
 
-    expect(await screen.findByText(/whole thread go for good/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(await screen.findByText(/the thread and all its replies/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith('b1'));
     expect(onDeleted).toHaveBeenCalled();
@@ -472,7 +472,7 @@ describe('triage controls', () => {
     fireEvent.click(screen.getByLabelText('Delete thread'));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
 
-    await waitFor(() => expect(screen.queryByText(/whole thread go for good/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/the thread and all its replies/)).toBeNull());
     expect(remove).not.toHaveBeenCalled();
   });
 });
@@ -691,7 +691,7 @@ describe('an accepted answer', () => {
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByTestId('accepted-answer');
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete comment' })[0]);
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(screen.queryByTestId('accepted-answer')).toBeNull());
     expect(fetchThread).toHaveBeenCalledTimes(2);
@@ -705,7 +705,7 @@ describe('an accepted answer', () => {
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByTestId('accepted-answer');
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(screen.queryByText('Thanks, that worked.')).toBeNull());
     expect(fetchThread).toHaveBeenCalledTimes(1);
@@ -743,7 +743,7 @@ describe('an accepted answer', () => {
 
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} isAdmin />);
     await screen.findByTestId('accepted-answer');
-    fireEvent.click(screen.getByLabelText('Edit this report'));
+    fireEvent.click(screen.getByLabelText('Edit this thread'));
     fireEvent.keyDown(await screen.findByLabelText('Kind'), { key: 'Enter' });
     const option = (await screen.findAllByRole('option')).find((item) => item.textContent === 'Suggestion') as HTMLElement;
     fireEvent.pointerDown(option, { pointerType: 'mouse' });
@@ -768,7 +768,7 @@ describe('a locked thread', () => {
     await screen.findByText('Save button does nothing');
 
     expect(screen.queryByLabelText('Reply')).toBeNull();
-    expect(screen.getByText(/has been locked/)).toBeTruthy();
+    expect(screen.getByText(/This thread is locked/)).toBeTruthy();
   });
 
   it('leaves an admin able to reply', async () => {
@@ -845,6 +845,18 @@ describe('the lock control', () => {
     expect(await screen.findByLabelText('Unlock thread')).toBeTruthy();
   });
 
+  it('names the unlock when an unlock fails', async () => {
+    signedInAs('some-admin');
+    stubThread({ thread: report({ locked: true }) });
+    vi.spyOn(FeedbackService, 'setLocked').mockRejectedValue(new Error('offline'));
+    const notify = vi.fn();
+
+    render(<FeedbackThreadView notify={notify} threadId="b1" onBack={() => {}} isAdmin showTriage />);
+    fireEvent.click(await screen.findByLabelText('Unlock thread'));
+
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Failed to unlock the thread', 'error', expect.anything()));
+  });
+
   it('offers the statuses of the branch it is on', async () => {
     // A suggestion cannot be 'confirmed' and a bug cannot be 'planned'; the server refuses either.
     signedInAs('some-admin');
@@ -866,7 +878,7 @@ describe('editing the report itself', () => {
 
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
-    expect(await screen.findByLabelText('Edit this report')).toBeTruthy();
+    expect(await screen.findByLabelText('Edit this thread')).toBeTruthy();
   });
 
   it('offers nothing to a passing reader', async () => {
@@ -878,7 +890,7 @@ describe('editing the report itself', () => {
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
-    expect(screen.queryByLabelText('Edit this report')).toBeNull();
+    expect(screen.queryByLabelText('Edit this thread')).toBeNull();
   });
 
   it('offers it to the team on a bug', async () => {
@@ -888,7 +900,7 @@ describe('editing the report itself', () => {
 
     render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
 
-    expect(await screen.findByLabelText('Edit this report')).toBeTruthy();
+    expect(await screen.findByLabelText('Edit this thread')).toBeTruthy();
   });
 
   it('says when a report has been rewritten', async () => {

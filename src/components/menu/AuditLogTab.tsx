@@ -4,6 +4,7 @@ import { ExternalLink, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Hint, Meta } from "@/components/ui/typography";
 import { RoleBadge } from "@/components/RoleBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -76,9 +77,9 @@ export function AuditLogTab({ active, onOpenListing }: AuditLogTabProps) {
   return (
     <div className="py-4 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <p className="text-helper text-muted-foreground">
-          What was done to accounts and to published work. Entries are kept for good and cannot be edited.
-        </p>
+        <Hint>
+          Lists every action on accounts and published work, newest first. Entries can’t be edited or deleted.
+        </Hint>
 
         <div className="flex shrink-0 items-center gap-2">
           <form
@@ -120,9 +121,9 @@ export function AuditLogTab({ active, onOpenListing }: AuditLogTabProps) {
           aria-busy={isLoading}
         >
           {entries.length === 0 ? (
-            <p className="py-8 text-center text-helper text-muted-foreground">
+            <Meta as="p" className="py-8 text-center">
               {search || action !== ANY_ACTION ? 'Nothing matches this filter.' : 'Nothing has been recorded yet.'}
-            </p>
+            </Meta>
           ) : (
             entries.map((entry) => (
               <div key={entry.id} className="rounded-md border p-3 min-w-0">
@@ -151,7 +152,7 @@ export function AuditLogTab({ active, onOpenListing }: AuditLogTabProps) {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-meta text-muted-foreground">{formatAuditDate(entry.createdAt)}</p>
+                  <Meta as="p">{formatAuditDate(entry.createdAt)}</Meta>
                   {onOpenListing && auditListingId(entry) && (
                     <Button
                       variant="ghost"
@@ -167,9 +168,9 @@ export function AuditLogTab({ active, onOpenListing }: AuditLogTabProps) {
                 {/* What was removed, as far as it was kept. Quoted so it reads as somebody's words rather
                     than as the log's own. */}
                 {entry.snippet && (
-                  <p className="mt-1 border-l-2 pl-2 text-meta text-muted-foreground italic break-words">
+                  <Meta as="p" className="mt-1 border-l-2 pl-2 italic break-words">
                     {entry.snippet}
-                  </p>
+                  </Meta>
                 )}
               </div>
             ))

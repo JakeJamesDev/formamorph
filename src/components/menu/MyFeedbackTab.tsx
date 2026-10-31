@@ -19,7 +19,7 @@ interface MyFeedbackTabProps {
   active: boolean;
   /** Which branch this tab is for. */
   type: FeedbackType;
-  /** Called after anything that changes the unread count, so the profile badge can be re-read. */
+  /** Called after anything that changes the unread count, so the Feedback button's badge can be re-read. */
   onChanged?: () => void;
   /** Reports each result to the reader. */
   notify: FeedbackNotify;
@@ -59,7 +59,7 @@ const COPY: Record<FeedbackType, {
 };
 
 /**
- * Profile → Bugs / Suggestions / Questions. One branch of the tree from the reader's side: their own threads, or
+ * Feedback → Bugs / Suggestions / Questions. One branch of the tree from the reader's side: their own threads, or
  * everyone's. No triage controls either way — moving something through triage is the team's call, even
  * when the reader happens to be on the team.
  */

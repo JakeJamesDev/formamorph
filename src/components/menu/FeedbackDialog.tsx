@@ -17,7 +17,7 @@ import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { useMountedRef } from "@/lib/useMountedRef";
-import { FieldError } from "@/components/ui/typography";
+import { FieldError, Meta } from "@/components/ui/typography";
 import {
   clearFeedbackDraft, FEEDBACK_BODY_MAX, FEEDBACK_TITLE_MAX, hasDraftContent,
   loadFeedbackDraft, saveFeedbackDraft,
@@ -39,7 +39,7 @@ import type { BugDiagnostics, FeedbackCategory, FeedbackThread, FeedbackType } f
 /** What each branch asks for, in its own words. */
 const COPY: Record<FeedbackType, {
   description: string;
-  /** Appended where a profile tab lists the reader's threads. */
+  /** Appended where the Feedback window lists the reader's threads. */
   profileNote: string;
   titlePlaceholder: string;
   bodyLabel: string;
@@ -49,34 +49,34 @@ const COPY: Record<FeedbackType, {
   sentProfileNote: string;
 }> = {
   bug: {
-    description: 'Filed against your account, so we can ask follow-up questions.',
-    profileNote: ' You’ll find replies under Bugs in your profile.',
+    description: 'Filed under your account, so staff can ask you follow-up questions.',
+    profileNote: ' Replies show on the “Bugs” tab in Feedback.',
     titlePlaceholder: 'What went wrong, in a line',
     bodyLabel: 'What Happened',
     bodyPlaceholder: 'What you did, what you expected, what happened instead',
     submit: 'Send Report',
     sent: 'Report filed',
-    sentProfileNote: ' — you can follow it under Bugs in your profile',
+    sentProfileNote: '. Follow it on the “Bugs” tab in Feedback.',
   },
   suggestion: {
-    description: 'Everyone can read and vote on suggestions, so it’s worth checking whether yours is already there.',
-    profileNote: ' Replies land under Suggestions in your profile.',
+    description: 'Everyone can read and vote on suggestions. Check whether yours is already there.',
+    profileNote: ' Replies show on the “Suggestions” tab in Feedback.',
     titlePlaceholder: 'What you’d like, in a line',
     bodyLabel: 'What You Have in Mind',
     bodyPlaceholder: 'What it would do, and what it would let you do that you can’t today',
     submit: 'Send Suggestion',
     sent: 'Suggestion filed',
-    sentProfileNote: ' — you can follow it under Suggestions in your profile',
+    sentProfileNote: '. Follow it on the “Suggestions” tab in Feedback.',
   },
   question: {
     description: 'Everyone can read, answer and vote on questions. Similar questions show as you type a title.',
-    profileNote: ' You can follow replies under Questions in your profile.',
+    profileNote: ' Replies show on the “Questions” tab in Feedback.',
     titlePlaceholder: 'What you want to know, in a line',
     bodyLabel: 'What You Tried',
     bodyPlaceholder: 'Where you got stuck, and what you tried already',
     submit: 'Post Question',
     sent: 'Question posted',
-    sentProfileNote: ' — you can follow it under Questions in your profile',
+    sentProfileNote: '. Follow it on the “Questions” tab in Feedback.',
   },
 };
 
@@ -130,8 +130,8 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics: BugDiagnostics }) {
 }
 
 /**
- * File a bug report, a suggestion or a question. Opened from the menu footer, from in-game, and from either feedback
- * tab in the profile dialog.
+ * File a bug report, a suggestion or a question. Opened from the Feedback window's tabs, from in-game, and from
+ * the app's feedback host.
  *
  * One dialog with a tab rather than two: the forms differ by a dropdown's contents and whether anything
  * about the machine goes with it, which is not two dialogs' worth of difference.
@@ -253,7 +253,7 @@ export function FeedbackDialog({
       onFiled?.(filed);
       onOpenChange(false);
     } catch (error) {
-      const failure = 'Failed to send this';
+      const failure = 'Failed to send';
       // Inline surfaces say it once, in the form; a 401 goes to `notify` alone, which owns the session.
       const unauthorized = error instanceof DetailedError && error.status === 401;
       const inline = capabilities.inlineNotes && !unauthorized;
@@ -301,9 +301,9 @@ export function FeedbackDialog({
           {/* Hidden, not unmounted, under an open thread: Back returns to the same draft and caret. */}
           <div className="space-y-4" hidden={openThreadId !== null}>
             {restored && (
-              <p className="rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground">
-                Picked up where you left off — this was still unsent. Discard it below to start fresh.
-              </p>
+              <Meta as="p" className="rounded-md border bg-muted/40 px-3 py-2">
+                This is your unsent draft. Select <strong>Discard Draft</strong> to start over.
+              </Meta>
             )}
 
             <Tabs value={type} onValueChange={(value) => switchType(value as FeedbackType)}>
@@ -358,7 +358,7 @@ export function FeedbackDialog({
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <span className="text-label font-medium">{copy.bodyLabel}</span>
-                <span className="text-meta text-muted-foreground">{body.length} / {FEEDBACK_BODY_MAX}</span>
+                <Meta>{body.length} / {FEEDBACK_BODY_MAX}</Meta>
               </div>
               <PromptField
                 value={body}
@@ -378,13 +378,13 @@ export function FeedbackDialog({
                 on, so there is nothing to disclose because nothing is collected. */}
             {type === 'bug' && <DiagnosticsPanel diagnostics={diagnostics} />}
 
-            {sendError && <p role="alert" className="text-label text-destructive">{sendError}</p>}
+            {sendError && <FieldError role="alert">{sendError}</FieldError>}
 
             {!fileTypes.includes('bug') && (
-              <p className="text-meta text-muted-foreground">
+              <Meta as="p">
                 To report a bug, <a href="/play/" className="underline underline-offset-2 hover:text-foreground">open the app</a>.
                 Bug reports include details about your device.
-              </p>
+              </Meta>
             )}
           </div>
         </ScrollArea>

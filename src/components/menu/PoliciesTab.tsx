@@ -8,6 +8,7 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Hint, Meta } from "@/components/ui/typography";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
@@ -65,7 +66,7 @@ function PolicyEditor({
     <section className="space-y-3 border rounded-md p-4 min-w-0">
       <div>
         <h3 className="font-medium">{heading}</h3>
-        <p className="text-meta text-muted-foreground">{description}</p>
+        <Hint>{description}</Hint>
       </div>
 
       <label className="flex items-start gap-2 text-label">
@@ -76,9 +77,9 @@ function PolicyEditor({
         />
         <span>
           Enabled
-          <span className="block text-meta text-muted-foreground">
-            Off keeps the wording saved without showing it to anyone.
-          </span>
+          <Hint as="span" className="block">
+            Shows this popup to players. Your text stays saved either way.
+          </Hint>
         </span>
       </label>
 
@@ -96,7 +97,7 @@ function PolicyEditor({
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
           <span className="text-label font-medium">Body</span>
-          <span className="text-meta text-muted-foreground">{draft.body.length} / {bodyMax}</span>
+          <Meta>{draft.body.length} / {bodyMax}</Meta>
         </div>
         {/* Readers see this rendered, so it is authored the same way the world editor's prose is. */}
         <PromptField
@@ -123,12 +124,12 @@ function PolicyEditor({
             reorderable
             editable
             ariaLabel="Tags"
-            placeholder="Add tags..."
+            placeholder="Add a tag"
           />
-          <p className="text-meta text-muted-foreground">
-            Matched whole and ignoring case, so <code>mature</code> catches
-            {' '}<code>Mature</code> but not <code>mature themes</code> — list each wording you mean.
-          </p>
+          <Hint>
+            Matches whole tags in any case: <code>mature</code> matches <code>Mature</code> but
+            not <code>mature themes</code>. Add each wording you mean.
+          </Hint>
         </div>
       )}
 
@@ -141,9 +142,9 @@ function PolicyEditor({
           />
           <span>
             Require everyone to accept again
-            <span className="block text-meta text-muted-foreground">
-              For a real change to the terms. A typo fix should leave this off.
-            </span>
+            <Hint as="span" className="block">
+              Use it when the meaning changes. Leave it off for a typo fix.
+            </Hint>
           </span>
         </label>
       )}
@@ -155,9 +156,8 @@ function PolicyEditor({
   );
 }
 
-/** Admin Panel → Policies. Authors the two popups shown while publishing, and resets the gate. Each
- *  popup gets its own sub-tab: they share nothing but the surface, and side by side each was a long
- *  scroll away from the other. */
+/** Admin Panel → Policies. Authors the three policy popups, and resets the Upload Gate. Each popup gets
+ *  its own sub-tab: they share nothing but the surface. */
 export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabProps) {
   // Radix unmounts an inactive tab panel, so this remounts on every visit — no reset-on-open needed.
   const [tab, setTab] = useState<PoliciesSubTab>(initialTab);
@@ -253,7 +253,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
         <TabsContent value="uploadGate" className="space-y-4 pt-4">
           <PolicyEditor
             heading="Upload Gate"
-            description="Shown the first time someone publishes anything. Declining blocks publishing until they accept."
+            description="Shows when an account publishes for the first time. Declining blocks publishing until they accept."
             draft={gate}
             onChange={setGate}
             onSave={() => save('upload_gate', gate)}
@@ -264,9 +264,9 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
 
           {/* Only the gate is ever accepted, so its reset belongs with it rather than above both. */}
           <div className="flex items-center justify-between gap-4 border rounded-md p-4">
-            <p className="text-helper text-muted-foreground">
-              Ask every account to accept the gate again. Reset one person from the Users tab instead.
-            </p>
+            <Hint>
+              Asks every account to accept the Upload Gate again. To reset one account, use the <strong>Users</strong> tab.
+            </Hint>
             <Button
               variant="outline"
               size="sm"
@@ -282,7 +282,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
         <TabsContent value="tagNotice" className="pt-4">
           <PolicyEditor
             heading="Tag Notice"
-            description="Shown whenever a publish carries one of its tags. Advisory — it never blocks the upload."
+            description="Shows when a publish has one of these tags. It never blocks publishing."
             draft={notice}
             onChange={setNotice}
             onSave={() => save('tag_notice', notice)}
@@ -294,7 +294,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
         <TabsContent value="privacyPolicy" className="pt-4">
           <PolicyEditor
             heading="Privacy Policy"
-            description="Shown at signup and once at the next sign-in. While it is enabled the server refuses every signed-in action from an account that has not accepted it."
+            description="Shows at sign-up, and once at the next sign-in for existing accounts. While it’s enabled, an account that hasn’t accepted it can’t do anything that needs a sign-in."
             draft={privacy}
             onChange={setPrivacy}
             onSave={() => save('privacy_policy', privacy)}
@@ -312,7 +312,8 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
         open={confirmResetAll}
         onOpenChange={(open) => { if (!open) setConfirmResetAll(false); }}
         title="Ask everyone to accept again?"
-        description="Every account will have to accept the upload gate before publishing anything, including updates to work they already published."
+        description="Every account must accept the Upload Gate again before they publish anything, including updates to what they already published."
+        confirmLabel="Reset Everyone"
         onConfirm={() => { resetEveryone(); setConfirmResetAll(false); }}
         onCancel={() => setConfirmResetAll(false)}
       />

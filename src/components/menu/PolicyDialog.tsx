@@ -30,7 +30,8 @@ interface PolicyDialogProps {
 }
 
 /**
- * An authored popup shown during publishing: the blocking upload gate, or the advisory tag notice.
+ * An authored policy popup: the blocking upload gate or the advisory tag notice during publishing, or
+ * the Privacy Policy prompt at sign-up and sign-in.
  *
  * Deliberately not dismissible by Esc or by clicking away — both buttons are meaningful answers, and a
  * stray click should not read as either one.

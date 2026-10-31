@@ -138,7 +138,7 @@ describe('what an administrator may do', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
 
-    expect(await screen.findByText(/Entries go back to being ordinary listings/)).toBeTruthy();
+    expect(await screen.findByText(/Entries become ordinary listings again/)).toBeTruthy();
     expect(cancel).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel Event' }));

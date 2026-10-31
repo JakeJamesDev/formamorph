@@ -5,6 +5,7 @@ import { Flag, FileWarning, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Hint, Meta } from "@/components/ui/typography";
 import { UserName } from "@/components/UserName";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { canModerate } from "@/lib/roles";
@@ -110,8 +111,8 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
       setNoteFor(null);
       setNote('');
       toast.success(result.notified === 1
-        ? 'Resolved — the reporter has been told.'
-        : `Resolved — ${result.notified} reporters have been told.`);
+        ? 'Resolved. The reporter gets a message.'
+        : `Resolved. ${result.notified} reporters get a message.`);
       onResolved?.();
     } catch (error) {
       toastError(error, 'Failed to resolve these reports');
@@ -153,13 +154,13 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
             <div className="flex items-start justify-between gap-2 min-w-0">
               <div className="min-w-0">
                 <h3 className="text-label font-semibold truncate">{reportTargetTitle(group)}</h3>
-                <p className="text-meta text-muted-foreground">
+                <Meta as="p">
                   by <UserName userId={group.target_author_id} username={group.target_author_username} />
                   {' · '}
                   {group.report_count === 1 ? '1 report' : `${group.report_count} reports`}
                   {' · '}
                   last {formatServerDateTime(group.last_reported_at)}
-                </p>
+                </Meta>
               </div>
 
               {view && !group.target_gone && (
@@ -174,7 +175,7 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
             {group.target_gone && (
               <p className="flex items-center gap-1.5 text-meta text-warning">
                 <FileWarning className="h-3.5 w-3.5 shrink-0" />
-                Removed by its author — judge from the snapshot below.
+                Its author deleted it. Use the snapshot below to decide.
               </p>
             )}
 
@@ -187,9 +188,9 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
             </div>
 
             {group.target_snippet && (
-              <p className="rounded bg-muted/50 p-2 text-meta text-muted-foreground line-clamp-3">
+              <Meta as="p" className="rounded bg-muted/50 p-2 line-clamp-3">
                 {group.target_snippet}
-              </p>
+              </Meta>
             )}
 
             {/* What each reporter wrote, when they wrote anything. The names stay inside this panel and
@@ -212,13 +213,11 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
                     <Textarea
                       value={note}
                       onChange={(e) => setNote(e.target.value.slice(0, REPORT_NOTE_MAX))}
-                      placeholder="A line for the reporters (optional)"
+                      placeholder="Add a line for the reporters"
                       aria-label="Note to the reporters"
                       className="h-20"
                     />
-                    <p className="text-meta text-muted-foreground">
-                      They are told the outcome, never which action was taken.
-                    </p>
+                    <Hint>Optional. Reporters see the outcome, never the action you took.</Hint>
                   </div>
                 )}
 
@@ -252,9 +251,7 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
                 </div>
               </div>
             ) : (
-              <p className="text-meta text-muted-foreground">
-                Reported content by another staff member — an admin closes this one.
-              </p>
+              <Meta as="p">This content is by a staff member you can’t moderate.</Meta>
             )}
           </div>
         );

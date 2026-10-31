@@ -11,6 +11,7 @@ import { formatServerDateTime } from "@/lib/serverDate";
 import UserService from "@/services/UserService";
 import type { FeedItem, FollowedUser } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 
 interface NotificationsTabProps {
   /** Whether the tab is visible; opening it is what reads the feed, which marks it read. */
@@ -96,9 +97,9 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
         {showFollowing && (
           <div className="border-t p-2 space-y-1">
             {following.length === 0 ? (
-              <p className="px-1 py-2 text-helper text-muted-foreground">
-                You don&apos;t follow anyone yet. Click a name in Community Creations to see their profile.
-              </p>
+              <Meta as="p" className="px-1 py-2">
+                You don&apos;t follow anyone yet. Select a name in Community Creations, then select <strong>Follow</strong>.
+              </Meta>
             ) : following.map((user) => (
               <div key={user.id} className="flex items-center gap-2 rounded-md px-1 py-1 min-w-0">
                 <UserAvatar username={user.username} avatarUrl={user.avatarUrl} supporter={user.supporter} size="sm" />
@@ -129,11 +130,11 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
           <Skeleton className="h-14 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <p className="py-6 text-center text-helper text-muted-foreground">
+        <Meta as="p" className="py-6 text-center">
           {following.length === 0
-            ? 'Follow someone and their new work will show up here.'
+            ? 'New work from the accounts you follow shows here.'
             : 'Nothing new from anyone you follow.'}
-        </p>
+        </Meta>
       ) : (
         <ul className="space-y-2">
           {items.map((item) => (
@@ -156,7 +157,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
                     <span className="font-medium">&ldquo;{item.name}&rdquo;</span>
                   )}
                 </p>
-                <p className="text-meta text-muted-foreground">{formatServerDateTime(item.at)}</p>
+                <Meta as="p">{formatServerDateTime(item.at)}</Meta>
               </div>
             </li>
           ))}

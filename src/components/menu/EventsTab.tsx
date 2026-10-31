@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Hint, Meta } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 import { EventFormDialog } from "@/components/menu/EventFormDialog";
 import { PodiumDialog } from "@/components/menu/PodiumDialog";
@@ -106,7 +107,7 @@ export function EventsTab({ active }: EventsTabProps) {
   const devRoleView = devFixture ? devRoute?.subtab : undefined;
   const viewerIsAdmin = devRoleView ? devRoleView === 'admin' : isAdmin(AuthService.getCurrentUser());
 
-  // Every mutation lands here, so the app-wide events poll is nudged alongside the tab's own list —
+  // Every change calls this, so the app-wide events poll is nudged alongside the tab's own list —
   // an extended deadline reopens the publish flow's contest card now, not at the next poll. The shared
   // events cache is dropped for the same reason: a podium just announced has to reach the archive and its
   // badges in this session, not the player's next launch.
@@ -252,11 +253,11 @@ export function EventsTab({ active }: EventsTabProps) {
   return (
     <div className="py-4 min-w-0">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-helper text-muted-foreground">
+        <Hint>
           {viewerIsAdmin
-            ? 'Timed events shown to every player. Starting one posts its pinned announcement automatically.'
-            : 'Timed events shown to every player. Scheduling, editing and announcing results are an administrator’s.'}
-        </p>
+            ? 'Lists timed events that every player sees. When one starts, its pinned broadcast goes out.'
+            : 'Lists timed events that every player sees. Only an admin can schedule, edit or announce results.'}
+        </Hint>
 
         {viewerIsAdmin && (
           <Button size="sm" className="shrink-0" onClick={() => setComposing(true)}>
@@ -272,11 +273,11 @@ export function EventsTab({ active }: EventsTabProps) {
       )}
 
       {nothing && (
-        <p className="py-12 text-center text-label text-muted-foreground">
+        <Meta as="p" className="py-12 text-center">
           {viewerIsAdmin
-            ? 'No events yet. Schedule one to put a banner in front of every player.'
+            ? <>No events yet. Select <strong>New Event</strong> to show a banner to every player.</>
             : 'No events yet.'}
-        </p>
+        </Meta>
       )}
 
       {!stillLoading && shown.length > 0 && (
@@ -284,17 +285,17 @@ export function EventsTab({ active }: EventsTabProps) {
           <GroupHeading icon={Clock}>Happening Now</GroupHeading>
           {groups.happeningNow.length > 0
             ? groups.happeningNow.map(eventCard)
-            : <p className="text-meta text-muted-foreground">Nothing is running right now.</p>}
+            : <Meta as="p">Nothing is running right now.</Meta>}
 
           <GroupHeading icon={Calendar}>Scheduled</GroupHeading>
           {groups.scheduled.length > 0
             ? groups.scheduled.map(eventRow)
-            : <p className="text-meta text-muted-foreground">Nothing is scheduled.</p>}
+            : <Meta as="p">Nothing is scheduled.</Meta>}
 
           <GroupHeading icon={CheckCircle2}>Past</GroupHeading>
           {groups.past.length > 0
             ? (showAllPast ? groups.past : groups.past.slice(0, PAST_SHOWN)).map(eventRow)
-            : <p className="text-meta text-muted-foreground">Nothing has finished yet.</p>}
+            : <Meta as="p">Nothing has finished yet.</Meta>}
           {groups.past.length > PAST_SHOWN && (
             <Button size="sm" variant="ghost" className="mt-2" onClick={() => setShowAllPast((shown) => !shown)}>
               {showAllPast
@@ -336,8 +337,8 @@ export function EventsTab({ active }: EventsTabProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel “{canceling?.title}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              The banner comes down, its announcement is recalled, and everyone is told it was called off.
-              {canceling && isContestEvent(canceling) && ' Entries go back to being ordinary listings.'}
+              This removes the banner, recalls its broadcast, and tells every player the event is canceled.
+              {canceling && isContestEvent(canceling) && ' Entries become ordinary listings again.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -354,8 +355,7 @@ export function EventsTab({ active }: EventsTabProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{removing?.title}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              It never started, so nobody was told about it and nothing is left to explain. This cannot be
-              undone.
+              This event hasn’t started, so no player has seen it. This can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

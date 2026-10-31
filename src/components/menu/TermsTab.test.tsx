@@ -48,7 +48,7 @@ describe('before answering', () => {
 
     render(<TermsTab active />);
 
-    expect(await screen.findByText(/only needed to publish/)).toBeTruthy();
+    expect(await screen.findByText(/only to publish/)).toBeTruthy();
   });
 });
 
@@ -110,7 +110,7 @@ describe('declining', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Decline/ }));
 
     await waitFor(() => expect(decline).toHaveBeenCalled());
-    expect(await screen.findByText(/publishing stays unavailable/)).toBeTruthy();
+    expect(await screen.findByText(/so you can.t publish/)).toBeTruthy();
   });
 
   it('leaves Accept available afterwards', async () => {

@@ -104,7 +104,7 @@ describe('when there is nothing', () => {
 
     render(<NotificationsTab active />);
 
-    expect(await screen.findByText(/Follow someone and their new work/)).toBeTruthy();
+    expect(await screen.findByText(/New work from the accounts you follow/)).toBeTruthy();
   });
 
   it('says something different to somebody who already follows people', async () => {
