@@ -19,7 +19,7 @@ A world defines **Bodies**. A Body is a name and an ordered list of slots, each 
 
 A Body can change in play. A trait can set a Body while it is active, and a script can set an owner's Body directly. When a Body loses a slot, or a slot's capacity drops, the items there unequip and stay carried. Their effects reverse exactly.
 
-Slots, Bodies and the player's starting items move out of Overview. They go into an **Equipment** editor, opened from the top of the Items list.
+Slots, Bodies and the player's starting items move out of Overview. They go into an **Equipment Settings** editor, opened from the top of the Items list.
 
 ## Rulings
 
@@ -28,7 +28,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q1 | Equipped at start, the editor move and Bodies are one spec |
 | Q2 | A starting equip that fails at new game leaves the item carried. The placement row warns when the editor can already tell it will fail |
 | Q3 | Capacity lives on a Body's slot entry. A slot is a name only |
-| Q4 | Slots and Bodies are edited in an **Equipment** editor. One Equipment entry at the top of the Items list opens it in the right pane |
+| Q4 | Slots and Bodies are edited in an **Equipment Settings** editor. One Equipment Settings entry at the top of the Items list opens it in the right pane |
 | Q5 | A Body can change in play. This is in scope |
 | Q6 | Superseded by Q9 and Q27 |
 | Q7 | Superseded by Q27 and Q28 |
@@ -40,7 +40,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q13 | When two active traits set a Body, the one switched on most recently wins. When it ends, the next one wins, and with none, the base Body returns |
 | Q14 | A script's Body write sets the owner's base Body. An active trait's Body still wins over it |
 | Q15 | The record is called **Body** |
-| Q16 | Persona Items leaves Overview with the slots and goes into the Equipment editor |
+| Q16 | Persona Items leaves Overview with the slots and goes into the Equipment Settings editor |
 | Q17 | An entity's Body pick sits at the top of its Items tab, above its placements |
 | Q18 | An owner placement row shows an **Equipped** checkbox only when its item has a slot. The row warns when the owner's Body lacks that slot |
 | Q19 | Reauthoring Emberwatch is a ticket in this spec |
@@ -60,6 +60,22 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q33 | (ticket 01) A pick naming a Body the world lacks resolves to the Default. Slot Size's max is the largest capacity any Body entry gives the slot, and 1 when no Body holds it. The clamp on slot capacity edits goes away, and 03 re-adds it on Body entry edits |
 | Q34 | (ticket 01) Emberwatch gains one Body with its four current slots and capacities in 01, so it plays the same until 08 reauthors it |
 | Q35 | (ticket 01) An equipped copy whose slot the Body in force lacks shows under Carried with its Unequip button, never hidden |
+| Q36 | (ticket 04) An Equipped placement with quantity above 1 equips once per unit, in order, and swap-out settles the result: Ring ×3 into a Ring capacity of 2 ends with two equipped and one carried |
+| Q37 | (ticket 04) A starting equip checks the equip requirement up front. A failing requirement leaves the copy carried, with no log line and no When Unequipped |
+| Q38 | (ticket 04) Hidden and Equipped are independent. A Hidden Equipped placement starts equipped and hidden, filling its slot unseen (inventory Q112) |
+| Q39 | (ticket 05) A trait Body row's select lists None, then each Body, with no Default. A blank row, whether new or blanked by a Body delete, sets no Body |
+| Q40 | (ticket 05) When several Body traits switch on in one commit, the later one in the holder's trait tree order wins. A trait link reads its original's Body row live; the row is not a link override |
+| Q41 | (ticket 05) The log line reads "Body: Wolf" for the player and "Rex's Body: Wolf" for an entity, plus ". Unequipped A, B" when something came off, with copies named as the settle names them. None logs "Body: None"; an unwind logs the Body it returns to. A Hidden trait's row works and logs the same line |
+| Q42 | (ticket 05) A load that finds a different Body settles it: it unequips what no longer fits and reverses effects exactly, but fires no When Unequipped (the load settle fires nothing, scripts Q47) and writes no log line. It leaves a diagnostic, as inventory Q60 does |
+| Q43 | (ticket 03) `usedByText` gains a verb per reference kind, so one helper says what happens: "deletes its 2 Body entries and clears the slot on 3 items", "resets 3 picks to Default" |
+| Q44 | (ticket 03) When a Body entry's capacity drops, an entry goes, or a Body is deleted, item Slot Sizes in that slot are cut silently to the new largest capacity (inventory Q77) |
+| Q45 | (ticket 03) A Body has one entry per slot. Add Entry offers only the slots it lacks, entries drag-reorder, capacity is a whole number of 1 or more with no max, and a new Body starts as "New Body" with no entries |
+| Q46 | (ticket 03) With no Bodies, the entity Body select is hidden and a hint points at Equipment. Duplicate Body names get an inline warning in the Bodies section, because scripts address Bodies by name; they are not blocked |
+| Q47 | (ticket 03) The Custom Persona entity's Body select carries a short hint that it also sets the player's Body under None or a library persona. The Equipment Settings entry stays pinned under any Items filter, with no row actions and no drag |
+| Q48 | (ticket 05) The trait Body row sits on the trait's Stats tab, below Stat Changes and above Stat Availability, in Simple mode too: a Body label with Help, one select and a remove button, or Add Body when there is none. A trait has at most one. It is read-only in a link view |
+| Q49 | (ticket 03, user ruling) The entry and its editor are named **Equipment Settings**. Bodies reuse the Morphie layer pattern (an EditorRow with a chevron, an attached body and a nested EditorRowList), so no new Design System pattern is added. Every destructive remove button in the editor gets the red destructive hover |
+| Q50 | (ticket 04) A starting item that the opening settle unequips, because another starting item's effect broke its requirement, comes off with no opening log line. A new game never logs a starting unequip (Q2, Q37) |
+| Q51 | (ticket 04) One shared starting-copies helper feeds the new game, the Enter World trait-gate draft and the chip preview scene. The previews apply starting equips with the Body and swap-out rules but no requirement check, since they hold no stat state |
 
 ## User Stories
 
@@ -120,9 +136,9 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 
 ### Editor
 
-44. As a world author, I want an Equipment entry at the top of the Items list, so that slots and Bodies sit beside the items that use them.
-45. As a world author, I want slots, Bodies and the player's starting items edited in the Equipment editor, so that Overview holds only world play settings.
-46. As a world author, I want to add, rename and reorder slots in the Equipment editor, so that my setting has its own equipment words.
+44. As a world author, I want an Equipment Settings entry at the top of the Items list, so that slots and Bodies sit beside the items that use them.
+45. As a world author, I want slots, Bodies and the player's starting items edited in the Equipment Settings editor, so that Overview holds only world play settings.
+46. As a world author, I want to add, rename and reorder slots in the Equipment Settings editor, so that my setting has its own equipment words.
 47. As a world author, I want to add a slot to a Body with a capacity, so that the Body's layout is one list.
 48. As a world author, I want an item's slot select to list every world slot, so that I can make an item for any Body.
 49. As a world author, I want Slot Size limited to the largest capacity any Body gives that slot, so that I can't make an item that fits nowhere.
@@ -175,7 +191,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 
 ### Editor
 
-- An **Equipment** entry pinned at the top of the Items list opens an editor in the right pane. It has three sections: Slots, Bodies and Persona Items. The current Slots and Persona Items sections leave Overview. This is a new visual pattern, so it needs the user's approval through the `design-system` flow before it is built.
+- An **Equipment Settings** entry pinned at the top of the Items list opens an editor in the right pane. It has three sections: Slots, Bodies and Persona Items. The current Slots and Persona Items sections leave Overview. Bodies reuse the Morphie layer pattern (Q49), so no new Design System pattern is added.
 - The Bodies section is reorderable. It states that the first Body is the Default.
 - An entity's Items tab gains a Body select above its placements. Its options are Default (\<first Body name\>), None, then each Body (Q28).
 - A placement row on an owner shows an Equipped checkbox when the item has a slot. It warns when the owner's authored Body lacks that slot, or has a capacity smaller than the item's Slot Size.
@@ -196,7 +212,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 - A good test drives behavior through a seam and asserts what a player or author would see. It never reaches into private helpers. Each guard proves it bites by reinstating the bug once (`test-bar` skill).
 - **`openingFold`**: Equipped placements start equipped, in placement order. Swap-out applies at start. A refused equip starts carried. While Equipped effects apply. No item script fires. Body defaults resolve for an entity, the played Persona through the Custom Persona entity, and a library persona. Prior art: the opening-state tests and `statCodeTurn.start.test.ts`.
 - **`settleInventory` and the operation validator**: capacity reads from the Body in force. An equip into a missing slot is refused. A trait Body row changes the holder's Body. Latest-on wins and unwinds in order. A script write sets the base Body under an active trait. A lost or shrunk slot unequips the most recently equipped copy first, reverses effects exactly and fires When Unequipped. A load restores the Body. Prior art: `src/lib/inventory/settle.test.ts`, `inventory.test.ts`, `effects.test.ts`, and the `traitRuntime` tests.
-- **Editor components**: the Equipment editor's sections, the Body select's options, the Equipped checkbox's visibility, the placement row warning, and both in-use delete confirms with their counts. The shared confirm helper gets unit tests. Prior art: the `SlotsSection` and `PlacementsSection` tests, and `GamePanels.inventoryHere.test.tsx`.
+- **Editor components**: the Equipment Settings editor's sections, the Body select's options, the Equipped checkbox's visibility, the placement row warning, and both in-use delete confirms with their counts. The shared confirm helper gets unit tests. Prior art: the `SlotsSection` and `PlacementsSection` tests, and `GamePanels.inventoryHere.test.tsx`.
 - **Test Bench**: the unknown Body name rule fires on a bad name and stays quiet on a good one. Prior art: `src/lib/testBench/rules.ts` tests.
 - **Probe**: the Inventory pass with per-owner slots, on the cloud default with in-batch controls. Cases are an equip onto a slotless owner (the dog and a helmet), a normal equip, and a transformed owner. Report rates with the control arm (`probe` skill).
 
