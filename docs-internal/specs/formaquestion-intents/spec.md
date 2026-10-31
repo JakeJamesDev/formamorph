@@ -153,10 +153,16 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 | Fallback | today's full request; code rider from `isCodeTurn` | | | | | help |
 
 - The Help Request Plan (ticket 01) covers the answer request only; whether the picks go out is the classifier's call (ticket 02). It holds each choice after the settings and endpoint gates, so an Intent only narrows it and never re-checks the endpoint. Its riders are today's code rider (home line and code-test line included) and world rules, plus a slot ticket 02 fills (two-ask, no-world).
-- Every Intent carries the answer prompt with the Mascot Voice, the history and the face call. Roll rides every Intent but Create while it is on.
+- Every Intent carries the answer prompt with the Mascot Voice, the history and the face call. Roll rides every Intent but Create while it is on, Chat included (Q65 refines Q26).
+- Until ticket 03, Chat sends no Formaquestion Tools; Help, Code, World and the fallback send every Tool that is on.
+- World sends no `<guide>` block, and its grounding line points at the world sections only. World with Read the World off gets the full request.
+- The two-ask and no-world riders are fixed app lines, not preset prompts. Ticket 06 measures them.
+- No Answer Endpoint means the answer route resolves to no URL; then no classifier request goes out. A classifier network or HTTP error falls back like a parse failure. The Surface line follows Open Screen, as in the answer request.
+- Classifier output: `{intent, secondAsk}` by schema, or "Intent:" and "Second ask:" lines when prompted. A missing second-ask line reads as no; only a bad Intent falls back.
+- The classifier's endpoint row defaults to following the pick endpoint. Its prompt sits after the pick prompt in the help preset, with its own options. Both read as optional and are always written.
 - Code no longer comes from `isCodeTurn` except on the fallback (Q24, Q47).
 - World with no world open sends no world block and a rider that says so.
-- The Q7 note rides the next answer request of any Intent, and the classifier reads it through the last exchange.
+- The Q7 note rides the next answer request of any Intent, as the last rider. It names every entity added since the last request, then clears. The classifier does not read it.
 
 ### Create request (Q5, Q28, Q35, Q38, Q57, Q64)
 
@@ -178,6 +184,8 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 - One pure function turns a fenced block's text into `{ name, aiDescription }` or a list of problems. It is the only reader of the format: the card and the probe both call it.
 - Valid: a non-empty Name, an AI Description of 1–4 sentences, no other labels. Labels match case-insensitively; the AI Description runs to the fence end.
 - An invalid block renders as a plain code block with Copy.
+- A label is a line that starts with one to three words and a colon. Before the AI Description line, any label other than Name, and any unlabeled line, makes the block invalid. After it, everything to the fence end is description text, labels included.
+- Sentences split on runs of `.`, `!` or `?` followed by whitespace or the end. A trailing fragment counts as one sentence. There is no abbreviation list.
 
 ### Entity card (Q10, Q11, Q36, Q37, Q39, Q50–Q53)
 
@@ -185,7 +193,9 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 - The card shows the name and the AI description, read-only, with **Copy** and **Add**.
 - Add needs a World Editor that is open now; elsewhere it is disabled, with a tip that names why. It writes to the open world, wherever the card came from (Q52).
 - Add builds the entity from the blank-entity default with the block's name and AI description, places it at the root (Q56), and adds it through the editor's normal path, so editor undo records it. It then opens the Entities panel if needed and selects the entity.
-- A name that matches an existing entity keeps Add enabled, with a warning tip (Q37).
+- A name that matches an existing entity keeps Add enabled, with a warning tip (Q37). The match is trimmed and case-insensitive against the open world's entity names as the editor labels them.
+- While a fence streams, the last open `entity` fence shows as a card with the fields parsed so far, with Add disabled. Once it closes, or the reply ends, the parser decides between a card and a plain code block.
+- The entity rider is app text, not a help-preset prompt. It ships unprobed while the Creation switch defaults off; ticket 07 measures it.
 - The World Editor registers the add action beside its read source in the help world registry. The game registers none, so the game side cannot write.
 - After Add, the next help request carries one line that names the entity added (Q7).
 
@@ -230,7 +240,7 @@ Settled with the user on 2026-10-30 and 2026-10-31 in the grill. Q40–Q67 came 
 
 ## Further Notes
 
-- Export shape: the help preset file gains the Intent Classifier and Create prompts. The help settings value gains two switches and two endpoints. A Formaquestion Tool gains an optional Intent list, which the help settings value, the help preset file's Tool copy and the Tool pack file all carry. That changes the pack shape that ADR-0010 kept fixed. World and save exports don't change.
+- Export shape: the help preset file gains the Intent Classifier and Create prompts (`prompts.intent` and `options.intent` from ticket 02). Ticket 02 adds `intentClassifier` and `intentEndpoint` to the help settings. The help settings value gains two switches and two endpoints. A Formaquestion Tool gains an optional Intent list, which the help settings value, the help preset file's Tool copy and the Tool pack file all carry. That changes the pack shape that ADR-0010 kept fixed. World and save exports don't change.
 - The Create bar's first two numbers depend on the Intent Classifier. With it off, creation relies on the entity rider in the full request, which only the help baselines measure.
 - The two pick requests still run for Chat and Create (Q59). If spend becomes a problem, a later change can skip them once the label is known.
 - The in-game World Editor already saves and autosaves the authored world, so Add there follows the same path as in the standalone editor.
