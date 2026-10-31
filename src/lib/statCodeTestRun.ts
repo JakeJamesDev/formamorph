@@ -20,7 +20,7 @@ import { turnOneClock } from '@/lib/statCodeTiming';
 import { sampleTurn } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
-import { openingHomeOf, openingStateOf, type OpeningFoldWorld } from '@/lib/openingState';
+import { openingHomeOf, openingStateOf, type OpeningFoldWorld, type OpeningPersona } from '@/lib/openingState';
 import {
   ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type SandboxSnapshot, type ScriptRunUnit, type SnapshotOptions, type UnitHome,
 } from '@/lib/sandboxSnapshot';
@@ -116,6 +116,8 @@ export interface TestRunOptions {
   /** Take `persona` as the persona to be played: it holds every trait and placeholder a persona-capable
    *  entity holds, and its writes are pending. */
   pendingPersona?: boolean;
+  /** The persona the caller holds, so `met` reads the start rule under it. Absent, no persona plays. */
+  persona?: OpeningPersona;
   /** Names the world does not have yet. Each stat among them runs as a number at 0 in 0–100, and a write
    *  to any of them is left out of `dropped`. */
   missing?: readonly MissingName[];
@@ -201,9 +203,9 @@ const worldWriteLines = (
 /** Test Code's snapshot of `world` at turn one for a `timing` run. No playthrough: no picks, no persona and no
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
-  world: OpeningFoldWorld, timing: ScriptTiming, overlays: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> = {},
+  world: OpeningFoldWorld, timing: ScriptTiming, overlays: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> = {}, persona?: OpeningPersona,
 ): SandboxSnapshot => snapshotOf(
-  { ...openingStateOf(world), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
+  { ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
 );
 
 /**
@@ -212,7 +214,7 @@ export const testCodeSnapshotOf = (
  */
 export async function runTestCode(
   code: string, timing: ScriptTiming, home: UnitHome, world: OpeningFoldWorld,
-  { pendingPersona: pending = false, missing, sentence, prompts, args }: TestRunOptions = {},
+  { pendingPersona: pending = false, persona, missing, sentence, prompts, args }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   const seeded = openingHomeOf(home);
   const stat = 'stat' in seeded ? seeded.stat : null;
@@ -220,7 +222,7 @@ export async function runTestCode(
   const entityNames = new Map((world.entities ?? []).map((entity) => [entity.id, statCodeName(entity.name, list)]));
   const { locations } = codeLocationsOf(world.locations ?? [], list);
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
-  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) });
+  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) }, persona);
   const unit: ScriptRunUnit = {
     home: seeded, timing, code,
     ...(timing === 'output' && { narration: sentence ?? '' }),

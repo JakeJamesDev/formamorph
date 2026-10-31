@@ -4428,7 +4428,8 @@ const GameViewer = ({
   };
   toolScriptSourceRef.current = (base) => {
     const world = getWorldData();
-    return { state: prepareTurnStartCode(base)?.turn.state ?? openingStateOf(world), authored: world };
+    const played = personaRef ? { ref: personaRef, ...(personaRef.source === 'library' && persona && { libraryEntity: persona.entity }) } : undefined;
+    return { state: prepareTurnStartCode(base)?.turn.state ?? openingStateOf(world, undefined, played), authored: world };
   };
 
   /**
