@@ -22,12 +22,12 @@ import 'streamdown/styles.css';
 export function SettingsNote({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/);
   return (
-    <p className="text-helper text-muted-foreground [&_strong]:font-medium [&_strong]:text-foreground">
+    <Hint className="[&_strong]:font-medium [&_strong]:text-foreground">
       {parts.map((part, i) => {
         if (i % 2 === 0) return part;
         return part.startsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : <code key={i}>{part.slice(1, -1)}</code>;
       })}
-    </p>
+    </Hint>
   );
 }
 
@@ -94,7 +94,7 @@ export function SubGroup({ children }: { children: ReactNode }) {
 
 /** The label cell every settings row draws through — `Row` and `CheckRow` both delegate here, so the
  *  `text-left sm:text-right` alignment can't be forgotten per-row and drift out of line.
- *  `align` sets how the label sits against its control: the default `center` rides the grid's own
+ *  `align` sets how the label aligns with its control: the default `center` uses the grid's own
  *  centering, `top` pins it to the first line of a tall control (a stacked field, a textarea), and `check`
  *  lines it up on a checkbox's small box.
  *  `muted` dims it. `info` renders an affordance (e.g. `HintInfo`) right after the label text, so a row's
@@ -123,7 +123,7 @@ export function RowLabel({ htmlFor, align = 'center', muted, info, experimental,
     : <span className={adornment ? 'text-left sm:text-right' : cls}>{children}</span>;
   if (!adornment) return label;
   // The label keeps its text alignment; the flex cell owns the vertical align + muting and right-anchors
-  // the [label · info] pair, so the info icon lands in the same column on every row.
+  // the [label · info] pair, so the info icon is in the same column on every row.
   return (
     <div className={`flex items-center justify-start sm:justify-end gap-1.5 ${alignClass}${muted ? ' text-muted-foreground' : ''}`}>
       {label}
@@ -133,13 +133,13 @@ export function RowLabel({ htmlFor, align = 'center', muted, info, experimental,
 }
 
 /** Marks a setting that may change or go away. An icon rather than a word in the description, so the
- *  caveat is said once per row instead of eating a third of a twelve-word line — and matched to the `ⓘ`
- *  beside it, since a bordered chip reads as louder than the caveat is. The `title` is the only carrier
- *  of the wording; it's a caveat, not something you need in order to operate the setting. */
+ *  caveat takes no room in a twelve-word line, and matched to the `ⓘ` beside it, since a bordered chip
+ *  reads as louder than the caveat is. The tip is the only carrier of the wording; it's a caveat, not
+ *  something you need in order to operate the setting. */
 function ExperimentalBadge() {
   return (
-    // The tip is the only carrier of the wording, so the marker takes a tab stop and hands it to the keyboard too.
-    <Tip tip="Experimental — this setting may change or be removed.">
+    // The tip is the only carrier of the wording, so the marker takes a tab stop and keyboard focus shows it too.
+    <Tip tip="May change or be removed in a later version">
       <span tabIndex={0} aria-label="Experimental" className="shrink-0 text-muted-foreground">
         <FlaskConical className="h-4 w-4" />
       </span>
@@ -221,7 +221,7 @@ export function OptionSwitcher<T extends string>({ value, onChange, options, ari
  * would strand the label in the middle of it. A row that stacks its own extra content under the control
  * (a status line that comes and goes) takes `top` too, and marks that wrapper `data-row-stacked` so the
  * alignment guard can tell it apart from a plain one-line control. Omitting `label` leaves the label cell
- * empty, which is how a row that is only a button or a status line still lands in the control column.
+ * empty, which is how a row that is only a button or a status line still renders in the control column.
  */
 export function Row({ label, htmlFor, children, hint, top, info, muted, experimental, target }: {
   label?: string; htmlFor?: string; children: ReactNode; hint?: string;

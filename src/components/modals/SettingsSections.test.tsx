@@ -85,7 +85,7 @@ describe('Display section', () => {
     const user = userEvent.setup();
     mount('display', { resolvedTheme: 'dark' });
     await user.click(screen.getByRole('button', { name: /preview theme/i }));
-    expect(await screen.findByText(/Seeded from your current theme \(dark\)/)).toBeTruthy();
+    expect(await screen.findByText(/Starts from your current dark theme/)).toBeTruthy();
   });
 
   it('labels the quote color for the source mode', () => {

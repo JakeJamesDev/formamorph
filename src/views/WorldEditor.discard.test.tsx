@@ -112,7 +112,7 @@ describe('WorldEditor — exit without saving', () => {
 
     fireEvent.click(backArrow());
 
-    expect(await screen.findByText(/exit without saving, or keep editing/)).toBeInTheDocument();
+    expect(await screen.findByText(/“Exit Without Saving” discards them\./)).toBeInTheDocument();
     expect(screen.queryByText(/Autosave kept the rest/)).toBeNull();
   });
 

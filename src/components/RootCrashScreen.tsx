@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Meta } from '@/components/ui/typography';
 import { TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { copyText } from '@/lib/clipboard';
@@ -53,7 +54,7 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
           {world && <Button variant="outline" onClick={() => void exportWorld()}>Export World</Button>}
           <Button onClick={() => window.location.reload()}>Reload</Button>
         </div>
-        <p role="status" className="min-h-5 text-helper text-muted-foreground">{status}</p>
+        <Meta as="p" role="status" className="min-h-5">{status}</Meta>
       </div>
     </main>
   );

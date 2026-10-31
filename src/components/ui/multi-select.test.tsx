@@ -13,7 +13,7 @@ describe('MultiSelect search', () => {
   it('shows the new matches when one search replaces another without being cleared', () => {
     render(<MultiSelect options={OPTIONS} defaultValue={[]} onValueChange={() => {}} />);
     fireEvent.click(screen.getByRole('combobox'));
-    const input = screen.getByPlaceholderText('Search options...');
+    const input = screen.getByPlaceholderText('Search options');
 
     fireEvent.change(input, { target: { value: 'ali' } });
     expect(screen.getByRole('option', { name: /^Alice/ })).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe('MultiSelect search', () => {
     const user = userEvent.setup();
     render(<MultiSelect options={OPTIONS} defaultValue={[]} onValueChange={() => {}} />);
     await user.click(screen.getByRole('combobox'));
-    const input = screen.getByPlaceholderText('Search options...');
+    const input = screen.getByPlaceholderText('Search options');
     expect(screen.queryByRole('button', { name: 'Clear Search' })).toBeNull();
 
     await user.type(input, 'ali');
@@ -46,7 +46,7 @@ describe('MultiSelect search', () => {
     const onValueChange = vi.fn();
     render(<MultiSelect options={OPTIONS} defaultValue={[]} onValueChange={onValueChange} />);
     await user.click(screen.getByRole('combobox'));
-    await user.type(screen.getByPlaceholderText('Search options...'), 'carl');
+    await user.type(screen.getByPlaceholderText('Search options'), 'carl');
     expect(screen.getByRole('button', { name: 'Clear Search' })).toBeInTheDocument();
     await user.keyboard('{Enter}');
     expect(onValueChange).toHaveBeenLastCalledWith(['c']);

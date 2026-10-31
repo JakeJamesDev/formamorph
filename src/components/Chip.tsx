@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 export const CHIP_BASE = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-meta";
 
 /** Right padding that stands in for a chip's remove (×) — `gap-1` plus the icon, on top of `px-1.5`. An
- *  editor that has no × of its own uses it to land exactly the width of the chip it replaced, so the row
+ *  editor that has no × of its own uses it to match the width of the chip it replaced, so the row
  *  never reflows on the way into edit mode. */
 export const CHIP_REMOVE_RESERVE = "pr-[1.375rem]";
 
@@ -91,7 +91,7 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             // The click stops here too: the chip around it opens Chip Options on click, and a popover opened
-            // by the click that removed its anchor lands in the corner of the screen.
+            // by the click that removed its anchor appears in the corner of the screen.
             onClick={(e) => { e.stopPropagation(); onRemove(name); }}
             className="hover:text-destructive"
             aria-label={`Remove ${name}`}
@@ -109,7 +109,7 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
  * box underneath it and letting the twin set the width.
  *
  * A character count cannot do this: `ch` is the width of one `0`, and chip labels are proportional text, so
- * anything counting characters lands narrower than the label it replaces and the chip visibly shrinks the
+ * anything counting characters comes out narrower than the label it replaces and the chip visibly shrinks the
  * moment it becomes editable. The twin carries the same classes as the field, so the two agree by
  * construction rather than by arithmetic that has to be kept in sync with the styling.
  *
@@ -118,7 +118,7 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
 export function ChipFieldSizer({ text, withRemove, children }: {
   text: string;
   /** Set when the chip being replaced carries a remove (×), so the twin reserves that room and the field
-   *  lands exactly the chip's width rather than the chip's width less a button. */
+   *  matches the chip's width rather than the chip's width less a button. */
   withRemove?: boolean;
   children: ReactNode;
 }) {

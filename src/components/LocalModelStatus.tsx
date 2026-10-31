@@ -10,11 +10,11 @@ const BACKEND_LABELS: Record<string, string> = { cuda: 'CUDA', vulkan: 'Vulkan',
 const DEVICE_ORIGIN_LABELS: Record<EngineDeviceOrigin, string> = {
   auto: 'Auto',
   manual: 'Chosen',
-  'fallback-auto': 'Auto — chosen device not found',
+  'fallback-auto': 'Auto, chosen device not found',
 };
 
 /**
- * The local engine's status as a short colored line ("Engine: ready — model.gguf"), with a progress bar
+ * The local engine's status as a short colored line ("Engine: ready, model.gguf"), with a progress bar
  * under it while a model reads in. Shared by the endpoint panel and the model-manager popup so the two
  * never drift.
  */
@@ -24,11 +24,11 @@ export function EngineStatusLine({ engine, className }: { engine: LocalLlmState;
     <div className={className}>
       <div className="text-meta text-muted-foreground">
         Engine:{' '}
-        {engine.status === 'ready' ? <span className="text-success">ready — {engine.modelId}</span>
+        {engine.status === 'ready' ? <span className="text-success">ready, {engine.modelId}</span>
           : loading ? (
             <span className="text-warning">
               loading {engine.modelId}
-              {engine.loadProgress != null && ` — ${engine.loadProgress}%`}…
+              {engine.loadProgress != null && `, ${engine.loadProgress}%`}…
             </span>
           )
           : engine.status === 'error' ? <span className="text-destructive">error: {engine.error}</span>
@@ -65,7 +65,7 @@ export function EngineDeviceLine({ engine }: { engine: LocalLlmState }) {
       <span className={onCpu ? 'text-warning' : undefined}>
         {BACKEND_LABELS[engine.gpuBackend] ?? engine.gpuBackend}
       </span>
-      {devices && <> — {devices}</>}
+      {devices && <>, {devices}</>}
       {origin && <> ({origin})</>}
       {engine.deviceVramTotalMB != null && (
         <> · {fmtGB(engine.deviceVramFreeMB)} / {fmtGB(engine.deviceVramTotalMB)} GB free at load</>

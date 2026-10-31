@@ -8,7 +8,7 @@ import { useWheelScroll } from "@/lib/useWheelScroll";
  * doesn't blur-close the field. Position/width come from `className` (the caller anchors it).
  *
  * The wheel is handled rather than left to the browser: a caller may portal this out of a modal dialog,
- * whose scroll lock cancels every wheel that lands outside its content. See {@link useWheelScroll}.
+ * whose scroll lock cancels every wheel event outside its content. See {@link useWheelScroll}.
  */
 export function SuggestionList({ items, active, onPick, onHover, label, className }: {
   items: string[];
@@ -32,7 +32,7 @@ export function SuggestionList({ items, active, onPick, onHover, label, classNam
           type="button"
           key={s}
           // Not a tab stop: rows are arrow/mouse targets, and the field's blur would close the list from
-          // under a row Tab landed on anyway.
+          // under a row Tab focused anyway.
           tabIndex={-1}
           onMouseDown={(e) => { e.preventDefault(); onPick(s); }}
           onMouseEnter={() => onHover(i)}

@@ -1,6 +1,7 @@
 import { forwardRef, type ReactNode } from 'react';
 import { ChevronDown, ListTree } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Hint } from '@/components/ui/typography';
 
 export interface NavDisclosureProps {
   /** False draws the body alone at full height, as a sidebar. True folds it behind the bar. */
@@ -41,7 +42,7 @@ export const NavDisclosure = forwardRef<HTMLButtonElement, NavDisclosureProps>(f
         >
           <ListTree className="h-4 w-4 shrink-0" />
           <span className="font-medium">{label}</span>
-          <span className="ml-auto min-w-0 truncate text-helper text-muted-foreground">{current}</span>
+          <Hint as="span" className="ml-auto min-w-0 truncate">{current}</Hint>
           <ChevronDown
             className={cn(
               'h-4 w-4 shrink-0 transition-transform duration-150 motion-reduce:transition-none',

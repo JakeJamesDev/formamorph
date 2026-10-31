@@ -28,7 +28,7 @@ export function SegmentPill({ layout, active, animate }: { layout: SegmentLayout
   );
 }
 
-/** A segment's icon and its label, which opens and closes with the step. It moves only once `animate`, so the first measured step lands without a slide. */
+/** A segment's icon and its label, which opens and closes with the step. It moves only once `animate`, so the first measured step applies without a slide. */
 export function SegmentFace({ icon: Icon, label, shown, animate }: { icon: LucideIcon; label: string; shown: boolean; animate: boolean }) {
   return (
     <>

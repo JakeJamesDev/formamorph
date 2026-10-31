@@ -22,7 +22,7 @@ const Slider = React.forwardRef<
         className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
         <SliderPrimitive.Range className="absolute h-full bg-primary" />
       </SliderPrimitive.Track>
-      {/* The label rides the thumb: that is the element carrying role="slider", not the root. */}
+      {/* The label goes on the thumb: that is the element carrying role="slider", not the root. */}
       <SliderPrimitive.Thumb
         aria-label={ariaLabel}
         aria-valuetext={ariaValueText}

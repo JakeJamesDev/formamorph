@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Tip } from '@/components/ui/tooltip';
+import { Hint, Meta } from '@/components/ui/typography';
 import { formatBytes } from '@/lib/imageOptim';
 import type { VrmLicense } from '@/types';
 
@@ -8,7 +9,7 @@ import type { VrmLicense } from '@/types';
 export function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2 py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-meta font-medium text-muted-foreground">{label}</span>
+      <Meta className="font-medium">{label}</Meta>
       <span className="text-meta min-w-0">{children}</span>
     </div>
   );
@@ -90,14 +91,14 @@ export function VrmFileDetails({ license, size, children }: {
       {children}
 
       {license?.metaVersion === null && (
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          A plain glTF file carries no license information, and isn&apos;t guaranteed to pose or morph like a VRM.
-        </p>
+        <Hint className="mt-3">
+          A plain glTF file has no license data. It may not pose or morph like a VRM file.
+        </Hint>
       )}
       {license?.creditRequired && (
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          This model&apos;s author asks to be credited wherever it appears.
-        </p>
+        <Hint className="mt-3">
+          The author asks for credit wherever this model appears.
+        </Hint>
       )}
     </div>
   );

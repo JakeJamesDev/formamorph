@@ -6,6 +6,7 @@ import { AlertTriangle, CornerDownLeft, ImagePlus, Link as LucideLink, Box as Lu
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 import ModelViewer from '../views/ModelViewer';
 import AudioPlayer from '../components/game/AudioPlayer';
 import { useDownscalePrompt } from './useDownscalePrompt';
@@ -206,7 +207,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // works. Dropping onto a picture and silently replacing it is the hard gesture to take back.
   const { dragOver, dropProps } = useImageDropTarget({
     enabled: !value,
-    onUrl: onFile ? () => setUrlError('This slot takes image files, not links.') : onChange,
+    onUrl: onFile ? () => setUrlError("This slot doesn't take links. Drop an image file instead.") : onChange,
     onFiles: takeDropped,
   });
 
@@ -243,7 +244,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
           placeholder="Or paste an image URL"
           aria-label="Image URL"
-          // The focus ring is drawn by the overlay below instead, so it lands over both cells rather than
+          // The focus ring is drawn by the overlay below instead, so it covers both cells rather than
           // being covered by the button along the edge they share.
           className="pr-10 focus-visible:ring-0"
         />
@@ -284,7 +285,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
 
   // A new resolved src gets a fresh chance to load — otherwise one bad link poisons the slot after it's
   // replaced. Keyed on displaySrc (not value): it lags value by a render, so a value-keyed reset can run
-  // before a stale-src error lands and the failure would latch.
+  // before a stale-src error arrives and the failure would latch.
   useEffect(() => { setLoadFailed(false); }, [displaySrc]);
 
   // A file-only slot has no link field, only the line that refuses a dropped link.
@@ -295,14 +296,14 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const badge = expiring
     ? {
         label: 'Expiring link',
-        tip: `Discord links like this one stop working after a while. Use a permanent host so the picture doesn't disappear later.\n${value ?? ''}`,
+        tip: `Discord links expire after a while. Use a permanent host to keep this image.\n${value ?? ''}`,
         className: 'bg-amber-500/90',
         icon: <AlertTriangle className="h-3 w-3" />,
       }
     : status === 'unreadable'
       ? {
           label: 'Linked image, display only',
-          tip: `${imageHost(value ?? '')} won't let Formamorph download this picture. It shows online, but won't work offline and can't be put into a character card.\n${value ?? ''}`,
+          tip: `${imageHost(value ?? '')} blocks downloads, so this image shows only online. An entity with it as its first image can't be exported.\n${value ?? ''}`,
           className: 'bg-amber-500/90',
           icon: <LucideLink className="h-3 w-3" />,
         }
@@ -416,7 +417,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           author is long past hovering this slot. */}
       {expiring && (
         <p className="text-meta text-amber-600 dark:text-amber-500">
-          This Discord link will stop working. Re-upload the image or use a permanent host.
+          This Discord link expires. Upload the image file or use a permanent host.
         </p>
       )}
       {/* A frame sized by its caller holds this inside itself; a compact box has no room, so it sits below. */}
@@ -449,7 +450,7 @@ export const SoundUpload = ({ onChange, id, value }: {
           <div className="w-full" onClick={(e) => e.preventDefault()}>
             <AudioPlayer src={value.data} className="w-full" />
             <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-helper text-muted-foreground truncate">{value.name}</p>
+              <Meta as="p" className="truncate">{value.name}</Meta>
               <Tip tip="Remove sound">
                 <Button
                   type="button"

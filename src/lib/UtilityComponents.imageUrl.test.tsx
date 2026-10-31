@@ -131,7 +131,7 @@ describe('ImageUpload link warnings', () => {
     );
 
     expect(screen.getByLabelText('Expiring link')).toBeTruthy();
-    expect(screen.getByText(/will stop working/i)).toBeTruthy();
+    expect(screen.getByText(/This Discord link expires/i)).toBeTruthy();
   });
 
   it('leaves a permanent Discord link unwarned', () => {
@@ -140,7 +140,7 @@ describe('ImageUpload link warnings', () => {
     );
 
     expect(screen.queryByLabelText('Expiring link')).toBeNull();
-    expect(screen.queryByText(/will stop working/i)).toBeNull();
+    expect(screen.queryByText(/This Discord link expires/i)).toBeNull();
     expect(screen.getByLabelText('Linked image')).toBeTruthy();
   });
 });

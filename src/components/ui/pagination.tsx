@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { paginationSlots, pageWindow } from "@/lib/pagination"
 import { useIsMobile } from "@/lib/useIsMobile"
+import { Meta } from "@/components/ui/typography"
 
 const Pagination = ({
   className,
@@ -120,7 +121,7 @@ function JumpToPageForm({ page, pageCount, onSubmit }: {
   }
   return (
     <div className="flex items-center gap-2">
-      <span className="whitespace-nowrap text-meta text-muted-foreground">Page (1–{pageCount})</span>
+      <Meta className="whitespace-nowrap">Page (1–{pageCount})</Meta>
       <Input
         type="number"
         min={1}
@@ -186,7 +187,7 @@ function Pager({
             <button
               type="button"
               aria-current="page"
-              aria-label={`Page ${p} of ${pageCount} — jump to a page`}
+              aria-label={`Page ${p} of ${pageCount}, jump to a page`}
               className={cn(buttonVariants({ variant: "default", size: "icon" }))}
             >
               {p}

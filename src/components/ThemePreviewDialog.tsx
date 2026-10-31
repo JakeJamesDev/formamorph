@@ -37,6 +37,7 @@ import { hslTripleToHex, hexToHslTriple } from '@/lib/hslColor';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
 import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
 import { cn } from '@/lib/utils';
+import { Hint } from '@/components/ui/typography';
 
 /** The theme the preview seeds from; the live contexts unless a caller supplies its own. */
 export type ThemePreviewSource = Pick<ReturnType<typeof useSettings>, 'themeColor'> & Pick<ReturnType<typeof useTheme>, 'resolvedTheme'>;
@@ -310,7 +311,7 @@ function ThemePreviewDialog({ open, onOpenChange, source }: { open: boolean; onO
       <DialogContent className="w-[min(96vw,1080px)] max-w-none h-[640px] max-h-[90dvh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>Theme preview</DialogTitle>
-          <DialogDescription className="sr-only">Edit theme colors and preview them on sample interface elements.</DialogDescription>
+          <DialogDescription className="sr-only">Edit theme colors and see them on sample controls</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-1 min-h-0 gap-4">
@@ -348,9 +349,9 @@ function ThemePreviewDialog({ open, onOpenChange, source }: { open: boolean; onO
         </div>
 
         <DialogFooter className="shrink-0 flex-row items-center justify-between sm:justify-between">
-          <span className="text-helper text-muted-foreground">
-            Live viewer — nothing is saved. Seeded from your current theme ({resolvedTheme}); edits reset on reopen.
-          </span>
+          <Hint as="span">
+            Changes here aren&apos;t saved. Starts from your current {resolvedTheme} theme and resets when you reopen it.
+          </Hint>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={() => setValues(readTokens())}>Reset</Button>
             <Button onClick={() => onOpenChange(false)}>Done</Button>

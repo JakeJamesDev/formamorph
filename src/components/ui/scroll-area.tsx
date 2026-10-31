@@ -14,13 +14,13 @@ export interface ScrollMark {
   label?: string
 }
 
-/** Tick height in pixels, needed so a tick at the far end still lands inside the track. */
+/** Tick height in pixels, needed so a tick at the far end still renders inside the track. */
 const MARK_HEIGHT = 3
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
-    /** The element that actually scrolls. `ref` lands on Root, which never moves — a caller that has to
+    /** The element that actually scrolls. `ref` attaches to Root, which never moves — a caller that has to
      *  read or set the scroll position needs this one. */
     viewportRef?: React.Ref<HTMLDivElement>
     /** Extra props for the element that scrolls: classes that must sit on it, or a `data-*` hook. */
@@ -90,7 +90,7 @@ const ScrollBar = React.forwardRef<
     )}
     {...props}>
     <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
-    {/* Ticks sit over the thumb, positioned by fraction. `calc` against the track's own height keeps a
+    {/* Ticks render above the thumb, positioned by fraction. `calc` against the track's own height keeps a
         tick inside it at either end without measuring anything. Their pointerdown is stopped so Radix's
         click-to-scroll on the track doesn't swallow the jump. */}
     {orientation === "vertical" && marks?.map((mark, i) => (
