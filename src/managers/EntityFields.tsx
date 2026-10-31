@@ -48,11 +48,8 @@ export interface DescribedFieldGroupProps<T extends DescribedRecord = DescribedR
 /** What every entity field group needs. */
 export type EntityFieldGroupProps = DescribedFieldGroupProps<Entity>;
 
-/** Identity fields, with Advanced-only Aliases, Persona, and Type. */
-export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers, home, customPersonaEntityName }: EntityFieldGroupProps & {
-  home: EntityHome;
-  /** See {@link EntityPersonaField}. */
-  customPersonaEntityName?: string;
+/** The short identity fields beside the picture, with Advanced-only Aliases and Type. */
+export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers }: EntityFieldGroupProps & {
   /** What reports a committed rename of this entity, so the code that reaches its placeholders by path can
    *  follow. Absent outside the World Editor, where there is no world code to rewrite. */
   nameHandlers?: RenameFieldHandlers;
@@ -98,41 +95,6 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           placeholder="she/her, he/him, it/its"
         />
       </div>
-      {advanced && home === 'world' && (
-        <>
-          <div className="space-y-2" {...fieldFrame('strangerName')}>
-            <div className="flex items-center gap-2">
-              <Label>Stranger Name</Label>
-              <HelpButton topicId="worldEditor.strangerName" className="h-6 w-6" />
-            </div>
-            <Hint id={`entity-stranger-name-hint-${value.id}`}>
-              The player sees this name until they meet the entity. They meet it when the narration uses its Name.
-            </Hint>
-            <PlaceholderNameField
-              value={value.strangerName ?? ''}
-              onChange={(v) => onChange('strangerName', v.trim() ? v : undefined)}
-              placeholders={placeholders}
-              ownerId={ownerId}
-              ariaLabel="Stranger Name"
-              ariaDescribedBy={`entity-stranger-name-hint-${value.id}`}
-              placeholder="a hooded figure"
-            />
-          </div>
-          <PlaceholderField
-            label="Stranger Description"
-            ariaLabel="Stranger Description"
-            historyField="strangerDescription"
-            hint="Replaces the Player-Facing Description until the player meets the entity. Leave it blank to show no description."
-            value={value.strangerDescription ?? ''}
-            onChange={(v) => onChange('strangerDescription', v.trim() ? v : undefined)}
-            placeholders={placeholders}
-            ownerId={ownerId}
-            ownerName={value.name}
-            resizable
-          />
-        </>
-      )}
-      <EntityPersonaField value={value} onChange={onChange} placeholders={placeholders} home={home} customPersonaEntityName={customPersonaEntityName} />
       {advanced && (
         <div className="space-y-2" {...fieldFrame('type')}>
           <Label>Type</Label>
@@ -143,6 +105,46 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           />
         </div>
       )}
+    </>
+  );
+};
+
+/** What the player sees before meeting the entity. World Editor and Advanced only. */
+export const EntityStrangerFields = ({ value, onChange, placeholders = [], ownerId, home }: EntityFieldGroupProps & { home: EntityHome }) => {
+  const { advanced } = useEditorMode();
+  if (!advanced || home !== 'world') return null;
+  return (
+    <>
+      <div className="space-y-2" {...fieldFrame('strangerName')}>
+        <div className="flex items-center gap-2">
+          <Label>Stranger Name</Label>
+          <HelpButton topicId="worldEditor.strangerName" className="h-6 w-6" />
+        </div>
+        <Hint id={`entity-stranger-name-hint-${value.id}`}>
+          The player sees this name until they meet the entity. They meet it when the narration uses its Name.
+        </Hint>
+        <PlaceholderNameField
+          value={value.strangerName ?? ''}
+          onChange={(v) => onChange('strangerName', v.trim() ? v : undefined)}
+          placeholders={placeholders}
+          ownerId={ownerId}
+          ariaLabel="Stranger Name"
+          ariaDescribedBy={`entity-stranger-name-hint-${value.id}`}
+          placeholder="a hooded figure"
+        />
+      </div>
+      <PlaceholderField
+        label="Stranger Description"
+        ariaLabel="Stranger Description"
+        historyField="strangerDescription"
+        hint="Replaces the Player-Facing Description until the player meets the entity. Leave it blank to show no description."
+        value={value.strangerDescription ?? ''}
+        onChange={(v) => onChange('strangerDescription', v.trim() ? v : undefined)}
+        placeholders={placeholders}
+        ownerId={ownerId}
+        ownerName={value.name}
+        resizable
+      />
     </>
   );
 };
@@ -461,9 +463,9 @@ export const LibraryEntityVrmPickField = ({ value, onChange }: EntityFieldGroupP
 };
 
 /**
- * The Profile tab of both entity editors: the picture and its tags in one grid with the identity fields and
- * the Persona mark, then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
- * two columns, since each host's pane widens differently.
+ * The Profile tab of both entity editors: the picture beside the short identity fields and its tags, then the
+ * Stranger fields, the Persona mark, `locations` (World Editor only), the Avatar and the model at full width.
+ * `columnsClassName` sets when the header splits into two columns, since each host's pane widens differently.
  */
 export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations, home, customPersonaEntityName, ...props }: EntityFieldGroupProps & {
   columnsClassName: string;
@@ -478,13 +480,15 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
       <div className={`grid gap-4 ${columnsClassName}`}>
         <ImageGallery />
         <div className="space-y-4">
-          <EntityIdentityFields {...props} nameHandlers={nameHandlers} home={home} customPersonaEntityName={customPersonaEntityName} />
+          <EntityIdentityFields {...props} nameHandlers={nameHandlers} />
           <ImageTags />
         </div>
       </div>
     </EntityImageWidget>
+    <EntityStrangerFields {...props} home={home} />
+    <EntityPersonaField {...props} home={home} customPersonaEntityName={customPersonaEntityName} />
     {locations}
-    <EntityModelField {...props} />
     {home === 'world' ? <EntityVrmPickField {...props} /> : <LibraryEntityVrmPickField {...props} />}
+    <EntityModelField {...props} />
   </>
 );
