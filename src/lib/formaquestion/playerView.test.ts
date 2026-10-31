@@ -125,6 +125,11 @@ describe('buildPlayerView entities', () => {
     expect(names(view({ world: known, chain: [state()] }).entities)).toEqual(['Mara']);
   });
 
+  it('holds an entity with a whitespace-only Stranger Name as met', () => {
+    const blank = { ...WORLD, entities: [entity('mara', 'Mara', { strangerName: '  ' }), WARDEN] };
+    expect(names(view({ world: blank, chain: [state()] }).entities)).toEqual(['Mara']);
+  });
+
   it('holds a stranger the played persona has a relationship with, on either side', () => {
     const tied = { ...WORLD, entities: [{ ...WARDEN, relationships: [{ targetId: 'played', label: 'friend' }] }, STRANGER] };
     const v = view({ world: tied, chain: [state()], persona: PLAYED });
