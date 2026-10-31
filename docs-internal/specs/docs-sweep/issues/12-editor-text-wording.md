@@ -1,6 +1,6 @@
 # 12: Editor Text Wording
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -19,11 +19,23 @@ Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and
 
 ## Acceptance criteria
 
-- [ ] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves
-- [ ] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page
-- [ ] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here
-- [ ] Control names take the exact casing of the on-screen label
-- [ ] Product terms match "Controlled product terms"
-- [ ] Paragraphs are short and steps are scannable lists
-- [ ] No fact changed: a diff read finds no new claim, limit or default
-- [ ] A renamed heading updates every anchor table that names it; the docs tests are green
+- [x] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves — Prompts (4,915 words): spec session ruled a split on 2026-10-31. Prompts keeps presets, the prompts, surfaces and world prompts (reader task: manage presets). New Prompt-Chips takes The Chip Editor, Chip Options, The Inventory Chip and the two chip how-tos (reader task: control what a chip sends). The other four pages are under 4,000 words; no split, ruled.
+- [x] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page — _Sidebar under Prompts, Home row; Glossary, Persona-Authoring, World-Editor-Entities/Placeholders/Stats, surfaceMap `chipOptions` and bundledDocsIndex.test.ts repointed. A grep for the moved slugs under `Prompts#` finds only sectionVectors.json (rebuilt at close, Q7).
+- [x] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here — before: 174 on 5 pages (139 in keyword/route comments, 35 in prose). After: 147 on 6 pages (141 in comments, false positives per Q20; 6 in prose: 5 ellipses inside on-screen labels such as **Add From Library…**, and the **Character Name** chip label).
+- [x] Control names take the exact casing of the on-screen label — icon buttons named per Q12 (**Add to Dictionary**, **Add to Placeholders**, **Add entry**, **Add to Entities**), each grepped in src/managers.
+- [x] Product terms match "Controlled product terms" — "nobody" for entities and "the AI knows" removed; "image" kept.
+- [x] Paragraphs are short and steps are scannable lists — long paragraphs on Dictionary, Placeholders, LinkedContent and TextFormatting became lists; the letter order on Placeholders is a numbered list.
+- [x] No fact changed: a diff read finds no new claim, limit or default — own read plus a spec-axis review subagent; see Landed for one wording to glance at.
+- [x] A renamed heading updates every anchor table that names it; the docs tests are green — headings renamed by case only, slugs unchanged; src/lib/docs and help case tests: 334 green.
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- Prompt-Chips, "Chip Options" bullets: "A bare chip sends what it sent before" now reads "A chip with no picks sends its default text", because docs state current behavior. Check it says what you mean.
+- The four Prompt-Chips help questions were written by a page-blind subagent (Q19). No baseline run (Q6).
+- Wording pass also named the + button on Placeholders (ticket 10 scope add) and on Dictionary and LinkedContent, per Q12.

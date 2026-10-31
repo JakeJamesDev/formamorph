@@ -50,7 +50,7 @@ describe('the bundled Docs Index', () => {
   });
 
   it('routes each how-to on the Settings pages', () => {
-    const howTos = sections.filter((s) => ['Settings', 'Prompts', 'Tools'].includes(s.page) && s.heading.startsWith('How to '));
+    const howTos = sections.filter((s) => ['Settings', 'Prompts', 'Prompt-Chips', 'Tools'].includes(s.page) && s.heading.startsWith('How to '));
     expect(howTos.filter((s) => s.route === undefined).map((s) => s.id)).toEqual([]);
     // How to Turn On Tools routes to the Output tab, where its first step is.
     expect(index.get(['Tools#how-to-turn-on-tools'])[0]?.route).toBe('settings.output');
@@ -205,20 +205,20 @@ describe('the Variable menu section of the Scripts Guide', () => {
   });
 });
 
-describe('the Chip Options sections of the Prompts guide', () => {
+describe('the Chip Options sections of the Prompt Chips guide', () => {
   it.each([
     'how do I send only entities with stats?',
     'how do I keep entities that have no stats out of the Entities chip?',
     'how do I filter the entities a prompt sends?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompts#how-to-send-only-entities-with-stats');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompt-Chips#how-to-send-only-entities-with-stats');
   });
 
   it.each([
     'what are the rows in Chip Options?',
     'what does Stat Detail do on the Entities chip?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompts#chip-options');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompt-Chips#chip-options');
   });
 });
 

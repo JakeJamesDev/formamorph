@@ -6,7 +6,7 @@ The **Prompts** tab in Settings holds the text the app sends to the AI for each 
 
 The **Prompts** tab shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the mode dropdown next to the title, then open the **Prompts** tab.
 
-> A prompt sends only what it holds. Text you delete is gone from the request, and a chip you delete sends nothing. See [The Chip Editor](#the-chip-editor).
+> A prompt sends only what it holds. Text you delete is gone from the request, and a chip you delete sends nothing. See [The Chip Editor](Prompt-Chips#the-chip-editor).
 
 ## How to Make a Prompt Preset
 <!-- keywords: create, new, copy, duplicate, custom, own, system, jailbreak, template, read only, locked, editing blocked, clone, fork, my version -->
@@ -19,7 +19,7 @@ The built-in presets are read-only. To change a prompt, make your own preset fir
 3. Type a name in the **New Preset** dialog.
 4. Select **Save**.
 
-The new preset is a copy of the preset that was active, and it is now the active preset. To copy a preset in one step, select the **Duplicate** button next to the **Preset** list, or **Duplicate & Edit** on a read-only notice. The copy is named "*preset name* (copy)".
+The new preset is a copy of the preset that was active. It is now the active preset. To copy a preset in one step, select the **Duplicate** button next to the **Preset** list. A read-only notice has **Duplicate & Edit** for the same step. The copy is named "*preset name* (copy)".
 
 ## How to Edit a Prompt
 <!-- keywords: change, rewrite, customize, system, instructions, tweak, modify, writing style, tone, longer responses, ai behavior, rules, restore shipped text, preview result, second person, narrator personality -->
@@ -28,7 +28,7 @@ The new preset is a copy of the preset that was active, and it is now the active
 1. Select your own preset in the **Preset** list.
 2. In the list of prompts, select the prompt, such as **Choices**.
 3. Under the prompt, select **System Prompt**, or **User Message** when the prompt has one.
-4. Type in the editor. To add a value from the game, select a chip in the bar above the editor. See [The Chip Editor](#the-chip-editor).
+4. Type in the editor. To add a value from the game, select a chip in the bar above the editor. See [Prompt Chips](Prompt-Chips).
 5. Open the **Preview** tab to read the text with sample values in place of the chips.
 
 The app saves each change at once. Under the editor, select **Compare** to see your changes against the shipped text. To go back to the shipped text, select **Reset**, then confirm. In the **Messages** view, each message has its own **Reset** and **Compare** beside its name.
@@ -113,7 +113,7 @@ A preset holds:
 - which Tools are on. See [Tools](Tools).
 - the **Overview**, on your own presets
 
-The icon buttons next to the **Preset** list manage your presets. Point at an icon to see its name. On a narrow screen they are in the **Preset Actions** menu.
+The icon buttons next to the **Preset** list manage your presets. Hover an icon to see its name. On a narrow screen they are in the **Preset Actions** menu.
 
 | Button | What it does |
 |---|---|
@@ -214,7 +214,7 @@ On a wide screen, a button shows **Chips** and **Preview** side by side. When yo
 
 ### System Prompt
 
-The **System Prompt** is the main text of the prompt. It tells the AI its job and holds the chips for the world, the scene and the story so far. Edit it in [the chip editor](#the-chip-editor).
+The **System Prompt** is the main text of the prompt. It tells the AI its job and holds the chips for the world, the scene and the story so far. Edit it in [the chip editor](Prompt-Chips#the-chip-editor).
 
 ### User Message
 
@@ -250,132 +250,13 @@ A field shows only while its feature can send it.
 
 **Reasoning Budget** needs **Max Output Tokens** on the prompt's endpoint. Without it, the slider goes away, and the strength's Thinking Room is the budget: Minimal 128, Low 1,024, Medium and Model Default 2,048, High 4,096, Extra High 8,192, Max 16,384 tokens. A model that always reasons keeps the **Native Reasoning** checkbox on, with a note.
 
-## The Chip Editor
-<!-- keywords: variables, macros, template tags, insert stats, curly braces, dynamic values, pill, pop out, blocks, fill in -->
-
-Each prompt editor is a chip editor. A **chip** is a box in the text. When the app sends the request, it puts a value in each chip, such as the world description, the stats or your action.
-
-- **A chip sends text, and no chip sends nothing.** The app adds nothing to a prompt that you did not place. Delete the **Notes** chip, and the AI never reads your notes.
-- **The bar above the editor lists the chips this prompt can use.** Select a chip to put it at the cursor, or drag it into the text.
-- **Select a placed chip to open Chip Options.** The dialog sets what the chip sends. See [Chip Options](#chip-options).
-- **The editor has two tabs.** **Edit** holds the template. **Preview** shows the text with each chip filled in. Outside a game, a **Sample data** tag marks the sample values. **Preview** is off while the prompt has no chips.
-
-The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the editor in a large window. For the chips that carry the persona and names, see [Personas for Authors](Persona-Authoring).
-
-| Chip | Offered in |
-|---|---|
-| **World**, **Stats**, **Traits**, **Persona**, **Location**, **Entities**, **Inventory**, **Notes**, **Time** | Every System Prompt |
-| **Dictionary**, **Length Guidance**, **Markdown Guidance** | **Narration** |
-| **Language** | **Narration** and **Choices**. It carries the **AI Language** setting, and sends nothing for English. |
-| **Active Character Guidance** | **Director** |
-| **Character** | **Character** and **Entity Location**, and the User Message of **Discover Entity** |
-| **Player Action** | User Messages that send your action |
-| **Narration** | User Messages that send the turn's narration |
-| **Move State**, **Move Options** | The User Message of **Entity Location** |
-| **In Frame** | The User Message of **Scene Tags** |
-| **First Passage**, **Later Material** | The User Message of **Discover Entity** |
-| **Remembered Moments**, **New Moments** | The User Message of **Milestone Select** |
-
-The **Now Message** offers **Location**, **Entities**, **Time** and **Notes**.
-
-## Chip Options
-<!-- keywords: chip settings, chip popup, pop out, options for a chip, what does this chip send, what the ai reads, scope content format, header prepend append, only with, include, stat detail -->
-<!-- route: chipOptions -->
-
-**Chip Options** is a dialog with the settings of one placed chip. It shows only the rows that chip has.
-
-- **A prompt chip has two panes.** The left pane holds the rows. The right pane, **What the AI Reads**, shows the text the chip sends with your picks. It includes the **Header**, **Prepend** and **Append** text, in a dimmer shade.
-- **Hover or focus a row to see what it adds.** The text it adds lights up, and the rest dims. A **Stat Detail** piece lights only its own part of each stat line.
-- **The pane reads real data where it can.** In a game it reads the live scene. In the World Editor it reads the authored world. In Settings it reads sample data.
-- **Placeholder chips and Tool argument chips have one pane.** They show their rows and no **What the AI Reads**.
-- **A narrow screen stacks the panes.** The rows come first.
-- **A list of four options or more is a dropdown.** A short list is a row of buttons. Hover an option to read what it does.
-- **Read-only presets show every row, disabled.**
-- **Re-Pick…** aims a placeholder chip at another value. **Edit Value** opens the chip's value for typing.
-
-| Row | Chips | What it does |
-|---|---|---|
-| **Scope** | **Location**, **Entities** | Picks which locations or entities the chip lists |
-| **Only With** | **Entities**, **Persona** | Keeps only entities that own **Stats**, **Traits** or either |
-| **Content** | **Location**, **Entities**, **Persona** | Sends **Full** detail, a **Summary**, or the **Name** only |
-| **Include** | **Entities**, **Persona** | Sends each entity's **Traits** and **Stats**, each on or off |
-| **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
-| **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona**, **Inventory** | Shapes the text as **Simple**, **Markdown** or **XML** |
-| **Mode** | **Dictionary**, placeholder chips | Picks **Foreground** or **Background** lore. On a placeholder chip, picks **World** or **Unique**. |
-| **Label** | Placeholder chips set to **Unique** | Names the chip |
-| **Header**, **Prepend**, **Append** | Placement fields, below a rule | **Header** starts a section. **Prepend** and **Append** wrap the value. A chip with no value sends none of them. |
-
-- **Include Stats is on by default** for **Here** and **In Scene**. It is off for **In Sub**, **Reachable** and **Known**.
-- **Name content turns off Include and Stat Detail.** **Only With** still works, so the name list holds only the entities that pass.
-- **Include Stats off turns off Stat Detail.**
-- **A bare chip sends what it sent before.** Chips in saved presets and worlds keep working.
-
-> ⚠️ **An older version of Formamorph can't read the new picks.** A preset or world that uses **Only With**, **Include** or **Stat Detail** picks shows the raw chip text there, and the AI reads it as text.
-
-## The Inventory Chip
-<!-- keywords: inventory chip, items in the prompt, what the narrator knows about items, equipped items, carried items, hidden items, items here -->
-
-The **Inventory** chip tells the AI who has which items in the scene.
-
-| Who | What it sends |
-|---|---|
-| 🧍 You, and each entity at your location | Each equipped item with its **AI Summary** (or its **AI Description** when there is no summary), then the carried items by name |
-| 📍 The current location | The items that lie there, by name |
-
-- **Hidden items are marked hidden.** The AI knows where they are, so it can reveal one when you search.
-- **A stack shows its count**, such as ×3.
-- **When nobody here has an item, the chip sends `N/A`.** With a **Header**, **Prepend** or **Append**, it sends nothing.
-- **The built-in presets hold it in the narration prompt.** A preset you made keeps its prompts as you saved them. To add the chip, select **Inventory** in the bar above the editor.
-
-## How to Send Only Entities With Stats
-<!-- keywords: only entities with stats, only npcs with stats, filter entities by stats, skip entities without stats, send only characters that own stats, entities that have traits, keep cast short, trim the entity list, stat pass cast -->
-<!-- route: chipOptions -->
-
-Use **Only With** on the **Entities** chip. The chip then lists only the entities that own stats.
-
-1. In the prompt, select the **Entities** chip. Chip Options opens.
-2. Under **Only With**, check **Stats**.
-3. Optional: check **Traits** too. The chip then keeps an entity that owns stats or traits.
-4. Read **What the AI Reads** to check the list.
-
-- **The chip shows a filter icon while a pick is on.** Hover the icon to read the picks, such as "Only With Stats or Traits". The chip's label does not change.
-- **An entity owns stats when at least one of its stats is on.** The same holds for traits. A switched-off stat or trait doesn't count.
-- **Include doesn't change who stays.** An entity with stats stays even when you clear **Include → Stats**.
-- **The Persona chip has the same row.** A persona that fails the pick sends what no persona sends: `N/A`, or nothing when the chip has a **Header**, **Prepend** or **Append**.
-
-## How to Get Entity Stats Into a Custom Stat Prompt
-<!-- keywords: custom stat prompt, saved stat prompt, entity stats missing, stat updates skips entities, add entities chip, in scene chip, stat pass owner blocks, player character chip, global stats chip -->
-<!-- route: chipOptions -->
-
-The default **Stat Updates** prompt reads four blocks. A **Stat Updates** prompt you saved keeps its own chips, so it sends no entity stats until you add the **Entities** chip. The **Stats** chip sends no In Scene entity's stats.
-
-| Chip | Header | Sends |
-|---|---|---|
-| **Stats** | Global Stats | Global stats that no entity owns |
-| **Traits** | Global Traits | Global traits that no entity owns |
-| **Persona** | Player Character | The persona's traits and stats, and the stats of every entity you play as |
-| **Entities** | In Scene | Each present entity that owns stats |
-
-1. Open the **Prompts** tab in Settings, in **Advanced** mode. Select **Stat Updates** in a preset of your own.
-2. Put the cursor after your **Persona** chip. Select the **Entities** chip in the bar.
-3. Select the placed chip to open Chip Options.
-4. Set **Scope** to **In Scene**.
-5. Under **Only With**, check **Stats**.
-6. Set **Content** to **Summary**. Under **Include**, check **Traits** and **Stats**. Under **Stat Detail**, check all three pieces.
-7. In **Header**, type `In Scene`.
-8. In the format section of the prompt, add a line that lists the reply keys: `Player Character`, `Global Stats` and each In Scene entity's name.
-
-- **An entity's reply key is its name, as the block shows it.** A name that clashes with an earlier owner reads as "*name* (2)".
-- **Set the Persona chip's Only With, Content and Include rows the same way.** Keep its **Header** as `Player Character`. A persona with no stats sends no block.
-- **A world's own Stats prompt follows the same steps.** See [World Prompts and the Diff Viewer](#world-prompts-and-the-diff-viewer).
-
 ## World Prompts and the Diff Viewer
 <!-- keywords: custom prompt notice, compare, green and red, what changed, authors instructions, ignore, use mine instead, overrides my preset, raw, side by side -->
 <!-- route: worldPrompts -->
 
 A world can bring its own **Narration**, **Choices** or **Stats** prompt. An author writes them under **Custom Prompts** in the World Editor's **Overview** tab. See [World Editor Overview](World-Editor-Overview). A world prompt takes the place of your preset's prompt for that pass.
 
-When you select such a world on the main menu, a notice under its details names the custom prompts, such as "This world uses a custom narration prompt." Select **View** on the notice to open **Custom Prompts**.
+Select such a world on the main menu, and a notice under its details names its custom prompts, such as "This world uses a custom narration prompt." Select **View** on the notice to open **Custom Prompts**.
 
 **Custom Prompts** compares the world's prompt with the prompt Formamorph ships for that pass. It does not compare with your own preset.
 
@@ -389,6 +270,7 @@ Chips show as their raw text, such as `<WORLD DESCRIPTION>`. To play the world w
 
 ## Related
 
+- [🔣 Prompt Chips](Prompt-Chips): the chip editor, Chip Options, and what each chip sends
 - [🧰 Tools](Tools): the functions the AI can call, and which preset turns them on
 - [⚙️ Settings](Settings): the features that add or remove prompts, and the text endpoints
 - [🧠 Story Memory](Memory): what **Summaries**, **Milestone Select** and **Diary** keep

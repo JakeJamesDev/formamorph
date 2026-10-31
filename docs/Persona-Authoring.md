@@ -198,7 +198,7 @@ The **Persona** chip sends the persona to the AI. The built-in prompt presets al
 
 > ⚠️ **Your own prompt gets no persona until you add the chip.** A prompt in **Custom Prompts** replaces the player's prompt, and nothing is added to it. Without the chip, the AI never sees the player's name or description. The same is true of a player's own custom preset.
 
-Select the placed chip to open [Chip Options](Prompts#chip-options) and set **Content**:
+Select the placed chip to open [Chip Options](Prompt-Chips#chip-options) and set **Content**:
 
 | Content | Sends | Use it for |
 |---|---|---|

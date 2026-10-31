@@ -34,7 +34,7 @@ After each narration, a separate request reads the turn and records which stats 
 
 On an endpoint that can't take that format, the request falls back to stat-change lines. The fallback covers the persona's stats and the global stats. Stats of other entities don't update there. A custom preset is sent as written. A world's own **Stats** prompt is sent as written too, with your preset's user message.
 
-> 💡 A saved world prompt for **Stats** or your own **Stat Updates** preset keeps its own layout. To get entity stats back in it, see [How to Get Entity Stats Into a Custom Stat Prompt](Prompts#how-to-get-entity-stats-into-a-custom-stat-prompt).
+> 💡 A saved world prompt for **Stats** or your own **Stat Updates** preset keeps its own layout. To get entity stats back in it, see [How to Get Entity Stats Into a Custom Stat Prompt](Prompt-Chips#how-to-get-entity-stats-into-a-custom-stat-prompt).
 
 ## How to Add a Stat
 <!-- keywords: attribute, health, hp, meter, number, bar, create, new, variable, gauge, mana, counter, currency, gold, score, hunger, resource, skill level, track money -->
@@ -109,7 +109,7 @@ To group stats only for yourself, clear **Show Heading to AI** on the group. The
 ## What the AI sees
 <!-- keywords: what gets sent, ai sees exact number, send only words, too many meters, context budget, token cost, hide numbers from ai -->
 
-Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompts#the-chip-editor) decides what is sent with it:
+Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompt-Chips#the-chip-editor) decides what is sent with it:
 
 | Piece | Adds |
 |---|---|
@@ -117,7 +117,7 @@ Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompts#the
 | **Descriptor** | The matching Stat Descriptor, a word for the current level |
 | **Description** | The stat's **Description** |
 
-Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options](Prompts#chip-options). At least one stays checked. The **Entities** and **Persona** chips have the same row for the stats they send.
+Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options](Prompt-Chips#chip-options). At least one stays checked. The **Entities** and **Persona** chips have the same row for the stats they send.
 
 > ⚠️ **Every active stat is sent on every turn.** Stats use your context budget all the time. Three stats that matter are better than twelve that don't.
 

@@ -1,9 +1,9 @@
 # 🔗 Linked Content
 <!-- keywords: chain icon meaning, master copy, one character many worlds, what is linking, shared originals -->
 
-How a world's entities and dictionaries follow a library item, and what that link does at each step: editing, updating, publishing, downloading, and repair.
+A world's entities and dictionaries can follow a library item. This page shows what that link does when you edit, update, publish, download and repair.
 
-> The same story, in short, opens from **About Linked Content…** in a linked copy's menu in the [World Editor](WorldEditor), and from the `?` in the title bar of **Update Available** and **Update This World**.
+> A short version of this page opens from **About Linked Content…** in a linked copy's menu in the [World Editor](WorldEditor), and from the `?` in the title bar of **Update Available** and **Update This World**.
 
 ## How to Link a Copy to Your Library
 <!-- keywords: save entity, sync, connect, share between worlds, reuse, item, attach to original, use character elsewhere, same character two worlds, store for later, bind to master, keep copies matching, reattach -->
@@ -12,7 +12,7 @@ How a world's entities and dictionaries follow a library item, and what that lin
 1. In the World Editor, open the entity or dictionary.
 2. Select **Save to Library**. The copy is saved as a library item and follows it.
 
-For an independent copy of an item you already have, open the copy's menu and select **Link to Library Item…**, then pick the item.
+To link an independent copy to an item you already have, open the copy's menu. Select **Link to Library Item…**, then pick the item.
 
 ## How to Update a Linked Copy
 <!-- keywords: sync, refresh, new version, get changes, outdated, behind, pull, see differences, diff, merge edits, stale copy, overwrite with original, bring up to date, preserve my edits -->
@@ -89,15 +89,15 @@ A **linked copy** follows a **library item**. When you save the library item, ev
 | Action | Result |
 |---|---|
 | **Save to Library** | Saves the copy as a library item and links the copy to it. |
-| **Add From Library…** | In the **+** menu on **Entities** and **Dictionary**. Adds a copy of a library item. **Link to Library** is on by default. |
-| **Import Entity…**, **Import Dictionary…** | In the same **+** menu. Adds a copy from a file. **Link through my library** is the same choice. |
+| **Add From Library…** | In the menu of the **Add to Entities** or **Add to Dictionary** icon button (+). Adds a copy of a library item. **Link to Library** is on by default. |
+| **Import Entity…**, **Import Dictionary…** | In the same menus. Adds a copy from a file. **Link through my library** is the same choice. |
 | **Link to Library Item…** | In an independent copy's menu. Links the copy to a library item you pick. If the copy's content differs from that item, it links as a **Local replacement**. |
 
 All four make the same link.
 
 ### The Three Link States
 
-A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows, such as *Linked · Sedge*. Only the footer button shows **Link pending save**.
+A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Hover either one to read the state and the name of what the copy follows, such as *Linked · Sedge*. Only the footer button shows **Link pending save**.
 
 | State | Meaning | Default in a review |
 |---|---|---|
@@ -114,7 +114,7 @@ Who owns the library item decides what an edit does.
 | **Yours** | Stays **Linked**. | Writes the edit to the library item. Every other world holding a copy receives it the next time you open that world. The last save wins. |
 | **Another author's** | Makes the copy a **Local replacement**. | Writes nothing to the library. Their updates still reach you for review, where **Keep Mine** is the default. |
 
-**Autosave** writes the same way as **Save**. **Exit Without Saving** writes nothing to the library. A copy you already made a local replacement stays one; **Use Author's** in a review makes it share edits again.
+**Autosave** writes the same way as **Save**. **Exit Without Saving** writes nothing to the library. A copy that is already a local replacement stays one. **Use Author's** in a review makes it share edits again.
 
 ### The Copy's Menu
 
@@ -127,18 +127,18 @@ Who owns the library item decides what an edit does.
 
 ### Connect World References
 
-A library item names the Placeholder or location it needs by an id from its own world. That id means nothing in the world receiving it. When you add content that expects something this world does not already answer, a **Connect World References** step opens before the content goes in.
+A library item names the Placeholder or location it needs by an id from its own world. That id means nothing in the world receiving it. Content can expect something this world does not answer yet. Then a **Connect World References** step opens before the content is added.
 
 The step lists one row per open reference under **Placeholders** and **Locations**. Each row shows what the content expects and a selector of this world's own, plus **Create New…**. **Connect & Add** stays off until every row is answered. **Back** returns to the picker with your picks and your answers as you left them.
 
-Each copy remembers what its references resolve to here. A later update from the source reaches the same Placeholders even when the source has renamed them. If you delete a Placeholder a copy is connected to, the World Doctor raises a warning that names the copy. **Save Connections…** in the copy's menu reopens the step, so you can point the reference somewhere else.
+Each copy remembers what its references resolve to here. A later update from the source reaches the same Placeholders even when the source has renamed them. If you delete a Placeholder a copy is connected to, the World Doctor raises a warning that names the copy. **Save Connections…** in the copy's menu reopens the step, so you can connect the reference to another one.
 
 ## Updates
 <!-- keywords: upgrade a world, conflict with my edits, side by side compare, skip this version, keeps asking again, partly failed, newly needed items, dropped requirements -->
 
 ### Update Available
 
-**Check for Updates** sits on an entity or dictionary tile in your library, and in a linked copy's menu in the World Editor. It compares the library item against every world that holds a copy. If no world is behind it, Formamorph says the item is up to date and opens nothing.
+**Check for Updates** is on an entity or dictionary tile in your library, and in a linked copy's menu in the World Editor. It compares the library item against every world that holds a copy. If no world is behind it, Formamorph says the item is up to date and opens nothing.
 
 If a world is behind it, **Update Available** lists one row per world, with the copy's state and an action.
 
@@ -149,16 +149,16 @@ If a world is behind it, **Update Available** lists one row per world, with the 
 | **Keep Mine** | Keeps the copy as it is. | **Local replacement** |
 | **Unlink** | Keeps the copy as it is and stops following the library item. | |
 
-**View Changes** shows each changed field twice, under **This world** and **Library**. For an imported file, the file's name replaces **Library**. A dictionary's changed, added, and removed entries are grouped, and unchanged content sits behind a disclosure.
+**View Changes** shows each changed field twice, under **This world** and **Library**. For an imported file, the file's name replaces **Library**. A dictionary's changed, added, and removed entries are grouped. Unchanged content is in a collapsed section.
 
-Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it. If one world fails, it keeps the content it had and offers **Retry**. Every other world's result stands.
+Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it. If one world fails, it keeps the content it had and offers **Retry**. Every other world keeps its result.
 
 > [!NOTE]
 > **Keep Mine remembers the revision you answered for.** That revision does not come back. The next revision of the library item asks again.
 
 ### Update This World
 
-Choosing **Update an existing copy** on a community world opens **Update This World** before anything is written. It lists the linked copies the update would change, each with the same actions. A local replacement starts on **Keep Mine**, so your edits survive the update. When there is nothing to review, the world updates with no review.
+Choosing **Update an existing copy** on a community world opens **Update This World** before anything is written. It lists the linked copies the update would change, each with the same actions. A local replacement starts on **Keep Mine**, so the update keeps your edits. When there is nothing to review, the world updates with no review.
 
 | Section | What is in it | What Apply Updates does |
 |---|---|---|
@@ -180,13 +180,16 @@ The publish dialog lists every library item the world's copies follow under **Li
 | **Include as required** checked | The source downloads and links with the world. |
 | Unchecked | The content is published inside the world with no source to follow. |
 
-A source you own that has no listing yet reads **Will publish with this world** and carries a **Public** or **Unlisted** choice, set to Unlisted. Those sources publish first, and the world publishes only once every one of them exists. If one is refused, the world stays unpublished, the dialog names what failed, and **Retry** picks up where it stopped. Your own links are untouched.
+A source you own that has no listing yet reads **Will publish with this world**. It has a **Public** or **Unlisted** choice, set to Unlisted.
+
+- **Those sources publish first.** The world publishes only once every one of them exists.
+- **If one is refused, the world stays unpublished.** The dialog names what failed, and **Retry** continues from where it stopped. Your own links are untouched.
 
 A first publication checks every row. A later one checks what the listing already requires.
 
 ### Publishing an Entity or a Dictionary
 
-The publish dialog gains a **Listing** choice, **Public** or **Unlisted**, and a **Compatible Worlds** section that lists every published world of yours with a linked copy of it.
+The publish dialog has a **Listing** choice, **Public** or **Unlisted**. Its **Compatible Worlds** section lists every published world of yours with a linked copy of the item.
 
 Check **Offer as add-on** for a world and publishing creates that offer. The world's author then reviews it, and the review state shows beside each world you have already offered it for.
 
@@ -194,7 +197,7 @@ An unlisted listing stays out of Community Creations and reaches players only in
 
 ### Manage Add-ons
 
-Your own published world card in Community Creations gains **Manage Add-ons**, a puzzle icon button. It opens the offers other authors have made for your world. Each offer is in one of three states.
+Your own published world card in Community Creations has **Manage Add-ons**, a puzzle icon button. It opens the offers other authors have made for your world. Each offer is in one of three states.
 
 | State | Where the add-on appears on your world's download |
 |---|---|
@@ -225,7 +228,7 @@ A required item that does not download leaves the world out of your library and 
 
 ### A Listing's Compatible Worlds
 
-An entity's or a dictionary's details window lists the worlds it is offered for under **Compatible Worlds**, in three groups: **Approved**, **Unreviewed**, and **Declined by the world author**. Only the entity's or dictionary's own author and staff see the declined group. Pressing a world opens that world's listing. Downloading the entity or dictionary gets only that item. Each world stays a download of its own.
+An entity's or a dictionary's details window lists the worlds it is offered for under **Compatible Worlds**. It has three groups: **Approved**, **Unreviewed**, and **Declined by the world author**. Only the entity's or dictionary's own author and staff see the declined group. Pressing a world opens that world's listing. Downloading the entity or dictionary gets only that item. Each world stays a download of its own.
 
 ### Importing a World File
 
@@ -255,14 +258,14 @@ When you import one file that names worlds or a source, a review opens first, ti
 
 A file that names no worlds says so, and the import adds it to your library only.
 
-If the file's source is already in your library, **Update Available** opens instead, with the file as the incoming revision. When you import several files at once, no review opens: each file goes into your library as it is.
+If the file's source is already in your library, **Update Available** opens instead, with the file as the incoming revision. When you import several files at once, no review opens. Each file is added to your library as it is.
 
 ## Repairs
 <!-- keywords: greyed out buttons, world locked, blocked from starting, verify links online, taken down by author, erased from my library, swap in replacement, reuploaded item -->
 
 ### Check Sources
 
-The Test Bench's **Issues** list gains **Check Sources** when a copy follows a published source. It asks the server about every published source this world's copies follow. After a check, the button reads **Check Again**. Formamorph asks only when you press it, so a downloaded world stays playable with no connection.
+The Test Bench's **Issues** list shows **Check Sources** when a copy follows a published source. It asks the server about every published source this world's copies follow. After a check, the button reads **Check Again**. Formamorph asks only when you press it, so a downloaded world stays playable with no connection.
 
 | Result | Meaning |
 |---|---|
@@ -284,8 +287,8 @@ Each copy with a missing source gets its own repair, with one **Apply** per copy
 
 ### While a Source Is Missing
 
-While a required source reads as removed, **Enter World**, **Quick Start**, and **Publish World** are off for that world. The reason names the source and carries **Repair Sources** to the editor. **Edit World** and **Load Game** stay open, because a game already under way keeps what it started with. Repairing the copy turns the other three back on.
+While a required source reads as removed, **Enter World**, **Quick Start**, and **Publish World** are off for that world. The reason names the source and has **Repair Sources**, which opens the editor. **Edit World** and **Load Game** stay open, because a game already under way keeps what it started with. Repairing the copy turns the other three back on.
 
 ### Removing a Library Item
 
-Deleting an item from your library leaves every world copy that followed it as an independent copy with its content untouched. Each world lets go of the item the next time you open it. No world breaks.
+Deleting an item from your library leaves every world copy that followed it as an independent copy with its content untouched. Each world clears its link to the item the next time you open it. No world breaks.

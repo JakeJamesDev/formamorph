@@ -43,6 +43,8 @@
     { "id": "settings-b3", "page": "Settings", "question": "can the lines people say show in their own shade so they stand out?", "section": "Settings#how-to-color-quoted-speech", "otherSections": ["Settings#display"] },
     { "id": "prompts-b1", "page": "Prompts", "question": "how do I change the instructions the game gives the AI?", "section": "Prompts#how-to-edit-a-prompt" },
     { "id": "prompts-b2", "page": "Prompts", "question": "how do I give my custom AI instructions to a friend?", "section": "Prompts#how-to-share-a-prompt-preset", "otherSections": ["Prompts#prompt-presets"] },
+    { "id": "prompt-chips-b1", "page": "Prompt-Chips", "question": "I only want characters in my current location sent to the AI", "section": "Prompt-Chips#chip-options" },
+    { "id": "prompt-chips-b2", "page": "Prompt-Chips", "question": "can I send only characters that have stats, not everyone?", "section": "Prompt-Chips#how-to-send-only-entities-with-stats", "otherSections": ["Prompt-Chips#chip-options"] },
     { "id": "tools-b1", "page": "Tools", "question": "how do I let the AI call helper functions while it writes?", "section": "Tools#how-to-turn-on-tools" },
     { "id": "tools-b2", "page": "Tools", "question": "my AI server can't do function calls, can I still use these?", "section": "Tools#endpoints-without-tool-support" },
     { "id": "images-b1", "page": "Image-Generation", "question": "how do I get a picture for every moment of the story automatically?", "section": "Image-Generation#how-to-turn-on-scene-images", "otherSections": ["Image-Generation#scene-images", "Settings#display"] },

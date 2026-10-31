@@ -20,6 +20,7 @@
 - [⚙️ Settings](Settings)
   - [🔌 Endpoint Settings](Endpoint-Settings)
   - [📜 Prompts](Prompts)
+  - [🔣 Prompt Chips](Prompt-Chips)
   - [🧰 Tools](Tools)
   - [🎨 Image Generation](Image-Generation)
 
