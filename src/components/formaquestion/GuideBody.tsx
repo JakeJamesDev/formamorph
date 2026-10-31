@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { BookOpen, MessageCircleQuestion, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
@@ -13,6 +14,7 @@ import { SurfaceHelpRow } from './SurfaceHelpRow';
 import type { HelpChat } from './useHelpChat';
 
 const TAB_ICONS: Record<FormaquestionTab, typeof Search> = { ask: MessageCircleQuestion, search: Search, guide: BookOpen };
+const TABS = FORMAQUESTION_TABS.map((t) => ({ ...t, icon: TAB_ICONS[t.value] }));
 const TAB_PANEL = 'mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex';
 
 /**
@@ -70,17 +72,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
       data-fq-layout="narrow"
     >
       <div className="shrink-0 border-b p-2">
-        <TabsList className="grid w-full grid-cols-3" aria-label="Formaquestion Parts">
-          {FORMAQUESTION_TABS.map(({ value, label }) => {
-            const Icon = TAB_ICONS[value];
-            return (
-              <TabsTrigger key={value} value={value} className="gap-1.5">
-                <Icon aria-hidden className="h-4 w-4" />
-                {label}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        <CollapsingTabsList tabs={TABS} value={view.tab} aria-label="Formaquestion Parts" />
       </div>
       <TabsContent value="ask" className={TAB_PANEL}>{ask}</TabsContent>
       <TabsContent value="search" className={TAB_PANEL}>
