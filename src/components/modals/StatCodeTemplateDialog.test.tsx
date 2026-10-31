@@ -295,7 +295,7 @@ describe('the form a template presents', () => {
     await authoring(user, 'traits[{{t:trait}}].enabled = true;');
 
     const slot = await screen.findByRole('combobox', { name: 'T' });
-    expect(slot).toHaveTextContent('Pick a trait…');
+    expect(slot).toHaveTextContent('Pick a trait');
     await user.click(slot);
     expect(await rows()).toEqual(['Storm TouchedLineage › Storms', 'HeirLineage', 'CursedWorld']);
     await user.click(screen.getByRole('option', { name: /^Storm Touched/ }));

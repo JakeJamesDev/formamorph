@@ -12,7 +12,7 @@ import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { FieldError, Hint } from '@/components/ui/typography';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { Section } from '@/components/SettingsRows';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
@@ -58,7 +58,7 @@ const NAME_PROBLEM_BY_HOME: Record<ToolHome, Record<ToolNameProblem, string>> = 
   world: { ...NAME_PROBLEM, taken: 'Another Tool in this world uses this name' },
 };
 
-/** Shown under a parameter's name. An unnamed one is left to the footer, so a new card isn't born red. */
+/** Shown under a parameter's name. An unnamed one is left to the footer, so a new card shows no error. */
 const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
   unnamed: null,
   repeated: 'Another parameter uses this name',
@@ -104,7 +104,7 @@ type LookupSource = Extract<ToolHandler, { kind: 'lookup' }>['source'];
 const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: string }[] = [
   { value: 'entities', label: 'Entities', matches: 'Matches entity names and aliases, in any case' },
   { value: 'locations', label: 'Locations', matches: 'Matches location names, in any case' },
-  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and trigger keywords, in any case' },
+  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches entry names and Trigger Keywords, in any case' },
 ];
 
 /** Label, help, control, then the control's problem: the Design System's field help order. */
@@ -312,7 +312,7 @@ function TriggerFields({ handler, onChange }: { handler: ToolScriptHandler; onCh
       </div>
       {armsTrigger(timing) && (
         <>
-          <Field id={`${id}-reply`} label="Reply" hint="Goes to the AI on each call. Blank sends “Done.”">
+          <Field id={`${id}-reply`} label="Reply" hint="Goes to the AI on each call. Leave it blank to send “Done.”">
             <Input id={`${id}-reply`} value={handler.reply ?? ''} onChange={(e) => onChange({ ...handler, reply: e.target.value })} />
           </Field>
           <div className="flex flex-col gap-1">
@@ -622,7 +622,7 @@ export function ToolEditor({
         </TabsContent>
       </Tabs>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
-        {fixes && <p role="status" className="mr-auto text-helper text-muted-foreground">{fixes}</p>}
+        {fixes && <Meta as="p" role="status" className="mr-auto">{fixes}</Meta>}
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button disabled={blocked} onClick={onSave}>Save Tool</Button>
       </div>

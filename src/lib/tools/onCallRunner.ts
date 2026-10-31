@@ -1,5 +1,5 @@
 /**
- * A turn's On Call World Tool runs. Each run reads the turn as `prepare` builds it and lands its writes at
+ * A turn's On Call World Tool runs. Each run reads the turn as `prepare` builds it and applies its writes at
  * once, so the next run, and every prompt built after it, reads them (Q38, Q40).
  */
 import type { Tool } from '@/types';
@@ -7,13 +7,13 @@ import { runStatCodeTurn, type StatCodeTurn, type StatCodeTurnResult } from '@/l
 import type { ToolArgs } from './toolRunner';
 import type { OnCallOutcome, OnCallRunner } from './worldToolTurn';
 
-/** One run's turn, and how its result lands on live state. */
+/** One run's turn, and how its result applies to live state. */
 export interface OnCallRun {
   turn: StatCodeTurn;
   land: (result: StatCodeTurnResult) => void;
 }
 
-/** Runs each On Call script over a fresh `prepare`; a failed script lands no write (Q3). */
+/** Runs each On Call script over a fresh `prepare`; a failed script applies no write (Q3). */
 export function onCallRunner(prepare: () => OnCallRun): OnCallRunner {
   return async (tool: Tool, code: string, args: ToolArgs): Promise<OnCallOutcome> => {
     const { turn, land } = prepare();

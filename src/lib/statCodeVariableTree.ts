@@ -188,7 +188,7 @@ const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, 
   return entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined;
 });
 
-// The persona has no verbs and stands first where the player is, so an element lists the fields only.
+// The persona has no verbs and is listed first where the player is, so an element lists the fields only.
 const PRESENT_ELEMENT_FIELDS = ENTITY_FIELDS.filter((entry) => !isMethodEntry(entry));
 
 /** `present`: the list itself, then an entity entry's fields on its first element. */
@@ -207,7 +207,7 @@ const locationListGroup = (path: Path, entry: SurfaceEntry, at: Path): VariableG
 const locationEntryFields = (path: Path): VariableNode[] =>
   fields(path, LOCATION_ENTRY_FIELDS, (entry, at) => locationListGroup(path, entry, at));
 
-// A move to where the turn stands runs as inserted in any turn with a location.
+// A move to the turn's location runs as inserted in any turn with a location.
 const locationFields = (): VariableNode[] => fields(root('location'), LOCATION_MEMBERS, (entry, at) => {
   if (entry.name === 'move') return callField(field(root('location'), entry), 'location.name');
   return locationListGroup(root('location'), entry, at);
@@ -244,7 +244,7 @@ function placeholderFields(path: Path, kind: PlaceholderKindNoun): VariableNode[
     if (entry.name !== 'pin') return field(path, entry);
     const args = kind === 'Object' ? '([""])' : '("")';
     const pin = field(path, entry, args);
-    // A type-over name keeps the selection; otherwise the caret sits between the quotes.
+    // A type-over name keeps the selection; otherwise the caret is between the quotes.
     const caret = pin.insert.length - args.length + args.indexOf('"') + 1;
     return pin.selection ? pin : { ...pin, selection: { from: caret, to: caret } };
   });
@@ -292,7 +292,7 @@ const templateRows = (path: Path, children: (at: Path) => VariableNode[]): Varia
 /** A trait's name and trail, before its row is built. */
 type TraitPlace = Pick<VariableNameRow, 'name' | 'trail'>;
 
-/** One row per trait name. Every trait of a name reads the same fields, so the first one's trail stands. */
+/** One row per trait name. Every trait of a name reads the same fields, so the first one's trail applies. */
 const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[] =>
   firstOfEach(traits, (trait) => trait.name).map((trait) => ({
     ...trait, children: fields(keyed(path, trait.name), TRAIT_ENTRY_FIELDS),

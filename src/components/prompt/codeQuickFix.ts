@@ -9,7 +9,7 @@ import { EditorView, GutterMarker, gutter, keymap, showTooltip, type Tooltip, ty
 import { forEachDiagnostic, type Action } from '@codemirror/lint';
 import { MENU_ROW } from '@/components/menuRow';
 
-/** One fix on offer, with where its diagnostic stands now. */
+/** One fix on offer, with where its diagnostic is now. */
 interface FixOffer {
   action: Action;
   from: number;

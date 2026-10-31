@@ -30,7 +30,7 @@ export function worldToolSurface(params: readonly ToolParam[], timing: ToolScrip
     ],
     // A Tool's `turn.choices` write drops at every timing (Q21).
     members: new Map([...surface.members, ['turn', TURN_MEMBERS], ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),
-    missingReturn: timing === 'call' ? 'This script never returns, so the Tool sends its empty result.' : null,
+    missingReturn: timing === 'call' ? 'This script never returns. The Tool sends its “Empty Result”.' : null,
     guide: WORLD_TOOL_GUIDE_LINKS,
   };
 }

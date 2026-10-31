@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
-import { Hint } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -254,7 +254,7 @@ export function ToolsTab({
       for (const warning of warnings) toast.warn(warning);
       if (plan.skipped.length) toast.info(`Already in My Tools: ${plan.skipped.join(', ')}`);
       if (plan.added.length) toast.success(`Imported ${plan.added.length} Tool${plan.added.length === 1 ? '' : 's'}`);
-      if (plan.hasScript) toast.warn('This pack holds a Script Tool. A script runs code when the AI calls it, so read it before you turn it on.');
+      if (plan.hasScript) toast.warn('This pack holds a Script Tool. Its script runs code when the AI calls it. Read the script before you turn the Tool on.');
     } catch (error) {
       toastError(error, 'Couldn’t import those Tools');
     }
@@ -324,7 +324,7 @@ export function ToolsTab({
     <div className="flex items-start gap-3">
       <div className="min-w-0 flex-1">
         <h3 className="text-label font-medium font-mono break-all">{row.name}</h3>
-        <p className="text-meta text-muted-foreground">{summary}</p>
+        <Meta as="p">{summary}</Meta>
       </div>
       <label className="flex items-center gap-2 text-label flex-shrink-0">
         <Checkbox
@@ -346,24 +346,24 @@ export function ToolsTab({
         </div>
       )}
       {toolsEnabled === false ? (
-        <p role="note" className="flex-shrink-0 text-helper text-muted-foreground">
+        <Hint role="note" className="flex-shrink-0">
           Your prompts won&apos;t receive Tools. Turn on <strong>Tools</strong> in the <strong>Output</strong> tab to send them.
-        </p>
+        </Hint>
       ) : !toolsSupported && (
-        <p role="note" className="flex-shrink-0 text-helper text-muted-foreground">{unsupportedNote}</p>
+        <Hint role="note" className="flex-shrink-0">{unsupportedNote}</Hint>
       )}
 
       <div className="grid flex-1 min-h-0 gap-4 grid-rows-[minmax(0,10rem)_minmax(0,1fr)] sm:grid-rows-1 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
         <ScrollArea className="h-full min-h-0 rounded-md border">
           {/* The side padding is the Landing Pulse's room around the Share Tools row. */}
           <nav aria-label="Tools" className="px-3 py-2 flex flex-col gap-1">
-            <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>
+            <Meta as="p" className="px-1 pt-1">Built-In</Meta>
             {fixedFunctions.map(toolButton)}
             {catalogTools.map(toolButton)}
 
             {my && (<>
             <div className="flex items-center justify-between gap-1 px-1 pt-3" {...targets?.shareTools}>
-              <p className="text-meta text-muted-foreground">My Tools</p>
+              <Meta as="p">My Tools</Meta>
               <span className="flex items-center">
                 <Tip tip="Import Tools">
                   <button type="button" aria-label="Import Tools" className={iconButton} onClick={requestImport}>
@@ -399,7 +399,7 @@ export function ToolsTab({
                 callLimit={selectedFixed.callLimit} defaultLimit={selectedFixed.defaultCallLimit} maxLimit={selectedFixed.maxCallLimit}
                 onChange={(limit) => fixed.onCallLimitChange(selectedFixed.id, limit)}
               />
-              <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selectedFixed.description}</p>
+              <Hint className="whitespace-pre-wrap">{selectedFixed.description}</Hint>
               <ParamList params={selectedFixed.params} />
             </div>
           )}
@@ -407,7 +407,7 @@ export function ToolsTab({
             <div className="flex flex-col gap-3 min-w-0 pr-3">
               {readHeader(selected, toolSummary(selected))}
               {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} offeredTo={!my.singleRequest} intents={my.singleRequest} />}
-              <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
+              <Hint className="whitespace-pre-wrap">{selected.description}</Hint>
               <ToolTryIt key={selected.id} tool={selected} world={world} />
             </div>
           )}
