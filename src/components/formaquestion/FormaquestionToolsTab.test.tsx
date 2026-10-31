@@ -206,6 +206,19 @@ describe('the player’s Formaquestion Tools', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
 
+  it('show Help, Code and World for a Tool with no Intent list, and keep no list until the player changes one', async () => {
+    const user = userEvent.setup();
+    renderTab({ tools: [FIND_PERSON] });
+    await user.click(list().getByRole('button', { name: FIND_PERSON.name }));
+    expect(screen.getByText('Sorted As')).toBeInTheDocument();
+    for (const kind of ['How-to', 'Code', 'Your world']) expect(screen.getByRole('button', { name: `Remove ${kind} from selection` })).toBeInTheDocument();
+    for (const kind of ['Small talk', 'Make something']) expect(screen.queryByRole('button', { name: `Remove ${kind} from selection` })).toBeNull();
+    expect(help.tools[0]).not.toHaveProperty('intents');
+    await user.click(screen.getByRole('combobox', { name: 'Sorted As' }));
+    await user.click(await screen.findByRole('option', { name: /^Small talk/ }));
+    expect(help.tools[0].intents).toEqual(['Chat', 'Help', 'Code', 'World']);
+  });
+
   it('switch on and off per device, apart from the lookup switch', async () => {
     const user = userEvent.setup();
     renderTab({ tools: [FIND_PERSON] });

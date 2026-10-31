@@ -5,12 +5,11 @@
 import { requestAiText, type AiTextOptions } from '@/lib/aiRequest/aiText';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { followsResponseSchema, schemaRejected, type ResponseSchema } from '@/lib/aiRequest/responseSchema';
+import type { Intent } from '@/types';
 import type { HelpRequestOptions } from './helpPresets';
+import { INTENTS } from './intents';
 
-export const INTENTS = ['Chat', 'Help', 'Code', 'World', 'Create'] as const;
-
-/** What a help question asks for, which decides what its answer request carries. */
-export type Intent = (typeof INTENTS)[number];
+export { INTENTS };
 
 /** The classifier's reading of one question: its Intent, and whether it holds a second ask of another Intent. */
 export interface IntentReading {

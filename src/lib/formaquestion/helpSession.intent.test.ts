@@ -4,7 +4,7 @@ import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/re
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpTool, isIntentRequest, isPickRequest, openWorld } from '@/test/helpFixtures';
-import type { Entity } from '@/types';
+import type { Entity, Intent } from '@/types';
 import { DEFAULT_CODE_RIDER, SCRIPT_TAB } from './helpCodeRider';
 import { HELP_CODE_TEST } from './helpCodeTest';
 import { DOCS_LOOKUP } from './docsLookup';
@@ -169,15 +169,54 @@ describe('the Intent plans', () => {
   });
 });
 
+describe('the Tools of an Intent', () => {
+  const askWith = async (intent: string, intents: Intent[] | undefined) => {
+    const tool = helpTool(intents ? { intents } : {});
+    const { fetchImpl, answers } = endpoint(`Intent: ${intent}\nSecond ask: no`);
+    await ask(fetchImpl, { tools: [tool], toolSwitches: { [tool.id]: true } });
+    return toolNames(answers).includes(tool.name);
+  };
+
+  it.each([
+    ['Chat', false], ['Help', true], ['Code', true], ['World', true], ['Create', false],
+  ] as const)('sends a Tool with no list to %s: %s', async (intent, sent) => {
+    expect(await askWith(intent, undefined)).toBe(sent);
+  });
+
+  it.each(['Chat', 'Help', 'Code', 'World', 'Create'] as const)('sends a Tool that lists only %s to that Intent alone', async (only) => {
+    for (const intent of ['Chat', 'Help', 'Code', 'World', 'Create']) {
+      expect(await askWith(intent, [only])).toBe(intent === only);
+    }
+  });
+
+  it('sends a Tool with an empty list to no Intent', async () => {
+    for (const intent of ['Chat', 'Help', 'Code', 'World', 'Create']) expect(await askWith(intent, [])).toBe(false);
+  });
+
+  it('sends the Tool of a Create question that lists Create the same body the switch-off question gets', async () => {
+    const tool = helpTool({ intents: ['Create'] });
+    const settings = { tools: [tool], toolSwitches: { [tool.id]: true } };
+    const { fetchImpl, answers } = endpoint('Intent: Create\nSecond ask: no');
+    await ask(fetchImpl, settings);
+    expect(bodyOf(answers)).toEqual(await fullBody(settings));
+  });
+});
+
 describe('the fallback to the full request', () => {
   it.each([
     ['an unknown label', 'Intent: Lore\nSecond ask: no'],
     ['a reply with no label', 'I think this is about the gate.'],
-    ['Create, until it has its own request', 'Intent: Create\nSecond ask: no'],
   ])('sends %s the body the switch-off question gets', async (_case, reply) => {
     const { fetchImpl, answers } = endpoint(reply);
     await ask(fetchImpl);
     expect(bodyOf(answers)).toEqual(await fullBody());
+  });
+
+  it('offers every Tool that is on, whatever its list holds', async () => {
+    const tool = helpTool({ intents: [] });
+    const { fetchImpl, answers } = endpoint('I think this is about the gate.');
+    await ask(fetchImpl, { tools: [tool], toolSwitches: { [tool.id]: true } });
+    expect(toolNames(answers)).toContain(tool.name);
   });
 
   it('sends the full request when the classifier request fails', async () => {

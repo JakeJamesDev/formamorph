@@ -11,6 +11,7 @@ import { isCodeTurn, isOnCodeTab } from './helpCodeRider';
 import { NO_WORLD_RIDER, TWO_ASK_RIDER, type IntentReading } from './helpIntent';
 import type { HelpSettings } from './helpSettings';
 import { helpToolsOn } from './helpTools';
+import { toolIntents } from './intents';
 import type { SurfaceHint } from './surfaceHint';
 
 export interface HelpRequestPlan {
@@ -28,7 +29,7 @@ export interface HelpRequestPlan {
   readonly roll: boolean;
   /** The Mascot's face call. */
   readonly face: boolean;
-  /** The player's Formaquestion Tools. */
+  /** The player's Formaquestion Tools that are on; with an Intent, those that list it. */
   readonly tools: readonly Tool[];
   /** The riders after the world rules, in order. */
   readonly riders: readonly string[];
@@ -93,13 +94,19 @@ export const codeHelpPlan = (input: HelpPlanInput): HelpRequestPlan => planOf(in
  * The plan of a question the Intent Classifier read, per the spec's table. Create, and World with Read the
  * World off, get the full request. World with no world open gets the no-world rider in place of the world.
  */
-export function intentHelpPlan(input: HelpPlanInput, { intent, secondAsk }: IntentReading, worldOpen: boolean): HelpRequestPlan {
+export function intentHelpPlan(input: HelpPlanInput, reading: IntentReading, worldOpen: boolean): HelpRequestPlan {
+  const plan = intentBlocksPlan(input, reading, worldOpen);
+  // Every Intent's plan, the full ones included, offers only the Tools that list the Intent.
+  return { ...plan, tools: plan.tools.filter((tool) => toolIntents(tool).includes(reading.intent)) };
+}
+
+function intentBlocksPlan(input: HelpPlanInput, { intent, secondAsk }: IntentReading, worldOpen: boolean): HelpRequestPlan {
   const twoAsk = secondAsk ? [TWO_ASK_RIDER] : [];
   const full = fullHelpPlan(input);
   const help = planOf(input, false);
   switch (intent) {
     case 'Chat':
-      return { guide: false, world: false, story: false, code: null, lookup: false, roll: full.roll, face: full.face, tools: [], riders: twoAsk };
+      return { guide: false, world: false, story: false, code: null, lookup: false, roll: full.roll, face: full.face, tools: full.tools, riders: twoAsk };
     case 'Help':
       return { ...help, riders: twoAsk };
     case 'Code':

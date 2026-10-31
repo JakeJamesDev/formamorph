@@ -2,7 +2,8 @@ import { useId, useRef, useState, type ReactNode } from 'react';
 import { Copy, Maximize2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
-import type { AIRequestType, Tool, ToolEnabledMap, ToolParam } from '@/types';
+import type { AIRequestType, Intent, Tool, ToolEnabledMap, ToolParam } from '@/types';
+import { INTENTS, toolIntents } from '@/lib/formaquestion/intents';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -70,14 +71,37 @@ function CallLimitField({ callLimit, defaultLimit, maxLimit, onChange }: {
   );
 }
 
-/** Offered To and Max Calls per Request, written on each change. Where one request takes every Tool, the limit alone. */
-export function AvailabilityFields({ tool, onChange, offeredTo }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean }) {
+/** The Intents in the words of the Sort Questions docs. */
+const INTENT_LABELS: Record<Intent, string> = { Chat: 'Small talk', Help: 'How-to', Code: 'Code', World: 'Your world', Create: 'Make something' };
+
+const INTENT_OPTIONS: MultiSelectOption[] = INTENTS.map((intent) => ({ value: intent, label: INTENT_LABELS[intent] }));
+
+/**
+ * Offered To and Max Calls per Request, written on each change. Where one request takes every Tool, the limit
+ * alone, or with `intents` the Intents that send the Tool beside it.
+ */
+export function AvailabilityFields({ tool, onChange, offeredTo, intents = false }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean; intents?: boolean }) {
   const id = useId();
   const setLimit = (limit: number | undefined) => {
     const { callLimit: _, ...rest } = tool;
     onChange(limit === undefined ? rest : { ...rest, callLimit: limit });
   };
   const limit = <CallLimitField callLimit={tool.callLimit} defaultLimit={DEFAULT_TOOL_CALL_LIMIT} onChange={setLimit} />;
+  if (intents) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex flex-col gap-1 min-w-0">
+          <Label id={`${id}-intents`}>Sorted As</Label>
+          <Hint>Sends the Tool with these kinds of question</Hint>
+          <MultiSelect
+            aria-labelledby={`${id}-intents`} options={INTENT_OPTIONS} placeholder="No Questions" allSelectedLabel="All Questions"
+            defaultValue={[...toolIntents(tool)]} onValueChange={(kinds) => onChange({ ...tool, intents: INTENTS.filter((intent) => kinds.includes(intent)) })}
+          />
+        </div>
+        {limit}
+      </div>
+    );
+  }
   if (!offeredTo) return limit;
   return (
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -224,7 +248,7 @@ export function ToolsTab({
     try {
       const text = await readText();
       if (text === null || !my) return;
-      const { tools, warnings } = parseToolPack(text);
+      const { tools, warnings } = parseToolPack(text, { help: my.singleRequest });
       const plan = planToolImport(my.userTools, tools, randomUUID, reserved);
       plan.added.forEach(my.onSaveTool);
       for (const warning of warnings) toast.warn(warning);
@@ -382,7 +406,7 @@ export function ToolsTab({
           {selected && (
             <div className="flex flex-col gap-3 min-w-0 pr-3">
               {readHeader(selected, toolSummary(selected))}
-              {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} offeredTo={!my.singleRequest} />}
+              {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} offeredTo={!my.singleRequest} intents={my.singleRequest} />}
               <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
               <ToolTryIt key={selected.id} tool={selected} world={world} />
             </div>

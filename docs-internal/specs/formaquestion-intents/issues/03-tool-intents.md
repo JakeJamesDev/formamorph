@@ -1,6 +1,6 @@
 # 03: Tool Intents
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -21,11 +21,21 @@ Spec: Q54, Q65–Q67; stories 37–39.
 
 ## Acceptance criteria
 
-- [ ] A Tool goes out only on the Intents its list holds: `askHelp` tests per Intent
-- [ ] A Tool with no list goes to Help, Code and World, and not to Chat or Create
-- [ ] The fallback request offers every Tool that is on
-- [ ] The multiselect saves the list, and the editor shows the default for a Tool with none
-- [ ] A pack and a help preset file with the list round-trip; one without it loads with the default
-- [ ] ADR-0010 carries the amendment, and the player docs describe the list
+- [x] A Tool goes out only on the Intents its list holds: `askHelp` tests per Intent (`sends a Tool that lists only %s to that Intent alone`); removing the plan filter turned 8 tests red
+- [x] A Tool with no list goes to Help, Code and World, and not to Chat or Create (`sends a Tool with no list to %s`)
+- [x] The fallback request offers every Tool that is on (`offers every Tool that is on, whatever its list holds`)
+- [x] The multiselect saves the list, and the editor shows the default for a Tool with none (`show Help, Code and World for a Tool with no Intent list…` in `FormaquestionToolsTab.test.tsx`)
+- [x] A pack and a help preset file with the list round-trip; one without it loads with the default (`toolPack.test.ts`, `helpPresetFile.test.ts`, `helpTools.test.ts`)
+- [x] ADR-0010 carries the amendment, and the player docs describe the list
 
 For you: open the Formaquestion Tool editor and judge whether the Intents control reads clearly beside the other Tool fields.
+
+## Landed
+
+**Not verified**
+- The editor control in the live app: only jsdom tests read it. No frame was taken.
+
+**For you**
+- Open Formaquestion Settings → Tools, select a Tool of your own, and judge whether the **Sorted As** control reads clearly beside **Max Calls per Request**. I labeled it with the Sort Questions words (Small talk, How-to, Code, Your world, Make something) instead of the glossary words, per the Writing Guide. Say if you want other words.
+- Export shape: a Tool pack and a help preset file from the Formaquestion list now carry the optional `intents` list on each Tool (additive). Files without it load with the default.
+- Gameplay Tools never carry the list: the pack and preset readers keep it for the Formaquestion list only.

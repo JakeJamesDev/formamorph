@@ -339,6 +339,7 @@ The sorting request goes out at the same time as the **AI Search** request. It r
 | 🛠️ Make something | Everything, the same as with **Sort Questions** off |
 
 - Your AI decides from the question, not the open **Scripts** tab, whether a question is about code.
+- Each of your own Tools goes only to the kinds it lists in **Sorted As**. See [Tools](#tools).
 - A question about your world with no world open gets a reply that no world is open.
 - When you ask for two things at once, your AI answers the first one and asks you to send the second one next.
 - When the reply of the sorting request is unclear, or the request fails, the question goes as it does with **Sort Questions** off.
@@ -668,7 +669,7 @@ Each preset has its own options, and a copy of a preset takes them. **Default** 
 
 #### The Preset File
 
-See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset-to-another-device) for the steps. The file holds the three prompts, the options of each prompt, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
+See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset-to-another-device) for the steps. The file holds the three prompts, the options of each prompt, your **My Tools** with their **Sorted As** lists, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
 
 - If you already have a preset with that name, the import adds a number to the new name.
 - If you already have a Tool with that name, the import skips that Tool and names it. Your Tool keeps its own switch.
@@ -710,7 +711,8 @@ Turn **Enabled** off to skip the extra input tokens. Each question then goes out
 
 - **New Tool** opens the same editor as **Settings** → **Tools**. See [The Tool Editor](Tools#the-tool-editor). A Tool can't take the name of a built-in function: **read_guide** or **roll**.
 - **Enabled** turns a Tool on or off. A Tool you save here starts on, and a Tool from a Tool pack is off until you turn it on. A help preset file sets the switches of its own Tools. This device keeps the switches.
-- **Max Calls per Request** caps the calls for one question. Leave it blank for the default of 4. There is no **Offered To**, because one request takes every Tool that is on.
+- **Max Calls per Request** caps the calls for one question. Leave it blank for the default of 4.
+- **Sorted As** sets which kinds of question get the Tool: **Small talk**, **How-to**, **Code**, **Your world** and **Make something**. A new Tool goes to **How-to**, **Code** and **Your world**. This matters only with **Sort Questions** on. With it off, every Tool that is on goes with every question, and so it does when the sorting reply is unclear. See [How to Turn On Sort Questions](#how-to-turn-on-sort-questions).
 - **Edit** and **Delete** act on the selected Tool. **Delete** can't be undone.
 - **Try It** runs the Tool on the world you have open in the game or the World Editor, else on a sample world.
 
