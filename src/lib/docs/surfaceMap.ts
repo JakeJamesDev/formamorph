@@ -58,7 +58,7 @@ const ACCOUNT_DELETION = account('account-deletion');
 const BUGS_AND_SUGGESTIONS: Required<DocTarget> = { page: 'Feedback', anchor: 'the-feedback-window' };
 const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
-const FORMAQUESTION_SETTINGS: Required<DocTarget> = { page: 'Formaquestion', anchor: 'formaquestion-settings' };
+const fqSettingsPage = (anchor: string): Required<DocTarget> => ({ page: 'Formaquestion-Settings', anchor });
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
@@ -236,15 +236,15 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestion.ask': { page: 'Formaquestion', anchor: 'ask' },
   'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
-  formaquestionSettings: FORMAQUESTION_SETTINGS,
-  formaquestionCompare: { page: 'Formaquestion', anchor: 'prompts' },
+  formaquestionSettings: fqSettingsPage('\u{FE0F}-formaquestion-settings'),
+  formaquestionCompare: fqSettingsPage('prompts'),
   formaquestionAiContext: { page: 'Formaquestion', anchor: 'ai-context' },
   formaquestionWikiConfirm: { page: 'Formaquestion', anchor: 'the-wiki-confirm' },
-  'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
-  'formaquestionSettings.endpoint': { page: 'Formaquestion', anchor: 'endpoint' },
-  'formaquestionSettings.prompts': { page: 'Formaquestion', anchor: 'prompts' },
-  'formaquestionSettings.tools': { page: 'Formaquestion', anchor: 'tools' },
-  'formaquestionSettings.mascot': { page: 'Formaquestion', anchor: 'mascot' },
+  'formaquestionSettings.general': fqSettingsPage('general'),
+  'formaquestionSettings.endpoint': fqSettingsPage('endpoint'),
+  'formaquestionSettings.prompts': fqSettingsPage('prompts'),
+  'formaquestionSettings.tools': fqSettingsPage('tools'),
+  'formaquestionSettings.mascot': { page: 'Formaquestion-Mascot', anchor: '-formaquestion-mascot' },
 
   avatar: { page: 'Avatars', anchor: 'avatar-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },
