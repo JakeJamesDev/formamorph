@@ -3,7 +3,9 @@ import { act, render, screen, fireEvent, waitFor, within } from '@testing-librar
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH } from '@/lib/locationCanvas';
 import LocationMap from './LocationMap';
-import type { Connection, GameLocation } from '@/types';
+import { computePresence, type PresenceInput } from '@/lib/presence';
+import { metRosterByLocation } from '@/lib/metEntities';
+import type { Connection, Entity, GameLocation } from '@/types';
 
 /**
  * The Map's arrows through what a player sees: which `implicit:` edges are in the DOM. xyflow draws only what
@@ -77,7 +79,7 @@ const show = (props: {
     </TooltipProvider>
   );
   const rendered = render(view(props.current));
-  return { travelTo: (current: string) => rendered.rerender(view(current)) };
+  return { travelTo: (current: string) => rendered.rerender(view(current)), unmount: rendered.unmount };
 };
 
 const box = (name: string) => screen.getByRole('button', { name });
@@ -151,6 +153,41 @@ describe('the Map', () => {
       const badge = within(nodeOf('Spoke 40') as HTMLElement).getByRole('img', { name: 'Bram, Tilly' });
       expect(badge.textContent).toBe('2');
       within(nodeOf('Hub') as HTMLElement).getByRole('img', { name: 'Queen Ysolde' });
+    });
+
+    describe('fed by the Presence Met set', () => {
+      const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
+      /** The roster the game builds for the map from a state where the player stands at s7. */
+      const rosterOf = (input: Partial<PresenceInput>) => metRosterByLocation(computePresence({
+        entities: [], runtime: [], positions: {}, followers: [], locationId: 's7', locations: crowd, connections: [],
+        persona: null, met: [], strangerAliases: {}, turns: [], ...input,
+      }).met);
+      const badges = () => [...document.querySelectorAll('.react-flow__node [role="img"]')].map((b) => b.getAttribute('aria-label'));
+
+      it('draws a Met entity at its position, and an unpositioned one at each place it lists', async () => {
+        const cast = [
+          entity('bram', 'Bram', { locations: ['s7'] }),
+          entity('lights', 'The Cold Lights', { locations: ['s40', 's41'] }),
+        ];
+        show({ current: 's7', entitiesAt: rosterOf({ entities: cast, positions: { bram: 's9' } }) });
+        await drawnAt(2 * 149);
+        within(nodeOf('Spoke 9') as HTMLElement).getByRole('img', { name: 'Bram' });
+        within(nodeOf('Spoke 40') as HTMLElement).getByRole('img', { name: 'The Cold Lights' });
+        within(nodeOf('Spoke 41') as HTMLElement).getByRole('img', { name: 'The Cold Lights' });
+        expect(badges()).toHaveLength(3);
+      });
+
+      it('never draws a stranger, and draws it once the story names it', async () => {
+        const spy = entity('spy', 'Sylvie Thornwhistle', { strangerName: 'a hooded stranger', locations: ['s7'] });
+        const hidden = show({ current: 's7', entitiesAt: rosterOf({ entities: [spy], strangerAliases: { spy: 'the tall one' } }) });
+        await drawnAt(2 * 149);
+        expect(badges()).toEqual([]);
+        expect(screen.queryByText('Sylvie Thornwhistle')).toBeNull();
+        hidden.unmount();
+        show({ current: 's7', entitiesAt: rosterOf({ entities: [spy], met: ['spy'] }) });
+        await drawnAt(2 * 149);
+        expect(badges()).toEqual(['Sylvie Thornwhistle']);
+      });
     });
   });
 

@@ -884,10 +884,7 @@ const GameViewer = ({
   );
   // The Map's live roster: the Met set where each entity stands. A runtime character stands where it was met.
   const { met: metPresence } = usePresence();
-  const metRoster = useMemo(
-    () => metRosterByLocation(metPresence, runtimePositions(discoveredEntities)),
-    [metPresence, discoveredEntities],
-  );
+  const metRoster = useMemo(() => metRosterByLocation(metPresence), [metPresence]);
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
   // never gets promoted to a person. Location names include the whole world, not just here — the
