@@ -83,6 +83,6 @@ describe('diagnostics read the surface', () => {
 
   it('accepts a script that reads the script surface and warns when it returns nothing', () => {
     expect(messages('return Object.values(entities).filter((e) => e.name === args.name).map((e) => e.location);')).toEqual([]);
-    expect(messages('const x = notes;')).toEqual(['This script never returns, so the Tool sends its empty result.']);
+    expect(messages('const x = notes;')).toEqual(['This script never returns. The Tool sends its “Empty Result”.']);
   });
 });

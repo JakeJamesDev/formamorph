@@ -11,7 +11,7 @@ export const WORLD_TOOL_TEMPLATES: readonly CodeTemplate[] = [
     kind: 'worldTool',
     timings: ['call'],
     name: 'Report a Stat',
-    description: 'Return a stat’s value and range to the AI.',
+    description: 'Return a stat’s value and range to the AI',
     code: `const name = {{stat:stat}};
 const stat = stats[name];
 return name + " is " + stat.value + ", from " + stat.min + " to " + stat.max + ".";`,
@@ -44,7 +44,7 @@ return name + " is now " + stat.value + ".";`,
     kind: 'worldTool',
     timings: ['call', 'after'],
     name: 'Move to Location',
-    description: 'Move the turn to the location the AI named. A name the world doesn’t hold fails the call.',
+    description: 'Move the turn to the location the AI named. An unknown name fails the call.',
     code: `const place = String(args[{{place:param(string)=place}}] ?? "").trim();
 if (place) location.move(place);
 return place ? "Moved to " + place + "." : "No place to move to.";`,
@@ -54,7 +54,7 @@ return place ? "Moved to " + place + "." : "No place to move to.";`,
     kind: 'worldTool',
     timings: ['call', 'after'],
     name: 'Pass Time',
-    description: 'Advance the story clock by the minutes the AI sent.',
+    description: 'Advance the story clock by the minutes the AI sent',
     code: `const minutes = Math.max(0, Math.round(Number(args[{{minutes:param(number)=minutes}}]) || 0));
 if (minutes > 0) clock.advance(minutes);
 return minutes + " minutes pass.";`,
@@ -64,7 +64,7 @@ return minutes + " minutes pass.";`,
     kind: 'worldTool',
     timings: ['call', 'after'],
     name: 'Discover an Entity',
-    description: 'Add the entity the AI named to the turn’s cast. The AI then describes them.',
+    description: 'Add the entity the AI named to the turn. The AI then describes it.',
     code: `const name = String(args[{{name:param(string)=name}}] ?? "").trim();
 if (name) discover(name);
 return name ? name + " joins the scene." : "No one to add.";`,
@@ -84,7 +84,7 @@ return line ? "Pinned." : "Nothing to pin.";`,
     kind: 'worldTool',
     timings: ['after'],
     name: 'Add a Diary Line',
-    description: 'Add the line the AI sent to an entity’s diary, after the AI’s own entry.',
+    description: 'Add the line the AI sent to an entity’s diary, after the AI’s own entry',
     code: `const line = String(args[{{line:param(string)=line}}] ?? "").trim();
 if (line) entities[{{entity:entity}}].diary(line);`,
   },
@@ -105,7 +105,7 @@ if (name && !narration.sentence.includes("**" + name + "**")) {
     kind: 'worldTool',
     timings: ['output'],
     name: 'Replace a Word',
-    description: 'Replace the word the AI sent with your own word in each later sentence of the turn.',
+    description: 'Replace the word the AI sent with your own word in each later sentence of the turn',
     code: `const word = String(args[{{word:param(string)=word}}] ?? "").trim();
 if (word) narration.sentence = narration.sentence.split(word).join("{{replacement:text=[redacted]}}");`,
   },

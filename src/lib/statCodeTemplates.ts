@@ -137,7 +137,7 @@ export interface ParsedTemplate {
 // anything but `}` — enough for operators and numbers, and slots needing more belong in the code body.
 const SLOT_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([A-Za-z]+)\s*(?:\(([^)]*)\))?\s*)?(?:=\s*([^}]*?)\s*)?\}\}/g;
 
-/** Where each slot sits in the source, for surfaces that colour the syntax rather than fill it in. Shares
+/** Where each slot is in the source, for surfaces that colour the syntax rather than fill it in. Shares
  *  the one pattern, so a slot the parser accepts is a slot the editor marks. */
 export function findSlotRanges(code: string): { from: number; to: number; name: string }[] {
   return [...(code || '').matchAll(SLOT_PATTERN)].map(match => ({
@@ -174,9 +174,9 @@ export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTem
 
     const type: SlotType = rawType && isSlotType(rawType) && !stray ? rawType : 'text';
     if (rawType && !isSlotType(rawType)) {
-      errors.push(`Slot "${name}" has unknown type "${rawType}" — treating it as text.`);
+      errors.push(`Slot "${name}" has unknown type "${rawType}". It reads as text.`);
     } else if (stray) {
-      errors.push(`Slot "${name}" is a parameter slot, which only World Tool templates take — treating it as text.`);
+      errors.push(`Slot "${name}" is a parameter slot, and only World Tool templates take one. It reads as text.`);
     }
 
     const options = rawOptions === undefined
@@ -192,7 +192,7 @@ export function parseTemplateSlots(code: string, kind?: TemplateKind): ParsedTem
     if (type === 'param') {
       const paramType = options?.[0];
       const known = paramType === undefined || isSlotParamType(paramType);
-      if (!known) errors.push(`Slot "${name}" has unknown Parameter type "${paramType}" — treating it as text.`);
+      if (!known) errors.push(`Slot "${name}" has unknown Parameter type "${paramType}". It reads as text.`);
       slot.paramType = known && paramType ? paramType : 'string';
     } else if ((type === 'trait' || type === 'stat') && options?.length === 1) slot.owner = options[0];
     else if (options && options.length > 0) slot.options = options;
@@ -255,7 +255,7 @@ export function missingParams(
 }
 
 /**
- * What a slot stands for given the answers so far. Blank and unanswered are the same thing: a template
+ * What a slot resolves to given the answers so far. Blank and unanswered are the same thing: a template
  * that declares a default has no way to express "deliberately empty", so clearing a field returns it to
  * what the template asked for rather than to nothing.
  *
@@ -328,7 +328,7 @@ export function slotAnswer(answer: string): { route: 'owner' | 'world'; name: st
 const indexedBy = (list: string) => new RegExp(`(^|[^\\w$.])(${list})(\\s*(?:\\?\\.\\s*)?\\[\\s*)$`);
 const OWNER_ROUTES: Partial<Record<SlotType, RegExp>> = { stat: indexedBy('stats'), trait: indexedBy('traits') };
 
-/** Fill a template's slots and return runnable sandbox code. Unfilled slots stand for their declared
+/** Fill a template's slots and return runnable sandbox code. Unfilled slots resolve to their declared
  *  default, so a partially completed form still previews. An owner's answer reroutes the `stats` or `traits`
  *  that indexes its slot to `owner.stats` or `owner.traits`. A slot used any other way gets the bare name. */
 export function fillTemplate(code: string, values: Record<string, string>): string {
@@ -384,7 +384,7 @@ return a * weight + b * (1 - weight);`,
     kind: 'script',
     timings: ['before', 'after', 'start', 'switch'],
     name: 'Inverse of Another Stat',
-    description: "Invert another stat across this stat's range. High Rest reads as low Fatigue.",
+    description: 'Invert another stat across this stat’s range. High Rest reads as low Fatigue.',
     code: `const source = stats[{{source:stat}}];
 return source.max - source.value;`,
   },
@@ -393,7 +393,7 @@ return source.max - source.value;`,
     kind: 'script',
     timings: ['before', 'after', 'start', 'switch'],
     name: 'Threshold Flag',
-    description: 'Set this stat to Max when another stat passes a threshold, and to Min when it does not.',
+    description: 'Set this stat to Max when another stat passes a threshold, and to Min when it doesn’t',
     code: `const source = stats[{{source:stat}}].value;
 return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max : self.min;`,
   },
@@ -402,7 +402,7 @@ return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max
     kind: 'script',
     timings: ['after'],
     name: 'Hourly Change',
-    description: 'Change by a fixed amount per story hour. A negative rate decreases (hunger, fuel). A positive rate increases. Stacks with Regen, so set one or the other.',
+    description: 'Add a signed amount to this stat each story hour. It stacks with Regen, so set one or the other.',
     code: `const ratePerHour = {{ratePerHour:number=-5}};
 return self.value + ratePerHour * clock.deltaHours;`,
   },
@@ -411,7 +411,7 @@ return self.value + ratePerHour * clock.deltaHours;`,
     kind: 'script',
     timings: ['before', 'after'],
     name: 'Timer',
-    description: 'Move across this stat’s range over a set number of story hours, up or down.',
+    description: 'Set this stat across its range over a set number of story hours, counting up or down',
     code: `const totalHours = {{totalHours:number=24}};
 const fraction = Math.min(1, Math.max(0, clock.elapsedHours / totalHours));
 const progress = '{{direction:choice(up|down)=up}}' === 'up' ? fraction : 1 - fraction;
@@ -422,7 +422,7 @@ return self.min + (self.max - self.min) * progress;`,
     kind: 'script',
     timings: ['before', 'after', 'start', 'switch'],
     name: 'Daypart Modifier',
-    description: 'Follow another stat, with a bonus that only applies during one part of the day.',
+    description: 'Follow another stat, with a bonus that applies during one part of the day',
     code: `const base = stats[{{base:stat}}].value;
 return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,
   },
@@ -431,8 +431,8 @@ return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 
     kind: 'script',
     timings: ['before', 'after'],
     name: 'Random Per-Turn Roll',
-    description: 'A fresh random value each turn, spread across this stat’s range.',
-    code: `// clock.elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
+    description: 'Set this stat to a random value in its range each turn',
+    code: `// Adding clock.elapsedHours changes the roll even when the random seed repeats between turns.
 const roll = (Math.random() * 100 + clock.elapsedHours) % 100;
 return self.min + (self.max - self.min) * (roll / 100);`,
   },
@@ -441,8 +441,9 @@ return self.min + (self.max - self.min) * (roll / 100);`,
     kind: 'script',
     timings: ['after'],
     name: 'Regen Toward Target',
-    description: 'Move toward a target value from either side. The step shrinks near the target. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
-    code: `const value = self.value;
+    description: 'Set this stat closer to a target each story hour, by a step that shrinks near the target. It stacks with Regen, so set one or the other.',
+    code: `// A target at this stat’s Max gives a soft-capped regen.
+const value = self.value;
 const target = {{target:number=100}};
 const rate = {{rate:number=0.1}};
 return value + (target - value) * rate * clock.deltaHours;`,
@@ -481,7 +482,7 @@ return base - (active ? {{penalty:number=10}} : 0);`,
     kind: 'script',
     timings: ['after'],
     name: 'Dice Roll With Consequences',
-    description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20.',
+    description: 'Roll a d20 into this stat each turn, and pin the placeholder to that roll’s value. A 1 halves one stat, and a 20 adds 1 to another. Set this stat’s range to 1–20.',
     // Writes to one stat field apply in stat order. The last write wins.
     code: `const roll = Math.floor(Math.random() * 20) + 1;
 const target = placeholders[{{bandPlaceholder:placeholder}}];
@@ -497,7 +498,7 @@ return roll;`,
     kind: 'script',
     timings: ['before', 'after', 'start'],
     name: 'Placeholder by Range',
-    description: "Map this stat's range onto the placeholder's values. Min pins the first value. Max pins the last.",
+    description: 'Map this stat’s range onto the placeholder’s values. Min pins the first value, and Max pins the last.',
     code: `const target = placeholders[{{placeholder:placeholder}}];
 const span = self.max - self.min || 1;
 const band = Math.floor((self.value - self.min) / span * target.values.length);
@@ -508,7 +509,7 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
     kind: 'script',
     timings: ['before', 'after', 'start'],
     name: 'Trait by Threshold',
-    description: 'Switch a trait on while this stat is past a threshold, and off when it returns. Code can switch a trait the player cannot toggle.',
+    description: 'Switch a trait on while this stat is past a threshold, and off when it returns. A script can switch a trait the player can’t.',
     code: `traits[{{trait:trait}}].enabled = self.value {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}};`,
   },
   {
@@ -516,7 +517,7 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
     kind: 'script',
     timings: ['before'],
     name: 'Opening Turn Value',
-    description: 'Set a value on the opening turn only. Later turns do not run it. Use it for a value the first narration must read.',
+    description: 'Set this stat on the opening turn only, for a value the first narration reads. Later turns skip it.',
     // The before box reads the clock at turn start, so the opening turn is the one with no hours behind
     // it. Returning nothing leaves the value where the turn found it.
     code: `if (clock.elapsedHours > 0) return;
@@ -539,7 +540,7 @@ return low + Math.floor(Math.random() * (high - low + 1));`,
     kind: 'script',
     timings: ['start'],
     name: 'Start From Persona Trait',
-    description: 'Start this stat at one value when the played persona has a trait on, and at another when it doesn’t.',
+    description: 'Start this stat at one value when the played persona has a trait on, and at another when it doesn’t',
     code: `const active = persona.traits[{{trait:trait(persona)}}].enabled;
 return active ? {{withTrait:number=75}} : {{withoutTrait:number=25}};`,
   },
@@ -548,7 +549,7 @@ return active ? {{withTrait:number=75}} : {{withoutTrait:number=25}};`,
     kind: 'script',
     timings: ['switch'],
     name: 'Change When a Trait Switches',
-    description: 'Add a signed amount to this stat when a trait turns on. A negative amount subtracts. A switch-off changes nothing.',
+    description: 'Add a signed amount to this stat when a trait turns on. A switch-off adds nothing.',
     code: `if (trait.name !== {{trait:trait}} || !trait.enabled) return;
 return self.value + {{amount:number=10}};`,
   },
@@ -557,7 +558,7 @@ return self.value + {{amount:number=10}};`,
     kind: 'script',
     timings: ['switch'],
     name: 'Mirror a Trait',
-    description: 'Set this stat to Max when a trait turns on, and to Min when it turns off.',
+    description: 'Set this stat to Max when a trait turns on, and to Min when it turns off',
     code: `if (trait.name !== {{trait:trait}}) return;
 return trait.enabled ? self.max : self.min;`,
   },
@@ -567,7 +568,7 @@ return trait.enabled ? self.max : self.min;`,
     timings: ['output'],
     name: 'Replace a Word',
     description: 'Replace one word with another in each narration sentence. The match uses the exact spelling and case.',
-    // The word sits in a template literal in the generated code, so an apostrophe or quote in it is safe.
+    // The word is in a template literal in the generated code, so an apostrophe or quote in it is safe.
     code: `return narration.sentence.split(\`{{word:text=door}}\`).join(\`{{replacement:text=[redacted]}}\`);`,
   },
   {

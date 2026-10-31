@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FieldError, Hint, SectionTitle } from '@/components/ui/typography';
+import { FieldError, Hint, Meta, SectionTitle } from '@/components/ui/typography';
 import { ToolText } from '@/components/prompt/ToolText';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { runToolCall, type ToolCallResult } from '@/lib/tools/toolRunner';
@@ -44,23 +44,24 @@ function errorMessage(text: string): string {
 
 function ArgInput({ param, value, onChange }: { param: ToolParam; value: string; onChange: (v: string) => void }) {
   const id = useId();
-  const label = `${param.name}${param.required ? '' : ' (optional)'}`;
   const choices = param.type === 'boolean'
     ? [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]
     : param.type === 'enum' ? listOptions(param).map((o) => ({ value: o, label: o })) : null;
   return (
     <div className="flex flex-col gap-1 min-w-0">
-      <Label htmlFor={id} className="font-mono">{label}</Label>
+      <Label htmlFor={id} className="font-mono">{param.name}</Label>
+      {!param.required && <Hint id={`${id}-optional`}>Optional</Hint>}
       {choices ? (
         <Select value={value || undefined} onValueChange={onChange}>
-          <SelectTrigger id={id} aria-label={param.name}><SelectValue placeholder="Pick one" /></SelectTrigger>
+          <SelectTrigger id={id} aria-label={param.name} aria-describedby={param.required ? undefined : `${id}-optional`}><SelectValue placeholder="Pick one" /></SelectTrigger>
           <SelectContent>
             {choices.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
           </SelectContent>
         </Select>
       ) : (
         <Input
-          id={id} aria-label={param.name} value={value} onChange={(e) => onChange(e.target.value)}
+          id={id} aria-label={param.name} aria-describedby={param.required ? undefined : `${id}-optional`}
+          value={value} onChange={(e) => onChange(e.target.value)}
           inputMode={param.type === 'number' ? 'decimal' : undefined}
         />
       )}
@@ -74,7 +75,7 @@ function ArgInput({ param, value, onChange }: { param: ToolParam; value: string;
  */
 export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
-  /** The last run's result, and the Tool as it stood for that run. */
+  /** The last run's result, and the Tool as it was for that run. */
   const [result, setResult] = useState<{ outcome: TryOutcome; ranOn: string } | null>(null);
   const [running, setRunning] = useState(false);
   /** The sentence a During AI Output Tool rewrites. Never saved. */
@@ -133,7 +134,7 @@ export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
         <div className="flex flex-col gap-1 min-w-0" data-testid="try-it-result">
           {outcome.failure && <FieldError role="alert">{errorMessage(outcome.text)}</FieldError>}
           <Hint>{outcome.failure ? 'The AI reads this error' : 'The AI reads this result'}</Hint>
-          {result.ranOn !== current && <Hint role="status">From before your last edit. Run again to try the Tool as it is now.</Hint>}
+          {result.ranOn !== current && <Meta as="p" role="status">This result is from before your last edit. Run again to try the edited Tool.</Meta>}
           <ToolText text={outcome.text} />
           {outcome.sentence !== undefined && (
             <>

@@ -249,7 +249,7 @@ describe('`self` and `owner` cards', () => {
 
   it('says `owner` is empty in a world stat’s box, with nothing to open or search', () => {
     const card = cardAt('return own|er.name;', worldBox);
-    expect(card?.description).toBe('Holds nothing in a global stat’s code. Writing through it changes nothing.');
+    expect(card?.description).toBe('Empty in a global stat’s script. Writes through it are ignored.');
     expect(card?.rows).toBeUndefined();
     expect(card?.item).toBeUndefined();
   });

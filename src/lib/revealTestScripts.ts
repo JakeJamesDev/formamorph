@@ -3,7 +3,7 @@
 // this many characters have streamed in" — which the GameViewer driver replays through the real reveal
 // path (estimator → pacer → renderer). Because the schedule is fixed, a recording of it is reproducible:
 // run it before and after a change, freeze-map both, and any difference is the change, not turn-to-turn
-// luck. The narration below deliberately includes the markdown cases that used to fuse sentences (a
+// luck. The narration below includes the markdown cases that can fuse sentences (a
 // sentence ending inside emphasis, a paragraph ending on an em-dash, a bare bold stat line).
 
 export const REVEAL_TEST_NARRATION = `The gate shudders as you brace against it, servos whining under the strain. Rust flakes drift down like *dead snow*, and somewhere beyond the wall the horde answers with a single, rising howl.
@@ -49,8 +49,8 @@ function stream(events: RevealArrivalEvent[], startMs: number, from: number, to:
 }
 
 export const REVEAL_TEST_PROFILES: Record<string, RevealTestProfile> = {
-  // The LM Studio signature: a large first flush lands instantly (poisoning any tokens/sec estimate),
-  // then a steady ~23 words/s (~140 cps). This is the pattern that produced the pop-train.
+  // The LM Studio pattern: a large first flush arrives at once and skews any tokens/sec estimate,
+  // then a steady ~23 words/s (~140 cps).
   burst: {
     label: 'Burst then steady',
     description: 'big instant flush, then steady ~23 w/s — the estimator-poisoning case',
@@ -58,7 +58,7 @@ export const REVEAL_TEST_PROFILES: Record<string, RevealTestProfile> = {
       const events: RevealArrivalEvent[] = [];
       const b = Math.min(len, 400);
       // The flush arrives as many stepped events all at t≈0 (a near-infinite cps), so the driver
-      // pushes it sentence-by-sentence in one tick — exactly as production processes a fat network
+      // pushes it sentence-by-sentence in one tick — as production processes a large network
       // chunk — rather than one lumped push that the pacer would release as a single block.
       stream(events, 0, 0, b, 1e6);
       if (b < len) stream(events, 60, b, len, 140);
@@ -71,13 +71,13 @@ export const REVEAL_TEST_PROFILES: Record<string, RevealTestProfile> = {
     description: 'constant ~18 w/s, no burst — the smooth baseline',
     schedule: (len) => { const e: RevealArrivalEvent[] = []; stream(e, 0, 0, len, 110); return e; },
   },
-  // A slow model (~4.5 words/s) — the case the old 90ms reveal ceiling forced into stutter.
+  // A slow model (~4.5 words/s), the reveal's ceiling case.
   slow: {
     label: 'Slow steady',
     description: 'constant ~4.5 w/s — the slow-model / ceiling case',
     schedule: (len) => { const e: RevealArrivalEvent[] = []; stream(e, 0, 0, len, 28); return e; },
   },
-  // A very fast model (~60 words/s) — the reveal should stay smooth by trailing, not sprint-and-stall.
+  // A very fast model (~60 words/s). The reveal trails the stream at an even pace.
   fast: {
     label: 'Fast steady',
     description: 'constant ~60 w/s — the fast-model floor case',
@@ -94,7 +94,7 @@ export const REVEAL_TEST_PROFILES: Record<string, RevealTestProfile> = {
       while (c < len) {
         c = Math.min(len, c + 130);
         events.push({ atMs: Math.round(t), chars: c });
-        t += 450; // dead air before the next chunk
+        t += 450; // a pause before the next chunk
       }
       return events;
     },

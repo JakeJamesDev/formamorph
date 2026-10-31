@@ -33,7 +33,7 @@ export function TraitScripts({ trait, home, offWorld, ownerName, onChange, reset
 }) {
   const context = useScriptBoxContext(home, offWorld);
 
-  // The help window's Insert adds a script of its timing to this trait and lands on it. This tab mounts only while shown.
+  // The help window's Insert adds a script of its timing to this trait and scrolls to it. This tab mounts only while shown.
   const landOnScript = useLanding(scriptRow, { focus: noFocus });
   const [inserted, setInserted] = useState<string | null>(null);
   // Read at insert time, so the registration does not change with each keystroke.
@@ -59,7 +59,7 @@ export function TraitScripts({ trait, home, offWorld, ownerName, onChange, reset
             <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
           </div>
         </LabelRow>
-        <Hint>Runs code at the timing you select, while this trait is active. Code can set a stat, pin a placeholder, or switch a trait.</Hint>
+        <Hint>Runs code at the timing you select, while this trait is on. Code can set a stat, pin a placeholder, or switch a trait.</Hint>
       </div>
       <ScriptsSection
         scripts={trait.scripts ?? []}

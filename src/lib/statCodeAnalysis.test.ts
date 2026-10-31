@@ -35,6 +35,17 @@ return Math.min(me.max, health + clock.deltaHours);`)).toEqual([]);
     expect(problem.to - problem.from).toBeLessThanOrEqual(2);
   });
 
+  it('names each script home with its article in an unknown-name message', () => {
+    const named = Object.entries(SCRIPT_SURFACES).map(([home, surface]) =>
+      [home, codeDiagnostics('return bogusName;', { surface }).map((d) => d.message)]);
+    expect(Object.fromEntries(named)).toEqual({
+      stat: ['“bogusName” isn’t available in a stat script.'],
+      trait: ['“bogusName” isn’t available in a trait script.'],
+      world: ['“bogusName” isn’t available in a world script.'],
+      item: ['“bogusName” isn’t available in an item script.'],
+    });
+  });
+
   it('reports each unreadable spot once, not once per nested node', () => {
     expect(messages('return (1 + ;')).toHaveLength(1);
   });
@@ -470,7 +481,7 @@ describe('placeholders in stat code', () => {
 
   it('still warns when code only reads placeholders', () => {
     expect(messages('const mood = placeholders.Mood.value;', { placeholders: { list: world } }))
-      .toEqual(['This code never returns a number or writes self.value, so the stat keeps its value.']);
+      .toEqual(['This script never returns a number or sets self.value. The stat keeps its value.']);
   });
 
   // `placeholders` is a tree: a placeholder that holds others carries them as members. The editor completes
@@ -517,8 +528,8 @@ describe('placeholders in stat code', () => {
       const parent = ph('parent', 'Parent', { values: [chip('child')] });
       const shadowed = { placeholders: { list: [parent, ph('child', 'value', { ownerId: 'parent' })] } };
       expect(messages('placeholders.Parent.value = "x";', shadowed)).toEqual([
-        'Every placeholder has a value member, so this reads the member. '
-        + 'The placeholder named “value” under “Parent” is not reachable from code.',
+        'Every placeholder has a value member, which shadows the placeholder named “value” '
+        + 'under “Parent”. Code can’t read that placeholder.',
       ]);
     });
 
@@ -628,7 +639,7 @@ describe('the stats map in stat code', () => {
 
   it('warns on a shared name, which a live stat wins and otherwise the last one authored', () => {
     expect(messages('return stats.Health.value;', { statNames: ['Health', 'Mood', 'Health'] }))
-      .toEqual(['2 stats are named “Health”. A stat that is on wins the name over a switched-off one. Otherwise this reads the last one authored.']);
+      .toEqual(['2 stats are named “Health”. A stat that’s on shadows a switched-off one. Otherwise this reads the last one authored.']);
   });
 
   it('raises no warning for a write to another stat through the map, by dot, by bracket, or by a name holding it', () => {

@@ -1,5 +1,5 @@
 /**
- * A turn's World Tool calls: a Script World Tool with a later timing arms a trigger and answers its Reply; an
+ * A turn's World Tool calls: a Script World Tool with a later timing arms a trigger and returns its Reply; an
  * On Call one runs at once. The trigger list lives as long as this object, which a turn opens and drops (R6).
  */
 import type { Tool, ToolScriptHandler, TurnToolCall } from '@/types';
@@ -8,7 +8,7 @@ import { parseToolArgs, type ToolArgs, type ToolCallResult } from './toolRunner'
 import { armsTrigger } from './toolValidation';
 import type { ReplayedTrigger, SavedScriptWrites, ScriptTrigger } from '@/lib/statCodeTurn';
 
-/** What an armed call answers when its Reply is blank (Q1). */
+/** What an armed call returns when its Reply is blank (Q1). */
 export const DEFAULT_REPLY = 'Done.';
 
 /** One call the AI made: the World Tool, the arguments it passed, and what an On Call run wrote. */
@@ -18,13 +18,13 @@ interface MadeCall {
   writes?: SavedScriptWrites;
 }
 
-/** What an On Call run answers the AI, and what it wrote when it ran clean. */
+/** What an On Call run returns to the AI, and what it wrote when it ran clean. */
 export interface OnCallOutcome {
   reply: ToolCallResult;
   writes?: SavedScriptWrites;
 }
 
-/** Runs an On Call World Tool's script now, on the full script surface, and answers its value as text. */
+/** Runs an On Call World Tool's script now, on the full script surface, and returns its value as text. */
 export type OnCallRunner = (tool: Tool, code: string, args: ToolArgs) => Promise<OnCallOutcome>;
 
 export interface WorldToolTurn {

@@ -214,7 +214,7 @@ describe('editor copy', () => {
   it.each([
     ['Entities', 'Matches entity names and aliases, in any case'],
     ['Locations', 'Matches location names, in any case'],
-    ['Dictionary Entries', 'Matches dictionary names and trigger keywords, in any case'],
+    ['Dictionary Entries', 'Matches entry names and Trigger Keywords, in any case'],
   ])('shows one match hint for %s under the whole lookup row', async (label, hint) => {
     const user = userEvent.setup();
     await openEditor(user, [weather({ handler: { kind: 'lookup', source: 'entities', param: 'place', returns: 'full' } })]);
@@ -388,7 +388,7 @@ describe('Try It', () => {
     expect(within(await result()).queryByRole('status')).toBeNull();
 
     await user.type(nameInput(), '_x');
-    expect(within(await result()).getByRole('status')).toHaveTextContent('From before your last edit');
+    expect(within(await result()).getByRole('status')).toHaveTextContent('This result is from before your last edit');
     await user.click(tryIt().getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(within(screen.getByTestId('try-it-result')).queryByRole('status')).toBeNull());
   });

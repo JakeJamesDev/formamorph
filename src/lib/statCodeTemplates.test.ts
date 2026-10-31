@@ -69,7 +69,7 @@ describe('parseTemplateSlots', () => {
       'Slot "a" is declared as both number and stat.',
     ]);
     expect(parseTemplateSlots('{{a:colour}}').errors).toEqual([
-      'Slot "a" has unknown type "colour" — treating it as text.',
+      'Slot "a" has unknown type "colour". It reads as text.',
     ]);
     expect(parseTemplateSlots('{{a:choice()}}').errors).toEqual([
       'Slot "a" is a choice but lists no options.',
@@ -123,7 +123,7 @@ describe('a typed parameter slot', () => {
   it('reports a type the Tool editor cannot create and reads it as text', () => {
     for (const type of ['colour', 'enum']) {
       const { slots, errors } = parseTemplateSlots(`{{a:param(${type})}}`, 'worldTool');
-      expect(errors).toEqual([`Slot "a" has unknown Parameter type "${type}" — treating it as text.`]);
+      expect(errors).toEqual([`Slot "a" has unknown Parameter type "${type}". It reads as text.`]);
       expect(slots[0]).toMatchObject({ paramType: 'string' });
     }
   });

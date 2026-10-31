@@ -10,7 +10,7 @@ export const WORLD_SCRIPT_TEMPLATES: readonly CodeTemplate[] = [
     kind: 'worldScript',
     timings: ['start'],
     name: 'Opening Location',
-    description: 'Move the opening turn to a location.',
+    description: 'Move the opening turn to a location',
     code: 'location.move({{place:location}});',
   },
   {
@@ -18,7 +18,7 @@ export const WORLD_SCRIPT_TEMPLATES: readonly CodeTemplate[] = [
     kind: 'worldScript',
     timings: ['before', 'after'],
     name: 'Advance Time While a Trait Is On',
-    description: 'Advance the story clock by a set number of minutes each turn while a trait is on.',
+    description: 'Advance the story clock by a set number of minutes each turn while a trait is on',
     code: `if (traits[{{trait:trait}}].enabled) clock.advance({{minutes:number=30}});`,
   },
   {
@@ -26,7 +26,7 @@ export const WORLD_SCRIPT_TEMPLATES: readonly CodeTemplate[] = [
     kind: 'worldScript',
     timings: ['after'],
     name: 'Leave When a Stat Runs Out',
-    description: 'Move to a location when a stat reaches its Min.',
+    description: 'Move the turn to a location when a stat reaches its Min',
     code: `const stat = stats[{{stat:stat}}];
 if (stat.value <= stat.min) location.move({{place:location}});`,
   },
@@ -35,7 +35,7 @@ if (stat.value <= stat.min) location.move({{place:location}});`,
     kind: 'worldScript',
     timings: ['before', 'start'],
     name: 'Placeholder by Daypart',
-    description: 'Pin one value of a placeholder during one part of the day. Position 1 is the first value. A position past the last value pins nothing.',
+    description: 'Pin a placeholder to one of its values during one part of the day. Position 1 is the first value, and a position past the last pins nothing.',
     code: `const target = placeholders[{{placeholder:placeholder}}];
 const value = target.values[{{position:number=1}} - 1];
 if (clock.daypart === {{when:daypart=night}} && value !== undefined) target.pin(value);`,
@@ -45,8 +45,8 @@ if (clock.daypart === {{when:daypart=night}} && value !== undefined) target.pin(
     kind: 'worldScript',
     timings: ['switch'],
     name: 'Memory When a Trait Turns On',
-    description: 'Pin a memory line when a trait turns on. The line is sent with every request. A switch-off pins nothing.',
-    // The line sits in a template literal in the generated code, so an apostrophe or quote in it is safe.
+    description: 'Pin a memory line, sent with every request, when a trait turns on. A switch-off pins nothing.',
+    // The line is in a template literal in the generated code, so an apostrophe or quote in it is safe.
     code: `if (trait.name !== {{trait:trait}} || !trait.enabled) return;
 memories.pin(\`{{line:text=A change took hold.}}\`);`,
   },
@@ -65,7 +65,7 @@ entities[{{entity:entity}}].diary(\`{{line:text=Something changed today.}}\`);`,
     timings: ['output'],
     name: 'Replace a Word',
     description: 'Replace one word with another in each narration sentence. The match uses the exact spelling and case.',
-    // The word sits in a template literal in the generated code, so an apostrophe or quote in it is safe.
+    // The word is in a template literal in the generated code, so an apostrophe or quote in it is safe.
     code: `narration.sentence = narration.sentence.split(\`{{word:text=door}}\`).join(\`{{replacement:text=[redacted]}}\`);`,
   },
   {

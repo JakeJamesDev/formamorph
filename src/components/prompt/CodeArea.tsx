@@ -280,7 +280,7 @@ function CodeAreaBody({
  * field itself could hint at.
  *
  * CodeMirror arrives on demand, so a session that never opens the world editor never fetches it; until it
- * lands the field is a plain textarea on the same value, which is editable rather than merely visible.
+ * loads the field is a plain textarea on the same value, which is editable rather than merely visible.
  *
  * Full screen raises an overlay holding only the editor, so it works the same whether the field sits on
  * a panel or inside a dialog — and a dialog's own buttons stay where they were rather than being grown
@@ -318,7 +318,7 @@ export function CodeArea(props: CodeAreaProps) {
     return surface.readOnly ? readOnlyTree(tree) : tree;
   }, []);
 
-  // Texts the editor reported that the parent has not handed back yet.
+  // Texts the editor reported that the parent has not returned yet.
   const echoes = useRef<string[]>([]);
   const { ariaLabel, placeholder, slots } = props;
   useEffect(() => {
@@ -358,8 +358,8 @@ export function CodeArea(props: CodeAreaProps) {
     return () => { live = false; created?.destroy(); setSession(null); };
   }, [ariaLabel, placeholder, slots, onUpdate]);
 
-  // The parent stays the single owner of the text: anything it writes lands in the editor here.
-  // A render that lags typing hands back an older text of the editor's own; writing it would erase the newer keys.
+  // The parent stays the single owner of the text: anything it writes is copied into the editor here.
+  // A render that lags typing returns an older text of the editor's own; writing it would erase the newer keys.
   useEffect(() => {
     const at = echoes.current.indexOf(props.value);
     if (at >= 0) {

@@ -65,7 +65,7 @@ export function planToolImport(held: readonly Tool[], imported: readonly Tool[],
 }
 
 /** Shown when a preset import adds a Script Tool. */
-export const PRESET_SCRIPT_TOOL_WARNING = 'This preset adds a Script Tool and turns it on. A script runs code when the AI calls it, so read it in the Tools tab.';
+export const PRESET_SCRIPT_TOOL_WARNING = 'This preset adds a Script Tool and turns it on. Its script runs code when the AI calls it. Read the script in the “Tools” tab.';
 
 /**
  * How a shared preset's embedded Tools join `held`. An unknown name is added under a fresh id; a known name keeps the
