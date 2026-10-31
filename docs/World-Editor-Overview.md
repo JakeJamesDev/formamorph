@@ -39,6 +39,8 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 | **Thumbnail** | The card's image. **Generate with AI** under the frame makes one from your Player-Facing Description, or from the AI-Facing Description when that is empty. |
 | **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
+| **Slots** | Where items equip, such as Hand, and how many fit. See [Slots](World-Editor-Items#slots). |
+| **Persona Items** | Items the player gets when a game starts, whoever they play. See [Starting Items](World-Editor-Items#starting-items). |
 | **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
 
 ## The right column: what you write
@@ -49,7 +51,7 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 | **Player-Facing Description** | The text on the library card and the community listing. Players read it before they play, so placeholders stay as plain text here. The AI never reads it. |
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices. **Gameplay** shows when they enter the world. Both take markdown. |
 | **AI-Facing Description** | The world's description for the AI. The AI reads it on every turn. Players never see it. |
-| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Openings** item holds the world's [Openings](World-Editor-Openings). |
+| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Each item has a checkbox, and its text applies only while the box is checked. The player can decline it from the world's details window. **Reset** drops your text, so the item follows the player's prompt again. Its **Openings** item holds the world's [Openings](World-Editor-Openings); its checkbox stays off until an opening exists. |
 
 ## Upload or link
 <!-- keywords: hotlink, external hosting, imgur, discord image broken, image not loading, dead url, shrink file size, embed vs host, works without internet -->

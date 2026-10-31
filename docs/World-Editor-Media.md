@@ -8,6 +8,8 @@ The **Media** tab shows every image, sound, 3D Model and Avatar in your world, w
 
 Every file stays where you added it: on the entity, location, dictionary or Overview. The tab only shows them in one place.
 
+With no card selected, the panel shows **World Media**. It holds the world's counts and sizes by kind, and its five largest items.
+
 ## How to Find the Heaviest Files
 <!-- keywords: big world, too large, publish limit, 100 mb, file size, largest, heavy, what takes space, shrink world -->
 <!-- route: worldEditor.media#list-toolbar -->
@@ -25,11 +27,11 @@ To find one file, type its entity, location or dictionary name, or its slot name
 
 The row above the search box holds the **Publish Size** meter and four buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
 
-- **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location or dictionary it belongs to.
+- **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location, dictionary or world slot it belongs to.
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
-- **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules** or **Over Size Budget** items. **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included. The other three filters look at images, so they hide sounds, 3D Models and Avatars. The button shows the filter's name while it's on.
-- **No Images** shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**. Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
-- **Optimize Images** shrinks images that are over their size budget. See [Optimize Images](#optimize-images).
+- **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules**, **Over Size Budget** or **No Images** items. **All Media** turns the filter off. **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included. **Linked**, **Has Visibility Rules** and **Over Size Budget** look at images, so they hide sounds, 3D Models and Avatars. The button shows the filter's name while it's on.
+- The **No Images** filter shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**. Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card. Select an entity or location card to open its image panel on the add tile. Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
+- **Optimize Images** converts or shrinks the world's images. See [Optimize Images](#optimize-images).
 
 The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
 
@@ -47,7 +49,7 @@ The cards sit in sections that follow your editor:
 | **Locations**, and one per location with sub-locations | Each location's background images and **Ambient Sound** |
 | **Dictionaries** | Each dictionary's **Cover Image** |
 
-Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it are the name of the entity, location or dictionary, and the file's size.
+Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it are the name of the entity, location or dictionary, and the file's size. A world card shows its slot: **Thumbnail** or **Background Music**. An Avatar card shows the Avatar's name. A map card reads **Map Background**.
 
 - 📚 **Stacks.** An entity or location with two or more images shows one card for all of them. The badge counts the images, and the size is their total. The total shows in the warning color when any of the images is over budget. A sound or 3D Model is always its own card.
 - 🔗 **Linked.** An image you linked by its address shows **Linked** in place of a size. It adds only its address to the world.
@@ -60,17 +62,22 @@ Only files that exist show. An empty slot makes no card.
 <!-- keywords: optimize images, shrink images, downscale, over budget, thumbnail budget, spinner, undo optimize -->
 <!-- route: worldEditor.media#list-toolbar -->
 
-**Optimize Images** is the last icon in the header row, in both modes. It scans the images in the gallery: the thumbnail, entity images, location images and dictionary cover images. A dialog asks how to shrink them. The icon shows a spinner while it runs, and its tooltip shows the progress. **Downscale** turns every PNG, BMP and lossless WebP into a smaller lossy WebP, at any size. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
+**Optimize Images** is the last icon in the header row, in both modes. It changes the thumbnail, entity images, location images and dictionary cover images. The **Optimize world images?** dialog offers up to two choices, and each shows only when it has an image to act on:
+
+- **Optimize** converts each image that a lossless WebP makes smaller, at any size. The image keeps its resolution. A message then says how many images stayed as they were.
+- **Downscale** turns each image that is over its budget, or stored lossless (PNG, BMP, lossless WebP), into a smaller lossy WebP.
+
+**Keep as-is** closes the dialog. With nothing worth optimizing, no dialog shows. The icon shows a spinner while a run goes, and its tooltip shows the progress. Close the editor to cancel a run. The run is one Step, so one undo brings every image back. Sizes and the Publish Size meter update when it ends.
 
 ## The panel
 <!-- keywords: preview, play sound, view 3d model, view avatar, download, save file, replace file, swap file, remove file, delete file, undo, go to, used by -->
 <!-- route: worldEditor.media -->
 
-Select a card to open it in the panel. An entity's or location's image opens the image panel, described below. Every other card opens on its own.
+Select a card to open it in the panel. An entity's, location's or Map Background image opens the image panel, described below. Every other card opens on its own.
 
 - **Preview.** An image shows large. A sound plays. A 3D Model and an Avatar turn in the viewer.
 - **Size and budget.** The file's size, and an image's size budget.
-- **Replace** swaps in a file you pick. The file stays in the same slot. A large image first asks whether to shrink it, as an upload does.
+- **Replace** swaps in a file you pick. The file stays in the same slot. An image that is over budget, stored lossless, or smaller as a WebP first asks whether to optimize it, as an upload does.
 - **Download** saves the file. A linked image shows **Open Link**, which opens its address.
 - **Remove** clears the slot, and the card leaves the gallery. Undo brings it back.
 - **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
@@ -88,7 +95,7 @@ The **World › Avatars** section holds the world's Avatars, in Simple and Advan
 - **Delete** names the entities that use the Avatar, and they go back to **None**. Undo brings it all back.
 - **Used By** lists the entities that pick the Avatar. Select one to open it.
 
-Each entity still picks its Avatar in its own **Avatar** dropdown. See [World Avatars](Avatars#world-avatars).
+Each entity still picks its Avatar in its own **Avatar** dropdown, which shows in Advanced mode only. See [World Avatars](Avatars#world-avatars).
 
 ## The image panel
 <!-- keywords: entity gallery, location background, reorder images, primary image, generate with ai, image tags, visibility rule, framed image, avatar link -->
@@ -122,7 +129,7 @@ Each image slot has a size budget: a long edge and a file size. An image over th
 
 | Slot | Long edge | File size |
 |---|---|---|
-| Thumbnail | 1024 px | 200 KB |
+| Thumbnail, and a dictionary's **Cover Image** | 1024 px | 200 KB |
 | Entity | 1280 px | 250 KB |
 | Background | 1920 px | 900 KB |
 | Map | 2560 px | 1.5 MB |
