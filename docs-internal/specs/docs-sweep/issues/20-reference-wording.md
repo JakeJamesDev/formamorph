@@ -15,6 +15,8 @@ Check each page's structure, then rewrite these pages under the Writing Guide: [
 
 Read "Before you write", "Labels, capitalization, and complete sentences" and "Controlled product terms" first. Run `npm run copy:sweep` on the pages and triage each notice under the copy-sweep skill. Write the rewrite yourself. Change no facts: a fact that looks wrong goes to the spec session.
 
+Carried from ticket 10: the Glossary's Link row says it "reads the Blueprint live", which is figurative, and the Global Stat and Global Trait rows say "No one owns it". Reword both under the Writing Guide.
+
 Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and anchors".
 
 ## Acceptance criteria
