@@ -23,7 +23,7 @@ One file opens its world dialog. More files add their tiles. If the world brings
 1. On the **Worlds** tab, select the world.
 2. Select **Export World**.
 3. Choose how to store the world's images, or select **Keep as-is**.
-4. If the world links its images, select **Keep Links — Smaller File** or **Download and Embed — Works Offline**.
+4. If the world links its images, the **Linked Images** dialog opens. Select **Keep Links — Smaller File** or **Download and Embed — Works Offline**.
 
 You get a `.json` file with the world's name.
 
@@ -69,7 +69,7 @@ To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-impo
 
 The Group goes where the tile was, at the same size, and the tile goes into it.
 
-You can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles go into a new Group named *New Group*.
+In the grid view, you can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles go into a new Group named *New Group*.
 
 ## How to Add a Tile to a Group
 <!-- keywords: folder, put in, move into, organize, sort, collection, drop onto, file away, assign, include in, place inside -->
@@ -78,7 +78,7 @@ You can also drag one tile onto the near half of another tile and hold it there.
 1. Right-click the tile.
 2. Under **Add To Group**, select a Group. Only three Groups show there. To see all of them, select **Add To Group…** and find the Group by name.
 
-You can also drag the tile onto the near half of a Group's tile, hold it, and release it.
+In the grid view, you can also drag the tile onto the near half of a Group's tile, hold it, and release it.
 
 ## How to Remove a Tile from a Group
 <!-- keywords: folder, take out, move out, ungroup, pull out, back to main, separate, unassign, eject -->
@@ -138,9 +138,11 @@ The Group's tiles go back to the board. In the grid view, each tile goes to the 
 | **Dictionaries** | Library dictionaries | Open the dictionary editor |
 | **Avatars** | 3D Avatars | Open the Avatar's details and preview |
 
-On a wide screen, the tabs are at the top left. On mobile, they are at the bottom of the screen.
+On a wide screen, the tabs are at the top left. On mobile, they are at the bottom of the screen. When the labels don't fit, only the selected tab keeps its label. With less room, the tabs show icons only. Hover an icon to read its name.
 
-Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. On a narrow screen, these buttons are in the **Menu** button at the top center.
+Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. **Community Creations** sits beside them. The **Menu** button at the top right holds **Load Game**, **Backup & Restore** and **Settings**.
+
+On a narrow screen, the top bar hides the tab labels first, then the buttons, then the event badges. The hidden buttons move to the **Menu** button at the top center. The event badges become one chip with a count.
 
 The **Entities** tab also has an **All** and **Personas** switch. **Personas** shows only the entities you can play as. See [Personas](Personas). While **Personas** is on, you cannot move tiles, change their size or change Groups.
 
@@ -151,6 +153,8 @@ The **Entities** tab also has an **All** and **Personas** switch. **Personas** s
 
 - **Grid view** shows tiles in three sizes. A **Large** tile is twice as wide as a **Medium** tile; a **Small** tile is half as wide.
 - **Detailed view** shows one card size with more text. Drag a card to change the order.
+
+A new tile pulses once, the first time it is on screen.
 
 The board keeps the place of each tile on this device. A narrow screen and a wide screen each keep their own order. The order is not in a world export or a backup.
 
@@ -165,7 +169,7 @@ A Group holds tiles of one tab. Its tile shows a small image of its board, and a
 - Select a Group to open it. The view zooms from the Group's tile to its board. Select **Library** at the top to zoom back out.
 - Inside a Group, you can move and size tiles as on the main board.
 - A Group cannot hold another Group.
-- On the **Worlds** tab, an open Group has a **Prompts** list. The worlds in the Group use that prompt preset unless a world has its own. See [Prompts](Prompts).
+- On the **Worlds** tab, an open Group has a **Prompts** list. The worlds in the Group use that prompt preset unless a world has its own. **No group preset** leaves each world on the preset in **Settings**. A Group with a preset shows its name on the Group's tile. See [Prompts](Prompts).
 
 ### The Group Dialogs
 
@@ -176,7 +180,7 @@ A Group holds tiles of one tab. Its tile shows a small image of its board, and a
 ## The Card Menu
 <!-- keywords: context menu, long press, delete world, uninstall, trash, erase character, options popup, thumbnail -->
 
-Right-click a tile, or press and hold it on a touch screen. With the keyboard, press Shift+F10.
+Right-click a tile, or press and hold it on a touch screen. With the keyboard, press Shift+F10 or the Menu key.
 
 | Item | Tabs | What it does |
 |---|---|---|
@@ -185,7 +189,8 @@ Right-click a tile, or press and hold it on a touch screen. With the keyboard, p
 | **Create New Group…** | All | Makes a Group that holds the tile |
 | **Remove From Group** | All | Takes the tile out of its Group |
 | **Check for Updates** | Entities, Dictionaries | Looks for worlds that have an older version of this item. See [Update Available](LinkedContent#update-available). |
-| **Set as Default Persona** | Entities | Makes the entity your default persona. Shows for a persona entity. See [Personas](Personas#how-to-set-a-default-persona). |
+| **Set as Default Persona** | Entities | Makes the entity your default persona. Shows for a persona entity. On your default persona, it reads **Clear Default Persona**. See [Personas](Personas#how-to-set-a-default-persona). |
+| **Set as Default Avatar** | Avatars | Makes the Avatar your default. On your default Avatar, it reads **Clear Default Avatar**. See [Avatars](Avatars). |
 | **Publish** | Avatars | Publishes the avatar to Community Creations. Shows when you are logged in. |
 | **Thumbnail** | Avatars | Uses the image in the file, or a generated one. Shows when the file has an image. |
 | **Delete** | All | Erases the item after you confirm |
@@ -199,6 +204,7 @@ World actions such as **Edit World** and **Publish World** are in the world dial
 **Delete** asks you to confirm, and you cannot undo it. Make a backup first. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
 - When saves use an avatar, the dialog names them. Those saves use the default avatar after you erase it.
+- When library entities use an avatar, the dialog names them. They show no avatar after you erase it.
 - You cannot delete your last avatar.
 - To restore an erased world that came with Formamorph, see [How to Restore Default Worlds](Settings#how-to-restore-default-worlds).
 - When worlds use a deleted entity or dictionary, see [Removing a Library Item](LinkedContent#removing-a-library-item).

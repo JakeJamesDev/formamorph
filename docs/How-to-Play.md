@@ -122,7 +122,7 @@ Only the action text and its images change. The narration stays as it is.
 2. To jump far back, select the current page number, type a page in the box, and select **Go**.
 3. Select **Next** or the last page to come back to the live turn.
 
-An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
+An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total — history*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
 
 ## How to Change Location
 <!-- keywords: travel, move, go somewhere, map, place, teleport, walk, leave, fast travel, navigate, room, area, zone, relocate, wrong scene, visit -->
@@ -186,7 +186,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 |---|---|
 | The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the request that is running, such as *Generating Narration…*, next to a small animated icon for that request |
 | The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
-| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits** and **Location** tabs |
+| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits**, **Inventory** and **Location** tabs |
 | Top left | The music button and the AI Context button |
 | Top right | **Edit World** and the **Menu** |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
@@ -218,12 +218,12 @@ No actions show while the AI writes a turn.
 
 | Tab | What it is |
 |---|---|
-| **Entities** | Who the story counts as present. See [Entities in Game](Entities). |
+| **Entities** | Every entity at your location, with those in the scene first. A stranger shows under the name you know. The list clears when you move, and keeps your followers. See [Entities in Game](Entities). |
 | **Notes** | Your standing notes for the AI. See [Notes](#notes). |
 | **Memory** | What the story remembers. See [Story Memory](Memory#the-memory-tab). |
 | **Logs** | A record of what changed. See [Logs](#logs). |
 
-When a tab strip has no room for every label, its tabs show icons only. Hover an icon to read its name.
+When a tab strip has no room for every label, only the selected tab keeps its label. With less room, the tabs show icons only. Hover an icon to read its name.
 
 ### Notes
 
@@ -248,8 +248,8 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 |---|---|
 | Language box | Sets the language or style the AI writes in, the same as **AI Language** in **Settings** |
 | Persona row | Shows who you play. **Change** opens **Change Persona**. See [Change It in Game](Personas#change-it-in-game). |
-| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. Shows only when the world has stats you can see. |
-| **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Filter them, or switch one on or off. |
+| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. A picker shows the stats of one entity in the scene. Shows only when the world has stats you can see. |
+| **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Entities in the scene follow. Filter them, or switch one on or off. |
 | **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items. |
 | **Location** | Where you are, its description and the places it connects to |
 
@@ -267,20 +267,24 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 | **Equip** | Wears the item in its slot. A full slot takes off the item you equipped there first. From a stack, you equip one. |
 | **Unequip** | Takes the item off. You keep it. |
 | **Drop** | Leaves the item here, at your location. |
-| **Give** | Hands the item to someone here. People in the scene come first, then everyone else at your location. |
+| **Give** | Hands the item to an entity in the scene. |
 | **Pick Up** | Takes an item lying at your location into your inventory. |
 
+The buttons are icons. Their tooltips name the item, such as *Use Healing Potion*.
+
 **Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack. An item with uses shows how many are left under its name.
+
+An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack. An unidentified item shows only its unidentified name and description until the story reveals what it is.
 
 Items with art show a small image on their row. The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
 
 > [!NOTE]
-> The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but the story can still take it.
+> The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but you can pick it up, and the story can still take it.
 
 ### When the story changes your items
 <!-- keywords: pick up, picked up, found an item, item appeared, item vanished, stolen, story took my item, inventory pass, new item -->
 
-After each turn's narration, the **Inventory** prompt reads what happened and updates the inventory. Pick up a key in the story and it lands in **Carried**. Hand a knife over and it leaves. Drink a potion and it's used up, with its effects. Search a room and a hidden item can show up under **Here**.
+After each turn's narration, the **Inventory** prompt reads what happened and updates the inventory. Pick up a key in the story and it lands in **Carried**. Hand a knife over and it leaves. Drink a potion and it's used up, with its effects. Search a room and a hidden item can show up on the location card.
 
 - An item the world doesn't define gets a plain entry with no effects. You can still **Use** it.
 - The item's own effects come from the item, so the stat changes never count a potion twice.
@@ -349,7 +353,7 @@ The inspector shows exactly what the game sent to the AI each turn, and what cam
 
 | Control | What it does |
 |---|---|
-| Search box | Finds terms in the turn. **Enter** goes to the next match, **Shift+Enter** to the previous one. |
+| Search box | Finds terms in the turn. A counter shows the match you are on, such as *2 of 5*. **Enter** or **Next match** goes to the next match, **Shift+Enter** or **Previous match** to the previous one. |
 | **Dictionary** / **Hydrations** | Picks what the text highlights. **Dictionary** marks the dictionary entries. Select a legend chip to hide its highlights. |
 | **Current context only** | Hides turns that were re-generated, rewound or stopped. On by default. |
 | **Collapse all** / **Expand all** | Collapses or expands every section |

@@ -67,7 +67,7 @@ Set it back to **Stable** for finished releases only.
 | **[GitHub Releases](https://github.com/JakeJamesDev/formamorph/releases/latest)** | `Formamorph-android.apk` on any release, so you can install a specific version |
 | **[itch.io](https://fierylion.itch.io/formamorph)** | The **Android** channel, updated on every major and minor release |
 
-> 💡 Pre-release (beta) builds go to GitHub only. itch.io always has the latest stable build.
+> 💡 Pre-release (beta) builds go to GitHub only. itch.io gets major and minor releases, not patches, so it stays on the first build of each minor release.
 
 Every release also publishes `Formamorph-android.apk.sha512`, the checksum of the file beside it. The in-app updater checks its own downloads, so you never need it. Use it to check a manual download yourself.
 
@@ -109,8 +109,8 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 **What the app makes sure of:**
 
 - 🔐 The download is checked against the checksum published with the release. A file that does not match is erased and never reaches the installer.
-- 💾 A finished download survives closing the app. Reopen it and you get **Install**, not a second 90 MB download.
-- 📴 An update check with no connection fails quietly. It never shows an error.
+- 💾 A finished download survives closing the app. Reopen it and you get **Install**, not a second 90 MB download. If Android cleared the app's cache, you download it again.
+- 📴 An update check with no connection shows no error on the main menu. The update dialog reads **Couldn't check for updates**.
 - 🗂️ Your saves, worlds, and settings survive updates.
 
 ### Beta Builds
@@ -120,9 +120,9 @@ The update dialog has a **Release channel** selector. Set it to **Pre-release** 
 ## 📤 Save Exports to a Folder
 <!-- keywords: file picker, canceled export, nothing happened, documents directory, internal memory -->
 
-Exporting on Android opens Android's **Save As** picker. That covers worlds, saves, backups, dictionaries, presets, stat-code packs, entity cards, avatars, stories, and AI-context dumps.
+Exporting on Android opens Android's **Save As** picker. That covers every export, such as worlds, saves, backups, dictionaries, presets, template packs, Tools, entity cards, avatars, media files, stories, and AI-context dumps.
 
-The file stays in the folder you choose. Canceling the picker leaves without saving or showing an error.
+The file stays in the folder you choose. Canceling the picker leaves without saving or showing an error. A save that fails shows *Could not save* and the file name.
 
 **Importing needs no new steps.** A world, save, entity card, or VRM comes in through the normal file picker, the same as on desktop.
 
@@ -145,9 +145,11 @@ The hardware **back** button closes what is on top, one layer at a time: a dialo
 |---|---|
 | During a game | Asks **Exit to Main Menu**. Unsaved progress is lost. |
 | On the main menu | Opens **Close Formamorph**. **Confirm** closes the app, and **Cancel** keeps it open. Unsaved progress is lost. |
+| On any other screen | Goes back to the screen before it, with no prompt |
 
 ## 🧭 Also Worth Knowing
 <!-- keywords: missing features, differences from desktop, on-device llm, limitations, run model on handset, what is unsupported -->
 
 - The **Built-In Engine** and its model list do not appear. Running a model inside the app is a desktop feature.
-- Everything else, including the Demo AI, Community Creations and the editor, works as it does in the browser.
+- The **OpenAI-compatible (cloud)** image provider works only in the desktop app. See [Image Generation](Image-Generation).
+- Everything else, including the Demo AI, Formamorph AI, Community Creations and the editor, works as it does in the browser.
