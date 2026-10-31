@@ -38,6 +38,8 @@ export interface InventorySettleState {
   now?: number;
   /** The Body state before the change. Absent ⇒ none. */
   bodies?: BodyRuntime;
+  /** Base Bodies a script wrote since `bodies`, by owner key. They replace the owner's base and settle with the rest. */
+  baseWrites?: TraitBodyPicks;
 }
 
 export interface InventorySettleWorld {
@@ -60,7 +62,7 @@ export interface InventorySettleWorld {
   quietUnequips?: boolean;
 }
 
-export type SettleBodies = Omit<BodyWorld, 'traitPicks'> & { slots?: readonly Slot[] };
+export type SettleBodies = Omit<BodyWorld, 'traitPicks' | 'basePicks'> & { slots?: readonly Slot[] };
 
 export interface InventorySettleResult {
   copies: readonly ItemCopy[];
@@ -205,6 +207,8 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   const persona = world.persona ?? world.traits.persona;
   const globalOrder = traitOrderIndex(world.traits.traits, world.traits.groups);
   const before = state.bodies?.traitsOn ?? [];
+  const baseBefore: TraitBodyPicks = state.bodies?.base ?? {};
+  const baseAfter: TraitBodyPicks = state.baseWrites ? { ...baseBefore, ...state.baseWrites } : baseBefore;
   let traitsOn: readonly BodyTraitOn[] = before;
   let picks: TraitBodyPicks = {};
   let copies = state.copies;
@@ -229,7 +233,7 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
     // Global traits are held in acquisition order; a same-commit tie goes by tree order (Q40).
     traitsOn = nextTraitsOn(traitsOn, { ...scope, global: inAuthoredOrder(scope.global, globalOrder) });
     picks = picksOf(traitsOn, tw, current.traits.traits, persona);
-    const misfits = world.bodies ? bodyMisfits(copies, { ...world.bodies, items: world.items, traitPicks: picks }, persona) : [];
+    const misfits = world.bodies ? bodyMisfits(copies, { ...world.bodies, items: world.items, traitPicks: picks, basePicks: baseAfter }, persona) : [];
     const failing = copies.filter((copy) => {
       if (!copy.equipped || misfits.includes(copy)) return false;
       const rows = read.requirementStates(current, copy, copies);
@@ -251,21 +255,26 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   const was = world.previousPersona ?? persona;
   const bodyLog = world.bodies ? bodyChangeLog({
     world: world.bodies,
-    before: { picks: picksOf(before, world.traits, state.traits.traits, was), persona: was },
-    after: { picks, persona },
+    before: { picks: picksOf(before, world.traits, state.traits.traits, was), base: baseBefore, persona: was },
+    after: { picks, base: baseAfter, persona },
     offByBody, copyName: read.copyName, resolve: world.resolve ?? same,
   }) : [];
-  const { traitsOn: _was, ...rest } = state.bodies ?? {};
+  const { traitsOn: _was, base: _base, ...rest } = state.bodies ?? {};
+  const bodies: BodyRuntime = {
+    ...rest,
+    ...(traitsOn.length ? { traitsOn: [...traitsOn] } : {}),
+    ...(Object.keys(baseAfter).length ? { base: baseAfter } : {}),
+  };
   return {
     copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events,
-    bodies: traitsOn.length ? { ...rest, traitsOn: [...traitsOn] } : rest, bodyLog, bodyUnequipped: offByBody.length,
+    bodies, bodyLog, bodyUnequipped: offByBody.length,
   };
 }
 
 interface BodyChange {
   world: SettleBodies;
-  before: { picks: TraitBodyPicks; persona: PersonaRef | undefined };
-  after: { picks: TraitBodyPicks; persona: PersonaRef | undefined };
+  before: { picks: TraitBodyPicks; base: TraitBodyPicks; persona: PersonaRef | undefined };
+  after: { picks: TraitBodyPicks; base: TraitBodyPicks; persona: PersonaRef | undefined };
   offByBody: readonly ItemCopy[];
   copyName: (copy: ItemCopy) => string;
   resolve: (text: string) => string;
@@ -276,14 +285,14 @@ interface BodyChange {
 function bodyChangeLog(change: BodyChange): string[] {
   const { world, before, after } = change;
   const entityIds = new Set([
-    ...Object.keys(before.picks), ...Object.keys(after.picks),
+    ...Object.keys(before.picks), ...Object.keys(after.picks), ...Object.keys(before.base), ...Object.keys(after.base),
     ...change.offByBody.flatMap((copy) => (copy.where.kind === 'entity' ? [copy.where.id] : [])),
   ]);
   const owners: SlotOwner[] = [{ kind: 'you' }, ...[...entityIds].filter(Boolean).map((id) => ({ kind: 'entity' as const, id }))];
   const nameOf = (body: Body | undefined) => (body ? change.resolve(body.name) : 'None');
   return owners.flatMap((owner) => {
-    const was = bodyInForce({ ...world, traitPicks: before.picks }, owner, before.persona);
-    const is = bodyInForce({ ...world, traitPicks: after.picks }, owner, after.persona);
+    const was = bodyInForce({ ...world, traitPicks: before.picks, basePicks: before.base }, owner, before.persona);
+    const is = bodyInForce({ ...world, traitPicks: after.picks, basePicks: after.base }, owner, after.persona);
     if (was?.id === is?.id) return [];
     const key = slotOwnerKey(owner);
     const off = change.offByBody.filter((copy) => copy.where.kind !== 'location' && slotOwnerKey(copy.where) === key).map(change.copyName);

@@ -514,6 +514,37 @@ describe('reference-integrity rules', () => {
     expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
   });
 
+  describe('a script assigning a Body name', () => {
+    const bodyWorld = (code: string) => base({
+      bodies: [{ id: 'b1', name: 'Wolf', entries: [] }, { id: 'b2', name: 'Two Words', entries: [] }],
+      stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) })],
+    });
+
+    it('flags a literal name the world has no Body for', () => {
+      const found = only(bodyWorld('persona.body = "Wolff";'), 'script-unknown-body');
+      expect(found).toHaveLength(1);
+      expect(found[0].severity).toBe('error');
+      expect(found[0].message).toContain('“Wolff”');
+      expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
+    });
+
+    it('flags each owner path once per name and stays quiet on real names', () => {
+      const code = 'entities.Rex.body = "Dragon"; entities["Rex"].body = \'Dragon\'; owner.body = "Wolf"; persona.body = "Two Words";';
+      expect(only(bodyWorld(code), 'script-unknown-body').map((f) => f.message)).toHaveLength(1);
+      expect(only(bodyWorld('persona.body = "Wolf"; entities.Rex.body = "Two Words";'), 'script-unknown-body')).toEqual([]);
+    });
+
+    it('skips a comparison, a read and a computed name', () => {
+      expect(only(bodyWorld('if (persona.body === "Nope") return 1; const n = persona.body; persona.body = pick;'), 'script-unknown-body')).toEqual([]);
+      expect(only(bodyWorld('persona.body = `Wolf ${1}`;'), 'script-unknown-body')).toEqual([]);
+    });
+
+    it('flags every name when the world has no Bodies', () => {
+      const none = base({ stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: 'persona.body = "Wolf";' }) })] });
+      expect(only(none, 'script-unknown-body')).toHaveLength(1);
+    });
+  });
+
   it('flags a script looking up a stat name that doesn’t exist, in either comparison direction', () => {
     const coded = (code: string) => base({
       stats: [
@@ -5213,6 +5244,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'script-unknown-name': 'advanced',
   'script-overrides-trait': 'advanced',
   'script-unknown-stat': 'advanced',
+  'script-unknown-body': 'advanced',
   'script-unknown-blueprint-owner-stat': 'advanced',
   'script-before-reads-delta': 'advanced',
   'script-two-writers': 'advanced',

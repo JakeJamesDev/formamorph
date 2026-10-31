@@ -190,3 +190,53 @@ describe('trait Body rows', () => {
     expect(settled.bodyLog).toEqual([]);
   });
 });
+
+describe('a script-written base Body', () => {
+  const wolfBase = { rex: { kind: 'body', id: 'wolf' } } as const;
+  const baseOn = (play: Play, baseWrites: NonNullable<Parameters<typeof settleInventory>[0]['baseWrites']>): Settled =>
+    ({ ...play, ...settleInventory({ copies: play.copies, traits: play.traits, ledger: play.ledger, bodies: play.bodies, baseWrites }, settleWorld()) }) as Settled;
+
+  it('sets the base, unequips what it lacks, reverses the effects exactly and fires When Unequipped', () => {
+    const armed = wear(start(), rex, 'sword', 'helm');
+    const wolf = baseOn(armed, wolfBase);
+    expect(worn(wolf, rex)).toEqual([]);
+    expect(strength(wolf, 'rex')).toBe(5);
+    expect(wolf.bodyLog).toEqual(["Rex's Body: Wolf. Unequipped Sword, Helm"]);
+    expect(wolf.events.map((e) => e.timing)).toEqual(['unequipped', 'unequipped']);
+    expect(wolf.bodies.base).toEqual(wolfBase);
+  });
+
+  it('writes nothing for a base that changes no Body in force', () => {
+    const armed = wear(start(), rex, 'helm');
+    const same = baseOn(armed, { rex: { kind: 'body', id: 'humanoid' } });
+    expect(worn(same, rex)).toEqual(['helm']);
+    expect(same.bodyLog).toEqual([]);
+  });
+
+  it('lets an active trait Body win over the base, and returns the base when the trait ends', () => {
+    const forced = rexOn(start(), ['catCurse']);
+    const armed = wear(forced, rex, 'helm');
+    const under = baseOn(armed, wolfBase);
+    expect(worn(under, rex)).toEqual(['helm']);
+    expect(under.bodyLog).toEqual([]);
+    const ended = rexOn(under, []);
+    expect(ended.bodyLog).toEqual(["Rex's Body: Wolf. Unequipped Helm"]);
+    expect(worn(ended, rex)).toEqual([]);
+  });
+
+  it('keeps the base through a save: a load settle changes nothing', () => {
+    const wolf = baseOn(start(), wolfBase);
+    const saved: BodyRuntime = JSON.parse(JSON.stringify(wolf.bodies));
+    const loaded = settle({ ...wolf, bodies: saved });
+    expect(loaded.bodyLog).toEqual([]);
+    expect(loaded.bodies).toEqual(saved);
+    expect(loaded.bodies.base).toEqual(wolfBase);
+  });
+
+  it('settles the played Persona through the empty owner key', () => {
+    const armed = wear(start(), you, 'helm');
+    const wolf = baseOn(armed, { '': { kind: 'body', id: 'wolf' } });
+    expect(worn(wolf, you)).toEqual([]);
+    expect(wolf.bodyLog).toEqual(['Body: Wolf. Unequipped Helm']);
+  });
+});
