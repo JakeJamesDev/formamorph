@@ -56,6 +56,14 @@ _Avoid_: snippet, preset, recipe, example
 The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs, the current Surface, and world text from the open world while Read the World is on: in the World Editor, the sections of the World Index that match the question, unsaved edits included, in a world block with a budget of its own; in game, the matching rows of the Player View, the dictionary entries that fire, and the story so far in a block of its own. A Formaquestion Tool the player turns on and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts, read the open world too: the full world in the editor, the Player View in game (ADR-0011, ADR-0014).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
+**Intent**:
+What a Formaquestion question asks for, one of five: Chat (small talk, not about Formamorph), Help (a Formamorph question with no code), Code (scripts and stat code), World (the open world and its lore) and Create (a request to make an entity). The Intent Classifier gives it, and it decides which blocks and functions the answer request carries. A question has one Intent; one with two asks takes the first ask's.
+_Avoid_: route, category, mode
+
+**Intent Classifier**:
+The Formaquestion request that gives a question its Intent before the answer request, sent alongside the pick requests. It reads the question, the last exchange and the Surface, and has its own prompt, sampler pins and endpoint. A reply that names no known Intent sends the full request. A setting turns it on; the player sees it as Sort Questions.
+_Avoid_: router, sorter
+
 **World Index**:
 The open world's authored parts as sections in the Docs Index shape, one page per item: entities, locations, items, traits, stats with their code, world scripts, World Tools, dictionary entries and the world prompts. Placeholders read as their authored chips. Formaquestion ranks it with the same sources as the guide, as a second pool. Built from the World Editor's live world, and rebuilt when a slice changes.
 _Avoid_: world search index, lore index

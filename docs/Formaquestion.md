@@ -302,6 +302,30 @@ While **Answer Endpoint** is **Use Active Endpoint**, the heading names the acti
 
 Answers take longer with reasoning on. The row shows a note instead of the checkbox when your model cannot reason. See [General](#general).
 
+## How to Turn On Sort Questions
+<!-- keywords: sort questions, faster answers, small talk, chat with the mascot, kinds of questions, sorting request, sorting endpoint, less context, smaller request -->
+<!-- route: formaquestionSettings.general -->
+
+1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
+2. Check **Sort Questions**.
+3. Ask a question.
+
+The sorting request goes out at the same time as the **AI Search** request. It reads your question, your last question and answer, and the open screen. The answer request then holds:
+
+| Sorted as | What the answer request holds |
+|---|---|
+| 💬 Small talk | Your question and your earlier questions, with no guide and no world |
+| ❓ How-to | The guide and your world, without the help for scripts |
+| 🧩 Code | Everything, the same as with **Sort Questions** off |
+| 🌍 Your world | Your world, and in a game the story so far, with no guide |
+| 🛠️ Make something | Everything, the same as with **Sort Questions** off |
+
+- Your AI decides from the question, not the open **Scripts** tab, whether a question is about code.
+- A question about your world with no world open gets a reply that no world is open.
+- When you ask for two things at once, your AI answers the first one and asks you to send the second one next.
+- When the reply of the sorting request is unclear, or the request fails, the question goes as it does with **Sort Questions** off.
+- **Sorting Endpoint** on the **Endpoint** tab sets where the sorting request goes. See [Endpoint](#endpoint).
+
 ## How to Turn On Semantic Search
 <!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download, recommended, offer, card, turn on, no thanks, dismiss -->
 <!-- route: formaquestionSettings.general#semantic-search -->
@@ -521,7 +545,7 @@ The card offers [Semantic Search](#how-to-turn-on-semantic-search) at the top of
 - This device keeps each setting. The settings are not in a backup or an export.
 
 ### General
-<!-- keywords: mascot switch, turn off the mascot, turn on the mascot, chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
+<!-- keywords: mascot switch, turn off the mascot, turn on the mascot, chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide, sort questions, small talk, faster answers -->
 <!-- route: formaquestionSettings.general -->
 
 The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position**, **Mascot Scale**, **Backdrop** and **Confirm Before Opening the Wiki** are in **Window**.
@@ -539,6 +563,7 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Search** | On | Sends one more request for each question, in which your AI chooses guide sections from the list of headings |
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. A card at the top of the window offers it first. See [The Semantic Search Card](#the-semantic-search-card). |
+| **Sort Questions** | Off | Sends one short request first, in which your AI sorts your question: small talk, a how-to, code, your world, or a request to make something. Each kind then sends only what it needs. See [How to Turn On Sort Questions](#how-to-turn-on-sort-questions). |
 | **Use the Open Screen** | On | Sends the open screen, your selected item, and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
@@ -551,7 +576,7 @@ With **Keyword Search**, **AI Search** and **Use the Open Screen** all off, no o
 When a search runs and finds no section, the answer still gets that note.
 
 ### Endpoint
-<!-- keywords: different model, other endpoint, separate ai, small model for search, help endpoint, answer endpoint, search endpoint, follow active, same as answer -->
+<!-- keywords: different model, other endpoint, separate ai, small model for search, help endpoint, answer endpoint, search endpoint, sorting endpoint, follow active, same as answer, same as search -->
 <!-- route: formaquestionSettings.endpoint -->
 
 The **Endpoint** tab sets where help questions go. Help can use a different AI than your game.
@@ -560,13 +585,14 @@ The **Endpoint** tab sets where help questions go. Help can use a different AI t
 |---|---|---|
 | **Answer Endpoint** | **Use Active Endpoint** | Sends your questions to this endpoint for answers |
 | **Search Endpoint** | **Same as Answer** | Sends the **AI Search** request to this endpoint. A small, fast model works well here. |
+| **Sorting Endpoint** | **Same as Search** | Sends the sorting request of **Sort Questions** to this endpoint. A small, fast model works well here. |
 
 - **Use Active Endpoint** follows the endpoint you pick in **Settings** → **AI Endpoints**.
 - A preset you choose shows whether it answers. Select **Recheck** to check again.
 - If you delete a preset that a setting names, that setting goes back to its default.
 - The **Ask** tab says when your AI is not connected. It checks the **Answer Endpoint**.
 
-The two settings share one row. Under them is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
+**Answer Endpoint** and **Search Endpoint** share one row, and **Sorting Endpoint** is under them. Under the three is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
 
 - The editor has no preset list. It always edits the preset that **Answer Endpoint** uses. Its heading, **Edit** and the preset's name, changes when you change **Answer Endpoint**. While **Answer Endpoint** follows the active endpoint, the heading names that preset and says **Active Endpoint**.
 - **Add New Preset** adds a copy of the preset you are editing, moves **Answer Endpoint** to the copy, and opens the copy in the editor.
@@ -583,6 +609,7 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 |---|---|
 | **Answer** | Tells your AI how to answer from the guide sections in the request |
 | **Search** | Tells your AI how to choose guide sections from the list of headings, for the **AI Search** request |
+| **Sorting** | Tells your AI how to sort a question by the help it needs, for the sorting request of **Sort Questions** |
 | **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
 | **Code** | Tells your AI how to write scripts. It goes after a question about code, and after any question from a stat's **Scripts** tab while **Use the Open Screen** is on |
 
@@ -603,18 +630,19 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 | **Lookup Function** | Lookup | The name of the function your AI calls to read more guide sections |
 | **Search Limit** | Search | The most sections one search reply names. The app reads that many sections at most, whatever the prompt says. |
 | **Reply Format** | Search | The rule for how the search reply is written, so the app can read it |
+| **Sorting Format** | Sorting | The rule for how the sorting reply names the kind of help, so the app can read it |
 | **Mascot Voice** | Answer, Lookup | Your mascot's name and Voice: "You are Morphie." for the mascot that comes with the app, then the Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
 Each prompt editor has an **Edit** tab and a **Preview** tab. **Preview** shows the prompt as your AI gets it, with each chip replaced by its text. **Mascot Voice** shows your mascot's Voice while the mascot is on.
 
-Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Search** to the **AI Search** request, and **Lookup** to the answer request when your AI can call **read_guide**.
+Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Search** to the **AI Search** request, **Sorting** to the sorting request, and **Lookup** to the answer request when your AI can call **read_guide**.
 
 | Option | Default | What it does |
 |---|---|---|
-| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Search** | Sets how long the reply can run |
-| **Custom Temperature** | 0.2 | Sets how freely the reply is worded |
+| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Search**, 40 for **Sorting** | Sets how long the reply can run |
+| **Custom Temperature** | 0.2, and 0 for **Sorting** | Sets how freely the reply is worded |
 | **Custom Repetition Penalty** | 1 | Sets how hard the reply avoids repeated words |
 
 Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default.
@@ -794,7 +822,7 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 - After you publish, your mascot follows its listing, as your other published items do.
 
 ## AI Context
-<!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->
+<!-- keywords: debug a question, see the request, inspect help, sorted as, wrong section, trace, export json, bug report, search block, samplers, request card -->
 <!-- route: formaquestionAiContext -->
 
 **AI Context** shows what each question of the conversation sent to your AI, and what came back. Use it to find why an answer went wrong: a section the search missed, or a prompt you changed.
@@ -805,7 +833,8 @@ The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-a
 
 | Block | What it shows |
 |---|---|
-| **Search** | The screen you had open, the item you had selected, and whether **Use the Open Screen** was on, the help preset, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
+| **Search** | The screen you had open, the item you had selected, and whether **Use the Open Screen** was on, the help preset, how **Sort Questions** sorted the question while it was on, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
+| **Request N: Sorting** | The sorting request of **Sort Questions**, and the reply your AI wrote |
 | **Request N: AI Search** | The **AI Search** request, and the lines your AI chose |
 | **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
 

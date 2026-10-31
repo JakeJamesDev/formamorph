@@ -7,9 +7,9 @@ import { pickList } from '@/lib/formaquestion/helpPicks';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
+import { isIntentRequest, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import { AI_CONTEXT_COPY } from './formaquestionSettingsTabs';
 import type { HelpAi } from './useHelpAi';
@@ -132,6 +132,24 @@ describe('AI Context in Formaquestion', () => {
     }
     // The Settings page has no word of the question, so it reached no list as sent.
     expect(within(question).queryByText(/Settings › Display.*sent/)).toBeNull();
+  });
+
+  it('shows the sorted kind and the sorting request while Sort Questions is on', async () => {
+    localStorage.setItem(STORAGE_KEY, helpSettingsCodec.serialize(helpSettingsOf({ intentClassifier: true })));
+    const answers = stubHelpStream(sseReply('Select **Add Trait**.'), TRAIT_LINE);
+    const routed = globalThis.fetch;
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) => (isIntentRequest(init)
+      ? Promise.resolve(sseResponse(sseReply('Intent: Help\nSecond ask: no')))
+      : routed(url, init)));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    const dialog = await openAiContext();
+
+    const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
+    expect(within(question).getByText(`${AI_CONTEXT_COPY.intent}: Help`)).toBeInTheDocument();
+    expect(within(question).getByText('Request 1: Sorting')).toBeInTheDocument();
+    expect(within(question).getByText('Request 3: Answer')).toBeInTheDocument();
+    expect(answers).toHaveBeenCalledTimes(1);
   });
 
   it('marks the request whose prompt differs from the default text', async () => {

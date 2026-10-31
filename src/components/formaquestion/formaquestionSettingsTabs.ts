@@ -58,6 +58,7 @@ export const GENERAL_COPY = {
   keyword: { label: 'Keyword Search', hint: 'Matches the words in your question to guide sections' },
   aiPicks: { label: 'AI Search', hint: 'Asks your AI to choose the sections before answering. One extra request.' },
   semantic: { label: 'Semantic Search', hint: 'Finds sections by meaning, not exact words. Downloads a small model once.' },
+  sortQuestions: { label: 'Sort Questions', hint: 'Sends each question only what it needs. One extra request.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the open screen, your selected item, and its guide section' },
   readWorld: { label: 'Read the World', hint: "Sends the open world's text to your endpoint with each question" },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
@@ -175,6 +176,8 @@ export const AI_CONTEXT_COPY = {
   question: 'Question',
   query: 'Query',
   preset: 'Preset',
+  intent: 'Sorted as',
+  noIntent: 'none; the full request went',
   sourcesOn: 'Sources on',
   none: 'none',
   noScreen: 'No open screen',
@@ -195,6 +198,8 @@ export const ENDPOINT_COPY = {
   pick: { label: 'Search Endpoint', description: 'Runs the search request. A small, fast model is enough.' },
   followsActive: 'Follows the endpoint picked on the **AI Endpoints** tab of Settings. Switch endpoints there and this follows.',
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
+  sort: { label: 'Sorting Endpoint', description: 'Runs the sorting request. A small, fast model is enough.' },
+  sameAsSearch: 'Goes to the **Search Endpoint**, and follows it when you change it',
   presetHint: 'Edits the preset Answer uses. The game uses the same presets.',
 } as const;
 
@@ -204,6 +209,7 @@ export const PROMPTS_COPY = {
   prompts: {
     answer: { label: 'Answer', hint: 'Tells your AI how to answer from the guide sections' },
     pick: { label: 'Search', hint: 'Tells your AI how to choose guide sections from the heading list' },
+    intent: { label: 'Sorting', hint: 'Tells your AI how to sort questions by the help they need' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
     code: { label: 'Code', hint: 'Tells your AI how to write scripts on questions about code' },
     worldEditor: { label: 'Editor World', hint: 'Tells your AI how to explain your world in the World Editor' },
@@ -223,6 +229,11 @@ export const PROMPTS_COPY = {
         hint: 'Sets how this preset runs the search request',
         temperature: 'Sets how freely your AI chooses guide sections',
         repetitionPenalty: 'Sets how hard the search reply avoids repeated words',
+      },
+      intent: {
+        hint: 'Sets how this preset runs the sorting request',
+        temperature: 'Sets how freely your AI sorts each question',
+        repetitionPenalty: 'Sets how hard the sorting reply avoids repeated words',
       },
       lookup: {
         hint: 'Sets how this preset runs the answer request with the lookup function',

@@ -5,6 +5,7 @@
  */
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
 import type { DocSection } from '@/lib/docs/docsIndex';
+import type { Intent } from './helpIntent';
 import type { HelpSources } from './helpSettings';
 import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from './helpWorldSource';
 
@@ -88,7 +89,9 @@ export interface HelpTrace {
   worldSearch?: HelpSearchTrace;
   /** The sources that reached the model in the prompt, in order. */
   sent: HelpTraceSource[];
-  /** The AI Search request, when it ran, then the answer request. */
+  /** The Intent Classifier's Intent, when it ran; null when it failed or named none, and the full request went. */
+  intent?: Intent | null;
+  /** The Intent Classifier request, then the AI Search requests, when they ran, then the answer request. */
   requests: HelpRequestTrace[];
 }
 

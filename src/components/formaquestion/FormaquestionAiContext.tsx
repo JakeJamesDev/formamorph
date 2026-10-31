@@ -97,6 +97,7 @@ function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceRoute |
         {trace.lead && <> · {AI_CONTEXT_COPY.lead}: {trace.lead.page} › {trace.lead.label}</>}
       </p>
       <p>{AI_CONTEXT_COPY.preset}: {trace.preset}</p>
+      {trace.intent !== undefined && <p>{AI_CONTEXT_COPY.intent}: {trace.intent ?? AI_CONTEXT_COPY.noIntent}</p>}
       {trace.search === null ? (
         <p className="text-muted-foreground">{AI_CONTEXT_COPY.bare}</p>
       ) : (

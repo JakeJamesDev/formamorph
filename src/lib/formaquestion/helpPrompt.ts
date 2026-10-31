@@ -12,6 +12,8 @@ export interface HelpPromptTexts {
   readonly answer: string;
   /** The system prompt of the AI Search request. */
   readonly pick: string;
+  /** The system prompt of the Intent Classifier request. */
+  readonly intent: string;
   /** The system prompt of the answer request in lookup mode. */
   readonly lookup: string;
   /** The rider a code turn adds to the user message, sent verbatim. */
@@ -24,16 +26,16 @@ export interface HelpPromptTexts {
 
 export type HelpPromptKey = keyof HelpPromptTexts;
 
-const HELP_REQUEST_KEYS = ['answer', 'pick', 'lookup'] as const;
+const HELP_REQUEST_KEYS = ['answer', 'pick', 'intent', 'lookup'] as const;
 
 /** The prompts that run a request of their own, each with its option block. The others ride the answer request. */
 export type HelpRequestKey = (typeof HELP_REQUEST_KEYS)[number];
 
 /** The prompts a stored preset or a preset file may lack: each reads as its default text. */
-export const HELP_OPTIONAL_PROMPT_KEYS = ['worldEditor', 'worldGame'] as const satisfies readonly HelpPromptKey[];
+export const HELP_OPTIONAL_PROMPT_KEYS = ['intent', 'worldEditor', 'worldGame'] as const satisfies readonly HelpPromptKey[];
 
 /** The prompts in rail order. */
-export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = [...HELP_REQUEST_KEYS, 'code', ...HELP_OPTIONAL_PROMPT_KEYS];
+export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = [...HELP_REQUEST_KEYS, 'code', 'worldEditor', 'worldGame'];
 
 /** True for a prompt that runs a request of its own, so it has an option block. */
 export const isHelpRequestKey = (key: HelpPromptKey): key is HelpRequestKey => (HELP_REQUEST_KEYS as readonly HelpPromptKey[]).includes(key);
@@ -68,6 +70,20 @@ export const DEFAULT_HELP_PROMPTS: HelpPromptTexts = {
     `- Pick ${HELP_CHIP.pickLimit} sections at most.`,
     HELP_CHIP.replyFormat,
   ].join('\n'),
+  intent: [
+    'You are the desk clerk of Formamorph help. Formamorph is a text adventure app with a player guide, a World Editor and scripts. A player sends a message, and you name the one kind of help it asks for.',
+    '',
+    'The kinds:',
+    '- Chat: talk with the assistant about anything other than Formamorph.',
+    '- Help: how to use Formamorph: its screens, settings and features.',
+    '- Code: writing, reading or fixing scripts and stat code.',
+    '- World: the open world itself: its story, characters, places and lore.',
+    '- Create: making a new character or other entity for the open world.',
+    '',
+    '- A short follow-up asks for the same kind as the earlier question.',
+    '- When the message asks for two things, name the kind of the first one, and mark the second ask.',
+    HELP_CHIP.intentFormat,
+  ].join('\n'),
   lookup: [
     'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide.',
     '',
@@ -98,6 +114,7 @@ export function readHelpPromptTexts(stored: Record<string, unknown>): { texts: H
 export const HELP_PROMPT_CHIPS = {
   answer: [HELP_CHIP.marker, HELP_CHIP.voice],
   pick: [HELP_CHIP.pickLimit, HELP_CHIP.replyFormat],
+  intent: [HELP_CHIP.intentFormat],
   lookup: [HELP_CHIP.marker, HELP_CHIP.lookupFunction, HELP_CHIP.voice],
   code: [],
   worldEditor: [],
@@ -151,24 +168,24 @@ function worldBlock(world: readonly WorldBlockSection[] | undefined): string[] {
 /** The story block of a game request, or none. A story with no turns yet still sends it empty. */
 const storyBlock = (story: string | undefined): string[] => (story === undefined ? [] : [`<story>\n${story}\n</story>`]);
 
-/** Where an answer's facts come from: the guide, and the world when the request reads one. */
-const groundsOf = (world: readonly WorldBlockSection[] | undefined) => (world ? 'guide and world sections' : 'guide sections');
+/** Where an answer's facts come from: the guide when the request carries it, and the world when it reads one. */
+const groundsOf = (world: readonly WorldBlockSection[] | undefined, guide = true) => (!guide ? 'world sections' : world ? 'guide and world sections' : 'guide sections');
 
 /**
- * The one user message of a help request: the docs sections, the world sections when the request reads a world,
- * then the question, then the grounding line.
+ * The one user message of a help request: the docs sections unless `guide` is off, the world sections when the
+ * request reads a world, then the question, then the grounding line.
  */
-export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[], story?: string): string {
-  const guide = sections
+export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string, world?: readonly WorldBlockSection[], story?: string, guide = true): string {
+  const guideText = sections
     .map((section) => `<section page="${pageLabel(section.page)}">\n${section.markdown}\n</section>`)
     .join('\n\n');
   return [
-    `<guide>\n${guide}\n</guide>`,
+    ...(guide ? [`<guide>\n${guideText}\n</guide>`] : []),
     ...worldBlock(world),
     ...storyBlock(story),
     ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
-    `Answer the question from the ${groundsOf(world)} above.`,
+    `Answer the question from the ${groundsOf(world, guide)} above.`,
   ].join('\n\n');
 }
 
