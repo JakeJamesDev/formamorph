@@ -42,7 +42,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 <!-- keywords: switch, swap, mid-game, different character, edit name, rename, already started, ongoing story, become someone else, wrong name fix, replace protagonist, halfway through, body swap -->
 <!-- route: persona -->
 
-1. In the side panel, find the persona row above the **Stats**, **Traits** and **Location** tabs.
+1. In the side panel, find the persona row above the tabs, such as **Traits** and **Location**.
 2. Select **Change**. The **Change Persona** dialog opens.
 3. Pick another persona, or edit the Custom Persona's **Name** or **Description**.
 4. Select **Change**. It turns on when your pick, name or description differs from the current one.
@@ -87,7 +87,7 @@ Enter World opens on a **Persona** category when at least one persona is availab
 |---|---|
 | **None** | Play as the world describes the player. A world with a [Custom Persona](#create-your-own) shows that entity here instead. |
 | **From This World** | Entities the author made playable. See [Play a World's Own Entity](#play-a-worlds-own-entity). |
-| **Your Personas** | The personas in your library |
+| **Your Personas** | The personas in your library. A persona the world already holds a copy of isn't offered. |
 
 The category starts on a pick in this order:
 
@@ -110,7 +110,7 @@ Pick an entity under **From This World**, and you play it:
 
 - It leaves the cast for that game, so you never meet yourself.
 - The AI reads that everyone in the world already knows you.
-- Its locations join the **Starting Location** list, and its first starting location is selected for you. You can pick another.
+- Its locations join the **Starting Location** list, and the first of them that is a starting location is selected for you. With none, its first location is. Its row in the picker reads **Starts at** and that place. You can pick another.
 - Its Others openings leave the draw, so page one never greets you as yourself.
 - If it has Self openings, the game draws only from those. See [Self Openings](World-Editor-Openings#self-openings).
 
@@ -132,7 +132,7 @@ Some worlds have a **Custom Persona**. It takes **None**'s place in the list, wi
 <!-- keywords: memories use wrong name, legacy save identity, deleted identity warning, edits reach old saves, returns next turn, side panel row -->
 <!-- route: persona -->
 
-A row above **Stats**, **Traits** and **Location** shows your persona's portrait and name, or **None**. Select **Change** to open **Change Persona** and pick again.
+A row above the side panel's tabs shows your persona's portrait and name, or **None**. Select **Change** to open **Change Persona** and pick again.
 
 | When you change | What happens |
 |---|---|
@@ -173,7 +173,7 @@ One import brings every SillyTavern persona over. The backup holds no images, so
 A report lists each persona with no image, each skipped entry, each persona that wasn't saved and each image that matched no persona.
 
 > [!NOTE]
-> Keep the avatar filenames as SillyTavern wrote them. The import matches by filename.
+> Keep the avatar filenames as SillyTavern wrote them. The import matches by filename. Pick one backup at a time.
 
 ## Related
 
