@@ -41,7 +41,9 @@ Settled with the user on 2026-10-31.
 | Q15 | A feature behind a server setting is documented conditionally ("When a listing waits for review…"), in its on-state behavior. Landed names the setting |
 | Q16 | Docs never describe a bug's output as behavior. A claim the bug makes false is removed with no replacement, and Landed names the bug |
 | Q17 | A stale fact the wording pass finds is fixed in that ticket after a spec-session check, and Landed lists it as a staleness miss |
-| Q18 | Splits ruled: How-to-Play no split (02). Community-Creations splits into Community-Creations, Account and Feedback; Personas and Persona-Authoring don't split (06) |
+| Q18 | Splits ruled: How-to-Play no split (02). Community-Creations splits into Community-Creations, Account and Feedback; Personas and Persona-Authoring don't split (06). Settings splits out Endpoint-Settings; the other AI and Settings pages don't split (04) |
+| Q19 | A new page from a split needs two blind help questions. A subagent that never opened `docs/` writes them from a plain feature list; the ticket adds them verbatim (user ruling) |
+| Q20 | Copy-sweep notices on keyword and route HTML comments are false positives: those comments hold search synonyms |
 
 ## Page groups
 
