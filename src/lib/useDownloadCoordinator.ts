@@ -105,7 +105,7 @@ interface DownloadRun {
 
 /** A source the player cannot be given, by why. Each reads as the reason a retry would hit again. */
 const MISSING_SOURCE = 'This required source is no longer on the server.';
-const UNSUPPORTED_SOURCE = 'This source is not a character or a dictionary, so it cannot be installed.';
+const UNSUPPORTED_SOURCE = "This source isn't an entity or a dictionary, so it can't be installed.";
 const WITHDRAWN_ADDON = 'This world no longer offers this add-on.';
 
 /**
@@ -354,7 +354,7 @@ export function useDownloadCoordinator(
     const record: WorldRecord = { id: run.localId, ...meta, tags: finalData.worldOverview?.tags || [], lastAccessed: now };
     if (run.overwrite) setWorlds((prev) => prev.map((w) => (w.id === run.localId ? { ...w, ...record } : w)));
     else setWorlds((prev) => [...prev, { ...record, isLoading: false }]);
-    toast.success(`"${name}" ${run.overwrite ? 'updated' : 'downloaded'} successfully`);
+    toast.success(`"${name}" ${run.overwrite ? 'updated' : 'downloaded'}`);
     if (toolWarning) toast.warning(toolWarning);
   };
 
@@ -491,7 +491,7 @@ export function useDownloadCoordinator(
     } catch (error) {
       // What the update would do to this copy's components is unknown, and writing anyway could discard
       // the player's own edits. Nothing is written.
-      toastError(error, `Formamorph could not read what "${localName}" holds, so it was not updated.`);
+      toastError(error, `Couldn't read what "${localName}" holds, so it wasn't updated.`);
       return;
     }
 

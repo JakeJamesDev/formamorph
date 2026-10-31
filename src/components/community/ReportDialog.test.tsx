@@ -83,7 +83,7 @@ describe('filing a report', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send Report' }));
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(vi.mocked(toast.success).mock.calls[0][0]).toMatch(/messages/i);
+    expect(vi.mocked(toast.success).mock.calls[0][0]).toMatch(/get a message/i);
   });
 
   it('calls the thing what the surface that opened it calls it', async () => {
@@ -120,11 +120,11 @@ describe('filing a report', () => {
     expect(line?.textContent).toBe('Reporting a comment on Sedge Landing');
   });
 
-  it('says up front that the author never learns who reported them', async () => {
+  it('says up front that the author never learns who sent the report', async () => {
     // The question that decides whether somebody reports at all, so it is answered before they start.
     render(<ReportDialog open onOpenChange={vi.fn()} target={listing} />);
 
-    expect(screen.getByText(/never learns who reported them/i)).toBeTruthy();
+    expect(screen.getByText(/never learns who sent it/i)).toBeTruthy();
   });
 });
 

@@ -91,7 +91,7 @@ describe('useDeviceDownload', () => {
     expect(payload.worldOverview.thumbnail).toBe('https://cdn.example/sedge.webp');
     expect(payload.locations[0].backgroundImage).toBe('https://cdn.example/shore.webp');
     expect(migrateWorld(payload).worldOverview.thumbnail).toBe('https://cdn.example/sedge.webp');
-    expect(toast.success).toHaveBeenCalledWith('"Sedge Landing" downloaded successfully');
+    expect(toast.success).toHaveBeenCalledWith('"Sedge Landing" downloaded');
   });
 
   it('writes existing entity cards and dictionary files in their importable formats', async () => {
@@ -169,7 +169,7 @@ describe('useDeviceDownload', () => {
     const blob = vi.mocked(mocks.downloadBlob).mock.calls[0][0] as Blob;
     expect(blob.type).toBe('model/gltf-binary');
     expect(Buffer.from(await blob.arrayBuffer()).toString()).toBe('vrm-bytes');
-    expect(toast.success).toHaveBeenCalledWith('"Robot Girl" downloaded successfully');
+    expect(toast.success).toHaveBeenCalledWith('"Robot Girl" downloaded');
   });
 
   it('reports a failed portrait or serializer without falsely reporting a saved file', async () => {
@@ -186,7 +186,7 @@ describe('useDeviceDownload', () => {
     await act(async () => { await result.current.download(entityListing); });
 
     expect(mocks.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'River Warden.webp');
-    expect(toast.success).toHaveBeenCalledWith('"River Warden" downloaded successfully');
+    expect(toast.success).toHaveBeenCalledWith('"River Warden" downloaded');
   });
 
   it('reports content fetch and JSON serialization failures without saving a file', async () => {

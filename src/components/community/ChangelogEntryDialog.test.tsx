@@ -26,7 +26,7 @@ vi.mock('@/components/prompt/PromptField', () => ({
  */
 
 const titleBox = () => screen.getByLabelText('Title') as HTMLInputElement;
-const bodyBox = () => screen.getByLabelText('What changed') as HTMLTextAreaElement;
+const bodyBox = () => screen.getByLabelText('What Changed') as HTMLTextAreaElement;
 const submit = (name: RegExp = /add entry|save entry/i) => screen.getByRole('button', { name });
 
 /** The day the themed calendar's button is showing, as the reader sees it. */

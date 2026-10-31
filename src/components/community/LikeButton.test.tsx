@@ -41,7 +41,7 @@ describe('a hidden count', () => {
 
     const heart = screen.getByRole('button', { name: 'Like — likes hidden' });
     expect(heart.textContent?.trim()).toBe('—');
-    await expectTip(heart, `Like this. ${HIDDEN_LIKES_TIP}.`);
+    await expectTip(heart, `Like this listing. ${HIDDEN_LIKES_TIP}.`);
 
     fireEvent.click(heart);
 
@@ -71,6 +71,6 @@ describe('a public count', () => {
     show({ visibility: 'public', likes: 3 }, { liked: false, onToggle: vi.fn(async () => {}) });
 
     const heart = screen.getByRole('button', { name: 'Like — 3 likes' });
-    await expectTip(heart, 'Like this');
+    await expectTip(heart, 'Like this listing');
   });
 });

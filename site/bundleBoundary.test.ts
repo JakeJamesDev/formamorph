@@ -195,7 +195,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 70: `useRenameSubmit`, the rename flow the game dialog and the rename page share; it reads only the service and the rule.
     // 71: `HostedStateService`, the read-only hosted-state call the allowance section makes; it reads only the auth leaves.
     // 72: `tierNames`, the one place a tier's name comes from; it reads only `apiBase` and `supporterFlair`.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(72);
+    // 73: `typography`, the Hint and FieldError text roles the age gate and creations list read; it reads only `utils`.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(73);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

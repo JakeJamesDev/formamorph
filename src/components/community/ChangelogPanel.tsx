@@ -5,6 +5,7 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Hint, Meta } from "@/components/ui/typography";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { ChangelogEntryDialog } from "@/components/community/ChangelogEntryDialog";
 import WorldStorageService from "@/services/WorldStorageService";
@@ -108,19 +109,19 @@ export function ChangelogPanel({
             <Plus className="mr-2 h-4 w-4" /> Add Entry
           </Button>
           {full && (
-            <p className="text-meta text-muted-foreground">
+            <Meta as="p">
               A changelog holds {CHANGELOG_MAX_ENTRIES} entries. Delete one to add another.
-            </p>
+            </Meta>
           )}
         </div>
       )}
 
       {shown.length === 0 ? (
-        <p className="text-helper text-muted-foreground">
+        <Hint>
           {canEdit
-            ? 'No entries yet. Add one to start this listing’s history — including updates you made before now.'
+            ? 'No entries yet. Add one for each update, including updates you made before now.'
             : 'No changelog yet.'}
-        </p>
+        </Hint>
       ) : (
         shown.map((entry) => (
           <div key={entry.id} className="border-b border-border/50 pb-2 last:border-0 min-w-0">
@@ -173,7 +174,8 @@ export function ChangelogPanel({
         open={!!pendingDelete}
         onOpenChange={(isOpen) => { if (!isOpen) setPendingDelete(null); }}
         title="Delete this entry?"
-        description="It goes for good. The rest of the changelog stays as it is."
+        description="This deletes the entry from the listing's changelog. You can't undo this."
+        confirmLabel="Delete"
         onConfirm={() => {
           const entry = pendingDelete;
           setPendingDelete(null);

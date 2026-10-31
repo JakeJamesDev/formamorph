@@ -332,7 +332,7 @@ describe('who may maintain it', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /add entry/i }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Update 2' } });
-    fireEvent.change(screen.getByLabelText('What changed'), { target: { value: 'The middle news.' } });
+    fireEvent.change(screen.getByLabelText('What Changed'), { target: { value: 'The middle news.' } });
     pickDate('2026-04-01');
     fireEvent.click(screen.getByRole('button', { name: 'Add Entry' }));
 
@@ -353,7 +353,7 @@ describe('who may maintain it', () => {
     fireEvent.click(await screen.findByRole('button', { name: /edit update 1/i }));
 
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Update 1');
-    expect((screen.getByLabelText('What changed') as HTMLTextAreaElement).value).toBe('The old wording.');
+    expect((screen.getByLabelText('What Changed') as HTMLTextAreaElement).value).toBe('The old wording.');
     expect(shownDay()).toBe(asShown('2026-01-09'));
   });
 

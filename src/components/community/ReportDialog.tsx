@@ -18,6 +18,7 @@ import {
   type ReportTargetKind,
 } from "@/lib/contentReports";
 import ReportService, { AlreadyReportedError } from "@/services/ReportService";
+import { Hint, Meta } from "@/components/ui/typography";
 
 /**
  * What a report is aimed at.
@@ -94,7 +95,7 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
         details: details.trim() || undefined,
       });
 
-      toast.success('Report sent — you will hear back in your messages.');
+      toast.success("Report sent. You'll get a message when staff review it.");
       onOpenChange(false);
     } catch (e) {
       if (e instanceof AlreadyReportedError) {
@@ -117,8 +118,8 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
           </DialogTitle>
           <DialogDescription>
             {/* Said up front, because it is the question that decides whether somebody reports at all. */}
-            Staff see this; the author never learns who reported them. You will get a message when it has
-            been reviewed.
+            Only staff see your report, and the author never learns who sent it. You&apos;ll get a message
+            when staff review it.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +128,7 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
         ) : (
           <div className="space-y-4 py-2">
             {target?.name && (
-              <p className="text-helper text-muted-foreground truncate">
+              <Hint className="truncate">
                 {target.kind === 'comment' ? (
                   <>
                     Reporting{' '}
@@ -139,7 +140,7 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
                 ) : (
                   <>Reporting the {noun} <span className="font-medium text-foreground">{target.name}</span></>
                 )}
-              </p>
+              </Hint>
             )}
 
             {/* All six at once rather than behind a dropdown: picking the right one *is* the triage
@@ -164,17 +165,18 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <label htmlFor="reportDetails" className="text-label font-medium">
-                  Anything else <span className="text-muted-foreground font-normal">(optional)</span>
+                  Anything else
                 </label>
-                <span className="text-meta text-muted-foreground">
+                <Meta>
                   {details.length} / {REPORT_DETAILS_MAX}
-                </span>
+                </Meta>
               </div>
+              <Hint>Optional</Hint>
               <Textarea
                 id="reportDetails"
                 value={details}
                 onChange={(e) => setDetails(e.target.value.slice(0, REPORT_DETAILS_MAX))}
-                placeholder="What staff should know that the reason above does not say"
+                placeholder="Anything the reason above doesn't say"
                 className="h-28"
               />
             </div>

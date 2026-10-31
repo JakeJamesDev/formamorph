@@ -173,7 +173,7 @@ export function CardTags({ tags, onHide, omitEmpty }: { tags: string[]; onHide?:
   }
 
   const chip = (tag: string, i: number) => (
-    <Tip key={i} tip={onHide ? `Hide all worlds tagged "${tag}"` : undefined} labelsChild={false}>
+    <Tip key={i} tip={onHide ? `Hide everything tagged "${tag}"` : undefined} labelsChild={false}>
       <span
         onClick={onHide ? (e) => { e.stopPropagation(); onHide(tag); } : undefined}
         className={cn(

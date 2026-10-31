@@ -80,8 +80,8 @@ export function useContestWithdrawal(onWithdrawn?: (listingId: string) => void):
             Withdraw “{shown?.name}”?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            It stays published with its likes and comments — it simply stops being an entry. Re-entering
-            means publishing it again, which a contest past its deadline will not take.
+            It stays published with its likes and comments, but it&apos;s no longer an entry. To enter it
+            again, publish it again before the contest closes.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

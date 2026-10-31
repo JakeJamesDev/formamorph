@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Meta } from '@/components/ui/typography';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KIND_LABELS, kindOf } from '@/lib/catalogKinds';
 import { listingId, type AddonRow, type DependencyRow } from '@/lib/worldDependencies';
@@ -9,9 +10,9 @@ import type { WorldDownloadPlan } from '@/lib/useWorldDownloadPlan';
 
 /** What each tab is called, and what its list means. */
 const TAB_NOTES = {
-  required: 'The author requires this content. Downloading the world installs and links it.',
-  approved: 'The world author recommends this content. Pick what you want.',
-  community: 'Other authors offer this content for this world. The world author has not reviewed it.',
+  required: 'Downloads and links with the world. The world author requires it.',
+  approved: 'The world author recommends these add-ons. Pick the ones you want.',
+  community: "Other authors offer these add-ons for this world. The world author hasn't reviewed them.",
 } as const;
 
 /** Who published a listing, for the line under its name. */
@@ -23,11 +24,11 @@ function RequiredRow({ row }: { row: DependencyRow }) {
   return (
     <li className="min-w-0">
       <p className="truncate text-label font-medium">{name}</p>
-      <p className="text-meta text-muted-foreground">
+      <Meta as="p">
         {row.status === 'ok' && listing
           ? `${KIND_LABELS[kindOf(listing)].one} · Included`
-          : 'Unavailable. This source is no longer on the server.'}
-      </p>
+          : 'This source is no longer on the server.'}
+      </Meta>
     </li>
   );
 }
@@ -52,9 +53,9 @@ function AddonCheckbox({ addon, checked, onChange }: {
       </span>
       <div className="min-w-0">
         <Label htmlFor={boxId} className="block truncate">{addon.name || 'Untitled'}</Label>
-        <p className="text-meta text-muted-foreground">
+        <Meta as="p">
           {KIND_LABELS[kindOf(addon)].one} · {authorOf(addon)}
-        </p>
+        </Meta>
       </div>
     </li>
   );
@@ -78,7 +79,7 @@ export function DownloadLinkedContent({ review }: { review: WorldDownloadPlan })
   const isSelected = (addon: AddonRow) => selected.has(listingId(addon));
   const addonList = (rows: AddonRow[], note: string) => (
     <>
-      <p className="text-meta text-muted-foreground">{note}</p>
+      <Meta as="p">{note}</Meta>
       {rows.length ? (
         <ul className="mt-2 space-y-2">
           {rows.map((addon) => (
@@ -91,7 +92,7 @@ export function DownloadLinkedContent({ review }: { review: WorldDownloadPlan })
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-meta text-muted-foreground">Nothing here yet.</p>
+        <Meta as="p" className="mt-2">No add-ons yet.</Meta>
       )}
     </>
   );
@@ -102,10 +103,9 @@ export function DownloadLinkedContent({ review }: { review: WorldDownloadPlan })
         <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0">
           <h3 className="text-label font-medium">Linked Content</h3>
-          <p className="text-meta text-muted-foreground">
-            This world uses content published on its own. Required content comes with the world; add-ons
-            are yours to pick.
-          </p>
+          <Meta as="p">
+            Required content downloads with the world. Add-ons download only when you pick them.
+          </Meta>
         </div>
       </div>
 
@@ -117,13 +117,13 @@ export function DownloadLinkedContent({ review }: { review: WorldDownloadPlan })
         </TabsList>
 
         <TabsContent value="required">
-          <p className="text-meta text-muted-foreground">{TAB_NOTES.required}</p>
+          <Meta as="p">{TAB_NOTES.required}</Meta>
           {dependencies.length ? (
             <ul className="mt-2 space-y-2">
               {dependencies.map((row) => <RequiredRow key={row.id} row={row} />)}
             </ul>
           ) : (
-            <p className="mt-2 text-meta text-muted-foreground">This world requires nothing.</p>
+            <Meta as="p" className="mt-2">This world requires nothing.</Meta>
           )}
         </TabsContent>
 

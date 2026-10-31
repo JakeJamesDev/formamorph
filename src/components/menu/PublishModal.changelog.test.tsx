@@ -147,7 +147,7 @@ describe('what happens to the entry', () => {
 
     await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
     await user.type(screen.getByLabelText('Title'), 'Update 1');
-    await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+    await user.type(screen.getByLabelText('What Changed'), 'The ferry runs again.');
     await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
     await user.click(screen.getByRole('button', { name: 'Publish' }));
 
@@ -170,7 +170,7 @@ describe('what happens to the entry', () => {
 
     await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
     await user.type(screen.getByLabelText('Title'), 'Update 1');
-    await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+    await user.type(screen.getByLabelText('What Changed'), 'The ferry runs again.');
     await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
 
     // Written, but not sent — the update has not gone out yet.
@@ -192,7 +192,7 @@ describe('what happens to the entry', () => {
 
     await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
     await user.type(screen.getByLabelText('Title'), 'Update 1');
-    await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+    await user.type(screen.getByLabelText('What Changed'), 'The ferry runs again.');
     await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
     await user.click(screen.getByRole('button', { name: 'Publish' }));
 
@@ -215,7 +215,7 @@ describe('what happens to the entry', () => {
     const writeEntry = async (user: ReturnType<typeof userEvent.setup>) => {
       await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
       await user.type(screen.getByLabelText('Title'), 'Update 1');
-      await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+      await user.type(screen.getByLabelText('What Changed'), 'The ferry runs again.');
     };
 
     it('attaches an entry saved before the upload finishes', async () => {
@@ -279,7 +279,7 @@ describe('what happens to the entry', () => {
 
     await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
     await user.type(screen.getByLabelText('Title'), 'Update 1');
-    await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+    await user.type(screen.getByLabelText('What Changed'), 'The ferry runs again.');
     await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
 

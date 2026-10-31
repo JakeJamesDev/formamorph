@@ -132,6 +132,6 @@ describe('the Mascots section', () => {
     await userEvent.click(await screen.findByRole('tab', { name: 'Mascots' }));
 
     expect(await screen.findByText('Captain Wren')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /mascot/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /download|update/i })).not.toBeInTheDocument();
   });
 });

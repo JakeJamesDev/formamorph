@@ -75,7 +75,7 @@ const rows = (count: number) => Array.from({ length: count }, (_, i) => listed(i
 const onRender = () => {
   trace.commits += 1;
   if (trace.shellCommit === null && screen.queryByText('Community Creations')) trace.shellCommit = trace.commits;
-  if (screen.queryByText(/available\. Be the first|match your filters/)) trace.emptyStateCommits.push(trace.commits);
+  if (screen.queryByText(/yet\. Publish one to be the first|match your filters/)) trace.emptyStateCommits.push(trace.commits);
   if (trace.renamedCommit === null && screen.queryByText('Liked World')) trace.renamedCommit = trace.commits;
 };
 
@@ -195,6 +195,6 @@ describe('the window commits before the card grid', () => {
 
     view.rerender(<Harness open />);
 
-    expect(await screen.findByText(/No worlds available/)).toBeInTheDocument();
+    expect(await screen.findByText(/No worlds yet/)).toBeInTheDocument();
   });
 });
