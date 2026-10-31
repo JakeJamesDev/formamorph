@@ -6,7 +6,6 @@ import { segmentFold, segmentLayout, segmentStepWidths, type SegmentFold, type S
 export const SEGMENT_INSET = 4;
 /** Horizontal metrics shared by the live segments and the hidden measuring copies. */
 export const SEGMENT_X = 'px-3 text-label font-medium whitespace-nowrap';
-export const SEGMENT_MOTION = 'duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none';
 
 interface Measured {
   full: number[];

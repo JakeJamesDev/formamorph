@@ -1,7 +1,6 @@
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Tip } from '@/components/ui/tooltip';
-import { SegmentFace, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
-import { SEGMENT_X, useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
+import { ToggleGroup } from '@/components/ui/toggle-group';
+import { CollapsingSegment, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
+import { useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
 import type { SegmentFold } from '@/lib/collapsingSegments';
 import { cn } from '@/lib/utils';
 
@@ -43,19 +42,19 @@ export function CollapsingToggleGroup<V extends string>({ options, value, onValu
         {...aria}
       >
         {ready && <SegmentPill layout={layout} active={active} animate={animate} />}
-        {options.map(({ value: optionValue, label, icon }, i) => {
-          const shown = fold === 'full' || (fold === 'active' && i === active);
-          return (
-            <Tip key={optionValue} tip={label} labelsChild={false} disabled={shown}>
-              <ToggleGroupItem
-                value={optionValue}
-                className={cn('relative z-10', SEGMENT_X, ready && 'data-[state=on]:bg-transparent data-[state=on]:shadow-none')}
-              >
-                <SegmentFace icon={icon} label={label} shown={shown} animate={animate} />
-              </ToggleGroupItem>
-            </Tip>
-          );
-        })}
+        {options.map((option, i) => (
+          <CollapsingSegment
+            key={option.value}
+            kind="toggle"
+            option={option}
+            index={i}
+            active={active}
+            fold={fold}
+            layout={layout}
+            ready={ready}
+            animate={animate}
+          />
+        ))}
       </ToggleGroup>
       <SegmentMeasure options={options} measureRef={measureRef} />
     </div>

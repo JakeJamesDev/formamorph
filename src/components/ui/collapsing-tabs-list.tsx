@@ -1,7 +1,6 @@
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tip } from '@/components/ui/tooltip';
-import { SegmentFace, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
-import { SEGMENT_MOTION, SEGMENT_X, useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
+import { TabsList } from '@/components/ui/tabs';
+import { CollapsingSegment, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
+import { useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
 import { cn } from '@/lib/utils';
 
 /**
@@ -32,26 +31,19 @@ export function CollapsingTabsList<V extends string>({ tabs, value, className, h
     >
       <TabsList aria-label={ariaLabel} className={cn('relative flex justify-start', !hug && 'w-full')}>
         {ready && <SegmentPill layout={layout} active={active} animate={animate} />}
-        {tabs.map(({ value: tabValue, label, icon }, i) => {
-          const shown = fold === 'full' || (fold === 'active' && i === active);
-          return (
-            // The name stays on `aria-label`, drawn or not; the tip shows it where the label is folded away.
-            <Tip key={tabValue} tip={label} labelsChild={false} disabled={shown}>
-              <TabsTrigger
-                value={tabValue}
-                aria-label={label}
-                className={cn(
-                  'relative z-10 shrink-0', SEGMENT_X,
-                  ready && 'data-[state=active]:bg-transparent data-[state=active]:shadow-none',
-                  animate ? cn('transition-[width,color]', SEGMENT_MOTION) : 'transition-none',
-                )}
-                style={ready ? { width: layout.widths[i] } : undefined}
-              >
-                <SegmentFace icon={icon} label={label} shown={shown} animate={animate} />
-              </TabsTrigger>
-            </Tip>
-          );
-        })}
+        {tabs.map((tab, i) => (
+          <CollapsingSegment
+            key={tab.value}
+            kind="tab"
+            option={tab}
+            index={i}
+            active={active}
+            fold={fold}
+            layout={layout}
+            ready={ready}
+            animate={animate}
+          />
+        ))}
       </TabsList>
       <SegmentMeasure options={tabs} measureRef={measureRef} />
     </div>
