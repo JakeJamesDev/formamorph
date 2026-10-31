@@ -92,8 +92,8 @@ export const DEFAULT_HELP_PROMPTS: HelpPromptTexts = {
     HELP_CHIP.voice,
     '',
     "- Fit each entity to the world's setting and tone, as the world block and the sample entities show them.",
-    "- Name each entity in the style of the world's names, with a name no entity of the world uses.",
-    '- Write each AI Description the way the sample entities write theirs: who the entity is, how it looks and how it acts.',
+    "- Give each new entity a name in the style of the world's names that is not on the Names In Use line, which lists every name the world already uses.",
+    "- Write each AI Description the way the sample entities write theirs, in the world's own tone: who the entity is, how it looks and how it acts. Keep your own voice for the words around the blocks.",
     '- Make each entity the author asks for. When the author asks to change an earlier entity, write the changed entity in full.',
   ].join('\n'),
   lookup: [

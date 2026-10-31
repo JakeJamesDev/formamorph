@@ -1,0 +1,44 @@
+{
+  "note": "The Create probe's cases (help-create-probe.cli.ts). `world` is a bundled world's file name in src/defaultworlds, open in the World Editor. `blocks` is how many entity blocks the ask wants. A redraft carries the last exchange in `earlier` and `earlierAnswer`. A refusal case asks from a screen with no World Editor (`surface`) and wants no block; every other case asks from the World Editor's Entities tab. `set`: `dev` cases may steer a prompt revision; `blind` cases were written with the dev set, before any run, and no revision is tuned on them. Kinds: single, several, redraft, refusal.",
+  "cases": [
+    { "id": "drone-knight", "set": "dev", "kind": "single", "world": "drone", "blocks": 1, "message": "Make me a knight who wants to capture the drone and study it." },
+    { "id": "drone-merchants", "set": "dev", "kind": "several", "world": "drone", "blocks": 2, "message": "Add a traveling tinker and her apprentice who trade in strange metal scraps." },
+    { "id": "drone-redraft", "set": "dev", "kind": "redraft", "world": "drone", "blocks": 1, "earlier": "Make a village priest who thinks the drone is a demon.", "earlierAnswer": "Here's a wary one for you!\n\n```entity\nName: Brother Aldous\nAI Description: The village priest of Thornmere, a gaunt man in gray robes who believes the drone is a demon sent to test the faithful. He sprinkles salt across doorways and preaches against the machine at every service.\n```", "message": "Make him younger, and secretly curious about the drone instead of scared." },
+    { "id": "drone-beast", "set": "blind", "kind": "single", "world": "drone", "blocks": 1, "message": "I need a forest monster that eats metal." },
+
+    { "id": "ember-smith", "set": "dev", "kind": "single", "world": "emberwatch", "blocks": 1, "message": "Make me a blacksmith for the keep." },
+    { "id": "ember-patrol", "set": "dev", "kind": "several", "world": "emberwatch", "blocks": 3, "message": "Create three soldiers for the night watch on the wall." },
+    { "id": "ember-redraft", "set": "blind", "kind": "redraft", "world": "emberwatch", "blocks": 1, "earlier": "Create a traveling bard who stops at the keep.", "earlierAnswer": "A bard for the long nights!\n\n```entity\nName: Lark Whitlow\nAI Description: A cheerful traveling bard with a battered lute and a ballad for every grave on the road. Lark trades songs for supper at the keep and listens closely to every rumor about the barrow.\n```", "message": "Make the bard grim instead, someone who only sings dirges for the dead." },
+    { "id": "ember-undead", "set": "blind", "kind": "single", "world": "emberwatch", "blocks": 1, "message": "Add a new kind of undead that crawls out of the barrow." },
+
+    { "id": "rampage-reporter", "set": "dev", "kind": "single", "world": "rampage", "blocks": 1, "message": "Make a reporter who keeps getting way too close to the monster for a story." },
+    { "id": "rampage-units", "set": "dev", "kind": "several", "world": "rampage", "blocks": 2, "message": "Give me two new military units the army could throw at the creature." },
+    { "id": "rampage-redraft", "set": "dev", "kind": "redraft", "world": "rampage", "blocks": 1, "earlier": "Create a mech the city builds to fight back.", "earlierAnswer": "Oh, a big one!\n\n```entity\nName: Ironclad Bastion\nAI Description: A towering bipedal war machine assembled in the harbor shipyards, armed with twin rail cannons and a reactor that hums through the streets. It moves slowly but hits harder than anything else the city owns.\n```", "message": "Make it faster and lighter, more of a hunter than a tank." },
+    { "id": "rampage-civilians", "set": "blind", "kind": "several", "world": "rampage", "blocks": 2, "message": "Add a couple of civilians trapped on a bridge." },
+
+    { "id": "slime-doctor", "set": "dev", "kind": "single", "world": "slime", "blocks": 1, "message": "Create a back-alley doctor who sells fake cures." },
+    { "id": "slime-mutants", "set": "dev", "kind": "several", "world": "slime", "blocks": 2, "message": "Make two new slime creatures that hunt in the sewers." },
+    { "id": "slime-redraft", "set": "blind", "kind": "redraft", "world": "slime", "blocks": 1, "earlier": "Make a quarantine officer who is kind to the infected.", "earlierAnswer": "Someone with a heart!\n\n```entity\nName: Officer Rosa Lin\nAI Description: A young quarantine officer who slips extra rations to the infected and looks away when they slip past the cordon. She keeps a notebook of every name she has helped.\n```", "message": "Make her older and more tired, someone close to quitting." },
+    { "id": "slime-survivor", "set": "blind", "kind": "single", "world": "slime", "blocks": 1, "message": "I want a survivor hiding in the abandoned subway." },
+
+    { "id": "sugar-predator", "set": "dev", "kind": "single", "world": "sugarscape", "blocks": 1, "message": "Make a new candy predator that lives in the chocolate river." },
+    { "id": "sugar-herd", "set": "dev", "kind": "several", "world": "sugarscape", "blocks": 2, "message": "Add a harmless grazing creature and the thing that hunts it." },
+    { "id": "sugar-redraft", "set": "dev", "kind": "redraft", "world": "sugarscape", "blocks": 1, "earlier": "Create a giant cake golem.", "earlierAnswer": "Ooh, delicious and dangerous!\n\n```entity\nName: Layer Titan\nAI Description: A lumbering golem of stacked sponge layers and buttercream that guards the frosting hills. Every step leaves crumbs, and it regrows any slice bitten from it within the hour.\n```", "message": "Make it smaller and sneakier, something that ambushes travelers." },
+    { "id": "sugar-swarm", "set": "blind", "kind": "single", "world": "sugarscape", "blocks": 1, "message": "Give me a swarm of tiny flying sweets." },
+
+    { "id": "val-rival", "set": "dev", "kind": "single", "world": "valentines", "blocks": 1, "message": "Make a rival student who wants to be the most popular kid instead." },
+    { "id": "val-clubs", "set": "dev", "kind": "several", "world": "valentines", "blocks": 2, "message": "Create two members of the fan club, one shy and one bold." },
+    { "id": "val-redraft", "set": "blind", "kind": "redraft", "world": "valentines", "blocks": 1, "earlier": "Add a strict hall monitor.", "earlierAnswer": "Uh oh, trouble!\n\n```entity\nName: Yuki Asano\nAI Description: A third-year hall monitor with a clipboard and a whistle who writes up anyone running in the halls. She takes the new chocolate rule more seriously than the teachers do.\n```", "message": "Make the hall monitor secretly part of the fan club." },
+    { "id": "val-teacher", "set": "blind", "kind": "single", "world": "valentines", "blocks": 1, "message": "I need a teacher who tries to help the player escape." },
+
+    { "id": "veil-creature", "set": "dev", "kind": "single", "world": "veilwood", "blocks": 1, "message": "Make a creature that mimics the sound of rain to lure people." },
+    { "id": "veil-pair", "set": "dev", "kind": "several", "world": "veilwood", "blocks": 2, "message": "Add two kinds of glowing mushrooms, one that heals and one that poisons." },
+    { "id": "veil-redraft", "set": "dev", "kind": "redraft", "world": "veilwood", "blocks": 1, "earlier": "Make a lost hermit who lives in the forest.", "earlierAnswer": "A lonely soul!\n\n```entity\nName: Old Fennick\nAI Description: A hermit who has lived among the drowned trees for decades, dressed in moss and bark. He speaks in riddles and trades directions for food.\n```", "message": "Make the hermit dangerous, someone who leads travelers astray on purpose." },
+    { "id": "veil-hunter", "set": "blind", "kind": "single", "world": "veilwood", "blocks": 1, "message": "Create a third hunter of the dark, quieter than the other two." },
+
+    { "id": "refuse-menu", "set": "dev", "kind": "refusal", "surface": { "screen": "mainMenu", "dialog": null, "tabs": [] }, "blocks": 0, "message": "Make me a gate guard for my town." },
+    { "id": "refuse-game", "set": "dev", "kind": "refusal", "surface": { "screen": "gameViewer", "dialog": null, "tabs": [] }, "blocks": 0, "message": "Can you create a new character for this story?" },
+    { "id": "refuse-settings", "set": "blind", "kind": "refusal", "surface": { "screen": "mainMenu", "dialog": "settings", "tabs": ["settings.endpoints"] }, "blocks": 0, "message": "Add a dragon to my world." },
+    { "id": "refuse-library", "set": "blind", "kind": "refusal", "surface": { "screen": "mainMenu", "dialog": null, "tabs": [] }, "blocks": 0, "message": "Write me two merchants for a desert world." }
+  ]
+}

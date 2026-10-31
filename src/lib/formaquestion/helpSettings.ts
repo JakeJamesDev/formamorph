@@ -135,6 +135,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   codeTestCallLimit: HELP_CODE_TEST_CALL_LIMIT,
   openScreen: true,
   readWorld: true,
+  // Off until the hand grade of the Create probe passes its bar (Q43).
   creation: false,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
