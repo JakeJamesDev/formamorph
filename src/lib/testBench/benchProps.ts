@@ -29,7 +29,7 @@ export interface SourceCheckProps {
   missing: MissingSource[];
   /** Ask the server about every source again. Also what Retry Check runs. */
   onCheckSources: () => void;
-  /** Repair one copy. Replace opens the library picker; the other two land at once. */
+  /** Repair one copy. Replace opens the library picker; the other two apply at once. */
   onRepair: (copyId: string, action: RepairAction) => void;
 }
 
@@ -52,11 +52,11 @@ export interface IssuesProps {
   /** The running check's prompts, which its choice rows answer. Null while no check runs. */
   codePrompts: ScriptPromptStore | null;
   /** The rule whose repair is running, when one is. Only the async image conversion can be — a pure fix
-   *  lands within the click — and the row it belongs to shows the work rather than looking unresponsive. */
+   *  applies within the click — and the row it belongs to shows the work rather than looking unresponsive. */
   fixingRuleId: string | null;
-  /** The world's publish size in bytes, null until the first measure lands. */
+  /** The world's publish size in bytes, null until the first measure finishes. */
   publishBytes: number | null;
-  /** The first rule pass hasn't landed yet, so an empty list means nothing. */
+  /** The first rule pass hasn't finished yet, so an empty list means nothing. */
   checking: boolean;
   onOpenItem: OpenFindingItem;
   onDismissRule: (ruleId: string) => void;

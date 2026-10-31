@@ -29,7 +29,7 @@ describe('checkMissingSources', () => {
 
   it('reports an optional removed source without claiming the world requires it', () => {
     const findings = checkMissingSources(linkedSourceCopies(world), { 'src-a': 'not_found' });
-    expect(findings[0].message).toBe('The source “Marsh Warden” was removed by its author.');
+    expect(findings[0].message).toBe('Its author removed the source “Marsh Warden”.');
   });
 
   it('reports any other failure as unchecked, never as removed', () => {
@@ -37,7 +37,7 @@ describe('checkMissingSources', () => {
     expect(findings).toMatchObject([{
       ruleId: 'source-unavailable',
       severity: 'warning',
-      message: 'Formamorph could not check “Marsh Warden”',
+      message: 'Formamorph couldn’t check “Marsh Warden”',
     }]);
   });
 

@@ -251,7 +251,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
       tokens: empty ? 0 : estimateTokens(text.length),
       empty,
       note: id === 'dictionary' && !empty
-        ? `Every enabled entry (${scene.lore.length}) — no scene text has fired keywords here.`
+        ? `Lists every enabled entry (${scene.lore.length}), because no scene text is here to match keywords`
         : undefined,
     };
   });

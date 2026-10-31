@@ -96,7 +96,7 @@ describe('Issues instrument: missing sources', () => {
 
   it('reads any other failure as unchecked, and offers Retry Check', () => {
     renderIssues({ 'src-a': 'unavailable' }, ['src-a']);
-    expect(screen.getByText('Formamorph could not check “Marsh Warden”')).toBeInTheDocument();
+    expect(screen.getByText('Formamorph couldn’t check “Marsh Warden”')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Retry Check/ })).toBeInTheDocument();
   });
 

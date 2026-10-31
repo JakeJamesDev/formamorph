@@ -8,11 +8,12 @@ import { ReasoningChip } from '@/components/game/ReasoningChip';
 import { MaxTokensChip } from '@/components/game/MaxTokensChip';
 import { toAnatomyBlocks } from '@/lib/requestAnatomy';
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
+import { Hint } from '@/components/ui/typography';
 
 /** The collapsibles of one card. `group` is the whole card. */
 export type AiContextCardSection = 'group' | 'input' | 'tools' | 'reasoning' | 'output';
 
-/** Where one slice of text stands in its record, so a highlighter can address the block it belongs to. */
+/** Where one slice of text is in its record, so a highlighter can address the block it belongs to. */
 export interface AiContextTextSlot {
   part: 'input' | 'reasoning' | 'output';
   /** The anatomy block for `input`; always 0 for the other parts. */
@@ -137,17 +138,17 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
               )}
             </p>
             {record.statDiagnostics?.some(({ reason }) => reason === 'textPass') && (
-              <p className="mt-2 text-helper text-muted-foreground">The stat reply came back as plain text, not JSON.</p>
+              <Hint className="mt-2">The stat reply was plain text instead of JSON</Hint>
             )}
             {skippedEntities.length > 0 && (
-              <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
+              <Hint className="mt-2 whitespace-pre-wrap break-words">
                 Skipped entity stats: {skippedEntities.map(({ name }) => name).join(', ')}
-              </p>
+              </Hint>
             )}
             {skippedUpdates.length > 0 && (
-              <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
+              <Hint className="mt-2 whitespace-pre-wrap break-words">
                 Skipped stat updates: {skippedUpdates.map(({ name, reason }) => `${name} (${reason})`).join('; ')}
-              </p>
+              </Hint>
             )}
           </AiContextSection>
         )}

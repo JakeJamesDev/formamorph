@@ -120,7 +120,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
   it('names an entry that can never fire', () => {
     const miss = missOf([book([entry({ id: 'd1', name: 'Orphan' })])], 'The tide pulls out.', 'd1');
     expect(miss.nearMiss).toBe('no-keywords');
-    expect(describeNearMiss(miss)).toBe('No keywords and not constant, so this entry can never fire.');
+    expect(describeNearMiss(miss)).toBe('This entry has no keywords and “Always Inject” is off, so it never activates.');
   });
 
   it('flags an uncompilable pattern on the entry instead of failing the run', () => {
@@ -136,7 +136,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
     const miss = row(report, 'd1');
     expect(miss.badPatterns).toEqual(['tide(']);
     expect(miss.nearMiss).toBe('invalid-regex');
-    expect(describeNearMiss(miss)).toBe('“tide(” is not valid regex — a pattern that cannot compile never matches.');
+    expect(describeNearMiss(miss)).toBe('“tide(” isn’t valid regex, so it never matches.');
   });
 
   it('blames a broken pattern only when every keyword is one', () => {
@@ -169,7 +169,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
       'd1',
     );
     expect(miss.nearMiss).toBe('secondary-excluded');
-    expect(describeNearMiss(miss)).toBe('“storm” is present, and this entry fires only when it is absent.');
+    expect(describeNearMiss(miss)).toBe('“storm” is present, and “Exclude” activates this entry only when it’s absent.');
   });
 
   it('names the secondary keyword a match still needed', () => {
@@ -179,7 +179,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
       'd1',
     );
     expect(miss.nearMiss).toBe('secondary-absent');
-    expect(describeNearMiss(miss)).toBe('A keyword matched, but none of its secondary keywords did — needs “moon”.');
+    expect(describeNearMiss(miss)).toBe('A keyword matched, but no secondary keyword did. It needs one of “moon”.');
   });
 
   it('names which of an all-secondaries gate was missing', () => {
@@ -189,7 +189,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
       'd1',
     );
     expect(miss.nearMiss).toBe('secondary-absent');
-    expect(describeNearMiss(miss)).toBe('A keyword matched, but every secondary must appear too — “storm” missing.');
+    expect(describeNearMiss(miss)).toBe('A keyword matched, but “Require All” needs every secondary keyword. Missing: “storm”.');
   });
 
   it('names a hit that fell outside the entry’s scan depth, and how far back it was', () => {
@@ -224,7 +224,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
       'd1',
     );
     expect(miss.nearMiss).toBe('whole-word-blocked');
-    expect(describeNearMiss(miss)).toBe('“tide” appears only inside “riptides”, and whole-word matching is on.');
+    expect(describeNearMiss(miss)).toBe('“tide” appears only inside “riptides”, and “Whole Words” is on.');
   });
 
   it('names the word a whole-word rule blocked a regex keyword inside', () => {
@@ -245,13 +245,13 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
     );
     expect(miss.fired).toBe(false);
     expect(miss.nearMiss).toBe('case-blocked');
-    expect(describeNearMiss(miss)).toBe('“tide” appears only as “Tide”, and case-sensitive matching is on.');
+    expect(describeNearMiss(miss)).toBe('“tide” appears only as “Tide”, and “Case-Sensitive” is on.');
   });
 
   it('falls back to plain absence when nothing about the entry is at fault', () => {
     const miss = missOf([book([entry({ id: 'd1', key: ['storm'] })])], 'A quiet morning.', 'd1');
     expect(miss.nearMiss).toBe('no-match');
-    expect(describeNearMiss(miss)).toBe('No keyword found in the text.');
+    expect(describeNearMiss(miss)).toBe('The text has no keyword.');
   });
 });
 
@@ -343,7 +343,7 @@ describe('buildTriggerReport — history evidence', () => {
   it('says all of it is read when the entry sets no scan depth', () => {
     const { report, d1 } = traced({}, ['She walked the pier.', 'The tide pulled out.']);
     expect(describeHitOrigin(d1, d1.hits[0], report.historyCount)).toBe(
-      'History, 1 message back · no scan depth, so all history is read',
+      'History, 1 message back · no scan depth, so every history message is scanned',
     );
   });
 

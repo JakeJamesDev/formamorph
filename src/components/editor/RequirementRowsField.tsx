@@ -20,6 +20,7 @@ import { joinAnd } from '@/lib/requirementSummary';
 import type { RequirementStatSection } from '@/lib/requirementStatOptions';
 import { cn } from '@/lib/utils';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
+import { Meta } from '@/components/ui/typography';
 
 /** The picker's one time row: a time Condition starts on night alone. */
 const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: ['night'] }, label: 'Time of Day', breadcrumb: [], owners: [] };
@@ -121,7 +122,7 @@ export function RequirementRowsField({
   const targets = (heading: string, list: RequirementOption[]): BreadcrumbPickerSection<RequirementOption> => ({
     heading,
     rows: list.map((option) => ({
-      // One stat can sit under several owners.
+      // One stat can belong to several owners.
       key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
       value: option,
       name: option.label,
@@ -302,11 +303,11 @@ export function RequirementRowsField({
             return (
               // Rows have no ids; an index key remounts nothing that holds state.
               <div key={i}>
-                {i > 0 && <div className="py-1 text-center text-meta text-muted-foreground">or</div>}
+                {i > 0 && <Meta as="div" className="py-1 text-center">or</Meta>}
                 <div data-requirement-row="" className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background p-1.5">
                   {row.all.map((requirement, j) => (
                     <span key={`${requirement.kind}:${requirement.id}:${requirementOwnerKey(requirementOwnerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
-                      {j > 0 && <span className="text-meta text-muted-foreground">and</span>}
+                      {j > 0 && <Meta>and</Meta>}
                       {chip(requirement, states[i]?.conditions[j], {
                         remove: () => removeCondition(i, j),
                         replace: (next) => replaceCondition(i, j, next),

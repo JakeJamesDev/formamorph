@@ -11,8 +11,9 @@ import { MENU_ROW } from '@/components/menuRow';
 import { joinLabelParts, type StepLabelParts } from '@/lib/editorHistoryLabels';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 
-/** What the controls read: the rows to list and where the cursor and the Saved marker stand. */
+/** What the controls read: the rows to list and the positions of the cursor and the Saved marker. */
 export interface HistoryView {
   canUndo: boolean;
   canRedo: boolean;
@@ -29,11 +30,11 @@ export interface HistoryView {
 }
 
 const SAVED_MARKER = (
-  <div className="flex items-center gap-2 px-2 py-0.5 text-meta text-muted-foreground">
+  <Meta as="div" className="flex items-center gap-2 px-2 py-0.5">
     <Save className="h-3 w-3" aria-hidden />
     Saved
     <Separator className="w-auto flex-grow" />
-  </div>
+  </Meta>
 );
 
 // Brings the current row into view when the list opens or the cursor moves off-screen.
@@ -130,12 +131,12 @@ export function HistoryList({ history }: { history: HistoryView }) {
                   className={cn(MENU_ROW, !done && 'text-muted-foreground/60', current && 'bg-accent')}
                   ref={current ? showRow : undefined}
                   onClick={() => jump(i + 1)}
-                  aria-label={done ? label : `${label} (undone)`}
+                  aria-label={done ? label : `${label}, undone`}
                   aria-current={current ? 'step' : undefined}
                   data-undone={done ? undefined : 'true'}
                 >
                   <StepRowLabel parts={row} />
-                  {current && <span className="text-meta text-muted-foreground">Now</span>}
+                  {current && <Meta>Now</Meta>}
                 </button>
               )}
             />
@@ -212,7 +213,7 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
           {trigger}
         </div>
       ) : trigger}
-      {/* portal={false}: the editor can sit inside a modal Dialog, whose scroll lock swallows wheel events
+      {/* portal={false}: the editor can render inside a modal Dialog, whose scroll lock swallows wheel events
           on portaled content. align="end" keeps the bubble under the control at the bar's right edge. */}
       <PopoverContent
         portal={false}
@@ -223,7 +224,7 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
       >
         <div className="flex items-center gap-2 pb-1">
           <History className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          <span className="text-meta font-medium text-muted-foreground">History</span>
+          <Meta className="font-medium">History</Meta>
           {!pill && (
             <span className="ml-auto flex items-center">
               <HistoryFace move="undo" history={history} disabled={disabled} size="icon" />

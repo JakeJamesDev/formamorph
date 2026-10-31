@@ -1,6 +1,6 @@
 /** The Test Bench's instrument tabs, in order. Single source of truth: the Bench's tab strip renders from
  *  this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorBench`) is guarded against the built ones in
- *  `devRouter.test.ts` — so landing an instrument without making it routable fails the test. */
+ *  `devRouter.test.ts` — so adding an instrument without making it routable fails the test. */
 export const BENCH_TABS = [
   // usesLens: whether the instrument reads the Testing-as/at lens — the bar only shows where it does.
   // Issues runs the rule pass over the authored world as-is, so the lens has nothing to tell it.

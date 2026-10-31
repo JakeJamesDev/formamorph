@@ -487,7 +487,7 @@ describe('PlaceholderManager — chip values', () => {
 
   it('offers the typeahead in the chip row', () => {
     render(<PlaceholderManager tab="details" onTabChange={() => {}} placeholder={ph()} />);
-    expect(screen.getByText('Add keyword — { inserts a placeholder')).toBeInTheDocument();
+    expect(screen.getByText('Add keyword, or type { to insert a placeholder')).toBeInTheDocument();
   });
 
   it('hands the multiline boxes the same placeholders to insert', () => {

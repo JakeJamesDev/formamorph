@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, Compass, Route } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 import type {
   AiContextData, ContextBlock, DestinationRow, RosterGroup, RosterEntity,
 } from '@/lib/testBench/aiContext';
@@ -20,7 +21,7 @@ const tokenLabel = (tokens: number) => `~${tokens.toLocaleString()}`;
 const SectionHeading = ({ label, note }: { label: string; note?: string }) => (
   <div className="flex items-baseline gap-2 pt-1">
     <p className="text-meta font-medium">{label}</p>
-    {note && <p className="min-w-0 truncate text-meta text-muted-foreground">{note}</p>}
+    {note && <Meta as="p" className="min-w-0 truncate">{note}</Meta>}
   </div>
 );
 
@@ -56,12 +57,12 @@ const BlockRow = ({ block, open, onToggle }: {
       <span className={cn('min-w-0 flex-grow truncate text-label', block.empty && 'text-muted-foreground')}>
         {block.label}
       </span>
-      <span className="shrink-0 text-meta text-muted-foreground">
-        {block.empty ? 'nothing here' : `${tokenLabel(block.tokens)} tokens`}
-      </span>
+      <Meta className="shrink-0">
+        {block.empty ? 'empty' : `${tokenLabel(block.tokens)} tokens`}
+      </Meta>
     </button>
-    <p className="mt-0.5 truncate pl-[18px] text-meta text-muted-foreground">{block.token}</p>
-    {block.note && <p className="pl-[18px] text-meta text-muted-foreground">{block.note}</p>}
+    <Meta as="p" className="mt-0.5 truncate pl-[18px]">{block.token}</Meta>
+    {block.note && <Meta as="p" className="pl-[18px]">{block.note}</Meta>}
     {open && !block.empty && (
       <pre className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
         {block.text}
@@ -75,21 +76,21 @@ const DestinationLine = ({ destination }: { destination: DestinationRow }) => (
   <div className="flex items-baseline gap-1.5 rounded-md border p-1.5">
     <Route className="h-3 w-3 shrink-0 translate-y-0.5 text-muted-foreground" aria-hidden />
     <span className="min-w-0 flex-grow truncate text-label">{destination.name}</span>
-    <span className="shrink-0 text-meta text-muted-foreground">
+    <Meta className="shrink-0">
       {destination.hint ? `via ${destination.hint}` : destination.via === 'connection' ? 'connection' : 'nested'}
-    </span>
+    </Meta>
   </div>
 );
 
 /** One scope's cast, each row saying which of its descriptions this scope's block carries. */
 const RosterSection = ({ group }: { group: RosterGroup }) => (
   <div className="space-y-1">
-    <p className="truncate text-meta text-muted-foreground">
+    <Meta as="p" className="truncate">
       {group.label}
-      {group.prefersSummary && ' · served as summaries'}
-    </p>
+      {group.prefersSummary && ' · sent as summaries'}
+    </Meta>
     {group.entities.length === 0 ? (
-      <p className="pl-2 text-meta text-muted-foreground">Nobody.</p>
+      <Meta as="p" className="pl-2">No entities</Meta>
     ) : (
       group.entities.map((entity) => (
         <div key={entity.id} className="flex items-center gap-1.5 rounded-md border p-1.5">
@@ -122,9 +123,7 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
 
   if (!data.location) {
     return (
-      <p className="text-meta text-muted-foreground">
-        Pick a location in the lens above to see what the harness serves from it
-      </p>
+      <Meta as="p">Pick a location in the “at” list above to see what the AI gets from it</Meta>
     );
   }
 
@@ -134,12 +133,12 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
       <div className="space-y-2 pr-2">
         <div className="rounded-md border bg-muted/30 p-2">
           <p className="text-label font-medium">A turn from here ≈ {tokenLabel(data.totalTokens)} tokens</p>
-          <p className="text-meta text-muted-foreground">
-            Every block a prompt can pull from {data.locationName}. Any one prompt uses a subset of them.
-          </p>
+          <Meta as="p">
+            Every block a prompt can use at {data.locationName}. Each prompt uses only some of them.
+          </Meta>
         </div>
 
-        <SectionHeading label="Context Blocks" note={`${served} of ${data.blocks.length} have something to send`} />
+        <SectionHeading label="Context Blocks" note={`${served} of ${data.blocks.length} have text`} />
         <div className="space-y-1">
           {data.blocks.map((block) => (
             <BlockRow key={block.id} block={block} open={open.has(block.id)} onToggle={() => toggle(block.id)} />
@@ -148,10 +147,10 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
 
         <SectionHeading label="Destinations" note={`${data.destinations.length} offered`} />
         {data.destinations.length === 0 ? (
-          <p className="text-meta text-muted-foreground">
-            Nowhere. A player who walks in here can never leave. Give this location a parent, a sub-location
-            or a connection.
-          </p>
+          <Meta as="p">
+            No destinations, so a player here can never leave. Give this location a parent location, a
+            sub-location or a connection.
+          </Meta>
         ) : (
           <div className="space-y-1">
             {data.destinations.map((destination) => (
@@ -159,11 +158,11 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
             ))}
           </div>
         )}
-        <p className="flex items-start gap-1 text-meta leading-snug text-muted-foreground">
+        <Meta as="p" className="flex items-start gap-1 leading-snug">
           <Compass className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-          This is the whole set. Anywhere not listed can never be traveled to from here. Whether a given
-          action counts as travel is the model’s judgment.
-        </p>
+          A location not listed here can’t be reached from this one. The AI decides whether an action
+          counts as travel.
+        </Meta>
 
         <SectionHeading label="Entities the AI Is Told About" />
         <div className="space-y-2">

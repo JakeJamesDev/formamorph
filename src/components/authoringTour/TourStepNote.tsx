@@ -3,6 +3,7 @@ import { TutorialNote } from '@/components/TutorialPopover';
 import { useTutorialScreenOnTop } from '@/lib/tutorials';
 import { useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import type { AuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
+import { Meta } from '@/components/ui/typography';
 
 /** The current tour step's note, beside its field. Hidden while the field is off screen or covered.
  *  `onShowEffect` adds Show Effect, which opens In Game on mobile. */
@@ -27,9 +28,9 @@ export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onSh
       )}
       footer={(
         <>
-          <span className="mr-auto shrink-0 whitespace-nowrap text-meta text-muted-foreground tabular-nums">
+          <Meta className="mr-auto shrink-0 whitespace-nowrap tabular-nums">
             {tour.stepNumber} / {tour.total}
-          </span>
+          </Meta>
           <Button size="xs" variant="ghost" onClick={tour.prev} disabled={tour.stepNumber === 1}>Previous</Button>
           {tour.canUseExample && (
             <Button size="xs" variant="outline" onClick={tour.applyExample}>Use Example</Button>

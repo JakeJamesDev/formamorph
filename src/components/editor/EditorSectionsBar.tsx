@@ -17,7 +17,7 @@ export interface EditorSectionsBarProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** A surface's mobile tab picker: a Sections bar folding the grouped tab list. Must sit inside a vertical
+/** A surface's mobile tab picker: a Sections bar folding the grouped tab list. Must render inside a vertical
  *  `Tabs` root with manual activation, so arrows browse the open list and a pick closes it. */
 export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenChange }: EditorSectionsBarProps) {
   const bar = useRef<HTMLButtonElement>(null);

@@ -1,6 +1,6 @@
 /**
  * The Opening instrument's data: what a fresh game as the lens PC actually looks like — every stat settled
- * at its real turn-one value, the traits and pins in force, the wildcard rolls with their true odds, and the
+ * at its real turn-one value, the traits and pins that apply, the wildcard rolls with their true odds, and the
  * first prompt exactly as the model receives it.
  *
  * Everything is computed by the game's own machinery: stats settle through `traitRuntime` (the same seeding,
@@ -9,8 +9,8 @@
  * assembly a real opening turn performs. A second implementation of any of these could disagree with play,
  * which would make the instrument a liar.
  *
- * Prompts and generation settings are global settings the editor cannot read, so the shipped defaults stand
- * in for them — the AI Context instrument's precedent.
+ * Prompts and generation settings are global settings the editor cannot read, so the shipped defaults
+ * replace them — the AI Context instrument's precedent.
  *
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
@@ -67,7 +67,7 @@ export interface OpeningStat {
   value: number;
   /** What the active traits moved the start by, clamp included; 0 when they left it alone. */
   traitShift: number;
-  /** The band the starting value lands on — what the AI is told. Null when no band covers it. */
+  /** The band the starting value is in — what the AI is told. Null when no band covers it. */
   descriptor: string | null;
   /** The authored bands; the slider re-bands against them via `activeDescriptor`. */
   descriptors: StatDescriptor[];
@@ -81,13 +81,13 @@ export interface OpeningStat {
 export interface OpeningEntityStats {
   id: string;
   name: string;
-  /** The live stats, settled under the entity's own traits in force. */
+  /** The live stats, settled under the entity's own active traits. */
   stats: OpeningStat[];
   /** The entity's stats its own traits leave switched off, named as the stat list names them. */
   disabledStats: string[];
 }
 
-/** One trait in force at game start, with what it imposes. */
+/** One active trait at game start, with what it imposes. */
 export interface OpeningTrait {
   id: string;
   name: string;
@@ -97,7 +97,7 @@ export interface OpeningTrait {
 }
 
 /** One option in a wildcard's pool, as the row prints it. A value that is exactly one chip of another
- *  placeholder is not drawn until the roll lands on it, so it reads as that placeholder's name — marked, so
+ *  placeholder is not drawn until the roll draws it, so it reads as that placeholder's name — marked, so
  *  the row can draw it in that placeholder's color — rather than as text invented for a branch that did
  *  not fire. */
 export interface OpeningPoolOption {
@@ -185,7 +185,7 @@ export const EMPTY_OPENING: OpeningData = {
   stats: [], disabledStats: [], entityStats: [], traits: [], rolls: [], system: '', user: '', totalTokens: 0,
 };
 
-/** What a fresh game as the lens PC stands on at turn one: the traits in force, the stats they settle, and
+/** What a fresh game as the lens PC has at turn one: the traits that apply, the stats they settle, and
  *  the starting location — the three sources the opening pins come from. */
 interface OpeningStart {
   active: Trait[];
@@ -229,7 +229,7 @@ function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: Pe
 }
 
 /** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
- *  every playthrough, not just the lens PC's) and the cast's owned defaults, the starting location, the band each settled stat lands in,
+ *  every playthrough, not just the lens PC's) and the cast's owned defaults, the starting location, the band each settled stat is in,
  *  and the value pins those and `rolls` settle — through the same collector Enter World runs. */
 const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: PlaceholderRolls): Record<string, string> =>
   collectPins({

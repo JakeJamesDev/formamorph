@@ -89,7 +89,7 @@ describe('WorldEditor — converting a world’s images to lossless WebP', () =>
   it('flags the convertible image and offers the repair on its row', async () => {
     setup();
     expect(await openBench()).toBeInTheDocument();
-    expect(screen.getByText(/PNG — converting it to lossless WebP/)).toBeInTheDocument();
+    expect(screen.getByText(/PNG\. Lossless WebP makes it smaller/)).toBeInTheDocument();
     // Nothing runs until the author asks: the encode is the expensive half.
     expect(encodeInWorker).not.toHaveBeenCalled();
   });
@@ -243,7 +243,7 @@ describe('WorldEditor — converting a GIF the browser can’t re-encode as anim
     // Said as the reason it actually is: this GIF isn't one WebP couldn't shrink, it is one this browser
     // can't convert without costing the author the animation.
     expect(toast.info).toHaveBeenCalledWith(
-      'Left 1 GIF alone — converting it in this browser would flatten its animation.',
+      'Skipped 1 GIF, because converting it in this browser removes its animation.',
     );
   });
 

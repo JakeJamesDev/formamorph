@@ -9,6 +9,7 @@ import { chipRowPath, chipSectionOpens, type ChipRow } from '@/lib/chipVocabular
 import { decodePlaceholderToken } from '@/lib/placeholders';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
+import { Hint } from '@/components/ui/typography';
 
 /** The placeholder a row names, or `''` for a row whose token names none — which no placeholder vocabulary
  *  produces, and which is the same `''` as picking nothing, so such a row is never marked as the pick. */
@@ -76,7 +77,7 @@ function SectionRows({ rows, selectedId, placeholders, onPick }: {
           </button>
         </Fragment>
       ))}
-      {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
+      {!rows.length && <Hint className="px-2 py-1.5">No placeholders</Hint>}
     </ScrollArea>
   );
 }
@@ -96,7 +97,7 @@ export function PlaceholderSectionList({
   rows, selectedId, onSelect, placeholders, empty = 'Select placeholder', footer, trigger, className,
 }: {
   rows: readonly ChipRow[];
-  /** The placeholder the picker stands on, or `''` while it stands on none. */
+  /** The placeholder the picker has selected, or `''` while none is selected. */
   selectedId: string;
   onSelect: (id: string) => void;
   /** Everything a chip in an owner's name could point at. Defaults to the bound store's list. */

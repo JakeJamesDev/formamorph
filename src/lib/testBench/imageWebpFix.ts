@@ -119,8 +119,8 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
 const describeSkippedAnimated = (skipped: number): string => {
   if (skipped <= 0) return '';
   return skipped === 1
-    ? 'Left 1 GIF alone — converting it in this browser would flatten its animation.'
-    : `Left ${skipped} GIFs alone — converting them in this browser would flatten their animation.`;
+    ? 'Skipped 1 GIF, because converting it in this browser removes its animation.'
+    : `Skipped ${skipped} GIFs, because converting them in this browser removes their animation.`;
 };
 
 /** Labels corrected to what the bytes say — its own line because the image is deliberately still not WebP,

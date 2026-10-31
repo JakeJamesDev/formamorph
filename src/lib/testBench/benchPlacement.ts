@@ -1,5 +1,5 @@
 /**
- * Where the full Test Bench sits on desktop: embedded in the editor's list panel, or docked beside it.
+ * Where the full Test Bench renders on desktop: embedded in the editor's list panel, or docked beside it.
  *
  * Editor chrome, not authoring — so it is global rather than per world, and it outlives the session: an
  * author who works one way wants "Open Test Bench" to keep opening the Bench that way. Mobile has neither

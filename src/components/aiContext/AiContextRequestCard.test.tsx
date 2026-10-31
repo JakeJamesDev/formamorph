@@ -41,7 +41,7 @@ describe('AiContextRequestCard', () => {
       { name: '', reason: 'textPass' }, { name: 'Mana', reason: 'unknown' },
     ] };
     const { rerender } = render(<AiContextRequestCard record={stats} index={0} isOpen={allOpen} onOpenChange={() => {}} />);
-    expect(screen.getByText('The stat reply came back as plain text, not JSON.')).toBeTruthy();
+    expect(screen.getByText('The stat reply was plain text instead of JSON')).toBeTruthy();
     expect(screen.getByText('Skipped stat updates: Mana (unknown)')).toBeTruthy();
     rerender(<AiContextRequestCard record={{ ...stats, statDiagnostics: [{ name: '', reason: 'textPass' }] }} index={0} isOpen={allOpen} onOpenChange={() => {}} />);
     expect(screen.queryByText(/Skipped stat updates/)).toBeNull();
