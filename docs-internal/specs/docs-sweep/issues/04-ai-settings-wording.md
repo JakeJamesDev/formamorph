@@ -15,6 +15,8 @@ Check each page's structure, then rewrite these pages under the Writing Guide: [
 
 Read "Before you write", "Labels, capitalization, and complete sentences" and "Controlled product terms" first. Run `npm run copy:sweep` on the pages and triage each notice under the copy-sweep skill. Write the rewrite yourself. Change no facts: a fact that looks wrong goes to the spec session.
 
+Carried from ticket 03: Settings' Output section is about 6,100 characters with its comments, near the 6,000-character prose limit where the bundled Docs Index splits a section. Growing it splits the section and fails the `Settings#output` hub tests. Keep it under the limit, or split it under a new heading and update the hub.
+
 Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and anchors".
 
 ## Acceptance criteria
