@@ -172,6 +172,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     items: world.items ?? [],
     // The Item Copies a new game would start with, ids numbered since nothing keeps them.
     itemCopies: startingCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
+    // No persona is picked, so the played Body is the Custom Persona entity's.
+    equipment: { world: { bodies: world.bodies, slots: world.slots, entities } },
     // Turn one's labels: nobody is met in play yet, so the start rule alone leaves a stranger unmet.
     strangerLabels: strangersInPlay(entities, (entity) => startsMet(entity, openingPlayed, locations), {}).labels,
   };

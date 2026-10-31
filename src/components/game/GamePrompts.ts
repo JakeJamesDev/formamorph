@@ -560,7 +560,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.
 - lose: an owner loses an item for good - it is burned, broken or destroyed, used up off screen, or leaves the scene with no one present.
 - transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.
-- equip: an owner wields or wears an item they carry.
+- equip: an owner wields or wears an item they carry, when that owner's slots include the slot shown after the item's name.
 - unequip: an owner puts away or takes off an item they had equipped.
 - use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, spends a charge of it, or pours, applies or loads it into another item. The item is the one spent; the other item is the target.
 - change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.

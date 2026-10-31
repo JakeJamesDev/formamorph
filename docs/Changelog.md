@@ -32,6 +32,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The story can now use one item on another, such as pouring lamp oil into a lantern.** The oil is the item spent. Its When Used script reads the lantern as `self.event.target`.
     - **Starting items on the player or an entity can now start equipped, through a new Equipped checkbox.** While Equipped effects apply from the first turn. An item that can't be equipped starts carried, and its row warns you first.
     - **Traits can now change their owner's Body, which sets the equipment slots they have while the trait is active.** Items the new Body has no slot for come off and stay in the inventory. The trait switched on last wins, and the log names the change.
+    - **The story now knows each person's equipment slots and the slot each item takes.** A character whose Body is None no longer gets items equipped by the story. The narrator and the Inventory prompt see the slots, never the Body's name.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
   - **Inventory:**
@@ -86,6 +87,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`inventory-regain-probe.cli.ts` scores the Inventory pass on items the player already carries.** It replays five real duplicate turns, checks retouch cases and two take-another guards, and scores runtime item descriptions for place words.
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
     - **`inventory-leak-probe.cli.ts` scores how often the narrator names an unidentified item's true name.** It runs five scenes against a control that holds only the unidentified face, and reports name and nature rates per arm.
+    - **A new inventory slots probe measures whether the Inventory prompt equips only into an owner's slots.** It runs the prompt before slots, with slots, and with the equip clause, each in the same batch.
   - **Scene Presence:**
     - **A narration probe measures how often an unmet stranger's true name reaches the prose with Thinking Mode Off.** `narration-stranger-probe.mjs` scores name leaks and label use per case, and a guard case where the stranger gives their name.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.

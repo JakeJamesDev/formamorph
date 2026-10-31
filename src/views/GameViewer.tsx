@@ -823,6 +823,7 @@ const GameViewer = ({
   const inventoryWorld = useMemo(() => ({
     items: worldItems, slots: worldSlots, bodies: worldBodies, entities: bodyPickEntities(entities, worldPersonas, resolvedCustomPersona),
   }), [worldItems, worldSlots, worldBodies, entities, worldPersonas, resolvedCustomPersona]);
+  const sceneEquipment = useMemo(() => ({ world: inventoryWorld, persona: personaRef }), [inventoryWorld, personaRef]);
   // Whether an After the AI script can change the choices, so a turn holds them until that batch lands (Q7, Q8).
   // The entities are every one whose scripts run: the played one and the picked library ones included.
   const worldScriptsChangeChoices = useMemo(() => scriptsChangeChoices({
@@ -2422,6 +2423,7 @@ const GameViewer = ({
     itemCopies,
     runtimeItems,
     strangerLabels,
+    equipment: sceneEquipment,
   });
 
   const contextValues = useCallback((

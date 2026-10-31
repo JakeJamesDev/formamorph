@@ -6,6 +6,7 @@ import {
   knownEntityIds, knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
 import { relatedIds, relationshipCast, relationshipLines } from '../entityRelationships';
+import { slotsInForce } from '../bodies';
 import { buildInventoryContext, type InventoryScene } from '../inventoryContext';
 import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
@@ -139,6 +140,7 @@ export function chipValues(scene: ChipScene): ValueLookup {
 
 /** The scene as the inventory block reads it; played entities own through the `you` owner (Q54). */
 function inventoryScene(scene: ChipScene): InventoryScene {
+  const { equipment } = scene;
   const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
   const owners = scene.presentIds.flatMap((id) => {
     const entity = played.has(id) ? undefined : scene.entities.find((e) => e.id === id);
@@ -151,6 +153,9 @@ function inventoryScene(scene: ChipScene): InventoryScene {
     playerName: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
     owners,
     location: scene.location,
+    ...(equipment?.world.bodies?.length && {
+      equipment: { slots: equipment.world.slots ?? [], slotsOf: (owner) => slotsInForce(equipment.world, owner, equipment.persona) },
+    }),
   };
 }
 
