@@ -81,6 +81,10 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q55 | (ticket 07, probe evidence) The model reads `slots: none`, but it does not match an item's `(Head)` against `slots: Collar`: 0/8 in every arm for a transformed owner. Each item an owner can't fit gets a precomputed per-owner mark in that owner's list, worded by the ticket under the prompt-writing guide, with one more probe round. If the mark does not move the rate, 07 ships slots, the item slot and the clause, and records the mismatch as a known gap; the validator still skips those equips (Q8) |
 | Q54 | (ticket 07) 07 does not wait for 05. Whichever lands second wires 05's trait overrides into 07's prompt slice |
 | Q56 | (user ruling, from 05's report) A between-turn script's trait or Body writes settle at once, as a Traits tab toggle does: the switch-run landing and the item-script landing run the settle, its unequips fire When Unequipped, and the Body log line writes then. This covers requirement unequips too. 06 builds it |
+| Q57 | (ticket 06) `body` reads `{ name, slots: [{ name, capacity, items }] }` in entry order, or null with no Body in force. It takes a Body name string; `null` writes None. "Default" is not a keyword. Clearing the base back to the authored pick is out of scope |
+| Q58 | (ticket 06) A duplicate Body name resolves to the first in list order; the Test Bench rule stays quiet on it (Q46 warns in the editor). The rule checks only literal names on known owner paths |
+| Q59 | (ticket 06) The base Body lives in the save keyed like trait picks ('' = the player slot). A persona change keeps it, as it keeps global traits |
+| Q60 | (ticket 06) A run that writes `body` reads the new Body at once; copies in a lost slot are not listed until the settle unequips them. A `body` write in a turn timing settles at once, as that timing's inventory writes do (ticket 06 landing; amends "settle at the turn commit") |
 
 ## User Stories
 
