@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { stubSegmentWidths } from '@/test/segmentWidths';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
@@ -13,27 +14,9 @@ const OPTIONS: CollapsingToggleOption<Tab>[] = [
   { value: 'dictionaries', label: 'Dictionaries', icon: BookOpen },
 ];
 
-// jsdom lays nothing out, so widths are given explicitly: labeled segments 100px, Dictionaries 130px,
+// Stubbed widths: labeled segments 100px, Dictionaries 130px,
 // icons 40px, insets 4px. Every label needs 338px; the widest alone 218px; icons only 128px.
-let room = 0;
-let original: PropertyDescriptor | undefined;
-beforeEach(() => {
-  original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
-  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-    configurable: true,
-    get(this: HTMLElement) {
-      if (this.hasAttribute('data-collapsing-root')) return room;
-      if (this.parentElement?.parentElement?.hasAttribute('data-collapsing-measure')) {
-        if (this.children.length < 2) return 40;
-        return this.textContent === 'Dictionaries' ? 130 : 100;
-      }
-      return 0;
-    },
-  });
-});
-afterEach(() => {
-  if (original) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', original);
-});
+const stub = stubSegmentWidths('Dictionaries');
 
 function Harness({ onChange }: { onChange?: (v: Tab) => void }) {
   const [value, setValue] = useState<Tab>('worlds');
@@ -49,7 +32,7 @@ const pill = () => document.querySelector<HTMLElement>('[data-collapsing-pill]')
 
 describe('CollapsingToggleGroup', () => {
   it('shows every label and sizes the pill to the selection when they fit', () => {
-    room = 400;
+    stub.room = 400;
     render(<Harness />);
     expect(OPTIONS.map((o) => labelShown(o.label))).toEqual([true, true, true]);
     expect(pill().style.width).toBe('100px');
@@ -57,14 +40,14 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('keeps only the selected label when every label does not fit but the widest one alone does', () => {
-    room = 300;
+    stub.room = 300;
     render(<Harness />);
     expect(OPTIONS.map((o) => labelShown(o.label))).toEqual([true, false, false]);
     expect(pill().style.width).toBe('100px');
   });
 
   it('shows icons alone below that, and takes the icons-only width as its floor', () => {
-    room = 150;
+    stub.room = 150;
     render(<Harness />);
     expect(OPTIONS.map((o) => labelShown(o.label))).toEqual([false, false, false]);
     expect(pill().style.width).toBe('40px');
@@ -73,7 +56,7 @@ describe('CollapsingToggleGroup', () => {
 
   it('stays icons only when a pick changes which label would show', async () => {
     // Worlds alone would fit 210px (188px); Dictionaries would not (218px).
-    room = 210;
+    stub.room = 210;
     render(<Harness />);
     expect(OPTIONS.map((o) => labelShown(o.label))).toEqual([false, false, false]);
     await userEvent.click(screen.getByRole('radio', { name: 'Dictionaries' }));
@@ -82,14 +65,14 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('names the selected option in a tip when it shows its icon alone', async () => {
-    room = 150;
+    stub.room = 150;
     render(<Harness />);
     await userEvent.hover(screen.getByRole('radio', { name: 'Worlds' }));
     expect(await screen.findByText('Worlds', { selector: 'div' })).toBeInTheDocument();
   });
 
   it('lands on its measured step without a slide, and slides from the next frame on', async () => {
-    room = 150;
+    stub.room = 150;
     render(<Harness />);
     const motion = () => OPTIONS.map((o) => screen.getByRole('radio', { name: o.label }).querySelector('.grid')!.className.includes('transition-'));
     expect(motion()).toEqual([false, false, false]);
@@ -99,7 +82,7 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('moves the label and the pill to a newly picked option', async () => {
-    room = 300;
+    stub.room = 300;
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
     await userEvent.click(screen.getByRole('radio', { name: 'Dictionaries' }));
@@ -109,7 +92,7 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('keeps the selection when the selected option is pressed again', async () => {
-    room = 300;
+    stub.room = 300;
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
     await userEvent.click(screen.getByRole('radio', { name: 'Worlds' }));
@@ -118,7 +101,7 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('names a folded option in a tip, and gives a labeled one none', async () => {
-    room = 300;
+    stub.room = 300;
     render(<Harness />);
     await userEvent.hover(screen.getByRole('radio', { name: 'Entities' }));
     expect(await screen.findByText('Entities', { selector: 'div' })).toBeInTheDocument();
@@ -129,7 +112,7 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('takes a step chosen by its host over its own room, and holds the width of that step open', () => {
-    room = 400;
+    stub.room = 400;
     render(
       <TooltipProvider>
         <CollapsingToggleGroup options={OPTIONS} value="worlds" onValueChange={() => {}} aria-label="Library" fold="icons" />
@@ -140,7 +123,7 @@ describe('CollapsingToggleGroup', () => {
   });
 
   it('reports its width at each step, the middle one sized for the widest label', () => {
-    room = 400;
+    stub.room = 400;
     const onStepWidths = vi.fn();
     render(
       <TooltipProvider>

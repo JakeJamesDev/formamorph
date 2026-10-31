@@ -32,6 +32,11 @@ export function segmentFold(full: readonly number[], icon: readonly number[], ro
   return room >= steps.active - 0.5 ? 'active' : 'icons';
 }
 
+/** Whether the segment at `index` shows its label at `fold`. */
+export function labelShown(fold: SegmentFold, index: number, active: number): boolean {
+  return fold === 'full' || (fold === 'active' && index === active);
+}
+
 /**
  * Lays out a collapsing segmented control: each segment takes its labeled width when `fold` shows its
  * label, and its icon width otherwise.
@@ -43,7 +48,7 @@ export function segmentFold(full: readonly number[], icon: readonly number[], ro
  * @param fill - A width to stretch the group to, its spare room shared evenly between the segments
  */
 export function segmentLayout(full: readonly number[], icon: readonly number[], active: number, fold: SegmentFold, inset: number, fill?: number): SegmentLayout {
-  const own = full.map((width, i) => (fold === 'full' || (fold === 'active' && i === active) ? width : icon[i] ?? width));
+  const own = full.map((width, i) => (labelShown(fold, i, active) ? width : icon[i] ?? width));
   const spare = fill === undefined || own.length === 0 ? 0 : Math.max(0, fill - sum(own) - 2 * inset) / own.length;
   const widths = own.map((width) => width + spare);
   const lefts: number[] = [];

@@ -12,6 +12,7 @@ import { useSurfaceTab } from '@/components/ui/surface';
 import { CollapsingToggleGroup } from '@/components/ui/collapsing-toggle-group';
 import type { SegmentFold } from '@/lib/collapsingSegments';
 import { useHeaderFold } from '@/lib/useHeaderFold';
+import { MEASURE_LAYER } from '@/lib/measureLayer';
 import { KIND_BY_CARD_TYPE, KIND_LABELS } from '@/lib/catalogKinds';
 import { MAIN_MENU_CARD_OPTIONS, MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { clearLibraryModelPicks, deleteModelDescription, findModelUsage, type ModelUsage } from '@/lib/libraryVrmDelete';
@@ -1971,7 +1972,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
         {/* Hidden copies of every step the bar can fold to, for `useHeaderFold` to measure. The action
             buttons come once per library tab, so a new pick never changes the fold. */}
-        <div aria-hidden data-fold-measure-layer="" className="pointer-events-none invisible absolute left-0 top-0 h-0 overflow-hidden">
+        <div aria-hidden data-fold-measure-layer="" className={MEASURE_LAYER}>
           {MAIN_MENU_CARD_TABS.map((tab) => (
             <div key={tab} data-fold-measure="center" className="flex w-max items-center gap-4">{renderActionButtons(tab, true)}</div>
           ))}
