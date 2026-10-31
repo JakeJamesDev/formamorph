@@ -333,7 +333,7 @@ describe('rejecting', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /Reject/ }));
 
     // No length to pick: the listing keeps its deadline.
-    expect(screen.queryByRole('combobox', { name: 'Quarantine length' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Delete it after' })).toBeNull();
     const confirm = await screen.findByRole('alertdialog');
     fireEvent.click(within(confirm).getByRole('button', { name: 'Reject' }));
 
@@ -388,7 +388,7 @@ describe('rejecting', () => {
     await waitFor(() => expect(toast.info).toHaveBeenCalledWith('Another mod already handled this item'));
     expect(screen.queryByTestId('composer')).toBeNull();
     // The item is gone, so the length prompt over it goes too.
-    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Quarantine length' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Delete it after' })).toBeNull());
   });
 });
 

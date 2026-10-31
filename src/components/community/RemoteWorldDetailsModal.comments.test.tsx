@@ -282,7 +282,7 @@ describe('taking one down', () => {
     const remove = vi.spyOn(WorldStorageService, 'deleteComment').mockResolvedValue(undefined);
     await openConfirm();
 
-    fireEvent.click(await screen.findByRole('button', { name: /confirm/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith('c1'));
     await waitFor(() => expect(screen.queryByText('A fine place to drown.')).toBeNull());
@@ -297,7 +297,7 @@ describe('taking one down', () => {
     show();
     await body();
     fireEvent.click(bin()!);
-    fireEvent.click(await screen.findByRole('button', { name: /confirm/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('A fine place to drown.')).toBeNull());
 
     fireEvent.click(screen.getByRole('button', { name: /load more/i }));
@@ -310,7 +310,7 @@ describe('taking one down', () => {
     vi.spyOn(WorldStorageService, 'deleteComment').mockRejectedValue(new Error('Not authorized'));
     await openConfirm();
 
-    fireEvent.click(await screen.findByRole('button', { name: /confirm/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Not authorizedView Details →'));
     expect(screen.getByText('A fine place to drown.')).toBeTruthy();

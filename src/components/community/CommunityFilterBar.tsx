@@ -93,7 +93,7 @@ export function CommunityFilterBar({
               values={authorFilter}
               onChange={setAuthorFilter}
               options={allAuthors}
-              placeholder="author…"
+              placeholder="Add an author"
               ariaLabel="Filter by author"
               openOnFocus
             />
@@ -102,7 +102,7 @@ export function CommunityFilterBar({
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-meta font-medium text-muted-foreground">Tags</span>
-              <Tip tip="Toggle match: Any vs All" labelsChild={false}>
+              <Tip tip="Switch between matching any tag and all tags" labelsChild={false}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -117,7 +117,7 @@ export function CommunityFilterBar({
               values={tagFilter}
               onChange={setTagFilter}
               options={allTags}
-              placeholder="tag…"
+              placeholder="Add a tag"
               ariaLabel="Filter by tag"
               openOnFocus
             />
@@ -130,7 +130,7 @@ export function CommunityFilterBar({
                 values={models.filter}
                 onChange={models.setFilter}
                 options={models.options}
-                placeholder="model…"
+                placeholder="Add a model"
                 ariaLabel="Filter by model"
                 openOnFocus
               />
@@ -175,7 +175,7 @@ export function CommunityFilterBar({
             />
           ))}
           {tagFilter.length > 0 && (
-            <Tip tip="Toggle match: Any vs All" labelsChild={false}>
+            <Tip tip="Switch between matching any tag and all tags" labelsChild={false}>
               <button
                 type="button"
                 onClick={() => setTagMode(tagMode === 'any' ? 'all' : 'any')}
@@ -224,9 +224,9 @@ export function CommunityFilterBar({
   }
 
   // Three tracks so the middle one centers on the row itself, not on the space the sides happen to
-  // leave: two `1fr` tracks are equal by definition, so whatever sits between them lands on the middle
-  // of the row. The sides floor at their own min-content and the middle can shrink under its, so a long
-  // name in the middle gives way rather than crushing the controls it is centered between.
+  // leave: two `1fr` tracks are equal by definition, so the track between them is centered on the row.
+  // The sides floor at their own min-content and the middle can shrink under its, so a long name in the
+  // middle shrinks before the controls beside it do.
   return (
     <div className="grid grid-cols-[minmax(min-content,1fr)_minmax(0,auto)_minmax(min-content,1fr)] items-center gap-x-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">{filters}</div>

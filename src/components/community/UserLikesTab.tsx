@@ -5,6 +5,7 @@ import { EyeOff, HeartOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Hint } from "@/components/ui/typography";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserName } from "@/components/UserName";
 import { formatServerDateTime } from "@/lib/serverDate";
@@ -68,7 +69,7 @@ export function UserLikesTab({ userId, username, canModerateAccount, onOpenListi
       setTotal(0);
       toast.success(`Removed ${removed} ${removed === 1 ? 'like' : 'likes'}`);
     } catch (e) {
-      toastError(e, 'Failed to clear their likes');
+      toastError(e, 'Failed to remove their likes');
     } finally {
       setIsClearing(false);
     }
@@ -90,10 +91,10 @@ export function UserLikesTab({ userId, username, canModerateAccount, onOpenListi
   return (
     <div className="space-y-2 py-2 min-w-0">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-helper text-muted-foreground">
+        <Hint>
           {total} {total === 1 ? 'like' : 'likes'} given
           {rows.length < total ? `, showing the newest ${rows.length}` : ''}
-        </p>
+        </Hint>
 
         {/* Off the screen rather than disabled for an account the reader cannot reach: the ladder is a
             fact about them, not a thing to discover by pressing. */}
@@ -105,15 +106,15 @@ export function UserLikesTab({ userId, username, canModerateAccount, onOpenListi
             disabled={isClearing}
             onClick={() => setConfirming(true)}
           >
-            <HeartOff className="h-3.5 w-3.5" /> Clear all
+            <HeartOff className="h-3.5 w-3.5" /> Remove All Likes
           </Button>
         )}
       </div>
 
       {rows.length === 0 ? (
-        <p className="py-6 text-center text-helper text-muted-foreground">
-          {username || 'They'} hasn&apos;t liked anything.
-        </p>
+        <Hint className="py-6 text-center">
+          {username || 'This account'} hasn&apos;t liked anything.
+        </Hint>
       ) : (
         <ScrollArea className="h-[15.5rem]">
           <ul className="mx-auto w-full max-w-[22rem] space-y-2 pl-[11px]">
@@ -156,7 +157,8 @@ export function UserLikesTab({ userId, username, canModerateAccount, onOpenListi
         open={confirming}
         onOpenChange={setConfirming}
         title={`Remove ${total} ${total === 1 ? 'like' : 'likes'}?`}
-        description={`Every like ${username || 'this account'} has given comes off, and each listing's count drops by one. They can like anything again.`}
+        description={`This removes every like ${username || 'this account'} has given. Each listing's count drops by one. They can like anything again.`}
+        confirmLabel="Remove"
         onConfirm={() => { setConfirming(false); void clearAll(); }}
         onCancel={() => setConfirming(false)}
       />

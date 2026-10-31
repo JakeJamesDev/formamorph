@@ -32,6 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Meta } from "@/components/ui/typography";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
@@ -602,7 +603,7 @@ const CommunityCreationsBrowser = ({
       count: quarantinedCount,
       applies: staffHere,
       disabled: quarantinedCount === 0 && !quarantinedOnly,
-      help: 'Show only what is hidden pending changes',
+      help: 'Show only quarantined listings',
     },
     {
       value: 'flaggedLikes',
@@ -611,7 +612,7 @@ const CommunityCreationsBrowser = ({
       count: flaggedCount,
       applies: moderationHere,
       disabled: flaggedCount === 0 && !flaggedOnly,
-      help: 'Show only listings whose likes look inflated',
+      help: 'Show only listings whose likes are flagged',
     },
   ];
   const moderationControl = (
@@ -623,7 +624,7 @@ const CommunityCreationsBrowser = ({
         applies: staffHere,
         checked: showPending,
         disabled: quarantinedOnly,
-        help: 'Pin listings that wait for review above the results',
+        help: 'Show listings that wait for review above the other results',
         onChange: setShowPending,
       }}
       defaultOpen={devModerationOpen}
@@ -677,7 +678,7 @@ const CommunityCreationsBrowser = ({
 
       setRemoteWorlds(prev => prev.filter(w => (w._id || w.id) !== worldId));
       setRemoteWorldToDelete(null);
-      toast.success(`${noun} deleted successfully`);
+      toast.success(`${noun} deleted`);
 
       // Someone else's work: offer to tell them why it went. Their own needs no explanation.
       setTakedown(takedownTargetFor(record, currentUser?.id));
@@ -1140,21 +1141,21 @@ const CommunityCreationsBrowser = ({
         {/* Type to hide tags/authors (autocompletes over the catalog); chips are the hidden items. */}
         <div className="space-y-1">
           <span className="text-meta font-medium text-muted-foreground">Tags</span>
-          <TokenAutocomplete values={hiddenTags} onChange={setHiddenTagsList} options={allTags} placeholder="tag…" openOnFocus />
+          <TokenAutocomplete values={hiddenTags} onChange={setHiddenTagsList} options={allTags} placeholder="Hide a tag" openOnFocus />
         </div>
         <div className="space-y-1">
           <span className="text-meta font-medium text-muted-foreground">Authors</span>
-          <TokenAutocomplete values={hiddenAuthors} onChange={setHiddenAuthorsList} options={allAuthors} placeholder="author…" openOnFocus />
+          <TokenAutocomplete values={hiddenAuthors} onChange={setHiddenAuthorsList} options={allAuthors} placeholder="Hide an author" openOnFocus />
         </div>
         {hiddenWorldIds.length > 0 && (
           <div className="space-y-1">
-            <span className="text-meta font-medium text-muted-foreground">Worlds</span>
+            <span className="text-meta font-medium text-muted-foreground">Listings</span>
             <ScrollArea className="max-h-48">
               <div className="flex flex-wrap gap-1">
                 {hiddenWorldIds.map((id) => (
                   <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
                     {hiddenWorldName(id)}
-                    <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
+                    <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label={`Unhide ${hiddenWorldName(id)}`}><X className="h-3 w-3" /></button>
                   </span>
                 ))}
               </div>
@@ -1488,13 +1489,13 @@ const CommunityCreationsBrowser = ({
                       empty catalog. */}
                   {browseTab === 'contest' && !anyFilterApplied && !flaggedOnly ?
                     (shownContest && contestPhase(shownContest) === 'live'
-                      ? 'No entries yet. Publish a world with the contest switch on to be the first.'
+                      ? <>No entries yet. To enter, turn on <strong>Enter into {shownContest.title}</strong> when you publish a world.</>
                       : 'This contest ended with no entries.') :
                     quarantinedOnly || flaggedOnly ?
                     `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} ${quarantinedOnly ? 'are quarantined' : 'have flagged likes'}.` :
                     anyFilterApplied ?
                       `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} match your filters. Clear them to see everything.` :
-                      `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} available. Be the first to publish one!`}
+                      `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} yet. Publish one to be the first.`}
                 </div>
               )) : (
                 deferredRows.map((world) => renderCard(world))
@@ -1578,7 +1579,7 @@ const CommunityCreationsBrowser = ({
               <li key={failure.id} className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-label font-medium">{failure.name}</p>
-                  <p className="text-meta text-muted-foreground">{failure.message}</p>
+                  <Meta as="p">{failure.message}</Meta>
                 </div>
                 {/* One row's own Retry, which only an add-on gets: a world still waiting on a required
                     source cannot be installed until every one of them is in. */}
@@ -1646,7 +1647,7 @@ const CommunityCreationsBrowser = ({
           <DialogHeader>
             <DialogTitle>{shownAction?.mode === 'update' ? 'Choose a copy to update' : 'Choose a copy to overwrite'}</DialogTitle>
             <DialogDescription>
-              You have several local copies of this world. Pick which one to replace with the fresh download — edited copies lose their local changes.
+              You have several copies of this world. Pick the one to replace with the new download. An edited copy loses its changes.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
@@ -1667,7 +1668,7 @@ const CommunityCreationsBrowser = ({
                         {upToDate && <span className="ml-2 font-normal text-success">• up to date</span>}
                         {copy.dirty && <span className="ml-2 font-normal text-warning">• edited</span>}
                       </span>
-                      <span className="text-meta text-muted-foreground">Last edited: {edited}</span>
+                      <Meta>Last edited: {edited}</Meta>
                     </Label>
                   </div>
                 );
@@ -1692,8 +1693,9 @@ const CommunityCreationsBrowser = ({
       <ConfirmDialog
         open={!!remoteWorldToDelete}
         onOpenChange={(o) => !o && setRemoteWorldToDelete(null)}
-        title={`Delete Published ${BROWSE_TAB_LABELS[browseTab].one}`}
-        description={`Are you sure you want to delete this published ${BROWSE_TAB_LABELS[browseTab].one.toLowerCase()}? This will remove it from the server and it will no longer be available to other users. This action cannot be undone.`}
+        title={`Delete Published ${BROWSE_TAB_LABELS[browseTab].one}?`}
+        description={`This deletes the ${BROWSE_TAB_LABELS[browseTab].one.toLowerCase()} from the server, and no one can download it again. You can't undo this.`}
+        confirmLabel="Delete"
         onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete!)}
       />
 
@@ -1706,6 +1708,7 @@ const CommunityCreationsBrowser = ({
         description={takedown
           ? `${takedown.author.username}'s ${KIND_LABELS[takedown.kind].one.toLowerCase()} "${takedown.name}" has been removed. Send them a message explaining why?`
           : ''}
+        confirmLabel="Write Message"
         onConfirm={() => { setNotifyAuthor(takedown); setTakedown(null); }}
         onCancel={() => setTakedown(null)}
       />

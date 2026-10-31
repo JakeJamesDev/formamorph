@@ -68,7 +68,7 @@ export function useDeviceDownload() {
       }
 
       downloadBlob(blob, filename);
-      toast.success(`"${listing.name || KIND_LABELS[kind].one}" downloaded successfully`);
+      toast.success(`"${listing.name || KIND_LABELS[kind].one}" downloaded`);
     } catch (error) {
       console.error(`Error downloading ${kindOf(listing)} for device:`, error);
       toastError(error, `Failed to download ${KIND_LABELS[kindOf(listing)].one.toLowerCase()}`);

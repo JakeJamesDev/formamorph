@@ -200,7 +200,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
            download — the primary action — in the corner opposite the name. Icon reflects whether the
            world is new, current (refresh), or has an update. */
         <div className={cn("absolute right-1 z-10 flex gap-1", layout === 'split' ? "bottom-1" : "top-1")}>
-          {onHideWorld && <Tip tip="Hide this world">
+          {onHideWorld && <Tip tip={`Hide this ${noun}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
               className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -211,7 +211,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
           {supporterOnly && onContextualDownload && (
             <SupporterListingButton world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="card" />
           )}
-          {!supporterOnly && onContextualDownload && <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
+          {!supporterOnly && onContextualDownload && <Tip tip={dlState === 'update' ? "Download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onContextualDownload?.(world, dlState); }}
               className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -265,7 +265,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
         <span className="inline-flex items-center gap-1.5 min-w-0">
           <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} supporter={world.author?.supporter} size="xs" />
           <Tip
-            tip={world.author?.username && onHideAuthor ? `Hide all worlds by ${world.author.username}` : undefined}
+            tip={world.author?.username && onHideAuthor ? `Hide everything by ${world.author.username}` : undefined}
             labelsChild={false}
           >
             <span
@@ -382,7 +382,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
           {/* Leaving a contest is not deleting anything, so it reads as the trophy coming off rather than
               as a destructive control — and it is only ever on the author's own entry. */}
           {isOwnedByUser && onWithdraw && (
-            <Tip tip="Take it out of the contest — the listing stays published">
+            <Tip tip="Withdraw it from the contest. The listing stays published.">
               <button
                 className="p-1 text-muted-foreground hover:text-foreground"
                 onClick={(e) => { e.stopPropagation(); onWithdraw(world); }}
@@ -394,7 +394,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
           )}
           {/* Quarantine is the gentler half of the same job as Delete, so it sits beside it. */}
           {mayModerate && !quarantined && onQuarantine && (
-            <Tip tip="Hide it while the author fixes it">
+            <Tip tip="Quarantine it while the author fixes it">
               <button
                 className="p-1 text-warning hover:text-warning/80"
                 onClick={(e) => { e.stopPropagation(); onQuarantine(world); }}
@@ -419,7 +419,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
             <button
               className="p-1 text-destructive hover:text-destructive/80"
               onClick={(e) => { e.stopPropagation(); onDelete(worldId); }}
-              aria-label="Delete world"
+              aria-label={`Delete ${noun}`}
             >
               <Trash2 className="h-5 w-5" />
             </button>

@@ -162,7 +162,7 @@ describe('staging a change', () => {
     await waitFor(() => expect(screen.getByText('Close without saving?')).toBeTruthy());
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

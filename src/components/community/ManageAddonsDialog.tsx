@@ -20,7 +20,7 @@ import {
 } from '@/lib/addonReview';
 import type { ReviewState } from '@/lib/compatibleWorlds';
 import { type AddonRow, type ListingRef } from '@/lib/worldDependencies';
-import { Meta } from '@/components/ui/typography';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 
 /** One offer, with the author's saved answer and any decision staged against it. */
 function AddonReviewRow({ row, now, disabled, onDecide, onAcknowledge }: {
@@ -205,8 +205,8 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
         <DialogHeader className="shrink-0">
           <DialogTitle>Manage Add-ons</DialogTitle>
           <DialogDescription>
-            Other authors offer these add-ons for {world?.name || 'this world'}. Approved add-ons are
-            recommended to players. Declined add-ons are not downloaded with the world.
+            Other authors offer these add-ons for {world?.name || 'this world'}. Approve an add-on to
+            recommend it to players. Decline it to hide it from them.
           </DialogDescription>
         </DialogHeader>
 
@@ -225,15 +225,15 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
             </div>
           ) : error ? (
             <div className="space-y-3 py-6 text-center">
-              <p className="text-helper text-destructive">{error}</p>
+              <FieldError>{error}</FieldError>
               <Button variant="outline" size="sm" onClick={() => worldId && void load(worldId)}>Try Again</Button>
             </div>
           ) : shown.length === 0 ? (
-            <p className="py-6 text-center text-helper text-muted-foreground">
+            <Hint className="py-6 text-center">
               {rows.length === 0
                 ? 'No add-ons are offered for this world.'
-                : 'No add-on matches this filter. Set “Show” to Everything to see all of them.'}
-            </p>
+                : <>No add-on matches this filter. Set <strong>Show</strong> to <strong>Everything</strong> to see them all.</>}
+            </Hint>
           ) : (
             <ul className="space-y-3 pr-1">
               {shown.map((row) => (
@@ -255,7 +255,7 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
             Discard Changes
           </Button>
           <Button disabled={!changes || saving} onClick={() => void save()}>
-            {saving ? 'Saving...' : `Save Changes${changes ? ` (${changes})` : ''}`}
+            {saving ? 'Saving…' : `Save Changes${changes ? ` (${changes})` : ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -264,7 +264,8 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
         open={confirmingClose}
         onOpenChange={setConfirmingClose}
         title="Close without saving?"
-        description={`${changes} decision${changes === 1 ? '' : 's'} will not be saved.`}
+        description={`You'll lose ${changes} unsaved decision${changes === 1 ? '' : 's'}.`}
+        confirmLabel="Discard"
         onConfirm={() => { setConfirmingClose(false); onOpenChange(false); }}
         onCancel={() => setConfirmingClose(false)}
       />

@@ -79,7 +79,7 @@ const renderBrowser = (currentUser: WorldRecord | null = admin) =>
 /** Delete the one listing on screen and answer the delete confirmation. */
 const deleteTheListing = async () => {
   fireEvent.click(await screen.findByLabelText('Delete world'));
-  const confirm = await screen.findByRole('button', { name: 'Confirm' });
+  const confirm = await screen.findByRole('button', { name: 'Delete' });
   fireEvent.click(confirm);
 };
 
@@ -121,7 +121,7 @@ describe('deleting somebody else’s published item', () => {
   it('opens the composer to that author, prefilled', async () => {
     renderBrowser();
     await deleteTheListing();
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Write Message' }));
 
     await screen.findByTestId('composer');
     expect(composerProps.last).toMatchObject({
@@ -167,7 +167,7 @@ describe('when the delete fails', () => {
     renderBrowser();
     await deleteTheListing();
 
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull());
     expect(screen.queryByText(/Send them a message/)).toBeNull();
   });
 });

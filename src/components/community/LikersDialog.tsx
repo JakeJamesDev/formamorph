@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tip } from "@/components/ui/tooltip";
+import { FieldError, Hint, Meta } from "@/components/ui/typography";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
@@ -430,10 +431,10 @@ export function LikersDialog({
             <StatusPill status={row.status} />
             <NetworkKindBadge kind={marks?.[row.id]?.networkKind} />
             {linkedToAuthor
-              && linkedBadge('This account acted from an address the author also acted from')}
+              && linkedBadge('This account used a network address the author also used')}
             {row.claimedAt && (
               <Tip
-                tip="Given while signed out, then claimed onto this account"
+                tip="Liked while signed out, then claimed by this account"
                 labelsChild={false}
               >
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-meta font-medium text-muted-foreground">
@@ -444,21 +445,21 @@ export function LikersDialog({
             )}
           </div>
 
-          <p className="text-meta text-muted-foreground">
+          <Meta as="p">
             Member since {formatServerDate(row.createdAt)}
-          </p>
-          <p className="text-meta text-muted-foreground">
+          </Meta>
+          <Meta as="p">
             Liked {formatServerDateTime(row.likedAt)}
-            {' — '}
+            {' · '}
             <span className={cn(fresh && 'font-semibold text-warning')}>
               account was {describeAccountAge(row.accountAgeAtLikeSeconds)}
             </span>
-          </p>
+          </Meta>
           {/* The press above is the original one. This is when it arrived on the account. */}
           {row.claimedAt && (
-            <p className="text-meta text-muted-foreground">
+            <Meta as="p">
               Claimed {formatServerDateTime(row.claimedAt)}
-            </p>
+            </Meta>
           )}
         </div>
 
@@ -490,12 +491,12 @@ export function LikersDialog({
           <span className="text-label font-medium">Anonymous Like</span>
           <NetworkKindBadge kind={anon.networkKind} />
           {anon.linkedToAuthor
-            && linkedBadge('This like came from an address the author also acted from')}
+            && linkedBadge('This like came from a network address the author also used')}
         </div>
-        <p className="text-meta text-muted-foreground">
+        <Meta as="p">
           Liked {formatServerDateTime(anon.likedAt)}
-          {anon.browserFamily ? ` — ${anon.browserFamily}` : ''}
-        </p>
+          {anon.browserFamily ? ` · ${anon.browserFamily}` : ''}
+        </Meta>
       </div>
 
       {action}
@@ -513,7 +514,7 @@ export function LikersDialog({
     if (!addressKey) {
       const expired = (
         <RemoveLikeButton
-          tip="Too old to remove alone. Remove all Anonymous Likes instead."
+          tip="Too old to remove alone. Use “Remove all Anonymous Likes” instead."
           label="Remove this Anonymous Like"
         />
       );
@@ -539,9 +540,9 @@ export function LikersDialog({
     return (
       <div key={key} data-address-frame="true" className="space-y-2 rounded-md border bg-muted/30 p-2">
         <div className="flex items-center gap-3 pl-1">
-          <p className="min-w-0 flex-1 text-meta text-muted-foreground">
+          <Meta as="p" className="min-w-0 flex-1">
             {countAnon(marked.length)} from one address
-          </p>
+          </Meta>
           {removeAll(`Remove these ${countAnon(marked.length)}`)}
         </div>
         <ul className="space-y-2">{marked.map((anon, i) => anonListItem(anon, i))}</ul>
@@ -554,18 +555,18 @@ export function LikersDialog({
     if (pending.kind === 'like') {
       return {
         title: 'Remove this like?',
-        description: `The like by ${pending.row.username} comes off this listing and the count drops by one. They can like it again.`,
+        description: `This removes ${pending.row.username}'s like from this listing, and the count drops by one. They can like it again.`,
       };
     }
     if (pending.kind === 'address') {
       return {
         title: 'Remove these Anonymous Likes?',
-        description: `${countAnon(pending.count)} from this address come off this listing. No account like is touched.`,
+        description: `This removes ${countAnon(pending.count)} from this address. Likes from accounts stay.`,
       };
     }
     return {
       title: 'Remove every Anonymous Like?',
-      description: `All ${countAnon(pending.count)} come off this listing, including the ones the audit cannot group. No account like is touched.`,
+      description: `This removes all ${countAnon(pending.count)} from this listing, including likes the audit can't group. Likes from accounts stay.`,
     };
   };
 
@@ -585,7 +586,7 @@ export function LikersDialog({
               beside it because the room's number is the two added together. */}
           <DialogDescription>
             {isLoading && rows.length === 0
-              ? 'Reading the likes…'
+              ? 'Loading likes…'
               : `${total} ${total === 1 ? 'like' : 'likes'}${rows.length < total ? `, showing the newest ${rows.length}` : ''}${anonymous > 0 ? ` · ${anonymous} anonymous` : ''}`}
           </DialogDescription>
         </DialogHeader>
@@ -615,7 +616,7 @@ export function LikersDialog({
             )}
 
             {audited && (
-              <p className="text-meta text-muted-foreground">
+              <Meta as="p">
                 {audited.groups.length === 0 && audited.linkedToAuthor === 0
                   ? 'No two of these likes share a network address.'
                   : [
@@ -625,20 +626,20 @@ export function LikersDialog({
                       audited.linkedToAuthor > 0
                         && `${audited.linkedToAuthor} ${audited.linkedToAuthor === 1 ? 'like shares' : 'likes share'} one with the author`,
                     ].filter(Boolean).join(' · ')}
-              </p>
+              </Meta>
             )}
 
             {audited && summaryText && (
-              <p data-likes-summary="true" className="text-meta text-muted-foreground">
+              <Meta as="p" data-likes-summary="true">
                 {summaryText}
-              </p>
+              </Meta>
             )}
 
             {/* The server caps the audit too, and a flood is exactly the case that reaches the cap. */}
             {audited && anonymous > anonymousRows.length && (
-              <p className="text-meta text-muted-foreground">
+              <Meta as="p">
                 Showing the newest {anonymousRows.length} of {anonymous} Anonymous Likes.
-              </p>
+              </Meta>
             )}
           </div>
         )}
@@ -646,18 +647,18 @@ export function LikersDialog({
         {audited && summary && (summary.bursts.length > 0 || summary.reasons.length > 0) && (
           <div data-bursts="true" className="space-y-1 rounded-md border bg-muted/30 p-2">
             {summary.reasons.length > 0 && (
-              <p className="text-meta text-muted-foreground">
-                Marker fires on: {describeLikesMarker(summary.reasons)}
-              </p>
+              <Meta as="p">
+                Marked for: {describeLikesMarker(summary.reasons)}
+              </Meta>
             )}
             {summary.bursts.length > 0 && (
               <>
                 <p className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">Bursts</p>
                 <ul className="space-y-0.5">
                   {summary.bursts.map((burst) => (
-                    <li key={burst.startedAt} className="text-meta text-muted-foreground">
+                    <Meta as="li" key={burst.startedAt}>
                       {formatServerDateTime(burst.startedAt)} · {burst.size} likers
-                    </li>
+                    </Meta>
                   ))}
                 </ul>
               </>
@@ -666,13 +667,13 @@ export function LikersDialog({
         )}
 
         {error ? (
-          <p className="py-6 text-center text-label text-destructive">{error}</p>
+          <FieldError className="py-6 text-center">{error}</FieldError>
         ) : isLoading ? (
           <div className="space-y-2 py-2">
             {Array(3).fill(0).map((_, index) => <Skeleton key={index} className="h-16 w-full" />)}
           </div>
         ) : !hasLikes ? (
-          <p className="py-6 text-center text-helper text-muted-foreground">Nobody has liked this yet.</p>
+          <Hint className="py-6 text-center">No likes yet.</Hint>
         ) : (
           <ScrollArea className="h-[19rem]">
             {audited ? (
@@ -708,6 +709,7 @@ export function LikersDialog({
           onOpenChange={(isOpen) => { if (!isOpen) setPending(null); }}
           title={confirmTitle}
           description={confirmDescription}
+          confirmLabel="Remove"
           onConfirm={() => {
             const action = pending;
             setPending(null);

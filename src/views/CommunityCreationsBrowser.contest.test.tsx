@@ -331,7 +331,7 @@ describe('what the contest grid shows in each of its three states', () => {
 
     // The order is a shuffle (covered in contests.test.ts); the grid only has to show all three entries.
     await waitFor(() => expect(gridNames().sort()).toEqual(['Coldkeep', 'Saltmarsh', 'Thawline']));
-    expect(screen.getByText(/being judged/)).toBeInTheDocument();
+    expect(screen.getByText(/· Judging/)).toBeInTheDocument();
   });
 
   it('pins the whole podium first, in podium order, and badges each place', async () => {
@@ -377,7 +377,7 @@ describe('what the contest grid shows in each of its three states', () => {
     renderBrowser();
     await openContestTab();
 
-    expect(await screen.findByText('Won by Saltmarsh — sedgewright · 1 more placed')).toBeInTheDocument();
+    expect(await screen.findByText('Winner: Saltmarsh by sedgewright · 1 more placed')).toBeInTheDocument();
   });
 
   it('counts a shared 1st in the status line, and counts only the worlds below it', async () => {
@@ -515,7 +515,7 @@ describe('what the contest grid shows in each of its three states', () => {
     renderBrowser();
     await openContestTab();
 
-    expect(await screen.findByText(/Publish a world with the contest switch on/)).toBeInTheDocument();
+    expect(await screen.findByText(/No entries yet\. To enter, turn on/)).toBeInTheDocument();
   });
 });
 

@@ -231,7 +231,7 @@ describe('held changelog entries', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /add entry/i }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Update 2' } });
-    fireEvent.change(screen.getByLabelText('What changed'), { target: { value: 'New wing.' } });
+    fireEvent.change(screen.getByLabelText('What Changed'), { target: { value: 'New wing.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add Entry' }));
 
     const held = await screen.findByText('Update 2');

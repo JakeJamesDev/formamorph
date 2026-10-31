@@ -56,6 +56,7 @@ import { PendingUpdateSection } from "@/components/community/PendingUpdateSectio
 import { heldChangelogEntries, type PendingUpdate } from "@/lib/listingModeration";
 import { placementsBy } from "@/lib/contests";
 import { Tip } from "@/components/ui/tooltip";
+import { Hint, Meta } from "@/components/ui/typography";
 import { VrmFileDetails } from "@/components/VrmFileDetails";
 import type { ListingVisibility } from "@/lib/publishLinks";
 import type { WorldAssociation } from "@/lib/compatibleWorlds";
@@ -724,7 +725,7 @@ export function RemoteWorldDetailsModal({
                           </>
                         )}
                         {madeFor && (
-                          <p className="mt-2 text-meta text-muted-foreground">Made for Formamorph {madeFor}</p>
+                          <Meta as="p" className="mt-2">Made for Formamorph {madeFor}</Meta>
                         )}
                       </div>
                     )}
@@ -841,7 +842,7 @@ export function RemoteWorldDetailsModal({
                     vocabulary={plainVocab}
                     markdown
                     ariaLabel="Comment"
-                    placeholder="Leave a comment..."
+                    placeholder="Write a comment"
                   />
                   <div className="flex items-center gap-2">
                     <Button
@@ -849,17 +850,17 @@ export function RemoteWorldDetailsModal({
                       disabled={postingComment || !commentText.trim()}
                       onClick={handlePostComment}
                     >
-                      {postingComment ? 'Posting...' : 'Post Comment'}
+                      {postingComment ? 'Posting…' : 'Post Comment'}
                     </Button>
-                    <span className="ml-auto text-meta text-muted-foreground">
+                    <Meta className="ml-auto">
                       {commentText.length} / {COMMENT_MAX}
-                    </span>
+                    </Meta>
                   </div>
                 </div>
               ) : (
-                <p className="text-helper text-muted-foreground">
+                <Hint>
                   {capabilities.comments ? 'Log in to leave a comment.' : 'Comments are read-only on the website.'}
-                </p>
+                </Hint>
               )}
 
               <div className="space-y-3">
@@ -939,9 +940,9 @@ export function RemoteWorldDetailsModal({
                           <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
                             <X className="mr-2 h-4 w-4" /> Cancel
                           </Button>
-                          <span className="ml-auto text-meta text-muted-foreground">
+                          <Meta className="ml-auto">
                             {editDraft.length} / {COMMENT_MAX}
-                          </span>
+                          </Meta>
                         </div>
                       </div>
                     ) : (
@@ -955,7 +956,7 @@ export function RemoteWorldDetailsModal({
                   <Skeleton key={i} className="h-14 w-full" data-testid="comment-placeholder" />
                 ))}
                 {comments.length === 0 && (commentsAnswered ? !commentsLoading : seededComments === 0) && (
-                  <p className="text-helper text-muted-foreground">No comments yet.</p>
+                  <Hint>No comments yet.</Hint>
                 )}
                 {commentsHasMore && (
                   <Button
@@ -964,7 +965,7 @@ export function RemoteWorldDetailsModal({
                     disabled={commentsLoading}
                     onClick={() => loadComments(world._id || world.id, commentsShown + COMMENTS_PAGE)}
                   >
-                    {commentsLoading ? 'Loading...' : 'Load more'}
+                    {commentsLoading ? 'Loading…' : 'Load more'}
                   </Button>
                 )}
               </div>
@@ -996,7 +997,8 @@ export function RemoteWorldDetailsModal({
           open={!!pendingDelete}
           onOpenChange={(isOpen) => { if (!isOpen) setPendingDelete(null); }}
           title="Delete this comment?"
-          description="It goes for good, and the rest of the thread stays as it is."
+          description="This deletes the comment from the thread. You can't undo this."
+          confirmLabel="Delete"
           onConfirm={() => {
             const commentId = pendingDelete;
             setPendingDelete(null);

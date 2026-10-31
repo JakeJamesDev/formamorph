@@ -265,7 +265,7 @@ The details window's **Comments** view lists the newest comment first. You must 
 
 | Action | How |
 |---|---|
-| Post | Type in **Leave a comment...** and select **Post Comment**. Markdown works, up to 4000 characters. |
+| Post | Type in **Write a comment** and select **Post Comment**. Markdown works, up to 4000 characters. |
 | Edit | Select the pencil on your own comment, change it, and select **Save**. An edited comment shows **· edited**. |
 | Delete | Select the trash button. You can delete your own comments, and any comment on your own listings. |
 | Report | Select the **Report comment** button on someone else's comment. |
@@ -396,8 +396,8 @@ The **Contest** tab lists the entries of one contest. When several contests exis
 | Phase | The status line | What you can do |
 |---|---|---|
 | Open | *N days left to enter* | Enter a world and like entries. Entries show in a shuffled order. |
-| Judging | *Closed* … *being judged* | Like entries. No new entries. The order stays shuffled. |
-| Results | *Won by* … | Read the results. Like counts show again. Entries can't be withdrawn. |
+| Judging | *Closed* … *Judging* | Like entries. No new entries. The order stays shuffled. |
+| Results | *Winner:* … | Read the results. Like counts show again. Entries can't be withdrawn. |
 
 To take your world out of a contest, select the ticket button on its card and then **Withdraw It**. The listing stays published with its Likes and comments. After staff announce the results, no entry can be withdrawn.
 

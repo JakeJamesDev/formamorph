@@ -51,7 +51,7 @@ describe('EventBanner', () => {
   it('shows the outcome once the results are announced', () => {
     render(<Banners events={[event({ resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }] })]} />);
 
-    expect(screen.getByText(/Results announced — The Long Thaw by sedgewright/)).toBeInTheDocument();
+    expect(screen.getByText(/Results announced: The Long Thaw by sedgewright/)).toBeInTheDocument();
   });
 
   it('counts a shared 1st place rather than naming one of the worlds that won it', () => {
@@ -64,7 +64,7 @@ describe('EventBanner', () => {
       ],
     })]} />);
 
-    expect(screen.getByText('Results announced — 2 worlds tied for 1st')).toBeInTheDocument();
+    expect(screen.getByText('Results announced: 2 worlds tied for 1st')).toBeInTheDocument();
     expect(screen.queryByText(/The Long Thaw/)).not.toBeInTheDocument();
   });
 

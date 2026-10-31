@@ -112,7 +112,7 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
         ...(shared.libraryDetails ? { libraryDetails: shared.libraryDetails } : {}),
       }, listing.name || noun);
       target.refresh();
-      toast.success(`"${listing.name || noun}" downloaded successfully`);
+      toast.success(`"${listing.name || noun}" downloaded`);
     } catch (error) {
       console.error(`Error downloading ${target.kind}:`, error);
       toastError(error, `Failed to download ${noun.toLowerCase()}`);
