@@ -10,9 +10,9 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 <!-- keywords: characters, npcs, people, present, list, cast, nearby, who is here, around me, in the room, party roster, look someone up, view their bio, current company -->
 <!-- route: gameViewer.entities -->
 
-1. During the game, open the side panel's **Entities** tab. On desktop, select **Entities** above the panel if the avatar shows.
-2. Read the list. Your persona heads it, marked **You**.
-3. Select an entry to open its details.
+1. During the game, open the side panel's **Entities** tab. On mobile, the panel opens on **View**; select **Entities** next to it.
+2. Read the list. Your persona heads it, marked **You**. Then come the entities at your location, those in the scene first. A footprints mark, **Following you**, shows on an entity that follows you. See [Movement](World-Editor-Locations#entities).
+3. Select an entry to open its details. See [The Entity Dialog](How-to-Play#the-entity-dialog). A stranger shows under the name you know and opens [The Stranger Dialog](How-to-Play#the-stranger-dialog).
 
 ## How to Add Your Own Entities to a Game
 <!-- keywords: characters, npcs, bring, include, library, custom characters, extra, import, my oc, bring a companion, guest star, crossover, insert into any world, keep picks next time, extra lorebooks -->
@@ -53,7 +53,7 @@ Only story-invented entities and Library Additions have the button. See [Removin
 |---|---|---|---|
 | Where it comes from | The author wrote it in the World Editor | You picked it from your library at Enter World | The story made it up mid-scene |
 | Lives in | The world. Every playthrough gets it. | This playthrough | This playthrough |
-| Editable | Yes, in the World Editor | Yes, in your library | No |
+| Editable | Yes, in the World Editor | Yes, in your library | Its description only, in its dialog |
 | Removable during the game | No | Yes | Yes |
 | Survives a new game | Yes | Only with **Remember Additions** | No |
 
@@ -69,12 +69,13 @@ This costs nothing and is always on. It works in every Thinking mode, including 
 > [!NOTE]
 > Not every capitalized name becomes an entity. A talent agency, a café, a weekday and a song title all *look* like names. The game only adds a name that acts like a person in the prose: it speaks, gestures, or is introduced. A name that only recurs, and never does something, is left alone.
 
-Two signals identify a person at once, with no second mention:
+Three signals identify a person at once, with no second mention:
 
 | Signal | Example |
 |---|---|
 | A **title** | *"**Doctor** Chen sets down the chart."* |
 | A **body part or an expression** | *"**Lyria's** hand is warm as it closes around yours."* |
+| A **self-introduction** | *"I'm **Freya**."* |
 
 Only a person has a hand, a voice, a gaze or a face, so one of those is enough. A place or an object with a possessive, such as *Teldorill's markets* or *the inn's roof*, is not an entity and is skipped.
 
@@ -100,6 +101,8 @@ Turn this on, and each invented entity also gets a written description. You can 
 | Costs a request | Never | One, the first time the story names each new entity |
 
 Only the description costs a request, so only the description is a setting. It starts on the first time if **Character Diaries** was already on. After that, the two settings are separate.
+
+Either way, an invented entity's dialog has **Edit** and **Regenerate** for its description. See [The Entity Dialog](How-to-Play#the-entity-dialog).
 
 ## Removing One
 <!-- keywords: keeps coming back, stays gone, ignore list, why no button, does it rewrite story, only this save, author characters stuck -->
