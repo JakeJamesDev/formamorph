@@ -74,6 +74,9 @@ Spec-session answers to ticket intent questions.
 | R27 | A template description is a technical-register line: two sentences at most. A third is allowed only when an author who reads just this line would otherwise build something that breaks. One sentence takes no period; two or more end with one |
 | R28 | An unassigned `src/lib/` file goes to the ticket whose screens show its copy. A file another ticket lists stays with that ticket. A string the account site also reads is swept here; `site/` itself stays out of scope |
 | R29 | The world trust notice says "scripts". Its detection skips trait, item and Tool scripts; that gap is a Finding for the user, not an in-place fix, because it changes what the notice and its code view cover |
+| R30 | Legal attestations (the age gate's "By choosing Accept…" line) stay word for word. The text around them is swept |
+| R31 | Drafts that staff edit and send (takedown and quarantine notices) are message content and keep their voice. Fix only wrong terms and false facts. A preview that mirrors a server template (the podium announcement) stays as the server sends it |
+| R32 | A count in a label ("Approved (3)") is data, not an aside |
 
 ## Screen groups
 
