@@ -52,6 +52,8 @@ export interface HelpSettings {
   readonly intentClassifier: boolean;
   /** The preset Intent Classifier requests go to, `SAME_AS_SEARCH`, or null to follow the active endpoint. */
   readonly intentEndpoint: string | null;
+  /** The preset Create requests go to, `SAME_AS_ANSWER`, or null to follow the active endpoint. */
+  readonly createEndpoint: string | null;
   /** Lookup mode: the model reads more sections through the guide lookup, where the endpoint takes function calls (ADR-0009). */
   readonly lookup: boolean;
   /** The most guide lookup calls one help question runs. */
@@ -68,7 +70,7 @@ export interface HelpSettings {
   readonly openScreen: boolean;
   /** A request carries the open world's text and the world rules of its lean. */
   readonly readWorld: boolean;
-  /** In a World Editor, the full request asks for entities in entity blocks, which reply cards add to the world. */
+  /** In a World Editor, Create questions and the full request ask for entities in entity blocks, which reply cards add to the world. */
   readonly creation: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
   readonly historyLength: number;
@@ -123,6 +125,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   // Off until the Intent probe passes its bar (Q43).
   intentClassifier: false,
   intentEndpoint: SAME_AS_SEARCH,
+  createEndpoint: SAME_AS_ANSWER,
   lookup: false,
   lookupCallLimit: DOCS_LOOKUP_CALL_LIMIT,
   roll: false,
@@ -194,6 +197,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       intentClassifier: isBool,
       intentEndpoint: (value) => value === SAME_AS_SEARCH || isPresetId(value),
+      createEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       lookup: isBool,
       lookupCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       roll: isBool,

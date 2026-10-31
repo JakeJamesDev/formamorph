@@ -12,7 +12,7 @@ import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSour
 
 /** The world slices the index reads: an editor's live world. */
 export type WorldIndexInput = Pick<World, 'worldOverview' | 'stats' | 'locations' | 'entities' | 'traits' | 'dictionaries'>
-  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'placeholders' | 'connections'>>;
+  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'placeholders' | 'connections' | 'entityGroups'>>;
 
 export interface WorldIndex {
   /** The world's sections, searched like the guide's. */
@@ -78,10 +78,16 @@ function scriptsBlock(scripts: readonly Script[] | undefined, text: (value: stri
 
 const placeholdersOf = (world: WorldIndexInput) => allPlaceholders({ ...world, placeholders: world.placeholders ?? [], items: world.items ?? [] });
 
+/** The world's text reader: placeholders as their chips, as the World Index shows them. */
+export function worldTextOf(world: WorldIndexInput): (value: string | undefined) => string {
+  const placeholders = placeholdersOf(world);
+  return (value) => chipText(value ?? '', placeholders);
+}
+
 /** The world's entity names, placeholders as their chips, as the World Index shows them. */
 export function entityNamesOf(world: WorldIndexInput): string[] {
-  const placeholders = placeholdersOf(world);
-  return world.entities.map((entity) => chipText(entity.name, placeholders));
+  const text = worldTextOf(world);
+  return world.entities.map((entity) => text(entity.name));
 }
 
 export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
