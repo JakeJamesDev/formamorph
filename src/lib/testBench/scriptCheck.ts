@@ -92,7 +92,7 @@ export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(worl
 
 /** The Bench's snapshot of `world` at turn one for a `timing` run: Test Code's clock, the authored enabled map and
  *  the open cast, with no editor overlays (Q2, Q6). */
-export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming, persona?: OpeningPersona): SandboxSnapshot =>
+export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming, { persona }: { persona?: OpeningPersona } = {}): SandboxSnapshot =>
   snapshotOf({ ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true });
 
 /**
@@ -101,7 +101,9 @@ export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming, persona?: O
  * Output script rewrites a sample sentence and a switch script fires on a sample trait (Q49). `prompts` answers
  * `player.*`.
  */
-export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost, persona?: OpeningPersona): Promise<Finding[]> {
+export async function checkScripts(
+  world: RuleWorld, { prompts, persona }: { prompts?: ScriptPromptHost; persona?: OpeningPersona } = {},
+): Promise<Finding[]> {
   const units = scriptUnits(world);
   if (!units.length) return [];
   // One snapshot per timing, since each timing reads its own clock.
@@ -109,7 +111,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost,
   const snapshotFor = (timing: RunTiming) => {
     const found = snapshots.get(timing);
     if (found) return found;
-    const made = benchSnapshotOf(world, timing, persona);
+    const made = benchSnapshotOf(world, timing, { persona });
     snapshots.set(timing, made);
     return made;
   };

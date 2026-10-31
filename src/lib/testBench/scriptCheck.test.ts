@@ -479,7 +479,7 @@ describe('the on-demand script check', () => {
       const prompts = editorPromptRun();
       const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'if (player.confirm("Drink?")) throw new Error("drank");' }) }),
-      ]), prompts.host);
+      ]), { prompts: prompts.host });
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
       prompts.store.answer(prompts.store.pending()[0].id, true);
       expect((await checking).map((f) => f.message)).toEqual(['“Mood · After the AI” throws when it runs, so the stat keeps its manual value']);
@@ -495,7 +495,7 @@ describe('the on-demand script check', () => {
         ]),
         scripts: [ask({ id: 'c', timing: 'start', code: '' })],
         entities: [{ id: 'mira', name: 'Mira', traits: [brave([ask({ id: 'd', timing: 'after', code: '' })])] }],
-      }, prompts.host);
+      }, { prompts: prompts.host });
       // The sandbox runs one prompting script at a time, so each prompt opens after the last is answered.
       const askers: (string | undefined)[] = [];
       for (let asked = 0; asked < 4; asked += 1) {
@@ -512,7 +512,7 @@ describe('the on-demand script check', () => {
       const prompts = editorPromptRun();
       const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'player.confirm("Drink?"); return 1;' }) }),
-      ]), prompts.host);
+      ]), { prompts: prompts.host });
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
       prompts.store.cancel(prompts.store.pending()[0].id);
       expect((await checking).map((f) => f.message)).toEqual([
