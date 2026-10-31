@@ -21,7 +21,7 @@ const index = createDocsIndex({
   pages: {
     Entities: '# Entities\n\nAn entity is a character the narrator plays.\n\n## How to Add an Entity\n\n1. Select **Add**.\n',
     'World-Editor-Stats': '# 📊 World Editor Stats\n\nA stat holds a number.\n\n## Scripts\n\nThe **Code** tab holds two boxes.\n',
-    ScriptsGuide: '# Scripts Guide\n\nScripts run each turn.\n\n## Quick Reference\n\nThe reference card lists every global.\n',
+    'Scripts-Reference': '# Scripts Reference\n\nScripts run each turn.\n\n## Quick Reference\n\nThe reference card lists every global.\n',
   },
 });
 

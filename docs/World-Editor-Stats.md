@@ -239,7 +239,7 @@ The code runs in an isolated sandbox with no page and no network. The editor sug
 
 > ⚠️ **A script that sets the value overwrites the AI.** The value is set again on every turn, so the AI's change to it is lost. The AI still reads the value and the description.
 
-> 📘 Full reference: [Scripts Guide](ScriptsGuide).
+> 📘 Full reference: [Scripts Reference](Scripts-Reference).
 
 ## Blueprint Stats and Links
 <!-- keywords: stat blueprint, link stat, link to, share a stat, same stat on many npcs, entity stat nodes, detach stat, remove link, reset to blueprint, template stat -->

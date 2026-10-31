@@ -176,7 +176,7 @@ You can type a value that isn't in the placeholder's list. The game uses it as w
 - A trait's own **When a Trait Switches** script also runs when the trait switches off.
 - On a trait that an entity owns or links, the script runs once for each entity that holds the trait. `owner` is that entity.
 
-> 📘 Full reference: [Scripts Guide](ScriptsGuide).
+> 📘 Full reference: [Scripts Reference](Scripts-Reference).
 
 ## When two traits conflict
 <!-- keywords: clash, priority, which wins, overlap, contradiction, order matters, tie -->

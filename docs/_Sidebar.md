@@ -45,6 +45,7 @@
 - [🪪 Personas for Authors](Persona-Authoring)
 - [📐 World Format](WorldFormat)
 - [🧮 Scripts Guide](ScriptsGuide)
+- [🧮 Scripts Reference](Scripts-Reference)
 - [🔗 Linked Content](LinkedContent)
 
 **Project**

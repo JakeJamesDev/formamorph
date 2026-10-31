@@ -249,21 +249,21 @@ When you switch the **Handler Type**, the editor keeps the settings of the other
 
 This section is for your own Tools. A World Tool's script reads what a world script reads, plus `args`. See [World Tools](ScriptsGuide#world-tools).
 
-A script reads `args` and the same globals a world script reads. Each entry has the shape that the [Scripts Guide](ScriptsGuide) gives it. Every value is read-only.
+A script reads `args` and the same globals a world script reads. Each entry has the shape that the [Scripts Reference](Scripts-Reference) gives it. Every value is read-only.
 
 | Name | What it holds | Scripts Guide |
 | --- | --- | --- |
 | `args` | The values the AI sent | [Args](#args) |
-| `entities` | Every entity in the game, discovered ones included, with `location`, `following`, `description`, `summary` and `aliases` | [Entities](ScriptsGuide#entities) |
-| `locations` | Every location by name, with `present` | [Location](ScriptsGuide#location) |
-| `location` | The entry of the current location | [Location](ScriptsGuide#location) |
-| `memories` | The Memory panel's rows, oldest first | [Memory](ScriptsGuide#memory) |
-| `dictionaries` | Every dictionary, with `entries`. Disabled entries read `enabled: false` | [Dictionaries](ScriptsGuide#dictionaries) |
-| `items` | Every item in the world by name, with its placeholders and its Item Copies in play | [Items](ScriptsGuide#items) |
-| `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](ScriptsGuide#stats), [Traits](ScriptsGuide#traits), [Placeholders](ScriptsGuide#placeholders), [Persona](ScriptsGuide#persona) |
-| `clock` | The story clock. It reads the opening outside a game | [The Story Clock](ScriptsGuide#the-story-clock) |
-| `turn` | The player's action and the turn number. A call the AI makes in a turn reads that turn | [Turn](ScriptsGuide#turn) |
-| `notes` | The player's notes as one text | [Notes](ScriptsGuide#notes) |
+| `entities` | Every entity in the game, discovered ones included, with `location`, `following`, `description`, `summary` and `aliases` | [Entities](Scripts-Reference#entities) |
+| `locations` | Every location by name, with `present` | [Location](Scripts-Reference#location) |
+| `location` | The entry of the current location | [Location](Scripts-Reference#location) |
+| `memories` | The Memory panel's rows, oldest first | [Memory](Scripts-Reference#memory) |
+| `dictionaries` | Every dictionary, with `entries`. Disabled entries read `enabled: false` | [Dictionaries](Scripts-Reference#dictionaries) |
+| `items` | Every item in the world by name, with its placeholders and its Item Copies in play | [Items](Scripts-Reference#items) |
+| `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](Scripts-Reference#stats), [Traits](Scripts-Reference#traits), [Placeholders](Scripts-Reference#placeholders), [Persona](Scripts-Reference#persona) |
+| `clock` | The story clock. It reads the opening outside a game | [The Story Clock](Scripts-Reference#the-story-clock) |
+| `turn` | The player's action and the turn number. A call the AI makes in a turn reads that turn | [Turn](Scripts-Reference#turn) |
+| `notes` | The player's notes as one text | [Notes](Scripts-Reference#notes) |
 | `console` | `log()` | None |
 
 A Tool script has none of the calls that write. Each of these calls is a "not a function" error:

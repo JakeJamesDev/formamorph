@@ -27,7 +27,7 @@ vi.mock('./helpRequestPlan', async (importOriginal) => {
 
 const index = createDocsIndex({
   pages: {
-    ScriptsGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n',
+    'Scripts-Reference': '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n',
     Entities: '# Entities\n\nAn entity is a character the narrator plays.\n\n## How to Add an Entity\n\n1. Select **Add**.\n',
   },
 });

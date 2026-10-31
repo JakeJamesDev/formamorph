@@ -18,7 +18,7 @@ import type { SurfaceEntry } from './codeSurface';
  * Its members are held to the surface lists, and its code forms run in the sandbox of the timing that adds the
  * name and read clean in that timing's editor. `statCodeQuickReference.test.ts` holds the first table.
  */
-const SECTION_ID = 'ScriptsGuide#quick-reference';
+const SECTION_ID = 'Scripts-Reference#quick-reference';
 
 interface TimingRow { name: string; timing: ScriptTiming; members: string[]; read: string; write: string }
 

@@ -34,11 +34,11 @@ const MIGRATION = /#### Moving an Old Script to the New Names[\s\S]*?(?=\n#{1,3}
 const names = (entries: readonly SurfaceEntry[]) => entries.map((entry) => entry.name);
 
 const SURFACE: ReadonlyArray<[string, string, readonly string[]]> = [
-  ['locations and location', 'ScriptsGuide#location', [...names(LOCATION_ENTRY_FIELDS), ...names(LOCATION_MEMBERS)]],
-  ['entity entries', 'ScriptsGuide#entities', names(ENTITY_FIELDS)],
-  ['persona', 'ScriptsGuide#persona', names(PERSONA_FIELDS).filter((name) => name === 'name' || name === 'traits' || name === 'placeholders' || name === 'stats')],
-  ['memories', 'ScriptsGuide#memory', [...names(MEMORY_ENTRY_FIELDS), ...names(MEMORY_MEMBERS)]],
-  ['dictionaries', 'ScriptsGuide#dictionaries', [...names(DICTIONARY_FIELDS), ...names(DICTIONARY_ENTRY_FIELDS)]],
+  ['locations and location', 'Scripts-Reference#location', [...names(LOCATION_ENTRY_FIELDS), ...names(LOCATION_MEMBERS)]],
+  ['entity entries', 'Scripts-Reference#entities', names(ENTITY_FIELDS)],
+  ['persona', 'Scripts-Reference#persona', names(PERSONA_FIELDS).filter((name) => name === 'name' || name === 'traits' || name === 'placeholders' || name === 'stats')],
+  ['memories', 'Scripts-Reference#memory', [...names(MEMORY_ENTRY_FIELDS), ...names(MEMORY_MEMBERS)]],
+  ['dictionaries', 'Scripts-Reference#dictionaries', [...names(DICTIONARY_FIELDS), ...names(DICTIONARY_ENTRY_FIELDS)]],
 ];
 
 describe('the Scripts Guide', () => {
@@ -52,12 +52,12 @@ describe('the Scripts Guide', () => {
   });
 
   it('documents notes and discover', () => {
-    expect(sectionMarkdown('ScriptsGuide#notes')).toContain('`notes`');
-    expect(sectionMarkdown('ScriptsGuide#discover')).toContain('`discover(');
+    expect(sectionMarkdown('Scripts-Reference#notes')).toContain('`notes`');
+    expect(sectionMarkdown('Scripts-Reference#discover')).toContain('`discover(');
   });
 
   it('says a pinned summary can lose to the memory limit and a pinned line never does', () => {
-    expect(sectionMarkdown('ScriptsGuide#memory')).toMatch(/pinned summary can still lose[\s\S]*pinned line never does/);
+    expect(sectionMarkdown('Scripts-Reference#memory')).toMatch(/pinned summary can still lose[\s\S]*pinned line never does/);
   });
 });
 
