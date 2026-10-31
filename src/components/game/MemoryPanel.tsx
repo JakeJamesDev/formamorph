@@ -163,7 +163,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                     {/* On the text, not the row: a row-wide trigger sits under the pin buttons and the
                         two tips would open together. */}
                     <Tip
-                      tip={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                      tip={row.asScene ? 'Sent to the AI as the full scene last turn' : row.inContext ? 'Sent to the AI last turn' : undefined}
                       labelsChild={false}
                     >
                       <p className={cn('text-meta', !row.kept && 'line-through')}>{row.text}</p>

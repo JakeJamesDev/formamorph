@@ -140,7 +140,7 @@ A long story keeps far more memories than any single turn sends.
 
 | Row | Means |
 |---|---|
-| **Left accent bar** | Sent to the story on the last turn |
+| **Left accent bar** | Sent to the AI last turn |
 | **Plain** | Kept, but not sent this turn |
 | ~~**Struck through**~~ | The story let this one go |
 
