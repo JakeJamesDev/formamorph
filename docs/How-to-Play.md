@@ -296,7 +296,11 @@ The dialog shows the entity's image or 3D model, its player-facing description, 
 
 An **Equipped** list shows what the entity wears, when you can see it. What the entity carries stays private.
 
-An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doesn't open.
+## The Stranger Dialog
+<!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->
+<!-- route: stranger -->
+
+Someone you haven't met shows in the **Entities** tab under the name you know them by. Select it to open the stranger dialog. It shows that name, the image, and a short description when the author wrote one. It never shows who they really are. Once the story introduces them, the full entity dialog opens instead.
 
 ## The Change Location Dialog
 <!-- keywords: world map, zoom, pan, places tree, sub areas, pin marker, minimap, overview of places -->

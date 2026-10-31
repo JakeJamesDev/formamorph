@@ -58,6 +58,7 @@ const ENTRIES: [string, string][] = [
   ['demoAI', "You're Playing on the Demo AI"],
   ['editText', 'Edit Text'],
   ['entity', 'Entity'],
+  ['stranger', 'Stranger'],
   ['enterWorld', 'Enter World'],
   ['errorDetails', 'Error Details'],
   ['imageSetup', 'Image Setup'],

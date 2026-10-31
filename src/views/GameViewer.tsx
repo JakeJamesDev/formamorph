@@ -931,11 +931,16 @@ const GameViewer = ({
   }, [presentIdsAt, allEntities, currentFollowers, setMetEntities]);
   const metEntitiesRef = useRef(metEntities);
   metEntitiesRef.current = metEntities;
+  /** The met test for a met-in-play list, with the start rule for the played persona. */
+  const metCheckFor = useCallback(
+    (met: readonly string[]) => metCheck(met, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id))),
+    [persona, locations, discoveredEntities],
+  );
   /** The ids of everyone the player has met now: the met-in-play list plus the start rule. */
   const metIdsNow = useCallback((): string[] => {
-    const isMet = metCheck(metEntitiesRef.current, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)));
+    const isMet = metCheckFor(metEntitiesRef.current);
     return allEntities.filter(isMet).map((entity) => entity.id);
-  }, [allEntities, persona, locations, discoveredEntities]);
+  }, [allEntities, metCheckFor]);
   // An edit to the latest page can name someone too.
   const rescanNarration = useCallback((page: number, narration: string): string[] => {
     const participants = rescanScene(page, narration);
@@ -1266,6 +1271,12 @@ const GameViewer = ({
     if (!import.meta.env.DEV || devRoute?.modal !== 'entity' || entities.length === 0) return;
     setSelectedEntity(entities[0].name);
     setIsEntityModalOpen(true);
+  }, [devRoute?.modal, entities]);
+  // The stranger popup opens for the first entity with a Stranger Name, else the first entity.
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'stranger' || entities.length === 0) return;
+    const stranger = entities.find((e) => e.strangerName?.trim()) ?? entities[0];
+    setSelectedStranger({ entityId: stranger.id, label: stranger.strangerName?.trim() || stranger.name });
   }, [devRoute?.modal, entities]);
   // DEV dev-router: boot mid-game from a canned fixture. DevFixtureLoader has loaded the world (so
   // `locations` are present); seed the save into IndexedDB and run the real loadGame to override the
@@ -2976,7 +2987,7 @@ const GameViewer = ({
     let actionVec: Float32Array | null = null;
     let priorNarration = "";
     // Who the player has met as the turn starts: the planner casts each unmet stranger under its label.
-    const isMetAtStart = metCheck(metEntities, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)));
+    const isMetAtStart = metCheckFor(metEntities);
     const strangers = plannerStrangers(allEntities, isMetAtStart, strangerAliases);
     // Staged/precall candidates the narration confirms afterward: ad-hoc = planner-invented (no entity
     // record, strict match); director = defined entities the planner cast (loose match, since it already

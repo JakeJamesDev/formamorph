@@ -83,7 +83,7 @@ export function cleanDiscoveredDescription(raw: string, name: string): string {
  * whole location-scoped pipeline (rosters, present-entity filters) treats them exactly like authored ones.
  * The anchor is the record's whole membership — a discovered character is somewhere it was invented.
  */
-export function discoveredAsEntities(discovered: DiscoveredEntity[]): Entity[] {
+export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): Entity[] {
   return discovered.map((d) => (d.locationId ? { ...d.entity, locations: [d.locationId] } : d.entity));
 }
 

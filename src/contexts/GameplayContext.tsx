@@ -14,6 +14,7 @@ import { setLiveReasoning } from '../lib/reasoningStreamStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
+import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
@@ -143,7 +144,7 @@ function useProvideGameplay() {
   // The ids of the entities the player has met. Snapshotted per turn too.
   const [metEntities, setMetEntities] = useState<readonly string[]>([]);
   // The latest alias each stranger was seen under, by entity id. Snapshotted per turn too.
-  const [strangerAliases, setStrangerAliases] = useState<Readonly<Record<string, string>>>({});
+  const [strangerAliases, setStrangerAliases] = useState<StrangerLabels>({});
   // The runtime character ids, so a join can tell their positions from the world entities'. A join adds its
   // peeled ids at once, so a move in the same batch reads them.
   const runtimeIdsRef = useRef<ReadonlySet<string>>(new Set());
