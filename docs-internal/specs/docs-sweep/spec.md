@@ -45,6 +45,9 @@ Settled with the user on 2026-10-31.
 | Q19 | A new page from a split, and a page a split shrinks, needs two blind recall questions and two baseline task questions (the help harness tests). Ask the spec session for them before prepare. A subagent that never opened `docs/` writes them from a plain feature list; the ticket adds them verbatim (user ruling) |
 | Q20 | Copy-sweep notices on keyword and route HTML comments are false positives: those comments hold search synonyms |
 | Q21 | "What reaches the AI" tables mean the text model. A field that reaches it only under a condition states that condition in its cell, never "Never"; a field sent only to the image generator says so |
+| Q22 | WorldFormat gives every exported record a field table, World Tools included; behavior stays on the owning page behind one link line (19) |
+| Q23 | The Glossary gains one row per shipped term a swept page uses as a name: the owning page's word, one definition sentence, a link to that page (19) |
+| Q24 | A stale claim on a page outside the ticket's group is fixed when source plainly shows it, and listed under Landed as that group's staleness miss; unclear intent goes to the spec session first (19) |
 
 ## Page groups
 

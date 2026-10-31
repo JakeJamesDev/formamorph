@@ -17,6 +17,11 @@ Read "Before you write", "Labels, capitalization, and complete sentences" and "C
 
 Carried from ticket 10: the Glossary's Link row says it "reads the Blueprint live", which is figurative, and the Global Stat and Global Trait rows say "No one owns it". Reword both under the Writing Guide.
 
+Carried from ticket 19:
+- Word the twelve Glossary rows it added: Presence, Movement, Known In, Known Here, Relationship, Stranger Name, Stat Link, Item, Item Copy, Starting Items, Slot, Body.
+- WorldFormat's Bodies section says "Library characters and characters the AI adds". Use the controlled term (entity).
+- Two "In play" phrases in the new WorldFormat text. Use "during the game".
+
 Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and anchors".
 
 ## Acceptance criteria
