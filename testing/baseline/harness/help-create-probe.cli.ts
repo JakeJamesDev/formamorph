@@ -7,6 +7,7 @@
 //   schema    the shipped Create request with the entity rider swapped for a JSON instruction and the strict
 //             schema (Q35's control arm); its fields are written back as blocks and read by the same parser
 //   full      the Intent Classifier off: the full request with the entity rider (Q64), reported, never gated
+//   fn        the shipped session on an endpoint known to take function calls: the face function and Tools go out
 //   novoice   the Create prompt with the Mascot Voice frame written out without its guide line (only through `--arms`)
 //   t<temp>   with `--temps 0.5,0.9`: the shipped arm at that Create temperature
 //   <name>    with `--alt FILE,FILE`: per file, the Create prompt is the file's text; `--rider-alt FILE` swaps the
@@ -73,7 +74,7 @@ const cases = allCases.filter((c) => (!only.length || only.includes(c.id)) && (!
 
 const altName = (file: string) => path.basename(file, path.extname(file));
 type Arm = string;
-const ALL_ARMS: Arm[] = ['shipped', 'aa', 'schema', 'full', 'novoice', ...temps.map((t) => `t${t}`), ...altFiles.map(altName), ...(riderAltFile ? [altName(riderAltFile)] : [])];
+const ALL_ARMS: Arm[] = ['shipped', 'aa', 'schema', 'full', 'fn', 'novoice', ...temps.map((t) => `t${t}`), ...altFiles.map(altName), ...(riderAltFile ? [altName(riderAltFile)] : [])];
 const ARMS = armList.length ? ALL_ARMS.filter((arm) => armList.includes(arm)) : ALL_ARMS.filter((arm) => arm !== 'novoice');
 const REFUSAL_ARMS = new Set<Arm>(['shipped', 'aa']);
 
@@ -96,7 +97,7 @@ function settingsOf({ classify = true, create = DEFAULT_HELP_PROMPTS.create, tem
   return helpSettingsOf({ presets, creation: true, intentClassifier: classify });
 }
 const SETTINGS: Record<Arm, HelpSettings> = {
-  shipped: settingsOf(), aa: settingsOf(), schema: settingsOf(), full: settingsOf({ classify: false }),
+  shipped: settingsOf(), aa: settingsOf(), schema: settingsOf(), full: settingsOf({ classify: false }), fn: settingsOf(),
   novoice: settingsOf({ create: NO_GUIDE_VOICE }),
   ...Object.fromEntries(temps.map((t) => [`t${t}`, settingsOf({ temperature: t })])),
   ...Object.fromEntries(altFiles.map((file) => [altName(file), settingsOf({ create: readFileSync(file, 'utf8').trim() })])),
@@ -115,11 +116,15 @@ const worldOf = (name: string): WorldIndexInput => {
 };
 const index = bundledDocsIndex();
 const snapshot = probeSnapshot({ endpoint, model, token });
+const fnSnapshot = probeSnapshot({ endpoint, model, token }, true);
 
 const sse = (content: string) => new Response(
   `data: ${JSON.stringify({ choices: [{ delta: { content }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`,
   { headers: { 'Content-Type': 'text/event-stream' } },
 );
+
+/** The function names each arm's first Create request offered. */
+const offered = new Map<Arm, string[]>();
 
 interface SentBody { messages: { role: string; content: unknown }[]; response_format?: unknown }
 
@@ -139,6 +144,7 @@ async function ask(arm: Arm, c: CreateCase): Promise<Sample> {
     const last = body.messages.at(-1)!;
     const isCreate = typeof last.content === 'string' && last.content.includes(ENTITY_RIDER);
     createRequest ||= isCreate && !!c.world;
+    if (isCreate && !offered.has(arm)) offered.set(arm, ((body as { tools?: { function: { name: string } }[] }).tools ?? []).map((t) => t.function.name));
     if (isCreate && arm === 'schema') {
       last.content = String(last.content).replace(ENTITY_RIDER, SCHEMA_LINE);
       body.response_format = responseFormat(CREATE_SCHEMA);
@@ -153,7 +159,7 @@ async function ask(arm: Arm, c: CreateCase): Promise<Sample> {
   };
   const history: EarlierExchange[] = c.earlier && c.earlierAnswer ? [{ question: c.earlier, answer: c.earlierAnswer }] : [];
   let answer = '';
-  for await (const event of askHelp({ question: c.message, history, settings: SETTINGS[arm], snapshot, index, fetchImpl, surface: c.surface ?? ENTITIES_TAB, world })) {
+  for await (const event of askHelp({ question: c.message, history, settings: SETTINGS[arm], snapshot: arm === 'fn' ? fnSnapshot : snapshot, index, fetchImpl, surface: c.surface ?? ENTITIES_TAB, world })) {
     if (event.type === 'done') answer = event.text;
   }
   return { answer: arm === 'schema' && c.world ? schemaAsBlocks(answer) : answer, finish, usage, createRequest };
@@ -275,6 +281,7 @@ for (const [label, list] of [['all', rows], ['dev', rows.filter((r) => r.set ===
   }
 }
 console.log(`\n${rows.length} replies in ${Math.round((Date.now() - started) / 1000)} s`);
+for (const [arm, names] of offered) console.log(`${arm} offers: ${names.join(", ") || "no functions"}`);
 
 const dir = path.resolve('.scratch/create-probe');
 mkdirSync(dir, { recursive: true });
