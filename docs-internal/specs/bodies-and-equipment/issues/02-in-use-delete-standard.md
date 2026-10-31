@@ -1,6 +1,6 @@
 # 02: In-Use Delete Standard
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -20,7 +20,15 @@ Spec: Implementation Decisions under Delete standard; Q25, Q29, Q30.
 
 ## Acceptance criteria
 
-- [ ] `docs/Design-System.md` has an in-use delete section with the three cases
-- [ ] One helper turns counted reference kinds into the confirm text, and a delete with zero uses needs no confirm
-- [ ] Stat, stat group and trait deletes with links show the same confirm as before, now built by the helper
-- [ ] The helper has unit tests for one kind, several kinds and zero uses
+- [x] `docs/Design-System.md` has an in-use delete section with the three cases (section "Standard: In-Use Delete")
+- [x] One helper turns counted reference kinds into the confirm text, and a delete with zero uses needs no confirm (`usedByText` returns `null`)
+- [x] Stat, stat group and trait deletes with links show the same confirm as before, now built by the helper (`TraitTree.links.test.tsx` and `WorldEditor.statBlueprints.test.tsx` pass unchanged)
+- [x] The helper has unit tests for one kind, several kinds and zero uses (`usedByText.test.ts`; the zero-use case fails when the helper returns `""`)
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Read the "Standard: In-Use Delete" section in `docs/Design-System.md` and say whether the three cases match what you want.

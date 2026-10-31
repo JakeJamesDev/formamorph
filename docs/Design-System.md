@@ -2225,6 +2225,31 @@ Button names are verb-first and name the item: "Equip Greatsword", "Drop Ash Wan
 
 Open `#dev?modal=designSystem&tab=inventory-tab`, or `#dev?view=gameViewer&fixture=items&tab=inventory` for the tab in a game.
 
+## Standard: In-Use Delete
+
+**Purpose:** Make every editor delete behave the same way, whether or not other records use the thing.
+
+### The three cases
+
+| The record is... | Delete does... |
+| --- | --- |
+| 🟢 **Used by nothing** | Deletes at once. No confirm. |
+| 🔗 **Hard-referenced** by picks, links or slot references | Opens a `ConfirmDialog` that counts the references (or names them), then clears them on confirm. |
+| 🔴 **Soft-referenced** by requirement rows, scripts or text chips | Deletes. The references stay, turn red, and the Test Bench reports them. |
+
+A record with both kinds follows the hard case. The confirm counts only the hard references.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The confirm text | `usedByText` in [`usedByText.ts`](../src/lib/usedByText.ts). It takes counted reference kinds and returns `null` at zero uses |
+| The dialog | `ConfirmDialog` in [`ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx) |
+
+### Writing review
+
+The line reads "This also deletes its link." for one reference and "This also deletes its 2 links and 1 pick." for several kinds. Zero uses has no line, and no dialog opens.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

@@ -18,7 +18,7 @@ import {
 } from '@/lib/statLinks';
 import { blueprintsGroup } from '@/lib/blueprintGroups';
 import type { FindingSection } from '@/lib/testBench/rules';
-import { alsoDeletesLinks } from './useRemoveWorldTrait';
+import { linksKind, usedByText } from '@/lib/usedByText';
 import { StatLinkToButton } from './OwnerPicker';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint, Stat } from '@/types';
@@ -93,16 +93,15 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
   };
   // A linked Blueprint stat or group takes its links with it, and Blueprints itself detaches them, so each asks first.
   const askRemoveStat = (id: string) => {
-    const links = statLinksTo(entities, new Set([id]));
-    if (!links) { removeStat(id); return; }
+    const description = usedByText([linksKind(statLinksTo(entities, new Set([id])))]);
+    if (!description) { removeStat(id); return; }
     const name = stats.find((s: Stat) => s.id === id)?.name ?? '';
-    setPending({ id, name, isGroup: false, description: alsoDeletesLinks(links) });
+    setPending({ id, name, isGroup: false, description });
   };
   const askRemoveGroup = (id: string) => {
     const group = statGroups.find((g) => g.id === id);
     const removal = group?.system === 'blueprints' ? removeStatBlueprints({ stats, statGroups }, entities) : null;
-    const links = statLinksTo(entities, new Set([id]));
-    const description = removal ? blueprintsLine(removal) : links ? alsoDeletesLinks(links) : '';
+    const description = removal ? blueprintsLine(removal) : usedByText([linksKind(statLinksTo(entities, new Set([id])))]);
     if (!description) { removeStatGroup(id); return; }
     setPending({ id, name: group?.name ?? '', isGroup: true, description });
   };
