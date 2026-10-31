@@ -1,6 +1,7 @@
 # Spec: Docs Sweep
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-31. Tickets 01–22 done; last landing db4b97bfa. Review: one gap (Entities in Game, no group) became tickets 21–22 (Q26); pipeline words fixed at close. Lint green on 2026-10-31; the full test run crashed twice under memory pressure with no failing test (user ruling to close).
 Spec session: docs-sweep — spec
 
 ## Problem Statement

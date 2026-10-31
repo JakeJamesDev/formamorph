@@ -1,6 +1,6 @@
 # 19: Reference Staleness
 
-Status: ready-for-human
+Status: done
 Blocked by: 02, 04, 06, 08, 10, 12, 14, 16, 18
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
