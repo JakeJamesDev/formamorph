@@ -11,7 +11,7 @@ import { samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
 import { usePresence } from '@/lib/usePresence';
 import {
-  IN_SCENE_TURNS, introducedIds, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
+  IN_SCENE_TURNS, introducedIds, labelsInPlay, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
 } from '@/lib/presence';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
@@ -2376,8 +2376,10 @@ const GameViewer = ({
   // Every roster lists an unmet stranger under its true name with its label beside it. This reads the live
   // met list; the turn start reads its own, as the turn begins.
   const strangerLabels = useMemo(
-    () => strangersInPlay(allEntities, metCheckFor(metEntities), strangerAliases).labels,
-    [allEntities, metCheckFor, metEntities, strangerAliases],
+    () => labelsInPlay(
+      allEntities, metEntities, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)), strangerAliases,
+    ),
+    [allEntities, metEntities, persona, locations, discoveredEntities, strangerAliases],
   );
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.

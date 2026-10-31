@@ -166,6 +166,18 @@ export interface StrangersInPlay {
   reveal: (realName: string) => StrangerReveal | undefined;
 }
 
+/** The stranger labels every roster in play carries, from the met-in-play list and the played persona. */
+export function labelsInPlay(
+  entities: readonly Entity[],
+  met: readonly string[],
+  persona: Entity | null,
+  locations: readonly Pick<GameLocation, 'id' | 'parentId'>[],
+  runtimeIds: ReadonlySet<string>,
+  aliases: StrangerLabels,
+): StrangerLabels {
+  return strangersInPlay(entities, metCheck(met, persona, locations, runtimeIds), aliases).labels;
+}
+
 /** The prompts' view of every entity that has a Stranger Name. */
 export function strangersInPlay(
   entities: readonly Entity[],
