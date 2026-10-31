@@ -86,6 +86,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q58 | (ticket 06) A duplicate Body name resolves to the first in list order; the Test Bench rule stays quiet on it (Q46 warns in the editor). The rule checks only literal names on known owner paths |
 | Q59 | (ticket 06) The base Body lives in the save keyed like trait picks ('' = the player slot). A persona change keeps it, as it keeps global traits |
 | Q60 | (ticket 06) A run that writes `body` reads the new Body at once; copies in a lost slot are not listed until the settle unequips them. A `body` write in a turn timing settles at once, as that timing's inventory writes do (ticket 06 landing; amends "settle at the turn commit") |
+| Q61 | (user ruling, at close) The pinned list row from ticket 03 is approved as a Design System pattern, with its Design System row and Rich Lists showcase sample |
 
 ## User Stories
 
@@ -202,7 +203,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 
 ### Editor
 
-- An **Equipment Settings** entry pinned at the top of the Items list opens an editor in the right pane. It has three sections: Slots, Bodies and Persona Items. The current Slots and Persona Items sections leave Overview. Bodies reuse the Morphie layer pattern (Q49), so no new Design System pattern is added.
+- An **Equipment Settings** entry pinned at the top of the Items list opens an editor in the right pane. It has three sections: Slots, Bodies and Persona Items. The current Slots and Persona Items sections leave Overview. Bodies reuse the Morphie layer pattern (Q49). The pinned entry is a new Design System pattern, the pinned list row (Q61).
 - The Bodies section is reorderable. It states that the first Body is the Default.
 - An entity's Items tab gains a Body select above its placements. Its options are Default (\<first Body name\>), None, then each Body (Q28).
 - A placement row on an owner shows an Equipped checkbox when the item has a slot. It warns when the owner's authored Body lacks that slot, or has a capacity smaller than the item's Slot Size.
