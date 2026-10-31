@@ -22,6 +22,9 @@ Sweep the copy of the help pop-out topics, tutorials and leave prompts under the
 - Copy each fact from the docs page that owns it. A help topic and its page state the same fact in the same words.
 - A help topic is extended help: short paragraphs or bullets, not hint-shaped lines.
 - The Memory pin control is "Clear the Pin and Let the Story Decide" (R12). Quote that name.
+- Leftovers from landed tickets, yours to fix:
+  - The memory row tooltips "Sent as a full scene last turn" and "Sent to the story last turn" mean the AI. Write what the AI receives, the same in `MemoryManagerModal.tsx` and `MemoryPanel.tsx`.
+  - `ModelDetailsPanel.tsx`: a TSDoc still names the "character-customization step" (R21).
 
 Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.
 
