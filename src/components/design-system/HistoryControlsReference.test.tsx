@@ -52,7 +52,7 @@ it('names each row by its full label, and an undone row as undone', () => {
 
   const rows = within(list(desktop()));
   expect(rows.getByRole('button', { name: 'Edit Stat Hunger: Description' })).toBeInTheDocument();
-  const undone = rows.getByRole('button', { name: `${MARA_LABEL}: Player Description (undone)` });
+  const undone = rows.getByRole('button', { name: `${MARA_LABEL}: Player Description, undone` });
   expect(undone).toHaveAttribute('data-undone', 'true');
   expect(rows.getByRole('button', { name: 'Edit Locations' })).toBeInTheDocument();
 });

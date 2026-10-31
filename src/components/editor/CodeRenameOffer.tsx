@@ -20,8 +20,8 @@ import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from 
  *
  * A commit is blur or Enter on a name field, or a find-and-replace pass over one. Keystrokes are not
  * commits: the offer would otherwise fire on every letter of a name being typed. A plan is built from both
- * of a stat's code boxes as they stand when the question is put, and applied through the editor's normal
- * write path, so the rename and the rewrite sit together and Discard rolls the pair back together.
+ * of a stat's code boxes as they are when the question is put, and applied through the editor's normal
+ * write path, so Discard reverts the rename and the rewrite together.
  */
 
 /** The noun each map's entries go by, for the question the dialog asks. */

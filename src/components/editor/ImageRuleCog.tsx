@@ -108,7 +108,7 @@ export function ImageRuleEditor(props: {
   return (
     <div className="space-y-2">
       <HostRuleRows {...props} />
-      <Hint>Shows this image in play while any row holds. With no rows, it always shows.</Hint>
+      <Hint>Shows this image to the player while any row holds. With no rows, it always shows.</Hint>
     </div>
   );
 }
@@ -122,7 +122,7 @@ export function ImageRuleSummary({ host, rows }: { host: RuleHost; rows: TraitRe
     [source, host, rows],
   );
   if (!source || !line) return null;
-  return <p data-image-rule-summary="" className="text-helper text-muted-foreground">{labelPlaceholders(line, source.placeholders)}</p>;
+  return <Hint data-image-rule-summary="">{labelPlaceholders(line, source.placeholders)}</Hint>;
 }
 
 /**

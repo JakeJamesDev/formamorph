@@ -113,15 +113,15 @@ const score2 = (value: number) => value.toFixed(2);
  * was judged by: a bare "fired" or "didn't" is exactly the claim an author cannot act on.
  */
 export function describeSemantic(semantic: EntrySemantic, threshold: number, cap: number): string {
-  if (semantic.score === undefined) return 'Not embedded yet, so it cannot fire on meaning.';
+  if (semantic.score === undefined) return 'Not embedded yet, so it can’t activate on meaning.';
   const against = `${score2(semantic.score)} vs the ${score2(threshold)} threshold`;
   switch (semantic.state) {
     case 'activates':
-      return `${against} — close enough to fire on meaning.`;
+      return `${against}, close enough to activate on meaning.`;
     case 'capped':
-      return `${against}, but only the closest ${cap} fire.`;
+      return `${against}, but only the closest ${cap} activate.`;
     case 'below':
-      return `${against} — too far to fire on meaning.`;
+      return `${against}, too far to activate on meaning.`;
     default:
       return '';
   }

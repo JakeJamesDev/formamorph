@@ -71,10 +71,10 @@ export interface TriggerEntry {
   badPatterns: string[];
   /** The keywords the near-miss is about, where the class names any. */
   nearMissKeywords: string[];
-  /** The literal text behind the near-miss, where one exists (the word a blocked substring sits inside). */
+  /** The literal text behind the near-miss, where one exists (the word that holds a blocked substring). */
   nearMissSample?: string;
   /** The entry's own history window, unset when it reads all of it — what a history hit's distance is
-   *  judged against, whether the hit landed inside it or fell out. */
+   *  judged against, whether the hit was inside it or fell out. */
   scanDepth?: number;
   /** How many messages back the dropped hit sat — present only on `beyond-scan-depth`. */
   nearMissDistance?: number;
@@ -264,7 +264,7 @@ function hitText(sources: ScanSource[], hit: MatchHit): string | undefined {
   return sources.find((s) => s.region === hit.region)?.text.slice(hit.start, hit.end);
 }
 
-/** The whole word a blocked substring sits inside — the thing the author has to see to believe the verdict. */
+/** The whole word that holds a blocked substring — the thing the author has to see to believe the verdict. */
 function wordAround(sources: ScanSource[], hit: MatchHit): string | undefined {
   const text = sources.find((s) => s.region === hit.region)?.text;
   if (!text) return undefined;
@@ -484,15 +484,15 @@ export function describeNearMiss(entry: TriggerEntry): string {
     case 'entry-disabled':
       return 'This entry is off.';
     case 'no-keywords':
-      return 'No keywords and not constant, so this entry can never fire.';
+      return `This entry has no keywords and ${quote('Always Inject')} is off, so it never activates.`;
     case 'invalid-regex':
-      return `${keys} is not valid regex — a pattern that cannot compile never matches.`;
+      return `${keys} isn’t valid regex, so it never matches.`;
     case 'secondary-excluded':
-      return `${keys} is present, and this entry fires only when it is absent.`;
+      return `${keys} is present, and ${quote('Exclude')} activates this entry only when it’s absent.`;
     case 'secondary-absent':
       return entry.secondary?.requireAll
-        ? `A keyword matched, but every secondary must appear too — ${keys} missing.`
-        : `A keyword matched, but none of its secondary keywords did — needs ${keys}.`;
+        ? `A keyword matched, but ${quote('Require All')} needs every secondary keyword. Missing: ${keys}.`
+        : `A keyword matched, but no secondary keyword did. It needs one of ${keys}.`;
     case 'beyond-scan-depth': {
       const depth = entry.scanDepth ?? 0;
       const back = entry.nearMissDistance ? `${messageCount(entry.nearMissDistance)} back, ` : '';
@@ -500,14 +500,14 @@ export function describeNearMiss(entry: TriggerEntry): string {
     }
     case 'whole-word-blocked':
       return entry.nearMissSample
-        ? `${keys} appears only inside ${quote(entry.nearMissSample)}, and whole-word matching is on.`
-        : `${keys} appears only inside a longer word, and whole-word matching is on.`;
+        ? `${keys} appears only inside ${quote(entry.nearMissSample)}, and ${quote('Whole Words')} is on.`
+        : `${keys} appears only inside a longer word, and ${quote('Whole Words')} is on.`;
     case 'case-blocked':
       return entry.nearMissSample
-        ? `${keys} appears only as ${quote(entry.nearMissSample)}, and case-sensitive matching is on.`
-        : `${keys} appears only in another case, and case-sensitive matching is on.`;
+        ? `${keys} appears only as ${quote(entry.nearMissSample)}, and ${quote('Case-Sensitive')} is on.`
+        : `${keys} appears only in another case, and ${quote('Case-Sensitive')} is on.`;
     case 'no-match':
-      return 'No keyword found in the text.';
+      return 'The text has no keyword.';
     default:
       return '';
   }
@@ -536,13 +536,13 @@ export function describeHitOrigin(entry: TriggerEntry, hit: MatchHit, historyCou
   if (!isHistoryRegion(hit.region)) return where;
   const depth = entry.scanDepth;
   return depth == null
-    ? `${where} · no scan depth, so all history is read`
+    ? `${where} · no scan depth, so every history message is scanned`
     : `${where} · inside its scan depth of ${messageCount(depth)}`;
 }
 
 /** Why a firing happened, as its badge reads. */
 export const REASON_LABEL: Record<ActivationReason, string> = {
-  constant: 'Always On',
+  constant: 'Always Inject',
   keyword: 'Keyword',
   recursive: 'Recursive',
   semantic: 'Semantic',

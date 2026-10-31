@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { isRuleFixable, type Finding } from '@/lib/testBench/rules';
 import { describeSemantic } from '@/lib/testBench/semantic';
@@ -59,7 +60,7 @@ const Badge = ({ children, tone = 'muted' }: { children: React.ReactNode; tone?:
 const SectionHeading = ({ label, note }: { label: string; note?: string }) => (
   <div className="flex items-baseline gap-2 pt-1">
     <p className="text-meta font-medium">{label}</p>
-    {note && <p className="min-w-0 truncate text-meta text-muted-foreground">{note}</p>}
+    {note && <Meta as="p" className="min-w-0 truncate">{note}</Meta>}
   </div>
 );
 
@@ -101,7 +102,7 @@ const RowWarnings = ({ findings, onFix }: { findings: Finding[]; onFix: (ruleId:
         <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
         <span className="min-w-0 flex-grow">{finding.message}</span>
         {isRuleFixable(finding.ruleId) && (
-          <Tip tip="Applies this rule’s repair wherever it fires" labelsChild={false}>
+          <Tip tip="Repairs every instance of this problem in the world" labelsChild={false}>
             <button
               type="button"
               onClick={() => onFix(finding.ruleId)}
@@ -155,32 +156,32 @@ const HighlightedText = ({ segments, selected, onSelect }: {
 /** The lore this run would inject, verbatim — the block the model receives, with what it costs. */
 const RenderedContext = ({ blocks, tokens }: { blocks: RenderedBlock[]; tokens: number }) => {
   if (blocks.length === 0) {
-    // The prompt's lore section still exists — it simply comes through with nothing in it.
-    return <p className="text-meta text-muted-foreground">Nothing fired, so no entry’s text is injected</p>;
+    // The prompt's lore section still exists, empty.
+    return <Meta as="p">No entry activated, so no lore is injected</Meta>;
   }
   return (
     <div className="space-y-1">
       {blocks.map((block) => (
         <div key={block.position}>
-          <p className="text-meta text-muted-foreground">
+          <Meta as="p">
             {BLOCK_LABEL[block.position]} · {block.entryCount} {block.entryCount === 1 ? 'entry' : 'entries'} ·
             {' '}~{block.tokens} tokens
-          </p>
+          </Meta>
           <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
             {block.text}
           </pre>
         </div>
       ))}
       {blocks.length > 1 && (
-        <p className="text-meta text-muted-foreground">Both blocks · ~{tokens} tokens in total</p>
+        <Meta as="p">Both blocks · ~{tokens} tokens in total</Meta>
       )}
     </div>
   );
 };
 
 /**
- * The semantic pass's own switch. Explicit and off by default on purpose: an author whose world matches by
- * keyword would otherwise read a semantic firing as proof their keywords work.
+ * The semantic pass's own switch. Explicit and off by default: an author whose world matches by keyword
+ * would otherwise read a semantic activation as proof their keywords work.
  *
  * Disabled without an index, and saying why — the Bench never builds one, since embedding a world's
  * dictionary in the background is exactly the quiet cost the toggle exists to make visible.
@@ -219,12 +220,12 @@ const SemanticToggle = ({ status, on, onChange, summary }: {
 /** Why there are no scores, in the state the toggle is in. `ready` states its coverage instead. */
 const SEMANTIC_NOTE: Record<SemanticStatus, string> = {
   checking: 'looking for embeddings…',
-  unavailable: 'no embeddings yet, so play this world once with Semantic Lore on',
-  off: 'off, so nothing below is a semantic result',
+  unavailable: 'no embeddings yet, so play this world once with “Semantic Lore” on in Settings',
+  off: 'off, so no result below is a semantic result',
   waiting: 'paste text above to score it',
   loading: 'embedding the text…',
   ready: '',
-  error: 'the embedding model could not be reached',
+  error: 'can’t reach the embedding model',
 };
 
 /** One detected entity: which written form put it on the page, and the text that did it. */
@@ -243,10 +244,10 @@ const EntityRow = ({ match, selected, warnings, onFix, register }: {
       <p className="min-w-0 flex-grow truncate text-label">{match.name}</p>
       <Badge>{VIA_LABEL[match.via]}</Badge>
     </div>
-    <p className="mt-0.5 truncate text-meta text-muted-foreground">
+    <Meta as="p" className="mt-0.5 truncate">
       Matched “{match.matched}” as “{match.spans[0].text}”
       {match.spans.length > 1 && ` · ${match.spans.length} times`}
-    </p>
+    </Meta>
     <RowWarnings findings={warnings} onFix={onFix} />
   </div>
 );
@@ -284,31 +285,31 @@ const EntryRow = ({ entry, selected, historyCount, semantic, warnings, onFix, re
         {entry.fired && <Badge tone="active">{REASON_LABEL[entry.reason]}</Badge>}
       </div>
       {entry.fired ? (
-        <p className="mt-0.5 truncate text-meta text-muted-foreground">
+        <Meta as="p" className="mt-0.5 truncate">
           {entry.reason === 'semantic'
-            ? 'Fired on meaning alone. No keyword matched.'
+            ? 'Activated on meaning alone. No keyword matched.'
             : hit
               ? `“${hit.keyword}” as “${hit.matchedText}” · ${describeHitOrigin(entry, hit, historyCount)}`
               : 'Injected on every turn'}
-        </p>
+        </Meta>
       ) : (
-        <p className="mt-0.5 text-meta leading-snug text-muted-foreground">{describeNearMiss(entry)}</p>
+        <Meta as="p" className="mt-0.5 leading-snug">{describeNearMiss(entry)}</Meta>
       )}
-      {/* On a semantic firing the keyword verdict is still the useful half — the author is looking at a row
-          their matching rules missed. `no-match` says only "the words aren't there", which the line above
+      {/* On a semantic activation the keyword verdict is still the useful half: the author is looking at a
+          row their matching rules missed. `no-match` says only "the words aren't there", which the line above
           already said. */}
       {entry.reason === 'semantic' && entry.nearMiss && entry.nearMiss !== 'no-match' && (
-        <p className="mt-0.5 text-meta leading-snug text-muted-foreground">{describeNearMiss(entry)}</p>
+        <Meta as="p" className="mt-0.5 leading-snug">{describeNearMiss(entry)}</Meta>
       )}
       {entry.semantic && semantic && (
-        <p className="mt-0.5 text-meta leading-snug text-muted-foreground">
+        <Meta as="p" className="mt-0.5 leading-snug">
           {describeSemantic(entry.semantic, semantic.threshold, semantic.cap)}
-        </p>
+        </Meta>
       )}
       {fromHistory.map((h) => (
-        <p key={h.region} className="mt-0.5 truncate text-meta text-muted-foreground">
+        <Meta as="p" key={h.region} className="mt-0.5 truncate">
           Also “{h.matchedText}” · {describeHitOrigin(entry, h, historyCount)}
-        </p>
+        </Meta>
       ))}
       {entry.badPatterns.length > 0 && entry.nearMiss !== 'invalid-regex' && (
         <p className="mt-0.5 flex items-start gap-1 text-meta leading-snug text-warning">
@@ -334,7 +335,7 @@ export interface TriggersInstrumentProps {
   onFixRule: (ruleId: string) => void;
   /** Fill both boxes from the world's most recent save. Absent when the world has never been played. */
   onPasteLastTurn?: () => void;
-  /** Where the semantic pass stands — what the toggle is enabled by and what it says when it isn't. */
+  /** The semantic pass's state — what enables the toggle and what it says when it's disabled. */
   semanticStatus: SemanticStatus;
   semanticOn: boolean;
   onSemanticChange: (on: boolean) => void;
@@ -400,7 +401,7 @@ export function TriggersInstrument({
           size="sm"
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
-          placeholder="Paste scene text to see what it makes fire…"
+          placeholder="Paste scene text to see the entities and entries it matches"
           aria-label="Scene text"
           className="min-h-[64px] resize-none"
           rows={3}
@@ -410,7 +411,7 @@ export function TriggersInstrument({
         <Foldaway
           label="History"
           note={report.historyCount === 0
-            ? '· none, so scan depth changes nothing'
+            ? '· empty, so “Scan Depth” has no effect'
             : `· ${messageCount(report.historyCount)}`}
           open={historyOpen}
           onToggle={() => setHistoryOpen((v) => !v)}
@@ -419,7 +420,7 @@ export function TriggersInstrument({
             size="sm"
             value={history}
             onChange={(e) => onHistoryChange(e.target.value)}
-            placeholder={`Earlier messages, oldest first, one per block separated by a ${HISTORY_SEPARATOR} line…`}
+            placeholder={`Paste earlier messages, oldest first, with a ${HISTORY_SEPARATOR} line between them`}
             aria-label="History messages"
             className="min-h-[64px] resize-none"
             rows={3}
@@ -459,11 +460,9 @@ export function TriggersInstrument({
             note={empty ? undefined : `${report.entities.length} detected`}
           />
           {empty ? (
-            <p className="text-meta text-muted-foreground">Paste text above to see who the harness detects</p>
+            <Meta as="p">Paste text above to see which entities it names</Meta>
           ) : report.entities.length === 0 ? (
-            <p className="text-meta text-muted-foreground">
-              No entity is named in this text, so nothing here puts one in the side panel
-            </p>
+            <Meta as="p">This text names no entity, so no entity is present</Meta>
           ) : (
             <div className="space-y-1">
               {report.entities.map((match) => (
@@ -481,24 +480,23 @@ export function TriggersInstrument({
 
           <SectionHeading
             label="Dictionary"
-            note={report.checked === 0 ? undefined : `${report.fired} of ${report.checked} fired`}
+            note={report.checked === 0 ? undefined : `${report.fired} of ${report.checked} activated`}
           />
           {report.checked === 0 ? (
-            <p className="text-meta text-muted-foreground">This world has no dictionary entries</p>
+            <Meta as="p">This world has no dictionary entries</Meta>
           ) : (
             <>
               {empty && (
-                <p className="text-meta text-muted-foreground">
+                <Meta as="p">
                   {report.constant > 0
-                    ? `${report.constant} constant ${report.constant === 1 ? 'entry injects' : 'entries inject'} on every turn, whatever the text says. The rest wait on their keywords.`
-                    : 'No entry is constant, so nothing injects until text mentions a keyword'}
-                </p>
+                    ? `${report.constant} ${report.constant === 1 ? 'entry has' : 'entries have'} “Always Inject” on and ${report.constant === 1 ? 'is' : 'are'} injected on every turn. The rest activate on their keywords.`
+                    : 'No entry has “Always Inject” on, so no entry is injected until the text has a keyword'}
+                </Meta>
               )}
               {!empty && report.fired === 0 && (
-                <p className="text-meta text-muted-foreground">
-                  Nothing fired. {report.checked} {report.checked === 1 ? 'entry was' : 'entries were'} checked, and
-                  each says below why it stayed out.
-                </p>
+                <Meta as="p">
+                  No entry activated. {report.checked === 1 ? 'The entry below says' : `Each of the ${report.checked} entries below says`} why.
+                </Meta>
               )}
               <div className="space-y-2">
                 {books.map((first) => {
@@ -508,10 +506,10 @@ export function TriggersInstrument({
                   if (inBook.length === 0) return null;
                   return (
                     <div key={first.bookId} className="space-y-1">
-                      <p className="truncate text-meta text-muted-foreground">
+                      <Meta as="p" className="truncate">
                         {first.bookName}
                         {!first.bookEnabled && ' · off'}
-                      </p>
+                      </Meta>
                       {inBook.map((entry) => (
                         <EntryRow
                           key={entry.entryId}
@@ -533,10 +531,10 @@ export function TriggersInstrument({
         </div>
       </ScrollArea>
       {!empty && (
-        <p className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground">
+        <Meta as="p" className="flex shrink-0 items-center gap-1">
           <EntitiesIcon className="h-3 w-3 shrink-0" aria-hidden />
-          Presence reads prose, not dialogue. A name only inside quotes was mentioned, not present.
-        </p>
+          A name only inside quotation marks counts as a mention. That entity isn’t present.
+        </Meta>
       )}
     </div>
   );

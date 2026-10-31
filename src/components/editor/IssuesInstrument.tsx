@@ -310,10 +310,10 @@ const AdvancedOnlySection = ({ count }: { count: number }) => {
         {count} {count === 1 ? 'finding needs' : 'findings need'} Advanced mode
       </button>
       {shown && (
-        <p className="mt-1 text-meta text-muted-foreground">
-          These are about fields Simple mode hides. Switch the editor to Advanced, beside the World Editor
-          title, to see them.
-        </p>
+        <Meta as="p" className="mt-1">
+          These findings are about fields that Simple mode hides. To see them, switch to Advanced beside the
+          World Editor title.
+        </Meta>
       )}
     </div>
   );
@@ -336,9 +336,9 @@ const ScriptCheck = ({ scriptCount, advanced, status, prompts, onRun }: {
   return (
     <div className="mt-2 border-t pt-2">
       <div className="flex items-center gap-2">
-        <p className="min-w-0 flex-grow text-meta text-muted-foreground">
-          {status === 'done' ? `Checked ${scripts}` : `${scripts} ${scriptCount === 1 ? 'runs' : 'run'} separately`}
-        </p>
+        <Meta as="p" className="min-w-0 flex-grow">
+          {status === 'done' ? `Checked ${scripts}` : `${scripts}, checked only when you ask`}
+        </Meta>
         <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={onRun} disabled={running}>
           <Play className="mr-1 h-3 w-3" aria-hidden />
           {running ? 'Running…' : status === 'done' ? 'Check Again' : 'Check Scripts'}
@@ -361,11 +361,11 @@ const SourceCheck = ({ sources }: { sources: SourceCheckProps }) => {
   const count = sources.sourceCount;
   return (
     <div className="mt-2 flex items-center gap-2 border-t pt-2">
-      <p className="min-w-0 flex-grow text-meta text-muted-foreground">
+      <Meta as="p" className="min-w-0 flex-grow">
         {sources.status === 'done'
           ? `Checked ${count} linked ${count === 1 ? 'copy' : 'copies'}`
-          : `${count} linked ${count === 1 ? 'copy follows' : 'copies follow'} a source, checked separately`}
-      </p>
+          : `${count} linked ${count === 1 ? 'copy follows' : 'copies follow'} a source, checked only when you ask`}
+      </Meta>
       <Button
         variant="outline"
         size="sm"
@@ -411,7 +411,7 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
         issues.advancedOnlyCount === 0 && (
           <div className="flex flex-col items-center gap-1 py-8 text-center">
             <p className="text-label font-medium">No Problems Found</p>
-            <p className="text-meta text-muted-foreground">{issues.ruleCount} rules checked</p>
+            <Meta as="p">{issues.ruleCount} rules checked</Meta>
           </div>
         )
       ) : (

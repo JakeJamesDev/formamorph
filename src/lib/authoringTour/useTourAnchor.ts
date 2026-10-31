@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** The attribute a tour step points at. It sits on the field's own wrapper. */
+/** The attribute a tour step points at. It goes on the field's own wrapper. */
 export const TOUR_ANCHOR_ATTR = 'data-tour-anchor';
 
 export function findTourAnchor(anchor: string): HTMLElement | null {

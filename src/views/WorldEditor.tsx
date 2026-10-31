@@ -173,7 +173,7 @@ const WorldEditorInner = ({
   initialTab?: string;
   /** A Test Bench instrument an outside request opens. */
   initialBenchTab?: string;
-  /** The route text of the control a Take Me There request lands on. */
+  /** The route text of the control a Take Me There request opens. */
   initialTarget?: string;
   /** Changes with each outside request, so a repeat request selects its tab again. */
   requestKey?: string;
@@ -410,7 +410,7 @@ const WorldEditorInner = ({
     }
   }, [devSubtab]);
   // And over the book panel, which shares the Dictionary tab's slot. Only one of the two panels shows at a
-  // time, so `details` landing on both is the same request to each.
+  // time, so `details` reaching both is the same request to each.
   useEffect(() => {
     if (import.meta.env.DEV && DICTIONARY_BOOK_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setBookTab(devSubtab as DictionaryBookPanelTab);
@@ -571,7 +571,7 @@ const WorldEditorInner = ({
   const [resumePicker, setResumePicker] = useState(false);
 
   // ── Test Bench ────────────────────────────────────────────────────────────
-  // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
+  // A finding's item is a place in the editor: open its tab with it selected, and scroll the list to it
   // the same way a search hit does. A filter left in the list box would hide the very row being navigated to.
   // `entityTab` is for a caller that means one of the entity panel's own tabs — the Placeholders tab's owner
   // node opens the entity where its placeholders are. A finding names none and keeps the author's tab.
@@ -678,7 +678,7 @@ const WorldEditorInner = ({
     }
   };
 
-  // Arriving content lands ungrouped at the root — the folder id it carried names one this world lacks.
+  // Arriving content goes ungrouped at the root — the folder id it carried names one this world lacks.
   // Its placeholders and its location membership are already resolved by the reference step above it.
   const addEntityToWorld = (entity: Entity) => {
     const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
@@ -688,7 +688,7 @@ const WorldEditorInner = ({
     if (hasAuthoredOpenings(placed) && !openingsEnabled(worldOverview, [...entities, ...locations])) {
       updateWorldOverview(setOpeningsEnabled(true));
       const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-      toast.info(`${named || 'This entity'} has openings, so Openings is switched on.`);
+      toast.info(`${named || 'This entity'} has openings, so “Openings” is now on.`);
     }
     select('entities', placed.id);
   };
@@ -745,11 +745,11 @@ const WorldEditorInner = ({
   const reloadSavedElsewhere = () => {
     reloadWorld().then((loaded) => {
       if (loaded && mounted.current) linking.clearPendingLinks();
-    }, (error: unknown) => { toastError(error, { headline: 'Formamorph cannot reload the world.' }); });
+    }, (error: unknown) => { toastError(error, { headline: 'Formamorph can’t reload the world.' }); });
   };
   // The managers write edits straight into the store as you type, so leaving has to actively roll them
   // back — closing alone would keep them live for the next time this world is opened. The links made
-  // this session roll back with them; the library items they named stay. A running save lands first, so
+  // this session roll back with them; the library items they named stay. A running save finishes first, so
   // the rollback reaches the world it wrote and the store still matches disk when the editor closes.
   const discardAfterSaves = (then: () => void) => autoSave.afterSaves(() => {
     discardChanges();
@@ -941,7 +941,7 @@ const WorldEditorInner = ({
       setDevStart({ step: devTour, items: replay.items });
     });
   }, [devTour, worldId, touring, getWorldData, loadWorldData]);
-  // Starts a render after the replayed world lands, so no tour item reads as deleted.
+  // Starts a render after the replayed world loads, so no tour item reads as deleted.
   useEffect(() => {
     if (!devStart) return;
     setDevStart(null);
@@ -975,11 +975,11 @@ const WorldEditorInner = ({
       loadWorldData(await resolveImportedWorld(loadedWorld as World), false);
     } catch (error) {
       console.error('Error parsing JSON:', error);
-      toastError(error, { headline: 'Error loading world data. Please check the file format.' });
+      toastError(error, { headline: 'Formamorph can’t read this world file. Check that it’s a world exported from Formamorph.' });
     }
   };
 
-  // A library entity lands at the root, after every root sibling.
+  // A library entity goes at the root, after every root sibling.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
   const selectedEntity = entities.find(e => e.id === selections.entities);
@@ -1155,7 +1155,7 @@ const WorldEditorInner = ({
   useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
-  // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
+  // Whose panel the palette covers: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
     activeTab === 'entities' ? selectedEntity?.id
@@ -1447,7 +1447,7 @@ const WorldEditorInner = ({
       <div
         className={cn('relative flex-grow flex overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', !isMobile && 'flex-col')}
         ref={editorRootRef}
-        // Focusable only as Find's fallback landing spot, never in the tab order — and it shows a ring there,
+        // Focusable only as Find's fallback target, never in the tab order — and it shows a ring there,
         // so a keyboard author who closed Find can see where focus went.
         tabIndex={-1}
       >
@@ -1693,7 +1693,7 @@ const WorldEditorInner = ({
 };
 
 /** Wraps the editor in its Simple/Advanced mode preference. The DEV dev-router's `mode` param seeds it,
- *  so verification can land in either mode without touching localStorage first. */
+ *  so verification can open in either mode without touching localStorage first. */
 const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
   const devRoute = useDevRoute();
   // The Authoring Tour shows Simple while it runs on this world, without touching the stored preference.

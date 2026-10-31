@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import type { BenchPopoverProps } from '@/lib/testBench/benchProps';
 import { IssuesInstrument } from './IssuesInstrument';
+import { Meta } from '@/components/ui/typography';
 
 export function BenchPopover({ open, onClose, issues, onFixRule, onOpenPanel, children }: BenchPopoverProps & {
   /** The flask button. Anchored rather than made a Radix trigger, so its own onClick owns the toggle. */
@@ -23,7 +24,7 @@ export function BenchPopover({ open, onClose, issues, onFixRule, onOpenPanel, ch
       <PopoverAnchor asChild>
         <span ref={anchorRef} className="inline-flex">{children}</span>
       </PopoverAnchor>
-      {/* portal={false}: the editor can sit inside a modal Dialog, whose scroll lock swallows wheel events
+      {/* portal={false}: the editor can render inside a modal Dialog, whose scroll lock swallows wheel events
           on portaled content. align="end" keeps the bubble under the flask at the header's right edge. */}
       <PopoverContent
         portal={false}
@@ -39,7 +40,7 @@ export function BenchPopover({ open, onClose, issues, onFixRule, onOpenPanel, ch
       >
         <div className="flex items-center gap-2 pb-1">
           <FlaskConical className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          <span className="text-meta font-medium text-muted-foreground">World Doctor</span>
+          <Meta className="font-medium">World Doctor</Meta>
         </div>
         {/* Native scroll box: the panel gives the list a ScrollArea sized `h-full`, which has nothing to
             resolve against a max-height-only parent. */}

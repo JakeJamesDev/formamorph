@@ -1,7 +1,7 @@
 /**
  * The Opening instrument — the start inspector. What a fresh game as the lens PC actually looks like: every
- * stat settled at its real turn-one value with a slider to scrub the band coverage, the traits and pins in
- * force, the wildcard rolls with their true odds, and the assembled first prompt.
+ * stat settled at its real turn-one value with a slider to scrub the band coverage, the traits and pins that
+ * apply, the wildcard rolls with their true odds, and the assembled first prompt.
  *
  * Presentational: the view-model arrives as a prop and the reroll is a callback the editor fulfills. The
  * sliders own their scrub position locally — scrubbing is a test, never an edit, so no value here ever
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 import { placeholderAccent } from '@/lib/highlightUtils';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { activeDescriptor, statValueLabel } from '@/lib/statContext';
@@ -28,7 +29,7 @@ const tokenLabel = (tokens: number) => `~${tokens.toLocaleString()}`;
 const SectionHeading = ({ label, note }: { label: string; note?: string }) => (
   <div className="flex items-baseline gap-2 pt-1">
     <p className="text-meta font-medium">{label}</p>
-    {note && <p className="min-w-0 truncate text-meta text-muted-foreground">{note}</p>}
+    {note && <Meta as="p" className="min-w-0 truncate">{note}</Meta>}
   </div>
 );
 
@@ -37,7 +38,7 @@ const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 /**
  * One stat: the fresh game's number and band on the face of the row, and a slider that scrubs the whole
  * range, live-updating which descriptor the AI would be told. The scrub position is row-local state; the
- * row itself is keyed on the settled numbers, so a world edit or PC change snaps it back to the real start.
+ * row itself is keyed on the settled numbers, so a world edit or PC change resets it to the real start.
  */
 const StatRow = ({ stat }: { stat: OpeningStat }) => {
   const [value, setValue] = useState(stat.value);
@@ -49,11 +50,11 @@ const StatRow = ({ stat }: { stat: OpeningStat }) => {
       <div className="flex items-baseline gap-1.5">
         <span className="min-w-0 flex-grow truncate text-label">{stat.name}</span>
         {stat.traitShift !== 0 && (
-          <span className="shrink-0 text-meta text-muted-foreground">{signed(stat.traitShift)} from traits</span>
+          <Meta className="shrink-0">{signed(stat.traitShift)} from traits</Meta>
         )}
-        <span className="shrink-0 text-meta text-muted-foreground">
+        <Meta className="shrink-0">
           Min {stat.min} · Regen {stat.regen === 0 ? 0 : signed(stat.regen)}
-        </span>
+        </Meta>
         <span className={cn('shrink-0 text-meta', scrubbed ? 'text-muted-foreground' : 'font-medium')}>
           {statValueLabel(stat, value)}
         </span>
@@ -87,12 +88,12 @@ const StatRow = ({ stat }: { stat: OpeningStat }) => {
   );
 };
 
-/** One owner's stat rows, each keyed on its settled numbers so a world edit snaps its slider back, and the
+/** One owner's stat rows, each keyed on its settled numbers so a world edit resets its slider, and the
  *  stats its traits leave off. */
 const StatList = ({ stats, disabled }: { stats: OpeningStat[]; disabled: string[] }) => (
   <>
     {stats.length === 0 ? (
-      <p className="text-meta text-muted-foreground">No stats are live at game start</p>
+      <Meta as="p">No stat is on at game start</Meta>
     ) : (
       <div className="space-y-1">
         {stats.map((stat) => (
@@ -101,27 +102,27 @@ const StatList = ({ stats, disabled }: { stats: OpeningStat[]; disabled: string[
       </div>
     )}
     {disabled.length > 0 && (
-      <p className="text-meta text-muted-foreground">Off at game start: {disabled.join(', ')}.</p>
+      <Meta as="p">Off at game start: {disabled.join(', ')}</Meta>
     )}
   </>
 );
 
-/** One trait in force at game start, with everything it imposes under it. */
+/** One trait that applies at game start, with its pins and stat changes under it. */
 const TraitRow = ({ trait }: { trait: OpeningTrait }) => (
   <div className="rounded-md border p-1.5">
     <div className="flex items-baseline gap-1.5">
       <span className="min-w-0 flex-grow truncate text-label">{trait.name}</span>
       {trait.isPc && (
-        <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">Lens Pick</span>
+        <Meta className="shrink-0 rounded bg-muted px-1">Testing As</Meta>
       )}
     </div>
     {(trait.pins.length > 0 || trait.toggles.length > 0) && (
-      <p className="mt-0.5 text-meta text-muted-foreground">
+      <Meta as="p" className="mt-0.5">
         {[
           ...trait.pins.map((pin) => `Pins ${pin.placeholder} to “${pin.value}”`),
           ...trait.toggles.map((toggle) => `${toggle.enabled ? 'Adds' : 'Removes'} ${toggle.stat}`),
         ].join(' · ')}
-      </p>
+      </Meta>
     )}
   </div>
 );
@@ -132,17 +133,17 @@ const RollRow = ({ group }: { group: OpeningRollGroup }) => (
     <div className="flex items-baseline gap-1.5">
       <span className="min-w-0 flex-grow truncate text-label">{group.name}</span>
       {group.pinnedValue != null ? (
-        <span className="flex shrink-0 items-center gap-1 rounded bg-muted px-1 text-meta text-muted-foreground">
+        <Meta className="flex shrink-0 items-center gap-1 rounded bg-muted px-1">
           <Pin className="h-3 w-3" aria-hidden />
           {group.pinnedValue}
-        </span>
+        </Meta>
       ) : (
         <span className="shrink-0 truncate text-meta font-medium">
           {[...(group.worldValue != null ? [group.worldValue] : []), ...group.uniqueValues].join(' · ')}
         </span>
       )}
     </div>
-    <p className="mt-0.5 truncate text-meta text-muted-foreground">
+    <Meta as="p" className="mt-0.5 truncate">
       {group.chances.map((c, i) => (
         <span key={i}>
           {i > 0 && ' · '}
@@ -159,10 +160,10 @@ const RollRow = ({ group }: { group: OpeningRollGroup }) => (
         </span>
       ))}
       {group.uniqueValues.length > 1 && ` · ${group.uniqueValues.length} unique draws`}
-    </p>
+    </Meta>
     {group.collisionChance != null && (
       <p className="text-meta text-warning">
-        ~{Math.round(group.collisionChance)}% chance two of its unique draws match.
+        ~{Math.round(group.collisionChance)}% chance that two unique draws match
       </p>
     )}
   </div>
@@ -186,9 +187,9 @@ const PromptBlock = ({ label, text, open, onToggle }: {
         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />}
       <span className="min-w-0 flex-grow truncate text-label">{label}</span>
-      <span className="shrink-0 text-meta text-muted-foreground">
+      <Meta className="shrink-0">
         {tokenLabel(estimateTokens(text.length))} tokens
-      </span>
+      </Meta>
     </button>
     {open && (
       <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
@@ -214,10 +215,10 @@ const PoolRow = ({ row, selected, onSelect }: { row: OpeningPoolRow; selected: b
       selected ? 'border-primary bg-muted/50' : 'hover:bg-muted/30',
     )}
   >
-    <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">
+    <Meta className="shrink-0 rounded bg-muted px-1">
       {row.ownerName ?? row.locationName ?? 'This World'}
-    </span>
-    <span className="shrink-0 text-meta text-muted-foreground">{row.self ? `${KIND_LABEL[row.kind]} (Self)` : KIND_LABEL[row.kind]}</span>
+    </Meta>
+    <Meta className="shrink-0">{row.self ? `${KIND_LABEL[row.kind]} (Self)` : KIND_LABEL[row.kind]}</Meta>
     <span className="min-w-0 flex-grow truncate text-label">{row.text}</span>
     <span className="shrink-0 text-meta font-medium">{Math.round(row.chance)}%</span>
   </button>
@@ -240,9 +241,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
 
   if (!data.location) {
     return (
-      <p className="text-meta text-muted-foreground">
-        This world has no locations yet, so a fresh game has nowhere to start
-      </p>
+      <Meta as="p">This world has no locations, so a new game has nowhere to start</Meta>
     );
   }
 
@@ -267,7 +266,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
                   ))}
                 </SelectContent>
               </Select>
-              <p className="min-w-0 truncate text-meta text-muted-foreground">Sets the persona</p>
+              <Meta as="p" className="min-w-0 truncate">Picks the persona you play</Meta>
             </div>
           )}
           {data.starts.length > 1 ? (
@@ -282,22 +281,22 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
                   ))}
                 </SelectContent>
               </Select>
-              <p className="min-w-0 truncate text-meta text-muted-foreground">
-                one of {data.startPool} possible starts, picked at random when the game starts
-              </p>
+              <Meta as="p" className="min-w-0 truncate">
+                One of {data.startPool} starting locations, picked at random in a new game
+              </Meta>
             </div>
           ) : (
-            <p className="text-meta text-muted-foreground">Starts at {data.locationName}</p>
+            <Meta as="p">Starts at {data.locationName}</Meta>
           )}
         </div>
 
         <SectionHeading label="Opening Pool" note={`what a new game at ${data.locationName} draws from`} />
         {data.pool.length === 0 ? (
-          <p className="text-meta text-muted-foreground">
+          <Meta as="p">
             {data.openingsEnabled
-              ? 'No opening here can be drawn, so play opens on the default opening'
-              : 'The openings list is off, so play opens on the default opening'}
-          </p>
+              ? 'No opening here can be drawn, so the game starts with the default opening'
+              : '“Openings” is off, so the game starts with the default opening'}
+          </Meta>
         ) : (
           <div className="space-y-1">
             {data.pool.map((row) => (
@@ -313,19 +312,19 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
 
         <SectionHeading
           label="Stats at Game Start"
-          note="scrub to test the bands without editing the world"
+          note="drag a slider to test the bands without editing the world"
         />
         <StatList stats={data.stats} disabled={data.disabledStats} />
         {data.entityStats.map((entity) => (
           <div key={entity.id} className="space-y-1">
-            <SectionHeading label={entity.name} note="own stats at game start" />
+            <SectionHeading label={entity.name} note="its own stats at game start" />
             <StatList stats={entity.stats} disabled={entity.disabledStats} />
           </div>
         ))}
 
-        <SectionHeading label="Active Traits" note={data.pcName ? 'defaults plus the lens pick' : 'the defaults'} />
+        <SectionHeading label="Active Traits" note={data.pcName ? 'the defaults and the “Testing as” pick' : 'the defaults'} />
         {data.traits.length === 0 ? (
-          <p className="text-meta text-muted-foreground">No traits are active at game start</p>
+          <Meta as="p">No traits are active at game start</Meta>
         ) : (
           <div className="space-y-1">
             {data.traits.map((trait) => <TraitRow key={trait.id} trait={trait} />)}
@@ -335,9 +334,9 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
         {/* The row stays when no roll is open to a reroll, so it is the landing for the Reroll button. */}
         <div className="flex items-baseline gap-2 pt-1" {...targetAttribute('worldEditorBench.opening', 'placeholder-rolls')}>
           <p className="text-meta font-medium">Placeholder Rolls</p>
-          <p className="min-w-0 flex-grow truncate text-meta text-muted-foreground">
-            what this fresh game drew
-          </p>
+          <Meta as="p" className="min-w-0 flex-grow truncate">
+            what this new game drew
+          </Meta>
           {data.rolls.some((group) => group.pinnedValue == null) && (
             <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={onReroll}>
               <Dices className="mr-1 h-3 w-3" aria-hidden />
@@ -346,7 +345,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
           )}
         </div>
         {data.rolls.length === 0 ? (
-          <p className="text-meta text-muted-foreground">No Wildcard chips in this world, so nothing rolls</p>
+          <Meta as="p">This world has no Wildcard chips, so nothing rolls</Meta>
         ) : (
           <div className="space-y-1">
             {data.rolls.map((group) => <RollRow key={group.placeholderId} group={group} />)}
@@ -359,9 +358,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
             <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
               {data.opening.text}
             </pre>
-            <p className="text-meta text-muted-foreground">
-              An Opening Narration is page one, so no narration request goes out on turn one
-            </p>
+            <Meta as="p">The Opening Narration is page one, so turn one sends no narration request</Meta>
           </>
         ) : (
           <>
@@ -380,11 +377,10 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
                 onToggle={() => toggle('user')}
               />
             </div>
-            <p className="flex items-start gap-1 text-meta leading-snug text-muted-foreground">
+            <Meta as="p" className="flex items-start gap-1 leading-snug">
               <Sparkles className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-              Assembled with the shipped default prompts and settings. Custom prompt presets are a global
-              setting and aren’t read here.
-            </p>
+              Built from the default prompts and settings. Custom prompt presets aren’t read here.
+            </Meta>
           </>
         )}
       </div>

@@ -23,6 +23,7 @@ import { IssuesInstrument } from './IssuesInstrument';
 import { OpeningInstrument } from './OpeningInstrument';
 import { TriggersInstrument } from './TriggersInstrument';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 
 /** The toggle names the placement it would move to, not the one it is in — it is an action, not a label. */
 const PLACEMENT_TOGGLE: Record<BenchPlacement, { label: string; icon: typeof PanelLeft }> = {
@@ -35,7 +36,7 @@ export function TestBench({
 }: TestBenchProps) {
   const toggle = placementControl && PLACEMENT_TOGGLE[placementControl.placement];
   return (
-    // Embedded sits inside the editor's CardContent, which already pads — its own padding would stack, and
+    // Embedded renders inside the editor's CardContent, which already pads — its own padding would stack, and
     // the Bench's chrome would no longer start where the tab strip it replaced did.
     <div className={cn('flex h-full flex-col gap-2', placementControl?.placement !== 'embedded' && 'p-3')}>
       <div className="flex items-center gap-2">
@@ -161,24 +162,24 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   );
 };
 
-/** The Bench-level lens every instrument reads: who is being played, and where they are standing. Its notes
- *  sit under it because both are consequences of the PC on the selector directly above them. */
+/** The Bench-level lens every instrument reads: who is being played, and at which location. Its notes go
+ *  under it because both follow from the PC on the selector directly above them. */
 const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange }: LensBarProps) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
-      <span className="shrink-0 text-meta text-muted-foreground">Testing as</span>
+      <Meta className="shrink-0">Testing as</Meta>
       <LensSelect
         icon={EntityIcon}
-        label="Test as character"
+        label="Testing as"
         none="Anyone"
         value={lens.state.pcTraitId}
         options={pcOptions}
         onChange={onPcChange}
       />
-      <span className="shrink-0 text-meta text-muted-foreground">at</span>
+      <Meta className="shrink-0">at</Meta>
       <LensSelect
         icon={LocationIcon}
-        label="Test at location"
+        label="Testing at"
         none="Nowhere"
         value={lens.state.locationId}
         options={locationOptions}
@@ -192,9 +193,9 @@ const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, 
       </p>
     ))}
     {statOverrides.length > 0 && (
-      <p className="text-meta text-muted-foreground">
+      <Meta as="p">
         {statOverrides.map((o) => `${o.enabled ? 'Adds' : 'Removes'} ${o.stat}`).join(' · ')}
-      </p>
+      </Meta>
     )}
   </div>
 );

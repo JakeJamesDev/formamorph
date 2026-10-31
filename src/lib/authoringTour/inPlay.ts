@@ -1,6 +1,6 @@
 /**
  * In Game: the tour item a step builds, as the player sees it and as each prompt reads it, with the step's
- * own field marked where it lands. Reader text comes from the Test Bench's AI Context builders, so it is the
+ * own field marked where it appears. Reader text comes from the Test Bench's AI Context builders, so it is the
  * block a real turn sends.
  */
 import type { WorldRecord } from '@/components/WorldDetails';
@@ -127,7 +127,7 @@ export interface InPlaySpec {
    */
   scene?: 'entity' | 'connection' | 'secondLocation';
   /**
-   * The lens plays a new game with the tour trait picked on the setup screen: the trait stands in as the lens
+   * The lens plays a new game with the tour trait picked on the setup screen: the trait acts as the lens
    * character, which applies it the way ticking it there does.
    */
   picksTrait?: boolean;

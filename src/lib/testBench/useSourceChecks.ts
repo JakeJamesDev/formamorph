@@ -55,7 +55,7 @@ export function useSourceChecks(
     setStatus(stored.checkedAt ? 'done' : 'idle');
   }, [worldId]);
 
-  // Only the newest run may land: an author who asks twice must not have the first answer overwrite the
+  // Only the newest run may apply: an author who asks twice must not have the first answer overwrite the
   // second when it finally arrives.
   const newest = useRef(0);
   useEffect(() => () => { newest.current += 1; }, []);

@@ -101,7 +101,7 @@ describe('WorldEditor — the missing-source check', () => {
     vi.mocked(WorldStorageService.checkSource).mockResolvedValue('unavailable');
     fireEvent.click(await openBench());
 
-    expect(await screen.findByText('2 linked copies’ sources could not be checked')).toBeInTheDocument();
+    expect(await screen.findByText('Formamorph couldn’t check the sources of 2 linked copies')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Retry Check/ })).toBeInTheDocument();
     expect(screen.queryByText(/removed the listing/)).not.toBeInTheDocument();
   });

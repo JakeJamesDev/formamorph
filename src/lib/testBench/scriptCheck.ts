@@ -24,7 +24,7 @@ export { SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME } from './rules';
 
 /** How a run failed, in the author's words. */
 const FAILURE: Record<StatCodeFailure, string> = {
-  timeout: 'times out — it never finishes',
+  timeout: 'times out and never finishes',
   'non-number': 'doesn’t return a number',
   throw: 'throws when it runs',
   'bad-write': 'writes a placeholder or trait a value of the wrong type',
@@ -33,11 +33,11 @@ const FAILURE: Record<StatCodeFailure, string> = {
 
 /** What a stat script's failure leaves behind. */
 const STAT_LEFT: Record<StatCodeFailure, string> = {
-  timeout: 'so the value is left as it was',
+  timeout: 'so the stat keeps its value',
   'non-number': 'so the stat keeps its manual value',
   throw: 'so the stat keeps its manual value',
-  'bad-write': 'so the run changes nothing',
-  canceled: 'so the run changes nothing',
+  'bad-write': 'so the run’s writes are ignored',
+  canceled: 'so the run’s writes are ignored',
 };
 
 /** One script the check runs, named as its row names it. */
@@ -55,15 +55,15 @@ type ScriptUnit = {
 /** What a failure leaves behind: a During AI Output sentence passes unchanged (Q22); a trait or world script,
  *  which sets no value, changes nothing. */
 const leftBehind = ({ script, home }: ScriptUnit, kind: StatCodeFailure) => (script.timing === 'output'
-  ? 'so its sentence passes unchanged' : 'stat' in home ? STAT_LEFT[kind] : 'so the run changes nothing');
+  ? 'so its sentence passes unchanged' : 'stat' in home ? STAT_LEFT[kind] : 'so the run’s writes are ignored');
 
 const quote = (name: string) => `“${name}”`;
 const quoteAll = (names: readonly string[]) => names.map(quote).join(', ');
 
-/** The names a run wrote that the world lacks, phrased for the row; null when every write landed. */
+/** The names a run wrote that the world lacks, phrased for the row; null when every write applied. */
 function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCodeResult): string | null {
   const parts = [
-    ...(unknownPlaceholders.length ? [`no placeholder answers ${quoteAll(unknownPlaceholders)}`] : []),
+    ...(unknownPlaceholders.length ? [`no placeholder is named ${quoteAll(unknownPlaceholders)}`] : []),
     ...(unknownTraits.length ? [`no trait is named ${quoteAll(unknownTraits)}`] : []),
   ];
   return parts.length ? parts.join(' and ') : null;
@@ -73,7 +73,7 @@ function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCode
 const diaryNames = ({ maybeDiary = [] }: StatCodeResult): string | null => {
   if (!maybeDiary.length) return null;
   const one = maybeDiary.length === 1;
-  return `a diary for ${quoteAll(maybeDiary)}, ${one ? 'a name' : 'names'} the cast lacks. Play may discover ${one ? 'it' : 'them'}.`;
+  return `a diary for ${quoteAll(maybeDiary)}, ${one ? 'a name' : 'names'} no entity has yet. ${one ? 'An entity with that name' : 'Entities with those names'} can appear during play.`;
 };
 
 /** Every filled script in the world, in check order: the world's, then each stat's, then each trait's. A linked

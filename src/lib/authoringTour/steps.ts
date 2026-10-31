@@ -346,7 +346,7 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     anchor: 'world-thumbnail',
     item: null,
     title: 'Thumbnail',
-    body: 'Add a picture for the library card. Players see it beside the name, and the AI never reads it.',
+    body: 'Add an image for the library card. Players see it beside the name, and the AI never reads it.',
     isComplete: (world) => !!world.worldOverview.thumbnail,
     useExample: async (api) => api.updateWorldOverview({ thumbnail: await loadTourImage('brinewell') }),
     inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'world' }] },
@@ -419,7 +419,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
     item: 'location',
     panelTab: 'media',
     title: 'Background Image',
-    body: 'Add a picture of the place. Players see it behind the story while they’re here, and the AI never reads it.',
+    body: 'Add an image of the place. Players see it behind the story while they’re here, and the AI never reads it.',
     isComplete: (world, items) => locationImages(tourLocation(world, items, 'location')).length > 0,
     useExample: async (api, world, items) => patchLocation(api, world, items, 'location', {
       images: [{ data: await loadTourImage('tidewell') }],
@@ -572,7 +572,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     item: 'entity',
     panelTab: 'profile',
     title: 'Image',
-    body: 'Add a picture of the entity. Players see it on the entity’s card, and the AI never reads it.',
+    body: 'Add an image of the entity. Players see it on the entity’s card, and the AI never reads it.',
     isComplete: (world, items) => entityImages(tourEntity(world, items)).length > 0,
     useExample: async (api, world, items) => patchEntity(api, world, items, { images: [{ data: await loadTourImage('maren') }] }),
     inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
@@ -635,7 +635,7 @@ const STAT_STEPS: readonly TourStep[] = [
     item: 'stat',
     title: 'Stat Name',
     body: 'Name the stat. "Base Value" sets where it starts, and "Min" and "Max" set its range. Players see the name '
-      + 'and the number, and the narration prompt never reads the number.',
+      + 'and the number, and the Narration Prompt never reads the number.',
     isComplete: (world, items) => isChosenName(tourStat(world, items)?.name, NEW_STAT_NAME),
     useExample: (api, world, items) => patchStat(api, world, items, {
       name: SEA_CHANGE.name, min: SEA_CHANGE.min, max: SEA_CHANGE.max, value: SEA_CHANGE.value,
@@ -654,8 +654,8 @@ const STAT_STEPS: readonly TourStep[] = [
     anchor: 'stat-description',
     item: 'stat',
     title: 'Description',
-    body: 'Tell the AI what this stat measures and what changes it. The Stat Updates prompt uses it to decide how '
-      + 'the value changes. Players never see it, and the narration prompt never reads it.',
+    body: 'Tell the AI what this stat measures and what changes it. The Stat Updates Prompt uses it to decide how '
+      + 'the value changes. Players never see it, and the Narration Prompt never reads it.',
     isComplete: (world, items) => hasValue((tourStat(world, items)?.description ?? '').trim()),
     useExample: (api, world, items) => patchStat(api, world, items, { description: SEA_CHANGE.description }),
     inPlay: {
@@ -783,7 +783,7 @@ const DICTIONARY_STEPS: readonly TourStep[] = [
     anchor: 'dictionary-name',
     item: 'entry',
     title: 'Name and Trigger Keywords',
-    body: 'Name the entry, then add the words that bring it up. The AI reads the entry only when a message has one.',
+    body: 'Name the entry, then add the words that activate it. The AI reads the entry only when a message has one.',
     isComplete: (world, items) => {
       const entry = tourEntry(world, items);
       return !!entry && hasValue((entry.name ?? '').trim()) && parseKeywords(entry).length > 0;
