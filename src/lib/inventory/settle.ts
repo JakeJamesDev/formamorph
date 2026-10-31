@@ -43,6 +43,8 @@ export interface InventorySettleWorld {
   /** Resolves the placeholders in an item or stat name. */
   resolve?: (text: string) => string;
   cap?: number;
+  /** Keeps requirement unequips out of the log, as a new game does (Q50). */
+  quietUnequips?: boolean;
 }
 
 export interface InventorySettleResult {
@@ -188,7 +190,7 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
     }
     copies = copies.map((copy) => (failing.includes(copy) ? unequipped(copy) : copy));
     for (const copy of failing) {
-      log.push(`Unequipped ${read.copyName(copy)}: requirement no longer holds`);
+      if (!world.quietUnequips) log.push(`Unequipped ${read.copyName(copy)}: requirement no longer holds`);
       if (copy.item.kind === 'item') {
         events.push({ timing: 'unequipped', itemId: copy.item.itemId, copyId: copy.id, where: copy.where, quantity: copy.quantity });
       }

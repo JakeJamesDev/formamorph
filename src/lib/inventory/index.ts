@@ -74,9 +74,33 @@ function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef |
  * isn't stackable is its own Item Copy with full uses. Seeded copies start carried, and unidentified when the item
  * has an unidentified face (Q16). Runs for a new game only (Q59).
  */
-export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): ItemCopy[] {
+export const seedItemCopies = (world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): ItemCopy[] =>
+  seedPlacements(world, persona, newId).copies;
+
+/** The authored slice the starting copies read. */
+export type StartWorld = SeedWorld & InventoryWorld;
+
+/**
+ * The Item Copies a new game starts with: the seed, then each Equipped placement equipped as the panel would
+ * (Q36, Q51). A refused equip stays carried. `requirement` is the new game's equip check; previews pass none.
+ */
+export function startingCopies(
+  world: StartWorld, persona: PersonaRef | undefined, newId: NewId, requirement?: InventoryCall['requirement'],
+): ItemCopy[] {
+  const { copies, equips } = seedPlacements(world, persona, newId);
+  if (!equips.length) return copies;
+  return applyInventoryOps(copies, equips, { world, source: 'panel', newId, persona, ...(requirement && { requirement }) }).copies;
+}
+
+/** The seeded Item Copies, and one equip per unit of each Equipped owner placement, in placement order (Q36). */
+function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): { copies: ItemCopy[]; equips: InventoryOp[] } {
   const items = new Map((world.items ?? []).map((item) => [item.id, item]));
   const copies: ItemCopy[] = [];
+  const equips: InventoryOp[] = [];
+  // The validator refuses an equip at a location, so a stray flag there is harmless.
+  const equip = (placement: Placement, copyId: string) => {
+    if (placement.equipped) equips.push({ kind: 'equip', copyId });
+  };
   for (const placement of world.placements ?? []) {
     const item = items.get(placement.source.itemId);
     const where = seedWhere(placement, world, persona);
@@ -88,15 +112,20 @@ export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined
     if (itemStackable(item)) {
       const stack = copies.find((c) => c.item.kind === 'item' && c.item.itemId === item.id
         && c.visibility === visibility && sameWhere(c.where, where));
+      const id = stack ? stack.id : newId();
       if (stack) stack.quantity += quantity;
-      else copies.push({ id: newId(), item: ref, where, quantity, visibility, ...(state && { state }) });
+      else copies.push({ id, item: ref, where, quantity, visibility, ...(state && { state }) });
+      // Each equip splits one copy off the stack, which keeps its id.
+      for (let i = 0; i < quantity; i += 1) equip(placement, id);
       continue;
     }
     for (let i = 0; i < quantity; i += 1) {
-      copies.push({ id: newId(), item: ref, where, quantity: 1, visibility, ...(state && { state }) });
+      const id = newId();
+      copies.push({ id, item: ref, where, quantity: 1, visibility, ...(state && { state }) });
+      equip(placement, id);
     }
   }
-  return copies;
+  return { copies, equips };
 }
 
 /** Who sent a list of operations. Bound stops the panel only (Q58). */

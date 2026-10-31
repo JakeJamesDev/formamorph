@@ -6,7 +6,7 @@ import {
 import { gateOf, gateStates, settle, switchTrait } from './traitGates';
 import { cascadeOffInput } from './traitRuntime';
 import type { PersonaPickContext } from './personaPick';
-import type { Entity, GameLocation, PersonaRef, Trait } from '@/types';
+import type { Body, Entity, GameLocation, PersonaRef, Trait } from '@/types';
 
 const entity = (id: string, locations: string[]): Entity => ({
   id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations,
@@ -195,5 +195,20 @@ describe('Blueprints at Enter World', () => {
       entities: [], library: [],
     };
     expect(entryDefaults(lists, { source: 'none' }).traitIds).toEqual(['brave']);
+  });
+});
+
+describe('entryGateInput — starting equips', () => {
+  // Q51: an item Condition at Enter World reads an Equipped placement as equipped, under the Body rules.
+  it('reads an Equipped placement as equipped, and one the Body refuses as carried', () => {
+    const curse: Trait = { id: 'curse', name: 'Curse', statChanges: [], requires: [{ all: [{ kind: 'item', id: 'ring', status: 'equipped' }] }] };
+    const unlocked = (bodies: Body[]) => gateOf(gateStates(entryGateInput({
+      traits: [curse], traitGroups: [], entities: [], library: [],
+      items: [{ id: 'ring', name: 'Ring', slotId: 'finger', statEffects: [], traitEffects: [], equipRequires: [] }],
+      placements: [{ id: 'p1', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'ring' } }],
+      slots: [{ id: 'finger', name: 'Finger' }], bodies,
+    }, emptyEntryDraft())), null, 'curse')?.unlocked;
+    expect(unlocked([{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] }])).toBe(true);
+    expect(unlocked([{ id: 'dog', name: 'Dog', entries: [] }])).toBe(false);
   });
 });

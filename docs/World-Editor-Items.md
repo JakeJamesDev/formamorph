@@ -213,6 +213,17 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 
 > ⚠️ Starting items appear only in a new game. A saved game never gains the items you add later.
 
+### Equipped
+<!-- keywords: start equipped, starting equipment, starting armor, wear at start, equipped at start -->
+
+On the player or an entity, a row whose item has a slot also shows **Equipped**. ⚔️ An Equipped item starts the game equipped, and its **While Equipped** effects apply from the first turn.
+
+- Rows equip in list order. When a slot is full, a later row unequips the earlier item, which starts carried.
+- A row with a quantity equips each copy in turn. Three rings in a slot that holds two leave one carried.
+- An item that can't be equipped starts carried. The row warns you when its Body has no room for it.
+- An item whose [Requirements](#requirements) fail at the start also starts carried.
+- An Equipped item can also be **Hidden**. It fills its slot, but the player doesn't see it.
+
 ## Items in the story
 <!-- keywords: inventory pass, ai gives items, story picks up item, invented item, runtime item, item names, narrator item changes -->
 

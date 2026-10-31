@@ -18,7 +18,7 @@ import {
   seedNewGameStats, statTraitsInForce, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { PersonaPick } from './persona';
-import { seedItemCopies, settleInventory, type NewId } from './inventory';
+import { equipRequirement, settleInventory, startingCopies, type NewId } from './inventory';
 import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
@@ -27,7 +27,7 @@ import type { Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTrait
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
   'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries' | 'locations'
-  | 'connections' | 'worldOverview' | 'items' | 'placements'
+  | 'connections' | 'worldOverview' | 'items' | 'placements' | 'slots' | 'bodies'
 >>;
 
 /** What the player picked at the entry step: the global trait ids and each owner's trait ids. */
@@ -88,9 +88,10 @@ export function openingFold(
   const { stats: authored, entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
   const ownerWorld = { traits, traitGroups, entities };
   const library = inPlayLibrary(ownerWorld, persona?.libraryEntity, persona?.characters ?? []);
-  const itemCopies = seedItemCopies(world, ref, newId);
+  const startWorld = { ...world, entities };
+  // The trait picks read the start as Enter World showed it: equipped, before any requirement check (Q51).
   const traitWorld: TraitWorld = {
-    traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemCopies,
+    traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemCopies: startingCopies(startWorld, ref, newId),
     ...inPlayOwners(ownerWorld, ref, library),
   };
 
@@ -107,12 +108,13 @@ export function openingFold(
     ...traitState, ownedTraits: ownedTraitStatesFrom(picks.owned), entityStats: seedEntityStats(statEntities),
   }, traitWorld);
   traitState = applyOwnedStatTraits(rows.state, traitWorld);
+  // A starting equip that fails its requirement stays carried; none logs, and no script fires (Q37, Q50).
+  const settleWorld = { items: world.items ?? [], traits: traitWorld, persona: ref, entities, quietUnequips: true };
+  const itemCopies = startingCopies(startWorld, ref, newId, equipRequirement({ traits: traitState, ledger: undefined }, settleWorld));
   // Seeded Item Copies apply their effects, On First Obtain included (Q59).
-  const items = settleInventory(
-    { copies: itemCopies, traits: traitState, ledger: undefined },
-    { items: world.items ?? [], traits: traitWorld, persona: ref, entities },
-  );
+  const items = settleInventory({ copies: itemCopies, traits: traitState, ledger: undefined }, settleWorld);
   traitState = items.traits;
+  const playWorld: TraitWorld = { ...traitWorld, itemCopies: [...items.copies] };
   const entityStats = traitState.entityStats ?? {};
   const ownedTraits = traitState.ownedTraits ?? {};
 
@@ -123,13 +125,13 @@ export function openingFold(
   const metIds = [...entities, ...library].filter((e) => startsMet(e, played, locations)).map((e) => e.id);
   const state: SandboxState = {
     stats: traitState.stats,
-    enabled: activeStatEnabled(traitState.stats, statTraitsInForce(traitState, traitWorld)),
-    owners: entityStatOwners(entityStats, statEntities, ref, (id) => entityStatTraitsInForce(ownedTraits, traitWorld, id))
+    enabled: activeStatEnabled(traitState.stats, statTraitsInForce(traitState, playWorld)),
+    owners: entityStatOwners(entityStats, statEntities, ref, (id) => entityStatTraitsInForce(ownedTraits, playWorld, id))
       .map(({ id, stats, enabled }) => ({ id, stats, enabled })),
-    gateStats: gateStatsOf(traitState, traitWorld),
+    gateStats: gateStatsOf(traitState, playWorld),
     ownerTraits: {
       acquired: traitState.traits, disabledTraitIds: [], appliedValues: traitState.appliedValues, ownedTraits,
-      world: traitWorld, entities, library, metIds,
+      world: playWorld, entities, library, metIds,
     },
     placeholders: {
       placeholders: allPlaceholders(world), owners: placeholderOwners(world), dictionaries: world.dictionaries ?? [], rolls: {},
@@ -137,7 +139,7 @@ export function openingFold(
     places: { locations, location: start && { id: start.id, name: start.name }, connections: world.connections ?? [] },
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
-    itemCopies,
+    itemCopies: playWorld.itemCopies,
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
   return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log } };
