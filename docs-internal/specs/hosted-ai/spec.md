@@ -1,6 +1,7 @@
 # Spec: Formamorph AI
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-30. Tickets 01–14 landed; last landing 005c901e6. Review: spec text corrected; gaps went to tickets 12–14. Gates green on 2026-10-30.
 Spec session: hosted-ai — spec
 Status note: Tier display names are open (see Further Notes). Every window, budget, price, ratio and provider term lives in the local hosted-tier note, never in this repo.
 
@@ -138,7 +139,7 @@ A player without a pledge sees the preset locked, with a link to join on Patreon
 - Moderators can't read or write it. Values never appear in either repo; the local note holds the starting values.
 
 **Hosted state API**
-- A new account route returns the hosted state: tier key, state, window, `max_tokens` cap, the token estimate margin, `model: { id, capabilities }` where `id` is the active approved entry's own id (not the upstream model id), percent used, about-turns-left, reset time, and which warnings this account has acknowledged this month. It never returns dollar amounts.
+- A new account route returns the hosted state: tier key, state, window, `max_tokens` cap, the token estimate margin, `model: { id, capabilities }` where `id` is the active approved entry's own id (not the upstream model id), percent used, about-turns-left, reset time, the warning thresholds (`warnThresholds`, from settings, with a server-config default), and which warnings this account has acknowledged this month. It never returns dollar amounts.
 - Turns left uses the subject's average cost per turn over its recent turns, grouped by turn id. With too few recent turns it uses the tier's fallback figure.
 - A route acknowledges a warning for this month. Warnings are per account, so each shows once across devices.
 - The proxy sends the updated percent used and turns left as `event: usage` (`percentUsed`, `turnsLeft`, `resetAt`) after the usage settles and before the stream's final `[DONE]`, and as the `X-Formamorph-Usage` header on non-streamed calls. The header is listed in CORS exposed headers.
