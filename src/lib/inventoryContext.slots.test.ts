@@ -90,6 +90,15 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
       .toBe('<owner>\n  <name>Traveler</name>\n  <slots>Head, Hand ×2</slots>\n</owner>\n');
   });
 
+  it("lists the slots of a trait's Body over the authored pick (Q54)", () => {
+    const gear = equipment([HUMANOID, BEAST]);
+    const out = render([copy('coin', { kind: 'entity', id: 'wren' })], {
+      ...gear, world: { ...gear.world, traitPicks: { '': { kind: 'body', id: 'beast' }, wren: { kind: 'none' } } },
+    });
+    expect(out).toContain('- **Traveler**\n  - **slots:** Collar\n');
+    expect(out).toContain('- **Wren**\n  - **slots:** none\n');
+  });
+
   it("reads a world persona's own Body pick", () => {
     const gear = equipment([HUMANOID, BEAST], { hound: BEAST });
     expect(render([], { ...gear, persona: { source: 'world', entityId: 'hound' } })).toContain('**slots:** Collar');
