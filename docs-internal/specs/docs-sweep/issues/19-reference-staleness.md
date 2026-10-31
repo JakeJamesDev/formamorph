@@ -15,6 +15,10 @@ It waits for every other wording ticket, so the Glossary and the format page mat
 
 Carried from ticket 08: Home still describes entities as "people, creatures and things", but the editor pages say "a person, a creature, an object or a fixture". Make Home and the Glossary match the editor pages.
 
+Carried from the splits: the sweep added eight pages (Account, Feedback, Endpoint-Settings, World-Editor-Blueprints, Prompt-Chips, Scripts-Reference, Formaquestion-Settings, Formaquestion-Mascot). Check that `_Sidebar` lists each one next to its parent page in a reading order, and that the Glossary links point at the page that now holds each term.
+
+Carried from ticket 14: WorldFormat links "what a script's `code` can do" to the Scripts Guide. Point it at Scripts-Reference.
+
 List each page's checkable claims: control and tab names, steps, limits, defaults, file formats, shortcuts, what a setting does. Check each one in source or in the dev-router preview. Fix what is wrong, remove what is gone, and add a short mention of shipped behavior that belongs on the page and is missing. Leave correct text as it is: ticket 20 owns the wording.
 
 Spec: Implementation Decisions, "Truth source", "Staleness pass", "Headings and anchors".
