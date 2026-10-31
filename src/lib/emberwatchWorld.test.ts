@@ -18,6 +18,7 @@ import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
 import { seedItemCopies } from './inventory';
+import { openingFold } from './openingState';
 import { wantedGrants } from './inventory/grants';
 import type { Entity, ItemCopy, PersonaRef, World } from '@/types';
 
@@ -422,5 +423,51 @@ describe('the Emberwatch items', () => {
     const equipped = { ...lantern, equipped: { slotId: itemNamed('Hooded Lantern').slotId!, order: 1 } };
     expect(wantedGrants([lantern], grantWorld).held[albus] ?? []).not.toContain(darkvision);
     expect(wantedGrants([equipped], grantWorld).held[albus]).toContain(darkvision);
+  });
+
+  describe('Bodies and starting gear', () => {
+    /** A new game as Enter World leaves it: every owner on its settled default traits. */
+    const opened = (persona: PersonaRef) => {
+      const owned = Object.fromEntries(world.entities.map((entity) => [entity.id, settledDefaults(world, entity.id, persona)]));
+      return openingFold(world, { traits: [], owned }, { ref: persona }).state.itemCopies ?? [];
+    };
+    /** What one owner wears; 'You' is the played persona, whose own gear lands on the player. */
+    const wornBy = (copies: readonly ItemCopy[], ownerName: string) => copies
+      .filter((copy) => copy.equipped && (ownerName === 'You'
+        ? copy.where.kind === 'you'
+        : copy.where.kind === 'entity' && copy.where.id === entityNamed(world, ownerName).id))
+      .map((copy) => items.find((item) => copy.item.kind === 'item' && item.id === copy.item.itemId)!.name)
+      .sort();
+
+    it('gives the Grave Hounds the Hound Body and every other entity the Default', () => {
+      const bodies = world.bodies ?? [];
+      const hound = bodies.find((body) => body.name === 'Hound')!;
+      expect(bodies[0].name).toBe('Humanoid');
+      expect(hound.entries.map((entry) => world.slots!.find((slot) => slot.id === entry.slotId)!.name)).toEqual(['Neck', 'Body']);
+      expect(entityNamed(world, 'Grave Hounds').body).toEqual({ kind: 'body', id: hound.id });
+      expect(world.entities.filter((entity) => entity.body).map((entity) => entity.name)).toEqual(['Grave Hounds']);
+    });
+
+    it('opens with every marked placement worn, none refused, under Albus', () => {
+      const copies = opened(asEntity(world, 'Albus'));
+      expect(wornBy(copies, 'You')).toEqual(['Ember Holy Symbol', "Oath-Keeper's Shield", 'Steel Longsword']);
+      expect(wornBy(copies, 'Mother Hesk')).toEqual(['Ember Holy Symbol']);
+      expect(wornBy(copies, 'Corvin Vale')).toEqual(['Folding Cane-Staff']);
+      expect(wornBy(copies, 'Sylvie Thornwhistle')).toEqual(['Elf-Steel Dagger']);
+      expect(wornBy(copies, 'The Barrow Wight')).toEqual(["Haldren's Crown, Upper Half"]);
+      // Every Equipped placement on a cast member ends up worn: the opening refused none.
+      const marked = (world.placements ?? []).filter((placement) => placement.equipped && placement.where.kind === 'entity');
+      for (const placement of marked) {
+        const owner = world.entities.find((entity) => placement.where.kind === 'entity' && entity.id === placement.where.id)!;
+        if (owner.name === 'Wanderer' || owner.name === 'Albus') continue;
+        expect(wornBy(copies, owner.name), owner.name).toContain(items.find((item) => item.id === placement.source.itemId)!.name);
+      }
+    });
+
+    it('opens the Wanderer in its staff and cloak, and leaves Bram Oakes carrying his stock', () => {
+      const copies = opened(NONE);
+      expect(wornBy(copies, 'You')).toEqual(['Oilskin Cloak', 'Walking Staff']);
+      expect(wornBy(copies, 'Bram Oakes')).toEqual([]);
+    });
   });
 });
