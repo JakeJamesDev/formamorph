@@ -480,6 +480,40 @@ describe('entity nodes in the traits tab', () => {
       expect(screen.queryByText(/Ash/)).toBeNull();
     });
 
+    it('names a stranger’s own trait group with its label, never its name', () => {
+      const kinBond = { ...bond, groupId: 'g-kin' };
+      const ownedTraits = { 'e-ash': { chosen: ['t-bond'] } };
+      renderTraits([PALADIN], [], [], {
+        world: { entities: [{ id: 'e-ash', name: 'Ash', ...hooded, traits: [kinBond], traitGroups: [G('g-kin', '{{char}} Kin')] }] as never },
+        page: 1,
+        turns: [
+          { ...TURNS[0], locationId: 'yard', entities: ['Ash'], ownedTraits },
+          { ...TURNS[0], turnId: 't2', locationId: 'yard', entities: ['Ash'], ownedTraits },
+        ],
+      });
+      expect(within(section('a hooded man')).getByText('a hooded man Kin')).toBeTruthy();
+      expect(screen.queryByText(/Ash/)).toBeNull();
+    });
+
+    it('reads a stranger’s linked world trait with its label, never its name', () => {
+      const blueprints = G('g-blueprints', 'Blueprints', { system: 'blueprints', order: 0 });
+      const oath = T('t-oath', '{{char}} Oath', { groupId: 'g-blueprints', playerDescription: '{{char}} swore it.' });
+      const link = { id: 'l-oath', originalId: 't-oath', kind: 'trait', originalName: 't-oath', groupId: null, order: 0 };
+      const ownedTraits = { 'e-ash': { chosen: ['t-oath'] } };
+      renderTraits([PALADIN, oath], [blueprints], [], {
+        world: { entities: [{ id: 'e-ash', name: 'Ash', ...hooded, traitLinks: [link] }] as never },
+        page: 1,
+        turns: [
+          { ...TURNS[0], locationId: 'yard', entities: ['Ash'], ownedTraits },
+          { ...TURNS[0], turnId: 't2', locationId: 'yard', entities: ['Ash'], ownedTraits },
+        ],
+      });
+      const node = section('a hooded man');
+      expect(within(node).getByRole('checkbox', { name: 'Switch off a hooded man Oath' })).toBeDisabled();
+      expect(within(node).getByText('a hooded man swore it.')).toBeTruthy();
+      expect(screen.queryByText(/Ash/)).toBeNull();
+    });
+
     it('numbers strangers who share a label as distinct nodes', () => {
       pastTraits([{ id: 'e-ash', name: 'Ash' }, { id: 'e-bo', name: 'Bo' }]);
       expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man', 'a hooded man (2)']);
