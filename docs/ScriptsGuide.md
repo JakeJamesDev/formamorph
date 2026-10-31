@@ -281,6 +281,8 @@ The script runs once for each narration sentence, when the sentence completes. I
 
 The script runs once for each new game, after setup and before the opening turn's AI call. Loading a save never runs it. It runs before the Before the AI scripts, on the current state, so its writes shape the opening prompt. Regenerating the opening of a new game restores the state from before the start scripts, and they run again. Regenerating the opening of a loaded save runs nothing.
 
+Starting traits and starting items are already in place when it runs, and their effects already apply. They run no **When a Trait Switches** script and no item timing, so code that reacts to how a game starts belongs here.
+
 #### When a Trait Switches
 
 The script runs once for each trait that turns on or off in play, whatever switched it. A switch can come from the player's checkbox, a script, a group that turns its other traits off, a requirement that stops holding, or a persona change. Setup picks and loading a save run no script. A trait that switches and switches back inside one action fires nothing.
