@@ -81,7 +81,7 @@ Or drag the item from **Blueprints** onto an entity's node in the tree. The orig
 <!-- route: worldEditor.traits -->
 
 1. In the **Traits** tab, open the entity's node and select the link row. It shows a link icon.
-2. Open the tab that holds the field: **Availability**, **Stats** or **Pins**.
+2. Open the tab that holds the field: **Availability**, **Stats**, **Pins** or **Scripts**.
 3. Change the field. It now applies to this entity only.
 4. To undo one field, select **Reset** at the end of its label row. To undo every field, select **Reset to Blueprint** in the footer.
 
@@ -115,7 +115,7 @@ Select a trait to open its panel.
 | **Pins** | **Placeholder Pins** | Advanced only |
 | **Scripts** | [Scripts](#scripts) | Advanced only |
 
-On an entity's own trait, the **Details** tab starts with the line **Owned by** and the entity's name. The **Stats** tab shows only when the entity can [own stat traits](#entity-traits).
+On an entity's own trait in the World Editor's **Traits** tab, the **Details** tab starts with the line **Owned by** and the entity's name.
 
 ## Availability
 <!-- keywords: automatic, always on, curse, cursed item, passive, forced on, secret bonus, preselected, switch mid game, innate, cant turn off -->
@@ -252,7 +252,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Playing As**, one list of **Stats** for each owner, **Items**, and **Time of Day**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -421,7 +421,7 @@ A row can also name a global stat. The picker lists the entity's own stats first
 
 > 💡 **Pick from the Global group when an entity's stat has the same id as a global stat.** A row with no pick from that group names the entity's own stat first.
 
-> ⚠️ **A row that names a stat neither the entity nor the world has does nothing.** The **Issues** tab warns about it.
+> ⚠️ **A row that names a stat neither the entity nor the world has does nothing.** The **Issues** tab of the [Test Bench](Test-Bench) warns about it.
 
 ## Links
 <!-- keywords: sync across npcs, live reference, unlink, make independent, break connection, stale warning, inherit, instance, detach, carry to another world -->
@@ -445,6 +445,7 @@ Select a link to edit it. The link's **Details** tab starts with **Linked from**
 | **Mode** | Makes the trait Optional, Automatic or Hidden for this entity. One owner can have a trait innately, and another can pick it. |
 | **In Game** | Locks (**Fixed**) or opens (**Toggleable**) the trait for this entity |
 | **Stat Changes** | Replaces the original's whole list |
+| **Scripts** | Replaces the original's whole list |
 
 **Stat Availability** stays read-only on a link. Change it on the original.
 
@@ -477,7 +478,7 @@ On a link row's menu, **Detach** takes the place of **Duplicate**. It turns the 
 
 **Detach** rewrites the trait's text so it keeps this owner's values. Each [blueprint chip](World-Editor-Placeholders#blueprint-chips) and each [pin by blueprint](#pins-by-blueprint) now names the entity's own [copy](World-Editor-Placeholders#copies). Any copy the trait needs and the entity lacks is made. Dragging an original onto an entity as its own trait, and moving an entity's own trait to another entity, do the same rewrite.
 
-On a **Playable**, **Persona-Only** or Custom Persona entity, the trait keeps its **Stat Changes** and **Stat Availability**. On any other entity, a confirmation asks first, and the trait comes without them.
+The trait keeps the link's **Stat Changes** and **Stat Availability** on any entity.
 
 ### Links in the Library
 
@@ -559,7 +560,7 @@ It shows a warning when:
 
 - More **Automatic** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
-- A row can never hold, such as *Paladin and not Paladin*, or *night* and *midday*. Remove the row or change a condition.
+- A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
 - A global trait requires an entity's trait, group or stat from the same owner. Only entities have the target, so the row never holds. Pick **Persona** or the entity.
 - A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
 - A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
@@ -570,6 +571,9 @@ It shows a warning when:
 - A blueprint chip or a pin by blueprint sits where it is refused, such as in a location or a world placeholder.
 - A link is redundant, because another link on the same owner already brings its original.
 - An entity's trait or link changes a stat that the entity doesn't own. The row does nothing.
+- A stat starts disabled, and no trait ever enables it.
+- In Advanced mode: a trait lowers a stat that already starts at its floor, so the change does nothing.
+- In Advanced mode: a trait changes a stat whose script recomputes the value, so the script erases the change.
 
 It shows a note when:
 

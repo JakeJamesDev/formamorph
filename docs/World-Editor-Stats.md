@@ -16,7 +16,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 ## How the AI Tracks Stat Changes
 <!-- keywords: stat updates, stat tracker, who owns a stat, owner blocks, player character block, in scene block, global stats, persona stats, reply keys, json reply, global stat, city stat, faction meter, wrong character stat moved, text fallback -->
 
-After each narration, a separate request reads the turn and records which stats changed. The request shows the stats in blocks, one block for each owner. The global stats come first, so the persona's block is the most recent.
+After each narration, a separate request reads the turn and records which stats changed. The request shows the stats in blocks, one block for each owner. The global stats come first, then the persona's block, then the entities in the scene.
 
 | Block | Holds | Reply key |
 |---|---|---|
@@ -47,7 +47,7 @@ On an endpoint that can't take that format, the request falls back to stat-chang
 5. Write its **Description**.
 6. Select **Save**.
 
-> 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: low, medium and high.
+> 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: "*Name* is low" up to 30, "*Name* is medium" up to 60 and "*Name* is high" up to 100. Rename the stat, and the descriptors you haven't edited follow the new name. Use the row's buttons to duplicate or delete a stat.
 
 ## How to Make a Stat a Percentage
 <!-- keywords: percent, 0 to 100, ratio, show as %, fraction, out of hundred, completion meter, locked range -->
@@ -78,7 +78,7 @@ The player no longer sees the stat. The AI still reads it, and its Regen and cod
 3. Name the group. Add an **AI-Facing Description** if you want one.
 4. Drag a stat onto the group. Drag a group right to nest it in the group above.
 
-The same steps work on an entity's own **Stats** tab, for the stats that entity owns.
+The same steps work on an entity's own **Stats** tab, for the stats that entity owns. There the **+** button reads **Add to** and the entity's name.
 
 Groups only organize your stats. A group has no pick count, mode or gate. In the game, the stat panel shows each group as a heading that collapses. A group with no visible stat is left out.
 
@@ -217,4 +217,20 @@ The code runs in an isolated sandbox with no page and no network. The editor sug
 > ⚠️ **A script that sets the value overwrites the AI.** The value is set again on every turn, so the AI's change to it is lost. The AI still reads the value and the description.
 
 > 📘 Full reference: [Scripts Guide](ScriptsGuide).
+
+## Blueprint Stats and Links
+<!-- keywords: stat blueprint, link stat, link to, share a stat, same stat on many npcs, entity stat nodes, detach stat, remove link, reset to blueprint, template stat -->
+<!-- route: worldEditor.stats -->
+
+The **Stats** tab shows a node for each entity that owns stats. Select a stat under a node to edit it there. Drag stats and groups between owners.
+
+**Advanced mode only.** A link gives a blueprint stat to an entity without a copy. Stat links follow the same model as [trait links](World-Editor-Traits#links).
+
+- **Make a Blueprints group.** Select **+**, then **Add Blueprints Group**, and drag a stat or group into it. A blueprint stat isn't a global stat. It reaches play only through links.
+- **Link from the blueprint.** Select a blueprint stat or group, then select **Link To…** in the footer. Check each entity that gets it.
+- **Link from the entity.** On the entity's **Stats** tab, select **+**, then **Link Stat**, and pick the blueprint. Or drag a blueprint onto an entity's node.
+- **Change it for one entity.** Select the link row, which shows a link icon, and change a field. **Reset** returns one field to the blueprint. **Reset to Blueprint** in the footer returns them all.
+- **Make it the entity's own.** Select **Detach** on the link row. The stat keeps the link's current values.
+- **Remove the link.** Select **Remove Link** on the link row. The blueprint stays.
+- **Remove the Blueprints group.** Each link becomes its entity's own stat. The linked blueprints are deleted, and the other stats move to the top level as global stats. When the group holds anything, a confirmation asks first.
 
