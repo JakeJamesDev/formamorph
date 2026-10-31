@@ -6,22 +6,31 @@ import { cn } from '@/lib/utils';
 
 /**
  * A tab strip that folds like `CollapsingToggleGroup`: every label, then the selected tab's, then icons
- * alone. The tabs stretch to fill the row. It goes inside a `Tabs` root, and `value` is that root's tab.
+ * alone. It goes inside a `Tabs` root, and `value` is that root's tab.
+ *
+ * The tabs stretch to fill the row. With `hug`, the strip instead takes its full-label width as a flex
+ * basis, shrinks in a tight row down to its icons, and centers its tabs.
  */
-export function CollapsingTabsList<V extends string>({ tabs, value, className, 'aria-label': ariaLabel }: {
+export function CollapsingTabsList<V extends string>({ tabs, value, className, hug = false, 'aria-label': ariaLabel }: {
   tabs: readonly CollapsingSegmentOption<V>[];
   value: V;
   className?: string;
+  hug?: boolean;
   'aria-label': string;
 }) {
   const active = Math.max(0, tabs.findIndex((t) => t.value === value));
-  const { rootRef, measureRef, ready, animate, fold, layout, minWidth } = useCollapsingSegments({
-    labels: tabs.map((t) => t.label), active, fill: true,
+  const { rootRef, measureRef, ready, animate, fold, layout, minWidth, fullWidth } = useCollapsingSegments({
+    labels: tabs.map((t) => t.label), active, fill: !hug,
   });
 
   return (
-    <div ref={rootRef} data-collapsing-root="" className={cn('relative flex w-full min-w-0 [contain:inline-size]', className)} style={{ minWidth }}>
-      <TabsList aria-label={ariaLabel} className="relative flex w-full justify-start">
+    <div
+      ref={rootRef}
+      data-collapsing-root=""
+      className={cn('relative flex min-w-0 [contain:inline-size]', hug ? 'justify-center' : 'w-full', className)}
+      style={{ minWidth, ...(hug && fullWidth !== undefined && { flex: `0 1 ${fullWidth}px` }) }}
+    >
+      <TabsList aria-label={ariaLabel} className={cn('relative flex justify-start', !hug && 'w-full')}>
         {ready && <SegmentPill layout={layout} active={active} animate={animate} />}
         {tabs.map(({ value: tabValue, label, icon }, i) => {
           const shown = fold === 'full' || (fold === 'active' && i === active);

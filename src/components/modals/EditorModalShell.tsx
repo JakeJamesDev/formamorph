@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, type LucideIcon } from 'lucide-react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
+import type { CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
+import { Save } from 'lucide-react';
 import { ActionIcon } from '@/lib/actionIcons';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import type { SurfaceIdName, SurfaceLedgerName } from '@/components/ui/surface';
@@ -19,7 +21,7 @@ interface EditorModalShellProps {
   contentClassName: string;
   /** While true, the body/footer are replaced by a centered "Loading…"; tabs are hidden. */
   loading: boolean;
-  tabs: readonly { value: string; label: string; icon?: LucideIcon }[];
+  tabs: readonly CollapsingSegmentOption<string>[];
   tab: string;
   onTabChange: (value: string) => void;
   /** Drives the Save button's disabled state and the close-time unsaved prompt. */
@@ -54,22 +56,14 @@ const EditorModalShell = ({
           {/* The switcher sits in the header and the body below it, so one root spans both. `contents` on the
               root and each panel keeps the body a direct flex child of the dialog, as it was unwrapped. */}
           <Tabs value={tab} onValueChange={onTabChange} surfaceTabs={surfaceTabs} className="contents">
-            {/* Below `sm` the title and the strip each take a full row, since four tabs fill a phone's width. */}
-            <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row flex-wrap items-center gap-3 space-y-0">
+            {/* Below `sm` the title and the strip each take a full row. Above it, the title and the spacer
+                share the free room, so the strip stays centered; the title truncates to its floor before the
+                strip folds. */}
+            <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row flex-wrap items-center justify-center gap-3 space-y-0">
               {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops
                   descenders under `truncate`'s overflow clip. */}
-              <DialogTitle className="truncate basis-full sm:basis-0 sm:flex-1 leading-normal">{title}</DialogTitle>
-              {!loading && (
-                <TabsList className="flex w-full sm:w-auto">
-                  {tabs.map(({ value, label, icon: Icon }) => (
-                    <TabsTrigger key={value} value={value} aria-label={label} className="flex-1 gap-1.5 sm:flex-none">
-                      {/* A tab with an icon shows only the icon on a phone, as the Panel Tab Strip does. */}
-                      {Icon && <Icon className="h-4 w-4 shrink-0 sm:hidden" />}
-                      <span className={Icon ? 'hidden sm:inline' : undefined}>{label}</span>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              )}
+              <DialogTitle className="truncate basis-full sm:basis-0 sm:flex-1 sm:min-w-32 leading-normal">{title}</DialogTitle>
+              {!loading && <CollapsingTabsList hug tabs={tabs} value={tab} aria-label="Sections" />}
               <div className="hidden sm:block sm:flex-1" />
             </DialogHeader>
             {loading ? (
