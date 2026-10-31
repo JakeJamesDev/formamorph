@@ -188,6 +188,8 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q82:** The planner backstop's name-part swap stays case-exact, so ordinary words that match a name are left alone.
 - **Q83:** The narrator must read a stranger's true name to recognize the introduction, so the name stays in its roster. Every prompt that lists an unmet stranger with a Stranger Name also shows the stranger label as one more field, like the planner's (ticket 14). This widens Q69 past the planner.
 - **Q84:** The name normalizers in Presence, the planner backstop and entityMatch stay separate.
+- **Q85:** The Test Bench's Opening instrument lists world personas only, so Q81's library case is tested through the helper and the callers that can hold a library persona. A library picker for the Bench is out of scope.
+- **Q86:** A name-only roster, such as the Now Line's, prints an unmet stranger with a Stranger Name as "true name (label)". Per Q83, the label is shown with the true name, never in its place (ticket 14).
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 
