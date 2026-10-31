@@ -812,11 +812,11 @@ The reference descriptions and local status messages were reviewed by copy role 
 
 ## Functional writing
 
-Keep setting descriptions verb-first or in second person, no more than 12 words, with no period on a one-sentence line. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide).
+The wording of every label, hint, tooltip, and ⓘ follows the [Writing Guide](Writing-Guide). This section covers only where copy sits. Put necessary additional detail behind `HintInfo`.
 
 ### Field help order
 
-A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, using only labels and registered terms as the [Writing Guide's help-line test](Writing-Guide) requires. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
+A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, as the [Writing Guide's help-line test](Writing-Guide) sets out. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
 
 Two placements sit beside a control instead of above it:
 
