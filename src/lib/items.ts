@@ -134,7 +134,12 @@ export const parseSlots = (raw: unknown): Slot[] => listOf<unknown>(raw).filter(
 export const parsePlacements = (raw: unknown): Placement[] => listOf<unknown>(raw).filter(hasId).filter((p) => {
   const source = (p as { source?: unknown }).source;
   return isRecord(source) && source.kind === 'item' && typeof source.itemId === 'string';
-}) as Placement[];
+}).map((p) => {
+  const placement = p as Placement;
+  if (placement.equipped === undefined || (placement.equipped === true && placement.where?.kind !== 'location')) return placement;
+  const { equipped: _drop, ...rest } = placement;
+  return rest;
+});
 
 /** A whole number typed into an input, or undefined for a blank or non-numeric one. */
 export const wholeCount = (raw: string): number | undefined => {

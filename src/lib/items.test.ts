@@ -112,6 +112,16 @@ describe('parsePlacements', () => {
     const kept = { id: 'p1', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } };
     expect(parsePlacements([kept, { id: 'p2', where: { kind: 'you' }, quantity: 1 }, { id: 'p3', source: { kind: 'table' } }])).toEqual([kept]);
   });
+
+  it('keeps Equipped on an owner placement and drops it at a location', () => {
+    const source = { kind: 'item', itemId: 'lamp' };
+    const worn = { id: 'p1', where: { kind: 'entity', id: 'e' }, quantity: 1, equipped: true, source };
+    const floor = { id: 'p2', where: { kind: 'location', id: 'l' }, quantity: 1, source };
+    const [kept, onFloor, junk] = parsePlacements([worn, { ...floor, equipped: true }, { ...worn, id: 'p3', equipped: 'yes' }]);
+    expect(kept).toEqual(worn);
+    expect(onFloor).toStrictEqual(floor);
+    expect('equipped' in junk).toBe(false);
+  });
 });
 
 describe('wholeCount', () => {

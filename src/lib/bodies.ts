@@ -56,6 +56,23 @@ export function bodySlots(body: Body | undefined, slots: readonly Slot[]): BodyS
 export const slotsInForce = (world: BodyWorld & { slots?: readonly Slot[] }, owner: SlotOwner, persona: PersonaRef | undefined): BodySlot[] =>
   bodySlots(bodyInForce(world, owner, persona), world.slots ?? []);
 
+/** Why the owner's authored Body refuses a starting equip: no Body, no such slot, or too little room. */
+export type StartingEquipGap =
+  | { kind: 'noBody' }
+  | { kind: 'noSlot'; body: Body }
+  | { kind: 'tooSmall'; body: Body; capacity: number };
+
+/** The editor's read of a starting equip into `slotId` taking `size` (Q2, Q18), or null when it fits. The played
+ *  Persona reads the Custom Persona entity's pick. */
+export function startingEquipGap(world: BodyWorld, owner: SlotOwner, slotId: string, size: number): StartingEquipGap | null {
+  const body = bodyInForce(world, owner, undefined);
+  if (!body) return { kind: 'noBody' };
+  const entry = body.entries.find((e) => e.slotId === slotId);
+  if (!entry) return { kind: 'noSlot', body };
+  const capacity = entryCapacity(entry);
+  return size > capacity ? { kind: 'tooSmall', body, capacity } : null;
+}
+
 /** The entities whose Body picks play reads: the cast, plus the persona entities the cast leaves out. */
 export const bodyPickEntities = <E>(cast: readonly E[], worldPersonas: readonly E[], customPersona: E | null): E[] =>
   [...cast, ...worldPersonas, ...(customPersona ? [customPersona] : [])];

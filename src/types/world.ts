@@ -643,6 +643,8 @@ export interface Placement {
   where: PlacementWhere;
   quantity: number;
   hidden?: boolean;
+  /** Starts equipped at new game. An owner placement's only; a location placement never carries it. */
+  equipped?: boolean;
   source: PlacementSource;
 }
 

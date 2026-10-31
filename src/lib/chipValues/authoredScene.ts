@@ -17,12 +17,12 @@ import { resolveStartingLocation } from '../startingLocation';
 import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
-import { seedItemCopies } from '../inventory';
+import { startingCopies } from '../inventory';
 import { openingPlayedEntity, type OpeningPersona } from '../openingState';
 import { startsMet, strangersInPlay } from '../presence';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Stat, StatGroup,
-  Trait, TraitGroup, WorldOverview,
+  Body, Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Slot, Stat,
+  StatGroup, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
 
@@ -41,6 +41,8 @@ export interface AuthoredWorld {
   placeholders?: Placeholder[];
   items?: Item[];
   placements?: Placement[];
+  slots?: Slot[];
+  bodies?: Body[];
 }
 
 /** Overrides for a scene scoped tighter than "the world's own opening" — the Test Bench's Opening
@@ -169,7 +171,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     placeholders: world.placeholders ?? [],
     items: world.items ?? [],
     // The Item Copies a new game would start with, ids numbered since nothing keeps them.
-    itemCopies: seedItemCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
+    itemCopies: startingCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
     // Turn one's labels: nobody is met in play yet, so the start rule alone leaves a stranger unmet.
     strangerLabels: strangersInPlay(entities, (entity) => startsMet(entity, openingPlayed, locations), {}).labels,
   };

@@ -92,6 +92,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, statGroups: rawStatGroups, locations: rawLocations, placeholders,
     dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups, worldOverview, items: worldItems, placements: worldPlacements,
+    slots: worldSlots, bodies: worldBodies,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
 
@@ -207,9 +208,9 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const entryWorld = useMemo<EntryTraitWorld>(
     () => ({
       traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
-      items: worldItems, placements: worldPlacements, locations: rawLocations,
+      items: worldItems, placements: worldPlacements, slots: worldSlots, bodies: worldBodies, locations: rawLocations,
     }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, rawLocations],
+    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, worldSlots, worldBodies, rawLocations],
   );
   const rawEntryWorld: EntryTraitWorld = {
     traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,

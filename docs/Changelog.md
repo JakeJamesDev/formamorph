@@ -30,6 +30,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
     - **The Inventory prompt now records a use, a change of State, and an item's true nature becoming known.** Opening a letter or lighting a lantern keeps the item. Burning or shattering one still removes it with no effect.
     - **The story can now use one item on another, such as pouring lamp oil into a lantern.** The oil is the item spent. Its When Used script reads the lantern as `self.event.target`.
+    - **Starting items on the player or an entity can now start equipped, through a new Equipped checkbox.** While Equipped effects apply from the first turn. An item that can't be equipped starts carried, and its row warns you first.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
   - **Inventory:**
