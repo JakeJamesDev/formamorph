@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Starting items on the player or an entity can now start equipped, through a new Equipped checkbox.** While Equipped effects apply from the first turn. An item that can't be equipped starts carried, and its row warns you first.
     - **Traits can now change their owner's Body, which sets the equipment slots they have while the trait is active.** Items the new Body has no slot for come off and stay in the inventory. The trait switched on last wins, and the log names the change.
     - **The story now knows each person's equipment slots and the slot each item takes.** A character whose Body is None no longer gets items equipped by the story. The narrator and the Inventory prompt see the slots, never the Body's name.
+    - **Equipment Settings, at the top of the Items list, now holds the world's slots, its Bodies and Persona Items.** Slots and Persona Items moved there from the Overview tab. Each entity picks its Body on its own Items tab, and the first Body is the Default.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
   - **Inventory:**

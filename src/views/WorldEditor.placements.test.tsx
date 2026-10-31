@@ -4,7 +4,7 @@ import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/
 import { blankItem } from '@/lib/items';
 import type { Placement, World } from '@/types';
 
-/** Starting items: the Persona Items section on the Overview, and the Items tab on entities and locations. */
+/** Starting items: the Persona Items section in Equipment, and the Items tab on entities and locations. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -55,14 +55,19 @@ const pickOption = (combobox: HTMLElement, option: string) => {
   fireEvent.keyDown(screen.getByRole('option', { name: option }), { key: 'Enter' });
 };
 
+const openEquipment = () => {
+  openEditorTab(/Items/);
+  fireEvent.click(screen.getByRole('button', { name: 'Select Equipment Settings' }));
+};
+
 const placedAt = (placements: Placement[], kind: string) => placements.filter((p) => p.where.kind === kind);
 
 beforeEach(() => { localStorage.clear(); });
 
-describe('Persona Items on the Overview', () => {
+describe('Persona Items in Equipment', () => {
   it('adds a starting item for the player, sets its quantity, item and Hidden, and exports it', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEditorTab(/Overview/);
+    openEquipment();
     const persona = section('Persona Items');
     fireEvent.click(within(persona).getByRole('button', { name: 'Add Item' }));
     fireEvent.change(within(persona).getByLabelText('Lamp Quantity'), { target: { value: '3' } });
@@ -80,7 +85,7 @@ describe('Persona Items on the Overview', () => {
 
   it('asks for items first in a world without any', () => {
     renderWorldEditorBench(benchEditorWorld({}), 'simple');
-    openEditorTab(/Overview/);
+    openEquipment();
     const persona = section('Persona Items');
     expect(persona.textContent).toContain('Add items on the Items tab first');
     expect(within(persona).getByRole('button', { name: 'Add Item' })).toHaveProperty('disabled', true);

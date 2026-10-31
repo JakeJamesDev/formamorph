@@ -306,7 +306,7 @@ Each person, creature, object or fixture in your world.
 
 ## Items
 
-The objects someone can own: weapons, potions, keys. Set the world's equipment **Slots** on the Overview tab.
+The objects someone can own: weapons, potions, keys. **Equipment Settings**, at the top of the list, sets the world's slots, its Bodies and the player's starting items.
 
 ➡️ [World Editor: Items](World-Editor-Items)
 

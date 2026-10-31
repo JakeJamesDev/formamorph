@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bodyInForce, bodyPickEntities, bodySlots, largestCapacity, parseBodies, slotsInForce, withoutSlotEntries, type BodyWorld,
+  bodyInForce, bodyPickEntities, bodySlots, largestCapacity, parseBodies, slotEntryCount, slotsInForce, withoutBodyPicks,
+  withoutSlotEntries, withSlotSizesWithin, type BodyWorld,
 } from './bodies';
 import type { Body, Slot } from '@/types';
 
@@ -106,5 +107,46 @@ describe('parseBodies', () => {
     expect(parseBodies([{ id: 'b', name: 'B', entries: [{ slotId: 's', capacity: 2 }, { capacity: 1 }] }, { name: 'no id' }, 'x']))
       .toEqual([{ id: 'b', name: 'B', entries: [{ slotId: 's', capacity: 2 }] }]);
     expect(parseBodies(undefined)).toEqual([]);
+  });
+});
+
+describe('slotEntryCount', () => {
+  it('counts the Body entries that hold the slot', () => {
+    const imp: Body = { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand', capacity: 3 }] };
+    expect(slotEntryCount([humanoid, imp, dog], 'hand')).toBe(2);
+    expect(slotEntryCount([humanoid, dog], 'tail')).toBe(0);
+  });
+});
+
+describe('withSlotSizesWithin', () => {
+  it('cuts each Slot Size to the largest capacity left for its slot, dropping a size of 1', () => {
+    const items = [
+      { id: 'sword', slotId: 'hand', slotSize: 2 },
+      { id: 'helm', slotId: 'head', slotSize: 3 },
+      { id: 'potion' },
+    ];
+    const shrunk: Body = { ...humanoid, entries: [{ slotId: 'head', capacity: 2 }, { slotId: 'hand' }] };
+    expect(withSlotSizesWithin(items, [shrunk, dog])).toEqual([
+      { id: 'sword', slotId: 'hand' },
+      { id: 'helm', slotId: 'head', slotSize: 2 },
+      { id: 'potion' },
+    ]);
+  });
+
+  it('keeps the list when every size fits', () => {
+    const items = [{ id: 'sword', slotId: 'hand', slotSize: 2 }];
+    expect(withSlotSizesWithin(items, [humanoid])).toBe(items);
+  });
+});
+
+describe('withoutBodyPicks', () => {
+  it('sets picks of the Body back to Default and leaves other picks alone', () => {
+    const entities = [
+      { id: 'rex', body: { kind: 'body' as const, id: 'dog' } },
+      { id: 'ghost', body: { kind: 'none' as const } },
+      { id: 'ann', body: { kind: 'body' as const, id: 'humanoid' } },
+    ];
+    expect(withoutBodyPicks(entities, 'dog')).toEqual([{ id: 'rex' }, entities[1], entities[2]]);
+    expect(withoutBodyPicks(entities, 'imp')).toBe(entities);
   });
 });

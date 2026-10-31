@@ -180,18 +180,59 @@ The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
 
 The [Scripts Guide](Scripts-Reference#items) lists what an item script can read and write.
 
-## Slots
-<!-- keywords: equipment slots, hand, ring, head, armor slot, capacity, two handed -->
-<!-- route: worldEditor.overview -->
+## Equipment Settings
+<!-- keywords: equipment, equipment settings, slots, bodies, body, hand, ring, head, armor slot, capacity, two handed, dog, creature, default body -->
+<!-- route: worldEditor.items -->
 
-Slots are the places an item can be equipped, such as Hand or Ring. You set them once for the whole world, on the **Overview** tab under **Slots**. The player and every entity share the same slots.
+**Equipment Settings** sits at the top of the **Items** list. It holds three sections:
 
-1. Open the **Overview** tab.
+| Section | What it sets |
+|---|---|
+| 🧤 **Slots** | The places an item can be equipped, such as Hand or Ring |
+| 🧍 **Bodies** | Which slots an owner has, and how many items fit in each |
+| 🎒 **Persona Items** | What the player starts with (see [Starting Items](#starting-items)) |
+
+### Slots
+
+Slots are one list for the whole world, so a helmet fits every Body with a Head.
+
+1. Select **Equipment Settings**.
 2. Under **Slots**, select **Add Slot**.
 3. Type the slot's name.
-4. Set its capacity: how many item units fit. A Ring slot with capacity 2 holds two rings.
 
-When you delete a slot that items use, the editor asks first. Those items become not equippable.
+Drag a slot by its grip to reorder the list.
+
+### Bodies
+
+A Body is a name and a list of slots, each with a **Capacity**. A Humanoid can have Hand with Capacity 2 and Ring. A Dog can have only Collar.
+
+1. Under **Bodies**, select **Add Body**.
+2. Expand it and type its **Name**.
+3. Pick a slot from **Add Slot**, then set its **Capacity**.
+
+- 🥇 **The first Body is the Default.** Every entity without a pick uses it, and so do library personas and entities the AI adds. Drag a Body by its grip to change which one is first.
+- ⚠️ Two Bodies with one name get a warning. Scripts pick a Body by its name.
+- 📏 An item's **Slot Size** can't be larger than the biggest Capacity any Body gives its slot. Lower a Capacity, and Slot Sizes above it drop to match.
+- 🚫 A world with no Bodies gives no one a slot.
+
+### Each entity's Body
+
+An entity picks its Body at the top of its **Items** tab:
+
+| Option | Means |
+|---|---|
+| **Default (Humanoid)** | The first Body, whichever it is now |
+| **None** | No slots. The entity can carry items but can't equip them |
+| A Body's name | That Body |
+
+The **Custom Persona** entity's Body is also the player's when they pick **None** or a library persona.
+
+### Deleting a slot or a Body
+
+A slot or Body nothing uses deletes at once. One in use asks first, and says what changes:
+
+- **Slot:** its Body entries go, and the items that equip into it lose their slot.
+- **Body:** the entities that picked it go back to **Default**, and trait Body rows that named it go blank.
 
 ## Starting Items
 <!-- keywords: starting items, starting gear, give items, place items, loot, hidden item, treasure, merchant stock, persona items -->
@@ -201,7 +242,7 @@ Starting items are the items a new game begins with. You can place them in three
 
 | Where | Where to set it |
 |---|---|
-| 👤 The player | **Overview** tab, under **Persona Items**. The player gets them whoever they play. |
+| 👤 The player | **Equipment Settings**, under **Persona Items**. The player gets them whoever they play. |
 | 🧑 An entity | The entity's **Items** tab |
 | 📍 A location | The location's **Items** tab. They lie there for the player or any entity to pick up. |
 

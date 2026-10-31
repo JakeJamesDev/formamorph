@@ -20,6 +20,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
 import PlacementsSection from './PlacementsSection';
+import EntityBodyField from './EntityBodyField';
 import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 
 /**
@@ -143,6 +144,7 @@ const EntityManager = ({
         </PanelTabContent>
 
         <PanelTabContent value="items">
+          <EntityBodyField entity={entity} />
           <PlacementsSection
             where={{ kind: 'entity', id: entity.id }}
             label="Starting Items"

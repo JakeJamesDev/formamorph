@@ -39,8 +39,6 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 | **Thumbnail** | The card's image. **Generate with AI** under the frame makes one from your Player-Facing Description, or from the AI-Facing Description when that is empty. |
 | **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
-| **Slots** | Where items equip, such as Hand, and how many fit. See [Slots](World-Editor-Items#slots). |
-| **Persona Items** | Items the player gets when a game starts, whoever they play. See [Starting Items](World-Editor-Items#starting-items). |
 | **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
 
 ## The right column: what you write

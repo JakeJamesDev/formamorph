@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Save } from 'lucide-react';
+import { Save, Shield } from 'lucide-react';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { SortableList, type SortableListItem } from '@/components/SortableList';
 import { SaveList, type SaveListItem } from '@/components/modals/SaveList';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ const SAVE_ITEMS: SaveListItem[] = [
   { id: 'key', name: 'A Brass Key in the Rain', timestamp: Date.UTC(2026, 8, 3, 4, 12), gameTime: 0.9 },
   { id: 'arrival', name: 'Arrival at Tidemark', timestamp: Date.UTC(2026, 8, 3, 3, 4), gameTime: 0.3 },
 ];
+
+const PINNED_ID = 'pinned-settings';
 
 function WorldEditorListReference() {
   const [items, setItems] = useState(EDITOR_ITEMS);
@@ -71,6 +74,18 @@ function WorldEditorListReference() {
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(14rem,0.8fr)]">
         <ScrollArea type="always" className="h-64 rounded-md border p-1">
+          {/* A pinned entry: never drags, never filters out, and opens the list's own settings. */}
+          <EditorRowList className="mb-1 border-b pb-1">
+            <EditorRow
+              grip={false}
+              selected={selectedId === PINNED_ID}
+              onSelect={() => setSelectedId(PINNED_ID)}
+              selectionLabel="Select Sample Settings"
+              icon={<Shield className="h-4 w-4" aria-hidden />}
+              label="Sample Settings"
+              actions={[]}
+            />
+          </EditorRowList>
           <SortableList
             items={items}
             selectedId={selectedId}
@@ -91,7 +106,7 @@ function WorldEditorListReference() {
             disabled={!selected}
           />
           <p className="text-helper text-muted-foreground">
-            {selected ? `Editing a ${selected.kind.toLowerCase()} sample.` : 'Select an item.'}
+            {selected ? `Editing a ${selected.kind.toLowerCase()} sample.` : selectedId === PINNED_ID ? 'The pinned entry opens settings for the whole list.' : 'Select an item.'}
           </p>
         </div>
       </CardContent>

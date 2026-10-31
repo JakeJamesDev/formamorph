@@ -49,9 +49,12 @@ const ENTITY_STATS_CAST = [
 
 const WHITE_ROOM_ID = '1783535114538';
 
-/** The `items` fixture's slots, its one Body and its items. */
-const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand' }, { id: 'dev-slot-ring', name: 'Ring' }];
-const DEV_BODIES: Body[] = [{ id: 'dev-body-humanoid', name: 'Humanoid', entries: [{ slotId: 'dev-slot-hand', capacity: 2 }, { slotId: 'dev-slot-ring' }] }];
+/** The `items` fixture's slots, its Bodies and its items. Nobody picks the Hound, so play reads the Humanoid. */
+const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand' }, { id: 'dev-slot-ring', name: 'Ring' }, { id: 'dev-slot-neck', name: 'Neck' }];
+const DEV_BODIES: Body[] = [
+  { id: 'dev-body-humanoid', name: 'Humanoid', entries: [{ slotId: 'dev-slot-hand', capacity: 2 }, { slotId: 'dev-slot-ring' }] },
+  { id: 'dev-body-hound', name: 'Hound', entries: [{ slotId: 'dev-slot-neck' }] },
+];
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', uses: 1,
