@@ -79,6 +79,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Scene Presence:**
+    - **Strangers keep their label in the Traits tab.** A stranger's trait names use the label, never the name, and strangers who share a label get numbers.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
 

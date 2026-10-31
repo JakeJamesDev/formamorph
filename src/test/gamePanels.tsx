@@ -80,6 +80,8 @@ export interface TurnFixture {
   entityStats?: EntityStatValues;
   /** What this turn moved each entity stat. */
   entityStatChanges?: EntityStatChanges;
+  /** The owned traits each entity held when this turn ended. */
+  ownedTraits?: GameState['ownedTraits'];
 }
 
 export interface PanelHarnessOptions {
@@ -158,6 +160,7 @@ function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
   return {
     globalStats: turn.stats ?? stats,
     globalTraits: turn.traits ?? [],
+    ...(turn.ownedTraits ? { ownedTraits: turn.ownedTraits } : {}),
     ...(turn.entityStats ? { entityStats: turn.entityStats } : {}),
     ...(turn.entityStatChanges ? { entityStatChanges: turn.entityStatChanges } : {}),
     visibleEntities: turn.scene ?? [],

@@ -16,8 +16,9 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
-  activeOwnedTraitIds, ownerTraitTree, inSceneTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
+  activeOwnedTraitIds, ownerTraitTree, inSceneTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames, withStrangerNames,
 } from '@/lib/ownedTraitsInPlay';
+import { numbered } from '@/lib/statPanelEntities';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
@@ -1260,7 +1261,7 @@ export const RightPanel = ({
   const worldItems = useGameDataOptional()?.items;
   const {
     locations, connections, traits, traitGroups, viewStats: globalStats, currentLocation, resolveTraitText, resolveEntityText,
-    entities: cast, persona, traitEntities, traitLibrary,
+    entities: cast, persona, traitEntities, traitLibrary, codeEntities,
   } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
@@ -1289,18 +1290,22 @@ export const RightPanel = ({
   // A linked row's name reads its entity as the Character Name, from the original's authored text.
   // Owner nodes follow In Scene; the player's and the library's stay. A stranger's node reads its label.
   const { inScene: sceneNow } = usePresence(isViewingPast ? currentPage : undefined);
-  const traitTree = React.useMemo(
-    () => withOwnerNames(
-      inSceneTraitTree(ownerTraitTree(ownerWorld, personaRef, traitLibrary), {
-        scene: new Set(sceneNow.map((p) => p.entity.id)),
-        keep: new Set(traitLibrary.map((e) => e.id)),
-        labels: new Map(sceneNow.filter((p) => !p.met && p.label).map((p) => [p.entity.id, p.label!])),
-      }),
+  const traitTree = React.useMemo(() => {
+    const named = (text: string, owner: Entity, trait?: Trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text));
+    // Strangers who share a label are numbered in scene order, as the stat picker numbers them.
+    const strangers = sceneNow.filter((p) => !p.met && p.label);
+    const labels = new Map(numbered(strangers.map((p) => ({ id: p.entity.id, label: p.label! }))).map((o) => [o.id, o.label]));
+    const inScene = inSceneTraitTree(ownerTraitTree(ownerWorld, personaRef, traitLibrary), {
+      scene: new Set(sceneNow.map((p) => p.entity.id)),
+      keep: new Set(traitLibrary.map((e) => e.id)),
+      labels,
+    });
+    return withOwnerNames(
+      withStrangerNames(inScene, new Set(labels.keys()), [...codeEntities.world, ...codeEntities.library], named),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
-      (text, owner, trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text)),
-    ),
-    [ownerWorld, personaRef, traitLibrary, sceneNow, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
-  );
+      named,
+    );
+  }, [ownerWorld, personaRef, traitLibrary, sceneNow, codeEntities, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText]);
   // An owner's trait card reads that owner as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
     (trait: Trait, text: string, ownerId: OwnerId) =>
