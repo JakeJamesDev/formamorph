@@ -52,9 +52,10 @@ const THE_PROMPTS: Required<DocTarget> = { page: 'Prompts', anchor: 'the-prompts
 const community = (anchor: string): Required<DocTarget> => ({ page: 'Community-Creations', anchor });
 const PUBLISH_DIALOG = community('the-publish-dialog');
 const EVENT_POSTERS = community('event-posters-and-banners');
-const USER_PROFILE = community('the-user-profile-dialog');
-const ACCOUNT_DELETION = community('account-deletion');
-const BUGS_AND_SUGGESTIONS = community('bugs-and-suggestions');
+const account = (anchor: string): Required<DocTarget> => ({ page: 'Account', anchor });
+const USER_PROFILE = account('the-user-profile-dialog');
+const ACCOUNT_DELETION = account('account-deletion');
+const BUGS_AND_SUGGESTIONS: Required<DocTarget> = { page: 'Feedback', anchor: 'the-feedback-window' };
 const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
 const FORMAQUESTION_SETTINGS: Required<DocTarget> = { page: 'Formaquestion', anchor: 'formaquestion-settings' };
@@ -152,9 +153,9 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   eventAck: EVENT_POSTERS,
   ...Object.fromEntries(tabsOf('eventAck').map((id) => [id, EVENT_POSTERS])),
   ageGate: community('the-adult-content-warning'),
-  auth: community('login-and-register'),
-  privacyPolicy: community('the-privacy-policy'),
-  usernameRename: community('choose-a-new-username'),
+  auth: account('login-and-register'),
+  privacyPolicy: account('the-privacy-policy'),
+  usernameRename: account('choose-a-new-username'),
   profile: USER_PROFILE,
   'profile.messages': USER_PROFILE,
   'profile.notifications': community('the-follow-feed'),

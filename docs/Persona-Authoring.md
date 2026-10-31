@@ -1,7 +1,12 @@
 # 🪪 Personas for Authors
 <!-- keywords: world creator side, player identity setup, who players become, designing the protagonist -->
 
-How your world meets the player's persona: playable entities, the **Allowed Personas** and **Starts On** controls, the **Persona** chip, and the two Built-in chips that carry names into your text.
+This page covers how your world meets the player's persona:
+
+- Playable entities
+- The **Allowed Personas** and **Starts On** controls
+- The **Persona** chip
+- The two Built-in chips that put names in your text
 
 > Players read [Personas](Personas). This page covers the World Editor side. Everything here except the **Persona Name** and **Character Name** chips is **Advanced mode only**.
 
@@ -91,12 +96,12 @@ Only entities you select are playable. The setting is your statement that the en
 
 > ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you make the entity playable. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
 
-In Simple mode, a **Playable** or **Persona-Only** entity puts a dot on the corner of the mode menu, so you know the world uses Advanced features. A non-default **Allowed Personas** or **Starts On** does the same.
+In Simple mode, a dot on the corner of the mode menu tells you the world uses Advanced features. A **Playable** or **Persona-Only** entity adds the dot. A non-default **Allowed Personas** or **Starts On** does the same.
 
 ## Persona-Only Entities
 <!-- keywords: hidden unless chosen, never in the world, reserved for player, invisible character, exclusive hero, not offered in library -->
 
-Some entities exist only as a player slot, such as a "Custom Character" with no story of their own. Set **Persona** to **Persona-Only** to keep one out of the world unless the player picks it.
+Some entities exist only as a player slot, such as a *Stranger* with no story of its own. Set **Persona** to **Persona-Only** to keep one out of the world unless the player picks it.
 
 | The player | The entity |
 |---|---|
@@ -110,7 +115,7 @@ Some entities exist only as a player slot, such as a "Custom Character" with no 
 ## Custom Persona
 <!-- keywords: greyed out choice, only one allowed, fallback traits, inherit race and class, unmark consequences, refuses group drop, duplicate loses role, replaces empty option -->
 
-A player who picks a persona from their own library has no world entity's traits. A player who picks **None** has none either. The **Custom Persona** entity gives them traits anyway, such as a race and a class. It also stands in **None**'s place at Enter World.
+A player who picks a persona from their own library has no world entity's traits. A player who picks **None** has none either. The **Custom Persona** entity gives them traits anyway, such as a race and a class. It also takes **None**'s place at Enter World.
 
 Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The mark is the fourth choice, beside **Cast**, **Playable** and **Persona-Only**.
 
@@ -130,7 +135,12 @@ Its traits are the persona's traits when the player picks **None** or a library 
 
 Copies work in the same order. A library persona's own copy wins. The Custom Persona entity's copy fills in where the persona has none. The [blueprint](World-Editor-Placeholders#blueprints) itself reads last.
 
-Remove the mark, and the entity keeps its links, traits and copies. Its stat traits keep their stats, but the stats do nothing. A confirmation names the counts of links, traits and copies. Delete the entity, and they go with it. That confirmation names the counts of links, traits and placeholders. An empty entity does neither with a dialog.
+| You | What happens |
+|---|---|
+| Remove the mark | The entity keeps its links, traits and copies. Its stat traits keep their stats, but the stats do nothing. A confirmation names the counts of links, traits and copies. |
+| Delete the entity | Its links, traits and copies go with it. A confirmation names the counts of links, traits and placeholders. |
+
+Neither asks for confirmation on an empty entity.
 
 A world with no marked entity keeps **None** as before. A blueprint chip then reads the blueprint's own values.
 
@@ -245,6 +255,6 @@ Type `{` in one of an entity's own fields and pick **Character Name** under **Bu
 
 ## Related
 
-- [🪪 Personas](Personas) — the player's side
-- [🛠️ World Editor](WorldEditor) — [Openings](World-Editor-Openings), [Entities](World-Editor-Entities) and [Placeholders](World-Editor-Placeholders)
-- [📐 World Format](WorldFormat) — the fields behind these controls
+- [🪪 Personas](Personas): the player's side
+- [🛠️ World Editor](WorldEditor): [Openings](World-Editor-Openings), [Entities](World-Editor-Entities) and [Placeholders](World-Editor-Placeholders)
+- [📐 World Format](WorldFormat): the fields behind these controls

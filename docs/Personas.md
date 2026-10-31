@@ -25,7 +25,7 @@ No copy is made. The entity is now one of your personas, and you can still add i
 2. Right-click a persona tile.
 3. Select **Set as Default Persona**.
 
-A **Default** badge marks it. To remove it, right-click the tile and select **Clear Default Persona**.
+A **Default** badge marks it. To clear it, right-click the tile and select **Clear Default Persona**.
 
 ## How to Pick a Persona
 <!-- keywords: choose, select, play as, character select, who to play, which character, roster, at game start, type my name, name myself, nameless, playing as nobody, before the story -->
@@ -76,7 +76,7 @@ The **All | Personas** switch above the grid shows only your personas. That view
 ## The Default Persona
 <!-- keywords: fallback identity, used automatically, not synced, this device only, auto picked -->
 
-The default persona is the one Enter World and **Quick Start** pick when nothing else decides. The default stays on this device. It never goes into an export.
+Enter World and **Quick Start** pick the default persona when nothing else decides. The default stays on this device. An export never includes it.
 
 ## Pick at Enter World
 <!-- keywords: preselection priority, why this one chosen, forced character, my own missing, restricted list, last used remembered, one role per game -->
@@ -110,7 +110,7 @@ Pick an entity under **From This World**, and you play it:
 
 - It leaves the cast for that game, so you never meet yourself.
 - The AI reads that everyone in the world already knows you.
-- Its locations join the **Starting Location** list, and the first of them that is a starting location is selected for you. With none, its first location is. Its row in the picker reads **Starts at** and that place. You can pick another.
+- Its locations join the **Starting Location** list. Enter World selects the first of them that is a starting location. With none, it selects the entity's first location. Its row in the picker reads **Starts at** and that place. You can pick another.
 - Its Others openings leave the draw, so page one never greets you as yourself.
 - If it has Self openings, the game draws only from those. See [Self Openings](World-Editor-Openings#self-openings).
 
@@ -170,7 +170,12 @@ One import brings every SillyTavern persona over. The backup holds no images, so
 | The default persona | Your default, when you have none |
 | Title, position, depth and role | Not imported |
 
-A report lists each persona with no image, each skipped entry, each persona that wasn't saved and each image that matched no persona.
+A report then lists:
+
+- Each persona with no image
+- Each skipped entry
+- Each persona that wasn't saved
+- Each image that matched no persona
 
 > [!NOTE]
 > Keep the avatar filenames as SillyTavern wrote them. The import matches by filename. Pick one backup at a time.
