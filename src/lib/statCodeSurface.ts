@@ -240,7 +240,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'type', detail: 'string', info: 'Type text of the persona, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the persona, or empty when it has none' },
   { name: 'inScene', detail: 'boolean', info: 'True when the persona plays, false when the player plays no entity' },
-  { name: 'met', detail: 'boolean', info: 'True when the persona plays, false when the player plays no entity' },
+  { name: 'met', detail: 'boolean', info: 'Always true, since the player knows who they play' },
   { name: 'location', detail: 'string', info: 'Code name of the location the player is at, or empty in a world with no location' },
   { name: 'following', detail: 'boolean', info: 'Always false, since the persona moves with the player' },
   { name: 'description', detail: 'string', info: 'Full AI description of the persona, its placeholders filled in' },

@@ -136,8 +136,8 @@ function metIds(input: PlayerViewInput, current: GameState, cast: readonly Entit
   const worldIds = new Set(world.entities.map((e) => e.id));
   const poolIds = new Set(cast.map((e) => e.id));
   // A record of an authored entity is not a new character: the start rule still decides its Met.
-  const authored = cast.filter((e) => worldIds.has(e.id)).map((e) => ({
-    ...e, name: resolve(e.name), ...(e.strangerName !== undefined && { strangerName: resolve(e.strangerName) }),
+  const authored = cast.filter((e) => worldIds.has(e.id)).map(({ strangerName, ...e }) => ({
+    ...e, name: resolve(e.name), ...(strangerName?.trim() && { strangerName: resolve(strangerName) }),
   }));
   const runtime = discovered.filter((d) => !worldIds.has(d.entity.id) && poolIds.has(d.entity.id));
   return computePresence({
