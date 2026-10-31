@@ -310,6 +310,58 @@ describe('streamAiToolLoop: what reaches the reply', () => {
   });
 });
 
+describe('streamAiToolLoop: unseen functions', () => {
+  const GET_LOCATION: Tool = TOOL_CATALOG.find((t) => t.id === 'get_location')!;
+  const unseen = new Set([GET_ENTITY.id]);
+
+  it('leaves an unseen call and its result out of the next round, and sends that round without Tools when none are left', async () => {
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('Bram ', 'nods.')]);
+
+    const events = await run(transport, { unseen, captureRounds: true });
+
+    const [first, second] = transport.sent;
+    expect(second.messages).toEqual(first.messages);
+    expect(second).not.toHaveProperty('tools');
+    expect(roundsOf(events)[0].calls[0].result).toContain(BRAM_FACT);
+    expect(doneOf(events).content).toBe('Bram nods.');
+  });
+
+  it('keeps a seen call beside an unseen one, and offers only the functions not yet spent', async () => {
+    const transport = scripted([
+      callFrames(['get_entity', { name: 'Bram' }], ['get_location', { name: 'Ferry' }]),
+      proseFrames('x'),
+    ]);
+
+    await run(transport, { unseen }, spec([GET_ENTITY, GET_LOCATION]));
+
+    const second = transport.sent[1];
+    expect(assistantOf(second)[0].tool_calls.map((c) => c.function.name)).toEqual(['get_location']);
+    expect(toolMessagesOf(second).map((t) => t.tool_call_id)).toEqual([assistantOf(second)[0].tool_calls[0].id]);
+    expect(second.tools).toEqual([toolSchema(GET_LOCATION)]);
+  });
+
+  it('takes the answer written beside an unseen call as the reply and sends no further round', async () => {
+    const transport = scripted([[frame({ content: 'The ferryman waits.' }), ...callFrames(['get_entity', { name: 'Bram' }])]]);
+
+    const events = await run(transport, { unseen, captureRounds: true });
+
+    expect(transport.sent).toHaveLength(1);
+    expect(events.some((e) => e.type === 'toolCalls')).toBe(false);
+    expect(roundsOf(events)).toHaveLength(1);
+    expect(doneOf(events).content).toBe('The ferryman waits.');
+    expect(doneOf(events).finishReason).toBe('stop');
+  });
+
+  it('keeps a call in the next round when no unseen set names it', async () => {
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('x')]);
+
+    await run(transport, { unseen: new Set(['get_location']) });
+
+    expect(toolMessagesOf(transport.sent[1])).toHaveLength(1);
+    expect(transport.sent[1].tools).toEqual([toolSchema(GET_ENTITY)]);
+  });
+});
+
 describe('streamAiToolLoop: limits and bad calls end in a prose round', () => {
   const noTools = (body: SentBody) => {
     expect(body).not.toHaveProperty('tools');

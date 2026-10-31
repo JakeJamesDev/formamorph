@@ -24,7 +24,8 @@
 // Usage: npx vite-node testing/baseline/harness/help-create-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4] [--only id,id] [--set dev|blind]
 //          [--arms a,b] [--temps 0.5,0.9] [--alt FILE,FILE] [--rider-alt FILE] [--judge] [--grade FILE] [--show]
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+//        PROBE_ROUNDS=FILE appends each request's body and completion to FILE as one JSON line.
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { responseFormat } from '@/lib/aiRequest/responseSchema';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
@@ -135,7 +136,10 @@ async function ask(arm: Arm, c: CreateCase): Promise<Sample> {
   const usage = noUsage();
   let finish: string | null = null;
   let createRequest = false;
-  const real = sessionFetch(usage, (_body, completion) => { finish = completion.choices?.[0]?.finish_reason ?? null; });
+  const real = sessionFetch(usage, (body, completion) => {
+    finish = completion.choices?.[0]?.finish_reason ?? null;
+    if (process.env.PROBE_ROUNDS) appendFileSync(process.env.PROBE_ROUNDS, `${JSON.stringify({ arm, caseId: c.id, body, completion })}\n`);
+  });
   const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as SentBody;
     const system = String(body.messages[0]?.content);

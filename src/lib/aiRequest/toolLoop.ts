@@ -29,6 +29,9 @@ import {
  * no call loses any stray tool-call marker from its content. A round that offered Tools and was cut inside a thought written into its content is
  * dropped the same way, since the offer is what drew that thought.
  *
+ * An `unseen` function's call runs like any other, but later rounds leave out the call and its result and stop
+ * offering the function. A round whose calls are all unseen and whose content holds an answer is the reply.
+ *
  * Every round runs under the spec's Answer Cap, counted on that round's answer text alone. A round with a
  * cut thought throws, so its reasoning reaches no later round and the request fails like any other.
  */
@@ -79,6 +82,8 @@ export interface AiToolLoopOptions<TTool extends OfferedFunction = Tool> extends
   roundCap?: number;
   /** Show Silent Requests: emit a `toolRound` event per tool round. */
   captureRounds?: boolean;
+  /** Ids of functions whose calls leave no trace: later rounds carry neither the call nor its result, and no longer offer the function. */
+  unseen?: ReadonlySet<string>;
 }
 
 /** Nine alphanumeric characters, which is what the strictest chat template accepts for a call id. */
@@ -178,6 +183,9 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
   let offerTools = true;
   // Set once a round's calls are answered, until the next round's first token.
   let answeredCalls = false;
+  const unseenNames = new Set(tools.filter((tool) => options.unseen?.has(tool.id)).map((tool) => tool.name));
+  // Names of unseen functions already called, which no later round offers.
+  const spent = new Set<string>();
 
   const finalResult = (round: AiStreamResult, content: string, finishReason: string | null): AiStreamResult => ({
     content,
@@ -215,8 +223,11 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
   };
 
   for (let index = 1; ; index++) {
-    const offering = offerTools && index < roundCap;
-    const body: AiRequestBody<WireMessage> = offering ? { ...offeringBody, messages: [...messages] } : { ...plainBody, messages: [...messages] };
+    const stillOffered = offeringBody.tools?.filter((tool) => !spent.has(tool.function.name)) ?? [];
+    const offering = offerTools && index < roundCap && stillOffered.length > 0;
+    const body: AiRequestBody<WireMessage> = offering
+      ? { ...offeringBody, tools: stillOffered, messages: [...messages] }
+      : { ...plainBody, messages: [...messages] };
     const roundSpec: AiStreamSpec = { ...spec, body };
     // Whitespace-only deltas of a Tools-offered round, until its first visible character.
     const held: AiStreamEvent[] = [];
@@ -278,24 +289,30 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
       type: 'function',
       function: { name: call.name, arguments: call.arguments },
     }));
-    const assistant: AssistantToolCallMessage = {
-      role: 'assistant',
-      content: result.content || null,
-      tool_calls: calls,
-      ...(result.reasoningField && result.reasoningText ? { [result.reasoningField]: result.reasoningText } : {}),
-    };
-    messages.push(assistant);
-    yield { type: 'toolCalls', names: calls.map((call) => call.function.name) };
+    const seen = calls.filter((call) => !unseenNames.has(call.function.name));
+    // Only unseen calls beside an answer: the answer stands, and no round follows.
+    const answered = seen.length === 0 && stripReasoning(content).trim() !== '';
+    if (seen.length > 0) {
+      const assistant: AssistantToolCallMessage = {
+        role: 'assistant',
+        content: result.content || null,
+        tool_calls: seen,
+        ...(result.reasoningField && result.reasoningText ? { [result.reasoningField]: result.reasoningText } : {}),
+      };
+      messages.push(assistant);
+    }
+    if (!answered) yield { type: 'toolCalls', names: calls.map((call) => call.function.name) };
 
     const roundCalls: AiToolRoundCall[] = [];
     for (const call of calls) {
       const outcome = await runCall(call);
       if (signal?.aborted) {
-        yield { type: 'done', result: finalResult(result, '', ABORTED_FINISH_REASON) };
+        yield { type: 'done', result: finalResult(result, answered ? content : '', ABORTED_FINISH_REASON) };
         return;
       }
       if (outcome.failure === 'unknown' || outcome.failure === 'limit' || outcome.failure === 'arguments') offerTools = false;
-      messages.push({ role: 'tool', tool_call_id: call.id, content: outcome.text });
+      if (unseenNames.has(call.function.name)) spent.add(call.function.name);
+      else messages.push({ role: 'tool', tool_call_id: call.id, content: outcome.text });
       roundCalls.push({
         id: call.id,
         name: call.function.name,
@@ -316,6 +333,11 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
           calls: roundCalls,
         },
       };
+    }
+    if (answered) {
+      for (const event of held) yield event;
+      yield { type: 'done', result: finalResult(result, content, 'stop') };
+      return;
     }
     reasoningByRound.push(result.reasoningText);
     answeredCalls = true;
