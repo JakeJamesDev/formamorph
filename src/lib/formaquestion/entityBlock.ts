@@ -83,14 +83,14 @@ export function openEntityFence(markdown: string): string | null {
 }
 
 /** The rider that asks for entities in entity blocks: the full request carries it in a World Editor while Creation is on. */
-export const ENTITY_RIDER = `When the player asks you to make an entity, write each entity as its own fenced entity block, in this form:
+export const ENTITY_RIDER = `When the player asks you to make an entity, write each entity in its own fenced entity block, in this form:
 
 \`\`\`entity
 Name: <the entity's name>
 AI Description: <one to four sentences, which may run several lines>
 \`\`\`
 
-Write only the Name and AI Description lines in a block. The player adds each block to the open world from your reply.`;
+A block holds one entity. For each further entity, close the block and open a new one. Write only the Name and AI Description lines in a block. The player adds each block to the open world from your reply.`;
 
 /** The line the next help request carries after the player adds entities from cards. */
 export const entityAddNote = (names: readonly string[]): string =>

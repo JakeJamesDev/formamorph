@@ -23,7 +23,7 @@ export const DEFAULT_HELP_OPTIONS: HelpPresetOptions = {
   answer: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
   pick: { temperature: 0.2, repetitionPenalty: 1, maxTokens: HELP_PICK_MAX_TOKENS },
   intent: { temperature: 0, repetitionPenalty: 1, maxTokens: HELP_INTENT_MAX_TOKENS },
-  // Drafts want some variety.
+  // Drafts score alike at 0.5, 0.7 and 0.9 on the Create probe; 800 tokens holds three entities.
   create: { temperature: 0.7, repetitionPenalty: 1, maxTokens: 800 },
   lookup: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
 };

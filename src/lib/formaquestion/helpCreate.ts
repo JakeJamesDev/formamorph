@@ -43,7 +43,7 @@ export function createUserMessage(question: string, { name, description, entityN
   const world = [
     ...(name ? [`World Name: ${name}`] : []),
     ...(description ? [`Description: ${description}`] : []),
-    `Entities: ${entityNames.length > 0 ? entityNames.join(', ') : 'none yet'}`,
+    `Names In Use: ${entityNames.length > 0 ? entityNames.join(', ') : 'none yet'}`,
   ].join('\n');
   return [
     `<world>\n${world}\n</world>`,
