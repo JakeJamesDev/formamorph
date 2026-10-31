@@ -38,6 +38,8 @@
     { "id": "feedback-b2", "page": "Feedback", "question": "can I tell my suggestion got picked up by the devs?", "section": "Feedback#the-feedback-window" },
     { "id": "settings-b1", "page": "Settings", "question": "how do I use a different typeface for the story text?", "section": "Settings#how-to-change-the-narration-font", "otherSections": ["Settings#display"] },
     { "id": "settings-b2", "page": "Settings", "question": "I removed the samples that came with the game, how do I get them back?", "section": "Settings#how-to-restore-default-worlds", "otherSections": ["Settings#data"] },
+    { "id": "endpoint-settings-b1", "page": "Endpoint-Settings", "question": "the AI keeps sounding random and weird, can I make it more predictable?", "section": "Endpoint-Settings#text", "otherSections": ["Endpoint-Settings#built-in-engine"] },
+    { "id": "endpoint-settings-b2", "page": "Endpoint-Settings", "question": "the AI that came with the desktop app is slow, can I speed it up?", "section": "Endpoint-Settings#built-in-engine", "otherSections": ["Endpoint-Settings#engine-memory-and-context"] },
     { "id": "settings-b3", "page": "Settings", "question": "can the lines people say show in their own shade so they stand out?", "section": "Settings#how-to-color-quoted-speech", "otherSections": ["Settings#display"] },
     { "id": "prompts-b1", "page": "Prompts", "question": "how do I change the instructions the game gives the AI?", "section": "Prompts#how-to-edit-a-prompt" },
     { "id": "prompts-b2", "page": "Prompts", "question": "how do I give my custom AI instructions to a friend?", "section": "Prompts#how-to-share-a-prompt-preset", "otherSections": ["Prompts#prompt-presets"] },

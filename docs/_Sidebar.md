@@ -18,6 +18,7 @@
 - [👤 Your Account](Account)
 - [💬 Bugs and Suggestions](Feedback)
 - [⚙️ Settings](Settings)
+  - [🔌 Endpoint Settings](Endpoint-Settings)
   - [📜 Prompts](Prompts)
   - [🧰 Tools](Tools)
   - [🎨 Image Generation](Image-Generation)

@@ -120,11 +120,11 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
 
   'settings.display': { page: 'Settings', anchor: 'display' },
   'settings.output': { page: 'Settings', anchor: 'output' },
-  'settings.endpoints': { page: 'Settings', anchor: 'endpoints' },
+  'settings.endpoints': { page: 'Endpoint-Settings', anchor: '-endpoint-settings' },
   'settings.data': { page: 'Settings', anchor: 'data' },
-  'settingsEndpoints.text': { page: 'Settings', anchor: 'text' },
-  'settingsEndpoints.image': { page: 'Settings', anchor: 'image' },
-  'settingsEndpoints.tagPrompt': { page: 'Settings', anchor: 'tag-prompt' },
+  'settingsEndpoints.text': { page: 'Endpoint-Settings', anchor: 'text' },
+  'settingsEndpoints.image': { page: 'Endpoint-Settings', anchor: 'image' },
+  'settingsEndpoints.tagPrompt': { page: 'Endpoint-Settings', anchor: 'tag-prompt' },
 
   'settings.prompts': { page: 'Prompts', anchor: '-prompts' },
   settingsCompare: { page: 'Prompts', anchor: '-prompts' },

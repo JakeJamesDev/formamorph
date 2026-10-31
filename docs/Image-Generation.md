@@ -1,7 +1,9 @@
 # 🎨 Image Generation
 <!-- keywords: txt2img, visuals, drawings, does it cost money, can it draw, graphics for story -->
 
-Formamorph can draw images with an image server that you connect. It makes portraits for entities, pictures for locations and world thumbnails, and an image of each turn. The image server is separate from your text AI. It can run on your own PC, or be a paid cloud service.
+Formamorph can draw images with an image server that you connect. It makes portraits for entities, images for locations, world thumbnails, and an image of each turn.
+
+The image server is separate from your text AI. It can run on your own PC, or be a paid cloud service.
 
 > Image generation is on by default, but it draws nothing until you connect an image server. To connect a text AI, see [Connect Your Own AI](Connect-Your-Own-AI).
 
@@ -147,7 +149,7 @@ Select a preset in **Preset** to switch to it. See [Image Presets](#image-preset
 
 **ComfyUI (local)** is the default provider. In the browser, **OpenAI-compatible (cloud)** shows *desktop app only* and can't be picked.
 
-Each field of the **Image** tab is explained in [Settings → Image](Settings#image).
+Each field of the **Image** tab is explained in [Endpoint Settings → Image](Endpoint-Settings#image).
 
 ### InvokeAI Fields
 
@@ -192,11 +194,14 @@ With **Scene Images** on, each turn ends with an image of the scene. The image c
 The image is made in these steps:
 
 1. Your text AI writes tags for the action in the turn. The **Scene Tags** prompt does this. See [Prompts](Prompts).
-2. The game adds the **Image Tags** of the location and of up to two entities in the scene. Your own character counts as one of the two when it is in the picture.
-3. An entity or location with no **Image Tags** gets tags from its description, through the [Tag Prompt](Settings#tag-prompt).
+2. The game adds the **Image Tags** of the location and of up to two entities in the scene. Your own entity counts as one of the two when it is in the image.
+3. An entity or location with no **Image Tags** gets tags from its description, through the [Tag Prompt](Endpoint-Settings#tag-prompt).
 4. The image server draws the tags at the **Landscape** size of the current preset.
 
-The image shows on the turn, above your action. Select it to zoom. A turn can keep several images: use **Previous image** and **Next image** to move between them, and **Delete this image** to remove one.
+The image shows on the turn, above your action. Select it to zoom. A turn can keep several images:
+
+- **Previous image** and **Next image** move between them.
+- **Delete this image** removes one.
 
 The panel under the image shows the progress, with **Stop**. Select **Tags** to see the tag line:
 
@@ -211,9 +216,16 @@ Scene images are not in a save unless you select their checkbox in **Save Game**
 ## Image Presets
 <!-- keywords: configuration sets, restore factory values, one per style, world editor picker -->
 
-A preset keeps a full set of **Image** tab values: the provider, its address and token, the model, the prompts, the sizes and the sampling values. Keep one preset for each server or style, and switch between them.
+A preset keeps a full set of **Image** tab values:
 
-The icon buttons next to **Preset** manage your presets. Point at an icon to see its name. On a narrow screen they are in the **Preset Actions** menu.
+- the provider, its address and token
+- the model
+- the prompts
+- the sizes and the sampling values
+
+Keep one preset for each server or style, and switch between them.
+
+The icon buttons next to **Preset** manage your presets. Each icon's tooltip shows its name. On a narrow screen they are in the **Preset Actions** menu.
 
 | Control | What it does |
 |---|---|
@@ -239,7 +251,7 @@ The check reads ComfyUI's node list, or the model list of InvokeAI, Automatic111
 ## One GPU for Text and Images
 <!-- keywords: vram, out of memory, unable to type, input locked, takes forever, queue order, lag, both models loaded, why so slow -->
 
-Most PCs have one graphics card. When a text model and an image model run on one card at the same time, both move into system memory and get very slow. So Formamorph never runs them at the same time:
+Most PCs have one graphics card. A text model and an image model that run on one card at the same time both move into system memory. Then both get very slow. So Formamorph never runs them at the same time:
 
 - A scene image starts after the turn's text is complete.
 - Your next action waits until the image is done.

@@ -1,7 +1,11 @@
 # 🧍 Avatars
 <!-- keywords: player body, vtuber model, mannequin, figure on the left, body morphs, what is vrm -->
 
-An Avatar is a 3D model that an entity can show. It is a VRM file, or a plain `.glb` file. You keep your Avatars in the library's **Avatars** tab. A world keeps its own Avatars, and each entity in the world picks one. In the game, an entity's Avatar shows in the entity view and changes shape with the entity's stats.
+An Avatar is a 3D model that an entity can show. It is a VRM file, or a plain `.glb` file.
+
+- You keep your Avatars in the library's **Avatars** tab.
+- A world keeps its own Avatars, and each entity in the world picks one.
+- In the game, an entity's Avatar shows in the entity view and changes shape with the entity's stats.
 
 > An Avatar is not an entity's 3D model, and not your Profile Image. See [Avatars, 3D Models and Profile Images](#avatars-3d-models-and-profile-images).
 
@@ -13,7 +17,10 @@ An Avatar is a 3D model that an entity can show. It is a VRM file, or a plain `.
 2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
 3. Select one or more `.vrm` or `.glb` files.
 
-The Avatar gets the title in its file, or the file name. A message counts the Avatars it imported. If the file is the same as an Avatar you have, the app asks before it adds a second copy. A `.glb` tile shows a **GLB** badge: the file has no license information, and **Initial Body Features** may not work on it.
+The Avatar gets the title in its file, or the file name. A message counts the Avatars it imported.
+
+- If the file is the same as an Avatar you have, the app asks before it adds a second copy.
+- A `.glb` tile shows a **GLB** badge. The file has no license information, and **Initial Body Features** may not work on it.
 
 You can also add one file during **Character Customization**: select **Add .vrm** under **Player Avatar**. The app adds it to your library and selects it. **Add .vrm** is hidden when the author picked your Avatar.
 
@@ -28,7 +35,13 @@ You customize an Avatar when you start a game as a persona that has an Avatar. S
 3. Change the **Hair**, **Initial Body Features** and **Colors** controls. The viewer shows each change.
 4. Select **Finalize Character** to start the game.
 
-Your choices are kept in the game and its saves. The Avatar in your library does not change. The choices apply to the Avatar of the entity you play. Other entities keep their own look. **Quick Start** skips this step and uses the Avatar as it is. See [Character Customization](#character-customization).
+Your choices are kept in the game and its saves.
+
+- The choices apply to the Avatar of the entity you play. Other entities keep their own look.
+- The Avatar in your library does not change.
+- **Quick Start** skips this step and uses the Avatar as it is.
+
+See [Character Customization](#character-customization).
 
 ## How to Set Your Default Avatar
 <!-- keywords: favorite avatar, preferred model, which avatar do i wear, default badge, clear default, bundled avatar, users default -->
@@ -65,7 +78,7 @@ You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no
 <!-- keywords: shape keys, shapekeys, blend shapes, morph targets, custom avatar, slider not showing, key missing, body mesh, wings, horns, tail, transform during play, grow, ctrl+j, join mesh, weight paint, vertex group, ponytail, hair length key, vrm addon, basis, object data properties, part left behind, floating horns -->
 <!-- route: modelDetails -->
 
-Formamorph makes a body slider from each shape key on the object named `Body`. A world's stats can drive these sliders. Formamorph reads no other object for body sliders.
+Formamorph makes a body slider from each shape key on the object named `Body`. A world's stats can change these sliders. Formamorph reads no other object for body sliders.
 
 You need the VRM Add-on for Blender. **Shape Keys** and **Vertex Groups** are in the **Object Data Properties** tab, the green triangle.
 
@@ -87,9 +100,14 @@ Keep these rules or the sliders can fail:
 - Don't parent other objects to `Body`.
 - Give every vertex a bone. A vertex with no bone follows the hips, so the part stays behind when the Avatar moves.
 
-To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Body Sliders**. The stat's Min sets the key to 0, and its Max sets it to 1. Each key belongs to one stat only. An entity's own stats list the keys of its 3D model, not its Avatar. The **Initial Body Features** value adds to the stat's value. See [World Editor Stats](World-Editor-Stats).
+To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Body Sliders**. See [World Editor Stats](World-Editor-Stats).
 
-> An object with *hair* in its name gives one key only: `LENGTH`, in capitals, for **Hair Length**. Stats can't drive it.
+- The stat's Min sets the key to 0, and its Max sets it to 1.
+- Each key belongs to one stat only.
+- An entity's own stats list the keys of its 3D model, not its Avatar.
+- The **Initial Body Features** value adds to the stat's value.
+
+> An object with *hair* in its name gives one key only: `LENGTH`, in capitals, for **Hair Length**. Stats can't change it.
 
 ## Character Customization
 <!-- keywords: creator screen, rotate the model, spin view, stop it moving, sliders missing, clothing recolor, body grows with stats, hide model in game, transformation -->
@@ -115,7 +133,13 @@ Drag the viewer to turn the Avatar. Scroll to zoom.
 
 ### In the Game
 
-The entity view shows the selected entity's Avatar. Select an entity in the list to see its Avatar, and select your own entity to come back to yours. In an older world with no persona, the list has a **You** row for this. An entity shows its Avatar if it has one. If not, it shows its 3D model, and if not that, its image. To see another one, use the corner buttons on the view. **Display by Default** makes the one you see the one that entity opens on. See [The Game Screen](How-to-Play#the-game-screen).
+The entity view shows the selected entity's Avatar.
+
+- Select an entity in the list to see its Avatar. Select your own entity to come back to yours. In an older world with no persona, the list has a **You** row for this.
+- An entity shows its Avatar if it has one. If not, it shows its 3D model, and if not that, its image.
+- To see another one, use the corner buttons on the view. **Display by Default** makes the one you see the one that entity opens on.
+
+See [The Game Screen](How-to-Play#the-game-screen).
 
 A world author can tie body sliders to a stat. As the stat changes, the Avatar's shape changes. Your Avatar follows your stats. Each other entity's Avatar follows that entity's stats. The sliders you set in **Initial Body Features** are the start point for your Avatar.
 
@@ -149,7 +173,10 @@ Right-click a tile for **Set as Default Avatar** (or **Clear Default Avatar**), 
 
 ### Deleting an Avatar
 
-**Delete Player Avatar** asks you to confirm. If saves use the Avatar, the dialog names them. Those saves use the Default Avatar after you delete it. If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it. You can't delete your last Avatar.
+**Delete Player Avatar** asks you to confirm. You can't delete your last Avatar.
+
+- If saves use the Avatar, the dialog names them. Those saves use the Default Avatar after you delete it.
+- If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it.
 
 ## The Permissive License
 <!-- keywords: cc0, creative commons, upload rejected, why is sharing blocked, open licence, convert to vrm 1, missing rights message, set in vroid -->
@@ -163,7 +190,15 @@ You can publish an Avatar only when its file grants a Permissive License. The fi
 
 Formamorph reads this from the file. You can't set it in the app. A VRM 0.0 file or a plain `.glb` has no VRM 1.0 metadata, so it can't be published. The default Avatar can't be published either.
 
-When the license fails, **Publish** shows a message that names each missing right. A file with no VRM 1.0 metadata gets a message that says only that. To fix it, set the license in the tool that exported the VRM, export it as VRM 1.0, and import the file again. Publish an Avatar only when you have the right to share it.
+When the license fails, **Publish** shows a message that names each missing right. A file with no VRM 1.0 metadata gets a message that says only that.
+
+To fix it:
+
+1. Set the license in the tool that exported the VRM.
+2. Export it as VRM 1.0.
+3. Import the file again.
+
+Publish an Avatar only when you have the right to share it.
 
 The steps to publish are in [Publishing an Avatar](Community-Creations#publishing-an-avatar). You can download an Avatar from Community Creations whatever its license. Its details show the license terms.
 
@@ -171,9 +206,20 @@ The steps to publish are in [Publishing an Avatar](Community-Creations#publishin
 <!-- keywords: model bundled with world, author supplied body, ship my own model, avatar store, give npc a model, entity avatar dropdown, share avatar between entities, not in my library, user's default -->
 <!-- route: worldEditor.media -->
 
-A world keeps its own Avatars. The author adds them in the World Editor's **Media** tab, in the **World › Avatars** section, in Simple and Advanced mode. Select the section's header, then **Upload Avatar…** adds a `.vrm` or `.glb` file. **Copy From Library** copies one of your Avatars into the world. The world stores the file, so a player who downloads the world gets it. Select an Avatar's card to rename it, replace its file, download it or delete it. **Replace** keeps the Avatar's name, so every entity that picks it keeps its pick. **Used By** lists the entities that pick it. A delete names those entities, and they go back to **None**. See [World Editor Media](World-Editor-Media).
+A world keeps its own Avatars. The world stores the file, so a player who downloads the world gets it. The author adds them in the World Editor's **Media** tab, in the **World › Avatars** section, in Simple and Advanced mode. Select the section's header, then:
 
-A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In play it shows the bundled Avatar. Pick another option to replace it.
+- **Upload Avatar…** adds a `.vrm` or `.glb` file.
+- **Copy From Library** copies one of your Avatars into the world.
+
+Select an Avatar's card to rename it, replace its file, download it or delete it.
+
+- **Replace** keeps the Avatar's name, so every entity that picks it keeps its pick.
+- **Used By** lists the entities that pick it.
+- A delete names those entities, and they go back to **None**.
+
+See [World Editor Media](World-Editor-Media).
+
+A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In the game it shows the bundled Avatar. Pick another option to replace it.
 
 Each entity picks its Avatar in its **Avatar** dropdown, in Advanced mode:
 
@@ -183,7 +229,7 @@ Each entity picks its Avatar in its **Avatar** dropdown, in Advanced mode:
 | **User's Default** | The player's default Avatar. See [How to Set Your Default Avatar](#how-to-set-your-default-avatar). |
 | An Avatar of the world | That Avatar. Two entities can pick the same one. |
 
-A library entity picks from your library instead, in the **Avatar** dropdown of the library's entity editor: **None**, **User's Default**, or one of your Avatars.
+A library entity picks from your library instead. The **Avatar** dropdown of the library's entity editor offers **None**, **User's Default**, or one of your Avatars.
 
 - When you add a library entity to a world, the world copies its Avatar once.
 - An exported character card carries the entity's Avatar.

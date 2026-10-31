@@ -1,6 +1,6 @@
 # 04: AI and Settings Wording
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -21,11 +21,27 @@ Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and
 
 ## Acceptance criteria
 
-- [ ] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves
-- [ ] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page
-- [ ] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here
-- [ ] Control names take the exact casing of the on-screen label
-- [ ] Product terms match "Controlled product terms"
-- [ ] Paragraphs are short and steps are scannable lists
-- [ ] No fact changed: a diff read finds no new claim, limit or default
-- [ ] A renamed heading updates every anchor table that names it; the docs tests are green
+- [x] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves. Settings (4,534 words) split, per the spec-session ruling: Settings keeps Display, Output and Data (set preferences); the new Endpoint-Settings ("🔌 Endpoint Settings") holds the Endpoints tab (connect and tune an AI server). The other four pages are under 4,000 words and don't split; the Blender section stays on Avatars (ruling).
+- [x] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page. `_Sidebar` and Home rows added; surfaceMap.ts, Glossary, Prompts, Image-Generation and help-surface-probe.cli.ts repointed. Grep finds no moved `Settings#` anchor outside sectionVectors.json (rebuilt at close, Q7).
+- [x] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here. 194 before, 179 after (six pages). Prose notices 20 → 5. Left: `--` in the `#the-backup--restore-dialog` anchor and the `--api` flag, and the **Character Customization** screen label (×3). The rest sit on keyword and route comments: false positives (ruling).
+- [x] Control names take the exact casing of the on-screen label. Labels unchanged; a review read them against settingsCopy.ts and LocalModelModal.tsx.
+- [x] Product terms match "Controlled product terms". "picture" → image, "character" → entity in prose; "Point at" and "drive" reworded.
+- [x] Paragraphs are short and steps are scannable lists. Long paragraphs became lists across all six pages; the Formamorph AI sign-up and the Avatar license fix are now numbered steps.
+- [x] No fact changed: a diff read finds no new claim, limit or default. A spec-axis review compared old and new text; the moved Endpoints content keeps every limit, default and value list. "It starts at one" for **Autosaves Kept** now reads "The default is 1" (`AUTOSAVE_SLOTS = 1`).
+- [x] A renamed heading updates every anchor table that names it; the docs tests are green. No heading renamed. Engine Memory and Context, Flash Attention and Context Overflow are `##` on the new page so each stays its own index section. Docs, surface and help-case suites green.
+
+## Landed
+
+**Not verified**
+
+- None. No help baseline run (Q6).
+
+**For you**
+
+- Read the new [Endpoint Settings](../../../../docs/Endpoint-Settings.md) page and the shorter [Settings](../../../../docs/Settings.md) page: the split is the one structural change.
+- The new page's questions were written by a page-blind subagent: blind recall `endpoint-settings-b1` and `-b2`, baseline `endpoint-settings-1` and `-2`. The spare "the AI that came with the desktop app is slow" replaced "my game forgets the early part of the story", which fits Memory better.
+
+**Notes**
+
+- `sectionVectors.json` still holds the old `Settings#endpoints` … `#tag-prompt` ids until `build:help-vectors` at spec close (Q7).
+- Staleness misses: none found.

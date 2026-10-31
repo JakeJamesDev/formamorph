@@ -3,13 +3,25 @@
 
 In the browser and on Android, Formamorph starts on the **Demo AI**. It is a small free model, and it is there so you can try the app with no setup. The desktop app starts on its **Built-In Engine** instead.
 
-The AI writes everything you read. A stronger model gives you sharper narration, a better memory of your story, and entities that act the same from turn to turn. Nothing else changes the experience as much.
+The AI writes everything you read. Nothing else changes the experience as much. A stronger model gives you:
+
+- sharper narration
+- a better memory of your story
+- entities that act the same from turn to turn
 
 ## Formamorph AI for Supporters
 <!-- keywords: formamorph ai, supporter, patreon, allowance, monthly allowance, turns left, used up, ran out, switch back, hosted ai, no setup, no key -->
 <!-- route: settingsEndpoints.text#text-preset -->
 
-**Formamorph AI** is a built-in preset that thanks Patreon Supporters. It needs no key. To use it, you sign in, accept the current Privacy Policy and confirm that you are 18 or older. The panel shows **Sign In**, **Review Policy** or **Confirm Age** for each step that is still open. Your support includes a context window and a monthly allowance. Their size depends on how you support the project.
+**Formamorph AI** is a built-in preset that thanks Patreon Supporters. It needs no key. Your support includes a context window and a monthly allowance. Their size depends on how you support the project.
+
+To use it:
+
+1. Sign in.
+2. Accept the current Privacy Policy.
+3. Confirm that you are 18 or older.
+
+The panel shows **Sign In**, **Review Policy** or **Confirm Age** for each step that is still open.
 
 The first time a device sees your support, Formamorph selects **Formamorph AI** for you. It does this once on each device. After that, your choice stays.
 
@@ -29,7 +41,9 @@ The panel also shows when Formamorph AI can't serve you:
 - **The allowance can't be read:** select **Check Again**. Your turns still send.
 - **Your account is suspended:** the preset can't be used.
 
-Every route to your own AI ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode. In Advanced mode, one prompt can also use a different endpoint. See [How to Route a Prompt to Another Endpoint](Prompts#how-to-route-a-prompt-to-another-endpoint).
+Every way to connect your own AI uses the same tab: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode. [Endpoint Settings](Endpoint-Settings) explains each of its fields.
+
+In Advanced mode, one prompt can also use a different endpoint. See [How to Route a Prompt to Another Endpoint](Prompts#how-to-route-a-prompt-to-another-endpoint).
 
 ## How to Connect LM Studio
 <!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, gguf, lmstudio, port 1234, developer tab server, failed to fetch, connection refused, browser blocks request, self hosted llm -->
@@ -89,7 +103,7 @@ Every route to your own AI ends in the same place: Settings → **Endpoints** �
 5. Open **Recommended**. It groups models by the GPU memory they need, and starts on the group for your GPU.
 6. Select **Download** on a model.
 
-With **Auto-Load** on, the default, the model loads when its download finishes. With it off, select **Load** on the model. **Auto-Load** is in the dialog's **Options** view.
+The model loads when its download finishes. That is **Auto-Load**, on by default, in the dialog's **Options** view. With **Auto-Load** off, select **Load** on the model.
 
 ## How to Play Against Your PC from Another Device
 <!-- keywords: phone, tablet, laptop, network, wifi, lan, remote, mobile, home server, connect, ip address, same router, second computer, ipad, steam deck, tailscale, port forwarding, host elsewhere, private network blocked -->
@@ -171,7 +185,12 @@ A model with no projector drops images, and the turn still answers.
 <!-- keywords: first launch popup, no model found, ai unreachable, onboarding, wizard, detected hardware, model too big, start playing button, skip for now -->
 <!-- route: aiSetup -->
 
-On the desktop app, a **Set up your AI** dialog opens at first launch when the engine has no model. It opens only once. On every platform, the dialog also opens when you enter a world and the AI can't be reached. Then its title names the cause:
+The **Set up your AI** dialog opens in two cases:
+
+- On the desktop app, at first launch, when the engine has no model. It opens only once.
+- On every platform, when you enter a world and the AI can't be reached.
+
+In the second case, its title names the cause:
 
 - **Can't reach your endpoint**
 - **No model loaded on your server**
