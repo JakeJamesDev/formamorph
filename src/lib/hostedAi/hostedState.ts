@@ -29,6 +29,8 @@ export interface HostedState {
   turnsLeft: number | null;
   resetAt: string | null;
   acknowledged: number[];
+  /** The percents that raise a warning, ascending; null when the server sent none or a malformed list. */
+  warnThresholds: number[] | null;
 }
 
 /** What the proxy reports after a call settles. */
@@ -42,6 +44,13 @@ const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFi
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 export const recordOf = (v: unknown): Record<string, unknown> | null =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null;
+
+/** A non-empty, strictly ascending list of positive integers; anything else is null. */
+function parseWarnThresholds(v: unknown): number[] | null {
+  if (!Array.isArray(v) || v.length === 0) return null;
+  const ascending = v.every((n, i) => Number.isInteger(n) && n >= 1 && (i === 0 || n > v[i - 1]));
+  return ascending ? [...v] : null;
+}
 
 /** Reads the route's `data`; null when it is not a hosted state. */
 export function parseHostedState(raw: unknown): HostedState | null {
@@ -61,6 +70,7 @@ export function parseHostedState(raw: unknown): HostedState | null {
     turnsLeft: num(data.turnsLeft),
     resetAt: str(data.resetAt),
     acknowledged: Array.isArray(data.acknowledged) ? data.acknowledged.filter((n): n is number => typeof n === 'number') : [],
+    warnThresholds: parseWarnThresholds(data.warnThresholds),
   };
 }
 

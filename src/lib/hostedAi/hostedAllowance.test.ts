@@ -11,7 +11,7 @@ import { parseHostedState, type HostedState } from './hostedState';
 const BASE = {
   tier: 'supporter_plus', state: 'ready', window: 30000, maxTokens: 900, tokenMargin: 1000,
   model: { id: 'entry-2', capabilities: {} },
-  percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[],
+  percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[], warnThresholds: [75, 90] as unknown,
 };
 const hosted = (patch: Partial<typeof BASE> = {}): HostedState => parseHostedState({ ...BASE, ...patch }) as HostedState;
 
@@ -36,6 +36,21 @@ describe('pendingWarning', () => {
 
   it('leaves the cap to the exhausted notice', () => {
     expect(pendingWarning(hosted({ percentUsed: 100 }))).toBeNull();
+  });
+
+  it('fires at the reported thresholds, not a fixed pair', () => {
+    const custom = { warnThresholds: [50, 80] };
+    expect(pendingWarning(hosted({ percentUsed: 60, ...custom }))).toBe(50);
+    expect(pendingWarning(hosted({ percentUsed: 85, ...custom }))).toBe(80);
+    expect(pendingWarning(hosted({ percentUsed: 80, ...custom, acknowledged: [50] }))).toBe(80);
+    expect(pendingWarning(hosted({ percentUsed: 40, ...custom }))).toBeNull();
+  });
+
+  it('shows no notice when the list is null, missing or malformed', () => {
+    for (const warnThresholds of [null, undefined, [], 'x', [90, 75], [75, 75], [0, 90], [-5, 90], [75.5], ['75']]) {
+      expect(parseHostedState({ ...BASE, percentUsed: 95, warnThresholds })?.warnThresholds).toBeNull();
+      expect(pendingWarning(hosted({ percentUsed: 95, warnThresholds }))).toBeNull();
+    }
   });
 });
 

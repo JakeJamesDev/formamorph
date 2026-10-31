@@ -14,7 +14,7 @@ import { showHostedNotices } from './hostedNotices';
 
 const BASE = {
   tier: 'supporter', state: 'ready', window: 32000, maxTokens: 900, tokenMargin: 1000,
-  model: { id: 'm', capabilities: {} }, percentUsed: 10, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[],
+  model: { id: 'm', capabilities: {} }, percentUsed: 10, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[], warnThresholds: [75, 90],
 };
 const acks: string[] = [];
 

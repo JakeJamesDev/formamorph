@@ -15,7 +15,7 @@ vi.mock('@/lib/featureFlags', () => ({ COMMUNITY_ENABLED: false }));
 const STATE = {
   tier: 'supporter', state: 'ready', window: 24000, maxTokens: 200, tokenMargin: 800,
   model: { id: 'entry-7', capabilities: {} },
-  percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
+  percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [], warnThresholds: [75, 90],
 };
 
 const wrapper = ({ children }: { children: ReactNode }) => (

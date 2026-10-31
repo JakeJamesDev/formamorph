@@ -7,7 +7,7 @@ import { HOSTED_STATE_URL } from './hostedUrls';
 const STATE = {
   tier: 'supporter_plus', state: 'ready', window: 30000, maxTokens: 900, tokenMargin: 1000,
   model: { id: 'entry-2', capabilities: { tools: true, reasoning: 'openrouter', budget: true, efforts: ['low', 'high', 'bogus'] } },
-  percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [75],
+  percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [75], warnThresholds: [75, 90],
 };
 
 const sessionOn = (respond: () => Response, token: string | null = 't') =>
