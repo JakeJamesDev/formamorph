@@ -44,10 +44,12 @@ describe('the allowance section: an entitled account', () => {
     render(<AllowanceSection />);
 
     expect(await screen.findByText('Supporter+')).toBeTruthy();
+    expect(screen.getByText('Support')).toBeTruthy();
+    expect(screen.queryByText('Tier')).toBeNull();
     expect(screen.getByText('42%')).toBeTruthy();
     expect(screen.getByText('About 118')).toBeTruthy();
     expect(screen.getByText('November 1')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Join on Patreon' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Support on Patreon' })).toBeNull();
   });
 
   it('leaves out the turns line when the server has no estimate', async () => {
@@ -65,12 +67,12 @@ describe('the allowance section: an entitled account', () => {
     expect(await screen.findByText('100%')).toBeTruthy();
   });
 
-  it('shows the reset date and an upgrade link when the allowance is used up', async () => {
+  it('shows the reset date and a support link when the allowance is used up', async () => {
     hostedState(ok({ ...READY, state: 'exhausted', percentUsed: 100, turnsLeft: 0 }));
     render(<AllowanceSection />);
 
     expect(await screen.findByText(/It comes back on November 1/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Upgrade on Patreon' })).toHaveAttribute('href', PATREON_URL);
+    expect(screen.getByRole('link', { name: 'Support on Patreon' })).toHaveAttribute('href', PATREON_URL);
   });
 
   it('keeps the figures under the message when the day is paused by the spend ceiling', async () => {
@@ -97,8 +99,8 @@ describe('the allowance section: an account without access', () => {
     hostedState(ok({ tier: null, state: 'locked', percentUsed: null, turnsLeft: null, resetAt: null }));
     render(<AllowanceSection />);
 
-    expect(await screen.findByText(/Formamorph AI gives Supporters hosted AI/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Join on Patreon' })).toHaveAttribute('href', PATREON_URL);
+    expect(await screen.findByText(/Formamorph AI thanks Patreon Supporters with hosted AI/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Support on Patreon' })).toHaveAttribute('href', PATREON_URL);
     expect(screen.queryByText('Used')).toBeNull();
   });
 });

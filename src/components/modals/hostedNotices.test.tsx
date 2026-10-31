@@ -85,7 +85,7 @@ describe('the allowance notices after a turn commits', () => {
     expect(screen.getByText(/November 1/)).toBeTruthy();
     fireEvent.click(screen.getByText('Switch Back'));
     expect(switchBack).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByText('Upgrade'));
+    fireEvent.click(screen.getByText('Support on Patreon'));
     expect(openExternal).toHaveBeenCalledTimes(1);
     usage(s, 100);
     showHostedNotices(switchBack, s);
