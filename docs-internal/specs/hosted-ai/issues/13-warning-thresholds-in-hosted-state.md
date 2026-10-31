@@ -1,6 +1,6 @@
 # 13: Warning Thresholds in the Hosted State
 
-Status: ready-for-human
+Status: done
 Base: eaf4a84
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

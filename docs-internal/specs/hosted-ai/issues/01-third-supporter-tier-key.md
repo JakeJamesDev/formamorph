@@ -1,6 +1,6 @@
 # 01: Third Supporter Tier Key
 
-Status: ready-for-human
+Status: done
 Base: 10e9a24
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
