@@ -270,7 +270,7 @@ describe('strangerAliasesFromCast', () => {
   });
 });
 
-describe('the planner\'s stranger labels', () => {
+describe('the stranger labels in play', () => {
   const marr: Entity = { id: 'marr', name: 'Marr', strangerName: 'a gate guard', locations: ['hall'] };
   const sylvie: Entity = { id: 'sylvie', name: 'Sylvie', strangerName: 'a hooded woman', locations: ['hall'] };
   const shade: Entity = { id: 'shade', name: 'The Shade', strangerName: ' ', locations: ['hall'] };
