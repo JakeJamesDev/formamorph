@@ -34,6 +34,12 @@ Settled with the user on 2026-10-31.
 | Q8 | Formaquestion (about 13k words) is split from Tools and Test Bench into its own group |
 | Q9 | Each wording ticket opens with a structure check: readability on every page, and a split assessment on every page over 4,000 words |
 | Q10 | A page splits when it serves readers who come for different tasks. Word count alone never splits a page |
+| Q11 | "Exact casing" of a control name means the label string in source. CSS `text-transform` is styling: a tag rendered EXISTS is written "exists" |
+| Q12 | An icon button is named by its verb, with one line saying it is an icon button and what its tooltip reads |
+| Q13 | Links to the playable app point at formamorph.ai/play/, the released build with Community on |
+| Q14 | A "short mention" is one row or one sentence per missing setting or state a player acts on. No control-by-control lists of a dialog the page only names. A feature another group's page owns gets one line that links there |
+| Q15 | A feature behind a server setting is documented conditionally ("When a listing waits for review…"), in its on-state behavior. Landed names the setting |
+| Q16 | Docs never describe a bug's output as behavior. A claim the bug makes false is removed with no replacement, and Landed names the bug |
 
 ## Page groups
 
@@ -102,7 +108,7 @@ Settled with the user on 2026-10-31.
 
 - Read the Writing Guide first: "Before you write", "Labels, capitalization, and complete sentences", "Controlled product terms". The Scripts group also reads "The technical register".
 - Run `npm run copy:sweep` on the group's pages and triage each notice under the copy-sweep skill. The script skips `docs/*Guide.md`, so ScriptsGuide and StatCodeGuide get the hand sweep the skill requires.
-- Control names in the docs take the exact casing of the on-screen label.
+- Control names in the docs take the exact casing of the label string in source (Q11).
 - The wording pass changes no facts. A fact that looks wrong goes to the spec session, not into the rewrite.
 - The session writes the rewrite itself. No delegation of copy to a subagent (copy-sweep skill).
 
